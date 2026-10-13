@@ -387,8 +387,9 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Verify policy is selected (appears in selected section)
       await expect(
         modalContainer
-          .locator('.selected')
+          .getByTestId('policy-row')
           .filter({ hasText: policies.organizationPolicy })
+          .locator('.anticon-check')
       ).toBeVisible();
 
       const submitButton = page.locator('[type="button"]:has-text("Save")');

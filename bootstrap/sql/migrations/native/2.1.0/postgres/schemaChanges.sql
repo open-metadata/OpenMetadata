@@ -631,3 +631,8 @@ ALTER TABLE rdf_projection_health
 CREATE INDEX IF NOT EXISTS idx_entity_relationship_memory_anchor
     ON entity_relationship (fromId, relation)
     WHERE toEntity = 'contextMemory';
+
+-- aboutEntity task lists match `aboutfqnhash LIKE 'hash.%'`, which a plain btree can't serve under a
+-- non-C collation (seq scan); text_pattern_ops as for the 1.13.0 *_fqnhash_pattern indexes.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_about_fqn_hash_pattern
+  ON task_entity (aboutfqnhash text_pattern_ops);

@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Layout, Menu, MenuProps } from 'antd';
-import Modal from 'antd/lib/modal/Modal';
+import {
+  Button,
+  SimpleModal,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Layout, Menu, MenuProps } from 'antd';
+
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
@@ -167,35 +171,28 @@ const LeftSidebar = () => {
       </div>
 
       {isConfirmLogoutModalOpen && (
-        <Modal
-          centered
-          bodyStyle={{ textAlign: 'center' }}
-          closable={false}
-          closeIcon={null}
-          footer={null}
-          open={isConfirmLogoutModalOpen}
+        <SimpleModal
+          isOpen
+          footer={
+            <>
+              <Button color="secondary" onClick={hideConfirmLogoutModal}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="confirm-logout"
+                onClick={onLogoutHandler}>
+                {t('label.logout')}
+              </Button>
+            </>
+          }
+          title={t('label.logout')}
           width={360}
           onCancel={hideConfirmLogoutModal}>
-          <Typography as="h5" size="text-md" weight="semibold">
-            {t('label.logout')}
-          </Typography>
           <Typography color="secondary">
             {t('message.logout-confirmation')}
           </Typography>
-
-          <div className="d-flex gap-2 w-full m-t-md justify-center">
-            <Button className="confirm-btn" onClick={hideConfirmLogoutModal}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              className="confirm-btn"
-              data-testid="confirm-logout"
-              type="primary"
-              onClick={onLogoutHandler}>
-              {t('label.logout')}
-            </Button>
-          </div>
-        </Modal>
+        </SimpleModal>
       )}
     </Sider>
   );

@@ -502,3 +502,22 @@ SET json = jsonb_set(json, '{enabled}', 'false'::jsonb),
 WHERE name = 'transitive-lineage-closure'
   AND systemRule = TRUE
   AND json ->> 'enabled' = 'true';
+
+-- Table Diff gained the optional parallelQueries parameter. Seeding only covers fresh installs
+-- (initializeEntity returns early when the entity exists), so without this backfill an upgraded
+-- deployment would never offer it in the test case form. A no-op once the parameter is present.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_array(jsonb_build_object(
+        'name', 'parallelQueries',
+        'displayName', 'Parallel queries per database',
+        'description', 'How many queries the comparison may run at once against each database (defaults to 1). Both databases are always queried at the same time. A higher value compares large tables faster, but adds load to both databases and holds more rows in memory.',
+        'dataType', 'NUMBER',
+        'required', false
+    ))
+)
+WHERE name = 'tableDiff'
+  AND jsonb_typeof(json->'parameterDefinition') = 'array'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "parallelQueries"}]'::jsonb);
