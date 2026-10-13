@@ -48,7 +48,6 @@ import { ReactComponent as EditorIcon } from '../../../assets/svg/common/editor.
 import { ReactComponent as GlobeIcon } from '../../../assets/svg/common/globe.svg';
 import { ReactComponent as UserIcon } from '../../../assets/svg/common/user.svg';
 import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sidebar-collapsible.svg';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
@@ -80,6 +79,7 @@ import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { HeaderVersionButton } from '../../common/HeaderVersionButton/HeaderVersionButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
@@ -480,19 +480,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           {contentChangeIcon}
         </Box>
 
-        <Tooltip title={t('label.version-plural')}>
-          <TooltipTrigger>
-            <Button
-              className="tw:p-1.5"
-              color="secondary"
-              data-testid="version-btn"
-              iconLeading={<VersionIcon height={16} width={16} />}
-              size="sm"
-              onClick={handleVersionClick}>
-              {version}
-            </Button>
-          </TooltipTrigger>
-        </Tooltip>
+        <HeaderVersionButton version={version} onClick={handleVersionClick} />
 
         <ButtonUtility
           className={

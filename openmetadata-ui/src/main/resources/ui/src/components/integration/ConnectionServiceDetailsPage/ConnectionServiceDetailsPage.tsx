@@ -23,6 +23,7 @@ import {
 import { Settings01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { toString } from 'lodash';
 import { PagingWithoutTotal } from 'Models';
 import React, {
   FC,
@@ -78,6 +79,7 @@ import {
 } from '../../../utils/ExtensionPointTypes';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getServiceVersionPath } from '../../../utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
@@ -89,6 +91,7 @@ import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/Announce
 import DeleteEntityModal from '../../common/DeleteWidget/DeleteEntityModal';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { HeaderVersionButton } from '../../common/HeaderVersionButton/HeaderVersionButton.component';
 import Loader from '../../common/Loader/Loader';
 import TestConnection from '../../common/TestConnection/TestConnection';
 import DataModelTable from '../../Dashboard/DataModel/DataModels/DataModelsTable';
@@ -114,7 +117,6 @@ import {
   ServiceSpreadsheetsTab,
 } from './ServiceDriveAssetTabs';
 import { ServiceFollowButton } from './ServiceFollowButton';
-import { ServiceVersionHistory } from './ServiceVersionHistory';
 import { useActiveAnnouncements } from './useActiveAnnouncements';
 import {
   DATA_ASSETS_TAB_KEY,
@@ -586,6 +588,18 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     navigate(getEntityImportPath(serviceEntityType, decodedFqn));
   }, [navigate, serviceEntityType, decodedFqn]);
 
+  // As Context Center articles: the service's version route shows that version beside the
+  // version history, and closing it returns here.
+  const handleVersionClick = useCallback(() => {
+    navigate(
+      getServiceVersionPath(
+        serviceCategory ?? '',
+        decodedFqn,
+        toString(serviceDetails.version)
+      )
+    );
+  }, [navigate, serviceCategory, decodedFqn, serviceDetails.version]);
+
   const handleExportClick = useCallback(() => {
     showModal({
       name: decodedFqn,
@@ -830,13 +844,12 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                 onFollowersChange={handleFollowersChange}
               />
             ) : null}
-            {serviceDetails.id ? (
-              <ServiceVersionHistory
-                serviceCategory={serviceCategory as ServiceCategory}
-                serviceId={serviceDetails.id}
-                version={serviceDetails.version}
+            {serviceDetails.version === undefined ? null : (
+              <HeaderVersionButton
+                version={toString(serviceDetails.version)}
+                onClick={handleVersionClick}
               />
-            ) : null}
+            )}
             {pluginActions.map((action) =>
               action.component ? (
                 <action.component key={action.key} {...extensionContext} />

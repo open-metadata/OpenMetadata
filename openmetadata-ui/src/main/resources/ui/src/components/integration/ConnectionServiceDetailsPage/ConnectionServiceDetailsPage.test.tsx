@@ -372,14 +372,22 @@ jest.mock('./useActiveAnnouncements', () => ({
     mockUseActiveAnnouncements(...args),
 }));
 
-const mockServiceVersionHistory = jest.fn();
-jest.mock('./ServiceVersionHistory', () => ({
-  ServiceVersionHistory: (props: Record<string, unknown>) => {
-    mockServiceVersionHistory(props);
-
-    return <div data-testid="service-version-history-button" />;
-  },
-}));
+jest.mock(
+  '../../common/HeaderVersionButton/HeaderVersionButton.component',
+  () => ({
+    HeaderVersionButton: ({
+      version,
+      onClick,
+    }: {
+      version: string;
+      onClick: () => void;
+    }) => (
+      <button data-testid="version-btn" type="button" onClick={onClick}>
+        {version}
+      </button>
+    ),
+  })
+);
 
 const mockServiceFollowButton = jest.fn();
 jest.mock('./ServiceFollowButton', () => ({
@@ -500,6 +508,13 @@ jest.mock('../../../constants/constants', () => ({
 }));
 
 jest.mock('fast-json-patch', () => ({ compare: jest.fn(() => []) }));
+
+// ROUTES comes from the constants mocked above; the path itself is RouterUtils' to test.
+jest.mock('../../../utils/RouterUtils', () => ({
+  ...jest.requireActual('../../../utils/RouterUtils'),
+  getServiceVersionPath: (category: string, fqn: string, version: string) =>
+    `/service/${category}/${fqn}/versions/${version}`,
+}));
 
 // Holds each list request open until the test resolves it — by index, in request order — so a
 // request can be made to resolve after the one that followed it.
@@ -1134,11 +1149,14 @@ describe('ConnectionServiceDetailsPage', () => {
       });
       await renderOnDataAssets();
 
-      expect(mockServiceVersionHistory).toHaveBeenLastCalledWith({
-        serviceCategory: 'databaseServices',
-        serviceId: 'svc-1',
-        version: 0.3,
-      });
+      expect(screen.getByTestId('version-btn')).toHaveTextContent('0.3');
+
+      fireEvent.click(screen.getByTestId('version-btn'));
+
+      // The version route, as Context Center articles use: that version beside the history.
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/service/databaseServices/test-service/versions/0.3'
+      );
     });
 
     it('lets a database service be followed, and keeps the followers it reports', async () => {
@@ -1163,14 +1181,16 @@ describe('ConnectionServiceDetailsPage', () => {
     // As classic: the followers endpoint exists for database services only.
     it('offers no follow on another kind of service', async () => {
       mockServiceCategory = 'dashboardServices';
+      (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        version: 0.1,
+      });
       await renderOnDataAssets();
 
       expect(
         screen.queryByTestId('entity-follow-button')
       ).not.toBeInTheDocument();
-      expect(
-        screen.getByTestId('service-version-history-button')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('version-btn')).toBeInTheDocument();
     });
 
     it('offers no follow on a soft-deleted service', async () => {

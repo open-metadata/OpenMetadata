@@ -23,9 +23,9 @@
  * details that open expanded. A service name too long for the header ends in an ellipsis, with
  * the full name on hover.
  *
- * Its header carries the version history, opened from the current version as on Context Center,
- * and, for a database service, Follow; the service's active announcement shows under the header
- * on every tab; and deleting the service lands on its list.
+ * Its header carries the current version, which opens the version history as Context Center
+ * articles do, and, for a database service, Follow; the service's active announcement shows under
+ * the header on every tab; and deleting the service lands on its list.
  *
  * It gates what classic gates: the Connection tab, which shows the connection config, only for
  * users who may edit the service; and no domain / owner / tier edits on a soft-deleted service.
@@ -174,7 +174,7 @@ test.describe(
           category: 'databaseServices',
           fqn: serviceFqn,
         });
-        const history = page.getByTestId('service-version-history');
+        const history = page.getByTestId('versions-list-container');
         const versions = waitForResponseWithStatus(
           page,
           (response) =>
@@ -183,12 +183,15 @@ test.describe(
           'ok'
         );
 
-        await page.getByTestId('service-version-history-button').click();
+        await page.getByTestId('version-btn').click();
         await versions;
 
-        await expect(history.getByTestId('version-dot-0.2')).toBeVisible();
-        await expect(history.getByTestId('version-dot-0.1')).toBeVisible();
-        await expect(history).toContainText('Current');
+        // As Context Center articles: the version's own route, beside the version history.
+        await expect(page).toHaveURL(
+          new RegExp(`/service/databaseServices/${serviceFqn}/versions/0\\.2$`)
+        );
+        await expect(history).toContainText('v0.2');
+        await expect(history).toContainText('v0.1');
       });
 
       test('follows the service, and unfollows it', async ({ page }) => {

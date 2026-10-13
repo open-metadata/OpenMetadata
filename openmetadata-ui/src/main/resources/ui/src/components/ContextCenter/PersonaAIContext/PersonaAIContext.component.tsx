@@ -23,6 +23,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Clock,
+  ClockRewind,
   Eye,
   FolderPlus,
   Plus,
@@ -49,11 +50,12 @@ import {
   updatePersonaAIContextRule,
 } from '../../../rest/PersonaAPI';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import { formatEntityVersion } from '../../../utils/EntityVersionUtilsPure';
-import { normalizePersonaContextDefinition } from '../../../utils/PersonaAIContextUtils';
+import {
+  formatPersonaVersion,
+  normalizePersonaContextDefinition,
+} from '../../../utils/PersonaAIContextUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
-import { VersionBadgeButton } from '../../common/VersionHistorySlideout/VersionBadgeButton.component';
 import { ContextPreviewModal } from './ContextPreviewModal/ContextPreviewModal.component';
 import { ContextPromptCard } from './ContextPromptCard/ContextPromptCard.component';
 import { ContextRuleCard } from './ContextRuleCard/ContextRuleCard.component';
@@ -65,6 +67,12 @@ interface PersonaAIContextProps {
   persona: Persona;
   onPersonaUpdate?: () => void;
 }
+
+const VERSION_BADGE_CLASS = [
+  'tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1.5 tw:rounded-lg',
+  'tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-2 tw:text-secondary',
+  'tw:transition tw:hover:bg-primary_hover',
+].join(' ');
 
 const derivePersonaAIContextState = (
   definition: PersonaContextDefinition,
@@ -132,11 +140,19 @@ const PersonaAIContextHeader = ({
       </Box>
       <Box align="center" className="tw:shrink-0 tw:gap-2.5">
         {persona.version && (
-          <VersionBadgeButton
-            testId="persona-context-version"
-            version={formatEntityVersion(persona.version)}
-            onPress={onOpenVersionHistory}
-          />
+          <Typography
+            as="button"
+            className={VERSION_BADGE_CLASS}
+            data-testid="persona-context-version"
+            size="text-sm"
+            title={t('label.version-history')}
+            weight="semibold"
+            onClick={onOpenVersionHistory}>
+            <ClockRewind className="tw:size-4" />
+            {t('label.version-short', {
+              version: formatPersonaVersion(persona.version),
+            })}
+          </Typography>
         )}
         {canEdit && (
           <>

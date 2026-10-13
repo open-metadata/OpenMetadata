@@ -10,15 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { formatEntityVersion } from './EntityVersionUtilsPure';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { HeaderVersionButton } from './HeaderVersionButton.component';
 
-describe('formatEntityVersion', () => {
-  it.each([
-    [0.1, '0.1'],
-    [1, '1.0'],
-    ['0.30000000000000004', '0.3'],
-    [undefined, '1.0'],
-  ])('shows %p as %p', (version, expected) => {
-    expect(formatEntityVersion(version)).toBe(expected);
+describe('HeaderVersionButton', () => {
+  it('shows the version and opens the history when pressed', () => {
+    const onClick = jest.fn();
+    render(<HeaderVersionButton version="0.3" onClick={onClick} />);
+
+    fireEvent.click(screen.getByTestId('version-btn'));
+
+    expect(screen.getByTestId('version-btn')).toHaveTextContent('0.3');
+    expect(onClick).toHaveBeenCalled();
   });
 });
