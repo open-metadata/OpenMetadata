@@ -116,10 +116,10 @@ function PlatformInsightsWidget({
               </Card>
             ))
           : filteredChartsData.map((chart) => {
-              const unit =
-                chart.chartType === SystemChartType.HealthyDataAssets
-                  ? ''
-                  : '%';
+              // Healthy assets is a live count with no history, so it has no unit and no trend.
+              const isHealthyChart =
+                chart.chartType === SystemChartType.HealthyDataAssets;
+              const unit = isHealthyChart ? '' : '%';
 
               return (
                 <Card className={cardClass} key={chart.chartType}>
@@ -135,38 +135,39 @@ function PlatformInsightsWidget({
                         chart.currentPercentage
                       )}${unit}`}
                     </Typography>
-                    {!isUndefined(chart.percentageChange) && (
-                      <Box align="end" direction="col" gap={1}>
-                        <Badge
-                          className="percent-change-tag tw:gap-1"
-                          color={chart.isIncreased ? 'success' : 'error'}
-                          size="sm"
-                          type="color">
-                          {chart.percentageChange !== 0 && (
-                            <ArrowUp
-                              className={classNames(
-                                !chart.isIncreased && 'flip-vertical'
-                              )}
-                              height={11}
-                              width={11}
-                            />
-                          )}
-                          {`${getReadableCountString(
-                            chart.percentageChange
-                          )}${unit}`}
-                        </Badge>
-                        <Typography
-                          className="tw:whitespace-nowrap"
-                          color="secondary"
-                          size="text-xs">
-                          {chart.numberOfDays === 1
-                            ? t('label.in-the-last-day')
-                            : t('label.in-last-number-of-days', {
-                                numberOfDays: chart.numberOfDays,
-                              })}
-                        </Typography>
-                      </Box>
-                    )}
+                    {!isHealthyChart &&
+                      !isUndefined(chart.percentageChange) && (
+                        <Box align="end" direction="col" gap={1}>
+                          <Badge
+                            className="percent-change-tag tw:gap-1"
+                            color={chart.isIncreased ? 'success' : 'error'}
+                            size="sm"
+                            type="color">
+                            {chart.percentageChange !== 0 && (
+                              <ArrowUp
+                                className={classNames(
+                                  !chart.isIncreased && 'flip-vertical'
+                                )}
+                                height={11}
+                                width={11}
+                              />
+                            )}
+                            {`${getReadableCountString(
+                              chart.percentageChange
+                            )}${unit}`}
+                          </Badge>
+                          <Typography
+                            className="tw:whitespace-nowrap"
+                            color="secondary"
+                            size="text-xs">
+                            {chart.numberOfDays === 1
+                              ? t('label.in-the-last-day')
+                              : t('label.in-last-number-of-days', {
+                                  numberOfDays: chart.numberOfDays,
+                                })}
+                          </Typography>
+                        </Box>
+                      )}
                   </Box>
                 </Card>
               );

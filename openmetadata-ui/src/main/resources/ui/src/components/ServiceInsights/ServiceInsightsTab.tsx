@@ -166,21 +166,27 @@ const ServiceInsightsTab = ({
       ];
       const filter = `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`;
 
-      // Test results carry their run time, unlike the midnight snapshots the other charts read,
-      // so a window ending at today's 00:00 would leave today's healthy bucket always empty.
+      // The daily healthy chart only counts tables whose tests ran inside each day, so it reads 0
+      // on any day without a run. The live chart uses each test case's latest status instead,
+      // matching the Data Quality page.
       const [coverageChartsData, healthyChartData] = await Promise.all([
         getMultiChartsPreviewByName(chartsList, {
           start: sevenDaysAgoTimestampInMs,
           end: currentTimestampInMs,
           filter,
         }),
-        getMultiChartsPreviewByName([SystemChartType.HealthyDataAssets], {
+        getMultiChartsPreviewByName([SystemChartType.HealthyDataAssetsLive], {
           start: sevenDaysAgoTimestampInMs,
-          end: getCurrentMillis(),
-          filter,
+          end: currentTimestampInMs,
+          live: true,
+          serviceName,
         }),
       ]);
-      const chartsData = { ...coverageChartsData, ...healthyChartData };
+      const chartsData = {
+        ...coverageChartsData,
+        [SystemChartType.HealthyDataAssets]:
+          healthyChartData[SystemChartType.HealthyDataAssetsLive],
+      };
 
       await getDataAssetsCount();
 

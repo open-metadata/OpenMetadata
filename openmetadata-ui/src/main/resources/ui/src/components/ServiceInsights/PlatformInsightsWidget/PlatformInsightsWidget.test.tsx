@@ -243,7 +243,7 @@ describe('PlatformInsightsWidget', () => {
       expect(screen.getByText('90%')).toBeInTheDocument();
     });
 
-    it('should render healthy data assets as a count, without a percent sign', () => {
+    it('should render healthy data assets as a count with no trend badge', () => {
       renderComponent({
         chartsData: [
           {
@@ -251,15 +251,17 @@ describe('PlatformInsightsWidget', () => {
             currentPercentage: 12,
             percentageChange: 3,
             isIncreased: true,
-            numberOfDays: 6,
+            numberOfDays: 1,
           },
         ],
       });
 
       expect(screen.getByText('12')).toBeInTheDocument();
-      expect(screen.getByText('3')).toBeInTheDocument();
       expect(screen.queryByText('12%')).not.toBeInTheDocument();
-      expect(screen.queryByText('3%')).not.toBeInTheDocument();
+      expect(screen.queryByText('3')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('label.in-the-last-day')
+      ).not.toBeInTheDocument();
     });
   });
 

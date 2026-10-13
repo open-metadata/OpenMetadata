@@ -336,20 +336,15 @@ describe('ServiceInsightsTab', () => {
     });
   });
 
-  it("should read healthy data assets up to now so today's test runs are counted", async () => {
-    const dayMs = 86400000;
+  it('should read healthy data assets from the live chart so days without test runs do not read 0', async () => {
     const todayStart = getCurrentDayStartGMTinMillis();
-    const healthyResults = [0, 1, 2, 3, 4, 5, 6].map((daysAgo) => ({
-      day: todayStart - (6 - daysAgo) * dayMs,
-      count: daysAgo === 6 ? 73.42 : 50,
-    }));
     mockGetMultiChartsPreviewByName.mockImplementation(
       (chartNames: SystemChartType[]) =>
         Promise.resolve(
-          chartNames.includes(SystemChartType.HealthyDataAssets)
+          chartNames.includes(SystemChartType.HealthyDataAssetsLive)
             ? {
-                [SystemChartType.HealthyDataAssets]: {
-                  results: healthyResults,
+                [SystemChartType.HealthyDataAssetsLive]: {
+                  results: [{ count: 3, term: 'oracle-ui-test' }],
                 },
               }
             : {}
@@ -366,14 +361,17 @@ describe('ServiceInsightsTab', () => {
     });
 
     const healthyCall = mockGetMultiChartsPreviewByName.mock.calls.find(
-      ([chartNames]) => chartNames.includes(SystemChartType.HealthyDataAssets)
+      ([chartNames]) =>
+        chartNames.includes(SystemChartType.HealthyDataAssetsLive)
     );
     const coverageCall = mockGetMultiChartsPreviewByName.mock.calls.find(
       ([chartNames]) => chartNames.includes(SystemChartType.DescriptionCoverage)
     );
 
-    expect(healthyCall?.[0]).toEqual([SystemChartType.HealthyDataAssets]);
-    expect(healthyCall?.[1].end).toBeGreaterThan(todayStart);
+    expect(healthyCall?.[0]).toEqual([SystemChartType.HealthyDataAssetsLive]);
+    expect(healthyCall?.[1]).toEqual(
+      expect.objectContaining({ live: true, serviceName: 'oracle-ui-test' })
+    );
     expect(coverageCall?.[0]).not.toContain(SystemChartType.HealthyDataAssets);
     expect(coverageCall?.[1].end).toBe(todayStart);
     expect(PlatformInsightsWidget).toHaveBeenCalledWith(
@@ -381,8 +379,7 @@ describe('ServiceInsightsTab', () => {
         chartsData: expect.arrayContaining([
           expect.objectContaining({
             chartType: SystemChartType.HealthyDataAssets,
-            currentPercentage: 73.4,
-            numberOfDays: 6,
+            currentPercentage: 3,
           }),
         ]),
       }),
