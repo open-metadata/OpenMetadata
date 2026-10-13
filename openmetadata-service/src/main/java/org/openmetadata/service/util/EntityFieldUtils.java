@@ -161,6 +161,7 @@ public class EntityFieldUtils {
   /**
    * Reads a multi-value FQN field. FQNs may contain commas, so the UI writes a JSON array; a plain
    * comma-separated string is still accepted for workflows saved before that.
+   * ADR:2026-10-13-set-action-multi-fqn-field-values-are-json-arrays
    */
   static List<String> parseFqnList(String value) {
     String trimmed = value.trim();

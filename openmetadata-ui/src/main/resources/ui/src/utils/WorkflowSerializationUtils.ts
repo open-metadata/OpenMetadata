@@ -113,6 +113,7 @@ export const deserializeEventBasedFilters = (
 };
 
 // FQNs may contain commas, so multi-value fields are stored as a JSON array.
+// ADR:2026-10-13-set-action-multi-fqn-field-values-are-json-arrays
 export const serializeFqnList = (fqns: string[]): string =>
   fqns.length > 0 ? JSON.stringify(fqns) : '';
 
