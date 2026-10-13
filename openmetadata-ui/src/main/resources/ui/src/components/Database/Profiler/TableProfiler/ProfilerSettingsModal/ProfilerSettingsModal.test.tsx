@@ -518,7 +518,10 @@ describe('ProfilerSettingsModal include-column dropdown popup container', () => 
     // clip wrapper.
     await act(async () => {
       fireEvent.click(
-        document.querySelector('.include-columns-add-button') as HTMLElement
+        within(screen.getByTestId('include-column-section')).getByRole(
+          'button',
+          { name: 'label.add' }
+        )
       );
     });
 
@@ -527,7 +530,7 @@ describe('ProfilerSettingsModal include-column dropdown popup container', () => 
 
       expect(container.className).toMatch(/h-max-40/);
       expect(screen.getAllByTestId('include-column-select')).toHaveLength(2);
-      expect(screen.getAllByTestId('include-column-metrics')).toHaveLength(2);
+      expect(container.querySelectorAll('.ant-tree-select')).toHaveLength(2);
     });
   };
 
@@ -536,6 +539,16 @@ describe('ProfilerSettingsModal include-column dropdown popup container', () => 
     const combobox = within(trigger).getByRole('combobox');
 
     fireEvent.mouseDown(combobox);
+  };
+
+  // Each include row holds two comboboxes: the column Select, then the metrics
+  // TreeSelect.
+  const openMetricsDropdown = (rowIndex = 0) => {
+    const comboboxes = within(
+      screen.getByTestId('include-column-container')
+    ).getAllByRole('combobox');
+
+    fireEvent.mouseDown(comboboxes[rowIndex * 2 + 1]);
   };
 
   // Dispatch an outside `mousedown` so rc-trigger closes any open antd
@@ -593,7 +606,7 @@ describe('ProfilerSettingsModal include-column dropdown popup container', () => 
     await renderModalWithTwoIncludeRows();
 
     await act(async () => {
-      openDropdown('include-column-metrics');
+      openMetricsDropdown();
     });
 
     // The metrics TreeSelect popup must NOT be nested inside the 160px
