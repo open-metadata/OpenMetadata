@@ -66,6 +66,7 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
+import { isGitSinkNode } from '../../../utils/WorkflowConfigUtils';
 import { applyFlowchartLayout } from '../../../utils/WorkflowLayout';
 import { getWorkflowDefinitionsListPath } from '../../../utils/WorkflowRouterUtils';
 
@@ -157,6 +158,8 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   const startEventTriggerType = useMemo(() => {
     return startEventNode?.data?.triggerType || '';
   }, [startEventNode]);
+
+  const hasGitSinkNode = useMemo(() => nodes.some(isGitSinkNode), [nodes]);
 
   const [isUndoRedoInProgress, setIsUndoRedoInProgress] = useState(false);
   const [isRunLoading, setIsRunLoading] = useState(false);
@@ -576,6 +579,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
           dataAssets: startEventDataAssets,
           triggerType: startEventTriggerType,
         }}
+        hasGitSinkNode={hasGitSinkNode}
         isOpen={isConfigSidebarOpen}
         node={selectedNode}
         setEdges={setEdges}

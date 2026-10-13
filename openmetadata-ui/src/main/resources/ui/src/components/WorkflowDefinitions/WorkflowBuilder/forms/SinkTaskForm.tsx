@@ -15,13 +15,16 @@ import { Input, Select } from '@openmetadata/ui-core-components';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
+import { MASKED_PASSWORD_VALUE } from '../../../../constants/Secrets.constants';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
+import { SinkType } from '../../../../generated/governance/workflows/elements/nodes/automatedTask/sinkTask';
 import {
   createNodeConfig,
   isValidString,
 } from '../../../../utils/WorkflowBuilderUtils';
 
-import { FormActionButtons, MetadataFormSection } from './';
+import { FormActionButtons } from './FormActionButtons';
+import { MetadataFormSection } from './MetadataFormSection';
 
 interface SinkTaskFormProps {
   node: Node;
@@ -29,6 +32,113 @@ interface SinkTaskFormProps {
   onClose: () => void;
   onDelete?: (nodeId: string) => void;
 }
+
+interface SinkNodeConfig {
+  repositoryUrl?: string;
+  branch?: string;
+  basePath?: string;
+  credentials?: { type?: string; token?: string };
+  conflictResolution?: string;
+  commitConfig?: {
+    messageTemplate?: string;
+    authorName?: string;
+    authorEmail?: string;
+  };
+}
+
+interface SinkTaskConfig {
+  sinkType?: SinkType;
+  outputFormat?: string;
+  sinkConfig?: SinkNodeConfig;
+}
+
+interface SinkNodeData {
+  displayName?: string;
+  label?: string;
+  description?: string;
+  config?: SinkTaskConfig;
+}
+
+interface SinkFormData {
+  displayName: string;
+  description: string;
+  repositoryUrl: string;
+  branch: string;
+  basePath: string;
+  token: string;
+  conflictResolution: string;
+  commitMessageTemplate: string;
+  authorName: string;
+  authorEmail: string;
+}
+
+type SinkFormTextField = {
+  [K in keyof SinkFormData]: SinkFormData[K] extends string ? K : never;
+}[keyof SinkFormData];
+
+const buildSinkConnectionValues = (sinkConfig: SinkNodeConfig) => ({
+  repositoryUrl: sinkConfig.repositoryUrl || '',
+  branch: sinkConfig.branch || 'main',
+  basePath: sinkConfig.basePath || 'metadata',
+  token: sinkConfig.credentials?.token || '',
+  conflictResolution: sinkConfig.conflictResolution || 'overwriteExternal',
+});
+
+const buildSinkMetaValues = (
+  data: SinkNodeData,
+  sinkConfig: SinkNodeConfig,
+  t: ReturnType<typeof useTranslation>['t']
+) => ({
+  displayName: data.displayName || data.label || '',
+  description: data.description || '',
+  commitMessageTemplate:
+    sinkConfig.commitConfig?.messageTemplate ||
+    'Sync {entityType}: {entityName}',
+  authorName: sinkConfig.commitConfig?.authorName || t('label.brand-name-bot'),
+  authorEmail: sinkConfig.commitConfig?.authorEmail || 'bot@openmetadata.org',
+});
+
+// Fields the form does not render (apiBaseUrl, retryConfig, timeout, ...) come
+// from the stored config, so saving the node does not drop them.
+const buildSinkConfig = (
+  storedSinkConfig: SinkNodeConfig,
+  formData: SinkFormData
+): SinkNodeConfig => {
+  return {
+    ...storedSinkConfig,
+    repositoryUrl: formData.repositoryUrl,
+    branch: formData.branch,
+    basePath: formData.basePath,
+    credentials: {
+      ...storedSinkConfig.credentials,
+      type: 'token',
+      token: formData.token,
+    },
+    conflictResolution: formData.conflictResolution,
+    commitConfig: {
+      ...storedSinkConfig.commitConfig,
+      messageTemplate: formData.commitMessageTemplate,
+      authorName: formData.authorName,
+      authorEmail: formData.authorEmail,
+    },
+  };
+};
+
+type SinkSecretField = 'token';
+
+const CLEARING_KEYS = ['Backspace', 'Delete'];
+
+// A masked secret stands for the stored value. Focusing it empties the field, so
+// what the user types or pastes is taken as is; until the field changes, it
+// still stands for the stored value and is sent back as the mask.
+const withPendingMasks = (
+  formData: SinkFormData,
+  pendingMasks: SinkSecretField[]
+): SinkFormData =>
+  pendingMasks.reduce<SinkFormData>(
+    (data, field) => ({ ...data, [field]: MASKED_PASSWORD_VALUE }),
+    formData
+  );
 
 export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
   node,
@@ -55,7 +165,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
     [t]
   );
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<SinkFormData>({
     displayName: '',
     description: '',
     repositoryUrl: '',
@@ -69,63 +179,90 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
   });
 
   const updateFormData = useCallback(
-    (field: keyof typeof formData, value: string) => {
+    (field: SinkFormTextField, value: string) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
     },
     []
   );
 
+  const [pendingMasks, setPendingMasks] = useState<SinkSecretField[]>([]);
+
+  const handleSecretFocus = useCallback(
+    (field: SinkSecretField) => {
+      if (formData[field] === MASKED_PASSWORD_VALUE) {
+        setPendingMasks((prev) => [...prev, field]);
+        setFormData((prev) => ({ ...prev, [field]: '' }));
+      }
+    },
+    [formData]
+  );
+
+  const handleSecretBlur = useCallback(
+    (field: SinkSecretField) => {
+      if (pendingMasks.includes(field)) {
+        setPendingMasks((prev) => prev.filter((item) => item !== field));
+        setFormData((prev) => ({ ...prev, [field]: MASKED_PASSWORD_VALUE }));
+      }
+    },
+    [pendingMasks]
+  );
+
+  const handleSecretChange = useCallback(
+    (field: SinkSecretField, value: string) => {
+      setPendingMasks((prev) => prev.filter((item) => item !== field));
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    },
+    []
+  );
+
+  // Deleting in a field that still stands for the stored secret clears that
+  // secret: the field is already empty, so no change event would report it.
+  const handleSecretKeyDown = useCallback(
+    (field: SinkSecretField, key: string) => {
+      if (CLEARING_KEYS.includes(key) && pendingMasks.includes(field)) {
+        handleSecretChange(field, '');
+      }
+    },
+    [pendingMasks, handleSecretChange]
+  );
+
+  const submittedData = withPendingMasks(formData, pendingMasks);
+
   useEffect(() => {
     if (node?.data) {
-      const nodeConfig = node.data.config || {};
-      const sinkConfig = nodeConfig.sinkConfig || {};
+      const data = node.data as SinkNodeData;
+      const sinkConfig = data.config?.sinkConfig ?? {};
 
       setFormData({
-        displayName: node.data.displayName || node.data.label || '',
-        description: node.data.description || '',
-        repositoryUrl: sinkConfig.repositoryUrl || '',
-        branch: sinkConfig.branch || 'main',
-        basePath: sinkConfig.basePath || 'metadata',
-        token: sinkConfig.credentials?.token || '',
-        conflictResolution:
-          sinkConfig.conflictResolution || 'overwriteExternal',
-        commitMessageTemplate:
-          sinkConfig.commitConfig?.messageTemplate ||
-          'Sync {entityType}: {entityName}',
-        authorName:
-          sinkConfig.commitConfig?.authorName || t('label.brand-name-bot'),
-        authorEmail:
-          sinkConfig.commitConfig?.authorEmail || 'bot@openmetadata.org',
+        ...buildSinkMetaValues(data, sinkConfig, t),
+        ...buildSinkConnectionValues(sinkConfig),
       });
+      setPendingMasks([]);
     }
   }, [node]);
 
   const handleSave = () => {
-    const sinkConfig = {
-      repositoryUrl: formData.repositoryUrl,
-      branch: formData.branch,
-      basePath: formData.basePath,
-      credentials: {
-        type: 'token',
-        token: formData.token,
-      },
-      conflictResolution: formData.conflictResolution,
-      commitConfig: {
-        messageTemplate: formData.commitMessageTemplate,
-        authorName: formData.authorName,
-        authorEmail: formData.authorEmail,
-      },
-    };
+    const storedConfig = (node.data as SinkNodeData)?.config ?? {};
+    // Saving writes a git sink, so only a stored git sinkConfig is carried over;
+    // another sink type's fields and masked secrets are not valid git config.
+    const storedGitSinkConfig =
+      storedConfig.sinkType === SinkType.Git
+        ? storedConfig.sinkConfig ?? {}
+        : {};
 
+    // The node's config is replaced as a whole on save, so the task-level
+    // fields this form does not render (batchMode, syncMode, entityFilter, ...)
+    // are carried over from the stored config.
     const config = createNodeConfig({
       displayName: formData.displayName,
       description: formData.description,
       type: 'automatedTask',
       subType: 'sinkTask',
       config: {
-        sinkType: 'git',
-        outputFormat: 'yaml',
-        sinkConfig,
+        ...storedConfig,
+        sinkType: SinkType.Git,
+        outputFormat: storedConfig.outputFormat ?? 'yaml',
+        sinkConfig: buildSinkConfig(storedGitSinkConfig, submittedData),
       },
     });
 
@@ -149,7 +286,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
       return false;
     }
 
-    return isValidString(formData.token);
+    return isValidString(submittedData.token);
   };
 
   return (
@@ -206,7 +343,10 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
             placeholder="ghp_xxxxxxxxxxxx"
             type="password"
             value={formData.token}
-            onChange={(value) => updateFormData('token', value)}
+            onBlur={() => handleSecretBlur('token')}
+            onChange={(value) => handleSecretChange('token', value)}
+            onFocus={() => handleSecretFocus('token')}
+            onKeyDown={(event) => handleSecretKeyDown('token', event.key)}
           />
         </div>
 
