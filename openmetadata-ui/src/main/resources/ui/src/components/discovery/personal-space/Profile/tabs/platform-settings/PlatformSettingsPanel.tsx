@@ -85,7 +85,7 @@ const VIEW_PAGES: Partial<
   'learning-resources': (props) => <LearningResourcesSettings {...props} />,
   'app-mode': (props) => <AppModeSettings {...props} />,
   'table-schema': (props) => <TableSchemaSettings {...props} />,
-  glossary: () => <GlossarySettings />,
+  glossary: () => <GlossarySettings className="tw:p-0" />,
   search: (props) =>
     props.itemId ? (
       <EntitySearchSettings {...props} />
