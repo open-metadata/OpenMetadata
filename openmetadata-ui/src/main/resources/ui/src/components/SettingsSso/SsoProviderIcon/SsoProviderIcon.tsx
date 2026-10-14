@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../styles/variables.less';
 
-.add-test-case-container {
-  padding: var(--om-space-16);
-  border-radius: @border-rad-base;
-  background-color: @grey-1;
+import type { ProviderIcon } from '../../../utils/SSOUtils';
 
-  .form-item-horizontal {
-    margin-bottom: 0;
-  }
+interface SsoProviderIconProps {
+  icon: ProviderIcon;
+  alt?: string;
+  size?: number;
 }
+
+// Provider logos are a mix of raster/legacy image URLs and core icon components.
+const SsoProviderIcon = ({
+  icon: Icon,
+  alt = '',
+  size = 24,
+}: SsoProviderIconProps) =>
+  typeof Icon === 'function' ? (
+    <Icon size={size} />
+  ) : (
+    <img alt={alt} height={size} src={Icon} width={size} />
+  );
+
+export default SsoProviderIcon;

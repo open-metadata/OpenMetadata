@@ -132,7 +132,7 @@ const SelectedFileCard: FC<{
     <Card
       className="tw:w-full tw:text-left"
       data-testid="selected-file-card"
-      variant="elevated">
+      variant="muted">
       <Box align="center" className="tw:p-4" gap={3}>
         <FeaturedIcon color="brand" icon={File06} size="md" theme="light" />
         <Box align="start" className="tw:min-w-0 tw:flex-1" direction="col">
@@ -196,7 +196,7 @@ const ProcessingBanner: FC<{
   <Card
     className="tw:mx-auto tw:w-full tw:max-w-[520px]"
     data-testid="import-processing"
-    variant="elevated">
+    variant="muted">
     <Box align="center" className="tw:p-10" direction="col" gap={5}>
       <Box
         align="center"
@@ -253,7 +253,7 @@ const AbortCard: FC<{ reason?: string; onBack: () => void }> = ({
     <Card
       className="tw:mx-auto tw:w-full tw:max-w-[520px]"
       data-testid="import-aborted"
-      variant="elevated">
+      variant="muted">
       <Box align="center" className="tw:p-10" direction="col" gap={4}>
         <FeaturedIcon
           color="error"
@@ -409,7 +409,7 @@ const ImportFooter: FC<{
 
   return (
     <Box
-      className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
+      className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-6 tw:py-4"
       data-testid="members-import-footer"
       direction="row"
       gap={3}
