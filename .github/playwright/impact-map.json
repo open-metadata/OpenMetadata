@@ -115,7 +115,9 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/**",
-        "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**"
+        "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityLineage*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Lineage/**"
       ],
       "projects": ["chromium", "Basic"],
       "specs": [

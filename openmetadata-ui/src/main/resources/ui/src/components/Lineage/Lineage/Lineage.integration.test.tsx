@@ -498,6 +498,106 @@ describe('Lineage integration', () => {
     });
   });
 
+  it('does not request the same lineage again while the first request is in flight', async () => {
+    const pending: Array<(response: unknown) => void> = [];
+    (getLineageDataByFQN as jest.Mock).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          pending.push(resolve);
+        })
+    );
+
+    renderMounted();
+
+    await waitFor(() => expect(getLineageDataByFQN).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      const { lineageConfig, setLineageConfig } = useLineageStore.getState();
+      setLineageConfig({ ...lineageConfig });
+    });
+
+    await act(async () => {
+      pending[0](emptyLineageResponse);
+    });
+
+    await waitFor(() => {
+      expect(useLineageStore.getState().loading).toBe(false);
+    });
+
+    expect(getLineageDataByFQN).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the latest requested lineage when an earlier response arrives last', async () => {
+    const pending: Array<(response: unknown) => void> = [];
+    (getLineageDataByFQN as jest.Mock).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          pending.push(resolve);
+        })
+    );
+    const tableNode = (fqn: string, nodeDepth: number) => ({
+      entity: {
+        id: fqn,
+        name: fqn,
+        fullyQualifiedName: fqn,
+        type: EntityType.TABLE,
+        entityType: EntityType.TABLE,
+        columns: [],
+      },
+      nodeDepth,
+    });
+    const responseWith = (downstreamFqn: string) => ({
+      nodes: {
+        'svc.db.s.t1': tableNode('svc.db.s.t1', 0),
+        [downstreamFqn]: tableNode(downstreamFqn, 1),
+      },
+      downstreamEdges: {
+        [downstreamFqn]: {
+          fromEntity: {
+            id: 'svc.db.s.t1',
+            type: EntityType.TABLE,
+            fullyQualifiedName: 'svc.db.s.t1',
+          },
+          toEntity: {
+            id: downstreamFqn,
+            type: EntityType.TABLE,
+            fullyQualifiedName: downstreamFqn,
+          },
+        },
+      },
+      upstreamEdges: {},
+    });
+
+    renderMounted();
+
+    await waitFor(() => expect(getLineageDataByFQN).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      const { lineageConfig, setLineageConfig } = useLineageStore.getState();
+      setLineageConfig({ ...lineageConfig, upstreamDepth: 1 });
+    });
+
+    await waitFor(() => expect(getLineageDataByFQN).toHaveBeenCalledTimes(2));
+
+    const shownFqns = () =>
+      useLineageStore
+        .getState()
+        .entityLineage.nodes?.map((node) => node.fullyQualifiedName);
+
+    await act(async () => {
+      pending[1](responseWith('latest.table'));
+    });
+
+    await waitFor(() => expect(shownFqns()).toContain('latest.table'));
+
+    await act(async () => {
+      pending[0](responseWith('stale.table'));
+    });
+
+    expect(shownFqns()).toContain('latest.table');
+    expect(shownFqns()).not.toContain('stale.table');
+  });
+
   it('publishes data-quality lineage to the store', async () => {
     jest.spyOn(tableClassBase, 'getAlertEnableStatus').mockReturnValue(true);
     const dqResponse = { nodes: [{ id: 'dq-node' }], edges: [] };

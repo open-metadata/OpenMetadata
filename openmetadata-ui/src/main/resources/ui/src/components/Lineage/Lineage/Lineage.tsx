@@ -485,6 +485,7 @@ export const Lineage = ({
   const [reactFlowInstance] = useState<ReactFlowInstance>();
   const reactFlowInstanceRef = useRef<ReactFlowInstance>();
   const lastFetchedLineageKeyRef = useRef<string>();
+  const lineageRequestIdRef = useRef(0);
 
   const {
     isEditMode,
@@ -946,6 +947,20 @@ export const Lineage = ({
       setNodes([]);
       setEdges([]);
 
+      // Claim the key before the request: effects that re-run while it is in
+      // flight would otherwise download and parse the same, possibly very
+      // large, response again. A response that a newer request superseded is
+      // dropped unparsed rather than overwriting the newer one (#34904).
+      lastFetchedLineageKeyRef.current = getLineageFetchKey(
+        fqn,
+        entityType,
+        config,
+        queryFilter,
+        timeFilter
+      );
+      const requestId = ++lineageRequestIdRef.current;
+      const isLatestRequest = () => requestId === lineageRequestIdRef.current;
+
       try {
         const res = await getLineageDataByFQN({
           fqn,
@@ -955,13 +970,9 @@ export const Lineage = ({
           startTime: timeFilter.startTime,
           endTime: timeFilter.endTime,
         });
-        lastFetchedLineageKeyRef.current = getLineageFetchKey(
-          fqn,
-          entityType,
-          config,
-          queryFilter,
-          timeFilter
-        );
+        if (!isLatestRequest()) {
+          return;
+        }
         setLineageData(res);
 
         const { nodes, edges, entity } = parseLineageData(
@@ -979,6 +990,10 @@ export const Lineage = ({
         setEntityLineage(updatedEntityLineage);
         await redrawLineage(updatedEntityLineage, true);
       } catch (err) {
+        if (!isLatestRequest()) {
+          return;
+        }
+        lastFetchedLineageKeyRef.current = undefined;
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
@@ -986,8 +1001,10 @@ export const Lineage = ({
           })
         );
       } finally {
-        setInit(true);
-        setLoading(false);
+        if (isLatestRequest()) {
+          setInit(true);
+          setLoading(false);
+        }
       }
     },
     [
