@@ -733,7 +733,7 @@ const OntologyDataGraph = ({
         className={classNames(
           'tw:inline-flex tw:items-center tw:gap-1.5 tw:border-0 tw:bg-transparent',
           'tw:px-0.5 tw:pt-1.5 tw:pb-0.5 tw:font-body tw:text-[10px] tw:leading-normal',
-          'tw:font-semibold tw:text-brand-secondary disabled:tw:cursor-wait disabled:tw:text-disabled tw:*:data-icon:size-3'
+          'tw:font-semibold tw:text-brand-secondary disabled:tw:cursor-wait disabled:tw:text-disabled'
         )}
         color="tertiary"
         data-testid={`ontology-load-more-assets-${term.id}`}

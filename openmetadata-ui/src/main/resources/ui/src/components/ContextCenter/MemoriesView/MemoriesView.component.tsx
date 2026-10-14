@@ -20,10 +20,13 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  Edit01,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
 import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.svg';
 import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/common/no-filter-results.svg';
@@ -240,7 +243,7 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
   return (
     <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
       <CopyLinkButton url={memoryUrl}>
-        <CopyIcon data-icon aria-hidden="true" />
+        <Copy01 data-icon aria-hidden="true" />
       </CopyLinkButton>
       {canActOnMemory && canEdit && onEditMemory && (
         <ButtonUtility

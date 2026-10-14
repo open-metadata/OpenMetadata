@@ -18,10 +18,9 @@ import {
   FileIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
+import { Copy01, XClose } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -93,7 +92,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
         </Box>
         <Box align="center" gap={2}>
           <CopyLinkButton size="lg" url={url}>
-            <CopyIcon data-icon aria-hidden="true" />
+            <Copy01 data-icon aria-hidden="true" />
           </CopyLinkButton>
           <ButtonUtility
             data-testid="close-preview-btn"

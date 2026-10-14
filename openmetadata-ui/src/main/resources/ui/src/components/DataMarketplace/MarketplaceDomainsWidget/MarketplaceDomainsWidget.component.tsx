@@ -225,8 +225,9 @@ const MarketplaceDomainsWidget = ({
               <Button
                 color="secondary"
                 data-testid="add-domain-btn"
+                iconLeading={Plus}
                 onPress={openDrawer}>
-                + {t('label.add-entity', { entity: t('label.domain') })}
+                {t('label.add-entity', { entity: t('label.domain') })}
               </Button>
             )}
             {totalCount > DISPLAY_COUNT && (

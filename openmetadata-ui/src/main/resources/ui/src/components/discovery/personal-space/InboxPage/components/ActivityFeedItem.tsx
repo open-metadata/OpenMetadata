@@ -219,7 +219,7 @@ const getRepliesToggleLabel = (
 
 // The footer's text buttons: 16px icons, like the reaction smiley between
 // them, and tighter padding, which alone spaces the row.
-const FOOTER_BUTTON_CLASS = 'tw:px-2 tw:*:data-icon:size-4';
+const FOOTER_BUTTON_CLASS = 'tw:px-2';
 
 // A toggle (Like, the replies thread) reads brand while it is on: its text and
 // icon, without the link underline a link-colored button draws on hover.

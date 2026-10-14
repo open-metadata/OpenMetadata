@@ -25,7 +25,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -60,7 +60,6 @@ import icColumnRequested from '../../../../assets/svg/ic_column-requested.svg';
 import icDuration from '../../../../assets/svg/ic_duration.svg';
 import icReasonAccess from '../../../../assets/svg/ic_reason-access.svg';
 import icTicket from '../../../../assets/svg/ic_ticket.svg';
-import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -591,7 +590,7 @@ export const TaskTabNew = ({
       {
         label,
         key: TaskActionMode.EDIT,
-        icon: AddColored,
+        icon: Plus,
       },
       ...TASK_ACTION_COMMON_ITEM,
     ];

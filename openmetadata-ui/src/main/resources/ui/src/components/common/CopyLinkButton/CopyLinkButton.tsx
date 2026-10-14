@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -46,7 +46,7 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
     <ButtonUtility
       className="hover-cell-icon"
       data-testid={testId}
-      icon={ShareIcon}
+      icon={Copy01}
       isDisabled={!fieldFqn}
       size="md"
       tooltip={

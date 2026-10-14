@@ -465,7 +465,7 @@ export const OntologyConceptAttributes: React.FC<
       <Button
         noTextPadding
         className={classNames(
-          'tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:border tw:border-dashed tw:bg-primary tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:*:data-icon:size-3',
+          'tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:border tw:border-dashed tw:bg-primary tw:font-body tw:text-xs tw:leading-normal tw:font-semibold',
           isInspector
             ? 'tw:mt-0.5 tw:rounded-[9px] tw:border-primary tw:px-2.5 tw:py-[9px] tw:text-secondary'
             : 'tw:rounded-lg tw:border-primary tw:px-3 tw:py-2 tw:text-secondary',

@@ -34,6 +34,7 @@ import {
   ChevronDown,
   ChevronRight,
   Edit01,
+  Plus,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -62,7 +63,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDrag } from '../../../assets/svg/drag.svg';
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
-import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   NO_DATA_PLACEHOLDER,
@@ -1377,7 +1377,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               {allowAddTerm && (
                 <ButtonUtility
                   data-testid="add-classification"
-                  icon={PlusOutlinedIcon}
+                  icon={Plus}
                   size="md"
                   tooltip={t('label.add-entity', {
                     entity: t('label.glossary-term'),

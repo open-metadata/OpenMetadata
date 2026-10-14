@@ -175,7 +175,7 @@ const OntologyQuerySidebar = ({
           noTextPadding
           className={classNames(
             'tw:flex tw:items-center tw:gap-1 tw:rounded-md tw:border-0 tw:bg-transparent tw:px-1.5 tw:py-1',
-            'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-brand-secondary hover:tw:bg-brand-primary tw:*:data-icon:size-3'
+            'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-brand-secondary hover:tw:bg-brand-primary'
           )}
           color="tertiary"
           data-testid="ontology-query-new"

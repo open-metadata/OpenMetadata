@@ -27,6 +27,7 @@ import {
 import {
   Check,
   ChevronRight,
+  Copy01,
   Eye,
   Share07,
   Trash01,
@@ -37,7 +38,6 @@ import { compare } from 'fast-json-patch';
 import { FC, UIEvent, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
 import { ReactComponent as DownloadIcon } from '../../../assets/svg/action-icons/download.svg';
 import { ReactComponent as MoveFolderIcon } from '../../../assets/svg/action-icons/move-folder.svg';
@@ -761,7 +761,7 @@ const FileRow: FC<FileRowProps> = ({
           onClick={() => onDownload?.(file)}
         />
         <CopyLinkButton size="md" url={rowUrl}>
-          <CopyIcon data-icon aria-hidden="true" />
+          <Copy01 data-icon aria-hidden="true" />
         </CopyLinkButton>
         <FileActions
           canDelete={canDelete}

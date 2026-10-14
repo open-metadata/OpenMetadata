@@ -18,11 +18,11 @@ import {
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import { Input } from 'antd';
 import classNames from 'classnames';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../../assets/svg/copy-right-squared.svg';
 import { ReactComponent as IconError } from '../../../../assets/svg/error.svg';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import { Bot } from '../../../../generated/entity/bot';
@@ -131,7 +131,7 @@ const AuthMechanism: FC<Props> = ({
           ) : (
             <ButtonUtility
               className="tw:mt-2"
-              icon={CopyIcon}
+              icon={Copy01}
               tooltip={t('message.copy-to-clipboard')}
               onClick={() => navigator.clipboard.writeText(JWTToken)}
             />

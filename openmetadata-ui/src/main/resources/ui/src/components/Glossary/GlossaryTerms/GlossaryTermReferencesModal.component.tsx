@@ -20,7 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  PlusCircle,
+  Plus,
   Trash01 as Delete,
 } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useState } from 'react';
@@ -184,7 +184,7 @@ const GlossaryTermReferencesModal = ({
                 className="tw:w-fit"
                 color="link-color"
                 data-testid="add-references-button"
-                iconLeading={PlusCircle}
+                iconLeading={Plus}
                 size="sm"
                 onClick={() => append(EMPTY_REFERENCE)}>
                 {t('label.add')}

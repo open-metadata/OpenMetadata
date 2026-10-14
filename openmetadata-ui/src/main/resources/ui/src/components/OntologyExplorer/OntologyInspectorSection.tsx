@@ -51,7 +51,7 @@ export const InspectorAddButton = ({
   <Button
     noTextPadding
     className={classNames(
-      'tw:mt-2 tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:rounded-[9px] tw:border tw:border-dashed tw:bg-primary tw:px-2.5 tw:py-[9px] tw:*:data-icon:size-3',
+      'tw:mt-2 tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:rounded-[9px] tw:border tw:border-dashed tw:bg-primary tw:px-2.5 tw:py-[9px]',
       'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold',
       isPrimary
         ? 'tw:border-brand tw:text-brand-tertiary'

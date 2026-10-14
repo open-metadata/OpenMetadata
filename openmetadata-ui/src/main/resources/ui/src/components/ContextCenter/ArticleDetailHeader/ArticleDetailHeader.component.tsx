@@ -28,6 +28,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Copy01,
   Edit01,
   Trash01,
   UploadCloud01,
@@ -38,7 +39,6 @@ import { cloneDeep, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
 import { ReactComponent as FollowActiveIcon } from '../../../assets/svg/action-icons/follow-active.svg';
 import { ReactComponent as FollowIcon } from '../../../assets/svg/action-icons/follow.svg';
@@ -566,7 +566,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           onClick={handleFollowClick}
         />
         <CopyLinkButton testId="copy-btn" url={window.location.href}>
-          <CopyIcon data-icon />
+          <Copy01 data-icon />
         </CopyLinkButton>
 
         {permissions?.Delete && (

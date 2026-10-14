@@ -58,7 +58,7 @@ export const getBulkEditCSVExportEntityApi = (entityType: EntityType) => {
       return exportTableDetailsInCSV;
 
     case EntityType.METRIC:
-      // Sync export so loading the Bulk Edit01 grid does not spawn a Jobs-tray
+      // Sync export so loading the Bulk Edit grid does not spawn a Jobs-tray
       // export job — it's an internal data fetch, not a user-facing export.
       return exportMetricDetailsInCSVSync;
 
@@ -76,7 +76,6 @@ export const getBulkEditButton = (
 ) => {
   return hasPermission ? (
     <Button
-      className="tw:*:data-icon:size-4"
       color="link-color"
       data-testid="bulk-edit-table"
       iconLeading={Edit01}

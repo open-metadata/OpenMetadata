@@ -16,12 +16,12 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import { FieldProps } from '@rjsf/utils';
 import { Select } from 'antd';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyLeft } from '../../../../../assets/svg/copy-left.svg';
 import { useClipboard } from '../../../../../hooks/useClipBoard';
 import { splitCSV } from '../../../../../utils/CSV/CSVPureUtils';
 import './workflow-array-field-template.less';
@@ -155,7 +155,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
 
         <div className="workflow-array-field-divider" />
         <ButtonUtility
-          icon={CopyLeft}
+          icon={Copy01}
           size="xs"
           tooltip={
             hasCopied ? t('message.copied-to-clipboard') : t('label.copy')

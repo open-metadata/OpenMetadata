@@ -209,6 +209,16 @@ describe('Button — icon size and color', () => {
   });
 });
 
+describe('Button — numeric label', () => {
+  it('treats a count of 0 as a label', () => {
+    render(<Button iconLeading={Edit01}>{0}</Button>);
+    const button = screen.getByRole('button');
+
+    expect(button).not.toHaveAttribute('data-icon-only');
+    expect(button.querySelector('[data-text]')).toHaveTextContent('0');
+  });
+});
+
 describe('ButtonUtility — icon size and color', () => {
   it.each([
     ['xs', 'tw:p-0.5', 'tw:*:data-icon:size-4', 'tw:*:data-icon:p-[0.5px]'],

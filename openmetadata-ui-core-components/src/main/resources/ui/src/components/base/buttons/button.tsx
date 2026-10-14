@@ -310,7 +310,13 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
     const href = 'href' in otherProps ? otherProps.href : undefined;
     const Component = href ? AriaLink : AriaButton;
 
-    const isIcon = (IconLeading || IconTrailing) && !children;
+    // A count of 0 is a label too, so test for presence rather than truthiness.
+    const hasText =
+      children !== undefined &&
+      children !== null &&
+      children !== false &&
+      children !== '';
+    const isIcon = (IconLeading || IconTrailing) && !hasText;
     const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
       color
     );
@@ -406,7 +412,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           </svg>
         )}
 
-        {children && (
+        {hasText && (
           <span
             data-text
             className={cx(

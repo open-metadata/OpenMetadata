@@ -18,11 +18,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Edit01,
-  PlusCircle,
-  Trash01,
-} from '@openmetadata/ui-core-components/icons';
+import { Edit01, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -420,7 +416,7 @@ const DataQualitySettingsPage = () => {
             <Button
               color="primary"
               data-testid="add-dimension"
-              iconLeading={PlusCircle}
+              iconLeading={Plus}
               size="md"
               onClick={() => setDrawer({ mode: 'create' })}>
               {t('label.add-entity', {

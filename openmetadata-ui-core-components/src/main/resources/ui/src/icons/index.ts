@@ -321,7 +321,6 @@ export { Pipelines2 } from './Pipelines2';
 export { PlannerRouting } from './PlannerRouting';
 export { PlayCircle } from './PlayCircle';
 export { Play } from './Play';
-export { PlusCircle } from './PlusCircle';
 export { Plus } from './Plus';
 export { Policy } from './Policy';
 export { ProfileSampleType } from './ProfileSampleType';

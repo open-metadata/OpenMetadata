@@ -312,7 +312,7 @@ export const OntologyConceptRealization: React.FC<
           noTextPadding
           className={classNames(
             'tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:rounded-lg tw:border tw:border-dashed',
-            'tw:border-primary tw:bg-primary tw:px-2.5 tw:py-2 tw:font-body tw:text-xs tw:font-semibold tw:text-secondary tw:*:data-icon:size-3'
+            'tw:border-primary tw:bg-primary tw:px-2.5 tw:py-2 tw:font-body tw:text-xs tw:font-semibold tw:text-secondary'
           )}
           color="tertiary"
           data-testid="add-realization"
