@@ -44,7 +44,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { mockTablePermission } from '../../constants/mockTourData.constants';
+import { mockTablePermission } from '../../constants/mockTourPermission.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
@@ -138,6 +138,16 @@ const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
         limit: DQ_INDICATOR_FETCH_LIMIT,
       })
     : Promise.resolve({ data: [], paging: { total: 0 } });
+
+// useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
+// the render that starts the request, so the badge never flashes a placeholder 0. The tour's
+// table is mock data with no stored queries, so it is never counted.
+const useTableQueryCount = (tableId: string, isTourDataset: boolean) =>
+  useQuery({
+    queryKey: tableQueryCountKey(tableId),
+    queryFn: tableQueryCountFn(tableId),
+    enabled: Boolean(tableId) && !isTourDataset,
+  });
 
 const TableDetailsPageV1: React.FC = () => {
   const {
@@ -271,13 +281,8 @@ const TableDetailsPageV1: React.FC = () => {
 
   const tableDetailsId = tableDetails?.id ?? '';
 
-  // useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
-  // the render that starts the request, so the badge never flashes a placeholder 0.
-  const { data: queryCount = 0, isFetching: isQueryCountLoading } = useQuery({
-    queryKey: tableQueryCountKey(tableDetailsId),
-    queryFn: tableQueryCountFn(tableDetailsId),
-    enabled: Boolean(tableDetails?.id),
-  });
+  const { data: queryCount = 0, isFetching: isQueryCountLoading } =
+    useTableQueryCount(tableDetailsId, isTourDataset);
 
   // Forbidden → redirect, preserving the prior behavior. Run as an effect rather than during
   // render so the navigate call doesn't fire during the same commit that returns the query

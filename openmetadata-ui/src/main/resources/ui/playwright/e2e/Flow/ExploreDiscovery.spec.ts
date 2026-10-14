@@ -272,7 +272,9 @@ test.describe('Explore Assets Discovery', () => {
     await page.getByTestId('searchBox').fill(table1.entityResponseData.name);
     await suggestionsRes;
 
-    const suggestionsPopover = page.getByTestId('customise-search-popover');
+    // The navbar search is the only search box on the home page now; its
+    // popover is there even with no suggestions, which is the case here.
+    const suggestionsPopover = page.getByTestId('global-search-popover');
 
     await expect(suggestionsPopover).toBeVisible();
     // Each suggestion is a `data-name` link labelled with the entity's FQN;

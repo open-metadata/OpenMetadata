@@ -18,6 +18,12 @@ import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { ThemeProvider } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import AIUserMenu from './AIUserMenu';
 
+// Dark mode applies only in AI mode; classic is light-only.
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: () => true,
+}));
+
 // ─── Module mocks ────────────────────────────────────────────────────────────
 
 jest.mock('react-i18next', () => ({

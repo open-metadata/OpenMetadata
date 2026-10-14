@@ -24,14 +24,17 @@ const meta = {
     variant: {
       control: false,
       table: {
-        type: { summary: '"default" | "elevated" | "outlined" | "ghost"' },
+        type: {
+          summary: '"default" | "elevated" | "outlined" | "ghost" | "muted"',
+        },
       },
     },
     color: {
       control: false,
       table: {
         type: {
-          summary: '"default" | "brand" | "error" | "warning" | "success"',
+          summary:
+            '"default" | "secondary" | "brand" | "error" | "warning" | "success"',
         },
       },
     },
@@ -146,7 +149,7 @@ export const WithSubComponents: StoryObj = {
 export const Variants: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-      {(['default', 'elevated', 'outlined', 'ghost'] as const).map(
+      {(['default', 'elevated', 'outlined', 'ghost', 'muted'] as const).map(
         (variant) => (
           <div key={variant} style={{ width: 200 }}>
             <Card variant={variant}>
@@ -164,21 +167,51 @@ export const Variants: StoryObj = {
   ),
 };
 
+// The muted variant sits one step below the surface it is placed on in dark
+// mode; review it against the gray-800 overlay surface it is used on.
+export const MutedOnDarkSurface: StoryObj = {
+  render: () => (
+    <div
+      className="dark-mode tw:rounded-xl tw:bg-overlay-surface tw:p-6"
+      style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+      {(['default', 'muted'] as const).map((variant) => (
+        <div key={variant} style={{ width: 220 }}>
+          <Card isClickable variant={variant}>
+            <Card.Header subtitle="dark theme · clickable" title={variant} />
+            <Card.Content>
+              <p className="tw:text-sm tw:text-secondary">
+                Hover to compare the interaction.
+              </p>
+            </Card.Content>
+          </Card>
+        </div>
+      ))}
+    </div>
+  ),
+};
+
 export const Colors: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-      {(['default', 'brand', 'error', 'warning', 'success'] as const).map(
-        (color) => (
-          <div key={color} style={{ width: 180 }}>
-            <Card color={color}>
-              <Card.Header subtitle="color" title={color} />
-              <Card.Content>
-                <p className="tw:text-sm tw:text-secondary">color="{color}"</p>
-              </Card.Content>
-            </Card>
-          </div>
-        )
-      )}
+      {(
+        [
+          'default',
+          'secondary',
+          'brand',
+          'error',
+          'warning',
+          'success',
+        ] as const
+      ).map((color) => (
+        <div key={color} style={{ width: 180 }}>
+          <Card color={color}>
+            <Card.Header subtitle="color" title={color} />
+            <Card.Content>
+              <p className="tw:text-sm tw:text-secondary">color="{color}"</p>
+            </Card.Content>
+          </Card>
+        </div>
+      ))}
     </div>
   ),
 };
@@ -296,6 +329,107 @@ export const CardWithAllProps: StoryObj = {
           <p className="tw:text-xs tw:text-tertiary">Footer content</p>
         </Card.Footer>
       </Card>
+    </div>
+  ),
+};
+
+export const SecondaryPanel: StoryObj = {
+  render: () => (
+    <div style={{ width: 420 }}>
+      <Card color="secondary" variant="ghost">
+        <Card.Header
+          hasDivider={false}
+          subtitle="A grey panel that holds its own cards, so it draws no border and no rule."
+          title="Secondary panel"
+        />
+        <Card.Content>
+          <Card>
+            <Card.Content>
+              <p className="tw:text-sm tw:text-secondary">
+                A default card sitting on the secondary surface.
+              </p>
+            </Card.Content>
+          </Card>
+        </Card.Content>
+      </Card>
+    </div>
+  ),
+};
+
+export const HeaderDivider: StoryObj = {
+  render: () => (
+    <div
+      style={{ width: 560, display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ display: 'flex', gap: 16 }}>
+        {([true, false] as const).map((hasDivider) => (
+          <div key={String(hasDivider)} style={{ width: 240 }}>
+            <Card>
+              <Card.Header
+                hasDivider={hasDivider}
+                subtitle="Card.Header"
+                title={`hasDivider={${hasDivider}}`}
+              />
+              <Card.Content>
+                <p className="tw:text-sm tw:text-secondary">
+                  {hasDivider
+                    ? 'The default: a rule separating the header from the body.'
+                    : 'No rule, for a header that opens a panel rather than a body.'}
+                </p>
+              </Card.Content>
+            </Card>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <p className="tw:mb-2 tw:text-xs tw:text-tertiary">
+          The rule is `border-inherit`, so it takes the card&rsquo;s own border
+          colour rather than a fixed one.
+        </p>
+        <div style={{ display: 'flex', gap: 16 }}>
+          {(['brand', 'error', 'success'] as const).map((color) => (
+            <div key={color} style={{ width: 170 }}>
+              <Card color={color}>
+                <Card.Header subtitle="inherited rule" title={color} />
+                <Card.Content>
+                  <p className="tw:text-sm tw:text-secondary">
+                    color=&quot;{color}&quot;
+                  </p>
+                </Card.Content>
+              </Card>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="tw:mb-2 tw:text-xs tw:text-tertiary">
+          A ghost card draws no border, so there is no colour to inherit &mdash;
+          this is when to turn the rule off.
+        </p>
+        <div style={{ display: 'flex', gap: 16 }}>
+          <div style={{ width: 240 }}>
+            <Card color="secondary" variant="ghost">
+              <Card.Header subtitle="leaves a stray rule" title="hasDivider" />
+              <Card.Content>
+                <p className="tw:text-sm tw:text-secondary">Default.</p>
+              </Card.Content>
+            </Card>
+          </div>
+          <div style={{ width: 240 }}>
+            <Card color="secondary" variant="ghost">
+              <Card.Header
+                hasDivider={false}
+                subtitle="what a panel wants"
+                title="hasDivider={false}"
+              />
+              <Card.Content>
+                <p className="tw:text-sm tw:text-secondary">Clean panel.</p>
+              </Card.Content>
+            </Card>
+          </div>
+        </div>
+      </div>
     </div>
   ),
 };
