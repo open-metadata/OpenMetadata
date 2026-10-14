@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { DateRangePicker } from './date-range-picker';
 
 describe('DateRangePicker trigger', () => {
@@ -40,5 +40,40 @@ describe('DateRangePicker trigger', () => {
 
     expect(trigger).toHaveClass('tw:w-full', 'tw:justify-start');
     expect(trigger).not.toHaveClass('tw:justify-center');
+  });
+});
+
+describe('DateRangePicker apply', () => {
+  beforeAll(() => {
+    // jsdom has no matchMedia; the range calendar asks for the breakpoint.
+    vi.stubGlobal('matchMedia', () => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+  });
+
+  it('passes the clicked preset key to onApply', () => {
+    const onApply = vi.fn();
+    render(<DateRangePicker onApply={onApply} />);
+
+    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByRole('button', { name: 'Last month' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(onApply).toHaveBeenCalledWith('lastMonth');
+  });
+
+  it('passes no key when the preset was cancelled', () => {
+    const onApply = vi.fn();
+    render(<DateRangePicker onApply={onApply} />);
+
+    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByRole('button', { name: 'Last month' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(onApply).toHaveBeenCalledWith(undefined);
   });
 });
