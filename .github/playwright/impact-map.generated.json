@@ -12875,8 +12875,7 @@
         "playwright/e2e/Features/OntologyStudioCardinality.spec.ts",
         "playwright/e2e/Features/OntologyStudioE2E.spec.ts",
         "playwright/e2e/Features/OntologyStudioIntegration.spec.ts",
-        "playwright/e2e/Features/OntologyStudioInteractions.spec.ts",
-        "playwright/e2e/Features/OntologyStudioIsolatedToggle.spec.ts"
+        "playwright/e2e/Features/OntologyStudioInteractions.spec.ts"
       ]
     },
     {
