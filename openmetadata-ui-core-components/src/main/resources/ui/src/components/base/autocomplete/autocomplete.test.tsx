@@ -430,7 +430,9 @@ describe('Autocomplete – a tag field without a dropdown', () => {
       await settle();
     });
 
-    expect(input).toHaveAttribute('aria-expanded', 'false');
+    await waitFor(() =>
+      expect(input).toHaveAttribute('aria-expanded', 'false')
+    );
     expect(
       screen.getByRole('textbox', { name: 'Next field' })
     ).toBeInTheDocument();
@@ -459,7 +461,11 @@ describe('Autocomplete – focus leaves before a deferred open lands', () => {
       await settle();
     });
 
-    expect(input).toHaveAttribute('aria-expanded', 'false');
+    // A late open is closed by a passive effect; on a loaded runner that can
+    // land after settle(), so wait for it rather than assert a fixed point.
+    await waitFor(() =>
+      expect(input).toHaveAttribute('aria-expanded', 'false')
+    );
     expect(
       screen.getByRole('textbox', { name: 'Next field' })
     ).toBeInTheDocument();

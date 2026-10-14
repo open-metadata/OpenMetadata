@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import Assignees from './Assignees';
 
 const mockOptions = [
@@ -75,7 +76,8 @@ describe('Test assignees component', () => {
     const onChange = jest.fn();
     render(<Assignees {...mockProps} value={[]} onChange={onChange} />);
 
-    fireEvent.mouseDown(screen.getByRole('combobox'));
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await user.click(screen.getByRole('combobox'));
     fireEvent.click(await screen.findByText('adam_matthews2'));
 
     await waitFor(() =>
