@@ -15,7 +15,7 @@ import {
   BulkOperationResult,
   Status,
 } from '../../../../generated/type/bulkOperationResult';
-import { showErrorToast } from '../../../../utils/ToastUtils';
+import { showErrorToast, showInfoToast } from '../../../../utils/ToastUtils';
 import {
   failureOf,
   isBulkAssetsJob,
@@ -26,6 +26,11 @@ import {
 
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+  showInfoToast: jest.fn(),
+}));
+
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  t: (key: string) => key,
 }));
 
 const refused: BulkOperationResult = {
@@ -172,7 +177,47 @@ describe('AssetsTabs utils', () => {
       }, socket);
 
       expect(showErrorToast).toHaveBeenCalledWith('not allowed to edit orders');
+      expect(showInfoToast).not.toHaveBeenCalled();
       expect(mock.off).toHaveBeenCalled();
+    });
+
+    it('asks to refresh when a tag job outcome does not arrive in time', async () => {
+      jest.useFakeTimers();
+      const { socket } = fakeSocket();
+      const removal = removeAndReportRefusals(
+        async () => ({ jobId: 'job-1', message: 'started' }),
+        socket
+      );
+
+      // The wait starts after the removal's response settles, which only the async variant
+      // flushes. Cast because the project's `@types/jest` predates that method's declaration.
+      await (
+        jest as unknown as {
+          advanceTimersByTimeAsync: (ms: number) => Promise<void>;
+        }
+      ).advanceTimersByTimeAsync(120000);
+      await removal;
+
+      expect(showInfoToast).toHaveBeenCalledWith(
+        'message.please-refresh-the-page'
+      );
+      expect(showErrorToast).not.toHaveBeenCalled();
+
+      jest.useRealTimers();
+    });
+
+    it('asks to refresh when the socket cannot report the tag job outcome', async () => {
+      const { socket, mock } = fakeSocket();
+      mock.connected = false;
+
+      await removeAndReportRefusals(
+        async () => ({ jobId: 'job-1', message: 'started' }),
+        socket
+      );
+
+      expect(showInfoToast).toHaveBeenCalledWith(
+        'message.please-refresh-the-page'
+      );
     });
 
     it('stops listening when the removal fails', async () => {

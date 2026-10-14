@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 import { Socket } from 'socket.io-client';
-import { SOCKET_EVENTS } from '../../../../constants/constants';
+import {
+  SOCKET_EVENTS,
+  TWO_MINUTE_IN_MILLISECOND,
+} from '../../../../constants/constants';
 import {
   BulkOperationResult,
   Status,
 } from '../../../../generated/type/bulkOperationResult';
-import { showErrorToast } from '../../../../utils/ToastUtils';
+import { t } from '../../../../utils/i18next/LocalUtil';
+import { showErrorToast, showInfoToast } from '../../../../utils/ToastUtils';
 import { CSVExportWebsocketResponse } from '../../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 
 export type BulkAssetsJobOutcome = Pick<
@@ -26,8 +30,6 @@ export type BulkAssetsJobOutcome = Pick<
   error?: string | null;
   result?: BulkOperationResult;
 };
-
-const BULK_ASSETS_JOB_WAIT_MS = 120000;
 
 /** The tag Assets tab runs as a background job: its response carries the job id. */
 export const isBulkAssetsJob = (
@@ -55,7 +57,7 @@ export const jobFailureOf = (
  */
 export const listenForBulkAssetsJobs = (
   socket?: Socket,
-  waitMs = BULK_ASSETS_JOB_WAIT_MS
+  waitMs = TWO_MINUTE_IN_MILLISECOND
 ) => {
   const finished = new Map<string, BulkAssetsJobOutcome>();
   const waiting = new Map<string, (outcome: BulkAssetsJobOutcome) => void>();
@@ -101,10 +103,17 @@ export const listenForBulkAssetsJobs = (
   };
 };
 
+const showFailure = (failure?: string) => {
+  if (failure) {
+    showErrorToast(failure);
+  }
+};
+
 /**
  * Runs an Assets tab removal and tells the user about any asset the server refused. A refused
  * asset comes back as a failed row, or on the tag tab in the job's outcome, not as an error, so
- * without this the removal looks done while the asset stays.
+ * without this the removal looks done while the asset stays. When a job's outcome does not
+ * arrive, the user is asked to refresh, since the tab cannot tell whether an asset was refused.
  */
 export const removeAndReportRefusals = async (
   remove: () => Promise<unknown>,
@@ -113,11 +122,15 @@ export const removeAndReportRefusals = async (
   const jobs = listenForBulkAssetsJobs(socket);
   try {
     const response = await remove();
-    const failure = isBulkAssetsJob(response)
-      ? jobFailureOf(await jobs.outcomeOf(response.jobId))
-      : failureOf(response as BulkOperationResult);
-    if (failure) {
-      showErrorToast(failure);
+    if (isBulkAssetsJob(response)) {
+      const outcome = await jobs.outcomeOf(response.jobId);
+      if (outcome) {
+        showFailure(jobFailureOf(outcome));
+      } else {
+        showInfoToast(t('message.please-refresh-the-page'));
+      }
+    } else {
+      showFailure(failureOf(response as BulkOperationResult));
     }
   } finally {
     jobs.stop();
