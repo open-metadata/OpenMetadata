@@ -28,6 +28,7 @@ import {
   mockEntitySearchSettings,
   openMatchingFieldsPanel,
   restoreDefaultSearchSettings,
+  selectSettingOption,
   setSliderValue,
 } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
@@ -147,26 +148,21 @@ test.describe('Search Settings', () => {
       // Add and remove field value boost
       await page.getByTestId('add-field-value-boost-btn').click();
 
-      await page
-        .locator('.field-value-boost-modal:visible')
-        .waitFor({ state: 'visible' });
+      const modal = page.getByTestId('field-value-boost-dialog');
 
-      const modal = page.locator('.field-value-boost-modal:visible');
+      await modal.waitFor({ state: 'visible' });
 
-      await modal.locator('#field').click();
+      await selectSettingOption(
+        page,
+        modal.getByTestId('field-select'),
+        'totalVotes'
+      );
 
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('totalVotes')
-        .click();
+      await modal.getByRole('slider').fill('25.6');
 
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .waitFor({ state: 'hidden' });
+      await expect(modal.getByTestId('field-boost-value')).toHaveText('25.6');
 
-      await setSliderValue(page, 'field-boost-slider', 25.6);
-
-      await modal.locator('button').filter({ hasText: 'Save' }).click();
+      await modal.getByTestId('save-field-value-boost').click();
 
       await toastNotification(page, /Search Settings updated successfully/);
 
@@ -266,35 +262,23 @@ test.describe('Search Settings', () => {
 
       // Match Type
       const matchTypeSelect = page.getByTestId('match-type-select');
-      await matchTypeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Fuzzy Match')
-        .click();
+      await selectSettingOption(page, matchTypeSelect, 'Fuzzy Match');
 
       // Score Mode
       const scoreModeSelect = page.getByTestId('score-mode-select');
-      await scoreModeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Max')
-        .click();
+      await selectSettingOption(page, scoreModeSelect, 'Max');
 
       // Boost Mode
       const boostModeSelect = page.getByTestId('boost-mode-select');
-      await boostModeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Replace')
-        .click();
+      await selectSettingOption(page, boostModeSelect, 'Replace');
 
       // Save
       await page.getByTestId('save-btn').click();
 
       await toastNotification(page, /Search Settings updated successfully/);
 
-      await expect(scoreModeSelect).toHaveText('Max');
-      await expect(boostModeSelect).toHaveText('Replace');
+      await expect(scoreModeSelect.getByRole('button')).toHaveText('Max');
+      await expect(boostModeSelect.getByRole('button')).toHaveText('Replace');
     });
 
     test('Highlight toggle is offered for analyzed fields', async ({
@@ -818,11 +802,7 @@ test.describe('Search Settings', () => {
       );
 
       const matchTypeSelect = page.getByTestId('match-type-select');
-      await matchTypeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Exact Match')
-        .click();
+      await selectSettingOption(page, matchTypeSelect, 'Exact Match');
 
       const saveSettings = page.waitForResponse(
         (response) =>

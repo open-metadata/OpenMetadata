@@ -370,9 +370,12 @@ export const TreeSelect = <T = unknown,>({
     }
   }, [value, setSelection]);
 
-  // Resync the draft on open, including a programmatic one via `isOpen`.
+  // Resync on open, including a programmatic one via `isOpen`. Staged mode
+  // drops the draft; a controlled immediate picker drops an optimistic pick the
+  // parent never echoed back (its save failed), which `value` alone cannot
+  // signal because the rejected parent keeps passing the same reference.
   useEffect(() => {
-    if (isOpen && isStaged) {
+    if (isOpen && (isStaged || value !== undefined)) {
       setSelection(toArray(value));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -733,6 +736,7 @@ export const TreeSelect = <T = unknown,>({
       loadingNodes,
       disabled,
       multiple,
+      cascadeSelection,
       showCheckbox,
       showExpandIcon,
       showIcon,
@@ -941,7 +945,13 @@ export const TreeSelect = <T = unknown,>({
         </div>
       )}
       <div
-        className="tw:max-h-64 tw:overflow-y-auto tw:pl-[14px] tw:pr-1.5"
+        className={cx(
+          // With the row's 2px indent, a row's hover fill spans the search
+          // field's 12px inset on both sides.
+          'tw:max-h-64 tw:overflow-y-auto tw:pl-2.5 tw:pr-3',
+          // The staged footer brings its own top margin.
+          !showFooter && 'tw:pb-2'
+        )}
         onMouseDown={(event) => event.preventDefault()}>
         {loading ? (
           <div className="tw:flex tw:items-center tw:justify-center tw:gap-2 tw:px-4 tw:py-2 tw:text-xs tw:text-tertiary">
@@ -1138,7 +1148,7 @@ export const TreeSelect = <T = unknown,>({
             multiple &&
             selectedData.map((node) => (
               <span
-                className="tw:flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
+                className="tw:flex tw:max-w-full tw:min-w-0 tw:items-center tw:gap-1 tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
                 key={node.id}>
                 <p className="tw:max-w-40 tw:truncate tw:text-sm tw:font-medium tw:text-secondary">
                   {node.label}

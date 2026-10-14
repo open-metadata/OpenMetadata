@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Input, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Input,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -116,46 +122,45 @@ const TestDefinitionList = () => {
         style={{ ...getLayoutGutter(16, 16) }}>
         <Grid.Item className="layout-column" span={24}>
           <Card>
-            <Box className="layout-row" justify="between" wrap="wrap">
-              <Box className="layout-column tw:block">
-                <div className="flex gap-2 items-center m-b-xss">
-                  <Typography
-                    as="h5"
-                    className="m-b-0"
-                    size="text-md"
-                    weight="semibold">
-                    {t('label.data-quality-rule-plural')}
-                  </Typography>
-                  <LearningIcon
-                    pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
-                    title={t('label.data-quality-rule-plural')}
-                  />
-                </div>
-                <Typography color="secondary">
-                  {t('message.page-sub-header-for-test-definitions')}
-                </Typography>
-              </Box>
-              {createPermission && (
+            <Card.Content>
+              <Box className="layout-row" justify="between" wrap="wrap">
                 <Box className="layout-column tw:block">
-                  <Button
-                    data-testid="add-test-definition-button"
-                    type="primary"
-                    onClick={openCreateForm}>
-                    {t('label.add-entity', {
-                      entity: t('label.test-definition'),
-                    })}
-                  </Button>
+                  <div className="flex gap-2 items-center m-b-xss">
+                    <Typography
+                      as="h5"
+                      className="m-b-0"
+                      size="text-md"
+                      weight="semibold">
+                      {t('label.data-quality-rule-plural')}
+                    </Typography>
+                    <LearningIcon
+                      pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
+                      title={t('label.data-quality-rule-plural')}
+                    />
+                  </div>
+                  <Typography color="secondary">
+                    {t('message.page-sub-header-for-test-definitions')}
+                  </Typography>
                 </Box>
-              )}
-            </Box>
+                {createPermission && (
+                  <Box className="layout-column tw:block">
+                    <Button
+                      color="primary"
+                      data-testid="add-test-definition-button"
+                      onClick={openCreateForm}>
+                      {t('label.add-entity', {
+                        entity: t('label.test-definition'),
+                      })}
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            </Card.Content>
           </Card>
         </Grid.Item>
 
         <Grid.Item className="layout-column" span={24}>
-          <Card
-            bodyStyle={{
-              padding: 0,
-            }}>
+          <Card>
             <div className="tw:flex tw:flex-col tw:gap-2 tw:p-4">
               <div className="tw:flex tw:gap-2 tw:items-center">
                 <Input

@@ -280,7 +280,7 @@ test.describe('Glossary Asset Operations', () => {
         const checkbox = assetCard.getByTestId('asset-checkbox');
 
         if (await checkbox.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await checkbox.check();
+          await checkbox.click();
 
           const removeButton = page.getByTestId('delete-all-button');
 

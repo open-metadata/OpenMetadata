@@ -42,6 +42,9 @@ export const TEAM_FIELDS = [
   TabSpecificField.OWNS,
   TabSpecificField.DOMAINS,
   TabSpecificField.OWNERS,
+  // Resolved recursively on read (excludes the team itself); needed to scope the
+  // users search to the whole subtree, mirroring the legacy UserTab search.
+  TabSpecificField.DESCENDANT_TEAMS,
 ].join(',');
 
 export const TEAM_USER_FIELDS = [
@@ -140,11 +143,15 @@ export const getChildTeamColumns = (
     dataIndex: 'name',
     key: 'name',
     width: '30%',
+    ellipsis: true,
     render: (_: unknown, record: Team) => (
       <Button
+        className="tw:max-w-full tw:truncate tw:block tw:text-left"
         color="link-color"
         data-testid={`team-link-${record.name}`}
         size="sm"
+        tooltip={getEntityName(record)}
+        tooltipPlacement="top"
         onPress={() =>
           onNavigate({
             type: 'team-detail',
@@ -269,10 +276,15 @@ export const getEntityRefColumns = (
     title: t('label.name'),
     dataIndex: 'name',
     key: 'name',
+    width: '30%',
+    ellipsis: true,
     render: (_: unknown, record: EntityReference) => (
       <Button
+        className="tw:max-w-full tw:truncate tw:block tw:text-left"
         color="link-color"
         size="sm"
+        tooltip={getEntityName(record)}
+        tooltipPlacement="top"
         onPress={() => goTo(nameHashOf(record))}>
         {getEntityName(record)}
       </Button>

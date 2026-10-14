@@ -29,7 +29,10 @@ import {
   getFormattedDestinations,
 } from '../../../utils/Alerts/AlertsUtilPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { getTestableExternalDestinations } from '../../Alerts/DestinationFormItem/DestinationFormItem.utils';
+import {
+  alignDestinationsWithTestStatus,
+  getTestableExternalDestinations,
+} from '../../Alerts/DestinationFormItem/DestinationFormItem.utils';
 import AlertAiDestinationItem from './AlertAiDestinationItem.component';
 import {
   ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
@@ -60,7 +63,7 @@ const AlertAiDestinationSection = ({
   const destinations = value.destinations ?? [];
   const hasExternalDestination = hasExternalDestinationConfig(destinations);
   const [destinationsWithStatus, setDestinationsWithStatus] =
-    useState<Destination[]>();
+    useState<(Destination | undefined)[]>();
   const [isDestinationStatusLoading, setIsDestinationStatusLoading] =
     useState(false);
   const [showDestinationErrors, setShowDestinationErrors] = useState(false);
@@ -82,8 +85,9 @@ const AlertAiDestinationSection = ({
   const handleTestDestination = useCallback(async () => {
     try {
       setIsDestinationStatusLoading(true);
+      const formattedDestinations = getFormattedDestinations(destinations);
       const externalDestinations = getTestableExternalDestinations(
-        getFormattedDestinations(destinations)
+        formattedDestinations
       );
       setShowDestinationErrors(isEmpty(externalDestinations));
 
@@ -97,7 +101,10 @@ const AlertAiDestinationSection = ({
       });
 
       setDestinationsWithStatus(
-        getDestinationsWithTestStatus(externalDestinations, results)
+        alignDestinationsWithTestStatus(
+          formattedDestinations,
+          getDestinationsWithTestStatus(externalDestinations, results)
+        )
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -176,14 +183,16 @@ const AlertAiDestinationSection = ({
               key={index}
               name={index}
               recipientCategories={recipientCategories}
-              remove={(destinationIndex) =>
+              remove={(destinationIndex) => {
+                // Test statuses are aligned by row index, which shifts on removal.
+                setDestinationsWithStatus(undefined);
                 updateAlertAiValue(
                   value,
                   onChange,
                   ['destinations'],
                   destinations.filter((_, i) => i !== destinationIndex)
-                )
-              }
+                );
+              }}
               validationErrors={destinationValidationErrors}
               value={value}
               onChange={onChange}

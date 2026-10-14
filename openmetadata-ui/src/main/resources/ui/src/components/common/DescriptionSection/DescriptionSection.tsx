@@ -13,8 +13,6 @@
 import { Button } from '@openmetadata/ui-core-components';
 import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
 import { EntityAttachmentProvider } from '../EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -222,7 +220,6 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           newLook
           data-testid="edit-description"
           disabled={false}
-          icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
           size="small"
           title={t('label.edit-entity', {
             entity: t('label.description'),

@@ -12,14 +12,16 @@
  */
 import Icon from '@ant-design/icons';
 import {
+  Button,
   Divider,
+  Select,
   Toggle,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge, Button, Collapse, Select, Slider } from 'antd';
-import { useEffect, useState } from 'react';
+import { Badge, Collapse, Slider } from 'antd';
+import { MouseEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/setting-colored.svg';
@@ -84,10 +86,10 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   };
 
   const matchTypeOptions = [
-    { label: t('label.exact-match'), value: MatchType.Exact },
-    { label: t('label.phrase-match'), value: MatchType.Phrase },
-    { label: t('label.fuzzy-match'), value: MatchType.Fuzzy },
-    { label: t('label.standard-match'), value: MatchType.Standard },
+    { id: MatchType.Exact, label: t('label.exact-match') },
+    { id: MatchType.Phrase, label: t('label.phrase-match') },
+    { id: MatchType.Fuzzy, label: t('label.fuzzy-match') },
+    { id: MatchType.Standard, label: t('label.standard-match') },
   ];
 
   return (
@@ -124,10 +126,11 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
                 )}
               </div>
               <Button
-                className="delete-search-field"
+                aria-label={t('label.delete')}
+                color="secondary"
                 data-testid="delete-search-field"
-                icon={<Icon className="text-md" component={Delete} />}
-                onClick={(e) => {
+                iconLeading={<Icon component={Delete} />}
+                onClick={(e: MouseEvent) => {
                   e.stopPropagation();
                   onDeleteSearchField(field.fieldName);
                 }}
@@ -135,9 +138,9 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             </div>
 
             <div className="d-flex items-center justify-between gap-2 m-y-xss">
-              <span className="text-grey-muted text-xs font-normal">
+              <Typography color="secondary" size="text-xs" weight="regular">
                 {fieldDescription ?? t('label.no-description')}
-              </span>
+              </Typography>
               <span
                 className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
                 data-testid="field-weight">
@@ -208,13 +211,14 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
             <Typography>{t('label.match-type')}</Typography>
             <Select
-              className="m-l-xlg"
+              aria-label={t('label.match-type')}
+              className="tw:ml-8 tw:w-40"
               data-testid="match-type-select"
-              options={matchTypeOptions}
-              style={{ width: 150 }}
+              items={matchTypeOptions}
               value={fieldMatchType}
-              onChange={handleMatchTypeChange}
-            />
+              onChange={(key) => handleMatchTypeChange(key as MatchType)}>
+              {(item) => <Select.Item id={item.id} label={item.label} />}
+            </Select>
           </div>
         </div>
       </Collapse.Panel>

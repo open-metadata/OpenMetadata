@@ -26,7 +26,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -152,6 +156,34 @@ class EntityRepositoryTagCacheTest {
     cache.putTags(Entity.TABLE, table.getId(), JsonUtils.pojoToJson(List.of(term)), false);
     assertNull(cache.getTags(Entity.TABLE, table.getId(), true));
     assertEquals(List.of(term), cache.getTags(Entity.TABLE, table.getId(), false));
+  }
+
+  @Test
+  void uncachedEntitiesReadFreshTagsAfterAnUpdate() {
+    assertUncachedTags(
+        new DomainRepository(),
+        new Domain().withId(UUID.randomUUID()).withFullyQualifiedName("domain"),
+        Entity.DOMAIN);
+    assertUncachedTags(
+        new DataProductRepository(),
+        new DataProduct().withId(UUID.randomUUID()).withFullyQualifiedName("product"),
+        Entity.DATA_PRODUCT);
+    assertUncachedTags(
+        new TaskRepository(),
+        new Task().withId(UUID.randomUUID()).withFullyQualifiedName("task"),
+        Entity.TASK);
+  }
+
+  private <T extends EntityInterface<?>> void assertUncachedTags(
+      EntityRepository<T> entityRepository, T entity, String entityType) {
+    cache.putTags(entityType, entity.getId(), JsonUtils.pojoToJson(List.of()), true);
+    TagLabel changed = new TagLabel().withTagFQN("Classification.Changed");
+    when(tagUsage.getTags(entity.getFullyQualifiedName()))
+        .thenReturn(List.of(term), List.of(changed));
+
+    assertEquals(List.of(term), entityRepository.getTags(entity));
+    assertEquals(List.of(changed), entityRepository.getTags(entity));
+    assertEquals(List.of(), cache.getTags(entityType, entity.getId(), true));
   }
 
   private void useReadBundle() {

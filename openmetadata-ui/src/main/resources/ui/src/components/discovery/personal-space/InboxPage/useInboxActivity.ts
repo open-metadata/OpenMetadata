@@ -107,9 +107,12 @@ export const fetchInboxActivity = async (
   if (!userId) {
     return { activities: [], threads: [], isCapped: false };
   }
+  // startTs gives activity the same lower bound as the conversations: `days` is
+  // capped at 30, which falls short of a window starting at the start of a day.
   const days = getActivityWindowDays({ startTs, endTs });
   const activityRequest = ACTIVITY_REQUEST[filter]({
     days,
+    startTs,
     limit: ACTIVITY_LIMIT,
   });
   const filterType = CONVERSATION_FILTER[filter];
