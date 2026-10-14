@@ -331,6 +331,7 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/IntakeForm.spec.ts',
+        '**/ProfileGovernance.spec.ts',
         '**/AdvancedSearch.spec.ts',
         ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
@@ -570,11 +571,14 @@ export default defineConfig({
     },
     {
       name: 'IntakeForm',
-      testMatch: '**/IntakeForm.spec.ts',
+      // Intake forms are one-per-entityType and global: a required field on the
+      // dataProduct form makes every parallel DataProduct.create() fail with 400.
+      testMatch: ['**/IntakeForm.spec.ts', '**/ProfileGovernance.spec.ts'],
       use: { ...devices['Desktop Chrome'] },
       dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
       grep: shardGrep,
       fullyParallel: false,
+      workers: 1,
     },
     // AdvancedSearch runs in its own dedicated lane so its timing-sensitive
     // waitForResponse/debounce flow is not interleaved with other chromium shards.
