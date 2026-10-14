@@ -187,6 +187,19 @@ describe('Tooltip — show/hide behaviour', () => {
     expect(screen.getByText('Always visible')).toBeInTheDocument();
   });
 
+  // A tooltip that flips placement can sit under the cursor for a frame while
+  // it is positioned; if it took the pointer, the trigger would get
+  // pointerleave and the tooltip would close mid-hover.
+  it('never takes the pointer from its trigger', () => {
+    render(
+      <Tooltip isOpen title="Tier.Tier1">
+        <button>trigger</button>
+      </Tooltip>
+    );
+
+    expect(screen.getByRole('tooltip')).toHaveClass('tw:pointer-events-none');
+  });
+
   it('does not show tooltip on interaction when trigger is disabled', async () => {
     const user = userEvent.setup();
     setupPointerModality();

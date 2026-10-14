@@ -174,8 +174,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Owner: jest.fn().mockImplementation(() => <div>Owner.component</div>),
   ClassificationTag: jest
     .fn()
-    .mockImplementation(({ label, 'data-testid': testId }) => (
-      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
+    .mockImplementation(({ label, href, 'data-testid': testId }) => (
+      <a data-testid={testId ?? 'classification-tag'} href={href}>
+        {label}
+      </a>
     )),
 }));
 jest.mock('../../../components/common/TierCard/TierCard', () =>
@@ -542,6 +544,26 @@ describe('DataAssetsHeader component', () => {
     );
 
     expect(screen.getByTestId('Tier')).toBeInTheDocument();
+  });
+
+  it('should show the Tier description tooltip on the Tier chip', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          tags: [MOCK_TIER_DATA],
+        }}
+      />
+    );
+
+    act(() => {
+      screen.getByTestId('Tier').focus();
+    });
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      MOCK_TIER_DATA.tagFQN
+    );
   });
 
   it('should not render the Tier data if not  present', () => {
