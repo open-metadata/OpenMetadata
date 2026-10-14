@@ -17,21 +17,29 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Set;
 
 /**
  * Every consumer this server can run for an alert, by id and by alias. Consumers are registered,
  * never guessed: an alert naming a consumer nothing here answers to is not run by another instead.
  */
-@Slf4j
 public final class Consumers {
 
   /** The consumer of an alert that names none: it sends the alert's notifications. */
   public static final String DEFAULT = "alert";
 
-  private static final Map<String, ConsumerProvider> REGISTERED = load();
+  private static final Map<String, ConsumerProvider> REGISTERED =
+      index(ServiceLoader.load(ConsumerProvider.class));
 
   private Consumers() {}
+
+  /**
+   * Every id and alias this server answers to. The first call loads the providers, so the server
+   * calls it at startup: two providers answering to one name then fail there, not on a tick.
+   */
+  public static Set<String> names() {
+    return REGISTERED.keySet();
+  }
 
   /** The consumer registered under this id or alias. */
   public static Optional<ConsumerProvider> find(String idOrAlias) {
@@ -43,13 +51,7 @@ public final class Consumers {
     return find(idOrAlias).map(ConsumerProvider::id);
   }
 
-  private static Map<String, ConsumerProvider> load() {
-    Map<String, ConsumerProvider> consumers = index(ServiceLoader.load(ConsumerProvider.class));
-    LOG.info("Alert consumers registered: {}", consumers.keySet());
-    return consumers;
-  }
-
-  /** Every id and alias to its provider; two providers answering to one name stop the server. */
+  /** Every id and alias to its provider; two providers answering to one name are refused. */
   static Map<String, ConsumerProvider> index(Iterable<ConsumerProvider> providers) {
     Map<String, ConsumerProvider> consumers = new LinkedHashMap<>();
     for (ConsumerProvider provider : providers) {

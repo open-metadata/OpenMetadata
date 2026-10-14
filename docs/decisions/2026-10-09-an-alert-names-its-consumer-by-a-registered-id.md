@@ -1,7 +1,7 @@
 # An alert names its consumer by a registered id, and every alert job is stored with ConsumerJob
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-09 (initial)
+- **Revisions:** v1 2026-10-09 (initial) · v2 2026-10-14 (consumers load at startup; what a rolling update costs)
 - **Deciders:** Adrià Manero
 - **Guard:** `ConsumersTest`, `EventSubscriptionMapperTest`, `ConsumerIdMigrationIT`, `AlertStateIT.everyJobUsesTheConsumerJobAndCarriesNoData`, `AlertReconcilerIT.reconcilerConvertsJobsStoredWithTheNamedClass`, `.jobWhoseClassIsNotAJobIsReplacedAndTheSchedulerCarriesOn`
 - **Related:** [#35030](https://github.com/open-metadata/OpenMetadata/issues/35030), [PR #35032](https://github.com/open-metadata/OpenMetadata/pull/35032), Collate [PR #7259](https://github.com/open-metadata/openmetadata-collate/pull/7259); `events.consumer.ConsumerProvider`, `Consumers`, `ConsumerJob`; v210 `ConsumerIdMigration`
@@ -26,8 +26,10 @@ Collate's `collate.creditUsage` and `collate.reverseMetadata`. An id never chang
 
 A provider may list aliases: the class names its consumer was stored under before ids. An alias
 finds its consumer, and a create or PUT that sends one stores the id instead. A name no provider
-answers to is refused with a 400, and two providers that answer to one name stop the server. A
-provider declares its consumer's kind, which must match the kind the consumer's class declares.
+answers to is refused with a 400. The server loads the providers when it starts, next to the alert
+catalog, so two providers that answer to one name leave alerting off from the start, with that
+name in the log, as a catalog that does not load does. A provider declares its consumer's kind,
+which must match the kind the consumer's class declares.
 
 Every alert job is stored with `org.openmetadata.service.events.consumer.ConsumerJob`, the
 runtime's own job class. It is not a consumer; it runs the consumer the alert row names. The
@@ -40,8 +42,14 @@ it is the one class name the database stores.
 
 A consumer class can move, be renamed or stop being a Quartz job without a data migration, and
 the API never loads a class a client names. The field keeps the name `className` so the wire shape
-does not change; renaming it is a wire change for a later release. `AbstractEventConsumer` keeps a
-deprecated `execute` that runs `ConsumerJob` until 2.3, so a job that a server of a release before
-2.1 stores under a consumer class during a rolling update still runs. During that update such a
-server cannot load `ConsumerJob`, and a trigger it picks up stays in an error state until the new
-server's re-arm or reconciler replaces it, at most one reconcile round later.
+does not change; renaming it is a wire change for a later release.
+
+During a rolling update from a release before 2.1, the old server still runs alerts. It cannot
+load `ConsumerJob`, so every alert trigger it picks up goes into an error state, and a job it
+stores names its consumer's class. `AbstractEventConsumer` keeps a deprecated `execute` that runs
+`ConsumerJob` until 2.3, but that only helps a consumer whose class kept its name, such as
+Collate's reverse metadata and credit usage consumers. The default consumer's class moved, so a
+job stored under its old name does not load on the new server either. The new server's re-arm and
+reconciler treat a job they cannot load as missing and store it again. So an alert can stall for
+as long as the update lasts plus one reconcile round, ten minutes. Its position is kept in the
+database, so it then sends everything it missed: notifications are late, never lost.

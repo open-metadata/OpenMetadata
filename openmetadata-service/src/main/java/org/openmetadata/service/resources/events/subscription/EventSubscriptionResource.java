@@ -82,6 +82,7 @@ import org.openmetadata.service.alerting.definition.AlertCatalog;
 import org.openmetadata.service.alerting.definition.EventsSubscriptionRegistry;
 import org.openmetadata.service.alerting.definition.SourceCapabilities;
 import org.openmetadata.service.alerting.delivery.AlertFactory;
+import org.openmetadata.service.events.consumer.Consumers;
 import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.events.consumer.schedule.AlertJobs;
 import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
@@ -151,9 +152,11 @@ public class EventSubscriptionResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
-    // Outside the catch-all below on purpose: a server whose catalog does not load would start
-    // with no alert able to build, so it refuses to start and says which entry is at fault.
+    // Outside the catch-all below on purpose: when the catalog or the registered consumers do not
+    // load, nothing below runs, so alerting stays off and the log names the entry at fault, rather
+    // than every tick failing later.
     EventsSubscriptionRegistry.initialize(AlertCatalog.load());
+    LOG.info("Alert consumers registered: {}", Consumers.names());
     try {
       EventSubscriptionScheduler.initialize(config);
       repository.initSeedDataFromResourcesOnStartup();
