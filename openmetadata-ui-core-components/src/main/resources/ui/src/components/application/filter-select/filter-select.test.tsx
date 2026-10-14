@@ -545,31 +545,6 @@ describe('FilterSelect', () => {
     );
   });
 
-  it('sizes the bordered button trigger on the Button scale, md by default', () => {
-    const renderTrigger = (buttonSize?: 'xs' | 'sm' | 'md') => (
-      <FilterSelect
-        bordered
-        buttonSize={buttonSize}
-        data-testid="trigger-test"
-        label="Service"
-        options={OPTIONS}
-        selectedValues={[]}
-        triggerVariant="button"
-        onChange={() => undefined}
-      />
-    );
-    const { rerender } = render(renderTrigger());
-
-    expect(screen.getByTestId('trigger-test').className).toContain('tw:py-2.5');
-
-    rerender(renderTrigger('xs'));
-
-    const compact = screen.getByTestId('trigger-test').className;
-
-    expect(compact).toContain('tw:text-xs');
-    expect(compact).not.toContain('tw:py-2.5');
-  });
-
   it('brands the button trigger once a value is selected', () => {
     const renderTrigger = (selectedValues: string[]) => (
       <FilterSelect

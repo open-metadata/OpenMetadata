@@ -80,7 +80,6 @@ export const TriggerButton = ({
   isDisabled,
   labelledBy,
   size = 'sm',
-  buttonSize = 'md',
 }: {
   hasSelection: boolean;
   isOpen?: boolean;
@@ -97,7 +96,6 @@ export const TriggerButton = ({
   /** Id of an external label; the trigger's own text still names the value. */
   labelledBy?: string;
   size?: 'sm' | 'md';
-  buttonSize?: 'xs' | 'sm' | 'md';
 }) => {
   const textId = useId();
   const ariaLabelledBy = labelledBy ? `${labelledBy} ${textId}` : undefined;
@@ -124,7 +122,7 @@ export const TriggerButton = ({
         iconLeading={icon}
         iconTrailing={isOpen ? ChevronUp : ChevronDown}
         isDisabled={isDisabled}
-        size={bordered ? buttonSize : 'sm'}>
+        size={bordered ? 'md' : 'sm'}>
         <span data-testid={`search-dropdown-${label}`} id={textId}>
           {text}
         </span>
@@ -432,7 +430,6 @@ const FilterSelect = ({
   selectedValues,
   onChange,
   bordered,
-  buttonSize,
   className,
   commitMode = 'immediate',
   'data-testid': testId,
@@ -888,7 +885,6 @@ const FilterSelect = ({
           ) : (
             <TriggerButton
               bordered={bordered}
-              buttonSize={buttonSize}
               className={cx(
                 typography === 'regular' && 'tw:font-normal',
                 className
