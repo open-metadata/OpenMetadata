@@ -823,16 +823,17 @@ a[href].link-text-grey,
 // light values (ADR:2026-10-13-om-tokens-have-one-source-file).
 
 // AI dark-mode brand ACCENTS -> blue-400 (#53b1fd), the devrel dark palette:
-// #1570ef carries fills/borders, #53b1fd labels/icons/links (~5.4:1 on dark).
+// #1570ef carries fills/borders, #53b1fd labels/icons/links (~5.4:1 on dark;
+// #1570ef is only ~3.3:1 as text).
 // UntitledUIThemeProvider + AntDConfigProvider inject the configured brand
 // primary (#1570ef) as theme-agnostic inline custom properties on <html> — the
 // same element that carries `.dark-mode` — so the token layer's dark flip can't
 // override them (inline wins on that element). Re-point the brand *accent* vars
-// (text / fg / icon / border / outline / ring) to brand-400 on `body`, a
-// descendant of <html>, which wins over the html-inline value for the whole app
-// subtree (incl. antd portals). Solid-fill vars (*-solid, bg-brand-*, the raw
-// ramp) are intentionally left so buttons/badges keep the brand-600 fill. Light
-// is untouched, so a white-label custom brand still tints accents in light.
+// (text / fg / icon) to brand-400 on `body`, a descendant of <html>, which wins
+// over the html-inline value for the whole app subtree (incl. antd portals).
+// Border / outline / ring and solid-fill vars are intentionally left on the
+// brand-600 primary, so selected cards, focus rings and buttons use #1570ef.
+// Light is untouched, so a white-label custom brand still tints accents in light.
 .dark-mode body {
   --tw-color-text-brand-secondary: var(--tw-color-brand-400);
   --tw-text-color-brand-secondary: var(--tw-color-brand-400);
@@ -847,16 +848,6 @@ a[href].link-text-grey,
   --tw-color-fg-brand-secondary_hover: var(--tw-color-brand-400);
   --tw-color-icon-fg-brand: var(--tw-color-brand-400);
   --tw-color-featured-icon-light-fg-brand: var(--tw-color-brand-400);
-  --tw-color-border-brand: var(--tw-color-brand-400);
-  --tw-color-border-brand_alt: var(--tw-color-brand-400);
-  --tw-border-color-brand: var(--tw-color-brand-400);
-  --tw-border-color-brand_alt: var(--tw-color-brand-400);
-  --tw-background-color-border-brand: var(--tw-color-brand-400);
-  --tw-background-color-border-brand_alt: var(--tw-color-brand-400);
-  --tw-outline-color-brand: var(--tw-color-brand-400);
-  --tw-outline-color-brand_alt: var(--tw-color-brand-400);
-  --tw-ring-color-brand: var(--tw-color-brand-400);
-  --tw-ring-color-brand_alt: var(--tw-color-brand-400);
   // Status text: the configured error / warning / success colours are injected
   // the same way, as light -600 shades, and stayed below AA on dark surfaces.
   // Text only; the solid fills keep the configured colour.
@@ -870,10 +861,10 @@ a[href].link-text-grey,
 
 // Legacy Ant links: `.text-link-color` uses `@primary-color`
 // (= var(--ant-primary-color)), injected by AntDConfigProvider as #1570ef and
-// never flipped. Point it at the flipping link token in dark (blue-300).
+// never flipped. Point it at the core link token, which flips in dark.
 .dark-mode .text-link-color,
 .dark-mode a.text-link-color {
-  color: var(--om-color-link);
+  color: var(--color-text-link);
 }
 
 // (Bare-anchor dark link color is handled in tailwind.css via `:where(.dark-mode) a`
@@ -885,7 +876,7 @@ a[href].link-text-grey,
 .dark-mode a.ant-typography,
 .dark-mode .ant-typography a,
 .dark-mode .prose-typography a {
-  color: var(--om-color-link);
+  color: var(--color-text-link);
 }
 
 // Ant secondary text is @text-color-secondary (fade(@black, 45%)), compiled to a

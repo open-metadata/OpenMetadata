@@ -767,7 +767,7 @@ export const ContextRuleEditor = ({
       closeOnBackdrop: false,
       form: formBody,
       header: {
-        className: 'tw:border-b tw:border-secondary tw:px-6! tw:py-5!',
+        className: 'tw:border-b tw:border-secondary tw:mt-0 tw:px-6! tw:py-5!',
       },
       hookForm: form,
       submitLabel: t('label.save-rule'),
