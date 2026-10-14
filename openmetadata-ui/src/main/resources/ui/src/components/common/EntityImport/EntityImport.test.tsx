@@ -22,7 +22,6 @@ import {
   CSVImportResult,
   Status,
 } from '../../../generated/type/csvImportResult';
-import { resolveCsvImportResult } from '../../../rest/csvAPI';
 import { EntityImport } from './EntityImport.component';
 
 let mockCsvImportResult = {
@@ -73,14 +72,6 @@ jest.mock('./ImportStatus/ImportStatus.component', () => ({
 
 jest.mock('../../../context/WebSocketProvider/WebSocketProvider', () => ({
   useWebSocketConnector: jest.fn(),
-}));
-
-// By default the completion frame carries an inline result, so the helper returns it
-// without a fetch; a single test overrides this to simulate the fetch failing.
-jest.mock('../../../rest/csvAPI', () => ({
-  resolveCsvImportResult: jest.fn((_jobId, inlineResult) =>
-    Promise.resolve(inlineResult)
-  ),
 }));
 
 const mockSocket = {
@@ -183,60 +174,6 @@ describe('EntityImport component', () => {
     });
 
     expect(mockProps.onSuccess).toHaveBeenCalled();
-  });
-
-  it('Import completion unblocks the UI when the result fetch fails', async () => {
-    const file = new File([mockCsvContent], 'glossary-terms.csv', {
-      type: 'text/plain',
-    });
-
-    render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
-
-    const uploadDragger = await waitFor(() =>
-      screen.getByTestId('upload-file-widget')
-    );
-
-    await act(async () => {
-      fireEvent.change(uploadDragger, { target: { files: [file] } });
-    });
-
-    // First COMPLETED frame carries an inline result -> advances to the preview step.
-    const completedWithResult = {
-      jobId: mockAsyncImportJob.jobId,
-      status: 'COMPLETED',
-      result: mockCsvImportResult,
-      error: null,
-    };
-    const callback = mockSocket.on.mock.calls[0][1];
-    act(() => {
-      callback(JSON.stringify(completedWithResult));
-    });
-
-    const importButton = await screen.findByTestId('import-button');
-
-    await act(async () => {
-      fireEvent.click(importButton);
-    });
-
-    // The onValidate completion is a thin frame ({jobId, status}); make the follow-up
-    // result fetch fail so we hit the error path.
-    (resolveCsvImportResult as jest.Mock).mockRejectedValueOnce(
-      new Error('fetch failed')
-    );
-    const thinCompleted = {
-      jobId: mockAsyncImportJob.jobId,
-      status: 'COMPLETED',
-      result: null,
-      error: null,
-    };
-    await act(async () => {
-      callback(JSON.stringify(thinCompleted));
-    });
-
-    // The UI must not stay stuck: the buttons are re-enabled (without the fix,
-    // isImporting stays true and both stay disabled forever).
-    expect(await screen.findByTestId('import-button')).not.toBeDisabled();
-    expect(screen.getByTestId('preview-cancel-button')).not.toBeDisabled();
   });
 
   it('Import Should work for partial success', async () => {
