@@ -1424,16 +1424,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       return; // WebSocketManager keeps its no-op relay (node-local delivery).
     }
     relay.start();
-    // RedisWebSocketRelay.start() swallows connection failures (sets running=false) rather than
-    // throwing. When Redis is the configured transport, refuse to boot with an inert relay — that
-    // would silently disable cross-pod delivery, the exact hang this change fixes. Fail loud, like
-    // the Hybrid Runner relay; a per-pod DB fallback is wrong here because pods on different
-    // transports would never hear each other (split brain).
-    if (redisConfigured && !relay.isRunning()) {
-      throw new IllegalStateException(
-          "Redis WebSocket relay failed to start; refusing to boot with cross-pod delivery disabled. "
-              + "Check the Redis cache connection.");
-    }
+    // Don't block boot on Redis. When Redis is the configured transport but unreachable at
+    // startup, RedisWebSocketRelay keeps the pod up and reconnects in the background (a transient
+    // blip self-heals), while this health check reports the degraded cross-pod delivery so the
+    // state is visible via /healthcheck and metrics rather than silent. We deliberately do not fall
+    // back to the DB relay here: pods split across two transports would never hear each other.
+    environment
+        .healthChecks()
+        .register(
+            "WebSocketRelay",
+            new org.openmetadata.service.socket.WebSocketRelayHealthCheck(relay, redisConfigured));
     WebSocketManager.getInstance().setRelay(relay);
     org.openmetadata.service.socket.WebSocketRelay startedRelay = relay;
     environment
