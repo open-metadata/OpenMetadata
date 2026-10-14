@@ -17,6 +17,7 @@ import {
   HookForm,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Drawer } from 'antd';
 import { AxiosError } from 'axios';
 import React, { Fragment, useEffect, useState } from 'react';
@@ -35,7 +36,6 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './learning-resource-form.less';
 import { LearningResourceFormProps } from './LearningResourceForm.interface';
-import { XClose } from '@openmetadata/ui-core-components/icons';
 
 export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
   open,

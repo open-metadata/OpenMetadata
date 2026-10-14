@@ -19,6 +19,7 @@ import {
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -43,7 +44,6 @@ import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.com
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AccessTokenCard from '../../Users/AccessTokenCard/AccessTokenCard.component';
 import { BotsDetailProps } from './BotDetails.interfaces';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 
 const BotDetails: FC<BotsDetailProps> = ({
   botData,
