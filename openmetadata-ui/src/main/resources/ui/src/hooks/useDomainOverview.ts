@@ -13,7 +13,6 @@
 
 import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { SORT_ORDER } from '../enums/common.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Domain } from '../generated/entity/domains/domain';
 import { getAllDomainsWithAssetsCount } from '../rest/domainAPI';
@@ -91,19 +90,12 @@ export const fetchOverviewPage = async (
     ),
   }[filter];
 
-  // An empty query scores every document alike, so without a sort the page is
-  // whatever index order happens to be — rows reshuffle across reloads and a
-  // newly created entity can fall off it. Name order matches the "empty"
-  // bucket's FQN order, so every chip reads the same way.
-  // ADR:2026-10-14-domain-overview-cards-sort-by-name
   const response = await searchQuery({
     pageNumber: 1,
     pageSize: OVERVIEW_PAGE_SIZE,
     query: '',
     queryFilter,
     searchIndex,
-    sortField: 'name.keyword',
-    sortOrder: SORT_ORDER.ASC,
   });
 
   return { sources: response.hits.hits.map((hit) => hit._source) };

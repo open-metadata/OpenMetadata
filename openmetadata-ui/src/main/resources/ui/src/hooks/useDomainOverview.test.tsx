@@ -13,7 +13,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
-import { SORT_ORDER } from '../enums/common.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { queryClient } from '../queryClient';
 import { getAllDomainsWithAssetsCount } from '../rest/domainAPI';
@@ -112,27 +111,6 @@ describe('useDomainOverview', () => {
       })
     );
   });
-
-  // Unsorted, an empty query returns index order, so the ten rows shown were
-  // arbitrary and a domain created a moment ago could be missing from them.
-  it.each(Object.values(OverviewFilter))(
-    'requests the %s page in name order',
-    async (filter) => {
-      const { result } = renderHook(() => useDomainOverview(filter), {
-        wrapper,
-      });
-
-      await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-      expect(mockSearchQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          pageSize: 10,
-          sortField: 'name.keyword',
-          sortOrder: SORT_ORDER.ASC,
-        })
-      );
-    }
-  );
 
   it('asks the server for the unowned bucket rather than filtering the page', async () => {
     const { result } = renderHook(
