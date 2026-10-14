@@ -348,6 +348,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [debouncedAuthorSearch, setDebouncedAuthorSearch] = useState('');
   const isAuthorSearchMounted = useRef(false);
+  const latestAuthorRequest = useRef(0);
   const isReviewing = activeFilter === NEEDS_REVIEW_FILTER;
   const {
     reviews,
@@ -517,9 +518,15 @@ const ContextCenterMemoriesPage: FC = () => {
   ]);
 
   const fetchAuthorOptions = useCallback(async (query: string) => {
+    // Opening the menu searches '' and typing searches the text, so both can be in flight;
+    // only the latest may write, or a slow '' response replaces the typed results.
+    const request = ++latestAuthorRequest.current;
     setIsAuthorOptionsLoading(true);
     try {
       const response = await getUserAndTeamSearch(query, true, 25);
+      if (request !== latestAuthorRequest.current) {
+        return;
+      }
       const options = response.data.hits.hits
         .map((hit): MemoryFilterOption | undefined => {
           const source = hit._source as SearchOptionSource;
@@ -539,9 +546,13 @@ const ContextCenterMemoriesPage: FC = () => {
         .filter((option): option is MemoryFilterOption => Boolean(option));
       setAuthorOptions(options);
     } catch (err) {
-      showErrorToast(err as AxiosError);
+      if (request === latestAuthorRequest.current) {
+        showErrorToast(err as AxiosError);
+      }
     } finally {
-      setIsAuthorOptionsLoading(false);
+      if (request === latestAuthorRequest.current) {
+        setIsAuthorOptionsLoading(false);
+      }
     }
   }, []);
 
