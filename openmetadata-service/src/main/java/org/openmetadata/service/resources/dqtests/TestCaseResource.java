@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -1435,7 +1436,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   /**
    * Filters and page shared by the sync and async export endpoints, so the two cannot drift. The
    * filters mean what they mean on the test case search listing the Bulk Edit grid is opened from.
+   *
+   * <p>The getters are for OpenAPI, not callers: swagger only documents a {@code @BeanParam}'s
+   * fields as query parameters when Jackson can see them as properties. Without getters the bean
+   * is documented as a JSON request body and the filters are missing from the API docs.
    */
+  @Getter
   public static final class TestCaseExportQuery {
     @Parameter(
         description =
