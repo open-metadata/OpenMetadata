@@ -19,13 +19,13 @@
     },
     {
       "name": "GetNodeLabels",
-      "description": "List the node labels and their properties via db.schema.nodeTypeProperties().",
+      "description": "List the node labels via db.labels().",
       "errorMessage": "Failed to read node labels, please validate that the user can read the graph schema of the database.",
       "mandatory": true
     },
     {
       "name": "GetRelationshipTypes",
-      "description": "List the relationship types and their properties via db.schema.relTypeProperties().",
+      "description": "List the relationship types via db.relationshipTypes().",
       "errorMessage": "Failed to read relationship types, please validate that the user can read the graph schema of the database.",
       "mandatory": false
     }

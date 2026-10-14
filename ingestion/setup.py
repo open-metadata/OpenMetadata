@@ -44,7 +44,7 @@ VERSIONS = {
     "grpc-tools": "grpcio-tools>=1.47.2",
     "ijson": "ijson~=3.4",
     "msal": "msal~=1.2",
-    "neo4j": "neo4j~=5.3",
+    "neo4j": "neo4j~=5.7",
     "pandas": "pandas>=2.2.2,<3",
     "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
     "pydantic": "pydantic>=2.12.5,<3",
@@ -426,7 +426,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["cloud-sql-python-connector-pymysql"],
         DATA_DIFF["mysql"],
     },
-    "neo4j": {"neo4j>=5.0,<7"},
+    "neo4j": {VERSIONS["neo4j"]},
     "nifi": {},  # uses requests
     "openlineage": {*COMMONS["kafka"]},
     "oracle": {"oracledb>=3.4.2,<4", DATA_DIFF["oracle"]},

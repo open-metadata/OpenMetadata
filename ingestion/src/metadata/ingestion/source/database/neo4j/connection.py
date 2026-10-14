@@ -190,6 +190,7 @@ class Neo4jConnection(BaseConnection[Neo4jConnectionConfig, "Driver"]):
         driver = GraphDatabase.driver(
             f"{scheme.value}://{connection.hostPort}",
             auth=(connection.username, connection.password.get_secret_value()),
+            notifications_min_severity="OFF",
         )
         self._on_close(driver.close)
         return driver

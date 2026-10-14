@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 
 NEO4J_HOME_DATABASE: LiteralString = "CALL db.info() YIELD name RETURN name"
 
+# Neo4j warns that `propertyTypes` changes output format in its next major version;
+# recheck the parsing in utils.py when upgrading.
 NEO4J_NODE_TYPE_PROPERTIES: LiteralString = (
     "CALL db.schema.nodeTypeProperties() "
     "YIELD nodeType, propertyName, propertyTypes, mandatory "

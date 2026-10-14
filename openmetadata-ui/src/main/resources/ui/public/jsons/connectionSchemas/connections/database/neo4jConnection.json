@@ -146,29 +146,6 @@
       },
       "additionalProperties": false
     },
-    "databaseFilterPattern": {
-      "title": "Default Database Filter Pattern",
-      "description": "Regex to only include/exclude databases that matches the pattern.",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
-      "properties": {
-        "includes": {
-          "description": "List of strings/regex patterns to match and include only database entities that match.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "excludes": {
-          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "additionalProperties": false
-    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "description": "Supports Metadata Extraction.",

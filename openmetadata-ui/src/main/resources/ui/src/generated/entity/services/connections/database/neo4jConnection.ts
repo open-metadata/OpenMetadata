@@ -15,10 +15,6 @@
  */
 export interface Neo4JConnection {
     /**
-     * Regex to only include/exclude databases that matches the pattern.
-     */
-    databaseFilterPattern?: FilterPattern;
-    /**
      * Neo4j database to extract metadata from. If left blank, the user's home database is used.
      */
     databaseName?: string;
@@ -66,8 +62,6 @@ export interface Neo4JConnection {
 }
 
 /**
- * Regex to only include/exclude databases that matches the pattern.
- *
  * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only include/exclude node and relationship properties (columns) that match the
