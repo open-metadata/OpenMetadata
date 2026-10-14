@@ -1,7 +1,7 @@
 # A memory conflict opens a review task, and approving it supersedes the disputed memory
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-14 (a refused decision evicts the memories it wrote from the entity cache)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryLifecycleTest`, `MemoryConflictDecisionTest`,
   `MemoryConflictReviewTasksTest`, `MemoryConflictResolutionTest`, `ContextMemoryLifecycleIT`,
@@ -93,6 +93,10 @@ Approved — and nothing wrote it.
   resolution retried after its writes committed but its task did not resolve converges: an already superseded memory is skipped, an already Approved or
   Rejected reviewed memory is not written again, and the disputes, released when the memory left
   Draft, are read from the task's payload, which only the server writes.
+- A refused decision evicts every memory it wrote from the entity cache once its transaction has
+  rolled back. A later write reads what an earlier one wrote, and the Redis cache keeps what a read
+  loads, the uncommitted row included, while a failed transaction drops the cache evictions it
+  deferred; without the eviction a reader would see the rolled-back outcome.
 - On one server, opening a review is serialized per memory; across servers two writes landing
   together can each open one, and leaving review closes them all. Assignees are
   recomputed only when the reviewed memory is written, so a change of owner on a disputed memory
