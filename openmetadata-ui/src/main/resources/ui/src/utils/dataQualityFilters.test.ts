@@ -17,6 +17,7 @@ import {
   DataQualityScope,
   DEFAULT_DATA_QUALITY_FILTERS,
   toSearchParams,
+  toTableCountsKey,
   toTableCountsQuery,
   toTableStatusCounts,
 } from './dataQualityFilters';
@@ -139,6 +140,22 @@ describe('toTableStatusCounts', () => {
     ).toEqual({
       t1: { passed: 4, failed: 2, aborted: 0 },
       t2: { passed: 0, failed: 0, aborted: 1 },
+    });
+  });
+
+  it('keys each table so a mixed-case FQN finds it', () => {
+    const counts = toTableStatusCounts([
+      {
+        originEntityFQN: 'snow.db.public.orders',
+        'testCaseResult.testCaseStatus': 'success',
+        document_count: '3',
+      },
+    ]);
+
+    expect(counts[toTableCountsKey('SNOW.DB.PUBLIC.Orders')]).toEqual({
+      passed: 3,
+      failed: 0,
+      aborted: 0,
     });
   });
 });

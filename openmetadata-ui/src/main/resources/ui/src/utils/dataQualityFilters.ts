@@ -130,12 +130,20 @@ const STATUS_FIELD: Record<string, keyof TableStatusCounts> = {
   aborted: 'aborted',
 };
 
-/** One entry per table, from the report's table × status rows. */
+/** The key `toTableStatusCounts` files a table's counts under. */
+export const toTableCountsKey = (tableFqn: string): string =>
+  tableFqn.toLowerCase();
+
+/**
+ * One entry per table, from the report's table × status rows, keyed by the
+ * lowercased FQN: `originEntityFQN` has a lowercase normalizer, so the report
+ * returns its buckets lowercased. Look an entry up with `toTableCountsKey`.
+ */
 export const toTableStatusCounts = (
   rows: Record<string, string>[]
 ): Record<string, TableStatusCounts> =>
   rows.reduce<Record<string, TableStatusCounts>>((acc, row) => {
-    const table = row.originEntityFQN;
+    const table = row.originEntityFQN && toTableCountsKey(row.originEntityFQN);
     const field = STATUS_FIELD[row['testCaseResult.testCaseStatus']];
     if (table && field) {
       acc[table] = acc[table] ?? { passed: 0, failed: 0, aborted: 0 };

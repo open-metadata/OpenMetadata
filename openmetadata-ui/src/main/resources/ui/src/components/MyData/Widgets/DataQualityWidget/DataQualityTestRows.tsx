@@ -25,7 +25,10 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { TestCasePageTabs } from '../../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
-import { TableStatusCounts } from '../../../../utils/dataQualityFilters';
+import {
+  TableStatusCounts,
+  toTableCountsKey,
+} from '../../../../utils/dataQualityFilters';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import {
@@ -36,11 +39,19 @@ import {
 } from './DataQualityTestRows.constants';
 import {
   DataQualityGroupBy,
+  DataQualityTableGroup,
   getTestColumnName,
   groupTestsByTable,
 } from './DataQualityTestRows.utils';
 
 const lastFqnPart = (fqn: string) => fqn.split('.').pop() ?? fqn;
+
+/** The table's counts across the card's scope, or the rows shown without them. */
+const countsFor = (
+  group: DataQualityTableGroup,
+  tableCounts?: Record<string, TableStatusCounts>
+): TableStatusCounts =>
+  tableCounts?.[toTableCountsKey(group.tableFqn)] ?? group;
 
 const incidentOf = (test: TestCase) => {
   const type = test.incidentStatus?.testCaseResolutionStatusType;
@@ -234,7 +245,7 @@ const DataQualityTestRows: React.FC<DataQualityTestRowsProps> = ({
               {group.tableFqn}
             </Typography>
             {GROUP_COUNTS.filter(
-              ({ key }) => (tableCounts?.[group.tableFqn] ?? group)[key] > 0
+              ({ key }) => countsFor(group, tableCounts)[key] > 0
             ).map(({ key, color, messageKey }) => (
               <Typography
                 className={`tw:shrink-0 ${COUNT_TEXT[color]}`}
@@ -242,7 +253,7 @@ const DataQualityTestRows: React.FC<DataQualityTestRowsProps> = ({
                 size="text-xs"
                 weight="medium">
                 {t(messageKey, {
-                  count: (tableCounts?.[group.tableFqn] ?? group)[key],
+                  count: countsFor(group, tableCounts)[key],
                 })}
               </Typography>
             ))}

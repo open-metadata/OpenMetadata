@@ -174,6 +174,26 @@ describe('DataQualityWidget', () => {
     expect(group).not.toHaveTextContent('message.count-aborted-test');
   });
 
+  it('finds the counts of a table whose FQN has uppercase letters', () => {
+    // The report buckets `originEntityFQN` through a lowercase normalizer.
+    renderWidget({
+      tableCounts: {
+        'snow.db.public.orders': { passed: 6, failed: 2, aborted: 0 },
+      },
+      tests: [
+        {
+          ...failingTest(0),
+          entityLink: '<#E::table::SNOW.DB.PUBLIC.Orders>',
+        },
+      ],
+    });
+
+    const group = screen.getByTestId('dq-table-group-SNOW.DB.PUBLIC.Orders');
+
+    expect(group).toHaveTextContent('message.count-passed-test {"count":6}');
+    expect(group).toHaveTextContent('message.count-failed-test {"count":2}');
+  });
+
   it("names a failing test's incident stage", () => {
     renderWidget({
       tests: [
