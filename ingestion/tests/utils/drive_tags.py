@@ -63,12 +63,14 @@ class TaggedDriveSource(InMemoryDriveSource):
 
     def yield_directory_tags(self, directory_details):
         yield from self.tags("directory")
+        yield from self.yield_file_tags(directory_details)
 
     def yield_file_tags(self, directory_details):
         yield from self.tags("file")
 
     def yield_spreadsheet_tags(self, spreadsheet_details):
         yield from self.tags("spreadsheet")
+        yield from self.yield_worksheet_tags(spreadsheet_details)
 
     def yield_worksheet_tags(self, spreadsheet_details):
         yield from self.tags("worksheet")
@@ -92,7 +94,5 @@ def make_drive_source(metadata, *, tagged=True):
 
 def drive_stages(source, kind):
     node = source.topology.directory if kind in {"directory", "file"} else source.topology.spreadsheet
-    names = {f"yield_{kind}_tag_details", f"yield_{kind}_details"}
     for stage in node.stages:
-        if stage.processor in names:
-            yield from source._process_stage(stage, None)
+        yield from source._process_stage(stage, None)

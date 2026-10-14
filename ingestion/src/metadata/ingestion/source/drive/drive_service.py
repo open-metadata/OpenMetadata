@@ -114,11 +114,6 @@ class DriveServiceTopology(ServiceTopology):
                 processor="yield_directory_details",
                 consumer=["drive_service"],
             ),
-            NodeStage(  # pyright: ignore[reportCallIssue]
-                type_=OMetaTagAndClassification,
-                processor="yield_file_tag_details",
-                nullable=True,
-            ),
             NodeStage(
                 type_=File,
                 context="file",
@@ -142,11 +137,6 @@ class DriveServiceTopology(ServiceTopology):
                 context="spreadsheet",
                 processor="yield_spreadsheet_details",
                 consumer=["drive_service"],
-            ),
-            NodeStage(  # pyright: ignore[reportCallIssue]
-                type_=OMetaTagAndClassification,
-                processor="yield_worksheet_tag_details",
-                nullable=True,
             ),
             NodeStage(
                 type_=Worksheet,
@@ -172,7 +162,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
     etc.
 
     Native tag hooks register definitions and attachments before asset extraction.
-    Asset producers resolve labels with get_tag_by_fqn; detail processors release stage scopes.
+    Asset producers resolve labels with get_tag_by_fqn; child detail processors release item scopes.
     """
 
     source_config: DriveServiceMetadataPipeline
@@ -296,7 +286,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         return None
 
     def _clear_tag_scope(self) -> None:
-        """Release attachments for the current sequential Drive stage."""
+        """Release attachments for the current sequential directory or spreadsheet item."""
         if registry := vars(self).get("tags_registry"):
             # Root files can share a batch with directory files, so cleanup uses the service scope.
             registry.clear_scope(fqn.quote_name(vars(self.context.get())["drive_service"]))
@@ -327,11 +317,14 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         yield from self._yield_tag_details(self.yield_directory_tags, directory_details)
 
     def yield_directory_details(self, directory_details: Any) -> Iterable[Either[CreateDirectoryRequest]]:
-        """Yield directory requests and release the stage's tag attachments."""
+        """Yield directory requests, retaining attachments for the following child stage."""
+        completed = False
         try:
             yield from self.yield_directory(directory_details)
+            completed = True
         finally:
-            self._clear_tag_scope()
+            if not completed:
+                self._clear_tag_scope()
 
     def yield_file_tags(self, directory_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
         """Register native file tags for the current directory item."""
@@ -355,11 +348,14 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         yield from self._yield_tag_details(self.yield_spreadsheet_tags, spreadsheet_details)
 
     def yield_spreadsheet_details(self, spreadsheet_details: Any) -> Iterable[Either[CreateSpreadsheetRequest]]:
-        """Yield spreadsheet requests and release the stage's tag attachments."""
+        """Yield spreadsheet requests, retaining attachments for the following child stage."""
+        completed = False
         try:
             yield from self.yield_spreadsheet(spreadsheet_details)
+            completed = True
         finally:
-            self._clear_tag_scope()
+            if not completed:
+                self._clear_tag_scope()
 
     def yield_worksheet_tags(self, spreadsheet_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
         """Register native worksheet tags for the current spreadsheet item."""

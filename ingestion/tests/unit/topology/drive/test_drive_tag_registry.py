@@ -125,9 +125,6 @@ def test_default_drive_hooks_leave_assets_unchanged(source, kind, entity_fqn, pa
 def test_parent_child_and_existing_labels_stay_separate_and_definitions_are_deduplicated(source):
     source.native_assets["directory"] = [("my_service.my_directory", {"name": "my_directory", "service": "my_service"})]
     source.native_tags["directory"] = [("my_service.my_directory", definition("Parent"))]
-    _, directories, errors = consume(source, drive_stages(source, "directory"))
-    assert errors == []
-    assert [label.tagFQN.root for label in directories[0].tags] == ["DriveTags.Parent"]
     existing = TagLabel(tagFQN="Other.Existing", source="Classification", labelType="Manual", state="Confirmed")
     source.native_assets["file"] = [
         (
@@ -139,11 +136,21 @@ def test_parent_child_and_existing_labels_stay_separate_and_definitions_are_dedu
         ("my_service.my_directory.my_file", definition("Parent")),
         ("my_service.my_directory.my_file", definition("Child")),
     ]
+    published, assets, errors = consume(source, drive_stages(source, "directory"))
+    assert published == ["Parent", "Child"]
+    assert errors == []
+    directory, file = assets
+    assert [label.tagFQN.root for label in directory.tags] == ["DriveTags.Parent"]
+    assert [label.tagFQN.root for label in file.tags] == ["Other.Existing", "DriveTags.Parent", "DriveTags.Child"]
+    assert source.tags_registry.stats()["live_entities"] == 0
+
+    source.native_assets["directory"] = []
+    source.native_tags["directory"] = []
     published, files, errors = consume(source, drive_stages(source, "file"))
-    assert published == ["Child"]
+    assert published == []
     assert errors == []
     assert [label.tagFQN.root for label in files[0].tags] == ["Other.Existing", "DriveTags.Parent", "DriveTags.Child"]
-    assert [label.tagFQN.root for label in directories[0].tags] == ["DriveTags.Parent"]
+    assert [label.tagFQN.root for label in directory.tags] == ["DriveTags.Parent"]
     assert source.tags_registry.stats()["live_entities"] == 0
 
 
@@ -201,15 +208,16 @@ def test_failed_native_tag_stage_releases_attachments_and_allows_the_asset(sourc
     assert source.tags_registry.stats()["live_entities"] == 0
 
 
-def test_closing_asset_stream_releases_attachments_and_closes_the_producer(source):
-    source.native_assets["file"] = [("my_service.my_file", {"name": "my_file", "service": "my_service"})]
-    source.native_tags["file"] = [("my_service.my_file", definition("Shared"))]
-    stream = drive_stages(source, "file")
+@pytest.mark.parametrize("kind,entity_fqn,payload", ASSETS)
+def test_closing_asset_stream_releases_attachments_and_closes_the_producer(source, kind, entity_fqn, payload):
+    source.native_assets[kind] = [(entity_fqn, payload)]
+    source.native_tags[kind] = [(entity_fqn, definition("Shared"))]
+    stream = drive_stages(source, kind)
     assert next(stream).right.tag_request.name.root == "Shared"
     source.catalog.add("DriveTags.Shared")
     assert [label.tagFQN.root for label in next(stream).right.tags] == ["DriveTags.Shared"]
     stream.close()
-    assert source.closed_stages == ["file"]
+    assert source.closed_stages[-1] == kind
     assert source.tags_registry.stats()["live_entities"] == 0
 
 
