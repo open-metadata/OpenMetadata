@@ -80,7 +80,7 @@ span, `tw:font-medium`), optional **leading/trailing icon** (`data-icon`),
 
 ```tsx
 import { Button } from '@openmetadata/ui-core-components';
-import { Play } from '@untitledui/icons';
+import { Play } from '@openmetadata/ui-core-components/icons';
 
 <Button color="primary" iconLeading={Play} size="md" onPress={onRun}>
   {t('label.run')}
