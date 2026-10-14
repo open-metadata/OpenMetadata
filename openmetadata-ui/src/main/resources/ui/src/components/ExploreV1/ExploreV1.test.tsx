@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -203,6 +204,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Dialog: actual.Dialog,
     Divider,
     Dropdown,
+    FilterSelect: actual.FilterSelect,
     Modal: actual.Modal,
     ModalOverlay: actual.ModalOverlay,
     PaginationCardWithControls,
@@ -508,6 +510,15 @@ describe('ExploreV1', () => {
   });
 
   it('uses the query-panel Clear action when a browse filter is active', () => {
+    const onResetAllFilters = jest.fn();
+    (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
+      toggleModal: jest.fn(),
+      sqlQuery: '',
+      queryFilter: undefined,
+      onResetQueryFilter: jest.fn(),
+      onResetAllFilters,
+    }));
+
     render(
       <ExploreV1
         {...props}
@@ -523,7 +534,51 @@ describe('ExploreV1', () => {
     );
 
     expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
-    expect(screen.getByTestId('clear-all-chips')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('clear-all-chips'));
+
+    expect(onResetAllFilters).toHaveBeenCalledTimes(1);
+  });
+
+  it('removing a browse chip truncates the browse path at that level', () => {
+    const onTreeSelect = jest.fn();
+    const serviceTypeField = {
+      key: 'serviceType',
+      label: 'Service Type',
+      value: [{ key: 'Mysql', label: 'Mysql' }],
+    };
+
+    render(
+      <ExploreV1
+        {...props}
+        browseFields={[
+          serviceTypeField,
+          {
+            key: 'service.displayName.keyword',
+            label: 'service.displayName.keyword',
+            value: [{ key: 'mysql_prod', label: 'mysql_prod' }],
+          },
+        ]}
+        onTreeSelect={onTreeSelect}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    expect(screen.getByTestId('browse-chip-serviceType')).toHaveTextContent(
+      'Mysql'
+    );
+
+    fireEvent.click(
+      screen.getByTestId('remove-browse-chip-service.displayName.keyword')
+    );
+
+    expect(onTreeSelect).toHaveBeenLastCalledWith({
+      browseFields: [serviceTypeField],
+    });
+
+    fireEvent.click(screen.getByTestId('remove-browse-chip-serviceType'));
+
+    expect(onTreeSelect).toHaveBeenLastCalledWith({ browseFields: [] });
   });
 
   it('shows query-panel empty text for an advanced-search-only filter', () => {
@@ -699,6 +754,55 @@ describe('ExploreV1', () => {
 
     expect(callbackV2).toHaveBeenCalledTimes(1);
     expect(callbackV1).not.toHaveBeenCalled();
+  });
+
+  it('turns a tree entity-type leaf into a lowercase Data Assets quick filter', () => {
+    const onTreeSelect = jest.fn();
+    const ExploreTreeMock = ExploreTree as jest.Mock;
+    const browseFields = [
+      {
+        key: 'databaseSchema.displayName',
+        label: 'databaseSchema.displayName',
+        value: [{ key: 'shopify', label: 'shopify' }],
+      },
+    ];
+
+    render(<ExploreV1 {...props} onTreeSelect={onTreeSelect} />, {
+      wrapper: Wrapper,
+    });
+
+    act(() => {
+      ExploreTreeMock.mock.calls[
+        ExploreTreeMock.mock.calls.length - 1
+      ][0].onTreeSelect({
+        browseFields,
+        typeField: {
+          key: 'entityType',
+          label: 'entityType',
+          value: [{ key: 'tableColumn', label: 'tableColumn' }],
+        },
+      });
+    });
+
+    // The Data Assets dropdown options are the lowercase entityType.keyword
+    // aggregation keys, so the camelCase tree bucket must be lowercased to
+    // show as checked there.
+    expect(onTreeSelect).toHaveBeenCalledWith({
+      browseFields,
+      quickFilter: {
+        query: {
+          bool: {
+            must: [
+              {
+                bool: {
+                  should: [{ term: { 'entityType.keyword': 'tablecolumn' } }],
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
   });
 
   it('disables export and shows alert when all matching assets exceed export limit', async () => {

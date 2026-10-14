@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import {
   TourContext,
@@ -68,6 +68,28 @@ jest.mock('../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(() => <div>ActivityThreadPanel</div>),
 }));
+
+jest.mock(
+  '../../Database/ColumnDetailPanel/ColumnDetailPanel.component',
+  () => ({
+    ColumnDetailPanel: ({
+      isOpen,
+      onClose,
+    }: {
+      isOpen: boolean;
+      onClose: () => void;
+    }) =>
+      isOpen ? (
+        <div data-testid="column-detail-panel">
+          <button
+            aria-label="close"
+            data-testid="close-button"
+            onClick={onClose}
+          />
+        </div>
+      ) : null,
+  })
+);
 
 // Test component that uses the context
 const TestComponent = () => {
@@ -209,6 +231,58 @@ describe('GenericProvider', () => {
     );
 
     expect(screen.getByTestId('context-data')).toBeInTheDocument();
+  });
+
+  it('puts the field FQN in the URL while its detail panel is open and drops it on close', async () => {
+    const field = {
+      name: 'name',
+      fullyQualifiedName: 'es_svc.customer_index.name',
+    };
+    const PanelTrigger = () => {
+      const { openColumnDetailPanel } = useGenericContext();
+      const { pathname } = useLocation();
+
+      return (
+        <>
+          <span data-testid="pathname">{pathname}</span>
+          <button onClick={() => openColumnDetailPanel(field as never)}>
+            Open Field
+          </button>
+        </>
+      );
+    };
+
+    render(
+      <MemoryRouter
+        initialEntries={['/searchIndex/es_svc.customer_index/schema']}>
+        <GenericProvider
+          {...defaultProps}
+          data={{
+            ...mockData,
+            fullyQualifiedName: 'es_svc.customer_index',
+            fields: [field],
+          }}
+          type={EntityType.SEARCH_INDEX}>
+          <PanelTrigger />
+        </GenericProvider>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Open Field'));
+
+    expect(
+      await screen.findByTestId('column-detail-panel')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('pathname')).toHaveTextContent(
+      '/searchIndex/es_svc.customer_index.name/schema'
+    );
+
+    fireEvent.click(screen.getByTestId('close-button'));
+
+    expect(screen.queryByTestId('column-detail-panel')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pathname')).toHaveTextContent(
+      /^\/searchIndex\/es_svc\.customer_index\/schema$/
+    );
   });
 
   it('should handle update widget height', () => {

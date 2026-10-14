@@ -504,11 +504,6 @@
       "count": 6
     }
   },
-  "playwright/e2e/Pages/ExploreTree.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 4
-    }
-  },
   "playwright/e2e/Pages/Glossary.spec.ts": {
     "om-playwright/justified-rule-disable": {
       "count": 1

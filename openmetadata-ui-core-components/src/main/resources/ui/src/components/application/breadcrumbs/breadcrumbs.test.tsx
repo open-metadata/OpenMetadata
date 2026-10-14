@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Breadcrumbs } from './breadcrumbs';
 
@@ -66,6 +66,26 @@ describe('Breadcrumbs', () => {
     expect(
       screen.getByText('Current').closest('[aria-current]')
     ).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('keeps the destination of a collapsed crumb in the hidden-crumbs menu', () => {
+    render(<Breadcrumbs items={items} maxItems={2} />);
+
+    expect(screen.getByRole('link', { name: 'Service' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Schema' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Database' })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show hidden breadcrumbs' })
+    );
+
+    expect(
+      within(screen.getByRole('menu')).getByRole('menuitemradio', {
+        name: 'Database',
+      })
+    ).toHaveAttribute('href', '/database');
   });
 
   describe('autoCollapse', () => {

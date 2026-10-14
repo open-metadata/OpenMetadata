@@ -241,6 +241,24 @@ describe('SearchClassBase', () => {
     ).toContainEqual(dataProductFilter);
   });
 
+  it('should expose the Data Assets, Domains, Owners, Tag, Tier, Service and Service Type quick filters on the explore landing index', () => {
+    const keys = searchClassBase
+      .getDropDownItems(SearchIndex.DATA_ASSET)
+      .map(({ key }) => key);
+
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        EntityFields.ENTITY_TYPE_KEYWORD,
+        EntityFields.DOMAINS,
+        EntityFields.OWNERS,
+        EntityFields.TAG,
+        EntityFields.TIER,
+        EntityFields.SERVICE,
+        EntityFields.SERVICE_TYPE,
+      ])
+    );
+  });
+
   it('should return empty dropdown item based if index not related to explore items', () => {
     const dropdownItem = searchClassBase.getDropDownItems(SearchIndex.DOMAIN);
 

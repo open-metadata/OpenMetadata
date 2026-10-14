@@ -14,21 +14,14 @@ import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
-import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
-import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
-import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
-import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
-  copyAndGetClipboardText,
-  testCopyLinkButton,
   updateDisplayNameForEntity,
-  validateCopiedLinkFormat,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
@@ -44,9 +37,6 @@ import { sidebarClick } from '../../utils/sidebar';
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
-  contextOptions: {
-    permissions: ['clipboard-read', 'clipboard-write'],
-  },
 });
 
 test.beforeEach(async ({ page }) => {
@@ -85,199 +75,6 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await table2.delete(apiContext);
 
     await afterAction();
-  });
-
-  test('Explore Tree', async ({ page }) => {
-    await test.step('Check the explore tree', async () => {
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.getByTestId('explore-tree-title-Databases')
-      ).toContainText('Databases');
-      await expect(
-        page.getByTestId('explore-tree-title-Dashboards')
-      ).toContainText('Dashboards');
-      await expect(
-        page.getByTestId('explore-tree-title-Pipelines')
-      ).toContainText('Pipelines');
-      await expect(page.getByTestId('explore-tree-title-Topics')).toContainText(
-        'Topics'
-      );
-      await expect(
-        page.getByTestId('explore-tree-title-ML Models')
-      ).toContainText('ML Models');
-      await expect(
-        page.getByTestId('explore-tree-title-Containers')
-      ).toContainText('Containers');
-      await expect(
-        page.getByTestId('explore-tree-title-Search Indexes')
-      ).toContainText('Search Indexes');
-      await expect(
-        page.getByTestId('explore-tree-title-Governance')
-      ).toContainText('Governance');
-
-      await page
-        .locator('div')
-        .filter({ hasText: /^Governance$/ })
-        .locator('svg')
-        .first()
-        .click();
-
-      await expect(
-        page.getByTestId('explore-tree-title-Glossaries')
-      ).toContainText('Glossaries');
-      await expect(page.getByTestId('explore-tree-title-Tags')).toContainText(
-        'Tags'
-      );
-    });
-
-    await test.step('Check the quick filters', async () => {
-      await expect(page.getByTestId('search-dropdown-Domains')).toContainText(
-        'Domains'
-      );
-      await expect(page.getByTestId('search-dropdown-Owners')).toContainText(
-        'Owners'
-      );
-      await expect(page.getByTestId('search-dropdown-Tag')).toContainText(
-        'Tag'
-      );
-
-      await page.getByTestId('search-dropdown-tier.tagFQN').click();
-
-      await expect(page.getByTestId('search-dropdown-Tier')).toContainText(
-        'Tier'
-      );
-      await expect(page.getByTestId('search-dropdown-Service')).toContainText(
-        'Service'
-      );
-      await expect(
-        page.getByTestId('search-dropdown-Service Type')
-      ).toContainText('Service Type');
-    });
-
-    await test.step('Click on tree item and check quick filter', async () => {
-      await page.getByTestId('explore-tree-title-Glossaries').click();
-
-      // Click on filter dropdown
-      await page.getByTestId('search-dropdown-Data Assets').click();
-      // assert on dropdown item visibility
-      await page
-        .getByRole('menuitemcheckbox', { name: 'glossaryterm' })
-        .waitFor();
-      // assert on checkbox state
-      await expect(page.getByTestId('glossaryterm')).toHaveAttribute(
-        'aria-checked',
-        'true'
-      );
-
-      await page.getByTestId('explore-tree-title-Tags').click();
-
-      // Click on filter dropdown
-      await page.getByTestId('search-dropdown-Data Assets').click();
-      // assert on dropdown item visibility
-      await page.getByRole('menuitemcheckbox', { name: 'tag' }).waitFor();
-      // assert on checkbox state
-      await expect(page.getByTestId('tag')).toHaveAttribute(
-        'aria-checked',
-        'true'
-      );
-    });
-
-    await test.step('Click on tree item metrics and check quick filter', async () => {
-      await page.getByTestId('explore-tree-title-Metrics').click();
-
-      // Click on filter dropdown
-      await page.getByTestId('search-dropdown-Data Assets').click();
-      // assert on dropdown item visibility
-      await page.getByRole('menuitemcheckbox', { name: 'metric' }).waitFor();
-      // assert on checkbox state
-      await expect(page.getByTestId('metric')).toHaveAttribute(
-        'aria-checked',
-        'true'
-      );
-    });
-  });
-
-  test('Verify Tags navigation via Governance tree and breadcrumb renders page correctly', async ({
-    page,
-  }) => {
-    await test.step('Expand Governance node in explore tree', async () => {
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.getByTestId('explore-tree-title-Governance')
-      ).toBeVisible();
-
-      await page
-        .getByTestId('explore-tree')
-        .getByRole('row')
-        .filter({
-          has: page.getByTestId('explore-tree-title-Governance'),
-        })
-        .getByTestId('tree-expand-btn')
-        .click();
-    });
-
-    await test.step('Click on Tags under Governance', async () => {
-      await expect(page.getByTestId('explore-tree-title-Tags')).toBeVisible();
-
-      const tagsSearchRes = page.waitForResponse(
-        '/api/v1/search/query?q=&index=dataAsset*'
-      );
-      await page.getByTestId('explore-tree-title-Tags').click();
-      const tagsSearchResponse = await tagsSearchRes;
-
-      expect(tagsSearchResponse.status()).toBe(200);
-    });
-
-    await test.step('Click parent classification breadcrumb from a tag result', async () => {
-      await waitForAllLoadersToDisappear(page);
-      // The result-card breadcrumb migrated to the core Breadcrumbs component,
-      // which renders plain anchors (no breadcrumb-link testid). The parent
-      // classification link is the plural /tags/ path (a tag entity is /tag/).
-      const classificationBreadcrumb = page
-        .getByTestId('search-container')
-        .locator('a[href*="/tags/"]')
-        .first();
-
-      await expect(classificationBreadcrumb).toBeVisible();
-      await expect(classificationBreadcrumb).toBeEnabled();
-
-      const classificationsRes = page.waitForResponse(
-        '/api/v1/classifications*'
-      );
-      const tagsTableRes = page.waitForResponse('/api/v1/tags*');
-
-      await classificationBreadcrumb.click();
-
-      const classificationResponse = await classificationsRes;
-      const tagsTableResponse = await tagsTableRes;
-
-      expect(classificationResponse.status()).toBe(200);
-      expect(tagsTableResponse.status()).toBe(200);
-    });
-
-    await test.step('Verify full Tags page renders with left panel, table and headers', async () => {
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.getByTestId('side-panel-classification')
-      ).not.toHaveCount(0);
-
-      await expect(page.getByTestId('tags-container')).toBeVisible();
-
-      await expect(page.getByTestId('table')).toBeVisible();
-
-      // Verify all table column headers are correct
-      await expect(page.locator('thead > tr > th')).toHaveText([
-        'Enabled',
-        'Tag',
-        'Display Name',
-        'Usage',
-        'Description',
-        'Actions',
-      ]);
-    });
   });
 
   test('Verify Database and Database Schema available in explore tree', async ({
@@ -384,8 +181,6 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 test.describe('Explore page', () => {
   let table: TableClass;
   let dashboard: DashboardClass;
-  let apiEndpoint: ApiEndpointClass;
-  let searchIndex: SearchIndexClass;
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -400,19 +195,9 @@ test.describe('Explore page', () => {
     dashboard = new DashboardClass({
       service: new DashboardServiceClass(`0-pw-dashboard-service-${uuid()}`),
     });
-    apiEndpoint = new ApiEndpointClass({
-      service: new ApiServiceClass(`0-pw-api-endpoint-service-${uuid()}`),
-    });
-    searchIndex = new SearchIndexClass({
-      service: new SearchIndexServiceClass(
-        `0-pw-search-index-service-${uuid()}`
-      ),
-    });
 
     await table.create(apiContext);
     await dashboard.create(apiContext);
-    await apiEndpoint.create(apiContext);
-    await searchIndex.create(apiContext);
 
     await afterAction();
   });
@@ -421,8 +206,6 @@ test.describe('Explore page', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await table.delete(apiContext);
     await dashboard.delete(apiContext);
-    await apiEndpoint.delete(apiContext);
-    await searchIndex.delete(apiContext);
 
     await afterAction();
   });
@@ -544,124 +327,6 @@ test.describe('Explore page', () => {
     await expect(chartsTab).toContainText('Charts');
   });
 
-  test('Copy field link button should copy the field URL to clipboard for SearchIndex', async ({
-    page,
-  }) => {
-    await searchIndex.visitEntityPage(page);
-
-    await waitForAllLoadersToDisappear(page);
-
-    await testCopyLinkButton({
-      page,
-      buttonTestId: 'copy-field-link-button',
-      containerTestId: 'search-index-fields-table',
-      rowName: searchIndex.children[0].name,
-      expectedUrlPath: '/searchIndex/',
-      entityFqn: searchIndex.entityResponseData?.['fullyQualifiedName'] ?? '',
-    });
-  });
-
-  test('Copy field link button should copy the field URL to clipboard for APIEndpoint', async ({
-    page,
-  }) => {
-    await apiEndpoint.visitEntityPage(page);
-
-    await waitForAllLoadersToDisappear(page);
-
-    await testCopyLinkButton({
-      page,
-      buttonTestId: 'copy-field-link-button',
-      containerTestId: 'schema-fields-table',
-      rowName: apiEndpoint.children[0].name,
-      expectedUrlPath: '/apiEndpoint/',
-      entityFqn: apiEndpoint.entityResponseData?.['fullyQualifiedName'] ?? '',
-    });
-  });
-
-  test('Copy field link should have valid URL format for SearchIndex', async ({
-    page,
-  }) => {
-    await searchIndex.visitEntityPage(page);
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(page.getByTestId('search-index-fields-table')).toBeVisible();
-
-    const copyButton = page.getByTestId('copy-field-link-button').first();
-    await expect(copyButton).toBeVisible();
-
-    const clipboardText = await copyAndGetClipboardText(page, copyButton);
-
-    const validationResult = validateCopiedLinkFormat({
-      clipboardText,
-      expectedEntityType: 'searchIndex',
-      entityFqn: searchIndex.entityResponseData?.['fullyQualifiedName'] ?? '',
-    });
-
-    expect(validationResult.isValid).toBe(true);
-    expect(validationResult.protocol).toMatch(/^https?:$/);
-    expect(validationResult.pathname).toContain('searchIndex');
-
-    // Visit the copied link to verify it opens the side panel
-    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
-
-    // Verify side panel is open
-    const sidePanel = page.locator('.column-detail-panel');
-    await expect(sidePanel).toBeVisible();
-
-    // Close side panel
-    await page.getByTestId('close-button').click();
-    await expect(sidePanel).not.toBeVisible();
-
-    // Verify URL does not contain the column part
-    await expect(page).toHaveURL(
-      new RegExp(
-        `/searchIndex/${searchIndex.entityResponseData?.['fullyQualifiedName']}$`
-      )
-    );
-  });
-
-  test('Copy field link should have valid URL format for APIEndpoint', async ({
-    page,
-  }) => {
-    await apiEndpoint.visitEntityPage(page);
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(page.getByTestId('schema-fields-table')).toBeVisible();
-
-    const copyButton = page.getByTestId('copy-field-link-button').first();
-    await expect(copyButton).toBeVisible();
-
-    const clipboardText = await copyAndGetClipboardText(page, copyButton);
-
-    const validationResult = validateCopiedLinkFormat({
-      clipboardText,
-      expectedEntityType: 'apiEndpoint',
-      entityFqn: apiEndpoint.entityResponseData?.['fullyQualifiedName'] ?? '',
-    });
-
-    expect(validationResult.isValid).toBe(true);
-    expect(validationResult.protocol).toMatch(/^https?:$/);
-    expect(validationResult.pathname).toContain('apiEndpoint');
-
-    // Visit the copied link to verify it opens the side panel
-    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
-
-    // Verify side panel is open
-    const sidePanel = page.locator('.column-detail-panel');
-    await expect(sidePanel).toBeVisible();
-
-    // Close side panel
-    await page.getByTestId('close-button').click();
-    await expect(sidePanel).not.toBeVisible();
-
-    // Verify URL does not contain the column part
-    await expect(page).toHaveURL(
-      new RegExp(
-        `/apiEndpoint/${apiEndpoint.entityResponseData?.['fullyQualifiedName']}$`
-      )
-    );
-  });
-
   test('Verify columns are visible in explore tree hierarchy', async ({
     page,
   }) => {
@@ -694,44 +359,5 @@ test.describe('Explore page', () => {
 
     const countBadge = columnsNode.locator('..').locator('.explore-node-count');
     await expect(countBadge).toContainText(String(columnCount));
-  });
-
-  test('Clicking Columns node filters search results to show only columns', async ({
-    page,
-  }) => {
-    const serviceName = table.serviceResponseData.name;
-    const dbName = table.databaseResponseData.name;
-    const schemaName = table.schemaResponseData.name;
-
-    await sidebarClick(page, SidebarItem.EXPLORE);
-
-    await expandServiceInExploreTree(page, serviceName);
-    await expandDatabaseInExploreTree(page, dbName);
-
-    const schemaRes = page.waitForResponse(
-      '/api/v1/search/query?q=&index=dataAsset*databaseSchema.displayName*'
-    );
-    await page
-      .getByTestId('explore-tree')
-      .getByRole('row')
-      .filter({ hasText: schemaName })
-      .getByTestId('tree-expand-btn')
-      .click();
-    await schemaRes;
-
-    const filterRes = page.waitForResponse('/api/v1/search/query?*');
-    await page.getByTestId('explore-tree-title-tableColumn').click();
-    await filterRes;
-
-    // Click on filter dropdown
-    await page.getByTestId('search-dropdown-Data Assets').click();
-    // The option renders a human-readable label ("Column") with the raw type as
-    // a tooltip, so assert on the stable testid instead of the menuitem name.
-    await page.getByTestId('tablecolumn').waitFor();
-    // assert on selection state
-    await expect(page.getByTestId('tablecolumn')).toHaveAttribute(
-      'aria-checked',
-      'true'
-    );
   });
 });

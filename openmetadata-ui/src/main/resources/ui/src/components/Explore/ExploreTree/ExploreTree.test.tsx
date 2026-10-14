@@ -189,33 +189,40 @@ describe('ExploreTree', () => {
     );
   });
 
-  it('keeps static governance leaves on the quick-filter path', async () => {
-    const onTreeSelect = jest.fn();
-    const onFieldValueSelect = jest.fn();
-    const { getByText, queryByTestId } = render(
-      <ExploreTree
-        onFieldValueSelect={onFieldValueSelect}
-        onTreeSelect={onTreeSelect}
-      />
-    );
+  it.each([
+    ['Glossaries', 'glossaryTerm'],
+    ['Tags', 'tag'],
+    ['Metrics', 'metric'],
+  ])(
+    'keeps the static governance leaf %s on the quick-filter path',
+    async (dataId, entityType) => {
+      const onTreeSelect = jest.fn();
+      const onFieldValueSelect = jest.fn();
+      const { getByTestId, getByText, queryByTestId } = render(
+        <ExploreTree
+          onFieldValueSelect={onFieldValueSelect}
+          onTreeSelect={onTreeSelect}
+        />
+      );
 
-    await waitFor(() => {
-      expect(queryByTestId('loader')).not.toBeInTheDocument();
-    });
+      await waitFor(() => {
+        expect(queryByTestId('loader')).not.toBeInTheDocument();
+      });
 
-    fireEvent.click(getExpandButton(getByText('label.governance')));
+      fireEvent.click(getExpandButton(getByText('label.governance')));
 
-    fireEvent.click(getByText('label.glossary-plural'));
+      fireEvent.click(getByTestId(`explore-tree-title-${dataId}`));
 
-    expect(onTreeSelect).not.toHaveBeenCalled();
-    expect(onFieldValueSelect).toHaveBeenCalledTimes(1);
+      expect(onTreeSelect).not.toHaveBeenCalled();
+      expect(onFieldValueSelect).toHaveBeenCalledTimes(1);
 
-    const fields = onFieldValueSelect.mock.calls[0][0];
+      const fields = onFieldValueSelect.mock.calls[0][0];
 
-    expect(fields).toHaveLength(1);
-    expect(fields[0].key).toBe('entityType');
-    expect(fields[0].value[0].key).toBe('glossaryTerm');
-  });
+      expect(fields).toHaveLength(1);
+      expect(fields[0].key).toBe('entityType');
+      expect(fields[0].value[0].key).toBe(entityType);
+    }
+  );
 
   it('re-applies a leaf filter when the already-selected leaf is clicked again', async () => {
     const onFieldValueSelect = jest.fn();
@@ -680,6 +687,76 @@ describe('ExploreTree', () => {
     expect(aggregateSpy).toHaveBeenCalledTimes(2);
   });
 
+  it('reports a Columns leaf under a schema as the browse path plus a Type filter', async () => {
+    jest.spyOn(searchAPI, 'searchQuery').mockResolvedValue({
+      aggregations: {
+        entityType: {
+          buckets: [
+            { key: 'table', doc_count: 50 },
+            { key: 'tableColumn', doc_count: 7 },
+          ],
+        },
+        serviceType: { buckets: [{ key: 'BigQuery', doc_count: 57 }] },
+        'database.displayName': {
+          buckets: [{ key: 'ecommerce_db', doc_count: 57 }],
+        },
+        'databaseSchema.displayName': {
+          buckets: [{ key: 'shopify', doc_count: 57 }],
+        },
+      },
+      hits: { hits: [], total: { value: 0 } },
+    } as never);
+
+    const onTreeSelect = jest.fn();
+    const onFieldValueSelect = jest.fn();
+    const { findByTestId, findByText, getByTestId, queryByTestId } = render(
+      <ExploreTree
+        onFieldValueSelect={onFieldValueSelect}
+        onTreeSelect={onTreeSelect}
+      />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    await drillToServiceNode(findByText);
+    fireEvent.click(
+      getExpandButton(getByTestId('explore-tree-title-bigquery_prod'))
+    );
+    fireEvent.click(
+      getExpandButton(await findByTestId('explore-tree-title-ecommerce_db'))
+    );
+    fireEvent.click(
+      getExpandButton(await findByTestId('explore-tree-title-shopify'))
+    );
+
+    const columnsNode = await findByTestId('explore-tree-title-tableColumn');
+
+    expect(getTreeRow(columnsNode)).toHaveTextContent('7');
+
+    fireEvent.click(columnsNode);
+
+    expect(onFieldValueSelect).not.toHaveBeenCalled();
+    expect(onTreeSelect).toHaveBeenCalledTimes(1);
+
+    const { browseFields, typeField } = onTreeSelect.mock.calls[0][0];
+
+    expect(
+      browseFields.map((field: { key: string; value: { key: string }[] }) => [
+        field.key,
+        field.value[0].key,
+      ])
+    ).toEqual([
+      ['serviceType', 'BigQuery'],
+      ['service.displayName.keyword', 'bigquery_prod'],
+      ['database.displayName', 'ecommerce_db'],
+      ['databaseSchema.displayName', 'shopify'],
+    ]);
+    expect(typeField.key).toBe('entityType');
+    expect(typeField.value[0].key).toBe('tableColumn');
+  });
+
   it('keeps the expanded subtree mounted when a node is selected (browse)', async () => {
     jest
       .spyOn(searchAPI, 'searchQuery')
@@ -899,6 +976,207 @@ describe('ExploreTree', () => {
 
     await act(async () => {
       releaseRefresh?.();
+    });
+  });
+});
+
+describe('ExploreTree browse drill-down', () => {
+  const hierarchyResponse = (
+    entityTypeBuckets: { key: string; doc_count: number }[]
+  ) =>
+    ({
+      aggregations: {
+        entityType: { buckets: entityTypeBuckets },
+        serviceType: { buckets: [{ key: 'BigQuery', doc_count: 45 }] },
+        'database.displayName': {
+          buckets: [{ key: 'ecommerce_db', doc_count: 45 }],
+        },
+        'databaseSchema.displayName': {
+          buckets: [{ key: 'shopify', doc_count: 45 }],
+        },
+      },
+      hits: { hits: [], total: { value: 0 } },
+    } as never);
+
+  const tableAndColumnBuckets = [
+    { key: 'table', doc_count: 5 },
+    { key: 'tableColumn', doc_count: 40 },
+  ];
+
+  const setBrowseUrl = (
+    browseFields: unknown,
+    quickFilter?: Record<string, unknown>
+  ) =>
+    window.history.pushState(
+      {},
+      '',
+      `/explore?browsePath=${encodeURIComponent(JSON.stringify(browseFields))}${
+        quickFilter
+          ? `&quickFilter=${encodeURIComponent(JSON.stringify(quickFilter))}`
+          : ''
+      }`
+    );
+
+  const renderDrilledToSchema = async (selectedEntityTypes: string[] = []) => {
+    jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(hierarchyResponse(tableAndColumnBuckets));
+    jest
+      .spyOn(miscAPI, 'postAggregateFieldOptions')
+      .mockResolvedValue(
+        buildFieldAggregationResponse('service.displayName.keyword', [
+          { key: 'bigquery_prod', doc_count: 45 },
+        ])
+      );
+    const onTreeSelect = jest.fn();
+    // A fresh element per render: re-rendering the same element instance lets
+    // React bail out, so the tree would never re-read the URL.
+    const tree = () => (
+      <ExploreTree
+        selectedEntityTypes={selectedEntityTypes}
+        onFieldValueSelect={jest.fn()}
+        onTreeSelect={onTreeSelect}
+      />
+    );
+    const utils = render(tree());
+
+    await waitFor(() => {
+      expect(utils.queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    for (const level of ['BigQuery', 'bigquery_prod', 'ecommerce_db']) {
+      fireEvent.click(
+        getExpandButton(await utils.findByTestId(`explore-tree-title-${level}`))
+      );
+    }
+    fireEvent.click(
+      getExpandButton(await utils.findByTestId('explore-tree-title-shopify'))
+    );
+    await utils.findByTestId('explore-tree-title-table');
+
+    return {
+      ...utils,
+      onTreeSelect,
+      rerenderTree: () => utils.rerender(tree()),
+    };
+  };
+
+  it('renders the schema entity-type leaves with counts, hiding types outside the Data Assets filter', async () => {
+    const unfiltered = await renderDrilledToSchema();
+
+    expect(
+      getTreeRow(unfiltered.getByTestId('explore-tree-title-table'))
+    ).toHaveTextContent('5');
+    expect(
+      getTreeRow(unfiltered.getByTestId('explore-tree-title-tableColumn'))
+    ).toHaveTextContent('40');
+
+    unfiltered.unmount();
+
+    const tableOnly = await renderDrilledToSchema(['table']);
+
+    expect(
+      tableOnly.getByTestId('explore-tree-title-table')
+    ).toBeInTheDocument();
+    expect(
+      tableOnly.queryByTestId('explore-tree-title-tableColumn')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the drilled path expanded and the schema highlighted after selecting it', async () => {
+    const { getByTestId, onTreeSelect, rerenderTree } =
+      await renderDrilledToSchema();
+
+    fireEvent.click(getByTestId('explore-tree-title-shopify'));
+
+    const { browseFields } = onTreeSelect.mock.calls[0][0];
+
+    expect(browseFields).toHaveLength(4);
+
+    setBrowseUrl(browseFields);
+    rerenderTree();
+
+    await waitFor(() => {
+      expect(
+        getTreeRow(getByTestId('explore-tree-title-shopify'))
+      ).toHaveAttribute('aria-selected', 'true');
+    });
+
+    for (const level of ['bigquery_prod', 'ecommerce_db', 'table']) {
+      expect(getByTestId(`explore-tree-title-${level}`)).toBeInTheDocument();
+    }
+  });
+
+  it('highlights the selected Tables leaf instead of its parent schema', async () => {
+    const { getByTestId, onTreeSelect, rerenderTree } =
+      await renderDrilledToSchema();
+
+    fireEvent.click(getByTestId('explore-tree-title-table'));
+
+    const { browseFields, typeField } = onTreeSelect.mock.calls[0][0];
+
+    expect(typeField.value[0].key).toBe('table');
+
+    setBrowseUrl(browseFields, {
+      query: {
+        bool: { must: [{ term: { 'entityType.keyword': 'table' } }] },
+      },
+    });
+    rerenderTree();
+
+    await waitFor(() => {
+      expect(
+        getTreeRow(getByTestId('explore-tree-title-table'))
+      ).toHaveAttribute('aria-selected', 'true');
+    });
+
+    expect(
+      getTreeRow(getByTestId('explore-tree-title-shopify'))
+    ).not.toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('re-enables unrelated roots once the service-type browse is cleared', async () => {
+    jest.spyOn(searchAPI, 'searchQuery').mockImplementation(({ queryFilter }) =>
+      Promise.resolve(
+        buildAggregationResponse(
+          mustLength({ queryFilter }) > 0
+            ? [{ key: 'table', doc_count: 5 }]
+            : [
+                { key: 'table', doc_count: 50 },
+                { key: 'dashboard', doc_count: 10 },
+              ]
+        )
+      )
+    );
+    setBrowseUrl([
+      {
+        key: 'serviceType',
+        label: 'serviceType',
+        value: [{ key: 'BigQuery', label: 'BigQuery' }],
+      },
+    ]);
+    const { getByText, queryByTestId, rerender } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    expect(getTreeRow(getByText('label.dashboard-plural'))).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+
+    window.history.pushState({}, '', '/explore');
+    rerender(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(
+        getTreeRow(getByText('label.dashboard-plural'))
+      ).not.toHaveAttribute('aria-disabled', 'true');
     });
   });
 });
