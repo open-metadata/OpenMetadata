@@ -19,11 +19,11 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 
+import { Star01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Star01 } from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-start-filled-github.svg';
 import {
   STAR_OMD_USER,

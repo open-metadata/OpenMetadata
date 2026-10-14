@@ -12,6 +12,7 @@
  */
 
 import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { ExpandRight } from '@openmetadata/ui-core-components/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AxiosError } from 'axios';
@@ -21,7 +22,6 @@ import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExpandIcon } from '../../assets/svg/ic-expand-right.svg';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -670,7 +670,7 @@ function SearchIndexDetailsPage() {
                     <ButtonUtility
                       className={isTabExpanded ? 'rotate-180' : ''}
                       data-testid="tab-expand-button"
-                      icon={ExpandIcon}
+                      icon={ExpandRight}
                       size="lg"
                       tooltip={
                         isTabExpanded ? t('label.collapse') : t('label.expand')

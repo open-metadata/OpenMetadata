@@ -21,6 +21,7 @@ import {
   Announcement02,
   Download01,
   Edit01,
+  ExpandRight,
   RefreshCcw01,
   Trash01,
   Upload01,
@@ -31,7 +32,6 @@ import { toLower, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ROUTES } from '../../../constants/constants';
 import { CONTRACT_RESULT_BUTTON_CLASS } from '../../../constants/DataContract.constants';
@@ -1087,7 +1087,7 @@ const DataProductsDetailsPage = ({
                       <ButtonUtility
                         className={isTabExpanded ? 'rotate-180' : ''}
                         data-testid="tab-expand-button"
-                        icon={ExpandIcon}
+                        icon={ExpandRight}
                         size="lg"
                         tooltip={
                           isTabExpanded

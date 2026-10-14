@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { ButtonUtility, Card } from '@openmetadata/ui-core-components';
+import { ChevronUp } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
 
 interface ExpandableCardProps {
   children: ReactNode;
@@ -72,7 +72,7 @@ const ExpandableCard = ({
               'tw:rotate-180': !isExpanded,
             })}
             data-testid="expand-collapse-icon"
-            icon={CardExpandCollapseIcon}
+            icon={ChevronUp}
             isDisabled={isExpandDisabled}
             size="lg"
             tooltip={isExpanded ? t('label.collapse') : t('label.expand')}

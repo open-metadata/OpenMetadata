@@ -25,8 +25,6 @@ import {
 import classNames from 'classnames';
 import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ListConversationIcon } from '../../../assets/svg/action-icons/list-conversation.svg';
-import { ReactComponent as RequestUpdateIcon } from '../../../assets/svg/action-icons/request-update.svg';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useFqn } from '../../../hooks/useFqn';
@@ -152,14 +150,7 @@ const Description = ({
         ? handleUpdateDescription
         : handleRequestDescription;
 
-      button = isWidgetHeader ? (
-        <ButtonUtility
-          data-testid="request-description"
-          icon={RequestUpdateIcon}
-          tooltip={requestLabel}
-          onClick={handleRequest}
-        />
-      ) : (
+      button = (
         <ButtonUtility
           data-testid="request-description"
           icon={MessagePlusSquare}
@@ -175,7 +166,6 @@ const Description = ({
     entityType,
     handleUpdateDescription,
     handleRequestDescription,
-    isWidgetHeader,
   ]);
 
   const editDescriptionLabel = t('label.edit-entity', {
@@ -199,7 +189,7 @@ const Description = ({
     const commentButton = (
       <ButtonUtility
         data-testid="description-thread"
-        icon={isWidgetHeader ? ListConversationIcon : MessageChatSquare}
+        icon={MessageChatSquare}
         tooltip={threadLabel}
         onClick={openThread}
       />
@@ -214,7 +204,6 @@ const Description = ({
     );
   }, [
     editDescriptionLabel,
-    isWidgetHeader,
     isReadOnly,
     isVersionView,
     hasEditAccess,

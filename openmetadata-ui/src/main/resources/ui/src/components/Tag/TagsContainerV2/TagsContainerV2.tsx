@@ -12,13 +12,16 @@
  */
 
 import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
-import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  MessageChatSquare,
+  MessagePlusSquare,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isEqual } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ListConversationIcon } from '../../../assets/svg/action-icons/list-conversation.svg';
-import { ReactComponent as RequestUpdateIcon } from '../../../assets/svg/action-icons/request-update.svg';
 import { LIST_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { LabelType } from '../../../generated/entity/data/table';
@@ -310,7 +313,7 @@ const TagsContainerV2 = ({
     return (
       <ButtonUtility
         data-testid="request-entity-tags"
-        icon={RequestUpdateIcon}
+        icon={MessagePlusSquare}
         tooltip={
           hasTags
             ? t('label.update-request-tag-plural')
@@ -325,7 +328,7 @@ const TagsContainerV2 = ({
     () => (
       <ButtonUtility
         data-testid="tag-thread"
-        icon={ListConversationIcon}
+        icon={MessageChatSquare}
         tooltip={t('label.list-entity', {
           entity: t('label.conversation'),
         })}

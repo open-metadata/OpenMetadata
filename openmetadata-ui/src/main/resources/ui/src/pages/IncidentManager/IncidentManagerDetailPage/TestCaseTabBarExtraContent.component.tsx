@@ -12,8 +12,8 @@
  */
 
 import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { ExpandRight } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import type { UseTestCaseDetailPageResult } from './useTestCaseDetailPage';
 
 interface TestCaseTabBarExtraContentProps {
@@ -37,7 +37,7 @@ const TestCaseTabBarExtraContent = ({
     <ButtonUtility
       className={isTabExpanded ? 'rotate-180' : ''}
       data-testid="tab-expand-button"
-      icon={ExpandIcon}
+      icon={ExpandRight}
       size="lg"
       tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
       onClick={toggleTabExpanded}

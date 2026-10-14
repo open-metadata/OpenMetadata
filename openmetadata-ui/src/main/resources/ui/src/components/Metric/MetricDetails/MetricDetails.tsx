@@ -17,12 +17,12 @@ import {
   ButtonUtility,
   Tabs,
 } from '@openmetadata/ui-core-components';
+import { ExpandRight } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { ROUTES } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -406,7 +406,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                     <ButtonUtility
                       className={isTabExpanded ? 'rotate-180' : ''}
                       data-testid="tab-expand-button"
-                      icon={ExpandIcon}
+                      icon={ExpandRight}
                       size="lg"
                       tooltip={
                         isTabExpanded ? t('label.collapse') : t('label.expand')

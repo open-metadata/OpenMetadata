@@ -16,7 +16,11 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01, RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  ExpandRight,
+  RefreshCcw01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
@@ -24,7 +28,6 @@ import { ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
-import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -365,7 +368,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
       <ButtonUtility
         className={isTabExpanded ? 'rotate-180' : ''}
         data-testid="tab-expand-button"
-        icon={ExpandIcon}
+        icon={ExpandRight}
         size="lg"
         tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
         onClick={toggleTabExpanded}

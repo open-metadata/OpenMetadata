@@ -12,13 +12,13 @@
  */
 
 import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { ExpandRight } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
@@ -390,7 +390,7 @@ const PipelineDetails = ({
                     <ButtonUtility
                       className={isTabExpanded ? 'rotate-180' : ''}
                       data-testid="tab-expand-button"
-                      icon={ExpandIcon}
+                      icon={ExpandRight}
                       size="lg"
                       tooltip={
                         isTabExpanded ? t('label.collapse') : t('label.expand')

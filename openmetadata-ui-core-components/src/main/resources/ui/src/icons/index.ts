@@ -189,6 +189,7 @@ export { EntityReferenceListType } from './EntityReferenceListType';
 export { EntityReferenceType } from './EntityReferenceType';
 export { EnumType } from './EnumType';
 export { ExclamationCircleFilled } from './ExclamationCircleFilled';
+export { ExpandRight } from './ExpandRight';
 export { Expand01 } from './Expand01';
 export { Expand05 } from './Expand05';
 export { EyeFilled } from './EyeFilled';

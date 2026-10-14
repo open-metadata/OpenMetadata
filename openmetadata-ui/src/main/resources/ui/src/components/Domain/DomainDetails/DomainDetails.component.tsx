@@ -22,6 +22,7 @@ import {
   Announcement02,
   ChevronDown,
   Edit01,
+  ExpandRight,
   Trash01,
   Version,
 } from '@openmetadata/ui-core-components/icons';
@@ -32,7 +33,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
@@ -1148,7 +1148,7 @@ const DomainDetails = ({
                       <ButtonUtility
                         className={isTabExpanded ? 'rotate-180' : ''}
                         data-testid="tab-expand-button"
-                        icon={ExpandIcon}
+                        icon={ExpandRight}
                         size="lg"
                         tooltip={
                           isTabExpanded

@@ -17,6 +17,7 @@ import {
   Skeleton,
   Tabs,
 } from '@openmetadata/ui-core-components';
+import { ExpandRight } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -30,7 +31,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExpandIcon } from '../../assets/svg/ic-expand-right.svg';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PageLoader } from '../../components/common/Loader/Loader';
@@ -602,7 +602,7 @@ const APICollectionPage: FunctionComponent = () => {
         <ButtonUtility
           className={isTabExpanded ? 'rotate-180' : ''}
           data-testid="tab-expand-button"
-          icon={ExpandIcon}
+          icon={ExpandRight}
           size="lg"
           tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
           onClick={toggleTabExpanded}
