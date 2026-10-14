@@ -19,11 +19,10 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isArray } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import {
   Effect,
   EventSubscription,
@@ -84,7 +83,7 @@ export const AlertDetailsComponent = ({
             {allowDelete && (
               <Button
                 color="secondary"
-                iconLeading={IconDelete}
+                iconLeading={Trash01}
                 onClick={onDelete}>
                 {t('label.delete')}
               </Button>

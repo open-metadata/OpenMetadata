@@ -19,11 +19,14 @@ import {
   Skeleton,
   Tabs,
 } from '@openmetadata/ui-core-components';
-import { Edit01, RefreshCcw02 } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  RefreshCcw02,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Description from '../../../components/common/EntityDescription/Description';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -143,7 +146,7 @@ function AlertDetailsContent({
                     data-testid="sync-button"
                     icon={RefreshCcw02}
                     isDisabled={isSyncing}
-                    size="xl"
+                    size="lg"
                     tooltip={t('label.sync-alert-offset', {
                       entity: t('label.alert'),
                     })}
@@ -154,7 +157,7 @@ function AlertDetailsContent({
                       <ButtonUtility
                         data-testid="edit-button"
                         icon={Edit01}
-                        size="xl"
+                        size="lg"
                         tooltip={t('label.edit-entity', {
                           entity: t('label.alert'),
                         })}
@@ -165,8 +168,8 @@ function AlertDetailsContent({
                     alertDetails?.provider !== ProviderType.System && (
                       <ButtonUtility
                         data-testid="delete-button"
-                        icon={DeleteIcon}
-                        size="xl"
+                        icon={Trash01}
+                        size="lg"
                         tooltip={t('label.delete-entity', {
                           entity: t('label.alert'),
                         })}

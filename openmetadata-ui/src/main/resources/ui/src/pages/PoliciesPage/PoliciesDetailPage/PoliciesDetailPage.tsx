@@ -22,14 +22,17 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { DotsVertical, Edit01 } from '@openmetadata/ui-core-components/icons';
+import {
+  DotsVertical,
+  Edit01,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PolicyIcon } from '../../../assets/svg/policies-colored.svg';
 import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -306,7 +309,7 @@ const PoliciesDetailPage = () => {
                 </Typography>
               </Dropdown.Item>
               <Dropdown.Item
-                icon={IconDelete}
+                icon={Trash01}
                 id="delete-button"
                 textValue={t('label.delete')}>
                 <Typography data-testid="delete-rule">

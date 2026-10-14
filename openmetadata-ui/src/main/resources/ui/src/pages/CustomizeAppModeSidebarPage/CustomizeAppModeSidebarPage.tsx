@@ -384,7 +384,7 @@ const CustomizeAppModeSidebarPage = () => {
                     data-testid="cancel-button"
                     icon={XClose}
                     isDisabled={isSaving}
-                    size="xl"
+                    size="lg"
                     tooltip={t('label.cancel')}
                     onClick={handleCancel}
                   />

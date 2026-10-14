@@ -355,7 +355,7 @@ const ContractDetail: React.FC<{
                 <ButtonUtility
                   data-testid="manage-contract-actions"
                   icon={SettingIcon}
-                  size="xl"
+                  size="lg"
                   tooltip={t('label.manage-entity', {
                     entity: t('label.contract'),
                   })}
@@ -418,7 +418,7 @@ const ContractDetail: React.FC<{
                           <Box align="center" gap={2}>
                             <Trash01
                               aria-hidden="true"
-                              className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+                              className="tw:size-5 tw:shrink-0 tw:text-fg-error-primary"
                             />
                             <Typography
                               ellipsis
@@ -604,7 +604,7 @@ const ContractDetail: React.FC<{
                   <Box align="center" gap={2}>
                     <ImportIconContract
                       aria-hidden="true"
-                      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                      className="tw:size-5 tw:shrink-0 tw:text-quaternary"
                     />
                     <Typography
                       ellipsis
@@ -620,7 +620,7 @@ const ContractDetail: React.FC<{
                   <Box align="center" gap={2}>
                     <ImportIconContract
                       aria-hidden="true"
-                      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                      className="tw:size-5 tw:shrink-0 tw:text-quaternary"
                     />
                     <Typography
                       ellipsis

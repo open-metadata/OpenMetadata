@@ -229,7 +229,7 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
               // Like the header buttons, the menu waits out a running
               // transition, so no second one can start.
               isDisabled={loadingTransitionId !== undefined}
-              size="xl"
+              size="lg"
               tooltip={t('label.more-action-plural')}
             />
             <Dropdown.Popover className="tw:w-max tw:min-w-40">

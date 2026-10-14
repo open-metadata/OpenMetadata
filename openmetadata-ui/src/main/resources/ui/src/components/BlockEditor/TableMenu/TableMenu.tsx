@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import type { Editor } from '@tiptap/react';
 import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
-import { ReactComponent as IconDeleteTable } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconAddColumnAfter } from '../../../assets/svg/ic-format-add-column-after.svg';
 import { ReactComponent as IconAddRowAfter } from '../../../assets/svg/ic-format-add-row-after.svg';
 import { ReactComponent as IconDeleteColumn } from '../../../assets/svg/ic-format-delete-column.svg';
@@ -193,7 +193,7 @@ const TableMenu = (props: TableMenuProps) => {
 
         <ButtonUtility
           data-testid="Delete table"
-          icon={IconDeleteTable}
+          icon={Trash01}
           size="md"
           tooltip="Delete table"
           onClick={() => {

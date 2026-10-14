@@ -28,7 +28,7 @@ import {
   Key01,
   Plus,
   RefreshCcw02,
-  Trash02,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, {
@@ -255,7 +255,7 @@ const AccessTokenDetails = ({
       <Button
         color="secondary-destructive"
         data-testid="revoke-token"
-        iconLeading={Trash02}
+        iconLeading={Trash01}
         isLoading={isLoading}
         size="sm"
         onClick={handleRevoke}>

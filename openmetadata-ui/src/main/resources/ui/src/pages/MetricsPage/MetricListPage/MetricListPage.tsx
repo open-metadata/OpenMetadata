@@ -1209,7 +1209,6 @@ const MetricListPage = () => {
           onOpenChange={setIsMetricActionsOpen}>
           <Dropdown.DotsButton
             aria-label={t('label.action-plural')}
-            className="tw:flex tw:size-9 tw:items-center tw:justify-center"
             data-testid="metric-actions"
           />
           <Dropdown.Popover>

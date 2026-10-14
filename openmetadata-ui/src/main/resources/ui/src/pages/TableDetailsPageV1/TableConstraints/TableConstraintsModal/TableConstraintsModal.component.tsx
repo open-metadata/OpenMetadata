@@ -18,13 +18,12 @@ import {
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Columns03, Plus } from '@openmetadata/ui-core-components/icons';
+import { Columns03, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { Form, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { DrawerPopupContainerProvider } from '../../../../components/common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import Loader from '../../../../components/common/Loader/Loader';
 import { PAGE_SIZE } from '../../../../constants/constants';
@@ -563,7 +562,7 @@ const TableConstraintsModal = ({
                       <ButtonUtility
                         className="tw:absolute tw:top-2.5 tw:right-3"
                         data-testid={`${key}-delete-constraint-button`}
-                        icon={IconDelete}
+                        icon={Trash01}
                         size="md"
                         tooltip={t('label.delete-entity', {
                           entity: t('label.constraint'),

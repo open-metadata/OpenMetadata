@@ -21,6 +21,7 @@ import {
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { FilterLines, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isObject } from 'lodash';
@@ -36,8 +37,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EmptyAssetIcon } from '../../../../assets/svg/action-icons/empty-asset.svg';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
@@ -298,7 +297,7 @@ const AssetsFilterBar = ({
         <Dropdown.Root>
           <ButtonUtility
             data-testid="asset-filter-button"
-            icon={FilterIcon}
+            icon={FilterLines}
             size="md"
             tooltip={t('label.filter-plural')}
           />
@@ -731,7 +730,7 @@ const AssetsTabs = forwardRef(
             description={t('message.delete-asset-from-entity-type', {
               entityType: entityTypeString,
             })}
-            icon={DeleteIcon}
+            icon={Trash01}
             id="delete-button"
             name={t('label.delete')}
           />

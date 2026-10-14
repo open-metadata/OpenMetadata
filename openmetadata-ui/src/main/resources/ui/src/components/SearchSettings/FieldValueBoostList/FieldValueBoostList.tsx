@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import {
   fieldValueBoostAdditionalColumns,
   fieldValueBoostBaseColumns,
@@ -105,7 +104,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
             />
             <ButtonUtility
               data-testid="delete-field-value-boost-btn"
-              icon={Delete}
+              icon={Trash01}
               size="md"
               tooltip={t('label.delete-entity', {
                 entity: t('label.field-value-boost'),

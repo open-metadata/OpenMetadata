@@ -29,6 +29,7 @@ import {
   ChevronRight,
   Eye,
   Share07,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -40,7 +41,6 @@ import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/cop
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
 import { ReactComponent as DownloadIcon } from '../../../assets/svg/action-icons/download.svg';
 import { ReactComponent as MoveFolderIcon } from '../../../assets/svg/action-icons/move-folder.svg';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
@@ -129,7 +129,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                 <Box align="center" gap={2}>
                   <FolderIcon
                     aria-hidden="true"
-                    className="tw:size-4 tw:shrink-0"
+                    className="tw:size-5 tw:shrink-0 tw:text-quaternary"
                   />
                   <div className="tw:max-w-40">
                     <Typography ellipsis size="text-sm">
@@ -140,8 +140,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                 {isCurrent && (
                   <Check
                     aria-hidden="true"
-                    className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary tw:ml-2"
-                    strokeWidth={2}
+                    className="tw:ml-2 tw:size-4 tw:shrink-0 tw:p-[0.5px] tw:text-utility-brand-600"
                   />
                 )}
               </Box>
@@ -317,11 +316,7 @@ const FileActions: FC<FileActionsProps> = ({
                     {() => (
                       <Box align="center" justify="between">
                         <Box align="center" gap={2}>
-                          <Share07
-                            className="tw:text-secondary"
-                            height={20}
-                            width={20}
-                          />
+                          <Share07 className="tw:size-5 tw:shrink-0 tw:text-quaternary" />
                           <Typography
                             ellipsis
                             className="tw:grow tw:text-secondary">
@@ -330,8 +325,7 @@ const FileActions: FC<FileActionsProps> = ({
                         </Box>
                         <ChevronRight
                           aria-hidden="true"
-                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
-                          strokeWidth={2}
+                          className="tw:size-4 tw:shrink-0 tw:p-[0.5px] tw:text-quaternary"
                         />
                       </Box>
                     )}
@@ -384,11 +378,7 @@ const FileActions: FC<FileActionsProps> = ({
                     {() => (
                       <Box align="center" justify="between">
                         <Box align="center" gap={2}>
-                          <MoveFolderIcon
-                            className="tw:text-secondary"
-                            height={20}
-                            width={20}
-                          />
+                          <MoveFolderIcon className="tw:size-5 tw:shrink-0 tw:text-quaternary" />
                           <Typography
                             ellipsis
                             className="tw:grow tw:text-secondary">
@@ -397,8 +387,7 @@ const FileActions: FC<FileActionsProps> = ({
                         </Box>
                         <ChevronRight
                           aria-hidden="true"
-                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
-                          strokeWidth={2}
+                          className="tw:size-4 tw:shrink-0 tw:p-[0.5px] tw:text-quaternary"
                         />
                       </Box>
                     )}
@@ -422,11 +411,9 @@ const FileActions: FC<FileActionsProps> = ({
               {canDelete && (
                 <Dropdown.Item data-testid="delete-btn" id="delete">
                   <Box align="center" gap={2}>
-                    <TrashIcon
+                    <Trash01
                       aria-hidden="true"
-                      className="tw:shrink-0 tw:text-error-primary"
-                      height={20}
-                      width={20}
+                      className="tw:size-5 tw:shrink-0 tw:text-fg-error-primary"
                     />
                     <Typography
                       ellipsis
@@ -563,7 +550,7 @@ const ListHeader: FC<ListHeaderProps> = ({
             className="tw:py-1.5"
             color="tertiary-destructive"
             data-testid="bulk-delete-btn"
-            iconLeading={TrashIcon}
+            iconLeading={Trash01}
             size="sm"
             onClick={onBulkDelete}>
             {t('label.delete')}

@@ -27,6 +27,7 @@ import {
 import {
   Edit01,
   Plus as PlusIcon,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
 import classNames from 'classnames';
@@ -34,7 +35,6 @@ import { isEmpty, isNull } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
@@ -175,7 +175,7 @@ export const ContractSemanticFormTab: React.FC<{
         <ButtonUtility
           color="tertiary-destructive"
           data-testid={`delete-semantic-${index}`}
-          icon={DeleteIcon}
+          icon={Trash01}
           size="md"
           tooltip={t('label.delete')}
           onClick={() => handleDeleteSemantic(index)}

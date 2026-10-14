@@ -12,12 +12,11 @@
  */
 import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { Fragment, FunctionComponent, MouseEvent } from 'react';
-import { ReactComponent as DeleteIcon } from '../../../../../assets/svg/ic-delete.svg';
 import { t } from '../../../../../utils/i18next/LocalUtil';
 
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
@@ -54,7 +53,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
           {element.hasRemove && (
             <ButtonUtility
               className="tw:ml-3"
-              icon={DeleteIcon}
+              icon={Trash01}
               size="md"
               tooltip={t('label.remove')}
               onClick={(event: MouseEvent<HTMLButtonElement>) => {

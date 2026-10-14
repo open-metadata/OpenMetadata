@@ -13,14 +13,14 @@
 
 import { Typography } from '@openmetadata/ui-core-components';
 import {
+  Download01,
   Edit01,
-  Upload01 as ImportIcon,
+  Upload01,
 } from '@openmetadata/ui-core-components/icons';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { lowerCase } from 'lodash';
 import type { ReactElement, ReactNode } from 'react';
 import { NavigateFunction } from 'react-router-dom';
-import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageMenuItem } from '../components/common/ManageMenuButton/ManageMenuButton.component';
 import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
@@ -75,7 +75,7 @@ export const getTestCaseManageMenuItems = (
       ? [
           {
             key: 'import-button',
-            icon: ImportIcon,
+            icon: Upload01,
             title: t('label.import'),
             description: t('message.import-entity-help', {
               entity: t('label.test-case-lowercase-plural'),
@@ -93,7 +93,7 @@ export const getTestCaseManageMenuItems = (
       ? [
           {
             key: 'export-button',
-            icon: ExportIcon,
+            icon: Download01,
             title: t('label.export'),
             description: t('message.export-entity-help', {
               entity: t('label.test-case-lowercase-plural'),

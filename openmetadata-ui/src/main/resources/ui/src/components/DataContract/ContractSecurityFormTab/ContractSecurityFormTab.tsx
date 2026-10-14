@@ -24,6 +24,7 @@ import {
 import {
   Edit01,
   Plus as PlusIcon,
+  Trash01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -38,7 +39,6 @@ import {
   useWatch,
 } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { SUPPORTED_ROW_FILTER_ENTITIES } from '../../../constants/DataContract.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
@@ -259,7 +259,7 @@ const ContractPolicyCard = ({
               <ButtonUtility
                 color="tertiary-destructive"
                 data-testid={`delete-policy-${policyIndex}`}
-                icon={DeleteIcon}
+                icon={Trash01}
                 size="md"
                 tooltip={t('label.delete')}
                 onClick={() => onDelete(policyIndex)}

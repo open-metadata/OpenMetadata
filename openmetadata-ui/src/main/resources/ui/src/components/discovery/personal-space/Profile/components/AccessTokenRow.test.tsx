@@ -102,7 +102,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Key01: () => <span />,
   Plus: () => <span />,
   RefreshCcw02: () => <span />,
-  Trash02: () => <span />,
+  Trash01: () => <span />,
 }));
 
 jest.mock('utils/BotsUtils', () => ({

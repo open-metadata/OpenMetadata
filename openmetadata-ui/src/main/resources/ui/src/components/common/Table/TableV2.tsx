@@ -67,7 +67,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  Button as AriaButton,
   ColumnResizer,
   Dialog,
   Popover,
@@ -382,14 +381,15 @@ const HeaderFilterTrigger = ({
       onKeyDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}>
-      <AriaButton
+      <ButtonUtility
         aria-label="filter"
-        className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
+        className="tw:ml-1"
         data-testid="filter-trigger"
+        icon={icon}
         ref={triggerRef}
-        onPress={() => onOpenChange(!isOpen)}>
-        {icon}
-      </AriaButton>
+        size="xs"
+        onPress={() => onOpenChange(!isOpen)}
+      />
       <Popover
         isOpen={isOpen}
         placement="bottom right"

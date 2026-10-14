@@ -18,13 +18,12 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
+import { Check, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
-import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { SettledStatus } from '../enums/Axios.enum';
@@ -149,7 +148,7 @@ export const getDeleteIcon = (arg: {
     return <Loader size="small" type="default" />;
   }
 
-  return <DeleteIcon data-icon data-testid="delete-icon" name="Delete" />;
+  return <Trash01 data-icon data-testid="delete-icon" name="Delete" />;
 };
 
 export const tagRender = (customTagProps: CustomTagProps) => {

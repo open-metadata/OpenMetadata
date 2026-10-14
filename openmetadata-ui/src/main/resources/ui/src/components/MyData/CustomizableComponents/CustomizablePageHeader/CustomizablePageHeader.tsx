@@ -239,7 +239,7 @@ export const CustomizablePageHeader = ({
                 data-testid="cancel-button"
                 icon={XClose}
                 isDisabled={saving}
-                size="xl"
+                size="lg"
                 onPress={handleClose}
               />
             </Box>

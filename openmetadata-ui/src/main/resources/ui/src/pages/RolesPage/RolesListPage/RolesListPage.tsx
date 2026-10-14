@@ -21,13 +21,13 @@ import {
   PopoverTrigger,
   Tooltip,
 } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
@@ -235,7 +235,7 @@ const RolesListPage = () => {
           return (
             <ButtonUtility
               data-testid={`delete-action-${getEntityName(record)}`}
-              icon={IconDelete}
+              icon={Trash01}
               isDisabled={!deleteRolePermission}
               size="md"
               tooltip={

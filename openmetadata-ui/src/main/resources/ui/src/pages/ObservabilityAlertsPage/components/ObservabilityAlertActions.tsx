@@ -17,12 +17,11 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 
 import { isUndefined } from 'lodash';
 import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { ProviderType } from '../../../generated/events/eventSubscription';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -82,7 +81,7 @@ function ObservabilityAlertActions({
         <Tooltip arrow placement="bottom" title={t('label.delete')}>
           <ButtonUtility
             data-testid={`alert-delete-${record.name}`}
-            icon={DeleteIcon}
+            icon={Trash01}
             isDisabled={record.provider === ProviderType.System}
             size="md"
             onClick={() => onSelectAlert(record)}

@@ -258,7 +258,7 @@ const EntityHeaderTitle = ({
           <ButtonUtility
             data-testid="entity-header-copy-button"
             icon={Copy01}
-            size="xl"
+            size="lg"
             tooltip={
               copyTooltip ||
               t('label.copy-item', { item: t('label.url-uppercase') })

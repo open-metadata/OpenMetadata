@@ -22,7 +22,7 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -35,7 +35,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
@@ -134,7 +133,7 @@ const FolderRowContent = ({
             <ButtonUtility
               className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100"
               data-testid={`delete-folder-btn-${folder.id}`}
-              icon={TrashIcon}
+              icon={Trash01}
               size="md"
               tooltip={t('label.delete')}
               onClick={(e: MouseEvent) => {

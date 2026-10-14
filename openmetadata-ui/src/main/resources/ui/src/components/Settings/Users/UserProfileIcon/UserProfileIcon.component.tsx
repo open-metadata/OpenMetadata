@@ -87,7 +87,7 @@ const renderListSection = ({
   return (
     <Dropdown.Section id={id}>
       <Dropdown.SectionHeader className="tw:flex tw:items-center tw:gap-2 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-primary">
-        <Icon className="tw:text-fg-quaternary" height={20} width={20} />
+        <Icon className="tw:size-5 tw:shrink-0 tw:text-quaternary" />
         {title}
       </Dropdown.SectionHeader>
       {isEmpty(items) ? (

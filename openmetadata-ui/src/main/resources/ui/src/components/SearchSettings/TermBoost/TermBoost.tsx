@@ -16,13 +16,12 @@ import {
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import { ChevronDown, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { Slider } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ComponentProps, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
 import { getFilterOptions } from '../../../utils/SearchSettingsUtils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -186,7 +185,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         <Box className="layout-column d-flex items-center justify-end gap-2">
           <ButtonUtility
             data-testid="delete-term-boost"
-            icon={Delete}
+            icon={Trash01}
             size="md"
             tooltip={t('label.delete-entity', {
               entity: t('label.term-boost'),

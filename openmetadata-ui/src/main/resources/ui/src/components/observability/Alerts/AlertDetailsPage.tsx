@@ -327,7 +327,7 @@ const AlertDetailsPage = ({
           <ButtonUtility
             data-testid="edit-button"
             icon={Edit01}
-            size="xl"
+            size="lg"
             tooltip={t('label.edit-entity', {
               entity: t('label.alert'),
             })}
@@ -338,7 +338,7 @@ const AlertDetailsPage = ({
           <ButtonUtility
             data-testid="delete-button"
             icon={Trash01}
-            size="xl"
+            size="lg"
             tooltip={t('label.delete-entity', {
               entity: t('label.alert'),
             })}
@@ -349,7 +349,7 @@ const AlertDetailsPage = ({
           data-testid="sync-button"
           icon={RefreshCw04}
           isDisabled={isSyncing}
-          size="xl"
+          size="lg"
           tooltip={t('label.sync-alert-offset', {
             entity: t('label.alert'),
           })}

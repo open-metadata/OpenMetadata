@@ -19,14 +19,13 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { WidgetProps } from '@rjsf/utils';
 import { Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-delete.svg';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
@@ -356,7 +355,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
               <Grid.Item className="tw:flex tw:items-center" span={1}>
                 <ButtonUtility
                   data-testid={`remove-mapping-btn-${mapping.id}`}
-                  icon={DeleteIcon}
+                  icon={Trash01}
                   isDisabled={disabled || readonly}
                   size="md"
                   tooltip={t('label.remove-entity', {

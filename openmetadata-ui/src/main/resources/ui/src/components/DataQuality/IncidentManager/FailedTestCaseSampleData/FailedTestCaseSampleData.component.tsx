@@ -17,6 +17,7 @@ import {
   Table,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -28,7 +29,6 @@ import {
   ManageMenuItem,
 } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ClientErrors } from '../../../../enums/Axios.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -129,7 +129,7 @@ const FailedTestCaseSampleData = ({
           description={t('message.delete-entity-type-action-description', {
             entityType: t('label.sample-data'),
           })}
-          icon={IconDelete}
+          icon={Trash01}
           id="delete-button"
           name={t('label.delete')}
         />

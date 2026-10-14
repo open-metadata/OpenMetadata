@@ -43,6 +43,7 @@ import {
   Lock01,
   Plus,
   Share07,
+  Trash01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { ConfigProvider } from 'antd';
@@ -61,7 +62,6 @@ import { Control, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import { Link, useLocation } from 'react-router-dom';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import {
   getCustomMarkdownComponents,
   preprocessMarkdownText,
@@ -426,7 +426,7 @@ const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
       {Boolean(memoryToEdit) && canDelete && (
         <Button
           color="tertiary-destructive"
-          iconLeading={TrashIcon}
+          iconLeading={Trash01}
           isDisabled={isDeleting || isSubmitting}
           isLoading={isDeleting}
           size="sm"

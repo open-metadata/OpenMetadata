@@ -18,13 +18,12 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -317,7 +316,7 @@ const NotificationListPage = () => {
                 <Tooltip arrow placement="bottom" title={t('label.delete')}>
                   <ButtonUtility
                     data-testid={`alert-delete-${record.name}`}
-                    icon={DeleteIcon}
+                    icon={Trash01}
                     isDisabled={record.provider === ProviderType.System}
                     size="md"
                     onClick={() => setSelectedAlert(record)}

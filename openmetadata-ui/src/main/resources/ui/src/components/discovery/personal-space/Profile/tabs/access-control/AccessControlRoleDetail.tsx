@@ -534,7 +534,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         data-testid="delete-role-btn"
         icon={Delete}
         isDisabled={!canDelete}
-        size="xl"
+        size="lg"
         tooltip={String(
           canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
         )}

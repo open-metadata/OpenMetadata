@@ -20,12 +20,11 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.svg';
 import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/common/no-filter-results.svg';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
@@ -67,11 +66,9 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
           }}>
           <Dropdown.Item data-testid="delete-btn" id="delete">
             <Box align="center" gap={2}>
-              <TrashIcon
+              <Trash01
                 aria-hidden="true"
-                className="tw:shrink-0 tw:text-error-primary"
-                height={20}
-                width={20}
+                className="tw:size-5 tw:shrink-0 tw:text-fg-error-primary"
               />
               <Typography
                 ellipsis

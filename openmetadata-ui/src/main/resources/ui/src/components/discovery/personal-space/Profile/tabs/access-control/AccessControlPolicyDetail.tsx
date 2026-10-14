@@ -870,7 +870,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         data-testid="delete-policy-btn"
         icon={Delete}
         isDisabled={!canDelete}
-        size="xl"
+        size="lg"
         tooltip={String(
           canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
         )}

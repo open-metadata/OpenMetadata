@@ -333,7 +333,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
           data-testid="delete-persona-btn"
           icon={Delete}
           isDisabled={!canDeletePersona}
-          size="xl"
+          size="lg"
           tooltip={String(
             canDeletePersona ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
           )}

@@ -18,9 +18,12 @@ import {
   Tabs,
 } from '@openmetadata/ui-core-components';
 import {
-  Announcement02 as IconAnnouncementsBlack,
+  Announcement02,
+  Download01,
   Edit01,
   RefreshCcw01,
+  Trash01,
+  Upload01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -28,10 +31,7 @@ import { toLower, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
-import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ROUTES } from '../../../constants/constants';
 import { CONTRACT_RESULT_BUTTON_CLASS } from '../../../constants/DataContract.constants';
@@ -193,7 +193,7 @@ const getManageButtonContent = ({
           label: (
             <ManageButtonItemLabel
               description={t('message.announcement-action-description')}
-              icon={IconAnnouncementsBlack}
+              icon={Announcement02}
               id="announcement-button"
               name={t('label.announcement-plural')}
             />
@@ -275,7 +275,7 @@ const getManageButtonContent = ({
               description={t('message.delete-entity-type-action-description', {
                 entityType: t('label.data-product'),
               })}
-              icon={DeleteIcon}
+              icon={Trash01}
               id="delete-button"
               name={t('label.delete')}
             />
@@ -293,7 +293,7 @@ const getManageButtonContent = ({
     label: (
       <ManageButtonItemLabel
         description={t('message.export-entity-as-odps-description')}
-        icon={ExportIcon}
+        icon={Download01}
         id="export-odps-button"
         name={t('label.export-as-odps')}
       />
@@ -316,7 +316,7 @@ const getManageButtonContent = ({
           label: (
             <ManageButtonItemLabel
               description={t('message.import-odps-description')}
-              icon={ImportIcon}
+              icon={Upload01}
               id="import-odps-button"
               name={t('label.import-from-odps')}
             />

@@ -20,13 +20,12 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Restore, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -338,7 +337,7 @@ const UserListPageV1 = () => {
             {showRestore && (
               <ButtonUtility
                 data-testid={`restore-user-btn-${record.name}`}
-                icon={IconRestore}
+                icon={Restore}
                 isDisabled={!isAdminUser}
                 size="md"
                 tooltip={
@@ -357,7 +356,7 @@ const UserListPageV1 = () => {
             )}
             <ButtonUtility
               data-testid={`delete-user-btn-${record.name}`}
-              icon={IconDelete}
+              icon={Trash01}
               isDisabled={!isAdminUser}
               size="md"
               tooltip={

@@ -949,7 +949,7 @@ export const DataAssetsHeader = ({
           <ButtonUtility
             data-testid="entity-header-copy-button"
             icon={Copy01}
-            size="xl"
+            size="lg"
             tooltip={copyTooltipTitle}
             onClick={handleCopyEntityUrl}
           />

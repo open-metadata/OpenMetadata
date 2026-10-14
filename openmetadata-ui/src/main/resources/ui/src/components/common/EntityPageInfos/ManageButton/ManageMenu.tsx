@@ -57,7 +57,7 @@ interface ManageMenuProps {
   /** Replaces the default icon trigger; must be a single pressable element. */
   trigger?: ReactNode;
   triggerClassName?: string;
-  /** Page-header kebab by default; card and table actions pass `md`. */
+  /** Page-header kebab (`lg`) by default; card and table actions pass `md`. */
   triggerSize?: ComponentProps<typeof ButtonUtility>['size'];
   isOpen?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
@@ -120,7 +120,7 @@ export const ManageMenu = ({
   label,
   trigger,
   triggerClassName,
-  triggerSize = 'xl',
+  triggerSize = 'lg',
   isOpen,
   onOpenChange,
   'data-testid': dataTestId = 'manage-button',

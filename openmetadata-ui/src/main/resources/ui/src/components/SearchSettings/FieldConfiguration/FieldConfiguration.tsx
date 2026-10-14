@@ -18,10 +18,10 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { Badge, Collapse, Select, Slider } from 'antd';
 import { MouseEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/setting-colored.svg';
 import { SearchFieldMatchType as MatchType } from '../../../generated/configuration/searchSettings';
 import './field-configuration.less';
@@ -125,7 +125,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               </div>
               <ButtonUtility
                 data-testid="delete-search-field"
-                icon={Delete}
+                icon={Trash01}
                 size="md"
                 tooltip={t('label.delete')}
                 onClick={(e: MouseEvent) => {

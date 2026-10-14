@@ -232,7 +232,7 @@ function buildHeaderActions({
         data-testid="sync-alert-btn"
         icon={RefreshCw01}
         isDisabled={isSyncing || !canEditAll}
-        size="xl"
+        size="lg"
         tooltip={String(
           canEditAll
             ? t('label.sync-alert-offset')
@@ -244,7 +244,7 @@ function buildHeaderActions({
         <ButtonUtility
           data-testid="edit-alert-btn"
           icon={Edit01}
-          size="xl"
+          size="lg"
           tooltip={String(t('label.edit'))}
           onPress={() => onNavigate({ type: 'edit', fqn })}
         />
@@ -254,7 +254,7 @@ function buildHeaderActions({
           data-testid="delete-alert-btn"
           icon={Trash01}
           isDisabled={isDeleting}
-          size="xl"
+          size="lg"
           tooltip={String(t('label.delete'))}
           onPress={() => setIsDeleteModalOpen(true)}
         />

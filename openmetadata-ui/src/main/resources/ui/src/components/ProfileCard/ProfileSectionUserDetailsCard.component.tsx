@@ -18,14 +18,13 @@ import {
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { Badge } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
-import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
 import { EntityType } from '../../enums/entity.enum';
 import {
   ChangePasswordRequest,
@@ -106,7 +105,7 @@ const ProfileManageOptions = ({
       <Button
         className="tw:w-full tw:justify-start"
         color="tertiary"
-        iconLeading={DeleteIcon}
+        iconLeading={Trash01}
         onClick={onRestore}>
         {t('label.restore')}
       </Button>
@@ -115,7 +114,7 @@ const ProfileManageOptions = ({
         <Button
           className="tw:w-full tw:justify-start"
           color="tertiary"
-          iconLeading={DeleteIcon}
+          iconLeading={Trash01}
           onClick={onDelete}>
           {t('label.delete-profile')}
         </Button>
@@ -329,7 +328,7 @@ const ProfileSectionUserDetailsCard = ({
         <span
           className="user-profile-deleted-badge"
           data-testid="deleted-badge">
-          <DeleteIcon className="tw:mr-1 tw:size-3.5 tw:shrink-0" />
+          <Trash01 className="tw:mr-1 tw:size-4 tw:shrink-0 tw:p-[0.5px]" />
 
           {t('label.deleted')}
         </span>

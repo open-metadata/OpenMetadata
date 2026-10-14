@@ -36,7 +36,7 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
   className,
   url,
   tooltip,
-  size = 'xl',
+  size = 'lg',
   testId = 'copy-link-btn',
 }) => {
   const { t } = useTranslation();

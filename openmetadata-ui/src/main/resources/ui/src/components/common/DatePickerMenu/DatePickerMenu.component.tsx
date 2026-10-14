@@ -291,7 +291,7 @@ const DatePickerMenu = ({
               textValue={t('label.custom-range')}>
               <span className="tw:flex tw:items-center tw:justify-between tw:gap-2">
                 {t('label.custom-range')}
-                <ChevronRight className="tw:text-fg-quaternary" size={14} />
+                <ChevronRight className="tw:size-4 tw:shrink-0 tw:p-[0.5px] tw:text-quaternary" />
               </span>
             </Dropdown.Item>
           )}

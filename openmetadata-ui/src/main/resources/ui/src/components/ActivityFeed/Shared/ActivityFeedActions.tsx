@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ResolveIcon } from '../../../assets/svg/ic-check-circle.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import {
   Conversation,
@@ -254,7 +253,7 @@ const ActivityFeedActions = ({
             <ButtonUtility
               className="toolbar-button"
               data-testid="delete-message"
-              icon={DeleteIcon}
+              icon={Trash01}
               size="xs"
               tooltip={t('label.delete')}
               onClick={() => setShowDeleteDialog(true)}

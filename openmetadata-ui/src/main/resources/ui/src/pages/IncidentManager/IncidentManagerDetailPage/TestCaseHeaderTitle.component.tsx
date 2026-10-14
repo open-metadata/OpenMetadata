@@ -82,7 +82,7 @@ const TestCaseHeaderTitle = ({
       <ButtonUtility
         data-testid="entity-header-copy-button"
         icon={Copy01}
-        size="xl"
+        size="lg"
         tooltip={
           hasCopied
             ? t('message.link-copy-to-clipboard')

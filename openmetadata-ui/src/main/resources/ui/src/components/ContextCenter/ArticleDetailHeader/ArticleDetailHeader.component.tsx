@@ -27,7 +27,11 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, UploadCloud01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  Trash01,
+  UploadCloud01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, isUndefined, toString, uniqBy } from 'lodash';
@@ -43,7 +47,6 @@ import { ReactComponent as ThumbsDownActiveIcon } from '../../../assets/svg/acti
 import { ReactComponent as ThumbsDownIcon } from '../../../assets/svg/action-icons/thumbs-down.svg';
 import { ReactComponent as ThumbsUpActiveIcon } from '../../../assets/svg/action-icons/thumbs-up-active.svg';
 import { ReactComponent as ThumbsUpIcon } from '../../../assets/svg/action-icons/thumbs-up.svg';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as EditorIcon } from '../../../assets/svg/common/editor.svg';
 import { ReactComponent as GlobeIcon } from '../../../assets/svg/common/globe.svg';
 import { ReactComponent as UserIcon } from '../../../assets/svg/common/user.svg';
@@ -504,7 +507,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               : ThumbsUpIcon
           }
           isDisabled={knowledgePage?.deleted || voteLoading !== null}
-          size="xl"
+          size="lg"
           tooltip={t('label.up-vote')}
           onClick={() => handleVoteChange(QueryVoteType.votedUp)}
         />
@@ -521,7 +524,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               : ThumbsDownIcon
           }
           isDisabled={knowledgePage?.deleted || voteLoading !== null}
-          size="xl"
+          size="lg"
           tooltip={t('label.down-vote')}
           onClick={() => handleVoteChange(QueryVoteType.votedDown)}
         />
@@ -529,7 +532,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         <ButtonUtility
           data-testid="conversation"
           icon={ChatIcon}
-          size="xl"
+          size="lg"
           tooltip={t('label.conversation')}
           onClick={handleOpenConversation}
         />
@@ -558,7 +561,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           data-testid="follow-btn"
           icon={isFollowing ? FollowActiveIcon : FollowIcon}
           isDisabled={isFollowLoading || knowledgePage?.deleted}
-          size="xl"
+          size="lg"
           tooltip={isFollowing ? t('label.un-follow') : t('label.follow')}
           onClick={handleFollowClick}
         />
@@ -571,7 +574,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             <ButtonUtility
               data-testid="manage-button"
               icon={DotsVerticalIcon}
-              size="xl"
+              size="lg"
               tooltip={t('label.manage-entity', {
                 entity: t('label.article'),
               })}
@@ -585,11 +588,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 }}>
                 <Dropdown.Item data-testid="delete-btn" id="delete">
                   <Box align="center" gap={2}>
-                    <TrashIcon
+                    <Trash01
                       aria-hidden="true"
-                      className="ttw:shrink-0 tw:text-error-primary"
-                      height={20}
-                      width={20}
+                      className="tw:size-5 tw:shrink-0 tw:text-fg-error-primary"
                     />
                     <Typography
                       ellipsis

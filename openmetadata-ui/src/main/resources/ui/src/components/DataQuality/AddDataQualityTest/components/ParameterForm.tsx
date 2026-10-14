@@ -17,7 +17,11 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { HelpCircle, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  HelpCircle,
+  Plus,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { Form, FormItemProps, Input, InputNumber, Select } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import { debounce, isUndefined } from 'lodash';
@@ -30,7 +34,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../../constants/profiler.constant';
@@ -410,7 +413,7 @@ const buildArraySetField = ({
               )}
             </Form.Item>
             <ButtonUtility
-              icon={IconDelete}
+              icon={Trash01}
               size="md"
               tooltip={t('label.remove')}
               onClick={() => remove(name)}

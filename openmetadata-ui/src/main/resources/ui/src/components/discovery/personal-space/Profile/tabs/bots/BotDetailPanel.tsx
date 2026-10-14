@@ -148,7 +148,7 @@ function useDetailHeaderInjection({
         data-testid="delete-bot-btn"
         icon={Trash01}
         isDisabled={!canDelete}
-        size="xl"
+        size="lg"
         tooltip={String(
           canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
         )}

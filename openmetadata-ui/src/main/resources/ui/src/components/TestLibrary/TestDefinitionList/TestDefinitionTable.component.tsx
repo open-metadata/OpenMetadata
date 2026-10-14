@@ -21,11 +21,14 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, FileShield02 } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  FileShield02,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterOffIcon } from '../../../assets/svg/ic-filter-off.svg';
 import { ProviderType } from '../../../generated/entity/bot';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -210,7 +213,7 @@ const TestDefinitionTable = ({
         <ButtonUtility
           aria-label={t('label.delete')}
           data-testid={`delete-test-definition-${record.name}`}
-          icon={IconDelete}
+          icon={Trash01}
           isDisabled={isSystemProvider || !hasDeletePermission || isRefetching}
           size="md"
           tooltip={deleteTooltip}

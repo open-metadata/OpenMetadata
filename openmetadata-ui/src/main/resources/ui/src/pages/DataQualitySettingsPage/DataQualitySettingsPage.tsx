@@ -18,13 +18,16 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, PlusCircle } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  PlusCircle,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { useFormDrawerWithHook } from '../../components/common/atoms/drawer/useFormDrawer';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -318,7 +321,7 @@ const DataQualitySettingsPage = () => {
               />
               <ButtonUtility
                 data-testid={`delete-${record.name}`}
-                icon={IconDelete}
+                icon={Trash01}
                 isDisabled={isSystem}
                 size="md"
                 tooltip={

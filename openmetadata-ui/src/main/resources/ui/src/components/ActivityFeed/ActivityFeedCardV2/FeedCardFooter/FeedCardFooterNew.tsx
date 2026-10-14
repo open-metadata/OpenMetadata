@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { AvatarStack, Box, Button } from '@openmetadata/ui-core-components';
+import {
+  AvatarStack,
+  Box,
+  Button,
+  ButtonUtility,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -120,18 +125,11 @@ function FeedCardFooterNew({
             )}
 
             {!isReply && (
-              <Button
+              <ButtonUtility
                 aria-label={t('label.reply')}
-                className="p-0 flex-center tw:h-10! tw:border tw:border-transparent"
-                color="tertiary"
                 data-testid="reply-button"
-                iconLeading={
-                  <ThreadIcon
-                    data-testid="reply-count"
-                    height={18}
-                    width={18}
-                  />
-                }
+                icon={<ThreadIcon data-icon data-testid="reply-count" />}
+                size="md"
                 onPress={handleRepliesPress}
               />
             )}

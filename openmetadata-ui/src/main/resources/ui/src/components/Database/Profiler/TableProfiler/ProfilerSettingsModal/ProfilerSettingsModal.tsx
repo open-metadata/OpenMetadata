@@ -25,7 +25,7 @@ import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
 
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
@@ -39,7 +39,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
 import {
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,
@@ -702,7 +701,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             />
                           </Form.Item>
                           <ButtonUtility
-                            icon={IconDelete}
+                            icon={Trash01}
                             size="md"
                             tooltip={t('label.remove')}
                             onClick={() => remove(name)}
@@ -984,7 +983,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 />
                               </Form.Item>
                               <ButtonUtility
-                                icon={IconDelete}
+                                icon={Trash01}
                                 size="md"
                                 tooltip={t('label.remove')}
                                 onClick={() => remove(name)}

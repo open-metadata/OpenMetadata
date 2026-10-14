@@ -18,11 +18,14 @@ borderless icon buttons, and drew "edit" with seven different glyphs.
   raw `<button>` or a children-less `Button`. Its colour is `tertiary` (the default);
   `tertiary-destructive` only where the action was already destructive. Its `size` comes from where
   it sits: `xs` chip remove / input clear / row expander, `sm` inline section edit, `md` table-row and
-  card actions, `lg` collapse, accordion and canvas controls, `xl` page-header actions.
+  card actions, `lg` collapse, accordion, canvas controls and page-header actions. `xl` is not
+  used: its padding is too heavy beside a title.
 - Icons in `Button` / `ButtonUtility` are passed as component references, so the button sizes them.
 - A disabled `ButtonUtility` with a tooltip stays focusable with `aria-disabled` and keeps the
   tooltip, which usually explains why it is disabled; without a tooltip it is natively disabled.
 - `ButtonUtility` forwards its ref so it can be a `PopoverTrigger` / `DialogTrigger` child directly.
+- Delete actions use core `Trash01` only.
+- Menu and popover item icons are 20px and `text-quaternary`.
 - Edit actions use core `Edit01` only. `Edit02`, `Edit03`, `Edit05`, `Pencil01`, `EditSkills` and the
   app's `edit-new*.svg`, `action-icons/edit.svg` and `ic-edit-circle.svg` are deleted. `UserEdit`
   stays: it is an icon-picker value, not an action.

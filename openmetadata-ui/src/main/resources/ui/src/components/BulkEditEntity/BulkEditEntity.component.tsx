@@ -398,7 +398,7 @@ const BulkEditEntity = ({
               data-testid="bulk-edit-remove-row"
               type="button"
               onClick={() => handleRemoveRow(row.id ?? '')}>
-              <Trash01 size={12} />
+              <Trash01 className="tw:size-4 tw:p-[0.5px]" />
               {t('label.remove')}
             </button>
           )}

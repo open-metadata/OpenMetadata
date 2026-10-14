@@ -419,7 +419,6 @@ export { TotalTests } from './TotalTests';
 export { TotalUniqueColumn } from './TotalUniqueColumn';
 export { Tour } from './Tour';
 export { Trash01 } from './Trash01';
-export { Trash02 } from './Trash02';
 export { TreeView } from './TreeView';
 export { TrendDown01 } from './TrendDown01';
 export { TrendUp01 } from './TrendUp01';

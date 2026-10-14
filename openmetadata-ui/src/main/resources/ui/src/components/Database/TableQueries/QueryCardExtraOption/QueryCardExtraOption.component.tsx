@@ -18,7 +18,7 @@ import {
   Dropdown,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -27,7 +27,6 @@ import Qs from 'qs';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ReactComponent as ThumbsUpFilled } from '../../../../assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '../../../../assets/svg/thumbs-up-outline.svg';
@@ -106,7 +105,7 @@ const QueryCardExtraOption = ({
       {
         key: 'delete-query',
         label: t('label.delete'),
-        icon: DeleteIcon,
+        icon: Trash01,
         disabled: !canDelete,
         onAction: () => setShowDeleteModal(true),
       },

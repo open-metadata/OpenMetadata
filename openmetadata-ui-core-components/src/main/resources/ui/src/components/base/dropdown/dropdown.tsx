@@ -1,3 +1,5 @@
+import { ButtonUtility } from '@/components/base/buttons/button-utility';
+import type { ButtonProps as ButtonUtilityProps } from '@/components/base/buttons/button-utility';
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
@@ -5,14 +7,12 @@ import { cx } from '@/utils/cx';
 import { DotsVertical } from '../../../icons';
 import type { FC, HTMLAttributes, RefAttributes } from 'react';
 import type {
-  ButtonProps as AriaButtonProps,
   MenuItemProps as AriaMenuItemProps,
   MenuProps as AriaMenuProps,
   PopoverProps as AriaPopoverProps,
   SeparatorProps as AriaSeparatorProps,
 } from 'react-aria-components';
 import {
-  Button as AriaButton,
   Header as AriaHeader,
   Menu as AriaMenu,
   MenuItem as AriaMenuItem,
@@ -105,12 +105,12 @@ const DropdownItem = ({
             <Icon
               aria-hidden="true"
               className={cx(
-                'tw:size-4 tw:shrink-0 tw:stroke-[2.25px]',
+                'tw:size-5 tw:shrink-0',
                 state.isDisabled
                   ? 'tw:text-fg-disabled'
                   : state.isSelected
-                  ? 'tw:text-fg-brand-secondary_alt'
-                  : 'tw:text-fg-quaternary'
+                  ? 'tw:text-utility-brand-600'
+                  : 'tw:text-quaternary'
               )}
             />
           )}
@@ -204,28 +204,19 @@ const DropdownSeparator = (props: AriaSeparatorProps) => {
   );
 };
 
-const DropdownDotsButton = (
-  props: AriaButtonProps & RefAttributes<HTMLButtonElement>
-) => {
+const DropdownDotsButton = ({
+  size = 'md',
+  ...props
+}: Omit<ButtonUtilityProps, 'icon'>) => {
   const { t } = useCoreTranslation();
 
   return (
-    <AriaButton
-      {...props}
+    <ButtonUtility
       aria-label={t('label.open-menu', 'Open menu')}
-      className={(state) =>
-        cx(
-          'tw:cursor-pointer tw:rounded-md tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
-          (state.isPressed || state.isHovered) && 'tw:text-fg-quaternary_hover',
-          (state.isPressed || state.isFocusVisible) &&
-            'tw:outline-2 tw:outline-offset-2',
-          typeof props.className === 'function'
-            ? props.className(state)
-            : props.className
-        )
-      }>
-      <DotsVertical className="tw:size-5 tw:transition-inherit-all" />
-    </AriaButton>
+      icon={DotsVertical}
+      size={size}
+      {...props}
+    />
   );
 };
 
