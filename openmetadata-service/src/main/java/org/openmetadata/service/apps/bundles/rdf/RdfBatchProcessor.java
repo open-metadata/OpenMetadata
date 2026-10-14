@@ -898,24 +898,6 @@ public class RdfBatchProcessor {
     }
   }
 
-  String processLineageRelationship(EntityRelationshipObject rel) {
-    List<LineageEdgeData> lineageEdges = new ArrayList<>(1);
-    String error = collectLineageRelationship(rel, lineageEdges);
-    if (error != null || lineageEdges.isEmpty()) {
-      return error;
-    }
-
-    LineageEdgeData edge = lineageEdges.get(0);
-    try {
-      rdfRepository.addLineageWithDetails(
-          edge.fromType(), edge.fromId(), edge.toType(), edge.toId(), edge.details());
-      return null;
-    } catch (Exception e) {
-      LOG.error("Failed to add lineage with details for {}->{}", edge.fromId(), edge.toId(), e);
-      return describeLineageError(edge, e);
-    }
-  }
-
   private static String describeLineageError(EntityRelationshipObject rel, Throwable error) {
     return describeError("lineage " + rel.getFromId() + "->" + rel.getToId(), error);
   }
@@ -1012,10 +994,6 @@ public class RdfBatchProcessor {
     public BatchProcessingResult(
         int successCount, int failedCount, int relationshipFailureCount, String lastError) {
       this(successCount, failedCount, relationshipFailureCount, lastError, 0L);
-    }
-
-    public boolean hasAnyFailure() {
-      return failedCount > 0 || relationshipFailureCount > 0;
     }
   }
 }
