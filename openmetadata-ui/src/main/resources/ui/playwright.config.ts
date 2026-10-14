@@ -33,6 +33,11 @@ dotenv.config();
  * `yarn playwright:run` flow is unaffected and still targets HTTP/1.1.
  */
 const isH2Mode = process.env.PW_PROTOCOL === 'h2';
+const runChangedNightly = process.env.PLAYWRIGHT_RUN_CHANGED_NIGHTLY === 'true';
+const runQueueCredentials =
+  process.env.PLAYWRIGHT_QUEUE_REQUIRES_SECRETS === 'true';
+const skipRequiresSecrets =
+  process.env.PLAYWRIGHT_SKIP_REQUIRES_SECRETS === 'true';
 const defaultBaseURL = isH2Mode
   ? 'https://localhost:8585'
   : 'http://localhost:8585';
@@ -117,7 +122,13 @@ const applyQuarantine = <
 >(
   projects: T[]
 ): T[] =>
-  projects.map((project) => {
+  projects.map((input) => {
+    const project = skipRequiresSecrets
+      ? {
+          ...input,
+          grepInvert: [...asRegExpList(input.grepInvert), /@requires-secrets/],
+        }
+      : input;
     // grepInvert is OR-matched, so appending the tag is enough to exclude it.
     if (!runQuarantinedOnly) {
       return {
@@ -359,6 +370,32 @@ export default defineConfig({
             testMatch: '**/Http2/**',
             use: { ...devices['Desktop Chrome'] },
             fullyParallel: true,
+          },
+        ]
+      : []),
+    ...(runQueueCredentials
+      ? [
+          {
+            name: 'queue-credentials',
+            testMatch: '**/nightly/**/*.spec.ts',
+            dependencies: entityDependencies,
+            fullyParallel: false,
+            teardown: entityTeardown,
+            grep: combineGrep(/@requires-secrets/),
+            use: { ...devices['Desktop Chrome'] },
+          },
+        ]
+      : []),
+    ...(runChangedNightly
+      ? [
+          {
+            name: 'changed-nightly',
+            testMatch: '**/nightly/**/*.spec.ts',
+            dependencies: entityDependencies,
+            fullyParallel: false,
+            teardown: entityTeardown,
+            grep: shardGrep,
+            use: { ...devices['Desktop Chrome'] },
           },
         ]
       : []),

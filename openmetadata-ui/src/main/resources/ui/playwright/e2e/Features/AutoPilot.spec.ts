@@ -12,7 +12,10 @@
  */
 
 import { isEmpty } from 'lodash';
-import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
+import {
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  PLAYWRIGHT_REQUIRES_SECRETS_TAG,
+} from '../../constant/config';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
 import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
 import KafkaIngestionClass from '../../support/entity/ingestion/KafkaIngestionClass';
@@ -95,7 +98,17 @@ services.forEach((ServiceClass) => {
 
   test.describe.serial(
     service.serviceType,
-    PLAYWRIGHT_INGESTION_TAG_OBJ,
+    {
+      tag: [
+        PLAYWRIGHT_INGESTION_TAG_OBJ.tag,
+        ...(ServiceClass === MetabaseIngestionClass ||
+        ServiceClass === KafkaIngestionClass ||
+        ServiceClass === MlFlowIngestionClass ||
+        ServiceClass === AirflowIngestionClass
+          ? [PLAYWRIGHT_REQUIRES_SECRETS_TAG]
+          : []),
+      ],
+    },
     () => {
       const testData = {
         serviceDeleted: false,

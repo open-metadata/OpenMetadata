@@ -1,14 +1,40 @@
 # Playwright CI planning
 
-`playwright-postgresql-e2e.yml` runs the full suite on merge-queue, scheduled, and manual events. `pull_request` events skip every job — PR CI runs no Playwright, so run the impacted specs locally (see [Local pre-merge runs](#local-pre-merge-runs) below). Manual runs can opt out of the full suite and can select HTTP/1.1 or HTTP/2.
+`playwright-postgresql-e2e.yml` runs smoke and affected specs in the merge queue, selected from the entire candidate diff between the merge group's base and head. Shared test infrastructure and unmapped production changes fall back to the full suite. Scheduled and explicit full manual runs execute the complete suite. Every new or modified Playwright spec runs on `pull_request`, including draft PRs. PostgreSQL specs run as complete files with the full entity matrix; auth, RDF, visual and browser-helper specs run in their own environments. HTTP/2 specs enable the TLS environment, and changed nightly specs use a dedicated Airflow-backed project. The required `playwright-summary` check rejects failed or skipped environments and changed specs with no passing execution. PRs without changed specs avoid browser work; run their impacted specs locally (see [Local pre-merge runs](#local-pre-merge-runs) below). Manual runs can opt out of the full suite and can select HTTP/1.1 or HTTP/2.
 
 The manual HTTP/2 benchmark applies to browser/server lanes. Dedicated Airflow shards stay on HTTP/1.1 because the fixture's self-signed browser certificate is not part of generated ingestion workflow configuration.
 
-SSO stays in its dedicated workflow, while knowledge graph and ontology share one RDF workflow and environment. HTTP/2-specific, data-insight application, and nightly specs are explicitly recorded as delegated rather than being silently misclassified as common Chromium coverage. Add new production-to-test relationships to `impact-map.json`; do not make an unmapped source path trigger the full suite.
+PR jobs pass no repository secrets, never bind the secret-bearing `test` environment, and use read-only `GITHUB_TOKEN` permissions for checkout and artifact retrieval. Local PostgreSQL, Fuseki, LDAP, Keycloak and mock identity providers use disposable, committed fixture accounts. The PR gate does not require `safe to test`. Credential-dependent cases use `@requires-secrets`: PRs run the remaining public cases, while the merge queue runs affected credential cases with existing secrets. Scheduled and manual trusted runs retain their full coverage.
+
+Apply the tag to the smallest test or suite that needs a private account:
+
+```ts
+test.describe('Live warehouse ingestion', { tag: ['@ingestion', '@requires-secrets'] }, () => {
+  // Existing credential-dependent tests.
+});
+```
+
+The planner reads native Playwright collection tags, including inherited suite tags. A mixed file runs its public cases on the PR and its credential cases in the queue; a credential-only file is explicitly reported as deferred. Declaring the tag in a comment cannot exempt tests. Keep tagged tests discoverable without credentials; validate credentials in fixtures/hooks rather than omitting test registration. Queue selection uses the whole candidate diff and both impact maps, including delegated SSO/nightly specs. Credentialed nightly tests use an isolated Airflow shard; live Okta uses its dedicated provider runner. Skipped credential cases fail the queue gate. Remove the tag when a test no longer needs private credentials. Credential tags in other dedicated environments fail planning until a credential-enabled queue runner is configured.
+
+SSO stays in its dedicated workflow, while knowledge graph and ontology share one RDF workflow and environment. HTTP/2-specific, data-insight application, and nightly specs are explicitly recorded as delegated rather than being silently misclassified as common Chromium coverage. Add semantic production-to-test relationships to `impact-map.json`. Unknown production paths trigger full CI coverage; local planning reports these gaps and adds canaries.
+
+## Generated impact maps
+
+`select_playwright_tests.py` generates source-to-spec mappings from the current checkout whenever no explicit artifact is supplied. This includes uncommitted source and spec changes. The generated and handwritten mappings are combined; either can add coverage.
+
+CI generates the map immediately before selection and uploads it with the selection artifact. Local planning uses the same generator automatically in a temporary directory. Generated maps are never committed, and the “Playwright impact-map drift” check validates generation and routing without pushing to PR branches (ADR:2026-10-14-playwright-impact-maps-are-generated-at-plan-time). Queue plans verify the checked-out candidate SHA and require its diff. Specs without timing history use the existing estimates and shard budgets, so new tests can run before nightly history is available.
+
+To inspect a map, run:
+
+```bash
+python3 .github/scripts/generate_playwright_impact_map.py
+```
+
+The output is under the ignored `target/playwright/` directory. Use `--output <path>` to write a different artifact. An explicitly supplied missing or invalid map, or a generator failure, fails planning.
 
 ## Local pre-merge runs
 
-PR checks run unit tests only; Playwright runs in the merge queue. Before requesting review, run the specs the PR impacts on your machine against a local stack (`./docker/run_local_docker.sh -m ui -d mysql`):
+PR checks run unit tests and new or modified Playwright specs; the merge queue runs smoke and affected Playwright coverage. Before requesting review, run the specs the PR impacts on your machine against a local stack (`./docker/run_local_docker.sh -m ui -d mysql`):
 
 ```bash
 make playwright_affected                                         # list impacted specs + the exact command
@@ -16,11 +42,11 @@ make playwright_affected_run                                     # run them, wri
 make playwright_affected_run ARGS="--update-pr --workers=2"      # also upsert the block in the PR body (needs gh)
 ```
 
-`.github/scripts/plan_local_playwright.py` diffs the branch against `origin/main` (`--base` to change it; includes uncommitted and untracked files) and feeds that list to `select_playwright_tests.py` as a `pull_request` event, so the selection is the targeted plan from `impact-map.json` and `impact-map.generated.json`: smoke, directly changed specs, impact-mapped specs, and canaries when shared infrastructure or unmapped files change. Delegated specs stay with their dedicated workflows.
+`.github/scripts/plan_local_playwright.py` diffs the branch against `origin/main` (`--base` to change it; includes uncommitted and untracked files) and feeds that list to `select_playwright_tests.py` as a `pull_request` event. The selector generates the map from this checkout before planning. Smoke, directly changed specs, impact-mapped specs, and canaries when shared infrastructure or unmapped files change retain their existing behavior. Delegated specs stay with their dedicated workflows. Agents should use [playwright-affected-tests](../../skills/playwright-affected-tests/SKILL.md).
 
 For unmapped code paths, the local plan runs the targeted set plus one canary per project and lists the unmapped files as impact-map gaps. Close a gap by adding a mapping here rather than running the full suite locally.
 
-The command passes spec files without `--project`, so Playwright routes each file to every project that claims it, as a normal local run does. Flags passed through `ARGS` that the script does not recognise (`--workers`, `--headed`, `--debug`) are forwarded to `npx playwright test`. Like every CI lane, the run sets `PLAYWRIGHT_IS_OSS=true` unless you export it yourself; without it `auth.setup.ts` calls the Collate-only ingestion-runner API and fails before any spec runs. The results block, delimited by `<!-- local-playwright-results:start/end -->` under "Playwright (UI) tests" in the PR template, records the tested commit, a warning for uncommitted changes, totals, and a per-spec table; selected specs that produced no results are listed as "not run" and mark the run as failed.
+The command passes spec files without `--project`, so Playwright routes each file to every project that claims it, as a normal local run does. It defaults to `PLAYWRIGHT_SKIP_REQUIRES_SECRETS=true` and reports credential-only files as deferred to the queue. Export `PLAYWRIGHT_SKIP_REQUIRES_SECRETS=false` only for an explicit credentialed local run with configured accounts. Flags passed through `ARGS` that the script does not recognise (`--workers`, `--headed`, `--debug`) are forwarded to `npx playwright test`. Like every CI lane, the run sets `PLAYWRIGHT_IS_OSS=true` unless you export it yourself; without it `auth.setup.ts` calls the Collate-only ingestion-runner API and fails before any spec runs. The results block, delimited by `<!-- local-playwright-results:start/end -->` under "Playwright (UI) tests" in the PR template, records the tested commit, a warning for uncommitted changes, totals, and a per-spec table; selected specs that produced no results are listed as "not run" and mark the run as failed.
 
 ## Duration-balanced plans
 

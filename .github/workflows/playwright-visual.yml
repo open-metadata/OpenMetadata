@@ -32,13 +32,24 @@ name: playwright-visual-regression
 # branch protection, whereas a workflow that never starts leaves the check
 # pending forever.
 on:
+  workflow_call:
+    outputs:
+      execution_result:
+        description: Result of the job that executes and verifies changed specs.
+        value: ${{ jobs.playwright-visual-regression.outputs.execution_result }}
+    inputs:
+      changed_specs:
+        description: JSON list of new or modified specs to validate on a PR.
+        required: true
+        type: string
+
   merge_group:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 concurrency:
-  group: playwright-visual-${{ github.event.pull_request.number || github.run_id }}
+  group: playwright-visual-${{ inputs.changed_specs != '' && 'changed-specs' || 'all' }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -51,7 +62,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      ui: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.ui }}
+      visual_specs: ${{ steps.filter.outputs.visual_specs }}
+      ui: ${{ (github.event_name == 'workflow_dispatch' || inputs.changed_specs != '') && 'true' || steps.filter.outputs.ui }}
     steps:
       - name: Checkout
         # Pinned for the same reason as the filter below.
@@ -70,6 +82,8 @@ jobs:
         with:
           base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
+            visual_specs:
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/VisualRegression/**/*.spec.ts'
             # What this suite can actually see. `openmetadata-ui/**` also covers
             # `playwright/e2e/**`, so changing any feature spec booked a ~25
             # minute screenshot run that could not observe the change — and made
@@ -115,10 +129,12 @@ jobs:
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
 
   playwright-visual-regression:
+    outputs:
+      execution_result: ${{ steps.verify-changed-specs.outputs.execution_result }}
     name: playwright-visual-regression
     runs-on: ubuntu-latest
     needs: check-changes
-    if: ${{ !github.event.pull_request.draft && needs.check-changes.outputs.ui == 'true' }}
+    if: ${{ (!github.event.pull_request.draft || inputs.changed_specs != '') && needs.check-changes.outputs.ui == 'true' && (inputs.changed_specs != '' || github.event_name != 'pull_request' || needs.check-changes.outputs.visual_specs != 'true') }}
     permissions:
       contents: read
     steps:
@@ -173,18 +189,36 @@ jobs:
       - name: Run visual regression suite
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
+          CHANGED_SPECS: ${{ inputs.changed_specs }}
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:8585
+          PLAYWRIGHT_SKIP_REQUIRES_SECRETS: ${{ github.event_name == 'pull_request' }}
         run: |
+          files=()
+          if [[ -n "$CHANGED_SPECS" ]]; then
+            mapfile -t files < <(jq -r '.[]' <<< "$CHANGED_SPECS")
+          fi
           docker run --rm \
             --network host \
             --ipc host \
             -e CI=true \
             -e PLAYWRIGHT_IS_OSS=true \
             -e PLAYWRIGHT_TEST_BASE_URL \
+            -e PLAYWRIGHT_SKIP_REQUIRES_SECRETS \
             -v "$PWD:/work" \
             -w /work \
             mcr.microsoft.com/playwright:v1.57.0-jammy \
-            npx playwright test --project=visual-regression
+            npx playwright test --project=visual-regression "${files[@]}"
+
+      - name: Verify every changed visual spec executed
+        id: verify-changed-specs
+        if: ${{ inputs.changed_specs != '' }}
+        env:
+          CHANGED_SPECS: ${{ inputs.changed_specs }}
+        run: |
+          python3 .github/scripts/verify_playwright_changed_specs.py \
+            --specs-json "$CHANGED_SPECS" \
+            --report-glob 'openmetadata-ui/src/main/resources/ui/playwright/output/results.json'
+          echo "execution_result=success" >> "$GITHUB_OUTPUT"
 
       - name: Upload visual diff artifacts
         if: failure()

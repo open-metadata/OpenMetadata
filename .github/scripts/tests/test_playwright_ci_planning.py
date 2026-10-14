@@ -14,6 +14,8 @@ SCRIPTS = Path(__file__).parents[1]
 
 
 def load_script(name: str):
+    if str(SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS))
     spec = importlib.util.spec_from_file_location(name, SCRIPTS / f"{name}.py")
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
@@ -675,10 +677,8 @@ def test_main_fails_when_a_targeted_plan_has_a_stale_baseline_file(tmp_path):
     assert not (output_dir / "matrix.json").exists()
 
 
-def test_main_skips_stale_baseline_gate_in_full_mode(tmp_path):
-    # Full-mode (nightly / merge_group) planning must not trip the
-    # stale-baseline gate — otherwise the very run that captures the
-    # missing timing evidence would fail before it could execute.
+@pytest.mark.parametrize("mode,event_name", [("full", "schedule"), ("targeted", "merge_group"), ("targeted", "pull_request")])
+def test_main_skips_stale_baseline_gate_for_full_runs_and_queue(tmp_path, mode, event_name):
     import subprocess
     planner_path = SCRIPTS / "build_playwright_shards.py"
     test_list = tmp_path / "test-list.json"
@@ -711,7 +711,12 @@ def test_main_skips_stale_baseline_gate_in_full_mode(tmp_path):
             }
         )
     )
-    selection.write_text(json.dumps({"mode": "full"}))
+    selection.write_text(json.dumps({
+        "mode": mode,
+        "eventName": event_name,
+        "changedSpecsOnly": event_name == "pull_request",
+        "selectors": [{"spec": "playwright/e2e/" + file, "projects": ["chromium"]}],
+    }))
     history.write_text(json.dumps({"mode": "full", "tests": []}))
 
     result = subprocess.run(
@@ -2360,7 +2365,7 @@ def test_basic_project_excludes_dedicated_state_specs():
         "name: 'Ingestion'", 1
     )[0]
 
-    assert "testIgnore: dedicatedStateTestIgnore" in basic_project
+    assert "...dedicatedStateTestIgnore" in basic_project
     assert "'**/SearchSettings.spec.ts'" in playwright_config
     assert "'**/SearchSeparation/**'" in playwright_config
     assert "'**/*AfterReindex.spec.ts'" in playwright_config
@@ -2406,14 +2411,11 @@ def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
         if "openmetadata-service/src/main/java/org/openmetadata/service/search/**"
         in entry["sources"]
     )
-    schema_search = (
-        SCRIPTS.parents[1]
-        / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SchemaSearch.spec.ts"
-    ).read_text()
-
     assert "playwright/e2e/Features/*Search*.spec.ts" in mapping["specs"]
     assert "Ingestion" in mapping["projects"]
-    assert "tag: '@ingestion'" in schema_search
+    selected = {}
+    load_script("select_playwright_tests").add_selection(selected, mapping, SCRIPTS.parents[1])
+    assert "playwright/e2e/Features/SchemaSearch.spec.ts" in selected
 
 
 def test_scheduler_impact_mapping_covers_shared_consumers():
@@ -2802,7 +2804,10 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     assert "playwright-results-json-*/results.json" in coverage_step
     assert "evaluate_playwright_performance.py" not in coverage_step
     assert "evaluate_playwright_performance.py" in performance_step
-    assert "if: ${{ always() && !cancelled() }}" in summary_job
+    assert (
+        "if: ${{ always() && !cancelled() && github.event_name != 'pull_request' }}"
+        in summary_job
+    )
     assert "require('./.github/scripts/render_playwright_summary.cjs')" in summary_job
     assert "await renderPlaywrightSummary({ github, context, core });" in summary_job
     summary_script = summary_job.split("          script: |\n", 1)[1].split(
@@ -3721,65 +3726,6 @@ def test_generated_impact_map_extends_hand_authored_routing(tmp_path, monkeypatc
     assert "playwright/e2e/Features/AlsoTouched.spec.ts" in specs
 
 
-def test_generated_impact_map_auto_detected_beside_hand_authored(tmp_path, monkeypatch):
-    """
-    If the caller does not pass `--generated-impact-map`, the planner looks
-    for a sibling `impact-map.generated.json` next to the hand-authored map
-    and loads it automatically. This keeps the CI workflow untouched — just
-    committing the generated file is enough for it to take effect.
-    """
-    selector = load_script("select_playwright_tests")
-
-    hand = tmp_path / "impact-map.json"
-    hand.write_text(
-        json.dumps(
-            {
-                "smoke": [],
-                "canary": [],
-                "sharedInfrastructure": [],
-                "delegatedSpecs": [],
-                "mappings": [],
-            }
-        )
-    )
-    # Sibling file — the planner should find it without an explicit CLI arg.
-    (tmp_path / "impact-map.generated.json").write_text(
-        json.dumps(
-            {
-                "mappings": [
-                    {
-                        "sources": ["src/pages/AutoLoad/auto.tsx"],
-                        "specs": ["playwright/e2e/Features/AutoLoad.spec.ts"],
-                    },
-                ],
-            }
-        )
-    )
-    changed = tmp_path / "changed.txt"
-    changed.write_text("src/pages/AutoLoad/auto.tsx\n")
-    output = tmp_path / "selection.json"
-
-    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "select_playwright_tests.py",
-            "--event-name",
-            "pull_request_target",
-            "--changed-files",
-            str(changed),
-            "--impact-map",
-            str(hand),
-            # No --generated-impact-map — proves auto-detect works.
-            "--output",
-            str(output),
-        ],
-    )
-    selector.main()
-
-    specs = {entry["spec"] for entry in json.loads(output.read_text())["selectors"]}
-    assert "playwright/e2e/Features/AutoLoad.spec.ts" in specs
 
 
 def test_generator_import_graph_and_testid_signals_produce_a_stable_output(tmp_path):
@@ -3953,33 +3899,6 @@ def test_generator_ignores_unit_tests_and_mocks_that_colocate_with_components(
         )
 
 
-def test_committed_generated_impact_map_matches_the_generator_output():
-    """
-    Drift guard: the committed `.github/playwright/impact-map.generated.json`
-    must equal what the generator produces against the current tree. If a
-    spec is added, a testId changes, or a schema import is added, the
-    generated map must be regenerated and committed in the same PR — the
-    generator is not free to drift silently, otherwise the source→spec
-    routing would go stale between regenerations.
-    """
-    repo_root = Path(__file__).parents[3]
-    generated_path = repo_root / ".github/playwright/impact-map.generated.json"
-
-    result = subprocess.run(
-        [
-            sys.executable,
-            str(repo_root / ".github/scripts/generate_playwright_impact_map.py"),
-            "--check",
-        ],
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, (
-        f"{generated_path.relative_to(repo_root)} is out of date.\n"
-        "Run: python3 .github/scripts/generate_playwright_impact_map.py\n"
-        f"stderr:\n{result.stderr}"
-    )
 
 
 def test_generator_drops_testids_owned_by_too_many_files(tmp_path):

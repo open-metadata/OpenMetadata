@@ -63,6 +63,7 @@ The `openmetadata-workflow` meta-skill is loaded at session start and directs Cl
 | [Code Review](code-review/SKILL.md) | `/code-review` | Two-stage review: spec compliance then code quality |
 | [Verification](verification/SKILL.md) | `/verification` | Evidence-based completion — show test output, not claims |
 | [Java Affected Tests](java-affected-tests/SKILL.md) | `/java-affected-tests` | Select, run and record the Java unit tests and integration tests a diff impacts — PR CI runs no ITs, the merge queue does |
+| [Playwright Affected Tests](playwright-affected-tests/SKILL.md) | `/playwright-affected-tests` | Generate the current checkout's impact map, select and run affected browser specs locally, and record PR evidence |
 | [PR Checklist](pr-checklist/SKILL.md) | `/pr-checklist` | Walk the PR template (issue link, design, tests + coverage, UI recording, manual tests) and draft the PR body |
 | [UI PR Recording](ui-pr-recording/SKILL.md) | `/ui-pr-recording` | During PR creation for a UI feature or feature task: run the PR build in Docker with sample data, record the feature, and upload the video into the description |
 | [OpenMetadata PR Review](openmetadata-pr-review/SKILL.md) | `/openmetadata-pr-review` | Maintainer-grade review of a real GitHub PR — live diff, linked issue, CI, meaningful-test rubric, merge verdict |

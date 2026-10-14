@@ -172,7 +172,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | `ui-core-components` | building UI layout/color before reaching for raw `<div>` + Tailwind |
 | `test-locally` | spinning up the full local Docker stack to test a change/connector |
 | `connector-standards` / `connector-building` / `connector-review` | building or reviewing an ingestion connector |
-| `playwright` / `writing-playwright-tests` / `playwright-validation` | authoring or validating Playwright E2E tests |
+| `playwright` / `playwright-validation` / `playwright-affected-tests` | authoring or validating E2E tests; selecting, running and recording affected specs locally |
 | `pr-checklist` / `ui-pr-recording` | creating a PR for a UI feature or feature task — run the PR build in Docker with sample data and upload its screen recording into the description |
 | `openmetadata-pr-review` | reviewing a real GitHub PR (number/URL/batch) — maintainer merge verdict: live diff, CI, meaningful-test rubric |
 
