@@ -1073,58 +1073,6 @@ class CreateTaskTest {
             prior, workflowDefinitionId, UUID.randomUUID(), null));
   }
 
-  // ---- newestApprovalTask ----
-
-  @Test
-  void testInterleavedRunsKeepOnlyTheNewestTask() {
-    // Run A takes TASK-00041 and run B TASK-00042. B lists first and sees only itself; A lists
-    // second and sees B. B must keep its task and A must give up its own.
-    UUID workflowDefinitionId = UUID.randomUUID();
-    Task runA = openApprovalTask(workflowDefinitionId, "TASK-00041");
-    Task runB = openApprovalTask(workflowDefinitionId, "TASK-00042");
-
-    assertSame(runB, CreateTask.newestApprovalTask(runB, List.of()));
-    assertSame(runB, CreateTask.newestApprovalTask(runA, List.of(runB)));
-  }
-
-  @Test
-  void testRunsThatSeeEachOtherAgreeOnTheSameSurvivor() {
-    UUID workflowDefinitionId = UUID.randomUUID();
-    Task runA = openApprovalTask(workflowDefinitionId, "TASK-00041");
-    Task runB = openApprovalTask(workflowDefinitionId, "TASK-00042");
-
-    assertSame(runB, CreateTask.newestApprovalTask(runA, List.of(runB)));
-    assertSame(runB, CreateTask.newestApprovalTask(runB, List.of(runA)));
-  }
-
-  @Test
-  void testNewestIsDecidedByTaskNumberNotByIdLength() {
-    UUID workflowDefinitionId = UUID.randomUUID();
-    Task older = openApprovalTask(workflowDefinitionId, "TASK-99999");
-    Task newer = openApprovalTask(workflowDefinitionId, "TASK-100000");
-
-    assertSame(newer, CreateTask.newestApprovalTask(older, List.of(newer)));
-    assertSame(newer, CreateTask.newestApprovalTask(newer, List.of(older)));
-  }
-
-  @Test
-  void testTaskWithoutTaskIdNeverOutlivesANumberedTask() {
-    UUID workflowDefinitionId = UUID.randomUUID();
-    Task legacy = openApprovalTask(workflowDefinitionId, null);
-    Task current = openApprovalTask(workflowDefinitionId, "TASK-00007");
-
-    assertSame(current, CreateTask.newestApprovalTask(current, List.of(legacy)));
-  }
-
-  private static Task openApprovalTask(UUID workflowDefinitionId, String taskId) {
-    return new Task()
-        .withId(UUID.randomUUID())
-        .withTaskId(taskId)
-        .withStatus(TaskEntityStatus.Open)
-        .withWorkflowDefinitionId(workflowDefinitionId)
-        .withWorkflowInstanceId(UUID.randomUUID());
-  }
-
   // ---- mergeManualGrantReason ----
 
   @Test

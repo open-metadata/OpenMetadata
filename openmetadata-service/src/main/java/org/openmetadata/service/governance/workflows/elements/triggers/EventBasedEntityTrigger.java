@@ -171,7 +171,7 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     for (String entityType : entityTypes) {
       for (String signalId :
           signalIdsFor(mainWorkflowName, entityType, triggerDefinition, changeRequestHook)) {
-        addStartEvent(workflowTriggerId, entityType, signalId, !changeRequestHook);
+        addStartEvent(workflowTriggerId, entityType, signalId);
       }
     }
   }
@@ -190,15 +190,7 @@ public class EventBasedEntityTrigger implements TriggerInterface {
             .toList();
   }
 
-  // One consumer thread delivers every change event's signal. Leaving the start event
-  // asynchronously commits the instance and its job, then hands the filter and the whole workflow
-  // body to the Flowable async executor, so one slow workflow (an approval that reads and patches
-  // its entity) can't hold back every other entity's event behind it. A change request's signal
-  // stays synchronous: its delivery counts as done only when the signal returns, and retries a
-  // review run that fails, so the run must have reached its first wait state by then.
-  // ADR:2026-10-14-event-triggered-workflows-run-on-the-async-executor
-  private void addStartEvent(
-      String workflowTriggerId, String entityType, String signalId, boolean leavesAsynchronously) {
+  private void addStartEvent(String workflowTriggerId, String entityType, String signalId) {
     Signal signal = new SignalBuilder().id(signalId).build();
     SignalEventDefinition signalEventDefinition = new SignalEventDefinition();
     signalEventDefinition.setSignalRef(signal.getId());
@@ -206,7 +198,6 @@ public class EventBasedEntityTrigger implements TriggerInterface {
         getFlowableElementId(
             workflowTriggerId, String.format("%s-%s-%s", entityType, signalId, "start"));
     StartEvent startEvent = new StartEventBuilder().id(startEventId).build();
-    startEvent.setAsynchronousLeave(leavesAsynchronously);
     startEvent.getEventDefinitions().add(signalEventDefinition);
     this.startEvents.add(startEvent);
     this.signals.add(signal);

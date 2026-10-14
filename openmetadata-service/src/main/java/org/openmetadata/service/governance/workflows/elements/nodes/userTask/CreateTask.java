@@ -30,13 +30,11 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
@@ -85,7 +83,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.tasks.TaskIdGenerator;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.AsyncService;
@@ -248,7 +245,7 @@ public class CreateTask implements TaskListener {
             try {
               persist.run();
             } catch (RuntimeException e) {
-              LOG.error("[CreateTask] Post-commit task persist failed", e);
+              LOG.error("[CreateTask] Post-commit task stage persist failed", e);
             }
           });
     } else {
@@ -736,11 +733,19 @@ public class CreateTask implements TaskListener {
     // Send WebSocket Notification
     WebsocketNotificationHandler.handleTaskNotification(task);
 
-    // Reconcile the open approval tasks of this workflow on the entity AFTER the new task has been
-    // created, so a rollback of the new-task transaction can't leave another run's Flowable process
-    // terminated behind a still-open OM task. One live approval per (entity, workflow) is the
-    // invariant.
-    supersedePriorApprovalTask(delegateTask, taskRepository, entity, taskCategory, task, updatedBy);
+    // Supersede any approval task still open from an earlier run of the same workflow, AFTER the
+    // new
+    // task has been created, so a rollback of the new-task transaction can't leave the prior run's
+    // Flowable process terminated behind a still-open OM task. One live approval per (entity,
+    // workflow) is the invariant.
+    supersedePriorApprovalTask(
+        delegateTask,
+        taskRepository,
+        entity,
+        taskCategory,
+        resolvedWorkflowDefinitionId,
+        workflowInstanceId,
+        updatedBy);
 
     return task;
   }
@@ -750,7 +755,8 @@ public class CreateTask implements TaskListener {
       TaskRepository taskRepository,
       EntityInterface<?> entity,
       TaskCategory taskCategory,
-      Task currentTask,
+      UUID currentWorkflowDefinitionId,
+      UUID currentWorkflowInstanceId,
       String updatedBy) {
     // Best-effort cleanup: failing to supersede a prior task must never abort creation of the new
     // approval task, so all exceptions are contained here instead of bubbling up as a BpmnError.
@@ -761,29 +767,20 @@ public class CreateTask implements TaskListener {
         // reviews survive. Every other run keeps the entity-level supersede (requesterToMatch =
         // null).
         String requesterToMatch = reviewsChangeRequest(delegateTask) ? updatedBy : null;
-        List<Task> rivals =
-            taskRepository
-                .listNonTerminalTasksByEntityAndCategory(
-                    entity.getFullyQualifiedName(), taskCategory)
-                .stream()
-                .filter(
-                    prior ->
-                        isSupersedablePriorApprovalTask(
-                            prior,
-                            currentTask.getWorkflowDefinitionId(),
-                            currentTask.getWorkflowInstanceId(),
-                            requesterToMatch))
-                .toList();
-        UUID survivorId = newestApprovalTask(currentTask, rivals).getId();
-        rivals.stream()
-            .filter(rival -> !rival.getId().equals(survivorId))
+        taskRepository
+            .listNonTerminalTasksByEntityAndCategory(entity.getFullyQualifiedName(), taskCategory)
+            .stream()
+            .filter(
+                prior ->
+                    isSupersedablePriorApprovalTask(
+                        prior,
+                        currentWorkflowDefinitionId,
+                        currentWorkflowInstanceId,
+                        requesterToMatch))
             .forEach(
-                rival ->
+                prior ->
                     cancelAndTerminatePriorApproval(
-                        delegateTask, taskRepository, rival, updatedBy));
-        if (!currentTask.getId().equals(survivorId)) {
-          supersedeOwnTaskAfterCommit(delegateTask, taskRepository, currentTask, updatedBy);
-        }
+                        delegateTask, taskRepository, prior, updatedBy));
       } catch (Exception e) {
         LOG.warn(
             "[CreateTask] Failed to supersede prior approval task(s) for entity '{}': {}",
@@ -834,46 +831,6 @@ public class CreateTask implements TaskListener {
       }
     }
     return priorPayload;
-  }
-
-  /**
-   * The task that stays open among this run's task and the rival open tasks it can see: the newest
-   * by task number. Event-triggered runs execute on the async executor, so two runs for the same
-   * entity can create their tasks at the same time, and the first to look may not see the other's
-   * task yet. Every run keeps only the newest task it sees, and the run that looks last sees both,
-   * so exactly one survives; no run ever closes the newest task, so at least one does. A task
-   * without a task ID predates the sequence and counts as the oldest.
-   */
-  static Task newestApprovalTask(Task currentTask, List<Task> rivals) {
-    return Stream.concat(Stream.of(currentTask), rivals.stream())
-        .max(Comparator.comparingLong(CreateTask::creationOrder))
-        .orElseThrow();
-  }
-
-  private static long creationOrder(Task task) {
-    return task.getTaskId() == null
-        ? Long.MIN_VALUE
-        : TaskIdGenerator.sequenceNumberOf(task.getTaskId());
-  }
-
-  // A newer run's task is already open, so this run's task is the one to supersede. Its own
-  // Flowable
-  // process can't be ended from inside the command that is creating its user task, so both the
-  // close and the termination wait for the commit; if the command rolls back, nothing is closed.
-  private void supersedeOwnTaskAfterCommit(
-      DelegateTask delegateTask, TaskRepository taskRepository, Task ownTask, String updatedBy) {
-    String mainWorkflowName = inferWorkflowDefinitionRef(delegateTask);
-    LOG.info(
-        "[CreateTask] Superseding own approval task '{}' (workflowInstance '{}'): a newer run's task"
-            + " is already open",
-        ownTask.getId(),
-        ownTask.getWorkflowInstanceId());
-    registerPostCommitPersist(
-        () -> {
-          taskRepository.closeTask(ownTask, updatedBy, SUPERSEDED_BY_NEWER_RUN);
-          dispatchPriorInstanceTermination(
-              mainWorkflowName, ownTask.getId(), ownTask.getWorkflowInstanceId());
-        });
   }
 
   static boolean isSupersedablePriorApprovalTask(
