@@ -1489,9 +1489,9 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(inspector.getByRole('heading')).toHaveText(
       'Has glossary term'
     );
-    await expect(inspector).toContainText(
-      '6 individual relationships · bundled'
-    );
+    // Bundle header subtitle is `Grouped · <count> relationships · <family>`
+    // post-R9 (previously 'N individual relationships · bundled').
+    await expect(inspector).toContainText('Grouped · 6 relationships');
     await expect(inspector.getByTestId('relationship-predicate')).toHaveText(
       'hasGlossaryTerm'
     );
