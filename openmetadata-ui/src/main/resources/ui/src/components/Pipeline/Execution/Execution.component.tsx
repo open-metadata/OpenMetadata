@@ -176,7 +176,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                   className="tw:text-brand-secondary tw:after:outline-brand"
                   color="secondary"
                   data-testid="status-button"
-                  iconLeading={<FilterIcon height={12} width={12} />}
+                  iconLeading={FilterIcon}
                   size="sm">
                   {status === MenuOptions.all ? t('label.status') : status}
                 </Button>

@@ -256,7 +256,7 @@ const TabFilters = () => {
               <Button
                 color="primary"
                 data-testid="profiler-add-table-test-btn"
-                iconTrailing={<ChevronDown className="tw:size-4" />}
+                iconTrailing={ChevronDown}
                 size="sm">
                 {t('label.add')}
               </Button>

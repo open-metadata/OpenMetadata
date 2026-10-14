@@ -659,18 +659,8 @@ const OntologyExplorerPage: React.FC = () => {
             color="tertiary"
             data-selected-glossary-id={selectedGlossaryId ?? ''}
             data-testid="ontology-glossary-menu-trigger"
-            iconLeading={
-              <Globe01
-                aria-hidden="true"
-                className="tw:size-3.5 tw:text-fg-tertiary"
-              />
-            }
-            iconTrailing={
-              <ChevronDown
-                aria-hidden="true"
-                className="tw:size-[13px] tw:text-fg-quaternary"
-              />
-            }>
+            iconLeading={Globe01}
+            iconTrailing={ChevronDown}>
             <span className="tw:max-w-52 tw:truncate tw:font-semibold">
               {selectedGlossaryLabel}
             </span>
@@ -943,12 +933,13 @@ const OntologyExplorerPage: React.FC = () => {
 
           <Button
             aria-haspopup="dialog"
-            className="tw:gap-[7px]! tw:rounded-[9px]! tw:border tw:border-primary tw:px-3! tw:py-[7px]! tw:text-xs! tw:font-semibold! tw:shadow-none! tw:before:hidden tw:after:outline-0!"
+            className={classNames(
+              'tw:gap-[7px]! tw:rounded-[9px]! tw:border tw:border-primary tw:px-3! tw:py-[7px]! tw:text-xs! tw:font-semibold!',
+              'tw:shadow-none! tw:before:hidden tw:after:outline-0! tw:*:data-icon:text-utility-brand-600'
+            )}
             color="secondary"
             data-testid="ontology-library-trigger"
-            iconLeading={
-              <Grid01 className="tw:size-[15px] tw:text-fg-brand-primary" />
-            }
+            iconLeading={Grid01}
             size="sm"
             onPress={() => setIsLibraryOpen(true)}>
             {t('label.library')}

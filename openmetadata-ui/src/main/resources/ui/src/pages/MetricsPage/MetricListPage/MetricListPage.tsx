@@ -785,16 +785,12 @@ const MetricListPage = () => {
         ].join(' ')}
         color="tertiary"
         data-testid={`metric-group-${row.group.name}`}
+        iconLeading={isCollapsed ? ChevronRight : ChevronDown}
         isLoading={loadingGroupIds.includes(row.group.id)}
         size="sm"
         onPress={() => toggleGroup(row.id)}>
-        {isCollapsed ? (
-          <ChevronRight aria-hidden="true" className="tw:size-4 tw:shrink-0" />
-        ) : (
-          <ChevronDown aria-hidden="true" className="tw:size-4 tw:shrink-0" />
-        )}
         <span className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:bg-utility-purple-50 tw:text-utility-purple-700">
-          <Package aria-hidden="true" className="tw:size-4" />
+          <Package aria-hidden="true" className="tw:size-5" />
         </span>
         <Box align="baseline" className="tw:min-w-0 tw:flex-1" gap={2}>
           <Typography

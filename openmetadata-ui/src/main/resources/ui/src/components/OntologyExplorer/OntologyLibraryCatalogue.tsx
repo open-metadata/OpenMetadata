@@ -85,9 +85,7 @@ const OntologyPackCard = ({
         className="tw:gap-1! tw:text-[11px]! tw:font-semibold!"
         color="link-color"
         data-testid={`ontology-pack-details-${pack.id}`}
-        iconTrailing={
-          <ArrowRight className="tw:size-3 tw:text-fg-brand-primary" />
-        }
+        iconTrailing={ArrowRight}
         size="xs"
         onPress={() => onSelect(pack)}>
         {t('label.install')}
@@ -100,9 +98,7 @@ const OntologyPackCard = ({
         color="link-color"
         data-testid={`ontology-pack-source-${pack.id}`}
         href={pack.sourceUrl}
-        iconTrailing={
-          <ArrowUpRight className="tw:size-3 tw:text-fg-brand-primary" />
-        }
+        iconTrailing={ArrowUpRight}
         rel="noreferrer"
         size="xs"
         target="_blank">

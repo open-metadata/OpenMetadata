@@ -18,7 +18,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { ChevronDown, Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import QueryString from 'qs';
 import {
@@ -33,7 +33,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as DownloadIcon } from '../../../assets/svg/ic-download.svg';
 import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exit-fullscreen.svg';
 import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
@@ -509,7 +508,10 @@ const CustomControls: FC<{
           <div className="tw:flex tw:items-baseline">
             {activeTab === 'impact_analysis' && (
               <Dropdown.Root>
-                <Button className="tw:px-3.5 tw:py-2.5" color="tertiary">
+                <Button
+                  className="tw:px-3.5 tw:py-2.5"
+                  color="tertiary"
+                  iconTrailing={ChevronDown}>
                   <div className="tw:flex tw:items-center tw:gap-1">
                     <Typography as="span" className="tw:font-normal">
                       {`${t('label.node-depth')}:`}{' '}
@@ -519,7 +521,6 @@ const CustomControls: FC<{
                       className="tw:text-utility-brand-600 tw:font-normal">
                       {nodeDepth}
                     </Typography>
-                    <DropdownIcon height={12} width={12} />
                   </div>
                 </Button>
                 <Dropdown.Popover className="tw:max-w-32">

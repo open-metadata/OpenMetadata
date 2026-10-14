@@ -142,11 +142,11 @@ const AdvancedPropertiesSection: FunctionComponent<
             color="link-color"
             iconLeading={
               <ChevronDown
+                data-icon
                 className={classNames(
                   'tw:transition-transform',
                   !advancedOpen && 'tw:-rotate-90'
                 )}
-                size={16}
               />
             }
             onClick={() => setAdvancedOpen((value) => !value)}>

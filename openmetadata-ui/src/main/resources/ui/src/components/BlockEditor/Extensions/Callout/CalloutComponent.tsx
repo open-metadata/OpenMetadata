@@ -33,9 +33,7 @@ const PopoverContent = ({
           <Button
             color="tertiary"
             data-testid={`callout-${key}`}
-            iconLeading={
-              <CalloutIcon style={{ verticalAlign: 'middle' }} width={20} />
-            }
+            iconLeading={CalloutIcon}
             key={key}
             onPress={() => onSelect(key)}>
             {startCase(key)}

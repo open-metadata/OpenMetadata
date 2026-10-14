@@ -128,7 +128,7 @@ const SearchBoostsSection = ({
                 <Button
                   color="primary"
                   data-testid="term-boost-add-btn"
-                  iconLeading={<Plus className="tw:size-3.5 tw:shrink-0" />}
+                  iconLeading={Plus}
                   isDisabled={isUpdating || showNewTermBoost}
                   onClick={onAddNewTermBoost}>
                   {t('label.add')}
@@ -165,9 +165,7 @@ const SearchBoostsSection = ({
                 <Button
                   color="secondary"
                   data-testid="add-field-value-boost-btn"
-                  iconLeading={
-                    <Plus className="text-sm tw:size-3.5 tw:shrink-0" />
-                  }
+                  iconLeading={Plus}
                   isDisabled={isUpdating || showFieldValueBoostModal}
                   onClick={onAddFieldValueBoost}>
                   {t('label.add')}

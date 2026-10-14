@@ -96,7 +96,7 @@ export const PasswordInput = forwardRef<
             onSelect={handleFileSelect}>
             <Button
               color="link-color"
-              iconLeading={<UploadCloud01 data-icon size={12} />}
+              iconLeading={UploadCloud01}
               isDisabled={isDisabled}
               size="xs"
               type="button">

@@ -320,7 +320,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
         <Button
           color="secondary"
           data-testid="set-default-persona-btn"
-          iconLeading={<CheckCircle />}
+          iconLeading={CheckCircle}
           isDisabled={!canEditAll}
           isLoading={isTogglingDefault}
           size="sm"

@@ -21,13 +21,12 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Bell01 } from '@openmetadata/ui-core-components/icons';
+import { Bell01, FilterLines } from '@openmetadata/ui-core-components/icons';
 import { Collapse } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
@@ -414,7 +413,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
               <Button
                 color="secondary"
                 data-testid="filter-button"
-                iconLeading={<FilterIcon height={16} width={16} />}
+                iconLeading={FilterLines}
                 size="sm">
                 {filter !== AlertRecentEventFilters.ALL && (
                   <Typography

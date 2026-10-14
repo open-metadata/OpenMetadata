@@ -18,14 +18,13 @@ import {
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Columns03 } from '@openmetadata/ui-core-components/icons';
+import { Columns03, Plus } from '@openmetadata/ui-core-components/icons';
 import { Form, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
 import { DrawerPopupContainerProvider } from '../../../../components/common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import Loader from '../../../../components/common/Loader/Loader';
 import { PAGE_SIZE } from '../../../../constants/constants';
@@ -577,7 +576,7 @@ const TableConstraintsModal = ({
                     className="tw:mt-4"
                     color="secondary"
                     data-testid="add-constraint-button"
-                    iconLeading={<PlusIcon className="anticon" />}
+                    iconLeading={Plus}
                     size="xs"
                     onClick={() => add()}>
                     {t('label.add-entity', {

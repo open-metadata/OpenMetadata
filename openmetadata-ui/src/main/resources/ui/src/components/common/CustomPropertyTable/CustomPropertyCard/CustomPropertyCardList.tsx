@@ -101,8 +101,8 @@ export const CustomPropertyCardList = ({
             <Button
               color="secondary"
               data-testid="custom-property-sort"
-              iconLeading={<FilterLines className="tw:size-4" />}
-              iconTrailing={<ChevronDown className="tw:size-4" />}
+              iconLeading={FilterLines}
+              iconTrailing={ChevronDown}
               size="sm">
               {t('label.sort-colon-value', { value: t(activeSort.labelKey) })}
             </Button>

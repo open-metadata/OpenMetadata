@@ -246,7 +246,7 @@ const AccessTokenDetails = ({
       <Button
         color="secondary"
         data-testid="regenerate-token"
-        iconLeading={<RefreshCcw02 height={12} width={12} />}
+        iconLeading={RefreshCcw02}
         isLoading={isLoading}
         size="sm"
         onClick={handleRegenerate}>
@@ -255,7 +255,7 @@ const AccessTokenDetails = ({
       <Button
         color="secondary-destructive"
         data-testid="revoke-token"
-        iconLeading={<Trash02 height={12} width={12} />}
+        iconLeading={Trash02}
         isLoading={isLoading}
         size="sm"
         onClick={handleRevoke}>

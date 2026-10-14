@@ -19,6 +19,7 @@ import {
   PopoverTrigger,
   Tooltip as CoreTooltip,
 } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { Alert, Badge, InputRef } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
@@ -35,7 +36,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
@@ -618,7 +618,7 @@ const NavBar = () => {
               <Button
                 color="tertiary"
                 data-testid="language-selector-button"
-                iconTrailing={<DropDownIcon width={12} />}
+                iconTrailing={ChevronDown}
                 size="sm">
                 {currentLanguage}
               </Button>

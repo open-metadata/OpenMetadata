@@ -188,8 +188,8 @@ const AgentGroup: FC<AgentGroupProps> = ({
           (canCreateAgent && (
             <Button
               color="secondary"
-              iconLeading={<Plus size={18} />}
-              iconTrailing={<ChevronDown size={18} />}
+              iconLeading={Plus}
+              iconTrailing={ChevronDown}
               size="sm">
               {t('label.add-entity', { entity: t('label.agent') })}
             </Button>

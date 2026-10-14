@@ -257,7 +257,7 @@ const DatePickerMenu = ({
         className={getTriggerClassName(size, isCustomRangeSelected)}
         color="secondary"
         data-testid="date-picker-menu"
-        iconTrailing={<DropdownIcon height={14} width={14} />}
+        iconTrailing={DropdownIcon}
         size={size === 'small' ? 'sm' : 'md'}>
         <Typography
           className={classNames(

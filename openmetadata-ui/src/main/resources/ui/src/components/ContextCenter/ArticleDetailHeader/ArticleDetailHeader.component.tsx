@@ -484,7 +484,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               className="tw:p-1.5"
               color="secondary"
               data-testid="version-btn"
-              iconLeading={<VersionIcon height={16} width={16} />}
+              iconLeading={VersionIcon}
               size="sm"
               onClick={handleVersionClick}>
               {version}
@@ -658,9 +658,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             data-testid="right-panel-toggle-btn"
             iconLeading={
               <SidebarCollapsible
+                data-icon
                 className={isRightPanelOpen ? undefined : 'tw:rotate-180'}
-                height={20}
-                width={20}
               />
             }
             size="sm"

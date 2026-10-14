@@ -971,9 +971,7 @@ const DataProductsDetailsPage = ({
           )}
           color="secondary"
           data-testid="data-contract-latest-result-btn"
-          iconLeading={
-            StatusIcon ? <StatusIcon className="tw:size-6.5" /> : undefined
-          }
+          iconLeading={StatusIcon}
           onPress={() => {
             handleTabChange(EntityTabs.CONTRACT);
           }}>

@@ -162,13 +162,13 @@ const ConnectionsPage: React.FC = () => {
       <ButtonGroupItem
         className="tw:selected:bg-brand-primary tw:selected:text-brand-secondary"
         data-testid="grid-view-toggle"
-        iconLeading={<LayoutGrid01 height={18} width={18} />}
+        iconLeading={LayoutGrid01}
         id="grid"
       />
       <ButtonGroupItem
         className="tw:selected:bg-brand-primary tw:selected:text-brand-secondary"
         data-testid="list-view-toggle"
-        iconLeading={<List height={18} width={18} />}
+        iconLeading={List}
         id="list"
       />
     </ButtonGroup>

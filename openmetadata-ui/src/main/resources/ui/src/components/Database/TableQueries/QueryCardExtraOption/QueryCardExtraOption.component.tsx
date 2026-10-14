@@ -21,6 +21,7 @@ import {
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useMemo, useState } from 'react';
@@ -169,14 +170,16 @@ const QueryCardExtraOption = ({
 
       <Tooltip arrow title={t('label.up-vote')}>
         <Button
+          className={classNames(
+            voteStatus === QueryVoteType.votedUp &&
+              'tw:*:data-icon:text-fg-success-primary'
+          )}
           color="secondary"
           data-testid="up-vote-btn"
           iconLeading={
-            voteStatus === QueryVoteType.votedUp ? (
-              <ThumbsUpFilled className="text-success" height={15} width={15} />
-            ) : (
-              <ThumbsUpOutline height={15} width={15} />
-            )
+            voteStatus === QueryVoteType.votedUp
+              ? ThumbsUpFilled
+              : ThumbsUpOutline
           }
           isLoading={loading === QueryVoteType.votedUp}
           size="xs"
@@ -187,21 +190,17 @@ const QueryCardExtraOption = ({
 
       <Tooltip arrow title={t('label.down-vote')}>
         <Button
+          className={classNames(
+            voteStatus === QueryVoteType.votedDown &&
+              'tw:*:data-icon:text-fg-warning-primary'
+          )}
           color="secondary"
           data-testid="down-vote-btn"
           iconLeading={
             voteStatus === QueryVoteType.votedDown ? (
-              <ThumbsUpFilled
-                className="rotate-inverse text-warning-7"
-                height={15}
-                width={15}
-              />
+              <ThumbsUpFilled data-icon className="tw:rotate-180" />
             ) : (
-              <ThumbsUpOutline
-                className="rotate-inverse"
-                height={15}
-                width={15}
-              />
+              <ThumbsUpOutline data-icon className="tw:rotate-180" />
             )
           }
           isLoading={loading === QueryVoteType.votedDown}

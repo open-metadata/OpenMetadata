@@ -1035,7 +1035,7 @@ export function ConnectionFooterActions(
       <Button
         className="test-connection-footer-try-again"
         color="primary"
-        iconLeading={<RefreshCcw01 size={16} />}
+        iconLeading={RefreshCcw01}
         size="sm"
         onClick={onTestConnection}>
         {t('label.try-again')}
@@ -1065,7 +1065,7 @@ export function ConnectionFooterActions(
         className="tw:mr-auto"
         color="secondary"
         data-testid="copy-log-button"
-        iconLeading={<Copy01 size={16} />}
+        iconLeading={Copy01}
         isDisabled={!rawLog}
         size="sm"
         onClick={() => onCopyToClipBoard()}>

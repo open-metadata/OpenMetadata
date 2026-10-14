@@ -17,12 +17,15 @@ import {
   Popover,
   PopoverTrigger,
 } from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  LayersThree01,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, xor } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check.svg';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product.svg';
@@ -421,11 +424,9 @@ const LineageLayers = ({
         color="secondary"
         data-testid="lineage-layer-btn"
         iconLeading={
-          <Layers className="lineage-scene-layer-trigger-icon tw:size-[42px] tw:shrink-0 tw:rounded-xl tw:bg-brand-primary tw:p-2.5 tw:text-fg-brand-primary" />
+          <LayersThree01 className="lineage-scene-layer-trigger-icon tw:size-[42px] tw:shrink-0 tw:rounded-xl tw:bg-brand-primary tw:p-2.5 tw:text-utility-brand-600" />
         }
-        iconTrailing={
-          <DropdownIcon className="lineage-scene-layer-trigger-caret tw:ml-auto tw:size-3" />
-        }
+        iconTrailing={ChevronDown}
         size="sm">
         <span className="lineage-scene-layer-trigger-label tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
           <span className="lineage-scene-layer-trigger-eyebrow tw:text-xs tw:font-bold tw:leading-4 tw:text-quaternary tw:uppercase">
@@ -439,12 +440,12 @@ const LineageLayers = ({
     ) : (
       <Button
         className={classNames(LAYER_BUTTON_CLASSES, 'tw:bg-primary', {
-          'tw:after:outline-brand tw:z-10 tw:[&>svg]:text-fg-brand-primary':
+          'tw:after:outline-brand tw:z-10 tw:*:data-icon:text-utility-brand-600':
             isLayersOpen,
         })}
         color="secondary"
         data-testid="lineage-layer-btn"
-        iconLeading={<Layers className="tw:size-5" />}
+        iconLeading={LayersThree01}
         size="sm">
         {t('label.layer-plural')}
       </Button>

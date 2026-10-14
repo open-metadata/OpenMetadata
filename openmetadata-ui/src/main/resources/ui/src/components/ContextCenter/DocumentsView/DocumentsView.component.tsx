@@ -530,7 +530,7 @@ const ListHeader: FC<ListHeaderProps> = ({
           className="tw:py-1.5"
           color="tertiary"
           data-testid="bulk-download-btn"
-          iconLeading={<DownloadIcon height={18} width={18} />}
+          iconLeading={DownloadIcon}
           size="sm"
           onClick={onBulkDownload}>
           {t('label.download')}
@@ -542,9 +542,7 @@ const ListHeader: FC<ListHeaderProps> = ({
               className="tw:py-1.5"
               color="tertiary"
               data-testid="bulk-move-btn"
-              iconLeading={
-                <FolderIcon height={18} strokeWidth={2} width={18} />
-              }
+              iconLeading={FolderIcon}
               size="sm">
               {t('label.move')}
             </Button>
@@ -565,7 +563,7 @@ const ListHeader: FC<ListHeaderProps> = ({
             className="tw:py-1.5"
             color="tertiary-destructive"
             data-testid="bulk-delete-btn"
-            iconLeading={<TrashIcon height={16} width={16} />}
+            iconLeading={TrashIcon}
             size="sm"
             onClick={onBulkDelete}>
             {t('label.delete')}

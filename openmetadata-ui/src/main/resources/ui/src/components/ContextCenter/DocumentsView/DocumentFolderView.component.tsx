@@ -108,13 +108,7 @@ const FolderRowContent = ({
           ellipsis
           className="tw:flex-1 tw:min-w-0 tw:text-left tw:p-0 tw:text-primary tw:justify-start tw:font-normal!"
           color="tertiary"
-          iconLeading={
-            <FolderIcon
-              className="tw:text-quaternary tw:shrink-0"
-              height={14}
-              width={14}
-            />
-          }
+          iconLeading={FolderIcon}
           size="sm"
           onClick={(e: MouseEvent) => {
             e.stopPropagation();

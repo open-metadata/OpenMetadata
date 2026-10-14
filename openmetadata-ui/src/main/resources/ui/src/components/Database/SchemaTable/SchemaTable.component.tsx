@@ -764,24 +764,26 @@ const SchemaTable = () => {
       {
         title: (
           <Button
+            className={classNames(
+              sortBy === 'name' && 'tw:*:data-icon:text-utility-brand-600'
+            )}
             color="tertiary"
             data-testid="name-column-header"
+            iconTrailing={
+              <IconSortIndicator
+                className={classNames(
+                  'tw:transition-transform',
+                  sortOrder === 'desc' && 'tw:rotate-180'
+                )}
+                data-icon="trailing"
+                data-testid="sort-indicator"
+              />
+            }
             onClick={handleColumnHeaderSortToggle}>
             <Typography
               className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
               {t('label.name')}
             </Typography>
-            <IconSortIndicator
-              className="m-l-xss"
-              data-testid="sort-indicator"
-              height={12}
-              style={{
-                color: sortBy === 'name' ? 'var(--primary-color)' : '#6B7280',
-                transform: sortOrder === 'desc' ? 'rotate(180deg)' : 'none',
-                transition: 'transform 0.2s ease',
-              }}
-              width={8}
-            />
           </Button>
         ),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
@@ -992,7 +994,7 @@ const SchemaTable = () => {
                 <Button
                   color="tertiary"
                   data-testid="sort-dropdown"
-                  iconLeading={<IconSort height={14} width={14} />}
+                  iconLeading={IconSort}
                   size="sm">
                   {t('label.sort')}
                 </Button>

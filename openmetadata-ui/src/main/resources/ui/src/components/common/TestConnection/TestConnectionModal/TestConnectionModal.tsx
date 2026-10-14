@@ -418,7 +418,7 @@ const TestConnectionModal = ({
                     className="tw:flex tw:items-center tw:gap-1.5"
                     color="primary"
                     data-testid="try-again-button"
-                    iconLeading={<IconTimeOutButton height={14} width={14} />}
+                    iconLeading={IconTimeOutButton}
                     size="sm"
                     onClick={onTestConnection}>
                     {t('label.try-again')}

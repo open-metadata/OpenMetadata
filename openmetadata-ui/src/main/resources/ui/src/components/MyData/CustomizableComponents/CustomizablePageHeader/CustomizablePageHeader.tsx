@@ -213,7 +213,7 @@ export const CustomizablePageHeader = ({
                 <Button
                   color="primary"
                   data-testid="add-widget-button"
-                  iconLeading={<Plus />}
+                  iconLeading={Plus}
                   onPress={onAddWidget}>
                   {t('label.add-widget-plural')}
                 </Button>
@@ -221,7 +221,7 @@ export const CustomizablePageHeader = ({
               <Button
                 color="secondary"
                 data-testid="reset-button"
-                iconLeading={<RefreshCcw01 />}
+                iconLeading={RefreshCcw01}
                 isDisabled={saving}
                 onPress={() => setResetModalOpen(true)}>
                 {t('label.reset')}
