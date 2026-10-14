@@ -167,7 +167,7 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         // `after:inset-0` stretches the anchor over the whole card: one tab
         // stop, real link semantics (⌘/middle click), no nested interactives.
         <Link
-          className="tw:mt-2 tw:truncate tw:text-sm tw:font-semibold tw:text-primary tw:after:absolute tw:after:inset-0 tw:after:rounded-xl"
+          className="tw:mt-2 tw:truncate tw:text-xs tw:font-semibold tw:text-primary tw:after:absolute tw:after:inset-0 tw:after:rounded-xl"
           to={href}>
           {title}
         </Link>
@@ -178,7 +178,7 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         <Typography
           className="tw:mt-2 tw:text-primary!"
           ellipsis={{ rows: 1 }}
-          size="text-sm"
+          size="text-xs"
           weight="semibold">
           {title}
         </Typography>

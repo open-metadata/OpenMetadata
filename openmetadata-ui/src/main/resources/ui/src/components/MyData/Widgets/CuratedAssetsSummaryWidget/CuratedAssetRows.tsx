@@ -60,7 +60,7 @@ const CuratedAssetRows: React.FC<CuratedAssetRowsProps> = ({ assets }) => {
                 <Typography
                   className="tw:min-w-0 tw:text-text-primary!"
                   ellipsis={{ rows: 1 }}
-                  size="text-sm">
+                  size="text-xs">
                   {asset.name}
                 </Typography>
                 {asset.tier && (

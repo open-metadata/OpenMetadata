@@ -76,8 +76,8 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
           <Typography
             className="tw:min-w-0 tw:text-text-primary!"
             ellipsis={{ rows: 1 }}
-            size="text-md"
-            weight="semibold">
+            size="text-sm"
+            weight="medium">
             {title}
           </Typography>
           {status && !isLoading && (

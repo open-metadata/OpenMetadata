@@ -106,7 +106,7 @@ const TopicSummary = ({
     // rule is emitted after the Tailwind utilities and would otherwise win.
     <Typography
       className="tw:text-pretty tw:text-text-secondary!"
-      size="text-sm">
+      size="text-xs">
       {summary}
     </Typography>
   );

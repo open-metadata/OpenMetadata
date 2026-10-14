@@ -106,7 +106,7 @@ const AnnouncementsHeader = ({
 
   return (
     <div className="tw:flex tw:items-center tw:gap-2">
-      <Typography size="text-md" weight="semibold">
+      <Typography size="text-sm" weight="semibold">
         {t('label.announcement-plural')}
       </Typography>
       {count !== undefined && (
@@ -124,7 +124,7 @@ const AnnouncementsHeader = ({
         <Button
           color="link-color"
           data-testid="announcement-view-all"
-          size="sm"
+          size="xs"
           onPress={onViewAll}>
           {t('label.view-all')}
         </Button>

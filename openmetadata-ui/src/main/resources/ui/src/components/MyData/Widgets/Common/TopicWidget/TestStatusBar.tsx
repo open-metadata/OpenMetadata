@@ -82,7 +82,7 @@ const TestStatusBar: React.FC<TestStatusBarProps> = ({
       <div className="tw:mt-2.5 tw:flex tw:flex-wrap tw:items-center tw:gap-x-4 tw:gap-y-1.5">
         {/* `!` on the colours: Typography renders `.prose`, whose unlayered
           `color` rule is emitted after the Tailwind utilities. */}
-        <Typography className="tw:text-text-tertiary!" size="text-sm">
+        <Typography className="tw:text-text-tertiary!" size="text-xs">
           {t('message.count-total-tests', { count: total })}
         </Typography>
         {segments.map((segment) => (
@@ -98,13 +98,13 @@ const TestStatusBar: React.FC<TestStatusBarProps> = ({
               className="tw:size-1.5 tw:shrink-0 tw:rounded-full"
               style={{ backgroundColor: segment.color }}
             />
-            <Typography className="tw:text-text-secondary!" size="text-sm">
+            <Typography className="tw:text-text-secondary!" size="text-xs">
               {segment.name}
             </Typography>
             <Typography
               className="tw:text-text-primary!"
               data-testid={`test-status-${segment.key}-count`}
-              size="text-sm"
+              size="text-xs"
               weight="medium">
               {segment.value}
             </Typography>

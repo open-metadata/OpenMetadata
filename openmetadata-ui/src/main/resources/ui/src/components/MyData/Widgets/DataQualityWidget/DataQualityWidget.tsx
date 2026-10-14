@@ -70,7 +70,7 @@ const FailedTestRows: React.FC<FailedTestRowsProps> = ({ tests, total }) => {
       <Typography
         className="tw:mt-4 tw:text-text-secondary!"
         data-testid="data-quality-empty"
-        size="text-sm">
+        size="text-xs">
         {total === 0
           ? t('message.no-test-results-yet')
           : t('message.no-failing-tests')}
@@ -95,7 +95,7 @@ const FailedTestRows: React.FC<FailedTestRowsProps> = ({ tests, total }) => {
                 <Typography
                   className="tw:min-w-0 tw:text-text-primary!"
                   ellipsis={{ rows: 1 }}
-                  size="text-sm"
+                  size="text-xs"
                   weight="medium">
                   {test.displayName ?? test.name}
                 </Typography>
@@ -111,7 +111,7 @@ const FailedTestRows: React.FC<FailedTestRowsProps> = ({ tests, total }) => {
                 <Typography
                   className="tw:min-w-0 tw:text-text-tertiary!"
                   ellipsis={{ rows: 1 }}
-                  size="text-sm">
+                  size="text-xs">
                   {tableFqn}
                 </Typography>
               )}
@@ -122,7 +122,7 @@ const FailedTestRows: React.FC<FailedTestRowsProps> = ({ tests, total }) => {
               className="tw:shrink-0"
               color="link-color"
               data-testid={`dq-view-test-${test.id}`}
-              size="sm"
+              size="xs"
               onPress={() =>
                 navigate(
                   observabilityRouterClassBase.getTestCaseDetailPagePath(
