@@ -8999,7 +8999,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
-        "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts"
+        "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
     {
