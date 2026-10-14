@@ -25,13 +25,15 @@ import { EntityType } from '../enums/entity.enum';
 import { Persona } from '../generated/entity/teams/persona';
 import { EntityHistory } from '../generated/type/entityHistory';
 import {
-  CacheState,
   ContextRule,
   PersonaContextDefinition,
 } from '../generated/type/personaContextDefinition';
+import {
+  CacheState,
+  PersonaContextStatus,
+} from '../generated/type/personaContextStatus';
 import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
-import type { PersonaContextStatus } from '../rest/PersonaAPI';
 import { getTreeConfig } from './AdvancedSearchUtils';
 import type { TreeNode } from './queryBuilder/url';
 import { withExploreFieldKeys } from './queryBuilder/url';

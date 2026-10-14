@@ -43,12 +43,12 @@ import { DEFAULT_PERSONA_CONTEXT_DEFINITION } from '../../../constants/PersonaAI
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
+import { PersonaContextStatus } from '../../../generated/type/personaContextStatus';
 import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import {
   getAllPersonas,
   getPersonaAIContextStatus,
-  PersonaContextStatus,
   updatePersonaAIContext,
 } from '../../../rest/PersonaAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -81,6 +81,7 @@ const ContextCenterAIContextPage = () => {
     handlePagingChange,
     pageSize,
     paging,
+    pagingCursor: { cursorType: urlCursorType, cursorValue: urlCursorValue },
     showPagination,
   } = usePaging();
 
@@ -112,9 +113,15 @@ const ContextCenterAIContextPage = () => {
     [isAdminUser, pageSize, handlePagingChange]
   );
 
+  // The URL owns the cursor alongside the page number, so a reload or browser Back lands on the
+  // same personas the pager says it is showing; page clicks only write the URL.
   useEffect(() => {
-    fetchPersonas();
-  }, [fetchPersonas]);
+    fetchPersonas(
+      urlCursorType && urlCursorValue
+        ? { [urlCursorType]: urlCursorValue }
+        : undefined
+    );
+  }, [fetchPersonas, urlCursorType, urlCursorValue]);
 
   const handlePageNavigation = (newPage: number) => {
     // ponytail: cursor paging only supports ±1 steps; a jump beyond the adjacent page no-ops.
@@ -124,8 +131,7 @@ const ContextCenterAIContextPage = () => {
     if (Math.abs(newPage - currentPage) !== 1 || !cursor) {
       return;
     }
-    handlePageChange(newPage);
-    fetchPersonas({ [cursorType]: cursor });
+    handlePageChange(newPage, { cursorType, cursorValue: cursor });
   };
 
   const setPersonaEnabled = (personaId: string, enabled: boolean) =>

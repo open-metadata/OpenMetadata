@@ -46,6 +46,7 @@ import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.personaContext.ContextRule;
 import org.openmetadata.schema.type.personaContext.PersonaContextCacheState;
+import org.openmetadata.schema.type.personaContext.PersonaContextStatus;
 import org.openmetadata.schema.type.personaContext.RuleResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -709,18 +710,21 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   private static PersonaContextStatus contextStatus(Persona persona) {
     PersonaContextCache.CacheSnapshot snapshot =
         PersonaContextCache.getInstance().snapshot(persona);
+    PersonaContextStatus status =
+        new PersonaContextStatus()
+            .withPersonaId(persona.getId())
+            .withCacheState(snapshot.state())
+            .withLastError(snapshot.error())
+            .withEntitiesIncluded(0)
+            .withTokensEst(0);
     if (snapshot.value() == null) {
-      return new PersonaContextStatus(
-          persona.getId(), snapshot.state(), null, 0, 0, snapshot.error());
+      return status;
     }
     PersonaContext context = snapshot.value().context();
-    return new PersonaContextStatus(
-        persona.getId(),
-        snapshot.state(),
-        context.getGeneratedAt(),
-        entitiesIncluded(context),
-        tokensEstimate(snapshot.value().markdown()),
-        snapshot.error());
+    return status
+        .withLastGeneratedAt(context.getGeneratedAt())
+        .withEntitiesIncluded(entitiesIncluded(context))
+        .withTokensEst(tokensEstimate(snapshot.value().markdown()));
   }
 
   private static int tokensEstimate(String markdown) {
@@ -746,14 +750,6 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       long generatedAt,
       boolean truncated,
       PersonaContextCacheState cacheState) {}
-
-  public record PersonaContextStatus(
-      UUID personaId,
-      PersonaContextCacheState cacheState,
-      Long lastGeneratedAt,
-      int entitiesIncluded,
-      int tokensEst,
-      String lastError) {}
 
   @GET
   @Path("/{id}/versions/{version}")

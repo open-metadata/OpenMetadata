@@ -12,7 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Persona } from '../../../generated/entity/teams/persona';
-import { CacheState } from '../../../generated/type/personaContextDefinition';
+import { CacheState } from '../../../generated/type/personaContextStatus';
 import {
   getAllPersonas,
   getPersonaAIContextStatus,
@@ -41,6 +41,7 @@ const mockPaging = {
   handlePagingChange: jest.fn(),
   pageSize: 15,
   paging: { total: 0 } as { after?: string; total: number },
+  pagingCursor: {} as { cursorType?: string; cursorValue?: string },
   showPagination: false,
 };
 
@@ -94,6 +95,8 @@ describe('ContextCenterAIContextPage', () => {
     jest.clearAllMocks();
     mockAuth.isAdminUser = true;
     mockPaging.paging = { total: 0 };
+    mockPaging.currentPage = 1;
+    mockPaging.pagingCursor = {};
     mockPaging.showPagination = false;
     (getPersonaAIContextStatus as jest.Mock).mockResolvedValue({ data: [] });
   });
@@ -196,7 +199,7 @@ describe('ContextCenterAIContextPage', () => {
     ).toBeVisible();
   });
 
-  it('fetches the next page of personas and their status with the same cursor', async () => {
+  it('stores the next-page cursor with the page number', async () => {
     mockPaging.paging = { after: 'cursor-2', total: 30 };
     mockPaging.showPagination = true;
     (getAllPersonas as jest.Mock).mockResolvedValue({ data: personas });
@@ -204,13 +207,29 @@ describe('ContextCenterAIContextPage', () => {
     render(<ContextCenterAIContextPage />);
     fireEvent.click(await screen.findByTestId('next'));
 
-    expect(mockHandlePageChange).toHaveBeenCalledWith(2);
-    expect(getAllPersonas).toHaveBeenLastCalledWith({
+    expect(mockHandlePageChange).toHaveBeenCalledWith(2, {
+      cursorType: 'after',
+      cursorValue: 'cursor-2',
+    });
+  });
+
+  it('restores the page from the cursor in the URL for personas and their status', async () => {
+    // A reload or browser Back keeps currentPage=2 in the URL; the cursor must come with it.
+    mockPaging.currentPage = 2;
+    mockPaging.pagingCursor = { cursorType: 'after', cursorValue: 'cursor-2' };
+    (getAllPersonas as jest.Mock).mockResolvedValue({ data: personas });
+
+    render(<ContextCenterAIContextPage />);
+
+    expect(
+      await screen.findByTestId('ai-context-persona-DataEngineer')
+    ).toBeInTheDocument();
+    expect(getAllPersonas).toHaveBeenCalledWith({
       after: 'cursor-2',
       fields: 'users,contextDefinition',
       limit: 15,
     });
-    expect(getPersonaAIContextStatus).toHaveBeenLastCalledWith({
+    expect(getPersonaAIContextStatus).toHaveBeenCalledWith({
       after: 'cursor-2',
       limit: 15,
     });

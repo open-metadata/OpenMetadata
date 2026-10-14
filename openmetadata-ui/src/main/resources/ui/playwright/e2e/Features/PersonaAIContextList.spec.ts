@@ -215,5 +215,16 @@ test.describe('Persona AI Context — persona table pagination', () => {
     await expect(
       page.getByTestId(`ai-context-persona-${FIRST_PAGE_PERSONA.name}`)
     ).not.toBeVisible();
+
+    // The cursor is saved with the page number, so a reload (or browser Back) refetches page two.
+    const reloadedPersonasRequest = page.waitForRequest(
+      (request) => isPersonaListRequest(request) && isNextPage(request)
+    );
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await reloadedPersonasRequest;
+
+    await expect(
+      page.getByTestId(`ai-context-persona-${SECOND_PAGE_PERSONA.name}`)
+    ).toBeVisible();
   });
 });

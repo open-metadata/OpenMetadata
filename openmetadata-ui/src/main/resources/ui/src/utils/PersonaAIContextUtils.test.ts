@@ -12,10 +12,8 @@
  */
 import { PERSONA_CONTEXT_ASSET_TYPES } from '../constants/PersonaAIContext.constants';
 import { EntityType } from '../enums/entity.enum';
-import {
-  CacheState,
-  ContextSection,
-} from '../generated/type/personaContextDefinition';
+import { ContextSection } from '../generated/type/personaContextDefinition';
+import { CacheState } from '../generated/type/personaContextStatus';
 import {
   buildPersonaContextVersionHistory,
   getDefaultPersonaContextSections,

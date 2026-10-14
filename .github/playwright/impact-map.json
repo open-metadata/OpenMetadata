@@ -708,7 +708,8 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/PersonaRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/teams/PersonaResource.java",
         "openmetadata-spec/src/main/resources/json/schema/type/personaContext.json",
-        "openmetadata-spec/src/main/resources/json/schema/type/personaContextDefinition.json"
+        "openmetadata-spec/src/main/resources/json/schema/type/personaContextDefinition.json",
+        "openmetadata-spec/src/main/resources/json/schema/type/personaContextStatus.json"
       ],
       "projects": ["chromium"],
       "specs": [

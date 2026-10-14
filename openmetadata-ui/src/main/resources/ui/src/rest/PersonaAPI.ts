@@ -21,6 +21,7 @@ import {
   ContextRule,
   PersonaContextDefinition,
 } from '../generated/type/personaContextDefinition';
+import { PersonaContextStatus } from '../generated/type/personaContextStatus';
 import { getEncodedFqn } from '../utils/StringUtils';
 import axiosClient from './axiosClient';
 
@@ -86,15 +87,6 @@ export interface PersonaContextDocument {
   tokensEst: number;
   truncated: boolean;
   truncatedCount: number;
-}
-
-export interface PersonaContextStatus {
-  cacheState: CacheState;
-  tokensEst: number;
-  entitiesIncluded: number;
-  lastError?: string;
-  lastGeneratedAt?: number;
-  personaId: string;
 }
 
 export const getPersonaAIContextStatus = async (
