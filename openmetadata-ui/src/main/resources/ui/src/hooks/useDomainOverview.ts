@@ -13,6 +13,8 @@
 
 import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
+import { PAGE_SIZE_LARGE } from '../constants/constants';
+import { SORT_ORDER } from '../enums/common.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Domain } from '../generated/entity/domains/domain';
 import { getAllDomainsWithAssetsCount } from '../rest/domainAPI';
@@ -22,7 +24,7 @@ import { getEntityName } from '../utils/EntityNameUtils';
 export const DOMAIN_OVERVIEW_QUERY_KEY = ['landingPage', 'widgets', 'domains'];
 const TTL_MS = 5 * 60 * 1000;
 
-export const OVERVIEW_PAGE_SIZE = 10;
+export const OVERVIEW_PAGE_SIZE = PAGE_SIZE_LARGE;
 
 /**
  * The ownership buckets the Domains and Data Products cards filter by. Each
@@ -96,6 +98,10 @@ export const fetchOverviewPage = async (
     query: '',
     queryFilter,
     searchIndex,
+    // Relevance ranks an empty query by boosts like votes and usage, so a new
+    // entity could never reach the page however the card then sorts it.
+    sortField: 'name.keyword',
+    sortOrder: SORT_ORDER.ASC,
   });
 
   return { sources: response.hits.hits.map((hit) => hit._source) };
