@@ -639,7 +639,7 @@ const ContextCenterArticlesPage = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-canvas ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full ${contextCenterClassBase.getPageContainerClassName()}`}
       data-testid="context-center-articles-page">
       <PageLayout
         className={pageLayoutClassNames.root}

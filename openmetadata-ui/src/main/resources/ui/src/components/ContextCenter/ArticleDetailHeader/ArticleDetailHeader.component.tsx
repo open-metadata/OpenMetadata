@@ -517,7 +517,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         <ButtonUtility
           className={
             voteStatus === QueryVoteType.votedDown
-              ? 'tw:text-fg-brand-primary'
+              ? 'tw:text-fg-warning-primary'
               : undefined
           }
           color="tertiary"
