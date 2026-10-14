@@ -1402,19 +1402,22 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   };
 
   const renderHealthPanel = () => {
-    if (!showHealth || showConceptInspector || selectedEdge) {
+    if (!showHealth) {
       return null;
     }
 
+    // Hidden rather than unmounted so the panel keeps its minimized/expanded state.
     return (
-      <OntologyHealthPanel
-        health={healthSummary}
-        isolatedTermCount={isolatedTermCount}
-        onConnect={(node) => {
-          setSelectedNode(node);
-          onRequestEdit?.();
-        }}
-      />
+      <div hidden={showConceptInspector || Boolean(selectedEdge)}>
+        <OntologyHealthPanel
+          health={healthSummary}
+          isolatedTermCount={isolatedTermCount}
+          onConnect={(node) => {
+            setSelectedNode(node);
+            onRequestEdit?.();
+          }}
+        />
+      </div>
     );
   };
 

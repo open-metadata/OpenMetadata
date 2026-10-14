@@ -727,8 +727,7 @@ const OntologyExplorerPage: React.FC = () => {
           isDisabled={Boolean(conceptDraft)}
           size="sm"
           onPress={() => {
-            const defaultGlossaryId =
-              graphLeaseGlossary?.id ?? glossaries[0]?.id;
+            const defaultGlossaryId = graphLeaseGlossary?.id;
             setAuthoringGlossaryId(defaultGlossaryId);
             setConceptDraft({
               defaultGlossaryId,
