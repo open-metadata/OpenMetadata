@@ -133,6 +133,31 @@ public class DomainReassignmentAuthorizationIT {
         "A domain-scoped user must still be able to claim an asset they may edit");
   }
 
+  /**
+   * Regression for the inherited-domain gap: a table with no domain of its own inherits its schema's
+   * domain. If that inherited domain is one the caller does not hold, pulling the table into their
+   * own domain must still be denied. Authorization has to resolve inherited domains, not only the
+   * ones set directly on the asset.
+   */
+  @Test
+  void test_bulkAddAssetsCannotPullAnAssetThatInheritsAnUnheldDomain(TestNamespace ns)
+      throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    Table inheriting = createTableInheritingDomain(ns, scoped.otherDomain());
+
+    Table reloaded =
+        SdkClients.adminClient().tables().get(inheriting.getId().toString(), "domains");
+    assertEquals(
+        scoped.otherDomain().getId(),
+        reloaded.getDomains().get(0).getId(),
+        "precondition: the table should inherit the unheld domain from its schema");
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> addAssetToDomain(scoped.client(), scoped.heldDomain(), inheriting),
+        "An asset that inherits a domain the caller does not hold must not be pullable into theirs");
+  }
+
   @Test
   void test_putReassignmentCannotMoveAnAssetIntoAnUnheldDomain(TestNamespace ns) throws Exception {
     DomainScopedUser scoped = domainScopedUser(ns);
@@ -347,6 +372,28 @@ public class DomainReassignmentAuthorizationIT {
     if (domain != null) {
       create.withDomains(List.of(domain.getFullyQualifiedName()));
     }
+    return SdkClients.adminClient().tables().create(create);
+  }
+
+  /** A table with no domain of its own, under a schema placed in {@code schemaDomain} so it inherits it. */
+  private Table createTableInheritingDomain(TestNamespace ns, Domain schemaDomain)
+      throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/databaseSchemas/" + schema.getId(),
+            String.format(
+                "[{\"op\":\"add\",\"path\":\"/domains\",\"value\":[{\"id\":\"%s\",\"type\":\"domain\",\"fullyQualifiedName\":\"%s\"}]}]",
+                schemaDomain.getId(), schemaDomain.getFullyQualifiedName()),
+            jsonPatchOptions());
+    CreateTable create =
+        new CreateTable()
+            .withName(ns.shortPrefix("tbl"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
     return SdkClients.adminClient().tables().create(create);
   }
 
