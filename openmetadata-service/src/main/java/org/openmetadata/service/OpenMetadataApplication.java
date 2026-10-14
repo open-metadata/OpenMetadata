@@ -1424,16 +1424,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       return; // WebSocketManager keeps its no-op relay (node-local delivery).
     }
     relay.start();
-    // Don't block boot on Redis. When Redis is the configured transport but unreachable at
-    // startup, RedisWebSocketRelay keeps the pod up and reconnects in the background (a transient
-    // blip self-heals), while this health check reports the degraded cross-pod delivery so the
-    // state is visible via /healthcheck and metrics rather than silent. We deliberately do not fall
-    // back to the DB relay here: pods split across two transports would never hear each other.
-    environment
-        .healthChecks()
-        .register(
-            "WebSocketRelay",
-            new org.openmetadata.service.socket.WebSocketRelayHealthCheck(relay, redisConfigured));
+    if (redisConfigured && !relay.isRunning()) {
+      // Boot continues with the relay inert rather than failing. Log loudly so the condition is
+      // visible; cross-pod WebSocket delivery stays off until Redis is reachable.
+      LOG.warn(
+          "Redis WebSocket relay did not connect (CACHE_PROVIDER=redis); cross-pod WebSocket "
+              + "delivery is disabled until Redis is reachable. Check the Redis connection.");
+    }
     WebSocketManager.getInstance().setRelay(relay);
     org.openmetadata.service.socket.WebSocketRelay startedRelay = relay;
     environment
