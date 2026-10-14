@@ -656,7 +656,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // why Typography's own `ellipsis` cannot hold the inline asset link.
   const title = titleText ? (
     <ClampedText text={titleText}>
-      <Typography size="text-lg" weight="semibold">
+      <Typography size="text-md" weight="medium">
         {resolveTaskAboutTitle(task, titleText)}
       </Typography>
       <TaskTitleEntityBadge entityType={titleEntityType} />
