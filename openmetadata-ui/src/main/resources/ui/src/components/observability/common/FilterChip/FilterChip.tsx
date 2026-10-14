@@ -87,7 +87,8 @@ const SelectChip = ({
         }
         onOpenChange?.(open);
       }}
-      onSearch={(search) => descriptor.onSearch?.(search)}
+      // Left undefined for local-only filters so FilterSelect filters options itself.
+      onSearch={descriptor.onSearch}
     />
   );
 };

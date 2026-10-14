@@ -1156,7 +1156,9 @@ test.describe(
       });
 
       await test.step('Select data product and verify API carries dataProductFqn', async () => {
-        const dataProductInput = page.locator('#dataProductFqn');
+        const dataProductInput = page
+          .getByTestId('data-product-select-filter')
+          .getByRole('combobox');
         const dataProductOptionsRes = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/search/query') &&
@@ -1173,8 +1175,8 @@ test.describe(
             r.url().includes('dataProductFqn')
         );
         await page
-          .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
-          .getByText(dataProductDisplayName)
+          .getByRole('listbox')
+          .getByRole('option', { name: dataProductDisplayName, exact: true })
           .click();
         await filterApiRes;
       });

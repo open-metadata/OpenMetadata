@@ -71,10 +71,7 @@ const PreferredNameRow: React.FC<PreferredNameRowProps> = ({
       testId="preferred-name"
       title={t('label.preferred-name')}
       view={
-        <Typography
-          className="tw:text-primary-900"
-          size="text-sm"
-          weight="regular">
+        <Typography className="tw:text-primary" size="text-sm" weight="regular">
           {userData.displayName || startCase(userData.name)}
         </Typography>
       }
@@ -134,7 +131,7 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
           title={t('label.email')}>
           <Box gap={2}>
             <Typography
-              className="tw:text-primary-900"
+              className="tw:text-primary"
               size="text-sm"
               weight="regular">
               {userData.email ?? ''}

@@ -231,6 +231,24 @@ describe('TourPage component', () => {
     expect(await screen.findByText('MyDataPage.component')).toBeInTheDocument();
   });
 
+  it('pre-mounts Explore laid out but invisible while the tour is on My Data', async () => {
+    (useTourProvider as jest.Mock).mockReset();
+    (useTourProvider as jest.Mock).mockImplementation(() => ({
+      ...mockUseTourProvider,
+      currentTourPage: CurrentTourPageType.MY_DATA_PAGE,
+    }));
+    render(<TourPage />);
+    await waitForTourReadyCheck();
+
+    const explore = screen.getByTestId('tour-explore-page');
+
+    // `display: none` would let the resizable results panel measure 0px and keep it.
+    expect(explore).not.toHaveStyle({ display: 'none' });
+    expect(explore).toHaveClass('tw:invisible', 'tw:fixed');
+    expect(explore).toHaveAttribute('aria-hidden', 'true');
+    expect(explore).toHaveTextContent('ExplorePageV1Component.component');
+  });
+
   it('ExplorePage Component should be visible, if currentTourPage is explorePage', async () => {
     (useTourProvider as jest.Mock).mockReset();
     (useTourProvider as jest.Mock).mockImplementation(() => ({
@@ -243,6 +261,11 @@ describe('TourPage component', () => {
     expect(
       await screen.findByText('ExplorePageV1Component.component')
     ).toBeInTheDocument();
+
+    const explore = screen.getByTestId('tour-explore-page');
+
+    expect(explore).not.toHaveClass('tw:invisible');
+    expect(explore).toHaveAttribute('aria-hidden', 'false');
   });
 
   it('TableDetailsPage Component should be visible, if currentTourPage is datasetPage', async () => {
