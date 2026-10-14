@@ -304,10 +304,7 @@ export const InspectorRelationshipRow = ({
   <button
     className={classNames(
       'kg-inspector-row kg-inspector-rel-row',
-      'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-md',
-      'tw:border-0 tw:bg-transparent tw:text-left tw:transition-colors',
-      'hover:tw:bg-secondary_hover',
-      'disabled:tw:cursor-not-allowed disabled:tw:opacity-60'
+      'tw:flex tw:w-full tw:items-center tw:gap-2 tw:text-left'
     )}
     disabled={isDisabled}
     type="button"
