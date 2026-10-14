@@ -14,20 +14,23 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.StringReader;
 import java.net.URLEncoder;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -39,14 +42,23 @@ import org.openmetadata.it.util.CsvJobClient;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
+import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 
 /**
  * Filters and pagination on {@code GET /v1/dataQuality/testCases/name/{name}/export} and its async
@@ -59,6 +71,21 @@ public class TestCaseExportFilterIT {
   private static final CsvJobClient CLIENT = CsvJobClient.onDefaultServer();
   private static final String TEST_CASES_PATH = "/v1/dataQuality/testCases";
   private static final Duration SEARCH_CONVERGENCE_TIMEOUT = Duration.ofSeconds(90);
+
+  private OpenMetadataClient exportClient;
+
+  @BeforeEach
+  void createExportCaller(TestNamespace ns) {
+    // Export retention is capped per user; sharing admin lets concurrent tests evict our result.
+    String name = "export_caller_" + ns.uniqueShortId();
+    String email = name + "@example.com";
+    ns.trackRoot(
+        Entity.USER,
+        SdkClients.adminClient()
+            .users()
+            .create(new CreateUser().withName(name).withEmail(email).withIsAdmin(true)));
+    exportClient = SdkClients.createClient(email, email, new String[] {});
+  }
 
   @Test
   void test_exportFiltersAndPagesIdenticallyOnBothEndpoints(TestNamespace ns) throws Exception {
@@ -81,12 +108,17 @@ public class TestCaseExportFilterIT {
     assertEquals(
         Set.of(failedTable.getName(), failedColumn.getName()),
         exportedNames(tableFqn, "testCaseStatus=Failed", all));
+    assertEquals(all, exportedNames(tableFqn, "testCaseStatus=Failed&testCaseStatus=Success", all));
+    assertEquals(all, exportedNames(tableFqn, "testCaseStatus=Failed,Success", all));
     assertEquals(
         Set.of(failedColumn.getName()),
         exportedNames(tableFqn, "testCaseStatus=Failed&testCaseType=column", all));
     assertEquals(
         Set.of(failedColumn.getName()),
         exportedNames(tableFqn, "entityFQN=" + encode(tableFqn + ".id"), all));
+    assertEquals(
+        Set.of(failedColumn.getName()),
+        exportedNames(tableFqn, "entityLink=" + encode(failedColumn.getEntityLink()), all));
 
     assertEquals(
         Set.of(successTable.getName()),
@@ -113,6 +145,122 @@ public class TestCaseExportFilterIT {
   }
 
   @Test
+  void test_exportMatchesInheritedOwnersTagsAndTier(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String ownerName = "exp_owner_" + ns.uniqueShortId();
+    User owner =
+        ns.trackRoot(
+            Entity.USER,
+            client
+                .users()
+                .create(
+                    new CreateUser().withName(ownerName).withEmail(ownerName + "@example.com")));
+    Table table = createTable(ns);
+    table.setOwners(List.of(owner.getEntityReference()));
+    table.setTags(List.of(classificationTag("PII.Sensitive"), classificationTag("Tier.Tier1")));
+    table = client.tables().update(table.getId().toString(), table);
+    TestCase testCase =
+        createTestCase(
+            client, "exp_owned_" + ns.uniqueShortId(), table, null, TestCaseStatus.Failed);
+    Set<String> names = Set.of(testCase.getName());
+    String tableFqn = table.getFullyQualifiedName();
+    awaitIndexed(tableFqn, 1, 1);
+    Awaitility.await("inherited metadata is searchable")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    1,
+                    searchTotal(
+                        tableFqn,
+                        "&owner=" + encode(ownerName) + "&tags=PII.Sensitive&tier=Tier.Tier1")));
+
+    assertEquals(names, exportedNames(tableFqn, "owner=" + encode(ownerName), names));
+    assertEquals(Set.of(), exportedNames(tableFqn, "owner=admin", names));
+    assertEquals(names, exportedNames(tableFqn, "tags=PII.Sensitive", names));
+    assertEquals(Set.of(), exportedNames(tableFqn, "tags=PII.NonSensitive", names));
+    assertEquals(names, exportedNames(tableFqn, "tier=Tier.Tier1", names));
+    assertEquals(Set.of(), exportedNames(tableFqn, "tier=Tier.Tier2", names));
+  }
+
+  @Test
+  void test_exportFiltersStayWithinSuiteScope(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    TestCase member =
+        createTestCase(
+            client, "exp_member_" + ns.uniqueShortId(), table, null, TestCaseStatus.Failed);
+    TestCase nonMember =
+        createTestCase(
+            client, "exp_other_" + ns.uniqueShortId(), table, "id", TestCaseStatus.Failed);
+    TestSuite suite =
+        ns.trackRoot(
+            Entity.TEST_SUITE,
+            client
+                .testSuites()
+                .create(new CreateTestSuite().withName("exp_suite_" + ns.uniqueShortId())));
+    client
+        .testCases()
+        .addToLogicalTestSuite(
+            new CreateLogicalTestCases()
+                .withTestSuiteId(suite.getId())
+                .withTestCaseIds(List.of(member.getId())));
+    awaitIndexed(table.getFullyQualifiedName(), 2, 2);
+    Awaitility.await("suite membership is searchable")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    1,
+                    searchTotal(table.getFullyQualifiedName(), "&testSuiteId=" + suite.getId())));
+
+    Set<String> candidates = Set.of(member.getName(), nonMember.getName());
+    assertEquals(
+        Set.of(member.getName()),
+        exportedNames(suite.getFullyQualifiedName(), "testCaseStatus=Failed", candidates));
+    assertEquals(
+        Set.of(), exportedNames(suite.getFullyQualifiedName(), "testCaseType=column", candidates));
+    assertEquals(
+        Set.of(member.getName()),
+        exportedNames(
+            member.getTestSuite().getFullyQualifiedName(), "testCaseType=table", candidates));
+  }
+
+  @Test
+  void test_platformExportHonorsEntityFilterAndPagination(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    TestCase tableTest =
+        createTestCase(
+            client, "exp_platform_tbl_" + ns.uniqueShortId(), table, null, TestCaseStatus.Failed);
+    TestCase columnTest =
+        createTestCase(
+            client, "exp_platform_col_" + ns.uniqueShortId(), table, "id", TestCaseStatus.Failed);
+    awaitIndexed(table.getFullyQualifiedName(), 2, 2);
+    String query = "entityFQN=" + encode(table.getFullyQualifiedName());
+    Set<String> names = Set.of(tableTest.getName(), columnTest.getName());
+
+    assertEquals(names, exportedNames("*", query, names));
+    Set<String> first = exportedNames("*", query + "&limit=1&offset=0", names);
+    Set<String> second = exportedNames("*", query + "&limit=1&offset=1", names);
+    assertEquals(1, first.size());
+    assertEquals(1, second.size());
+    Set<String> union = new HashSet<>(first);
+    union.addAll(second);
+    assertEquals(names, union);
+  }
+
+  private static TagLabel classificationTag(String fqn) {
+    return new TagLabel()
+        .withTagFQN(fqn)
+        .withSource(TagLabel.TagSource.CLASSIFICATION)
+        .withLabelType(TagLabel.LabelType.MANUAL)
+        .withState(TagLabel.State.CONFIRMED);
+  }
+
+  @Test
   void test_asyncExportProgressReflectsFilteredCount(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
@@ -125,8 +273,8 @@ public class TestCaseExportFilterIT {
     String tableFqn = table.getFullyQualifiedName();
     awaitIndexed(tableFqn, 3, 2);
 
-    String jobId = CLIENT.startExport(exportPath(tableFqn, "exportAsync", "testCaseStatus=Failed"));
-    JsonNode job = CLIENT.awaitJobStatus(jobId, "COMPLETED");
+    String jobId = startExport(exportPath(tableFqn, "exportAsync", "testCaseStatus=Failed"));
+    JsonNode job = awaitExport(jobId);
 
     assertEquals(2, job.path("total").asInt(), "Progress total must count the filtered rows");
   }
@@ -143,6 +291,8 @@ public class TestCaseExportFilterIT {
       assertBadRequest(exportPath(tableFqn, endpoint, "limit=0"));
       assertBadRequest(exportPath(tableFqn, endpoint, "offset=-1"));
       assertBadRequest(exportPath(tableFqn, endpoint, "startTimestamp=1"));
+      assertBadRequest(exportPath(tableFqn, endpoint, "endTimestamp=1"));
+      assertBadRequest(exportPath(tableFqn, endpoint, "startTimestamp=2&endTimestamp=1"));
       assertBadRequest(
           exportPath(
               tableFqn,
@@ -218,39 +368,54 @@ public class TestCaseExportFilterIT {
   /** Exports through both endpoints, asserts they agree, and returns the test case names seen. */
   private Set<String> exportedNames(String tableFqn, String query, Set<String> candidates)
       throws Exception {
-    HttpResponse<String> sync = CLIENT.request("GET", exportPath(tableFqn, "export", query), null);
-    assertEquals(200, sync.statusCode(), sync.body());
+    String sync = exportBody(exportPath(tableFqn, "export", query));
 
-    String jobId = CLIENT.startExport(exportPath(tableFqn, "exportAsync", query));
-    CLIENT.awaitJobStatus(jobId, "COMPLETED");
-    HttpResponse<String> async = CLIENT.downloadResult(jobId);
-    assertEquals(200, async.statusCode(), async.body());
+    String jobId = startExport(exportPath(tableFqn, "exportAsync", query));
+    awaitExport(jobId);
+    String async = exportBody("/v1/csvAsyncJobs/" + jobId + "/result");
 
-    Set<String> syncNames = namesIn(sync.body(), candidates);
+    Set<String> syncNames = namesIn(sync, candidates);
     assertEquals(
         syncNames,
-        namesIn(async.body(), candidates),
+        namesIn(async, candidates),
         "export and exportAsync must return the same rows for '" + query + "'");
     return syncNames;
   }
 
-  private Set<String> namesIn(String csv, Set<String> candidates) {
-    List<String> rows = Arrays.asList(csv.split("\n"));
-    Set<String> found =
-        candidates.stream()
-            .filter(name -> rows.stream().skip(1).anyMatch(row -> row.contains(name)))
-            .collect(Collectors.toSet());
-    long matchingRows =
-        rows.stream().skip(1).filter(row -> candidates.stream().anyMatch(row::contains)).count();
-    assertEquals(found.size(), matchingRows, "Each test case must be exported at most once");
-    return found;
+  private Set<String> namesIn(String csv, Set<String> candidates) throws Exception {
+    try (CSVParser parser =
+        CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(new StringReader(csv))) {
+      List<String> names = parser.getRecords().stream().map(record -> record.get("name*")).toList();
+      Set<String> found = new HashSet<>(names);
+      assertEquals(found.size(), names.size(), "Each test case must be exported at most once");
+      assertTrue(candidates.containsAll(found), "Export contains unexpected test cases: " + found);
+      return found;
+    }
   }
 
-  private void assertBadRequest(String path) throws Exception {
-    HttpResponse<String> response = CLIENT.request("GET", path, null);
-    assertTrue(
-        response.statusCode() == 400,
-        "Expected 400 for " + path + " but got " + response.statusCode() + ": " + response.body());
+  private void assertBadRequest(String path) {
+    OpenMetadataException exception =
+        assertThrows(OpenMetadataException.class, () -> exportBody(path));
+    assertEquals(400, exception.getStatusCode(), exception.getMessage());
+  }
+
+  private String exportBody(String path) {
+    return exportClient.getHttpClient().executeForString(HttpMethod.GET, path, null);
+  }
+
+  private String startExport(String path) throws Exception {
+    String jobId = MAPPER.readTree(exportBody(path)).path("jobId").asText();
+    assertTrue(!jobId.isEmpty(), "Export must create a job");
+    return jobId;
+  }
+
+  private JsonNode awaitExport(String jobId) throws Exception {
+    return Awaitility.await("export " + jobId + " completes")
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () -> MAPPER.readTree(exportBody("/v1/csvAsyncJobs/" + jobId)),
+            job -> "COMPLETED".equals(job.path("status").asText()));
   }
 
   private static String exportPath(String name, String endpoint, String query) {

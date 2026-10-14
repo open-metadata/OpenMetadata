@@ -1,7 +1,7 @@
 # Filtered test case exports select their rows through search, not the database list filter
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-12 (initial)
+- **Revisions:** v1 2026-10-12 (initial); v2 2026-10-14 (paging contract and guards)
 - **Deciders:** Teddy Crepineau
 - **Guard:** `TestCaseExportFilterIT`
 - **Related:** #26756
@@ -25,6 +25,13 @@ callback)` builds a `SearchListFilter`, scopes it to the export target (table: `
 order and domain-filtered as before. With no filters and no page, the export keeps the original
 database path unchanged.
 
+`limit` and `offset` apply to search matches before domain access filtering. A domain-restricted
+caller can receive fewer than `limit` rows, including an empty page, while later pages still have
+accessible rows. Clients advance `offset` by the requested `limit`, rather than by the number of
+rows received, and must not use a short or empty CSV page as the end-of-results signal. These CSV
+endpoints do not return a continuation cursor or the match count before domain filtering, so the
+CSV row count alone cannot signal completion for these callers.
+
 Both endpoints take their parameters from one `@BeanParam` (`TestCaseExportQuery`) and validate
 before a job is queued, so `export` and `exportAsync` cannot accept different inputs.
 
@@ -34,3 +41,7 @@ fresh as the search index: a test case edited moments before export may match on
 though the exported row content is read fresh from the database. Paging deep into a large result
 walks ids from the start (ids only, 1000 per page). Revisit if the list endpoint stops being
 search-backed, or if `ListFilter` gains inherited-owner semantics.
+
+`TestCaseExportFilterIT` checks inherited owner/tag/tier filters, table/column entity links,
+logical and executable suite scopes, and platform-wide filtering and paging through both endpoints.
+It parses every CSV row so unexpected rows and duplicate test cases fail the guard.
