@@ -24,8 +24,9 @@ branch's workflow file, so release-branch PRs were running main's copies.
 ## Decision
 - A workflow that checks out or executes PR code triggers on `pull_request`, never on
   `pull_request_target`.
-- `pull_request_target` is only for workflows that never check out PR code: `team-labeler`,
-  `pr-metadata-validation`, `backport-labeled-prs`, `merge-queue-dequeue-report`, `prune-ephemeral-caches`.
+- `pull_request_target` is only for workflows that never check out PR code: `pr-metadata-validation`,
+  `backport-labeled-prs`, `merge-queue-dequeue-report`, `prune-ephemeral-caches`. The team labeler and
+  `.github/teams.yml` are gone: they existed to apply the label, and GitHub team settings assign reviewers.
 - On `pull_request`, a step that needs a secret or a write token runs only when
   `github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'`:
   Dependabot runs get a read-only token and no secrets even on a same-repo branch. A bot comment's content
