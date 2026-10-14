@@ -214,8 +214,10 @@ jobs:
           name: spacy-en-model
           path: /tmp/spacy-model
 
+      # The job checks out the PR head, which can predate the cli_e2e_v2 framework,
+      # so skip when the suite isn't checked out.
       - name: Run offline E2E framework tests
-        if: ${{ matrix.py-version == '3.10' && needs.changes.outputs.e2e == 'true' }}
+        if: ${{ matrix.py-version == '3.10' && needs.changes.outputs.e2e == 'true' && hashFiles('ingestion/tests/cli_e2e_v2/meta/**') != '' }}
         run: |
           source env/bin/activate
           cd ingestion

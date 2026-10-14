@@ -49,11 +49,11 @@ jobs:
   data-access-request-e2e:
     needs: check-changes
     runs-on: ubuntu-latest
-    # Fork PRs get no COLLATE_PAT to dispatch the Collate run with, so they skip it.
+    # Fork and Dependabot PRs get no COLLATE_PAT to dispatch the Collate run with, so they skip it.
     if: |
       !github.event.pull_request.draft &&
       (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.dar == 'true') &&
-      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+      (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
     steps:
       # Dispatched by file name straight to the REST endpoint, not through
       # benc-uk/workflow-dispatch: that action finds the workflow by paging through the list of

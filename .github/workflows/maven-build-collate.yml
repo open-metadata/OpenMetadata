@@ -93,9 +93,9 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     # `changes` runs only for merge_group; on every other event it is skipped, which would skip this
-    # job too without the explicit status function. Fork PRs get no COLLATE_PAT, so they skip the
-    # PR-time build; the merge queue still builds Collate against backend changes.
-    if: ${{ !cancelled() && (github.event_name != 'merge_group' || needs.changes.outputs.backend == 'true') && !github.event.pull_request.draft && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    # job too without the explicit status function. Fork and Dependabot PRs get no COLLATE_PAT, so
+    # they skip the PR-time build; the merge queue still builds Collate against backend changes.
+    if: ${{ !cancelled() && (github.event_name != 'merge_group' || needs.changes.outputs.backend == 'true') && !github.event.pull_request.draft && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) }}
     steps:
       # Collate mirrors each OpenMetadata release line on an identically named branch, so build the
       # Collate branch matching the PR or merge-queue base: dispatching main for a 1.13 PR builds
