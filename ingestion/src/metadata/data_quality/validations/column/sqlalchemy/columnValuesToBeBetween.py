@@ -13,7 +13,6 @@
 Validator for column values to be between test case
 """
 
-import math
 from datetime import datetime
 from typing import List, Optional  # noqa: UP035
 
@@ -35,6 +34,7 @@ from metadata.data_quality.validations.mixins.failed_sample_validator_mixin impo
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.data_quality.validations.utils import is_unbounded
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
@@ -139,20 +139,7 @@ class ColumnValuesToBeBetweenValidator(
             NotImplementedError:
         """
         row_count = self._compute_row_count(self.runner, column)
-        filters = []
-        if not isinstance(min_bound, (int, float)) or min_bound > -math.inf:
-            filters.append((column, "lt", min_bound))
-        if not isinstance(max_bound, (int, float)) or max_bound < math.inf:
-            filters.append((column, "gt", max_bound))
-        failed_rows = self._compute_row_count_between(
-            self.runner,
-            column,
-            {
-                "filters": filters,
-                "or_filter": True,
-            },
-        )
-
+        failed_rows = self._count_rows_outside(self.runner, column, column, min_bound, max_bound)
         return row_count, failed_rows
 
     def filter(self):
@@ -177,9 +164,9 @@ class ColumnValuesToBeBetweenValidator(
             max_bound = self.get_max_bound("maxValue")
 
         filters = []
-        if min_bound is not None:
+        if not is_unbounded(min_bound):
             filters.append((column, "lt", min_bound))
-        if max_bound is not None:
+        if not is_unbounded(max_bound):
             filters.append((column, "gt", max_bound))
         return {
             "filters": filters,

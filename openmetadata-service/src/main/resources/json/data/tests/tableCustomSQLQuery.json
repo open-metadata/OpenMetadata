@@ -16,7 +16,7 @@
       {
         "name": "strategy",
         "displayName": "Strategy",
-        "description": "Strategy to use to run the custom SQL query (i.e. `SELECT COUNT(<col>)` or `SELECT <col> (defaults to ROWS)",
+        "description": "How the query result is compared to the threshold. ROWS (default): the query returns the rows that break the rule, such as `SELECT * FROM t WHERE amount < 0`, and the number of rows returned is compared. COUNT: the query returns a single integer, such as `SELECT COUNT(*) FROM t WHERE amount < 0`, and that number is compared. Under ROWS a `SELECT COUNT(*)` query always returns one row. Do not use COUNT with a query that can return NULL or a non-integer, such as SUM or AVG.",
         "dataType": "ARRAY",
         "optionValues": ["ROWS", "COUNT"],
         "required": false

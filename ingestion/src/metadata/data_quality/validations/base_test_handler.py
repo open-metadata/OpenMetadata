@@ -18,6 +18,7 @@ from __future__ import annotations
 import reprlib
 import traceback
 from abc import ABC, abstractmethod
+from functools import partial
 from typing import (  # noqa: UP035
     TYPE_CHECKING,
     Callable,
@@ -704,6 +705,21 @@ class BaseTestValidator(ABC):
             float,
             default=float("inf"),
         )
+
+    def get_set_param_value(self, param_name: str) -> list:
+        """An allowed or forbidden set, typed by the column it is checked against"""
+        return self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            param_name,
+            partial(utils.parse_set_values, column_type=self.get_set_values_type()),
+        )
+
+    def get_set_values_type(self):
+        """The column type a set is parsed against, or None to keep its values as written.
+
+        Implementation provided by SQAValidatorMixin or PandasValidatorMixin via MRO chain.
+        """
+        return super().get_set_values_type()  # type: ignore
 
     def get_predicted_value(self) -> Optional[str]:  # noqa: UP045
         """Get predicted value"""

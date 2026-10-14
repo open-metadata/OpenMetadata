@@ -13,7 +13,6 @@
 Validator for column value to be not in set test case
 """
 
-from ast import literal_eval
 from collections import defaultdict
 from typing import List, Optional, cast  # noqa: UP035
 
@@ -185,11 +184,7 @@ class ColumnValuesToBeNotInSetValidator(
         return self._compute_row_count(self.runner, column)
 
     def filter(self):
-        items = self.get_test_case_param_value(
-            self.test_case.parameterValues,
-            "forbiddenValues",
-            literal_eval,
-        )
+        items = self.get_set_param_value("forbiddenValues")
         return f"{self.get_column().name}.isin({items})"
 
     def fetch_failed_rows_sample(self):

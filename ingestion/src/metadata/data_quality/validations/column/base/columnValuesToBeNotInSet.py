@@ -15,7 +15,6 @@ Validator for column value to be not in set test case
 
 import traceback
 from abc import abstractmethod
-from ast import literal_eval
 from typing import List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
@@ -54,9 +53,8 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         Returns:
             TestCaseResult: The test case result for the overall validation
         """
-        test_params = self._get_test_parameters()
-
         try:
+            test_params = self._get_test_parameters()
             column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
             res = self._run_results(Metrics.countInSet, column, values=test_params[self.FORBIDDEN_VALUES])
 
@@ -95,11 +93,7 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         Returns:
             dict with keys: allowed_values, match_enum
         """
-        forbidden_values = self.get_test_case_param_value(
-            self.test_case.parameterValues,
-            self.FORBIDDEN_VALUES,
-            literal_eval,
-        )
+        forbidden_values = self.get_set_param_value(self.FORBIDDEN_VALUES)
 
         return {
             self.FORBIDDEN_VALUES: forbidden_values,

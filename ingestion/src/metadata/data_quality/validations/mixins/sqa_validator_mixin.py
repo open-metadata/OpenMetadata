@@ -44,6 +44,7 @@ from metadata.data_quality.validations.impact_score import (
     get_impact_score_expression,
 )
 from metadata.data_quality.validations.mixins.protocols import HasValidatorContext
+from metadata.data_quality.validations.utils import is_unbounded
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
@@ -74,6 +75,10 @@ class DataQualityQueryType(Enum):
 
 class SQAValidatorMixin:
     """Validator mixin for SQA test cases"""
+
+    def get_set_values_type(self):
+        """The column type the engine declares, so a set compares in that type"""
+        return self.get_column().type  # type: ignore
 
     def get_column(self: HasValidatorContext, column_name: Optional[str] = None) -> Column:  # noqa: UP045
         """Get column object for the given column name
@@ -183,6 +188,19 @@ class SQAValidatorMixin:
             raise SQLAlchemyError(exc)  # noqa: B904
 
         return res
+
+    def _count_rows_outside(self, runner, column, expression, min_bound, max_bound) -> Optional[int]:  # noqa: UP045
+        """Rows whose `expression` falls outside [min_bound, max_bound]
+
+        An unbounded side excludes nothing. With both sides unbounded no row is outside, and a
+        count with no filter at all would count the whole table.
+        """
+        filters = [
+            (expression, op, bound) for op, bound in (("lt", min_bound), ("gt", max_bound)) if not is_unbounded(bound)
+        ]
+        return (
+            self._compute_row_count_between(runner, column, {"filters": filters, "or_filter": True}) if filters else 0
+        )
 
     def _compute_row_count(self, runner: QueryRunner, column: Column, **kwargs):
         """compute row count
