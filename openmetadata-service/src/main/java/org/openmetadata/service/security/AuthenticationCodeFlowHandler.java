@@ -1256,12 +1256,16 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
    * happen here.
    */
   private void syncRolesFromProvider(User user, Map<String, Object> claims) {
-    if (!Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
-        || !claims.containsKey(ROLES_CLAIM)) {
+    if (!Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())) {
       return;
     }
+    // An id_token with no roles claim revokes them all: Entra ID leaves the claim out once a
+    // user's last app role is removed, rather than sending an empty one.
     UserUtil.reSyncUserRolesFromToken(
-        null, user, new HashSet<>(getClaimAsList(claims.get(ROLES_CLAIM))));
+        null,
+        user,
+        new HashSet<>(getClaimAsList(claims.get(ROLES_CLAIM))),
+        authorizerConfiguration);
   }
 
   @SneakyThrows

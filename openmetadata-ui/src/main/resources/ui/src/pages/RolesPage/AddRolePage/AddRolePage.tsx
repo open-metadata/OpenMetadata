@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Select } from 'antd';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -195,17 +195,17 @@ const AddRolePage = () => {
                   gap={2}
                   itemClassName="layout-space-item">
                   <Button
+                    color="link-color"
                     data-testid="cancel-btn"
-                    type="link"
                     onClick={handleCancel}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="submit-btn"
                     form="role-form"
-                    htmlType="submit"
-                    loading={isSaveLoading}
-                    type="primary">
+                    isLoading={isSaveLoading}
+                    type="submit">
                     {t('label.create')}
                   </Button>
                 </Box>

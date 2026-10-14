@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -132,8 +136,9 @@ const UrlConfigurationPage = () => {
             {!isSourceLoading && !isManagedByDeployment && (
               <Box className="layout-column tw:block">
                 <Button
+                  color="secondary"
                   data-testid="edit-button"
-                  icon={<Icon component={IconEdit} size={12} />}
+                  iconLeading={<Icon component={IconEdit} size={12} />}
                   onClick={handleEditClick}>
                   {t('label.edit')}
                 </Button>

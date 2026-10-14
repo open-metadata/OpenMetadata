@@ -163,7 +163,7 @@ test('the app config never suppresses a migrated component', async () => {
 
   // Exact, so re-running --suppress-rule cannot quietly absorb new antd usage.
   // Lower this when a PR removes antd imports and prunes the baseline.
-  const EXPECTED_SUPPRESSED_ANTD_SYMBOLS = 711;
+  const EXPECTED_SUPPRESSED_ANTD_SYMBOLS = 508;
   const suppressedSymbols = Object.values(suppressions).reduce(
     (total, rules) =>
       total + (rules['openmetadata-antd/no-antd-import']?.count ?? 0),

@@ -401,10 +401,27 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
           }
           hasSearched = true;
 
-          await Promise.all([
-            searchBox.fill(domain.name),
-            page.waitForResponse('/api/v1/search/query?q=*&index=domain*'),
-          ]);
+          // The term lives in the URL (`q`), so after a reload the box already
+          // holds it and the page has searched for it on mount; re-filling the
+          // same text sends nothing and a wait for "the" search would hang the
+          // poll. Only type, and wait, when the box does not hold the term —
+          // and wait for that term's query, not whichever domain query lands.
+          if ((await searchBox.inputValue()) !== domain.name) {
+            const typedSearch = page.waitForResponse(
+              (response) => {
+                const url = new URL(response.url());
+
+                return (
+                  url.pathname.endsWith('/api/v1/search/query') &&
+                  url.searchParams.get('index') === 'domain' &&
+                  (url.searchParams.get('q') ?? '').includes(domain.name)
+                );
+              },
+              { timeout: 15_000 }
+            );
+            await searchBox.fill(domain.name);
+            await typedSearch;
+          }
 
           await waitForSearchDebounce(page);
 
@@ -898,7 +915,7 @@ export const addAssetsToDomain = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
 
     await expect(
       page.locator(
@@ -958,7 +975,7 @@ export const addServicesToDomain = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1019,7 +1036,7 @@ export const addAssetsToDataProduct = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1098,7 +1115,7 @@ export const removeAssetsFromDataProduct = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   }
 
   // Clear the filter before delete-all so the request URL matches the
@@ -2032,7 +2049,7 @@ export const addInputPortToDataProduct = async (
   await page
     .locator(`[data-testid="table-data-card_${fqn}"]`)
     .getByTestId('asset-checkbox')
-    .check();
+    .click();
 
   const addRes = page.waitForResponse(
     (res) =>
@@ -2079,7 +2096,7 @@ export const addOutputPortToDataProduct = async (
   await page
     .locator(`[data-testid="table-data-card_${fqn}"]`)
     .getByTestId('asset-checkbox')
-    .check();
+    .click();
 
   const addRes = page.waitForResponse(
     (res) =>

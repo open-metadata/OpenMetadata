@@ -12,7 +12,7 @@
  */
 
 import {
-  Button as CoreButton,
+  Button,
   ButtonUtility,
   Dropdown,
   Popover,
@@ -20,7 +20,7 @@ import {
   Tooltip as CoreTooltip,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Alert, Badge, Button, InputRef } from 'antd';
+import { Alert, Badge, InputRef } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
@@ -81,7 +81,7 @@ import i18n from '../../utils/i18next/LocalUtil';
 import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
-import { getSettingPath, isLandingPagePath } from '../../utils/RouterUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
@@ -135,12 +135,6 @@ const NavBar = () => {
     preferences: { isSidebarCollapsed },
     setPreference,
   } = useCurrentUserPreferences();
-
-  // Check if current route is the landing page (either `/` or `/my-data`)
-  const isHomePage = useMemo(
-    () => isLandingPagePath(location.pathname),
-    [location.pathname]
-  );
 
   const isTourPage = useMemo(() => {
     const pathname = location.pathname;
@@ -571,8 +565,8 @@ const NavBar = () => {
           showIcon
           action={
             <Button
-              size="small"
-              type="link"
+              color="link-color"
+              size="xs"
               onClick={() => {
                 navigate(0);
               }}>
@@ -609,7 +603,13 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            {!isHomePage && !isTourPage && !isDataMarketplacePage && (
+            {/* The home page used to own a search bar and a domain scope
+              control of its own, so the navbar suppressed its own pair there.
+              HomeLandingPage renders neither, so suppressing them now leaves
+              the home page with no way to search or to scope a domain at all.
+              The tour page keeps the suppression: it still mocks the old
+              landing page, and that whole page is being revamped. */}
+            {!isTourPage && !isDataMarketplacePage && (
               <>
                 <GlobalSearchBar />
                 {domainScopeSelector}
@@ -619,13 +619,13 @@ const NavBar = () => {
 
           <div className="flex-center gap-5 nav-bar-side-items">
             <Dropdown.Root>
-              <CoreButton
+              <Button
                 color="tertiary"
                 data-testid="language-selector-button"
                 iconTrailing={<DropDownIcon width={12} />}
                 size="sm">
                 {currentLanguage}
-              </CoreButton>
+              </Button>
               <Dropdown.Popover className="tw:w-auto" placement="bottom end">
                 <Dropdown.Menu
                   aria-label={t('label.language')}
@@ -638,7 +638,7 @@ const NavBar = () => {
               </Dropdown.Popover>
             </Dropdown.Root>
             <PopoverTrigger onOpenChange={handleBellClick}>
-              <CoreButton
+              <Button
                 aria-label={t('label.notification-plural')}
                 color="tertiary"
                 iconLeading={
@@ -664,7 +664,7 @@ const NavBar = () => {
               </Popover>
             </PopoverTrigger>
             <Dropdown.Root>
-              <CoreButton
+              <Button
                 aria-label={t('label.need-help')}
                 color="tertiary"
                 data-testid="help-icon"
