@@ -20,10 +20,6 @@ import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import java.net.InetAddress;
 import java.time.Duration;
 import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
@@ -39,21 +35,9 @@ import org.openmetadata.service.cache.RedisURIFactory;
 public class RedisWebSocketRelay implements WebSocketRelay {
   private static final String CHANNEL = "om:ws:relay";
 
-  // A failed Redis connection degrades cross-pod delivery; it must not take the pod down, so
-  // connect in the background and retry on this cadence until Redis is reachable.
-  private static final long RECONNECT_DELAY_SECONDS = 10;
-
   private final CacheConfig.Redis redisConfig;
   private final String instanceId;
   private final AtomicBoolean running = new AtomicBoolean(false);
-  private final AtomicBoolean stopped = new AtomicBoolean(false);
-  private final ScheduledExecutorService reconnectExecutor =
-      Executors.newSingleThreadScheduledExecutor(
-          r -> {
-            Thread t = new Thread(r, "ws-relay-redis-reconnect");
-            t.setDaemon(true);
-            return t;
-          });
 
   // Seam for tests: default delivers to the live WebSocketManager; a test can route to a probe.
   private final Consumer<RelayFrame> deliver;
@@ -74,14 +58,7 @@ public class RedisWebSocketRelay implements WebSocketRelay {
 
   @Override
   public void start() {
-    // Boot never blocks on Redis: try to connect now, and on failure keep retrying in the
-    // background so a transient Redis blip at startup self-heals instead of taking the pod down.
-    // Until it connects, isRunning() is false and the health check reports the degraded state.
-    attemptConnect();
-  }
-
-  private void attemptConnect() {
-    if (stopped.get() || running.get()) {
+    if (!running.compareAndSet(false, true)) {
       return;
     }
     try {
@@ -101,29 +78,11 @@ public class RedisWebSocketRelay implements WebSocketRelay {
       pubConnection = client.connect();
       pubConnection.setTimeout(Duration.ofMillis(redisConfig.commandTimeoutMs));
 
-      running.set(true);
-      LOG.info("RedisWebSocketRelay connected instance={} channel={}", instanceId, CHANNEL);
+      LOG.info("RedisWebSocketRelay started instance={} channel={}", instanceId, CHANNEL);
     } catch (Exception e) {
-      // Degraded, not fatal: keep the pod up (cross-pod delivery is off until this reconnects),
-      // surface it via the WebSocketRelay health check, and retry.
-      LOG.error(
-          "RedisWebSocketRelay could not connect; cross-pod delivery is degraded, retrying in {}s",
-          RECONNECT_DELAY_SECONDS,
-          e);
+      LOG.error("Failed to start RedisWebSocketRelay, cleaning up partial state", e);
       closeResources(false);
       running.set(false);
-      scheduleReconnect();
-    }
-  }
-
-  private void scheduleReconnect() {
-    if (stopped.get()) {
-      return;
-    }
-    try {
-      reconnectExecutor.schedule(this::attemptConnect, RECONNECT_DELAY_SECONDS, TimeUnit.SECONDS);
-    } catch (RejectedExecutionException ignored) {
-      // Executor is shutting down (stop() was called); nothing to retry.
     }
   }
 
@@ -134,10 +93,6 @@ public class RedisWebSocketRelay implements WebSocketRelay {
 
   @Override
   public void stop() {
-    // Stop retrying first so a pending reconnect can't resurrect the relay after shutdown; this
-    // runs even if we never connected (running stays false while retrying).
-    stopped.set(true);
-    reconnectExecutor.shutdownNow();
     if (!running.compareAndSet(true, false)) {
       return;
     }
