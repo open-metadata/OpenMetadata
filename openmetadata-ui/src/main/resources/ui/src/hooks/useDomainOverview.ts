@@ -95,6 +95,7 @@ export const fetchOverviewPage = async (
   // whatever index order happens to be — rows reshuffle across reloads and a
   // newly created entity can fall off it. Name order matches the "empty"
   // bucket's FQN order, so every chip reads the same way.
+  // ADR:2026-10-14-domain-overview-cards-sort-by-name
   const response = await searchQuery({
     pageNumber: 1,
     pageSize: OVERVIEW_PAGE_SIZE,
