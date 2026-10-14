@@ -95,6 +95,11 @@ interface ServiceMainTabContentProps {
   saveUpdatedServiceData: (updatedData: ServicesType) => Promise<void>;
   pagingInfo: UsePagingInterface;
   isVersionPage?: boolean;
+  /**
+   * Whether the list panel sits in a card. A host that already frames the tab (the AI-mode
+   * service page) passes false, and the table then stands as its own rounded card.
+   */
+  wrapInCard?: boolean;
   setIsServiceLoading: Dispatch<SetStateAction<boolean>>;
   onDataProductUpdate: (dataProducts: DataProduct[]) => Promise<void>;
 }
@@ -113,6 +118,7 @@ function ServiceMainTabContent({
   saveUpdatedServiceData,
   pagingInfo,
   isVersionPage = false,
+  wrapInCard = true,
   onDataProductUpdate,
   setFilters,
   setIsServiceLoading,
@@ -392,6 +398,7 @@ function ServiceMainTabContent({
         <ResizablePanels
           firstPanel={{
             className: 'entity-resizable-panel-container',
+            wrapInCard,
             children: (
               <Grid
                 className="layout-row layout-grid"
@@ -423,6 +430,11 @@ function ServiceMainTabContent({
                     itemClassName="layout-space-item">
                     <Table
                       columns={tableColumn}
+                      containerClassName={
+                        wrapInCard
+                          ? undefined
+                          : 'tw:rounded-xl tw:border-secondary'
+                      }
                       customPaginationProps={{
                         currentPage,
                         isLoading: isServiceLoading,
