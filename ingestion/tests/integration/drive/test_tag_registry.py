@@ -26,12 +26,10 @@ from metadata.generated.schema.entity.data.file import File
 from metadata.generated.schema.entity.data.spreadsheet import Spreadsheet
 from metadata.generated.schema.entity.data.worksheet import Worksheet
 from metadata.generated.schema.entity.services.driveService import DriveService
-from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.sink.metadata_rest import MetadataRestSink
 
-from ...utils.drive_tags import make_drive_source  # noqa: TID252
+from ...utils.drive_tags import drive_stages, make_drive_source  # noqa: TID252
 
 
 @pytest.fixture
@@ -75,17 +73,14 @@ def test_drive_tag_hook_persists_labels_without_preseeding_tags(metadata, drive,
     request_type, entity_type, parent, parent_fqn = cases[asset_kind]
     asset_request = request_type.model_validate({"name": "my_asset", "service": service, **parent})
     source = make_drive_source(metadata)
-    source.records = [Either(right=asset_request, left=None)]
-    source.native_tags = {"my_asset": [TagDefinition(classification, "Shared", "Native tags", "Native tag")]}
-    source.context = TopologyContextManager(source.topology)
+    source.native_assets[asset_kind] = [(f"{parent_fqn}.my_asset", asset_request.model_dump(mode="json"))]
+    source.native_tags[asset_kind] = [
+        (f"{parent_fqn}.my_asset", TagDefinition(classification, "Shared", "Native tags", "Native tag"))
+    ]
     source.context.get().upsert("drive_service", service)
-    source.context.get().upsert("directory", "my_directory")
-    source.context.get().upsert("spreadsheet", "my_sheet")
-    node = source.topology.directory if asset_kind in {"directory", "file"} else source.topology.spreadsheet
-    stage = next(stage for stage in node.stages if stage.type_ is entity_type)
     sink = MetadataRestSink.create({"bulk_sink_batch_size": 1}, metadata)
     try:
-        for record in source._process_stage(stage, None):
+        for record in drive_stages(source, asset_kind):
             assert record.left is None
             if kind == "missing" and isinstance(record.right, OMetaTagAndClassification):
                 continue

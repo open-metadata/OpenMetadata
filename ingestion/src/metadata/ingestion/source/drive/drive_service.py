@@ -16,7 +16,7 @@ import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable
 from contextlib import closing
-from typing import Annotated, Any, TypeVar
+from typing import Annotated, Any
 
 from pydantic import Field
 
@@ -45,6 +45,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import Source
@@ -57,7 +58,6 @@ from metadata.ingestion.models.topology import (
     TopologyContextManager,
     TopologyNode,
 )
-from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     run_test_connection,
     test_connection_common,
@@ -67,10 +67,6 @@ from metadata.utils.filters import filter_by_directory, filter_by_spreadsheet
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-DriveRequest = TypeVar(
-    "DriveRequest", bound=CreateDirectoryRequest | CreateFileRequest | CreateSpreadsheetRequest | CreateWorksheetRequest
-)
 
 
 class DriveServiceTopology(ServiceTopology):
@@ -107,11 +103,21 @@ class DriveServiceTopology(ServiceTopology):
     directory: Annotated[TopologyNode, Field(description="Directory Node")] = TopologyNode(
         producer="get_directory_names",
         stages=[
+            NodeStage(  # pyright: ignore[reportCallIssue]
+                type_=OMetaTagAndClassification,
+                processor="yield_directory_tag_details",
+                nullable=True,
+            ),
             NodeStage(
                 type_=Directory,
                 context="directory",
                 processor="yield_directory_details",
                 consumer=["drive_service"],
+            ),
+            NodeStage(  # pyright: ignore[reportCallIssue]
+                type_=OMetaTagAndClassification,
+                processor="yield_file_tag_details",
+                nullable=True,
             ),
             NodeStage(
                 type_=File,
@@ -126,11 +132,21 @@ class DriveServiceTopology(ServiceTopology):
     spreadsheet: Annotated[TopologyNode, Field(description="Spreadsheet Node")] = TopologyNode(
         producer="get_spreadsheet",
         stages=[
+            NodeStage(  # pyright: ignore[reportCallIssue]
+                type_=OMetaTagAndClassification,
+                processor="yield_spreadsheet_tag_details",
+                nullable=True,
+            ),
             NodeStage(
                 type_=Spreadsheet,
                 context="spreadsheet",
                 processor="yield_spreadsheet_details",
                 consumer=["drive_service"],
+            ),
+            NodeStage(  # pyright: ignore[reportCallIssue]
+                type_=OMetaTagAndClassification,
+                processor="yield_worksheet_tag_details",
+                nullable=True,
             ),
             NodeStage(
                 type_=Worksheet,
@@ -155,8 +171,8 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
     - Dropbox
     etc.
 
-    Tag hooks return TagDefinition values for each create request.
-    Detail processors publish definitions, attach existing labels, and release scopes.
+    Native tag hooks register definitions and attachments before asset extraction.
+    Asset producers resolve labels with get_tag_by_fqn; detail processors release stage scopes.
     """
 
     source_config: DriveServiceMetadataPipeline
@@ -242,123 +258,122 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         Link to parent spreadsheet.
         """
 
-    def yield_directory_tags(self, request: CreateDirectoryRequest) -> Iterable[TagDefinition]:
-        """Return native tags for a directory request."""
-        return ()
-
-    def yield_file_tags(self, request: CreateFileRequest) -> Iterable[TagDefinition]:
-        """Return native tags for a file request.
-
-        Connector overrides can yield definitions such as::
-
-            yield TagDefinition("DriveTags", "Shared", "Native tags", "Native file tag")
-
-        Definition publication, label attachment, and scope cleanup are handled by the base source.
-        """
-        return ()
-
-    def yield_spreadsheet_tags(self, request: CreateSpreadsheetRequest) -> Iterable[TagDefinition]:
-        """Return native tags for a spreadsheet request."""
-        return ()
-
-    def yield_worksheet_tags(self, request: CreateWorksheetRequest) -> Iterable[TagDefinition]:
-        """Return native tags for a worksheet request."""
-        return ()
-
-    def _drive_request_fqn(
-        self, request: CreateDirectoryRequest | CreateFileRequest | CreateSpreadsheetRequest | CreateWorksheetRequest
-    ) -> str:
-        if isinstance(request, CreateWorksheetRequest):
-            parent = model_str(request.spreadsheet)
-        elif isinstance(request, CreateFileRequest):
-            parent = model_str(request.directory or request.service)
-        elif isinstance(request, CreateSpreadsheetRequest) and request.parent:
-            directory_fqn = request.parent.fullyQualifiedName
-            if not directory_fqn:
-                directory = self.metadata.get_by_id(entity=Directory, entity_id=model_str(request.parent.id))
-                if not directory or not directory.fullyQualifiedName:
-                    raise ValueError("Parent directory FQN is required for spreadsheet tags")
-                directory_fqn = directory.fullyQualifiedName
-            parent = model_str(directory_fqn)
-        elif isinstance(request, CreateDirectoryRequest):
-            parent = model_str(request.parent or request.service)
-        else:
-            parent = model_str(request.service)
-        return parent + fqn.FQN_SEPARATOR + fqn.quote_name(model_str(request.name))
-
-    def _yield_tagged_requests(
-        self,
-        requests: Iterable[Either[DriveRequest]],
-        tag_producer: Callable[[DriveRequest], Iterable[TagDefinition]],
-    ) -> Iterable[Either[DriveRequest] | Either[OMetaTagAndClassification]]:
-        """Publish definitions, attach existing labels, and release each asset's scope."""
+    def register_tag(
+        self, *, entity_fqn: str, definition: TagDefinition
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Register an attachment, yielding individual registration failures."""
+        if not self.source_config.includeTags or not definition.tag_name or not definition.tag_name.strip():
+            return
+        if not (
+            fqn.is_valid_entity_name(definition.classification_name) and fqn.is_valid_entity_name(definition.tag_name)
+        ):
+            logger.warning(
+                "%s: Skipped invalid tag %r in classification %r",
+                entity_fqn,
+                definition.tag_name,
+                definition.classification_name,
+            )
+            return
         try:
-            for record in requests:
-                if record.right is None or not self.source_config.includeTags:
-                    yield record
-                    continue
-                request = record.right
-                entity_fqn = None
-                try:
-                    try:
-                        for definition in tag_producer(request):
-                            if not definition.tag_name or not definition.tag_name.strip():
-                                continue
-                            if not (
-                                fqn.is_valid_entity_name(definition.classification_name)
-                                and fqn.is_valid_entity_name(definition.tag_name)
-                            ):
-                                logger.warning(
-                                    "Skipped invalid tag %r in classification %r",
-                                    definition.tag_name,
-                                    definition.classification_name,
-                                )
-                                continue
-                            if entity_fqn is None:
-                                entity_fqn = self._drive_request_fqn(request)
-                            self.tags_registry.define(definition)
-                            self.tags_registry.attach(entity_fqn=entity_fqn, tag=definition)
-                    except Exception as exc:
-                        yield Either(
-                            right=None,
-                            left=StackTraceError(
-                                name=model_str(request.name),
-                                error=f"Failed to ingest Drive tags: {exc}",
-                                stackTrace=traceback.format_exc(),
-                            ),
-                        )
-                    if entity_fqn is not None:
-                        with closing(self.tags_registry.drain()) as definitions:
-                            for definition_record in definitions:
-                                yield Either(right=definition_record, left=None)
-                        request.tags = (request.tags or []) + self.tags_registry.labels_for(entity_fqn)
-                    yield record
-                finally:
-                    if entity_fqn is not None:
-                        self.tags_registry.clear_scope(entity_fqn)
+            self.tags_registry.define(definition)
+            self.tags_registry.attach(entity_fqn=entity_fqn, tag=definition)
+        except Exception as exc:
+            yield Either(
+                right=None,
+                left=StackTraceError(
+                    name="Tags and Classifications",
+                    error=f"Failed to register tag [{definition.tag_name}] due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                ),
+            )
+
+    def get_tag_by_fqn(self, entity_fqn: str) -> list[TagLabel] | None:
+        """Return existing labels attached to an entity."""
+        if not self.source_config.includeTags:
+            return None
+        if registry := vars(self).get("tags_registry"):
+            return registry.labels_for(entity_fqn) or None
+        return None
+
+    def _clear_tag_scope(self) -> None:
+        """Release attachments for the current sequential Drive stage."""
+        if registry := vars(self).get("tags_registry"):
+            # Root files can share a batch with directory files, so cleanup uses the service scope.
+            registry.clear_scope(fqn.quote_name(vars(self.context.get())["drive_service"]))
+
+    def _yield_tag_details(
+        self, producer: Callable[[Any], Iterable[Either[OMetaTagAndClassification]]], details: Any
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Publish definitions before the corresponding asset stage."""
+        if not self.source_config.includeTags:
+            return
+        completed = False
+        try:
+            yield from producer(details) or []
+            if registry := vars(self).get("tags_registry"):
+                with closing(registry.drain()) as definitions:
+                    for record in definitions:
+                        yield Either(right=record, left=None)
+            completed = True
         finally:
-            if close := getattr(requests, "close", None):
-                close()
+            if not completed:
+                self._clear_tag_scope()
 
-    def yield_directory_details(
-        self, directory_name: Any
-    ) -> Iterable[Either[CreateDirectoryRequest] | Either[OMetaTagAndClassification]]:
-        yield from self._yield_tagged_requests(self.yield_directory(directory_name), self.yield_directory_tags)
+    def yield_directory_tags(self, directory_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Register native directory tags for the current directory item."""
+        return ()
 
-    def yield_file_details(
-        self, file_name: Any
-    ) -> Iterable[Either[CreateFileRequest] | Either[OMetaTagAndClassification]]:
-        yield from self._yield_tagged_requests(self.yield_file(file_name), self.yield_file_tags)
+    def yield_directory_tag_details(self, directory_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
+        yield from self._yield_tag_details(self.yield_directory_tags, directory_details)
 
-    def yield_spreadsheet_details(
-        self, spreadsheet_name: Any
-    ) -> Iterable[Either[CreateSpreadsheetRequest] | Either[OMetaTagAndClassification]]:
-        yield from self._yield_tagged_requests(self.yield_spreadsheet(spreadsheet_name), self.yield_spreadsheet_tags)
+    def yield_directory_details(self, directory_details: Any) -> Iterable[Either[CreateDirectoryRequest]]:
+        """Yield directory requests and release the stage's tag attachments."""
+        try:
+            yield from self.yield_directory(directory_details)
+        finally:
+            self._clear_tag_scope()
 
-    def yield_worksheet_details(
-        self, worksheet_name: Any
-    ) -> Iterable[Either[CreateWorksheetRequest] | Either[OMetaTagAndClassification]]:
-        yield from self._yield_tagged_requests(self.yield_worksheet(worksheet_name), self.yield_worksheet_tags)
+    def yield_file_tags(self, directory_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Register native file tags for the current directory item."""
+        return ()
+
+    def yield_file_tag_details(self, directory_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
+        yield from self._yield_tag_details(self.yield_file_tags, directory_details)
+
+    def yield_file_details(self, directory_details: Any) -> Iterable[Either[CreateFileRequest]]:
+        """Yield file requests and release the stage's tag attachments."""
+        try:
+            yield from self.yield_file(directory_details)
+        finally:
+            self._clear_tag_scope()
+
+    def yield_spreadsheet_tags(self, spreadsheet_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Register native spreadsheet tags for the current spreadsheet item."""
+        return ()
+
+    def yield_spreadsheet_tag_details(self, spreadsheet_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
+        yield from self._yield_tag_details(self.yield_spreadsheet_tags, spreadsheet_details)
+
+    def yield_spreadsheet_details(self, spreadsheet_details: Any) -> Iterable[Either[CreateSpreadsheetRequest]]:
+        """Yield spreadsheet requests and release the stage's tag attachments."""
+        try:
+            yield from self.yield_spreadsheet(spreadsheet_details)
+        finally:
+            self._clear_tag_scope()
+
+    def yield_worksheet_tags(self, spreadsheet_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Register native worksheet tags for the current spreadsheet item."""
+        return ()
+
+    def yield_worksheet_tag_details(self, spreadsheet_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
+        yield from self._yield_tag_details(self.yield_worksheet_tags, spreadsheet_details)
+
+    def yield_worksheet_details(self, spreadsheet_details: Any) -> Iterable[Either[CreateWorksheetRequest]]:
+        """Yield worksheet requests and release the stage's tag attachments."""
+        try:
+            yield from self.yield_worksheet(spreadsheet_details)
+        finally:
+            self._clear_tag_scope()
 
     @abstractmethod
     def get_spreadsheets_list(self) -> Any:

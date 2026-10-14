@@ -8,35 +8,70 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Drive connector tag hooks publish definitions before their assets."""
+"""In-memory Drive connector using the same tagging seam as Pipeline and Storage."""
 
+from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
+from metadata.generated.schema.api.data.createFile import CreateFileRequest
+from metadata.generated.schema.api.data.createSpreadsheet import CreateSpreadsheetRequest
+from metadata.generated.schema.api.data.createWorksheet import CreateWorksheetRequest
 from metadata.generated.schema.metadataIngestion.driveServiceMetadataPipeline import DriveServiceMetadataPipeline
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
+from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.source.drive.googledrive.metadata import GoogleDriveSource
+
+REQUEST_TYPES = {
+    "directory": CreateDirectoryRequest,
+    "file": CreateFileRequest,
+    "spreadsheet": CreateSpreadsheetRequest,
+    "worksheet": CreateWorksheetRequest,
+}
 
 
 class InMemoryDriveSource(GoogleDriveSource):
-    """In-memory asset producer with the default Drive tag hooks."""
+    """Produce requests from native records using the default tag hooks."""
 
-    def requests(self, _):
-        yield from self.records
+    def requests(self, kind):
+        try:
+            yield from self.native_errors.get(kind, [])
+            for entity_fqn, payload in self.native_assets.get(kind, []):
+                labels = self.get_tag_by_fqn(entity_fqn)
+                tags = list(payload.get("tags") or []) + (labels or [])
+                yield Either(right=REQUEST_TYPES[kind].model_validate({**payload, "tags": tags or None}), left=None)
+        finally:
+            self.closed_stages.append(kind)
 
-    yield_directory = requests
-    yield_file = requests
-    yield_spreadsheet = requests
-    yield_worksheet = requests
+    def yield_directory(self, directory_details):
+        yield from self.requests("directory")
+
+    def yield_file(self, directory_details):
+        yield from self.requests("file")
+
+    def yield_spreadsheet(self, spreadsheet_details):
+        yield from self.requests("spreadsheet")
+
+    def yield_worksheet(self, spreadsheet_details):
+        yield from self.requests("worksheet")
 
 
 class TaggedDriveSource(InMemoryDriveSource):
-    """In-memory asset producer using the shared Drive tagging seam."""
+    """Register native definitions and attachments through the Drive base."""
 
-    def tags(self, asset_request):
-        return self.native_tags.get(asset_request.name.root, [])
+    def tags(self, kind):
+        for entity_fqn, definition in self.native_tags.get(kind, []):
+            yield from self.register_tag(entity_fqn=entity_fqn, definition=definition)
 
-    yield_directory_tags = tags
-    yield_file_tags = tags
-    yield_spreadsheet_tags = tags
-    yield_worksheet_tags = tags
+    def yield_directory_tags(self, directory_details):
+        yield from self.tags("directory")
+
+    def yield_file_tags(self, directory_details):
+        yield from self.tags("file")
+
+    def yield_spreadsheet_tags(self, spreadsheet_details):
+        yield from self.tags("spreadsheet")
+
+    def yield_worksheet_tags(self, spreadsheet_details):
+        yield from self.tags("worksheet")
 
 
 def make_drive_source(metadata, *, tagged=True):
@@ -44,6 +79,20 @@ def make_drive_source(metadata, *, tagged=True):
     Source.__init__(instance)
     instance.metadata = metadata
     instance.source_config = DriveServiceMetadataPipeline(includeTags=True)
-    instance.records = []
+    instance.context = TopologyContextManager(instance.topology)
+    instance.context.get().upsert("drive_service", "my_service")
+    instance.context.get().upsert("directory", "my_directory")
+    instance.context.get().upsert("spreadsheet", "my_sheet")
+    instance.native_assets = {}
     instance.native_tags = {}
+    instance.native_errors = {}
+    instance.closed_stages = []
     return instance
+
+
+def drive_stages(source, kind):
+    node = source.topology.directory if kind in {"directory", "file"} else source.topology.spreadsheet
+    names = {f"yield_{kind}_tag_details", f"yield_{kind}_details"}
+    for stage in node.stages:
+        if stage.processor in names:
+            yield from source._process_stage(stage, None)

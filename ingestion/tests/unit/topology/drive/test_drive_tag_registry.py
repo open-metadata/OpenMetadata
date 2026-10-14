@@ -8,23 +8,19 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Drive connector tag hooks publish definitions before their assets."""
+"""Native Drive registration, separate tag stages, and batch scope cleanup."""
 
 from unittest.mock import MagicMock
 
 import pytest
 
 from metadata.domain.tags import TagDefinition
-from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
-from metadata.generated.schema.api.data.createFile import CreateFileRequest
-from metadata.generated.schema.api.data.createSpreadsheet import CreateSpreadsheetRequest
-from metadata.generated.schema.api.data.createWorksheet import CreateWorksheetRequest
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-from ....utils.drive_tags import make_drive_source  # noqa: TID252
+from ....utils.drive_tags import drive_stages, make_drive_source  # noqa: TID252
 
 
 @pytest.fixture
@@ -57,88 +53,106 @@ def consume(source, stream, *, persist=True):
 
 
 ASSETS = [
-    ("directory", CreateDirectoryRequest(name="my_directory", service="my_service")),
-    ("file", CreateFileRequest(name="my_file.csv", service="my_service", directory="my_service.my_directory")),
-    ("spreadsheet", CreateSpreadsheetRequest(name="my_sheet", service="my_service")),
-    ("worksheet", CreateWorksheetRequest(name="my_tab", service="my_service", spreadsheet="my_service.my_sheet")),
+    ("directory", "my_service.my_directory", {"name": "my_directory", "service": "my_service"}),
+    (
+        "file",
+        'my_service.my_directory."my_file.csv"',
+        {"name": "my_file.csv", "service": "my_service", "directory": "my_service.my_directory"},
+    ),
+    ("spreadsheet", "my_service.my_sheet", {"name": "my_sheet", "service": "my_service"}),
+    (
+        "worksheet",
+        "my_service.my_sheet.my_tab",
+        {"name": "my_tab", "service": "my_service", "spreadsheet": "my_service.my_sheet"},
+    ),
 ]
 
 
-@pytest.mark.parametrize("kind,asset_request", ASSETS)
-def test_each_asset_hook_publishes_definitions_before_attaching_labels(source, kind, asset_request):
-    source.records = [Either(right=asset_request.model_copy(deep=True))]
-    source.native_tags = {asset_request.name.root: [definition("Shared")]}
-    published, assets, errors = consume(source, getattr(source, f"yield_{kind}_details")(None))
+@pytest.mark.parametrize("kind,entity_fqn,payload", ASSETS)
+def test_each_asset_hook_publishes_definitions_before_attaching_labels(source, kind, entity_fqn, payload):
+    source.native_assets[kind] = [(entity_fqn, payload)]
+    source.native_tags[kind] = [(entity_fqn, definition("Shared"))]
+    published, assets, errors = consume(source, drive_stages(source, kind))
     assert published == ["Shared"]
     assert errors == []
     assert len(assets) == 1
     assert [label.tagFQN.root for label in assets[0].tags] == ["DriveTags.Shared"]
     assert source.tags_registry.stats()["live_entities"] == 0
+    assert getattr(source.context.get(), "tags", None) is None
 
 
-@pytest.mark.parametrize("kind,asset_request", ASSETS)
-def test_missing_tags_do_not_prevent_asset_creation(source, kind, asset_request):
-    source.records = [Either(right=asset_request.model_copy(deep=True))]
-    source.native_tags = {asset_request.name.root: [definition("Missing")]}
-    published, assets, errors = consume(source, getattr(source, f"yield_{kind}_details")(None), persist=False)
+@pytest.mark.parametrize("kind,entity_fqn,payload", ASSETS)
+def test_missing_tags_do_not_prevent_asset_creation(source, kind, entity_fqn, payload):
+    source.native_assets[kind] = [(entity_fqn, payload)]
+    source.native_tags[kind] = [(entity_fqn, definition("Missing"))]
+    published, assets, errors = consume(source, drive_stages(source, kind), persist=False)
     assert published == ["Missing"]
     assert errors == []
-    assert assets[0].name == asset_request.name
+    assert assets[0].name.root == payload["name"]
     assert not assets[0].tags
     assert source.tags_registry.stats()["live_entities"] == 0
 
 
 @pytest.mark.parametrize("enabled,tags", [(False, [definition("Disabled")]), (True, [])])
 def test_disabled_or_empty_hooks_leave_assets_unchanged_without_catalog_calls(source, enabled, tags):
-    asset_request = CreateFileRequest(name="my_file", service="my_service")
-    source.records = [Either(right=asset_request)]
-    source.native_tags = {"my_file": tags}
+    source.native_assets["file"] = [("my_service.my_file", {"name": "my_file", "service": "my_service"})]
+    source.native_tags["file"] = [("my_service.my_file", tag) for tag in tags]
     source.source_config.includeTags = enabled
-    published, assets, errors = consume(source, source.yield_file_details(None))
+    published, assets, errors = consume(source, drive_stages(source, "file"))
     assert published == []
     assert errors == []
-    assert assets == [asset_request]
+    assert assets[0].name.root == "my_file"
     assert not assets[0].tags
     source.metadata.get_by_name.assert_not_called()
 
 
-@pytest.mark.parametrize("kind,asset_request", ASSETS)
-def test_default_drive_hooks_leave_assets_unchanged(source, kind, asset_request):
+@pytest.mark.parametrize("kind,entity_fqn,payload", ASSETS)
+def test_default_drive_hooks_leave_assets_unchanged(source, kind, entity_fqn, payload):
     instance = make_drive_source(source.metadata, tagged=False)
-    instance.records = [Either(right=asset_request.model_copy(deep=True))]
-    published, assets, errors = consume(instance, getattr(instance, f"yield_{kind}_details")(None))
+    instance.native_assets[kind] = [(entity_fqn, payload)]
+    published, assets, errors = consume(instance, drive_stages(instance, kind))
     assert published == []
     assert errors == []
-    assert assets == [asset_request]
+    assert (
+        assets[0].model_dump(
+            mode="json", include={"name", "service", "parent", "directory", "spreadsheet"}, exclude_none=True
+        )
+        == payload
+    )
     source.metadata.get_by_name.assert_not_called()
 
 
-def test_parent_and_child_assets_keep_separate_labels_and_preserve_existing_labels(source):
-    parent = CreateDirectoryRequest(name="my_directory", service="my_service")
-    child = CreateDirectoryRequest(name="nested", service="my_service", parent="my_service.my_directory")
-    source.native_tags = {"my_directory": [definition("Parent")], "nested": [definition("Child")]}
-    source.records = [Either(right=parent), Either(right=child)]
-    _, assets, errors = consume(source, source.yield_directory_details(None))
+def test_parent_child_and_existing_labels_stay_separate_and_definitions_are_deduplicated(source):
+    source.native_assets["directory"] = [("my_service.my_directory", {"name": "my_directory", "service": "my_service"})]
+    source.native_tags["directory"] = [("my_service.my_directory", definition("Parent"))]
+    _, directories, errors = consume(source, drive_stages(source, "directory"))
     assert errors == []
-    assert [[label.tagFQN.root for label in asset.tags] for asset in assets] == [
-        ["DriveTags.Parent"],
-        ["DriveTags.Child"],
-    ]
+    assert [label.tagFQN.root for label in directories[0].tags] == ["DriveTags.Parent"]
     existing = TagLabel(tagFQN="Other.Existing", source="Classification", labelType="Manual", state="Confirmed")
-    source.records = [Either(right=CreateFileRequest(name="my_file", service="my_service", tags=[existing]))]
-    source.native_tags["my_file"] = [definition("Child")]
-    published, files, errors = consume(source, source.yield_file_details(None))
-    assert published == []
+    source.native_assets["file"] = [
+        (
+            "my_service.my_directory.my_file",
+            {"name": "my_file", "service": "my_service", "directory": "my_service.my_directory", "tags": [existing]},
+        )
+    ]
+    source.native_tags["file"] = [
+        ("my_service.my_directory.my_file", definition("Parent")),
+        ("my_service.my_directory.my_file", definition("Child")),
+    ]
+    published, files, errors = consume(source, drive_stages(source, "file"))
+    assert published == ["Child"]
     assert errors == []
-    assert [label.tagFQN.root for label in files[0].tags] == ["Other.Existing", "DriveTags.Child"]
+    assert [label.tagFQN.root for label in files[0].tags] == ["Other.Existing", "DriveTags.Parent", "DriveTags.Child"]
+    assert [label.tagFQN.root for label in directories[0].tags] == ["DriveTags.Parent"]
     assert source.tags_registry.stats()["live_entities"] == 0
 
 
 def test_invalid_tags_do_not_discard_valid_tags_or_source_errors(source):
     error = Either(left={"name": "my_file", "error": "Source unavailable", "stackTrace": "trace"})
-    source.records = [error, Either(right=CreateFileRequest(name="my_file", service="my_service"))]
-    source.native_tags = {"my_file": [definition(""), definition("bad>name"), definition("Valid")]}
-    published, assets, errors = consume(source, source.yield_file_details(None))
+    source.native_errors["file"] = [error]
+    source.native_assets["file"] = [("my_service.my_file", {"name": "my_file", "service": "my_service"})]
+    source.native_tags["file"] = [("my_service.my_file", definition(name)) for name in ["", "bad>name", "Valid"]]
+    published, assets, errors = consume(source, drive_stages(source, "file"))
     assert published == ["Valid"]
     assert len(errors) == 1
     assert errors[0].error == "Source unavailable"
@@ -146,48 +160,87 @@ def test_invalid_tags_do_not_discard_valid_tags_or_source_errors(source):
 
 
 def test_closing_definition_stream_releases_scope_and_allows_retry(source):
-    source.records = [Either(right=CreateFileRequest(name="my_file", service="my_service"))]
-    source.native_tags = {"my_file": [definition("First"), definition("Second")]}
-    stream = source.yield_file_details(None)
+    source.native_assets["file"] = [("my_service.my_file", {"name": "my_file", "service": "my_service"})]
+    source.native_tags["file"] = [("my_service.my_file", definition(name)) for name in ["First", "Second"]]
+    stream = drive_stages(source, "file")
     assert next(stream).right.tag_request.name.root == "First"
     stream.close()
     assert source.tags_registry.stats()["live_entities"] == 0
-    published, assets, errors = consume(source, source.yield_file_details(None))
+    published, assets, errors = consume(source, drive_stages(source, "file"))
     assert published == ["First", "Second"]
     assert errors == []
     assert [label.tagFQN.root for label in assets[0].tags] == ["DriveTags.First", "DriveTags.Second"]
 
 
-def test_hook_failure_keeps_already_extracted_tags_and_the_asset(source):
-    def tags():
-        yield definition("Valid")
-        raise RuntimeError("Native tag API unavailable")
-
-    source.records = [Either(right=CreateFileRequest(name="my_file", service="my_service"))]
-    source.native_tags = {"my_file": tags()}
-    published, assets, errors = consume(source, source.yield_file_details(None))
+def test_one_registration_failure_keeps_other_native_tags_and_the_asset(source):
+    source.native_assets["file"] = [("my_service.my_file", {"name": "my_file", "service": "my_service"})]
+    source.native_tags["file"] = [
+        ("my_service.my_file", TagDefinition("DriveTags", "Broken", "Native tags", None)),
+        ("my_service.my_file", definition("Valid")),
+    ]
+    published, assets, errors = consume(source, drive_stages(source, "file"))
     assert published == ["Valid"]
     assert len(errors) == 1
-    assert "Native tag API unavailable" in errors[0].error
+    assert "Failed to register tag [Broken]" in errors[0].error
     assert [label.tagFQN.root for label in assets[0].tags] == ["DriveTags.Valid"]
     assert source.tags_registry.stats()["live_entities"] == 0
 
 
+def test_failed_native_tag_stage_releases_attachments_and_allows_the_asset(source):
+    def tags():
+        yield "my_service.my_file", definition("Unpublished")
+        raise RuntimeError("Native tag API unavailable")
+
+    source.native_assets["file"] = [("my_service.my_file", {"name": "my_file", "service": "my_service"})]
+    source.native_tags["file"] = tags()
+    published, assets, errors = consume(source, drive_stages(source, "file"))
+    assert published == []
+    assert errors == []
+    assert assets[0].name.root == "my_file"
+    assert not assets[0].tags
+    assert source.tags_registry.stats()["live_entities"] == 0
+
+
 def test_closing_asset_stream_releases_attachments_and_closes_the_producer(source):
-    closed = []
-
-    def records():
-        try:
-            yield Either(right=CreateFileRequest(name="my_file", service="my_service"))
-        finally:
-            closed.append(True)
-
-    source.records = records()
-    source.native_tags = {"my_file": [definition("Shared")]}
-    stream = source.yield_file_details(None)
+    source.native_assets["file"] = [("my_service.my_file", {"name": "my_file", "service": "my_service"})]
+    source.native_tags["file"] = [("my_service.my_file", definition("Shared"))]
+    stream = drive_stages(source, "file")
     assert next(stream).right.tag_request.name.root == "Shared"
     source.catalog.add("DriveTags.Shared")
     assert [label.tagFQN.root for label in next(stream).right.tags] == ["DriveTags.Shared"]
     stream.close()
-    assert closed == [True]
+    assert source.closed_stages == ["file"]
+    assert source.tags_registry.stats()["live_entities"] == 0
+
+
+def test_file_batch_releases_root_nested_and_unemitted_attachments(source):
+    source.native_assets["file"] = [
+        ("my_service.root_file", {"name": "root_file", "service": "my_service"}),
+        (
+            "my_service.my_directory.my_file",
+            {"name": "my_file", "service": "my_service", "directory": "my_service.my_directory"},
+        ),
+    ]
+    source.native_tags["file"] = [
+        ("my_service.root_file", definition("Root")),
+        ("my_service.my_directory.my_file", definition("Nested")),
+        ("my_service.my_directory.filtered_file", definition("Filtered")),
+    ]
+    published, assets, errors = consume(source, drive_stages(source, "file"))
+    assert published == ["Root", "Nested", "Filtered"]
+    assert errors == []
+    assert [[label.tagFQN.root for label in asset.tags] for asset in assets] == [
+        ["DriveTags.Root"],
+        ["DriveTags.Nested"],
+    ]
+    assert source.tags_registry.stats()["live_entities"] == 0
+
+
+def test_quoted_service_scope_is_released(source):
+    source.context.get().upsert("drive_service", "my.service")
+    source.native_assets["file"] = [('"my.service".my_file', {"name": "my_file", "service": '"my.service"'})]
+    source.native_tags["file"] = [('"my.service".my_file', definition("Shared"))]
+    _, assets, errors = consume(source, drive_stages(source, "file"))
+    assert errors == []
+    assert [label.tagFQN.root for label in assets[0].tags] == ["DriveTags.Shared"]
     assert source.tags_registry.stats()["live_entities"] == 0
