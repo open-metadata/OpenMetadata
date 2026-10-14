@@ -1,10 +1,24 @@
 # Playwright CI planning
 
-`playwright-postgresql-e2e.yml` runs the full suite on merge-queue, scheduled, and manual events. `pull_request` events skip every job — PR CI runs no Playwright, so run the impacted specs locally (see [Local pre-merge runs](#local-pre-merge-runs) below). Manual runs can opt out of the full suite and can select HTTP/1.1 or HTTP/2.
+`playwright-postgresql-e2e.yml` runs smoke and affected specs in the merge queue, selected from the entire candidate diff between the merge group's base and head. Shared test infrastructure and unmapped production changes fall back to the full suite. Scheduled and explicit full manual runs execute the complete suite. `pull_request` events skip every job — PR CI runs no Playwright, so run the impacted specs locally (see [Local pre-merge runs](#local-pre-merge-runs) below). Manual runs can opt out of the full suite and can select HTTP/1.1 or HTTP/2.
 
 The manual HTTP/2 benchmark applies to browser/server lanes. Dedicated Airflow shards stay on HTTP/1.1 because the fixture's self-signed browser certificate is not part of generated ingestion workflow configuration.
 
-SSO stays in its dedicated workflow, while knowledge graph and ontology share one RDF workflow and environment. HTTP/2-specific, data-insight application, and nightly specs are explicitly recorded as delegated rather than being silently misclassified as common Chromium coverage. Add new production-to-test relationships to `impact-map.json`; do not make an unmapped source path trigger the full suite.
+SSO stays in its dedicated workflow, while knowledge graph and ontology share one RDF workflow and environment. HTTP/2-specific, data-insight application, and nightly specs are explicitly recorded as delegated rather than being silently misclassified as common Chromium coverage. Add semantic production-to-test relationships to `impact-map.json`. Unknown production paths trigger full CI coverage; local planning reports these gaps and adds canaries.
+
+## Generated impact maps
+
+`select_playwright_tests.py` generates source-to-spec mappings from the current checkout whenever no explicit artifact is supplied. This includes uncommitted source and spec changes. The generated and handwritten mappings are combined; either can add coverage.
+
+CI generates the map immediately before selection and uploads it with the selection artifact. Local planning uses the same generator automatically in a temporary directory. Generated maps are never committed, and the “Playwright impact-map drift” check validates generation and routing without pushing to PR branches (ADR:2026-10-14-playwright-impact-maps-are-generated-at-plan-time). Queue plans verify the checked-out candidate SHA and require its diff. Specs without timing history use the existing estimates and shard budgets, so new tests can run before nightly history is available.
+
+To inspect a map, run:
+
+```bash
+python3 .github/scripts/generate_playwright_impact_map.py
+```
+
+The output is under the ignored `target/playwright/` directory. Use `--output <path>` to write a different artifact. An explicitly supplied missing or invalid map, or a generator failure, fails planning.
 
 ## Local pre-merge runs
 
@@ -16,7 +30,7 @@ make playwright_affected_run                                     # run them, wri
 make playwright_affected_run ARGS="--update-pr --workers=2"      # also upsert the block in the PR body (needs gh)
 ```
 
-`.github/scripts/plan_local_playwright.py` diffs the branch against `origin/main` (`--base` to change it; includes uncommitted and untracked files) and feeds that list to `select_playwright_tests.py` as a `pull_request` event, so the selection is the targeted plan from `impact-map.json` and `impact-map.generated.json`: smoke, directly changed specs, impact-mapped specs, and canaries when shared infrastructure or unmapped files change. Delegated specs stay with their dedicated workflows.
+`.github/scripts/plan_local_playwright.py` diffs the branch against `origin/main` (`--base` to change it; includes uncommitted and untracked files) and feeds that list to `select_playwright_tests.py` as a `pull_request` event. The selector generates the map from this checkout before planning. Smoke, directly changed specs, impact-mapped specs, and canaries when shared infrastructure or unmapped files change retain their existing behavior. Delegated specs stay with their dedicated workflows. Agents should use [playwright-affected-tests](../../skills/playwright-affected-tests/SKILL.md).
 
 For unmapped code paths, the local plan runs the targeted set plus one canary per project and lists the unmapped files as impact-map gaps. Close a gap by adding a mapping here rather than running the full suite locally.
 

@@ -97,7 +97,7 @@ and post `target/java-tests/local-pr-results-details.md` as a PR comment.
 - [ ] Not applicable (no UI changes).
 - Files added/updated:
 
-PR checks do not run Playwright; the merge queue runs the full suite. Before requesting review, run
+PR checks do not run Playwright; the merge queue runs smoke + affected specs with full fallback. Before requesting review, run
 the specs impacted by this PR locally (selected from `.github/playwright/impact-map.json`):
 
   make playwright_affected                            # list the impacted specs + the command

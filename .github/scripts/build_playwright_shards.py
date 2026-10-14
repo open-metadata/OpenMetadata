@@ -786,7 +786,8 @@ def main() -> None:
     apply_history_weights(units, test_weights, identity_weights)
     emit_unweighted_warnings(units, test_weights, identity_weights)
 
-    # Only enforce the stale-baseline gate for targeted (PR-time) planning.
+    # Queue candidates must run new specs before nightly timing history exists.
+    # They use the same estimated weights as full runs and still obey shard budgets.
     # A full-mode run is what generates the new timing-history artifact in
     # the first place — the "wait for a nightly full-mode run" remediation
     # below requires that full-mode planning stay unblocked even when a
@@ -794,7 +795,7 @@ def main() -> None:
     # emit_unweighted_warnings above still surfaces the issue as a warning.
     stale_files = (
         stale_baseline_files_in_plan(units, test_weights, identity_weights)
-        if selection["mode"] != "full"
+        if selection["mode"] != "full" and selection.get("eventName") != "merge_group"
         else []
     )
     if stale_files:

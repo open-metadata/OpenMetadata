@@ -81,13 +81,9 @@ def test_queue_shards_enforce_coverage_but_allow_one_retry():
     assert "--require-single-attempt" not in coverage["run"]
 
 
-def test_retry_policy_is_one_everywhere_during_the_flake_week():
+def test_retry_policy_allows_one_retry_for_queue_and_full_runs():
     caller = workflow("playwright-postgresql-e2e.yml")
     assert caller["jobs"]["playwright"]["with"]["retries"] == 1
-    # The flip to zero PR retries is documented next to the value, so it is a
-    # deliberate one-line change once main-health reports main is clean.
-    text = (WORKFLOWS / "playwright-postgresql-e2e.yml").read_text()
-    assert '"pull_request","pull_request_target"' in text
 
 
 def test_main_health_alerts_and_keeps_the_flake_baseline_off_main():

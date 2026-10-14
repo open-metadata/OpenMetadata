@@ -244,6 +244,7 @@ jobs:
               - '.github/scripts/merge_playwright_timings.py'
               - '.github/scripts/render_playwright_summary.cjs'
               - '.github/scripts/select_playwright_tests.py'
+              - '.github/scripts/generate_playwright_impact_map.py'
               - '.github/scripts/start_playwright_fast_environment.sh'
               - '.github/scripts/stop_playwright_fast_environment.sh'
               - '.github/scripts/summarize_playwright_requests.py'
@@ -540,14 +541,33 @@ jobs:
         id: select
         env:
           ALL_FILES: ${{ steps.all-changes.outputs.all_changed_files }}
+          EVENT_NAME: ${{ github.event_name }}
+          MERGE_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          MERGE_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
         run: |
           mkdir -p "$RUNNER_TEMP/playwright-selection"
-          # shellcheck disable=SC2086
-          printf '%s\n' $ALL_FILES > "$RUNNER_TEMP/playwright-selection/changed-files.txt"
+          if [[ "$EVENT_NAME" == 'merge_group' ]]; then
+            [[ -n "$MERGE_BASE_SHA" && -n "$MERGE_HEAD_SHA" ]] || {
+              echo 'Missing merge-group base or head SHA' >&2
+              exit 1
+            }
+            [[ "$(git rev-parse HEAD)" == "$MERGE_HEAD_SHA" ]] || {
+              echo 'The planner did not check out the merge-group candidate' >&2
+              exit 1
+            }
+            git diff --name-only --no-renames "$MERGE_BASE_SHA" "$MERGE_HEAD_SHA" \
+              > "$RUNNER_TEMP/playwright-selection/changed-files.txt"
+          else
+            # shellcheck disable=SC2086
+            printf '%s\n' $ALL_FILES > "$RUNNER_TEMP/playwright-selection/changed-files.txt"
+          fi
+          python3 .github/scripts/generate_playwright_impact_map.py \
+            --output "$RUNNER_TEMP/playwright-selection/impact-map.generated.json"
           python3 .github/scripts/select_playwright_tests.py \
             --event-name "${{ github.event_name }}" \
             --changed-files "$RUNNER_TEMP/playwright-selection/changed-files.txt" \
             --impact-map .github/playwright/impact-map.json \
+            --generated-impact-map "$RUNNER_TEMP/playwright-selection/impact-map.generated.json" \
             --full-suite "${{ inputs.full_suite }}" \
             --output "$RUNNER_TEMP/playwright-selection/selection.json" \
             --github-output "$GITHUB_OUTPUT"
@@ -558,7 +578,9 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: playwright-selection
-          path: ${{ runner.temp }}/playwright-selection/selection.json
+          path: |
+            ${{ runner.temp }}/playwright-selection/selection.json
+            ${{ runner.temp }}/playwright-selection/impact-map.generated.json
           retention-days: 1
 
   plan-playwright:

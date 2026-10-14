@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Plan, run, and report the Playwright specs a branch must pass locally.
 
-Pull-request checks no longer run Playwright; the merge queue runs the full
-suite. Before merging, developers run the impact-mapped subset locally. This
+Pull-request checks no longer run Playwright; the merge queue runs smoke and
+affected specs, with full fallback. Before merging, developers run the
+impact-mapped subset locally. This
 wrapper feeds the branch diff to ``select_playwright_tests.py`` — the same
-planner CI uses — so the local selection never drifts from the CI one.
+planner CI uses — which generates its source→spec map from the current tree.
+No generated map needs to be refreshed or committed.
 
     python .github/scripts/plan_local_playwright.py               # list + command
     python .github/scripts/plan_local_playwright.py --run         # run + write results
