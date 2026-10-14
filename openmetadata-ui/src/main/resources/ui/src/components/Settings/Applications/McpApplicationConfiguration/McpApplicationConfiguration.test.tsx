@@ -77,7 +77,7 @@ jest.mock('../../../common/ResizablePanels/ResizablePanels', () => {
   ));
 });
 
-jest.mock('../../../common/FormBuilder/FormBuilder', () => {
+jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () => {
   return jest
     .fn()
     .mockImplementation(
