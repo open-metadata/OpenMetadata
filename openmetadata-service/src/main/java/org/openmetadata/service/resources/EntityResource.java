@@ -1092,19 +1092,21 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
             DatabaseOperation.BULK_ASSET_OPERATION,
             jobId,
             RequestLatencyContext.wrapWithContext(
-                () -> {
-                  try {
-                    BulkOperationResult result =
-                        repository.bulkAddAndValidateTagsToAssets(entityId, request, requester);
-                    WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                        jobId, securityContext, result);
-                  } catch (Exception e) {
-                    WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                        jobId,
-                        securityContext,
-                        e.getMessage() == null ? e.toString() : e.getMessage());
-                  }
-                }));
+                asRequester(
+                    requester,
+                    () -> {
+                      try {
+                        BulkOperationResult result =
+                            repository.bulkAddAndValidateTagsToAssets(entityId, request, requester);
+                        WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                            jobId, securityContext, result);
+                      } catch (Exception e) {
+                        WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                            jobId,
+                            securityContext,
+                            e.getMessage() == null ? e.toString() : e.getMessage());
+                      }
+                    })));
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
             jobId, "Bulk Add tags to Asset operation initiated successfully.");
@@ -1121,23 +1123,40 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
             DatabaseOperation.BULK_ASSET_OPERATION,
             jobId,
             RequestLatencyContext.wrapWithContext(
-                () -> {
-                  try {
-                    BulkOperationResult result =
-                        repository.bulkRemoveAndValidateTagsToAssets(entityId, request, requester);
-                    WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                        jobId, securityContext, result);
-                  } catch (Exception e) {
-                    WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                        jobId,
-                        securityContext,
-                        e.getMessage() == null ? e.toString() : e.getMessage());
-                  }
-                }));
+                asRequester(
+                    requester,
+                    () -> {
+                      try {
+                        BulkOperationResult result =
+                            repository.bulkRemoveAndValidateTagsToAssets(
+                                entityId, request, requester);
+                        WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                            jobId, securityContext, result);
+                      } catch (Exception e) {
+                        WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                            jobId,
+                            securityContext,
+                            e.getMessage() == null ? e.toString() : e.getMessage());
+                      }
+                    })));
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
             jobId, "Bulk Remove tags to Asset operation initiated successfully.");
     return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  // The job runs on its own thread, and policy conditions such as isImpersonated() read the
+  // impersonation from the thread: the job takes the request's, so each asset is authorized as the
+  // request would be, and clears it when it ends.
+  private static Runnable asRequester(PatchRequester requester, Runnable job) {
+    return () -> {
+      ImpersonationContext.setImpersonatedBy(requester.actor().impersonatedBy());
+      try {
+        job.run();
+      } finally {
+        ImpersonationContext.clear();
+      }
+    };
   }
 
   public Response importCsvInternalAsync(

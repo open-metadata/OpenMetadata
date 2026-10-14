@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -35,6 +36,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
+import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
@@ -47,6 +49,8 @@ import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
@@ -59,6 +63,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
@@ -72,6 +77,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 
@@ -181,6 +187,31 @@ public class AssetsTabAuthorizationIT {
     BulkOperationResult result = add(requester, target, allowed, denied);
 
     assertOnlyFirstChanged(requester, target, result, allowed, denied);
+  }
+
+  // The tag tab authorizes each asset in a background job, which must still see the impersonation.
+  @Test
+  void aBotActingForAUser_isRefusedWhatAnImpersonationRuleDenies(TestNamespace ns)
+      throws Exception {
+    Tag guarded = createTag(ns, "guarded");
+    Rule denyWhenImpersonated =
+        new Rule()
+            .withName(ns.shortPrefix("imp"))
+            .withResources(List.of(Entity.TABLE))
+            .withOperations(List.of(MetadataOperation.EDIT_TAGS))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition(
+                "isImpersonated() && matchAnyTag('" + guarded.getFullyQualifiedName() + "')");
+    User user = requester(ns, "imp", List.of(denyWhenImpersonated)).user();
+    Requester bot = new Requester(user, impersonating(ns, user));
+    Target target = target(ns, AssetsTab.TAG, null, null);
+    DatabaseSchema schema = createSchema(ns, null);
+    Table open = createTable(ns, schema, "open", null, null, null);
+    Table protectedTable = createTable(ns, schema, "guarded", null, null, label(guarded));
+
+    BulkOperationResult result = add(bot, target, open, protectedTable);
+
+    assertOnlyFirstChanged(bot, target, result, open, protectedTable);
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -306,6 +337,41 @@ public class AssetsTabAuthorizationIT {
     User user = admin.users().create(createUser);
     return new Requester(
         user, SdkClients.createClient(user.getName(), user.getEmail(), new String[] {}));
+  }
+
+  // A bot allowed to impersonate, sending its requests as the user. JwtFilter resolves the bot from
+  // its email's local part, so the bot user is named after it.
+  private static OpenMetadataClient impersonating(TestNamespace ns, User user) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String botName = "impbot" + ns.shortPrefix();
+    User botUser =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(botName)
+                    .withEmail(botName + "@test.com")
+                    .withIsBot(true)
+                    .withAuthenticationMechanism(
+                        new AuthenticationMechanism()
+                            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                            .withConfig(
+                                new JWTAuthMechanism()
+                                    .withJWTTokenExpiry(JWTTokenExpiry.Unlimited))));
+    admin
+        .bots()
+        .create(
+            new CreateBot()
+                .withName(ns.shortPrefix("impbot"))
+                .withBotUser(botUser.getName())
+                .withAllowImpersonation(true));
+    String token = admin.users().generateToken(botUser.getId(), JWTTokenExpiry.Seven).getJWTToken();
+    return new OpenMetadataClient(
+        OpenMetadataConfig.builder()
+            .serverUrl(SdkClients.baseUrl())
+            .accessToken(token)
+            .header("X-Impersonate-User", user.getName())
+            .build());
   }
 
   private static Target target(TestNamespace ns, AssetsTab tab, Domain domain, User owner) {
