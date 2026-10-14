@@ -141,6 +141,11 @@ const OMMultiSelectWidget = ({
 
   const handleItemInserted = useCallback(
     (key: Key) => {
+      // react-aria commits the focused option again when focus leaves an input
+      // whose list is still open, which would chip the same value twice.
+      if (valueArray.includes(String(key))) {
+        return;
+      }
       setValue([...valueArray, String(key)]);
       // Picking clears the input without reporting a search, so restore the
       // unfiltered catalogue — otherwise a second value means typing again.
