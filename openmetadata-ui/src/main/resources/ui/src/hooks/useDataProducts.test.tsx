@@ -21,6 +21,7 @@ import { searchQuery } from '../rest/searchAPI';
 import { useDataProducts } from './useDataProducts';
 import {
   OverviewFilter,
+  OverviewOrder,
   OVERVIEW_PAGE_SIZE,
   UNOWNED_QUERY_FILTER,
 } from './useDomainOverview';
@@ -141,6 +142,24 @@ describe('useDataProducts', () => {
         queryFilter: UNOWNED_QUERY_FILTER,
         sortField: 'name.keyword',
         searchIndex: SearchIndex.DATA_PRODUCT,
+      })
+    );
+  });
+
+  it('pages by recency when the card sorts by recently updated', async () => {
+    const { result } = renderHook(
+      () => useDataProducts(OverviewFilter.ALL, OverviewOrder.RECENTLY_UPDATED),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockSearchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageSize: OVERVIEW_PAGE_SIZE,
+        searchIndex: SearchIndex.DATA_PRODUCT,
+        sortField: 'updatedAt',
+        sortOrder: 'desc',
       })
     );
   });
