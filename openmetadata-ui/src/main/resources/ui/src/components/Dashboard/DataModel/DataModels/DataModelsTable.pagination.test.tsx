@@ -19,8 +19,8 @@ import {
   CursorRequest,
   expectCursorPaging,
   expectSearchPaging,
-  SEARCH_TERM,
   searchQueryPage,
+  SEARCH_TERM,
 } from '../../../../test/unit/pagingScenarios';
 import DataModelTable from './DataModelsTable';
 

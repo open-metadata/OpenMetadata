@@ -35,8 +35,8 @@ import {
   PAGE_ONE_ROW,
   PAGE_TWO_ROW,
   renderPageAt,
-  SEARCH_TERM,
   searchQueryPage,
+  SEARCH_TERM,
 } from '../../test/unit/pagingScenarios';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import ServiceDetailsPage from './ServiceDetailsPage';

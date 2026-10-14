@@ -23,8 +23,8 @@ import {
   PAGE_TWO_ROW,
   pagingRow,
   RESIZED_PAGE_ROW,
-  SearchRequestSummary,
   searchPageRow,
+  SearchRequestSummary,
   TOTAL,
 } from '../../../test/unit/pagingScenarios';
 import SchemaTable from './SchemaTable.component';
