@@ -322,7 +322,9 @@
   }
 
   .kg-stage:has(.kg-inspector) {
-    grid-template-columns: ~'minmax(0, 1fr) min(calc(var(--om-space-44) * 8), 36%)';
+    // One-third stage width gives the drawer breathing space for member rows
+    // and keeps the canvas with the dominant 2/3 share.
+    grid-template-columns: ~'minmax(0, 2fr) minmax(0, 1fr)';
 
     .kg-stage-main {
       grid-column: 1;
