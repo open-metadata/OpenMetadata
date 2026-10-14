@@ -14,6 +14,8 @@ SCRIPTS = Path(__file__).parents[1]
 
 
 def load_script(name: str):
+    if str(SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS))
     spec = importlib.util.spec_from_file_location(name, SCRIPTS / f"{name}.py")
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)

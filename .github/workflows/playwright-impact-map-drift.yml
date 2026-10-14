@@ -29,6 +29,8 @@ on:
       - '.github/scripts/tests/test_playwright_pr_specs.py'
       - '.github/scripts/tests/test_playwright_impact_map.py'
       - '.github/scripts/tests/test_playwright_ci_planning.py'
+      - '.github/scripts/playwright_test_requirements.py'
+      - '.github/scripts/tests/test_playwright_credentials.py'
       - '.github/workflows/playwright-impact-map-drift.yml'
   workflow_dispatch:
 
@@ -72,6 +74,7 @@ jobs:
           python3 -m pytest \
             .github/scripts/tests/test_playwright_impact_map.py \
             .github/scripts/tests/test_playwright_pr_specs.py -q
+          python3 -m pytest .github/scripts/tests/test_playwright_credentials.py -q
           python3 -m pytest \
             .github/scripts/tests/test_playwright_ci_planning.py \
             -k 'impact_map or generator' -q

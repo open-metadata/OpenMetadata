@@ -59,6 +59,16 @@ on:
         required: false
         type: boolean
         default: false
+      pr_specs:
+        description: Collected PR spec files with public tests, after credential-only files are deferred.
+        required: false
+        type: string
+        default: ""
+      extra_specs:
+        description: Affected credential spec files selected from the complete queue candidate.
+        required: false
+        type: string
+        default: "[]"
       protocol:
         description: Application protocol used by Playwright (http | h2).
         required: false
@@ -157,6 +167,8 @@ permissions:
 # reference below (docker compose file paths in the fixture builder, shard-run
 # diagnostics) resolves to the correct flavour without duplicating the ternary.
 env:
+  PLAYWRIGHT_SKIP_REQUIRES_SECRETS: ${{ github.event_name == 'pull_request' }}
+  PLAYWRIGHT_QUEUE_REQUIRES_SECRETS: ${{ github.event_name == 'merge_group' }}
   DB_COMPOSE_FILE: docker/development/docker-compose${{ inputs.database == 'postgresql' && '-postgres' || '' }}.yml
 
 concurrency:
@@ -524,6 +536,8 @@ jobs:
         id: select
         env:
           ALL_FILES: ${{ steps.all-changes.outputs.all_changed_files }}
+          PR_SPECS: ${{ inputs.pr_specs }}
+          EXTRA_SPECS: ${{ inputs.extra_specs }}
           EVENT_NAME: ${{ github.event_name }}
           MERGE_BASE_SHA: ${{ github.event.merge_group.base_sha }}
           MERGE_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
@@ -550,9 +564,11 @@ jobs:
           spec_args=()
           if [[ "$CHANGED_SPECS_ONLY" == 'true' ]]; then
             spec_args=(--changed-specs-only)
+            if [[ -n "${PR_SPECS:-}" ]]; then spec_args+=(--pr-specs-json "$PR_SPECS"); fi
           fi
           python3 .github/scripts/select_playwright_tests.py \
             "${spec_args[@]}" \
+            --extra-specs-json "${EXTRA_SPECS:-[]}" \
             --event-name "${{ github.event_name }}" \
             --changed-files "$RUNNER_TEMP/playwright-selection/changed-files.txt" \
             --impact-map .github/playwright/impact-map.json \
@@ -800,13 +816,19 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PLAYWRIGHT_IS_OSS: "true"
+          PLAYWRIGHT_COLLECT_REQUIREMENTS: "true"
           PW_DEDICATED_INGESTION: "true"
           PW_DEDICATED_IMPORT_EXPORT: "true"
           PW_EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
           PW_ENTITY_MATRIX: ${{ needs.detect-changes.outputs.entity_matrix }}
           PW_DIRECT_CHANGED_SPECS: ${{ needs.detect-changes.outputs.direct_changed_specs }}
         run: |
+          extra_projects=()
+          if [[ "$PLAYWRIGHT_RUN_CHANGED_NIGHTLY" == 'true' ]]; then extra_projects+=(--project=changed-nightly); fi
+          if [[ "$PLAYWRIGHT_QUEUE_REQUIRES_SECRETS" == 'true' ]]; then extra_projects+=(--project=queue-credentials); fi
+          if [[ "$PW_PROTOCOL" == 'h2' ]]; then extra_projects+=(--project=chromium-h2); fi
           npx playwright test --list --reporter=json \
+            "${extra_projects[@]}" \
             --project=chromium \
             --project=Basic \
             --project="Data Insight" \
@@ -1737,6 +1759,19 @@ jobs:
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify credential cases executed
+        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' && steps.run-tests.outcome != 'skipped' }}
+        env:
+          SHARD_PLAN: ${{ steps.fast-inputs.outputs.plan }}
+        run: |
+          files=$(jq -c '.credentialFiles // []' "$SHARD_PLAN")
+          if [[ "$files" != '[]' ]]; then
+            ids=$(jq -c '.credentialTestIds' "$SHARD_PLAN")
+            python3 .github/scripts/verify_playwright_changed_specs.py \
+              --require-tag @requires-secrets --specs-json "$files" --required-test-ids-json "$ids" \
+              --report-glob 'openmetadata-ui/src/main/resources/ui/playwright/output/results.json'
+          fi
 
       - name: Verify shard coverage
         id: verify-shard-coverage

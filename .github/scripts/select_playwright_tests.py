@@ -67,6 +67,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--full-suite", choices=("true", "false"), default="false")
     parser.add_argument("--changed-specs-only", action="store_true")
+    parser.add_argument("--include-delegated", action="store_true")
+    parser.add_argument("--extra-specs-json", default="[]")
+    parser.add_argument("--pr-specs-json")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--github-output", type=Path)
     return parser.parse_args()
@@ -182,6 +185,11 @@ def main() -> None:
                 in {"normal", "http2", "nightly"}
             }
         )
+        if args.pr_specs_json is not None:
+            requested = set(json.loads(args.pr_specs_json))
+            if requested - set(specs):
+                raise SystemExit("PR specs must be existing changed PostgreSQL specs")
+            specs = [spec for spec in specs if spec in requested]
         if not specs:
             raise SystemExit("No changed PostgreSQL specs were selected for this PR")
         plan = {
@@ -235,6 +243,8 @@ def main() -> None:
                     deleted_changed_specs.append(relative_spec)
                 elif matches(relative_spec, impact_map.get("delegatedSpecs", [])):
                     delegated_changed_specs.append(relative_spec)
+                    if args.include_delegated:
+                        selected.setdefault(relative_spec, set()).add("auto")
                 else:
                     direct_changed_specs.append(relative_spec)
                     selected.setdefault(relative_spec, set()).add("auto")
@@ -283,7 +293,8 @@ def main() -> None:
                 for entry in impact_map["canary"]:
                     add_selection(selected, entry, repo_root)
 
-            remove_delegated_specs(selected, impact_map.get("delegatedSpecs", []))
+            if not args.include_delegated:
+                remove_delegated_specs(selected, impact_map.get("delegatedSpecs", []))
 
             plan = {
                 "version": 1,
@@ -307,10 +318,18 @@ def main() -> None:
                 "selectors": [
                     {"spec": spec, "projects": sorted(projects)}
                     for spec, projects in sorted(selected.items())
-                    if not matches(spec, impact_map.get("delegatedSpecs", []))
+                    if args.include_delegated
+                    or not matches(spec, impact_map.get("delegatedSpecs", []))
                 ],
             }
 
+    if plan["mode"] == "targeted":
+        existing = {entry["spec"]: entry for entry in plan["selectors"]}
+        for spec in json.loads(args.extra_specs_json):
+            if spec in existing:
+                existing[spec]["projects"] = ["auto"]
+            else:
+                plan["selectors"].append({"spec": spec, "projects": ["auto"]})
     plan["eventName"] = args.event_name
     plan["entityMatrix"] = (
         "representative"

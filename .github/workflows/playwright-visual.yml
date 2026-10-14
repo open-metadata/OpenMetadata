@@ -191,6 +191,7 @@ jobs:
         env:
           CHANGED_SPECS: ${{ inputs.changed_specs }}
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:8585
+          PLAYWRIGHT_SKIP_REQUIRES_SECRETS: ${{ github.event_name == 'pull_request' }}
         run: |
           files=()
           if [[ -n "$CHANGED_SPECS" ]]; then
@@ -202,6 +203,7 @@ jobs:
             -e CI=true \
             -e PLAYWRIGHT_IS_OSS=true \
             -e PLAYWRIGHT_TEST_BASE_URL \
+            -e PLAYWRIGHT_SKIP_REQUIRES_SECRETS \
             -v "$PWD:/work" \
             -w /work \
             mcr.microsoft.com/playwright:v1.57.0-jammy \

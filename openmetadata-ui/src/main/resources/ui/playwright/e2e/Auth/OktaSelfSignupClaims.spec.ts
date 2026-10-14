@@ -38,7 +38,7 @@ const CLAIM_SCENARIOS = [
 for (const scenario of CLAIM_SCENARIOS) {
   test.describe(
     `Okta self-signup username resolution — ${scenario.title} (issue #26591)`,
-    { tag: ['@sso', '@Platform', '@okta'] },
+    { tag: ['@sso', '@Platform', '@okta', '@requires-secrets'] },
     () => {
       // eslint-disable-next-line playwright/no-skipped-test
       test.skip(

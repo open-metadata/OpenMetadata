@@ -77,9 +77,9 @@ permissions:
 
 jobs:
   plan-pr-specs:
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     outputs:
       normal: ${{ steps.plan.outputs.normal }}
       normal_count: ${{ steps.plan.outputs.normal_count }}
@@ -93,6 +93,7 @@ jobs:
       special_matrix: ${{ steps.plan.outputs.special_matrix }}
       special_count: ${{ steps.plan.outputs.special_count }}
       changed_specs: ${{ steps.plan.outputs.changed_specs }}
+      deferred_specs: ${{ steps.plan.outputs.deferred_specs }}
     steps:
       - name: Checkout PR candidate
         uses: actions/checkout@v7
@@ -100,15 +101,47 @@ jobs:
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
-      - name: Route changed Playwright specs
-        id: plan
+      - name: Identify the candidate diff
+        id: changed
         env:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MERGE_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          MERGE_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
         run: |
           set -euo pipefail
-          git diff --name-only --no-renames "$PR_BASE_SHA"..."$PR_HEAD_SHA" > "$RUNNER_TEMP/changed-files.txt"
+          if [[ "$GITHUB_EVENT_NAME" == 'merge_group' ]]; then
+            [[ -n "$MERGE_BASE_SHA" && -n "$MERGE_HEAD_SHA" && "$(git rev-parse HEAD)" == "$MERGE_HEAD_SHA" ]]
+            git diff --name-only --no-renames "$MERGE_BASE_SHA" "$MERGE_HEAD_SHA" > "$RUNNER_TEMP/changed-files.txt"
+          else
+            git diff --name-only --no-renames "$PR_BASE_SHA"..."$PR_HEAD_SHA" > "$RUNNER_TEMP/changed-files.txt"
+          fi
           python3 .github/scripts/plan_playwright_pr.py \
+            --changed-files "$RUNNER_TEMP/changed-files.txt" \
+            --output "$RUNNER_TEMP/playwright-pr-specs.json" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js for test collection
+        if: ${{ github.event_name == 'merge_group' || steps.changed.outputs.spec_count > 0 }}
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
+      - name: Restore yarn packages
+        if: ${{ github.event_name == 'merge_group' || steps.changed.outputs.spec_count > 0 }}
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          restore-keys: yarn-pkg-cache-${{ runner.os }}-
+      - name: Install collection dependencies
+        if: ${{ github.event_name == 'merge_group' || steps.changed.outputs.spec_count > 0 }}
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: yarn --frozen-lockfile --network-timeout 100000
+      - name: Route public and credential-dependent cases
+        id: plan
+        run: |
+          python3 .github/scripts/plan_playwright_pr.py \
+            --event-name "$GITHUB_EVENT_NAME" --collect \
             --changed-files "$RUNNER_TEMP/changed-files.txt" \
             --output "$RUNNER_TEMP/playwright-pr-specs.json" \
             --github-output "$GITHUB_OUTPUT"
@@ -116,7 +149,7 @@ jobs:
 
   playwright:
     needs: plan-pr-specs
-    if: ${{ always() && !cancelled() && github.event_name != 'pull_request' }}
+    if: ${{ always() && !cancelled() && github.event_name != 'pull_request' && (github.event_name != 'merge_group' || needs.plan-pr-specs.result == 'success') }}
     uses: ./.github/workflows/playwright-e2e-reusable.yml
     # Live connector credentials are available only to trusted runs.
     secrets: inherit
@@ -129,11 +162,12 @@ jobs:
       database: postgresql
       profile: postgresql-pr
       workflow_filename: playwright-postgresql-e2e.yml
+      extra_specs: ${{ github.event_name == 'merge_group' && needs.plan-pr-specs.outputs.normal || '[]' }}
       # Defaults inline what workflow_dispatch collects; non-dispatch events
       # fall back to the reusable's own defaults (full_suite=true, http,
       # coarse_bundle=true).
       full_suite: ${{ github.event_name == 'workflow_dispatch' && inputs.full_suite || true }}
-      protocol: ${{ github.event_name == 'workflow_dispatch' && inputs.protocol || 'http' }}
+      protocol: ${{ github.event_name == 'merge_group' && needs.plan-pr-specs.outputs.http2_count > 0 && 'h2' || (github.event_name == 'workflow_dispatch' && inputs.protocol || 'http') }}
       coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
       # One retry everywhere while the first-attempt signal is collected: the
       # main-health job alerts Slack on every failure and flaky pass so each can
@@ -155,6 +189,7 @@ jobs:
       profile: postgresql-pr
       workflow_filename: playwright-postgresql-e2e.yml
       changed_specs_only: true
+      pr_specs: ${{ needs.plan-pr-specs.outputs.normal }}
       protocol: ${{ needs.plan-pr-specs.outputs.http2_count > 0 && 'h2' || 'http' }}
       retries: 1
 
@@ -162,6 +197,18 @@ jobs:
     needs: plan-pr-specs
     if: ${{ github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.auth_count > 0 }}
     uses: ./.github/workflows/playwright-sso-login-nightly.yml
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    with:
+      changed_specs: ${{ needs.plan-pr-specs.outputs.auth }}
+
+  queued-credential-auth:
+    needs: plan-pr-specs
+    if: ${{ github.event_name == 'merge_group' && needs.plan-pr-specs.outputs.auth_count > 0 }}
+    uses: ./.github/workflows/playwright-sso-login-nightly.yml
+    secrets: inherit
     permissions:
       contents: read
       actions: read
@@ -220,6 +267,7 @@ jobs:
           SPECIAL_COUNT: ${{ needs.plan-pr-specs.outputs.special_count }}
           SPECIAL_RESULT: ${{ needs.changed-special-specs.result == 'success' && needs.changed-special-specs.outputs.execution_result || needs.changed-special-specs.result }}
           CHANGED_SPECS: ${{ needs.plan-pr-specs.outputs.changed_specs }}
+          DEFERRED_SPECS: ${{ needs.plan-pr-specs.outputs.deferred_specs }}
         run: |
           node <<'NODE'
           const fs = require('node:fs');
@@ -230,8 +278,11 @@ jobs:
             }
           }
           const specs = JSON.parse(process.env.CHANGED_SPECS);
+          const deferred = JSON.parse(process.env.DEFERRED_SPECS || '[]');
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
-            specs.length ? `Changed Playwright specs validated by their PR environments:\n${specs.map(s => `- ${s}`).join('\n')}\n` : 'No new or modified Playwright specs in this PR.\n');
+            specs.length ? `Public Playwright cases validated by their PR environments:\n${specs.map(s => `- ${s}`).join('\n')}\n` : 'No public Playwright cases require PR execution.\n');
+          if (deferred.length) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            `Credential-dependent cases tagged @requires-secrets are deferred to the merge queue:\n${deferred.map(s => `- ${s}`).join('\n')}\n`);
           NODE
 
       - name: Checkout execution verifier
@@ -257,7 +308,7 @@ jobs:
   playwright-summary:
     name: ${{ github.event_name != 'pull_request' && 'playwright-summary' || 'Playwright trusted summary (inactive)' }}
     if: ${{ always() && !cancelled() && github.event_name != 'pull_request' }}
-    needs: playwright
+    needs: [playwright, plan-pr-specs, queued-credential-auth]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -274,6 +325,9 @@ jobs:
           PLAN_RESULT: ${{ needs.playwright.outputs.plan_playwright_result }}
           SHARD_RESULT: ${{ needs.playwright.outputs.playwright_ci_result }}
           EXPECTED_MATRIX: ${{ needs.playwright.outputs.plan_playwright_matrix }}
+          CREDENTIAL_PLAN_RESULT: ${{ needs.plan-pr-specs.result }}
+          CREDENTIAL_AUTH_COUNT: ${{ needs.plan-pr-specs.outputs.auth_count }}
+          CREDENTIAL_AUTH_RESULT: ${{ needs.queued-credential-auth.result == 'success' && needs.queued-credential-auth.outputs.execution_result || needs.queued-credential-auth.result }}
         run: |
           node <<'NODE'
           const checks = {
@@ -281,6 +335,8 @@ jobs:
             selected: process.env.SHOULD_RUN === 'true',
             planning: process.env.PLAN_RESULT === 'success',
             shards: process.env.SHARD_RESULT === 'success',
+            credentialPlanning: process.env.CREDENTIAL_PLAN_RESULT === 'success',
+            credentialAuth: Number(process.env.CREDENTIAL_AUTH_COUNT || 0) === 0 || process.env.CREDENTIAL_AUTH_RESULT === 'success',
           };
           const matrix = JSON.parse(process.env.EXPECTED_MATRIX || '{}').include;
           checks.nonemptyPlan = Array.isArray(matrix) && matrix.length > 0 &&

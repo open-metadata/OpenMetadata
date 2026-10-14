@@ -4,7 +4,17 @@
 
 The manual HTTP/2 benchmark applies to browser/server lanes. Dedicated Airflow shards stay on HTTP/1.1 because the fixture's self-signed browser certificate is not part of generated ingestion workflow configuration.
 
-PR jobs pass no repository secrets, never bind the secret-bearing `test` environment, and use read-only `GITHUB_TOKEN` permissions for checkout and artifact retrieval. Local PostgreSQL, Fuseki, LDAP, Keycloak and mock identity providers use disposable, committed fixture accounts. The PR gate does not require `safe to test`. Queue, scheduled and manual trusted runs retain their connector and live-Okta credentials. Live-vendor-only specs need a local/mock fixture to pass the PR gate: an entirely skipped or uncollected changed spec fails with its filename. A local fixture verifies application behavior; the trusted vendor lane still verifies compatibility with the real provider.
+PR jobs pass no repository secrets, never bind the secret-bearing `test` environment, and use read-only `GITHUB_TOKEN` permissions for checkout and artifact retrieval. Local PostgreSQL, Fuseki, LDAP, Keycloak and mock identity providers use disposable, committed fixture accounts. The PR gate does not require `safe to test`. Credential-dependent cases use `@requires-secrets`: PRs run the remaining public cases, while the merge queue runs affected credential cases with existing secrets. Scheduled and manual trusted runs retain their full coverage.
+
+Apply the tag to the smallest test or suite that needs a private account:
+
+```ts
+test.describe('Live warehouse ingestion', { tag: ['@ingestion', '@requires-secrets'] }, () => {
+  // Existing credential-dependent tests.
+});
+```
+
+The planner reads native Playwright collection tags, including inherited suite tags. A mixed file runs its public cases on the PR and its credential cases in the queue; a credential-only file is explicitly reported as deferred. Declaring the tag in a comment cannot exempt tests. Keep tagged tests discoverable without credentials; validate credentials in fixtures/hooks rather than omitting test registration. Queue selection uses the whole candidate diff and both impact maps, including delegated SSO/nightly specs. Credentialed nightly tests use an isolated Airflow shard; live Okta uses its dedicated provider runner. Skipped credential cases fail the queue gate. Remove the tag when a test no longer needs private credentials. Credential tags in other dedicated environments fail planning until a credential-enabled queue runner is configured.
 
 SSO stays in its dedicated workflow, while knowledge graph and ontology share one RDF workflow and environment. HTTP/2-specific, data-insight application, and nightly specs are explicitly recorded as delegated rather than being silently misclassified as common Chromium coverage. Add semantic production-to-test relationships to `impact-map.json`. Unknown production paths trigger full CI coverage; local planning reports these gaps and adds canaries.
 
@@ -36,7 +46,7 @@ make playwright_affected_run ARGS="--update-pr --workers=2"      # also upsert t
 
 For unmapped code paths, the local plan runs the targeted set plus one canary per project and lists the unmapped files as impact-map gaps. Close a gap by adding a mapping here rather than running the full suite locally.
 
-The command passes spec files without `--project`, so Playwright routes each file to every project that claims it, as a normal local run does. Flags passed through `ARGS` that the script does not recognise (`--workers`, `--headed`, `--debug`) are forwarded to `npx playwright test`. Like every CI lane, the run sets `PLAYWRIGHT_IS_OSS=true` unless you export it yourself; without it `auth.setup.ts` calls the Collate-only ingestion-runner API and fails before any spec runs. The results block, delimited by `<!-- local-playwright-results:start/end -->` under "Playwright (UI) tests" in the PR template, records the tested commit, a warning for uncommitted changes, totals, and a per-spec table; selected specs that produced no results are listed as "not run" and mark the run as failed.
+The command passes spec files without `--project`, so Playwright routes each file to every project that claims it, as a normal local run does. It defaults to `PLAYWRIGHT_SKIP_REQUIRES_SECRETS=true` and reports credential-only files as deferred to the queue. Export `PLAYWRIGHT_SKIP_REQUIRES_SECRETS=false` only for an explicit credentialed local run with configured accounts. Flags passed through `ARGS` that the script does not recognise (`--workers`, `--headed`, `--debug`) are forwarded to `npx playwright test`. Like every CI lane, the run sets `PLAYWRIGHT_IS_OSS=true` unless you export it yourself; without it `auth.setup.ts` calls the Collate-only ingestion-runner API and fails before any spec runs. The results block, delimited by `<!-- local-playwright-results:start/end -->` under "Playwright (UI) tests" in the PR template, records the tested commit, a warning for uncommitted changes, totals, and a per-spec table; selected specs that produced no results are listed as "not run" and mark the run as failed.
 
 ## Duration-balanced plans
 

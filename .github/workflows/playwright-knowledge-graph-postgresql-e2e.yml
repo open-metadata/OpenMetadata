@@ -56,6 +56,9 @@ on:
 permissions:
   contents: read
 
+env:
+  PLAYWRIGHT_SKIP_REQUIRES_SECRETS: ${{ github.event_name == 'pull_request' }}
+
 concurrency:
   # Include event_name in the group so pull_request and pull_request_target
   # runs on the same PR don't cancel each other — one gates false and skips,

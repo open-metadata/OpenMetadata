@@ -32,7 +32,9 @@ Generation or collection failures are failures to obtain a valid plan. Fix the c
 
 New and modified specs also run automatically in PR CI, including dedicated environments. Check `playwright-summary`: a skipped spec or a selection without execution cannot satisfy it. Source changes still need the affected local run above.
 
-PR runs have no repository/environment secrets and no `safe to test` requirement. Use public local fixture accounts and mock providers when adding coverage. Keep real vendor qualification in trusted queue/nightly/manual lanes. A changed spec that requires only private credentials must gain a local/mock fixture; do not add secret inheritance, bind the `test` environment, or accept an entirely skipped run to make its PR pass.
+PR runs have no repository/environment secrets and no `safe to test` requirement. Tag existing credential-dependent tests or their smallest enclosing suite with `@requires-secrets`; they are excluded from PR execution and selected for the credential-enabled merge queue from the whole candidate diff. Mixed files still run their public cases on the PR. No conversion to mocks is required for this exception. Keep tagged tests registered during collection without credentials; perform account validation in fixtures/hooks. Do not add PR secret inheritance or bind the PR job to `test`.
+
+Local affected runs default to `PLAYWRIGHT_SKIP_REQUIRES_SECRETS=true`, report credential-only files as deferred and run public cases in mixed files. Record the deferred coverage with the local results. An explicit local run with configured accounts may export `PLAYWRIGHT_SKIP_REQUIRES_SECRETS=false`. Check the queue result before merging: skipped credential cases cannot count as passed. Remove the tag when the private account dependency is removed.
 
 ## Record evidence
 

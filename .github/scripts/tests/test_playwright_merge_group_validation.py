@@ -54,6 +54,7 @@ def test_queue_gate_requires_every_upstream_job(tmp_path, overrides, passes):
         "GATE_RESULT": "success",
         "SHOULD_RUN": "true",
         "PLAN_RESULT": "success",
+        "CREDENTIAL_PLAN_RESULT": "success",
         "SHARD_RESULT": "success",
         "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
         **overrides,

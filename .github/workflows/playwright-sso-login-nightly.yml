@@ -110,6 +110,9 @@ on:
 permissions:
   contents: read
 
+env:
+  PLAYWRIGHT_SKIP_REQUIRES_SECRETS: ${{ github.event_name == 'pull_request' }}
+
 concurrency:
   # PR runs key on the PR number so re-pushes on the same PR cancel the
   # in-flight run; scheduled + dispatch runs key on ref+provider so branch
@@ -181,7 +184,7 @@ jobs:
   #   4. Every SsoScenarios describe block is tagged `[@<slug>, @sso-matrix]`
   #      — the filter picks a leg's own describes automatically.
   sso-login:
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event_name != 'pull_request' && github.event_name != 'merge_group' }}
     needs: check-changes
     runs-on: ubuntu-latest
     environment: test
@@ -395,6 +398,19 @@ jobs:
             docker save $(docker inspect openmetadata-keycloak-saml --format='{{.Image}}') -o /tmp/sso-docker-cache/keycloak.tar || true
           fi
 
+      - name: Configure the queued Okta provider
+        if: ${{ github.event_name == 'merge_group' && matrix.provider.name == 'okta' }}
+        env:
+          OKTA_CLIENT_ID: ${{ github.event_name != 'pull_request' && vars.OKTA_CLIENT_ID || '' }}
+          OKTA_AUTHORITY_URL: ${{ github.event_name != 'pull_request' && vars.OKTA_AUTHORITY_URL || '' }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          if (!process.env.OKTA_CLIENT_ID || !process.env.OKTA_AUTHORITY_URL) throw new Error('Queue Okta configuration is missing');
+          const domain = new URL(process.env.OKTA_AUTHORITY_URL).host;
+          fs.appendFileSync(process.env.GITHUB_ENV, `OKTA_CLIENT_ID=${process.env.OKTA_CLIENT_ID}\nOKTA_DOMAIN=${domain}\n`);
+          NODE
+
       - name: Run SSO Scenarios
         if: env.SKIP_LEG != 'true'
         working-directory: openmetadata-ui/src/main/resources/ui
@@ -430,6 +446,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: sso-login-html-report-${{ matrix.provider.name }}
+          overwrite: true
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
 
@@ -456,6 +473,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: sso-login-outcome-${{ matrix.provider.name }}
+          overwrite: true
           path: /tmp/sso-leg/
           retention-days: 5
 
@@ -502,6 +520,26 @@ jobs:
               && matrix.provider.name == 'okta'
               && needs.check-changes.outputs.okta != 'true')
         }}
+    steps: *sso_login_steps
+
+  sso-login-queue:
+    if: ${{ github.event_name == 'merge_group' && inputs.changed_specs != '' }}
+    needs: check-changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: test
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        provider:
+          - name: okta
+            env_prefix: OKTA
+            filter: '--grep @requires-secrets'
+            needs_docker: ''
+    env:
+      SKIP_LEG: false
     steps: *sso_login_steps
 
   notify-slack:
@@ -556,7 +594,7 @@ jobs:
   verify-changed-specs:
     outputs:
       execution_result: ${{ steps.verify.outputs.execution_result }}
-    needs: sso-login-pr
+    needs: [sso-login-pr, sso-login-queue]
     if: ${{ always() && inputs.changed_specs != '' }}
     runs-on: ubuntu-latest
     permissions:
@@ -574,9 +612,13 @@ jobs:
         id: verify
         env:
           CHANGED_SPECS: ${{ inputs.changed_specs }}
+          AUTH_RESULT: ${{ github.event_name == 'merge_group' && needs.sso-login-queue.result || needs.sso-login-pr.result }}
         run: |
+          tag_args=()
+          if [[ "$GITHUB_EVENT_NAME" == 'merge_group' ]]; then tag_args=(--require-tag @requires-secrets); fi
           python3 .github/scripts/verify_playwright_changed_specs.py \
+            "${tag_args[@]}" \
             --specs-json "$CHANGED_SPECS" \
             --report-glob 'sso-results/**/results.json'
-          [[ '${{ needs.sso-login-pr.result }}' == 'success' ]]
+          [[ "$AUTH_RESULT" == 'success' ]]
           echo "execution_result=success" >> "$GITHUB_OUTPUT"

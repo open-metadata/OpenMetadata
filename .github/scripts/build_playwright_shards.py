@@ -19,6 +19,7 @@ FULL_PROJECTS = {
     "chromium",
     "chromium-h2",
     "changed-nightly",
+    "queue-credentials",
     "Basic",
     "Data Insight",
     "Ingestion",
@@ -38,6 +39,7 @@ PROJECT_LANES = {
     "chromium": "chromium",
     "chromium-h2": "chromium",
     "changed-nightly": "ingestion",
+    "queue-credentials": "ingestion",
     "Basic": "chromium",
     "Data Insight": "chromium",
     "Ingestion": "ingestion",
@@ -180,6 +182,7 @@ class Unit:
     test_names: dict[str, str] = field(default_factory=dict)
     weight_ms: int = 0
     weight_reserve_ms: int = 0
+    credential_test_ids: set[str] = field(default_factory=set)
 
     @property
     def key(self) -> str:
@@ -254,6 +257,8 @@ def add_specs_to_units(
         for spec, titles in specs_with_titles:
             if project in projects_for_spec(spec) and spec.get("id"):
                 unit.test_ids.add(spec["id"])
+                if "requires-secrets" in {tag.lstrip("@") for tag in spec.get("tags", [])}:
+                    unit.credential_test_ids.add(spec["id"])
                 unit.test_names[spec["id"]] = spec.get("title", "")
                 unit.grep_titles.add((project, file, *titles))
         units[unit.key] = unit
@@ -739,6 +744,8 @@ def write_plan(
         "planningReserveMs": sum(unit.weight_reserve_ms for unit in units),
         "testCount": sum(len(unit.test_ids) for unit in units),
         "testIds": sorted(test_id for unit in units for test_id in unit.test_ids),
+        "credentialTestIds": sorted(test_id for unit in units for test_id in unit.credential_test_ids),
+        "credentialFiles": sorted({f"playwright/e2e/{unit.file}" for unit in units if unit.credential_test_ids}),
         "units": [unit.key for unit in units],
     }
     filename = f"{shard_id}.json"

@@ -64,7 +64,7 @@ jobs:
             config=playwright/helper-tests.config.ts
             if [[ "$kind" == 'browser-tests' ]]; then config=playwright/browser-helper-tests.config.ts; fi
             PLAYWRIGHT_JSON_OUTPUT_NAME="$RUNNER_TEMP/helper-results/$kind.json" \
-              yarn playwright test --config="$config" --reporter=json "${files[@]}"
+              yarn playwright test --config="$config" --reporter=json --grep-invert @requires-secrets "${files[@]}"
             expected=$(printf '%s\n' "${files[@]}" | jq -R . | jq -s .)
             python3 "$GITHUB_WORKSPACE/.github/scripts/verify_playwright_changed_specs.py" \
               --specs-json "$expected" \
@@ -81,6 +81,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: playwright-changed-helper-results
+          overwrite: true
           path: ${{ runner.temp }}/helper-results
           if-no-files-found: warn
           retention-days: 5
