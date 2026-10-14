@@ -91,6 +91,13 @@ const GlossarySettings = withPageSuspenseFallback(
   React.lazy(() => import('../governance/glossary/GlossarySettings'))
 );
 
+const DefaultTimeFormatPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/Settings/DefaultTimeFormatPage/DefaultTimeFormatPage')
+  )
+);
+
 const EditLoginConfiguration = withPageSuspenseFallback(
   React.lazy(
     () =>
@@ -1069,6 +1076,17 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.GLOSSARY
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <DefaultTimeFormatPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.TIME_FORMAT
         )}
       />
       <Route

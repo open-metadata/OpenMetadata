@@ -109,4 +109,5 @@ export enum GlobalSettingOptions {
   COLUMN = 'column',
   APP_MODE = 'appMode',
   GLOSSARY = 'glossary',
+  TIME_FORMAT = 'timeFormat',
 }

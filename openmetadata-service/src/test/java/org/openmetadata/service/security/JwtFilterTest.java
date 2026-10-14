@@ -566,11 +566,15 @@ class JwtFilterTest {
   }
 
   private static JwtFilter newEnforcingFilterForKeyId(String keyId) throws Exception {
+    return new JwtFilter(jwkProviderForKeyId(keyId), List.of("sub", "email"), OM_ISSUER, true);
+  }
+
+  private static JwkProvider jwkProviderForKeyId(String keyId) throws Exception {
     Jwk jwk = mock(Jwk.class);
     when(jwk.getPublicKey()).thenReturn(publicKey);
     JwkProvider keyIdAwareProvider = mock(JwkProvider.class);
     when(keyIdAwareProvider.get(keyId)).thenReturn(jwk);
-    return new JwtFilter(keyIdAwareProvider, List.of("sub", "email"), OM_ISSUER, true);
+    return keyIdAwareProvider;
   }
 
   /**
@@ -926,14 +930,47 @@ class JwtFilterTest {
   }
 
   @Test
-  void rolesClaimAbsentLeavesContextRolesNull() throws Exception {
-    // Regression guard: an empty set here would tell the role sync the provider revoked every
-    // role, wiping the roles of every user on a deployment that never configured a roles claim.
+  void providerTokenWithoutARolesClaimGrantsNoRoles() throws Exception {
+    // Entra ID omits the roles claim once a user has no app roles left. Reading that as "unknown"
+    // left every revoked role in place.
     JwtFilter filter = filterWithRolesFromProvider(true);
 
     CatalogSecurityContext context = filter.getCatalogSecurityContext(rolesClaimJwt(null));
 
-    assertNull(context.userRoles());
+    assertEquals(Set.of(), context.userRoles());
+  }
+
+  @Test
+  void openMetadataIssuedTokenRolesNeverReachTheRoleSync() throws Exception {
+    // A session token or PAT carries the roles the user had when it was minted. Treating them as
+    // the provider's would let a tab left open restore roles the provider has since revoked.
+    JwtFilter filter = filterWithRolesFromProvider(jwkProviderForKeyId(OM_KEY_ID), true);
+    String jwt =
+        JWT.create()
+            .withKeyId(OM_KEY_ID)
+            .withIssuer(OM_ISSUER)
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
+            .withClaim("roles", List.of("Admin", "DataSteward"))
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    try (MockedStatic<JWTTokenGenerator> generator =
+        org.mockito.Mockito.mockStatic(
+            JWTTokenGenerator.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      JWTTokenGenerator instance = mock(JWTTokenGenerator.class);
+      when(instance.getIssuer()).thenReturn(OM_ISSUER);
+      when(instance.getKid()).thenReturn(OM_KEY_ID);
+      generator.when(JWTTokenGenerator::getInstance).thenReturn(instance);
+
+      filter.filter(context);
+    }
+
+    ArgumentCaptor<SecurityContext> securityContext =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContext.capture());
+    assertNull(((CatalogSecurityContext) securityContext.getValue()).userRoles());
   }
 
   @Test
@@ -1011,8 +1048,12 @@ class JwtFilterTest {
 
   private static JwtFilter filterWithRolesFromProvider(boolean useRolesFromProvider)
       throws Exception {
-    JwtFilter filter =
-        new JwtFilter(jwkProvider, List.of("sub", "email"), "openmetadata.org", false);
+    return filterWithRolesFromProvider(jwkProvider, useRolesFromProvider);
+  }
+
+  private static JwtFilter filterWithRolesFromProvider(
+      JwkProvider provider, boolean useRolesFromProvider) throws Exception {
+    JwtFilter filter = new JwtFilter(provider, List.of("sub", "email"), "openmetadata.org", false);
     Field field = JwtFilter.class.getDeclaredField("useRolesFromProvider");
     field.setAccessible(true);
     field.setBoolean(filter, useRolesFromProvider);
