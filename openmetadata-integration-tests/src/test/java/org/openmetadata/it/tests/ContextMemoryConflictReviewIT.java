@@ -30,6 +30,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -266,6 +268,7 @@ public class ContextMemoryConflictReviewIT {
     assertTrue(listOrEmpty(admin().get(idOf(conflict.reviewed())).getDisputes()).isEmpty());
   }
 
+  /** Only the open review guards its memory: the one the delete cancelled stays deletable. */
   @Test
   void deletingAMemoryInReviewClosesItsTaskAndRestoringItReopensOne(TestNamespace ns) {
     Conflict conflict = conflict(ns, "deleted");
@@ -280,6 +283,8 @@ public class ContextMemoryConflictReviewIT {
     admin().restore(idOf(conflict.reviewed()));
 
     assertNotEquals(task.getId(), openTask(conflict.reviewed()).getId(), "a fresh review");
+
+    SdkClients.adminClient().tasks().delete(task.getId().toString(), Map.of("hardDelete", "true"));
   }
 
   /**
@@ -451,7 +456,9 @@ public class ContextMemoryConflictReviewIT {
     assertTrue(refused.getMessage().contains("record the conflict as disputes on the memory"));
   }
 
+  /** Creates a custom task, whose form schema TaskResourceIT overrides while it holds this lock. */
   @Test
+  @ResourceLock(value = "task-form-schema-custom-task-custom", mode = ResourceAccessMode.READ)
   void anotherTaskCannotBePatchedIntoAConflictReview(TestNamespace ns) {
     ContextMemory memory = pending(ns, "patched", shared().USER2_REF);
     Task custom =

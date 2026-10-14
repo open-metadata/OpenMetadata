@@ -33,8 +33,8 @@ Approved — and nothing wrote it.
    Review category, opened by `governance-bot` and assigned to the owners of the memory and of every
    disputed memory, who are notified. Only the server opens, edits and closes one: a client raises a
    conflict by recording `disputes` on the memory, and the task API refuses to create the type, to
-   patch or bulk-edit such a task, to turn another task into one, and to close, cancel or delete one
-   without a decision while its memory is in review — resolving the task is the authorization to decide the
+   patch or bulk-edit such a task, to turn another task into one, and to close, cancel or delete an
+   open one without a decision while its memory is in review — resolving the task is the authorization to decide the
    memory. The task opens after the write that records the dispute commits; a failure to open it is
    logged, and the next write to the memory tries again. No workflow drives it: its Approve and
    Reject transitions are fixed when it opens, and its decision applies synchronously when it is

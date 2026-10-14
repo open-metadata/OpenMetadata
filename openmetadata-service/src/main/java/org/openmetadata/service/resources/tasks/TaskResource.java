@@ -1236,8 +1236,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
   }
 
+  /**
+   * Only an open review can still end its memory's review; a closed one, such as a review a delete
+   * cancelled before a restore reopened another, closes or deletes freely.
+   */
   private static void requireClosable(Task task) {
-    if (MemoryConflictResolution.decides(task)) {
+    if (MemoryConflictResolution.decides(task) && task.getStatus() == TaskEntityStatus.Open) {
       MemoryConflictResolution.requireReviewEnded(task);
     }
   }
