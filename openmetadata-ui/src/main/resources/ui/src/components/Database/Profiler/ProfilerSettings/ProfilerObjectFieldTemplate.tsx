@@ -33,23 +33,23 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
         className="layout-space layout-space-horizontal w-full justify-between"
         gap={2}
         itemClassName="layout-space-item">
-        <Typography
+        <span
           className={classNames('control-label', {
             'font-medium text-base-color text-md': !schema.additionalProperties,
           })}
           id={`${idSchema.$id}__title`}>
           {title}
-        </Typography>
+        </span>
 
         {schema.additionalProperties && (
           <Button
-            aria-label={t('label.add')}
+            aria-label={t('label.add-entity', { entity: title })}
             color="primary"
             data-testid={`add-item-${title}`}
             iconLeading={Plus}
             id={`${idSchema.$id}`}
             size="xs"
-            onClick={() => {
+            onPress={() => {
               onAddClick(schema)();
             }}
           />

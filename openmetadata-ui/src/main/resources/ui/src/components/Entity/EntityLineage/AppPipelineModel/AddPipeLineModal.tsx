@@ -13,10 +13,10 @@
 
 import {
   Button,
+  Input,
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -153,10 +153,11 @@ const AddPipeLineModal = ({
       })}
       onCancel={onModalCancel}>
       <Input
-        data-testid="field-input"
+        aria-label={t('message.search-for-edge')}
+        inputDataTestId="field-input"
         placeholder={t('message.search-for-edge')}
         value={edgeSearchValue}
-        onChange={(e) => handleChange(e.target.value)}
+        onChange={handleChange}
       />
 
       <div className="edge-option-container">

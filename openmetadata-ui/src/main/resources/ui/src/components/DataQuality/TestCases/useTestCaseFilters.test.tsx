@@ -317,6 +317,26 @@ describe('useTestCaseFilters', () => {
     expect(platformDescriptor?.controlType).toBe('multiselect');
   });
 
+  it('should mark tier and dimension searchable without a server search', () => {
+    const { result } = renderFilters();
+
+    act(() => {
+      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.tier });
+    });
+    act(() => {
+      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.dimension });
+    });
+
+    [TEST_CASE_FILTERS.tier, TEST_CASE_FILTERS.dimension].forEach((key) => {
+      const descriptor = result.current.filters.find(
+        (filter) => filter.key === key
+      );
+
+      expect(descriptor?.searchable).toBe(true);
+      expect(descriptor?.onSearch).toBeUndefined();
+    });
+  });
+
   it('should reflect the URL filter value on the matching descriptor', () => {
     mockLocation.search = 'tableFqn=svc.db.tbl';
 

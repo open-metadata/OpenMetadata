@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Grid, SimpleModal } from '@openmetadata/ui-core-components';
+import { Grid, Input, SimpleModal } from '@openmetadata/ui-core-components';
 import { Check, Search } from '@openmetadata/ui-core-components/icons';
-import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -149,14 +148,15 @@ const AddAttributeModal: FC<Props> = ({
       ) : (
         <>
           <Input
-            data-testid="search-input"
+            aria-label={t('label.search-entity', {
+              entity: type,
+            })}
+            icon={Search}
+            inputDataTestId="search-input"
             placeholder={t('label.search-entity', {
               entity: type,
             })}
-            prefix={
-              <Search className="tw:shrink-0 tw:text-placeholder" size={14} />
-            }
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={handleSearch}
           />
           {isEmpty(searchedData) ? (
             <ErrorPlaceHolder

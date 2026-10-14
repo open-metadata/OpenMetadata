@@ -10,19 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Input } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
-import { Input } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BORDER_COLOR } from '../../../../constants/constants';
 import {
   LINEAGE_CHILD_ITEMS_PER_PAGE,
   LINEAGE_COLUMN_NODE_SUPPORTED,
@@ -100,9 +93,7 @@ const NodeChildren = ({
   }, [currentNodeColumnsWithLineage]);
 
   const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      e.stopPropagation();
-      const searchQuery = e.target.value;
+    (searchQuery: string) => {
       setSearchValue(searchQuery);
       const currentNodeColumnsToSearch =
         isOnlyShowColumnsWithLineageFilterActive && !isEditMode
@@ -196,18 +187,21 @@ const NodeChildren = ({
         )}
         data-testid="column-container">
         <div className="search-box">
-          <Input
-            data-testid="search-column-input"
-            placeholder={t('label.search-entity', {
-              entity: childrenHeading,
-            })}
-            suffix={
-              <Search className="tw:shrink-0" color={BORDER_COLOR} size={14} />
-            }
-            value={searchValue}
-            onChange={handleSearchChange}
-            onClick={(e) => e.stopPropagation()}
-          />
+          {/* The field sits inside a React Flow node; a click must not select the node. */}
+          <div role="presentation" onClick={(e) => e.stopPropagation()}>
+            <Input
+              aria-label={t('label.search-entity', {
+                entity: childrenHeading,
+              })}
+              icon={Search}
+              inputDataTestId="search-column-input"
+              placeholder={t('label.search-entity', {
+                entity: childrenHeading,
+              })}
+              value={searchValue}
+              onChange={handleSearchChange}
+            />
+          </div>
 
           <section className="m-t-md" id="table-columns">
             <div className="rounded-4 overflow-hidden">

@@ -14,25 +14,24 @@
 import {
   Box,
   Button,
-  ButtonUtility,
   Card,
   Owner,
   Skeleton,
   Tabs,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { RefreshCcw02 } from '@openmetadata/ui-core-components/icons';
-
+import {
+  Edit05,
+  RefreshCw01,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Description from '../../../components/common/EntityDescription/Description';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
@@ -148,11 +147,14 @@ function AlertDetailsContent({
                       entity: t('label.alert'),
                     })}>
                     <Button
+                      aria-label={t('label.sync-alert-offset', {
+                        entity: t('label.alert'),
+                      })}
                       color="secondary"
                       data-testid="sync-button"
-                      iconLeading={<RefreshCcw02 height={16} width={16} />}
+                      iconLeading={RefreshCw01}
                       isLoading={isSyncing}
-                      size="sm"
+                      size="md"
                       onPress={handleAlertSync}
                     />
                   </Tooltip>
@@ -163,12 +165,15 @@ function AlertDetailsContent({
                         title={t('label.edit-entity', {
                           entity: t('label.alert'),
                         })}>
-                        <ButtonUtility
+                        <Button
+                          aria-label={t('label.edit-entity', {
+                            entity: t('label.alert'),
+                          })}
                           color="secondary"
                           data-testid="edit-button"
-                          icon={EditIcon}
-                          size="sm"
-                          onClick={handleAlertEdit}
+                          iconLeading={Edit05}
+                          size="md"
+                          onPress={handleAlertEdit}
                         />
                       </Tooltip>
                     )}
@@ -179,12 +184,15 @@ function AlertDetailsContent({
                         title={t('label.delete-entity', {
                           entity: t('label.alert'),
                         })}>
-                        <ButtonUtility
+                        <Button
+                          aria-label={t('label.delete-entity', {
+                            entity: t('label.alert'),
+                          })}
                           color="secondary"
                           data-testid="delete-button"
-                          icon={DeleteIcon}
-                          size="sm"
-                          onClick={() => setShowDeleteModal(true)}
+                          iconLeading={Trash01}
+                          size="md"
+                          onPress={() => setShowDeleteModal(true)}
                         />
                       </Tooltip>
                     )}
@@ -225,17 +233,17 @@ function AlertDetailsContent({
             ))}
           </Tabs>
         </Box>
-        <DeleteModal
-          entityTitle={getEntityName(alertDetails)}
-          isDeleting={isDeleting}
-          message={t('message.permanently-delete-common-message', {
-            entity: getEntityName(alertDetails)?.toLowerCase?.() ?? '',
-          })}
-          open={showDeleteModal}
-          onCancel={hideDeleteModal}
-          onDelete={handleAlertHardDelete}
-        />
       </Card.Content>
+      <DeleteModal
+        entityTitle={getEntityName(alertDetails)}
+        isDeleting={isDeleting}
+        message={t('message.permanently-delete-common-message', {
+          entity: getEntityName(alertDetails)?.toLowerCase?.() ?? '',
+        })}
+        open={showDeleteModal}
+        onCancel={hideDeleteModal}
+        onDelete={handleAlertHardDelete}
+      />
     </Card>
   );
 }

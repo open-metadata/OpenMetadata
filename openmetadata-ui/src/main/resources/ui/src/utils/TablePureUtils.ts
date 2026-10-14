@@ -323,7 +323,7 @@ export const getJoinsFromTableJoins = (
 };
 
 export const createTableConstraintObject = (
-  constraints: string[],
+  constraints: string[] | undefined,
   type: ConstraintType
 ) =>
   isEmpty(constraints) ? [] : [{ columns: constraints, constraintType: type }];

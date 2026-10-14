@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Input } from 'antd';
+import { Input, Typography } from '@openmetadata/ui-core-components';
+import { clamp } from 'lodash';
 import { useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import '../../../pages/SearchSettingsPage/search-settings.less';
@@ -39,10 +39,23 @@ export const GlobalSettingItem = ({
   const [updatedValue, setUpdatedValue] = useState<number>(value);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
+  const handleCancel = () => {
+    setUpdatedValue(value);
+    setIsEditing(false);
+  };
+
   const handleSave = async () => {
+    // A cleared input parses to NaN; treat it as a cancelled edit.
+    if (Number.isNaN(updatedValue)) {
+      handleCancel();
+
+      return;
+    }
+
     try {
       setIsUpdating(true);
-      await onUpdate(updatedValue);
+      // The core Input has no min/max, so the bounds are applied on save.
+      await onUpdate(clamp(updatedValue, min ?? -Infinity, max ?? Infinity));
     } catch (error) {
       setUpdatedValue(value);
 
@@ -51,11 +64,6 @@ export const GlobalSettingItem = ({
       setIsUpdating(false);
       setIsEditing(false);
     }
-  };
-
-  const handleCancel = () => {
-    setUpdatedValue(value);
-    setIsEditing(false);
   };
 
   return (
@@ -69,19 +77,16 @@ export const GlobalSettingItem = ({
             onCancel={handleCancel}
             onSave={handleSave}>
             <Input
-              data-testid="value-input"
-              disabled={isUpdating}
+              aria-label={label}
               id="value"
-              max={max}
-              min={min}
+              inputDataTestId="value-input"
+              isDisabled={isUpdating}
               placeholder="value"
               step={step}
               type="number"
-              value={updatedValue}
-              onChange={(e) =>
-                setUpdatedValue(
-                  step ? parseFloat(e.target.value) : parseInt(e.target.value)
-                )
+              value={Number.isNaN(updatedValue) ? '' : String(updatedValue)}
+              onChange={(value) =>
+                setUpdatedValue(step ? parseFloat(value) : parseInt(value))
               }
             />
           </InlineEdit>
