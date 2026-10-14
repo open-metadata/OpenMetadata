@@ -90,11 +90,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
-    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
-      {children}
-    </a>
-  )),
   useParams: jest.fn().mockReturnValue({}),
 }));
 
@@ -176,26 +171,19 @@ describe('FailedTestCaseSampleData - observabilityRouterClassBase migration', ()
     });
   });
 
-  it('explore-with-query Link should use observabilityRouterClassBase.getTestCaseDetailPagePath with SQL_QUERY tab', async () => {
-    const { getTestCaseDetailPagePath } = jest.requireMock(
-      '../../../../utils/RouterUtils'
-    );
-
+  it('links to the SQL query tab for this test case', async () => {
     render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
 
-    const exploreBtn = await screen.findByTestId('explore-with-query');
-    const link = exploreBtn.closest('a');
+    const link = await screen.findByRole('link', {
+      name: 'label.explore-with-query',
+    });
 
-    expect(link).not.toBeNull();
-    expect(link?.dataset.to).toBe(
+    expect(link).toHaveAttribute(
+      'href',
       observabilityRouterClassBase.getTestCaseDetailPagePath(
         FQN,
         TestCasePageTabs.SQL_QUERY
       )
-    );
-    expect(getTestCaseDetailPagePath).toHaveBeenCalledWith(
-      FQN,
-      TestCasePageTabs.SQL_QUERY
     );
   });
 });

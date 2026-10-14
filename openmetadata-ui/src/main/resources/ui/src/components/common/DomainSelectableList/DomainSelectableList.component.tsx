@@ -13,8 +13,6 @@
 import { TreeSelectTriggerRenderProps } from '@openmetadata/ui-core-components';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import DomainSelect from '../DomainSelect/DomainSelect';
@@ -72,7 +70,6 @@ const DomainSelectableList = ({
           newLook
           data-testid="add-domain"
           disabled={!hasPermission || disabled}
-          icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
           size="small"
           title={t('label.edit-entity', { entity: t('label.domain-plural') })}
         />

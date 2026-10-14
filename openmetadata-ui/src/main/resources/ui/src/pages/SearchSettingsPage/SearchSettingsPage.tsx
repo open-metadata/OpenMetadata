@@ -13,13 +13,13 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button,
   Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Collapse, Slider } from 'antd';
+import { Collapse, Slider } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -27,11 +27,11 @@ import { ReactComponent as PlusOutlined } from '../../assets/svg/plus-outlined.s
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import FieldValueBoostDialog from '../../components/discovery/personal-space/Profile/tabs/platform-settings/search/FieldValueBoostDialog';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import FieldValueBoostList from '../../components/SearchSettings/FieldValueBoostList/FieldValueBoostList';
-import FieldValueBoostModal from '../../components/SearchSettings/FieldValueBoostModal/FieldValueBoostModal';
 import { GlobalSettingItem } from '../../components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem';
 import TermBoostList from '../../components/SearchSettings/TermBoostList/TermBoostList';
 import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
@@ -113,24 +113,23 @@ const SearchBoostsSection = ({
                 <Typography className="text-sm font-semibold m-0 tw:text-primary">
                   {t('label.term-boost')}
                 </Typography>
-                <span className="count-label">
+                <Typography className="count-label">
                   {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
-                </span>
+                </Typography>
               </Box>
               <Box className="layout-column d-flex items-center gap-2">
                 <Button
-                  className="term-boost-save-btn"
+                  color="secondary"
                   data-testid="term-boost-save-btn"
-                  disabled={!termBoostsChanged}
+                  isDisabled={!termBoostsChanged}
                   onClick={onSaveTermBoost}>
                   {t('label.save')}
                 </Button>
                 <Button
-                  className="term-boost-add-btn"
+                  color="primary"
                   data-testid="term-boost-add-btn"
-                  disabled={isUpdating || showNewTermBoost}
-                  icon={<Icon className="text-sm" component={PlusOutlined} />}
-                  type="primary"
+                  iconLeading={<Icon component={PlusOutlined} />}
+                  isDisabled={isUpdating || showNewTermBoost}
                   onClick={onAddNewTermBoost}>
                   {t('label.add')}
                 </Button>
@@ -143,7 +142,6 @@ const SearchBoostsSection = ({
               handleDeleteTermBoost={onDeleteTermBoost}
               handleTermBoostChange={onTermBoostChange}
               showNewTermBoost={showNewTermBoost}
-              termBoostCardClassName="settings-term-boost-card"
               termBoosts={searchConfig?.globalSettings?.termBoosts ?? []}
             />
           </Grid.Item>
@@ -158,16 +156,18 @@ const SearchBoostsSection = ({
                 <Typography className="text-sm font-semibold m-0 tw:text-primary">
                   {t('label.field-value-boost')}
                 </Typography>
-                <span className="count-label">
+                <Typography className="count-label">
                   {searchConfig?.globalSettings?.fieldValueBoosts?.length ?? 0}
-                </span>
+                </Typography>
               </Box>
               <Box className="layout-column d-flex items-center gap-2">
                 <Button
-                  className="field-value-boost-add-btn"
+                  color="secondary"
                   data-testid="add-field-value-boost-btn"
-                  disabled={isUpdating || showFieldValueBoostModal}
-                  icon={<Icon className="text-sm" component={PlusOutlined} />}
+                  iconLeading={
+                    <Icon className="text-sm" component={PlusOutlined} />
+                  }
+                  isDisabled={isUpdating || showFieldValueBoostModal}
                   onClick={onAddFieldValueBoost}>
                   {t('label.add')}
                 </Button>
@@ -240,15 +240,13 @@ const SearchSettingsPage = () => {
     []
   );
 
-  const fieldValueBoostOptions = useMemo(() => {
-    if (!isEmpty(searchConfig?.allowedFieldValueBoosts)) {
-      return searchConfig?.allowedFieldValueBoosts?.[0].fields?.map(
+  const fieldValueBoostOptions = useMemo(
+    () =>
+      searchConfig?.allowedFieldValueBoosts?.[0]?.fields?.map(
         (field) => field.name
-      );
-    }
-
-    return [];
-  }, [searchConfig]);
+      ) ?? [],
+    [searchConfig]
+  );
 
   const fetchSearchConfig = async () => {
     try {
@@ -570,8 +568,9 @@ const SearchSettingsPage = () => {
             </Typography>
             {isAdminUser && (
               <Button
+                color="secondary"
                 data-testid="reset-search-settings-btn"
-                disabled={isUpdating}
+                isDisabled={isUpdating}
                 onClick={() => setShowResetModal(true)}>
                 {t('label.reset')}
               </Button>
@@ -653,10 +652,10 @@ const SearchSettingsPage = () => {
                     {t('label.hybrid-search-weight-plural')}
                   </Typography>
                   <Button
+                    color="primary"
                     data-testid="hybrid-weights-save-btn"
-                    disabled={!hybridWeightsChanged || isUpdating}
-                    loading={isUpdating}
-                    type="primary"
+                    isDisabled={!hybridWeightsChanged || isUpdating}
+                    isLoading={isUpdating}
                     onClick={onHybridWeightSave}>
                     {t('label.save')}
                   </Button>
@@ -752,16 +751,17 @@ const SearchSettingsPage = () => {
           </Grid.Item>
         ))}
       </Grid>
-      <FieldValueBoostModal
-        entityOptions={fieldValueBoostOptions ?? []}
-        open={showFieldValueBoostModal}
-        selectedBoost={selectedFieldValueBoost}
-        onCancel={() => {
-          setShowFieldValueBoostModal(false);
-          setSelectedFieldValueBoost(undefined);
-        }}
-        onSave={handleSaveFieldValueBoost}
-      />
+      {showFieldValueBoostModal && (
+        <FieldValueBoostDialog
+          boost={selectedFieldValueBoost}
+          fieldOptions={fieldValueBoostOptions}
+          onClose={() => {
+            setShowFieldValueBoostModal(false);
+            setSelectedFieldValueBoost(undefined);
+          }}
+          onSave={handleSaveFieldValueBoost}
+        />
+      )}
       {showResetModal && (
         <ConfirmationModal
           bodyText={t('message.reset-search-settings-confirmation')}

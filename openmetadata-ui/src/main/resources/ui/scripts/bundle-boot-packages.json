@@ -51,14 +51,12 @@
   "jwt-decode",
   "lodash-es",
   "math-intrinsics",
-  "moment",
   "object-inspect",
   "prop-types",
   "qs",
   "rc-align",
   "rc-checkbox",
   "rc-collapse",
-  "rc-dialog",
   "rc-drawer",
   "rc-dropdown",
   "rc-field-form",
@@ -111,6 +109,7 @@
   "throttle-debounce",
   "tinycolor2",
   "use-sync-external-store",
+  "vite-plugin-node-polyfills",
   "void-elements",
   "zustand"
 ]

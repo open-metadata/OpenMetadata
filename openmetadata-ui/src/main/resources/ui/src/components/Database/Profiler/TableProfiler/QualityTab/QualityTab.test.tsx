@@ -351,7 +351,9 @@ describe('QualityTab', () => {
 
     const filterControls = screen.getByTestId('quality-tab-filter-controls');
     const filterSpace = filterControls.querySelector('.layout-space');
-    const filterItems = filterControls.querySelectorAll('.ant-form-item');
+    const filterItems = filterControls.querySelectorAll(
+      '[data-testid=classic-quality-type-filter], [data-testid=classic-quality-status-filter]'
+    );
 
     expect(filterControls).toHaveClass('tw:ml-auto', 'tw:shrink-0');
     expect(filterSpace).toBeInTheDocument();
@@ -359,7 +361,7 @@ describe('QualityTab', () => {
     expect(filterItems).toHaveLength(2);
 
     filterItems.forEach((item) => {
-      expect(item).toHaveClass('tw:m-0', 'tw:w-44');
+      expect(item).toHaveClass('tw:w-44');
     });
   });
 

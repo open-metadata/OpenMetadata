@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { Select } from 'antd';
 import {
   PersonalAccessToken,
@@ -117,11 +117,9 @@ describe('AuthMechanismForm', () => {
     it('should disable auth mechanism select field', () => {
       render(<AuthMechanismForm {...defaultProps} />);
 
-      const authMechanismSelect = screen
-        .getByTestId('auth-mechanism')
-        .querySelector('input');
-
-      expect(authMechanismSelect).toBeDisabled();
+      expect(
+        within(screen.getByTestId('auth-mechanism')).getByRole('button')
+      ).toBeDisabled();
     });
 
     it('should show cancel button when authenticationMechanism is not empty', () => {
@@ -317,7 +315,7 @@ describe('AuthMechanismForm', () => {
 
       const saveButton = screen.getByTestId('save-edit');
 
-      expect(saveButton).toHaveClass('ant-btn-loading');
+      expect(saveButton).toHaveAttribute('data-loading');
     });
 
     it('should initialize form with default values for bot', () => {

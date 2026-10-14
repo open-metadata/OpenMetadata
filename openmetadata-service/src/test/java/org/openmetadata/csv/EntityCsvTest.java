@@ -697,11 +697,21 @@ public class EntityCsvTest {
     assertNotNull(recursiveDocumentation);
     assertTrue(recursiveDocumentation.getSummary().contains("Entity CSV file"));
 
-    IllegalStateException exception =
+    org.openmetadata.service.exception.EntityNotFoundException exception =
         assertThrows(
-            IllegalStateException.class,
+            org.openmetadata.service.exception.EntityNotFoundException.class,
             () -> EntityCsv.getCsvDocumentation("missing-entity-type", false));
+    assertEquals(Response.Status.NOT_FOUND.getStatusCode(), exception.getResponse().getStatus());
     assertTrue(exception.getMessage().contains("missing-entity-type"));
+  }
+
+  @Test
+  void test_getCsvDocumentationServesGlossaryDocumentationForGlossaryTerms() {
+    CsvDocumentation glossaryDocumentation = EntityCsv.getCsvDocumentation(Entity.GLOSSARY, false);
+    CsvDocumentation termDocumentation = EntityCsv.getCsvDocumentation(Entity.GLOSSARY_TERM, false);
+
+    assertFalse(termDocumentation.getHeaders().isEmpty());
+    assertEquals(glossaryDocumentation, termDocumentation);
   }
 
   @Test
