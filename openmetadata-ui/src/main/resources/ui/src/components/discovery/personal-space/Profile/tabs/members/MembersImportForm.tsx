@@ -556,6 +556,19 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
+      if (!importResult) {
+        // The result could not be fetched; the toast above already informed the user.
+        // Keep the user on an actionable step instead of advancing to an empty preview.
+        setProcessingType(undefined);
+        setActiveStep(
+          job.type === 'initialLoad'
+            ? VALIDATION_STEP.UPLOAD
+            : VALIDATION_STEP.EDIT_VALIDATE
+        );
+        activeJobRef.current = undefined;
+
+        return;
+      }
       setCsvImportResult(importResult);
       setProcessingType(undefined);
       // An aborted dry-run keeps the user on the upload step so the abort card
