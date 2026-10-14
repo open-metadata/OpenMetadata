@@ -1,5 +1,6 @@
-# Add here any member that should belong to a specific team; team-labeler.yml
-# labels their PRs with the team name.
+# Add here any member that should belong to a specific team. team-labeler.yml
+# labels their PRs with the team name, and requests a review from one random
+# member of each team labelled on a PR.
 
 ingestion:
   - '@ayush-shah'
