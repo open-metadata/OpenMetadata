@@ -126,13 +126,6 @@
   }
 }
 
-.assets-checkbox .ant-checkbox-inner {
-  border-width: 2px;
-  height: 18px;
-  width: 18px;
-  border-color: @primary-color;
-}
-
 .score-container {
   background-color: @blue-14;
   padding: var(--om-space-6);
@@ -199,4 +192,10 @@
   grid-template-columns: 56px minmax(0, 1fr);
   gap: var(--om-space-8);
   align-items: baseline;
+}
+
+// Dark: selected card is a 1px #1570ef edge (devrel dark palette); brand-300
+// stays for light, which is frozen.
+.dark-mode .explore-search-card.highlight-card {
+  border-color: var(--tw-color-brand-600);
 }

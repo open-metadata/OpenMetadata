@@ -146,3 +146,15 @@ def test_test_connection_runs_steps():
         result = conn.test_connection(metadata=MagicMock())
 
     assert result is mock_step.return_value
+
+
+def test_kafka_offsets_are_stored_by_the_source_not_on_poll():
+    """Issue #29757: librdkafka's default stores an offset as soon as poll() returns
+    the message, which commits an OpenLineage event before its lineage is written."""
+    broker = KafkaBrokerConfig(brokersUrl="broker:9092", topicName="openlineage")
+    with patch(f"{CONNECTION_MODULE}.KafkaConsumer") as mock_consumer:
+        _get_kafka_connection(broker)
+
+    config = mock_consumer.call_args.args[0]
+    assert config["enable.auto.offset.store"] is False
+    assert config.get("enable.auto.commit", True) is True

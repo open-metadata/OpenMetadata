@@ -92,4 +92,29 @@ describe('KnowledgePageSummary', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('quick-link-data')).toBeInTheDocument();
   });
+
+  it('should neutralise a javascript: quick link url (XSS guard)', async () => {
+    render(
+      <KnowledgePageSummary
+        entityDetails={{
+          ...mockData,
+          page: {
+            url: 'javascript:alert(document.domain)',
+          },
+          pageType: PageType.QUICK_LINK,
+        }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    // The mocked summary children render as <div>s, so the only anchor is the
+    // quick-link. getSafeHttpUrl drops the javascript: scheme, so the '#'
+    // fallback is used — React Router renders that as href="/".
+    const link = await screen.findByRole('link');
+
+    expect(link.getAttribute('href')).not.toContain('javascript:');
+    expect(link).toHaveAttribute('href', '/');
+  });
 });

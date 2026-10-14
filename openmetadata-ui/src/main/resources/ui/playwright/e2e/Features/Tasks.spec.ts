@@ -81,7 +81,7 @@ test.describe('Task Workflow Tests', () => {
 
   test.describe('Task Creation', () => {
     test.beforeEach(async ({ page }) => {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
     });
 
     test('should create request description task from entity page', async ({
@@ -156,9 +156,7 @@ test.describe('Task Workflow Tests', () => {
       });
 
       // Add suggested tags
-      const tagsInput = page.locator(
-        '[data-testid="tag-selector"] .ant-select-selection-search input'
-      );
+      const tagsInput = page.getByTestId('tag-selector').getByRole('combobox');
       if (await tagsInput.isVisible().catch(() => false)) {
         await addTagSuggestion({
           page,
@@ -179,7 +177,7 @@ test.describe('Task Workflow Tests', () => {
 
   test.describe('Task Navigation', () => {
     test.beforeEach(async ({ page }) => {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
     });
 
     test('clicking task in activity feed should navigate to entity page with task tab', async ({
@@ -200,7 +198,7 @@ test.describe('Task Workflow Tests', () => {
         });
 
         const page = await browser.newPage();
-        await adminUser.login(page);
+        await adminUser.signIn(page);
 
         // Go to home page and find the task in activity feed
         await redirectToHomePage(page);
@@ -271,7 +269,7 @@ test.describe('Task Workflow Tests', () => {
 
         // Login as regular user (who is the assignee)
         const page = await browser.newPage();
-        await regularUser.login(page);
+        await regularUser.signIn(page);
 
         await tableWithOwner.visitEntityPage(page);
         await page.getByTestId('activity_feed').click();
@@ -308,7 +306,7 @@ test.describe('Task Workflow Tests', () => {
 
       try {
         const page = await browser.newPage();
-        await nonAssignee.login(page);
+        await nonAssignee.signIn(page);
 
         await tableWithOwner.visitEntityPage(page);
         await page.getByTestId('activity_feed').click();
@@ -380,7 +378,7 @@ test.describe('Task Workflow Tests', () => {
     test('task count in Activity Feed tab should match actual tasks', async ({
       page,
     }) => {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await tableWithOwner.visitEntityPage(page);
 
       // Click on activity feed tab
@@ -454,7 +452,7 @@ test.describe('Task Workflow Tests', () => {
         expect(taskResponse.ok()).toBe(true);
 
         const page = await browser.newPage();
-        await adminUser.login(page);
+        await adminUser.signIn(page);
         await tableWithOwner.visitEntityPage(page);
 
         // Navigate to activity feed
@@ -505,7 +503,7 @@ test.describe('Task Workflow Tests', () => {
         });
 
         const page = await browser.newPage();
-        await regularUser.login(page);
+        await regularUser.signIn(page);
         await redirectToHomePage(page);
         await waitForPageLoaded(page);
 

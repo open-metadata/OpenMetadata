@@ -31,6 +31,7 @@ jest.mock('../AdvancedSearchClassBase', () =>
 
 jest.mock('../QueryBuilderElasticsearchFormatUtils', () => ({
   elasticSearchFormat: jest.fn(),
+  hasBlankRule: jest.fn(),
   hasUnfinishedRule: jest.fn(),
 }));
 
@@ -42,9 +43,8 @@ jest.mock('@react-awesome-query-builder/ui', () => ({
   },
 }));
 
-const { elasticSearchFormat, hasUnfinishedRule } = jest.requireMock(
-  '../QueryBuilderElasticsearchFormatUtils'
-);
+const { elasticSearchFormat, hasBlankRule, hasUnfinishedRule } =
+  jest.requireMock('../QueryBuilderElasticsearchFormatUtils');
 const { Utils } = jest.requireMock('@react-awesome-query-builder/ui');
 
 const tree = {} as ImmutableTree;
@@ -130,6 +130,13 @@ describe('isQueryTreeComplete', () => {
       outputType: SearchOutputType.ElasticSearch,
     }) as unknown as { children1: Record<string, unknown> };
 
+  // hasBlankRule defaults to false so the existing tests exercise the pre-existing
+  // holdsOnlyTheSeedRow / toElasticSearchQuery paths unaffected.
+  beforeEach(() => {
+    hasBlankRule.mockReset();
+    hasBlankRule.mockReturnValue(false);
+  });
+
   it('should treat the untouched seed row as complete', () => {
     hasUnfinishedRule.mockReturnValue(true);
     const config = realConfig();
@@ -180,5 +187,24 @@ describe('isQueryTreeComplete', () => {
     hasUnfinishedRule.mockReturnValue(false);
 
     expect(isQueryTreeComplete(tree, config)).toBe(true);
+  });
+
+  // Defense-in-depth: a blank rule (sanitizer field-nulled) must block the save
+  // even when every other rule is finished and the query still produces a value,
+  // because the surviving query is silently widened by the dropped condition.
+  it('should be incomplete when hasBlankRule returns true even with a finished query', () => {
+    hasBlankRule.mockReturnValue(true);
+    hasUnfinishedRule.mockReturnValue(false);
+    elasticSearchFormat.mockReturnValue({ bool: { must: [{ term: {} }] } });
+
+    expect(isQueryTreeComplete(tree, config)).toBe(false);
+  });
+
+  it('should be incomplete when hasBlankRule returns true even if hasUnfinishedRule is also true', () => {
+    hasBlankRule.mockReturnValue(true);
+    hasUnfinishedRule.mockReturnValue(true);
+    elasticSearchFormat.mockReturnValue({ bool: { must: [{ term: {} }] } });
+
+    expect(isQueryTreeComplete(tree, config)).toBe(false);
   });
 });

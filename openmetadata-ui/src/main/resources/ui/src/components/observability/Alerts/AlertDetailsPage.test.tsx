@@ -36,14 +36,6 @@ const mockUseAlertDetailsData = jest.fn();
 const mockUseAlertFormData = jest.fn();
 const mockGetModifiedAlertDataForForm = jest.fn();
 
-jest.mock('./NotificationTemplateUtils', () => ({
-  getTemplateEntityRefObject: jest.fn((template) => ({
-    id: template.id,
-    name: template.name,
-    type: 'notificationTemplate',
-  })),
-}));
-
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
@@ -179,7 +171,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Edit03: () => null,
   RefreshCw04: () => null,
   Trash01: () => null,
@@ -235,14 +227,14 @@ jest.mock('./AlertAiForm.component', () => ({
   default: ({
     mode,
     shouldShowActionsSection,
-    shouldShowTemplateSection,
     supportedFilters,
     supportedTriggers,
+    templateResourcePermission,
     value,
   }: {
     mode: string;
     shouldShowActionsSection?: boolean;
-    shouldShowTemplateSection?: boolean;
+    templateResourcePermission?: Record<string, boolean>;
     supportedFilters?: unknown[];
     supportedTriggers?: unknown[];
     value: ModifiedEventSubscription;
@@ -252,8 +244,8 @@ jest.mock('./AlertAiForm.component', () => ({
       <span data-testid="form-shows-triggers">
         {String(Boolean(shouldShowActionsSection))}
       </span>
-      <span data-testid="form-shows-templates">
-        {String(Boolean(shouldShowTemplateSection))}
+      <span data-testid="form-template-permission">
+        {JSON.stringify(templateResourcePermission ?? null)}
       </span>
       <span data-testid="form-name">{value.name}</span>
       <span data-testid="filters-count">{supportedFilters?.length ?? 0}</span>
@@ -417,6 +409,14 @@ const getFormState = () => ({
       supportedFilters: [{ name: 'filter' }],
     },
   ],
+  loadingState: { alerts: false, functions: false, templates: false },
+  // What the server says the alert's sources support.
+  selection: {
+    support: {
+      supportedFilters: [{ name: 'filter' }],
+      supportedTriggers: [{ name: 'action' }],
+    },
+  },
   templates: [],
 });
 
@@ -486,6 +486,10 @@ describe('AlertDetailsPage', () => {
     expect(screen.getByTestId('form-name')).toHaveTextContent('test-alert');
     expect(screen.getByTestId('filters-count')).toHaveTextContent('1');
     expect(screen.getByTestId('triggers-count')).toHaveTextContent('1');
+    // The configuration view asks about every source the alert watches.
+    expect(mockUseAlertFormData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sources: ['table'] })
+    );
   });
 
   it('renders the header meta row with owner and event stats', () => {
@@ -659,15 +663,15 @@ describe('AlertDetailsPage', () => {
     expect(screen.getByTestId('form-shows-triggers')).toHaveTextContent('true');
   });
 
-  it('shows the template section when a template widget is registered', () => {
+  it('passes the template permission to the configuration view', () => {
     mockUseAlertFormData.mockReturnValue({
       ...getFormState(),
-      extraFormWidgets: { NotificationTemplate: () => null },
+      templateResourcePermission: { ViewAll: true },
     });
     renderPage(<AlertDetailsPage />);
 
-    expect(screen.getByTestId('form-shows-templates')).toHaveTextContent(
-      'true'
+    expect(screen.getByTestId('form-template-permission')).toHaveTextContent(
+      '{"ViewAll":true}'
     );
   });
 });

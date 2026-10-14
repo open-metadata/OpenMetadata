@@ -25,7 +25,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Bell01, FilterLines } from '@untitledui/icons';
+import { Bell01, FilterLines } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -271,7 +271,9 @@ function NotificationRecentEvents({
                           </Box>
                         </Tooltip>
                         <Typography size="text-sm">
-                          {changeEventData.id}
+                          {isEmpty(typedEvent.data)
+                            ? t('label.unreadable-event')
+                            : changeEventData.id}
                         </Typography>
                       </Box>
                       <Typography className="tw:text-tertiary!" size="text-sm">

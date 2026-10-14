@@ -11,22 +11,63 @@
  *  limitations under the License.
  */
 
-import { useForm } from 'antd/lib/form/Form';
+import { useForm, UseFormReturn } from 'react-hook-form';
+import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
+import { ProviderType } from '../../../generated/entity/events/notificationTemplate';
+import { AlertType } from '../../../generated/events/eventSubscription';
 import {
   ModifiedCreateEventSubscription,
-  UseObservabilityAlertFormOptions,
-  UseObservabilityAlertFormReturn,
+  UseAlertFormDataOptions,
+  UseAlertFormDataReturn,
 } from '../AddObservabilityPage.interface';
 import { useAlertFormData } from './useAlertFormData';
-import { useSelectedAlertTrigger } from './useObservabilityAlertResources';
+import { useSelectedAlertSources } from './useObservabilityAlertResources';
+
+type ObservabilityAlertFormInstance =
+  UseFormReturn<ModifiedCreateEventSubscription>;
+
+export interface UseObservabilityAlertFormOptions
+  extends Omit<UseAlertFormDataOptions, 'input' | 'sources'> {
+  form?: ObservabilityAlertFormInstance;
+}
+
+export interface UseObservabilityAlertFormReturn
+  extends UseAlertFormDataReturn {
+  form: ObservabilityAlertFormInstance;
+}
+
+export type ObservabilityAlertFormProps = UseObservabilityAlertFormReturn;
+
+export type ObservabilityAlertFormFieldsProps = Pick<
+  ObservabilityAlertFormProps,
+  | 'alert'
+  | 'extraFormWidgets'
+  | 'filterResources'
+  | 'form'
+  | 'isLoading'
+  | 'shouldShowActionsSection'
+  | 'shouldShowFiltersSection'
+  | 'templateResourcePermission'
+  | 'templates'
+>;
 
 export function useObservabilityAlertForm({
   form: providedForm,
   ...options
 }: UseObservabilityAlertFormOptions = {}): UseObservabilityAlertFormReturn {
-  const [internalForm] = useForm<ModifiedCreateEventSubscription>();
+  const internalForm = useForm<ModifiedCreateEventSubscription>({
+    defaultValues: {
+      resources: [],
+      destinations: [],
+      input: {},
+      alertType: AlertType.Observability,
+      provider: ProviderType.User,
+      timeout: 10,
+      readTimeout: DEFAULT_READ_TIMEOUT,
+    },
+  });
   const form = providedForm ?? internalForm;
-  const selectedTrigger = useSelectedAlertTrigger(form);
+  const { sources, input } = useSelectedAlertSources(form);
 
-  return { ...useAlertFormData({ ...options, selectedTrigger }), form };
+  return { ...useAlertFormData({ ...options, sources, input }), form };
 }

@@ -12,7 +12,10 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { ChevronRight, Database01 } from '@untitledui/icons';
+import {
+  ChevronRight,
+  Database01,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 import { getColorSetForType } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';

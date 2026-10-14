@@ -18,7 +18,7 @@ import {
   FileIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';

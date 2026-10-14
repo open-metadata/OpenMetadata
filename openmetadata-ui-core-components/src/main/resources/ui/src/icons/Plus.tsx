@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Plus: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,10 +29,14 @@ export const Plus: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M12 5v14m-7-7h14" stroke="currentColor" strokeWidth={2} />
+    <path
+      d="M10 4.167v11.667m-5.833-5.833h11.667"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
   </svg>
 );
 Plus.displayName = 'Plus';

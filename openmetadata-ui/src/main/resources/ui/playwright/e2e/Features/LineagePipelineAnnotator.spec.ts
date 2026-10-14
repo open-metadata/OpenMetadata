@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import {
@@ -54,7 +55,9 @@ test.describe('Lineage Pipeline Annotator', () => {
     const apiContext = await getAuthContext(token);
 
     try {
-      table = new TableClass();
+      // Reads serviceResponseData.fqn to drive dbService filtering — needs
+      // its own service so the filter narrows to this test's table alone.
+      table = new TableClass({ service: new DatabaseServiceClass() });
       await table.create(apiContext);
       dbServiceFqn = table.serviceResponseData.fullyQualifiedName ?? '';
 

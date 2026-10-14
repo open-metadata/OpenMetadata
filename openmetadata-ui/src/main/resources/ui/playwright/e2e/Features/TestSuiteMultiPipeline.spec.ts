@@ -46,7 +46,9 @@ test(
 
     await redirectToHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);
-    const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
+    const table = new TableClass({
+      name: `multi pipeline !@#$%^&*()_-+=test-${uuid()}`,
+    });
     await table.create(apiContext);
     await table.visitEntityPage(page, table.entity.displayName);
     const testCaseName = `multi-pipeline-test-${uuid()}`;
@@ -244,7 +246,9 @@ test(
 
     await redirectToHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);
-    const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
+    const table = new TableClass({
+      name: `multi pipeline !@#$%^&*()_-+=test-${uuid()}`,
+    });
     await table.create(apiContext);
     for (let index = 0; index < 4; index++) {
       await table.createTestCase(apiContext);

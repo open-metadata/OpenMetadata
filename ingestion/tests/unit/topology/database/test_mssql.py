@@ -322,8 +322,78 @@ class MssqlUnitTest(TestCase):
         # definition (regression guard for the cross-schema join bug).
         executed_sql = str(mock_conn.execute.call_args.args[0])
         self.assertIn("sch.name = r.ROUTINE_SCHEMA", executed_sql)
-        self.assertIn(f"ROUTINE_CATALOG = '{MOCK_DATABASE.name.root}'", executed_sql)
-        self.assertIn(f"ROUTINE_SCHEMA = '{MOCK_DATABASE_SCHEMA.name.root}'", executed_sql)
+        # The database and schema predicates are passed as bound parameters, not
+        # interpolated into the SQL. This keeps names containing apostrophes (legal
+        # SQL Server delimited identifiers like [O'Brien]) from breaking the query.
+        self.assertIn(":database_name", executed_sql)
+        self.assertIn(":schema_name", executed_sql)
+        self.assertNotIn(f"'{MOCK_DATABASE.name.root}'", executed_sql)
+        self.assertNotIn(f"'{MOCK_DATABASE_SCHEMA.name.root}'", executed_sql)
+        executed_params = mock_conn.execute.call_args.args[1]
+        self.assertEqual(
+            executed_params,
+            {
+                "database_name": MOCK_DATABASE.name.root,
+                "schema_name": MOCK_DATABASE_SCHEMA.name.root,
+            },
+        )
+
+    def test_get_stored_procedures_with_apostrophe_in_schema_name(self):
+        """
+        A schema or database name containing an apostrophe (a legal SQL Server
+        delimited identifier, e.g. ``[O'Brien]``) must not break stored-procedure
+        ingestion.
+
+        The old implementation interpolated the names into single-quoted T-SQL
+        string literals via ``.format()``, so ``ROUTINE_SCHEMA = 'O'Brien'``
+        produced a syntax error and the procedures for that schema silently
+        vanished from the catalogue. The fix passes the names as bound
+        parameters, which keeps the apostrophe out of the SQL text entirely.
+        """
+        apostrophe_database = "O'Brien_db"
+        apostrophe_schema = "O'Brien"
+        self.mssql.source_config.includeStoredProcedures = True
+        self.mssql.source_config.storedProcedureFilterPattern = None
+        self.mssql.context.get().__dict__["database"] = apostrophe_database
+        self.mssql.context.get().__dict__["database_schema"] = apostrophe_schema
+
+        mock_engine = MagicMock()
+        self.mssql.engine = mock_engine
+
+        row = MagicMock()
+        row._asdict.return_value = {
+            "name": "sp_apostrophe_schema",
+            "definition": "def1",
+            "language": "SQL",
+            "owner": "owner",
+        }
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = [row]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        results = list(self.mssql.get_stored_procedures())
+
+        # The procedure for the apostrophe-named schema must be yielded: the
+        # bound-parameter call must not raise, so the producer is not dropped.
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "sp_apostrophe_schema")
+
+        # The apostrophe must travel in the params dict, never in the SQL text.
+        # Interpolating it (``ROUTINE_SCHEMA = 'O'Brien'``) is the regression we
+        # guard against: it would create an unbalanced string literal.
+        executed_sql = str(mock_conn.execute.call_args.args[0])
+        executed_params = mock_conn.execute.call_args.args[1]
+        self.assertNotIn(apostrophe_schema, executed_sql)
+        self.assertNotIn(apostrophe_database, executed_sql)
+        self.assertEqual(
+            executed_params,
+            {
+                "database_name": apostrophe_database,
+                "schema_name": apostrophe_schema,
+            },
+        )
 
 
 class TestUpdateMssqlIschemaNames:

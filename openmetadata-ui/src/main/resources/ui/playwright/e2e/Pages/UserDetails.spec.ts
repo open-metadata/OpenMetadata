@@ -21,6 +21,7 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, uuid } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitUserProfilePage } from '../../utils/user';
 import { redirectToUserPage } from '../../utils/userDetails';
 
@@ -43,13 +44,13 @@ const test = base.extend<{
 }>({
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await admin.login(page);
+    await admin.signIn(page);
     await use(page);
     await page.close();
   },
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user1.login(page);
+    await user1.signIn(page);
     await use(page);
     await page.close();
   },
@@ -197,10 +198,7 @@ test.describe('User with different Roles', () => {
     await visitUserProfilePage(adminPage, user3.getUserName());
 
     // Wait for the team to be visible in the teams section
-    await adminPage
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(adminPage);
 
     await adminPage
       .getByTestId('user-profile-teams')
@@ -468,32 +466,23 @@ test.describe('User with different Roles', () => {
       adminPage.getByTestId('profile-edit-roles-select')
     ).toBeVisible();
 
-    await adminPage.locator('.ant-select-dropdown').waitFor({
-      state: 'visible',
-    });
+    await adminPage.getByRole('listbox').waitFor({ state: 'visible' });
 
     const applicationRolesResponse = adminPage.waitForResponse(
       '/api/v1/roles/search?*'
     );
     await adminPage
       .getByTestId('profile-edit-roles-select')
-      .locator('input')
+      .getByRole('combobox')
       .fill('Application');
     await applicationRolesResponse;
     await adminPage
-      .locator('.ant-select-item-option-content')
-      .getByText('Application bot role', { exact: true })
-      .waitFor({ state: 'visible' });
-    await adminPage
-      .locator('.ant-select-item-option-content')
-      .getByText('Application bot role', { exact: true })
+      .getByRole('option', { name: 'Application bot role', exact: true })
       .click();
 
     await adminPage.keyboard.press('Escape');
 
-    await adminPage.locator('.ant-select-dropdown').waitFor({
-      state: 'hidden',
-    });
+    await adminPage.getByRole('listbox').waitFor({ state: 'hidden' });
 
     const saveTeamsResponse = adminPage.waitForResponse(
       (response) =>
@@ -520,7 +509,7 @@ test.describe('User with different Roles', () => {
 
     await userPage.click('[data-testid="user-profile-manage-btn"]');
     await userPage.click('[data-testid="edit-displayname"]');
-    await userPage.locator('[role="dialog"].ant-modal').waitFor({
+    await userPage.getByTestId('profile-edit-modal').waitFor({
       state: 'visible',
     });
     await userPage.fill(

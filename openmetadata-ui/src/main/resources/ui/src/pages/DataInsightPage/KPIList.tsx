@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Tooltip, Typography } from 'antd';
+import {
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -104,7 +108,9 @@ const KPIList = () => {
         dataIndex: 'startDate',
         key: 'startDate',
         render: (startDate: number) => (
-          <Typography.Text>{formatDateTime(startDate)}</Typography.Text>
+          <Typography className="tw:text-primary">
+            {formatDateTime(startDate)}
+          </Typography>
         ),
       },
       {
@@ -112,7 +118,9 @@ const KPIList = () => {
         dataIndex: 'endDate',
         key: 'endDate',
         render: (endDate: number) => (
-          <Typography.Text>{formatDateTime(endDate)}</Typography.Text>
+          <Typography className="tw:text-primary">
+            {formatDateTime(endDate)}
+          </Typography>
         ),
       },
       {
@@ -124,7 +132,9 @@ const KPIList = () => {
             record.metricType === KpiTargetType.Percentage;
           const targetValue = isPercentageMetric ? `${+value}%` : value;
 
-          return <Typography.Text>{targetValue}</Typography.Text>;
+          return (
+            <Typography className="tw:text-primary">{targetValue}</Typography>
+          );
         },
       },
       {
@@ -132,7 +142,7 @@ const KPIList = () => {
         dataIndex: 'metricType',
         key: 'metricType',
         render: (metricType: KpiTargetType) => (
-          <Typography.Text>{metricType}</Typography.Text>
+          <Typography className="tw:text-primary">{metricType}</Typography>
         ),
       },
       {
@@ -144,35 +154,36 @@ const KPIList = () => {
           return (
             <div className="d-flex items-center">
               <Tooltip
+                arrow
                 placement="left"
                 title={
                   isAdminUser
                     ? t('label.edit')
                     : t('message.no-permission-for-action')
                 }>
-                <Button
-                  className="flex-center"
+                <ButtonUtility
+                  color="tertiary"
                   data-testid={`edit-action-${getEntityName(record)}`}
-                  disabled={!isAdminUser}
-                  icon={<EditIcon width="16px" />}
-                  type="text"
+                  icon={EditIcon}
+                  isDisabled={!isAdminUser}
+                  size="sm"
                   onClick={() => navigate(getKpiPath(record.name))}
                 />
               </Tooltip>
               <Tooltip
+                arrow
                 placement="left"
                 title={
                   isAdminUser
                     ? t('label.delete')
                     : t('message.no-permission-for-action')
                 }>
-                <Button
+                <ButtonUtility
+                  color="tertiary"
                   data-testid={`delete-action-${getEntityName(record)}`}
-                  disabled={!isAdminUser}
-                  icon={
-                    <Icon component={IconDelete} style={{ fontSize: '16px' }} />
-                  }
-                  type="text"
+                  icon={IconDelete}
+                  isDisabled={!isAdminUser}
+                  size="sm"
                   onClick={() => setSelectedKpi(record)}
                 />
               </Tooltip>

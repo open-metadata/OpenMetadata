@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { AlertTriangle } from '@untitledui/icons';
-import { isEmpty, isUndefined } from 'lodash';
+import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
+import { isUndefined } from 'lodash';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AiFormModal } from '../../../components/common/atoms/drawer/AiFormModal';
@@ -26,7 +26,7 @@ import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { useObservabilityAlertForm } from '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm';
+import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import AlertAiForm from './AlertAiForm.component';
 import {
@@ -97,26 +97,26 @@ function AlertEditModal({
   const [showHint, setShowHint] = useState(true);
   const {
     alert,
-    containerEntities,
     extraFormButtons,
-    extraFormWidgets,
     filterResources,
-    form,
     handleSave,
     inlineAlertDetails,
     isLoading,
+    loadingState,
     saving,
+    selection,
     shouldShowActionsSection,
     shouldShowFiltersSection,
-    supportedFilters,
-    supportedTriggers,
     templateResourcePermission,
     templates,
-  } = useObservabilityAlertForm({
+  } = useAlertFormData({
     afterSaveAction: onSaved,
     alertType,
     fqn,
     onCancel: onClose,
+    // `input` is left out, as before: this modal does not yet ask the server to warn about
+    // sources the chosen filters and triggers never match.
+    sources: formData.resources,
   });
 
   useEffect(() => {
@@ -130,24 +130,6 @@ function AlertEditModal({
       setFormData(getEmptyInitialValues(alertType));
     }
   }, [alertType, isEditMode, isOpen]);
-
-  // Keep the minimal Ant form mirror in sync for OSS widgets/buttons that still
-  // read via Form.useWatch. Syncing the full controlled payload reintroduced
-  // ModalOverlay scroll jumps, so only mirror the watched fields.
-  useEffect(() => {
-    form.setFieldsValue({
-      customNotificationTemplateData: formData.customNotificationTemplateData,
-      destinations: formData.destinations,
-      notificationTemplate: formData.notificationTemplate,
-      resources: formData.resources,
-    });
-  }, [
-    form,
-    formData.customNotificationTemplateData,
-    formData.destinations,
-    formData.notificationTemplate,
-    formData.resources,
-  ]);
 
   const title = isEditMode
     ? t('label.edit-entity', { entity: t('label.alert') })
@@ -165,7 +147,6 @@ function AlertEditModal({
     ([name, ButtonComponent]) => (
       <ButtonComponent
         alertDetails={alert}
-        formRef={form}
         key={name}
         loading={saving}
         templateResourcePermission={templateResourcePermission}
@@ -181,7 +162,6 @@ function AlertEditModal({
       footerActions={extraFooterButtons}
       hintOpen={showHint}
       icon={AlertTriangle}
-      iconColor="warning"
       isSubmitDisabled={saving || isLoading}
       isSubmitting={saving}
       open={isOpen}
@@ -199,20 +179,22 @@ function AlertEditModal({
       ) : (
         <AlertAiForm
           alert={alert}
-          containerEntities={containerEntities}
+          containerEntities={selection.support.containerEntities}
           filterResources={filterResources}
           formId={ALERT_AI_FORM_MODAL_ID}
           inlineAlert={inlineAlertDetails}
           mode={mode}
+          recipientCategories={selection.support.recipientCategories}
           shouldShowActionsSection={
             kind.hasTriggers && shouldShowActionsSection
           }
           shouldShowFiltersSection={shouldShowFiltersSection}
-          shouldShowTemplateSection={!isEmpty(extraFormWidgets)}
           showHint={showHint}
-          supportedFilters={supportedFilters}
-          supportedTriggers={supportedTriggers}
+          supportedFilters={selection.support.supportedFilters}
+          supportedTriggers={selection.support.supportedTriggers}
+          templateResourcePermission={templateResourcePermission}
           templates={templates}
+          templatesLoading={loadingState.templates}
           value={formData}
           onChange={setFormData}
           onSubmit={handleSave}

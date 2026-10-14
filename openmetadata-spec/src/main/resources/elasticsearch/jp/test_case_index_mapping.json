@@ -650,6 +650,23 @@
           "result": {
             "type": "text"
           },
+          "duration": {
+            "type": "double"
+          },
+          "errorDetails": {
+            "properties": {
+              "errorType": {
+                "type": "keyword"
+              },
+              "message": {
+                "type": "text"
+              },
+              "stackTrace": {
+                "type": "text",
+                "index": false
+              }
+            }
+          },
           "testCaseStatus": {
             "type": "keyword",
             "normalizer": "lowercase_normalizer"

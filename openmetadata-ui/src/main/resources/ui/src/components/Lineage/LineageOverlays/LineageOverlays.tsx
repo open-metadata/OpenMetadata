@@ -17,7 +17,7 @@ import {
   ModalOverlay,
   SlideoutMenu,
 } from '@openmetadata/ui-core-components';
-import { Home02 } from '@untitledui/icons';
+import { Home02 } from '@openmetadata/ui-core-components/icons';
 import { LoadingState } from 'Models';
 import { lazy, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

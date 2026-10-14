@@ -999,7 +999,7 @@ test.describe('Impact Analysis', () => {
     const rowsWithColumn = page.locator(
       `[data-row-key*="${columnName}"], tbody tr:has-text("${columnName}")`
     );
-    await expect(rowsWithColumn.first()).toBeVisible();
+    await expect(rowsWithColumn.filter({ visible: true })).not.toHaveCount(0);
 
     await searchInput.clear();
     await waitForAllLoadersToDisappear(page);
@@ -1061,6 +1061,58 @@ test.describe('Impact Analysis', () => {
     await expect(firstDepthCell).toBeVisible();
     const depthText = await firstDepthCell.textContent();
     expect(depthText).toMatch(/^\d+$/);
+  });
+
+  test('Verify selected node depth persists across URL updates and reload', async ({
+    page,
+  }) => {
+    const nodeDepthButton = page.getByRole('button', { name: /Node Depth:/ });
+
+    await test.step('Open filters, which writes fullscreen to the URL', async () => {
+      await page.getByTestId('filters-button').click();
+
+      await expect(page).toHaveURL(/fullscreen=true/);
+      await expect(nodeDepthButton).toHaveText(/Node Depth:\s*\d+/);
+      await expect(nodeDepthButton).not.toHaveText(/Node Depth:\s*1$/);
+    });
+
+    await test.step('Select node depth 1', async () => {
+      const lineageResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
+          new URL(response.url()).searchParams.get('nodeDepth') === '1'
+      );
+      await nodeDepthButton.click();
+      await page.getByRole('menuitemradio', { name: '1', exact: true }).click();
+      await lineageResponse;
+
+      await expect(page).toHaveURL(/depth=1/);
+      await expect(nodeDepthButton).toHaveText(/Node Depth:\s*1$/);
+    });
+
+    await test.step('Exit full screen keeps the selected depth', async () => {
+      await page
+        .getByTestId('lineage-card-table')
+        .getByLabel('Exit Full Screen')
+        .click();
+
+      await expect(page).toHaveURL(/fullscreen=false/);
+      await expect(page).toHaveURL(/depth=1/);
+      await expect(nodeDepthButton).toHaveText(/Node Depth:\s*1$/);
+    });
+
+    await test.step('Reload keeps the depth from the URL', async () => {
+      const lineageResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
+          new URL(response.url()).searchParams.get('nodeDepth') === '1'
+      );
+      await page.reload();
+      await lineageResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page).toHaveURL(/depth=1/);
+    });
   });
 
   test('Verify glossary term filter for column level impact analysis', async ({

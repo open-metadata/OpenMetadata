@@ -23,7 +23,7 @@
 }
 
 .app-details-header {
-  > .ant-space-item:last-child {
+  > :is(.ant-space-item, .layout-space-item):last-child {
     width: 100%;
   }
 }
@@ -87,11 +87,5 @@
         background-color: @primary-color;
       }
     }
-  }
-}
-
-.update-schedule-modal {
-  .ant-modal-body {
-    overflow-y: auto;
   }
 }

@@ -20,7 +20,7 @@ export const navigateToAuditLogsPage = async (page: Page) => {
   const logRequest = page.waitForResponse('/api/v1/audit/logs?*');
   await settingClick(page, GlobalSettingOptions.AUDIT_LOGS);
   await logRequest;
-  await page.locator('.ant-skeleton').first().waitFor({ state: 'detached' });
+  await expect(page.locator('.ant-skeleton')).toHaveCount(0);
   await page.getByTestId('audit-log-list').waitFor({ state: 'visible' });
 };
 

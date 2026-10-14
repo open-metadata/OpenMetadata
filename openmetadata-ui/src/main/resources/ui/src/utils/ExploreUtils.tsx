@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { isEmpty, isNil, lowerCase } from 'lodash';
-import React from 'react';
-import { SearchHitCounts } from '../components/Explore/ExplorePage.interface';
+import { isEmpty } from 'lodash';
+import type { Dispatch, SetStateAction } from 'react';
+import {
+  ExploreTabItem,
+  SearchHitCounts,
+} from '../components/Explore/ExplorePage.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { useExploreCache } from '../hooks/useExploreCache';
 import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { Aggregations, SearchResponse } from '../interface/search.interface';
 import {
@@ -29,8 +31,11 @@ import {
   getAggregateFieldOptions,
   postAggregateFieldOptions,
 } from '../rest/miscAPI';
-import { nlqSearch, searchQuery } from '../rest/searchAPI';
-import { getCountBadge } from './EntityDisplayPureUtils';
+import {
+  nlqSearch,
+  searchEntityTypeCounts,
+  searchQuery,
+} from '../rest/searchAPI';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import {
   findActiveSearchIndex,
@@ -102,53 +107,15 @@ export const getAggregationOptions = async (
  */
 export const generateTabItems = (
   tabsInfo: Record<string, TabsInfoData>,
-  searchHitCounts: SearchHitCounts | undefined,
-  searchIndex: ExploreSearchIndex
-) => {
-  return Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => {
-    const Icon = tabDetail.icon as React.FC<{ className?: string }>;
-
-    return {
-      key: tabSearchIndex,
-      label: (
-        <div
-          className="d-flex items-center justify-between"
-          data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-          <div className="explore-tab-label">
-            <span className="d-flex m-r-xs">
-              <Icon
-                className={classNames(
-                  'tw:h-4 tw:w-4',
-                  tabDetail.iconClassName,
-                  {
-                    'text-primary': tabSearchIndex === searchIndex,
-                  }
-                )}
-              />
-            </span>
-            <Typography.Text
-              className={tabSearchIndex === searchIndex ? 'text-primary' : ''}
-              ellipsis={{ tooltip: true }}>
-              {tabDetail.label}
-            </Typography.Text>
-          </div>
-          <span>
-            {!isNil(searchHitCounts)
-              ? getCountBadge(
-                  searchHitCounts[tabSearchIndex as ExploreSearchIndex],
-                  '',
-                  tabSearchIndex === searchIndex
-                )
-              : getCountBadge()}
-          </span>
-        </div>
-      ),
-      count: searchHitCounts
-        ? searchHitCounts[tabSearchIndex as ExploreSearchIndex]
-        : 0,
-    };
-  });
-};
+  searchHitCounts: SearchHitCounts | undefined
+): ExploreTabItem[] =>
+  Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => ({
+    key: tabSearchIndex,
+    label: tabDetail.label,
+    icon: tabDetail.icon as ExploreTabItem['icon'],
+    iconClassName: tabDetail.iconClassName,
+    count: searchHitCounts?.[tabSearchIndex as ExploreSearchIndex] ?? 0,
+  }));
 
 /**
  * Common function to fetch entity count and search results
@@ -165,7 +132,7 @@ export const fetchEntityData = async ({
   page,
   size,
   isNLPRequestEnabled,
-  tab,
+  tab = '',
   TABS_SEARCH_INDEXES,
   EntityTypeSearchIndexMapping,
   setSearchHitCounts,
@@ -174,6 +141,7 @@ export const fetchEntityData = async ({
   setUpdatedAggregations,
   setShowIndexNotFoundAlert,
   onNlqAppliedFilters,
+  onResultsSettled,
   showRankingDetails,
 }: {
   searchQueryParam: string;
@@ -190,7 +158,7 @@ export const fetchEntityData = async ({
   tab: string;
   TABS_SEARCH_INDEXES: ExploreSearchIndex[];
   EntityTypeSearchIndexMapping: Record<EntityType, ExploreSearchIndex>;
-  setSearchHitCounts: (counts: SearchHitCounts) => void;
+  setSearchHitCounts: Dispatch<SetStateAction<SearchHitCounts | undefined>>;
   setAutoSelectedSearchIndex: (
     searchIndex: ExploreSearchIndex | undefined
   ) => void;
@@ -198,6 +166,7 @@ export const fetchEntityData = async ({
   setUpdatedAggregations: (aggs: Aggregations) => void;
   setShowIndexNotFoundAlert: (show: boolean) => void;
   onNlqAppliedFilters?: (filters?: QueryFilterInterface) => void;
+  onResultsSettled?: () => void;
   showRankingDetails?: boolean;
 }) => {
   const combinedQueryFilter = getCombinedQueryFilterObject(
@@ -248,20 +217,45 @@ export const fetchEntityData = async ({
         includeDeleted: showDeleted,
         filters: '',
       };
+      const normalizedCountPayload = {
+        query: countPayload.query,
+        queryFilter: combinedQueryFilter,
+        searchIndex: TABS_SEARCH_INDEXES,
+        includeDeleted: showDeleted,
+        includeTopHit: !tab.trim(),
+      };
       const runCountSearch = () =>
         isNlqSearch
           ? nlqSearch({ ...countPayload, fetchSource: false })
-          : searchQuery({
-              ...countPayload,
-              fetchSource: true,
-              includeFields: ['entityType'],
-            });
+          : useExploreCache
+              .getState()
+              .getOrLoad(
+                `counts:${JSON.stringify(normalizedCountPayload)}`,
+                () => searchEntityTypeCounts(normalizedCountPayload)
+              );
 
       const handleSearchError = (error: unknown) => {
         if (isElasticsearchError(error)) {
           setShowIndexNotFoundAlert(true);
         } else {
           showErrorToast(error as AxiosError);
+        }
+      };
+
+      let currentCounts: SearchHitCounts | undefined;
+      let resultCount: { index: ExploreSearchIndex; total: number } | undefined;
+      const publishCounts = () => {
+        const latestCounts = currentCounts;
+        const activeResultCount = resultCount;
+        if (latestCounts || activeResultCount) {
+          setSearchHitCounts((previous) => {
+            const counts = { ...(latestCounts ?? previous) } as SearchHitCounts;
+            if (activeResultCount) {
+              counts[activeResultCount.index] = activeResultCount.total;
+            }
+
+            return counts;
+          });
         }
       };
 
@@ -276,7 +270,8 @@ export const fetchEntityData = async ({
             counts[searchIndexKey ?? ''] = item.doc_count;
           }
         });
-        setSearchHitCounts(counts as SearchHitCounts);
+        currentCounts = counts as SearchHitCounts;
+        publishCounts();
 
         // The hybrid (NLQ) count query spans the whole dataAsset alias, and OpenSearch's
         // RRF score-ranker-processor is a phase_results_processors entry: it ranks per
@@ -330,6 +325,13 @@ export const fetchEntityData = async ({
           const searchRes = await searchRequest(updatedSearchPayload);
           setSearchResults(searchRes as SearchResponse<ExploreSearchIndex>);
           setUpdatedAggregations(searchRes.aggregations);
+          // A write can land inside the count-cache TTL. The visible tab must always
+          // show the total returned with its rows, whichever request finishes first.
+          resultCount = {
+            index: effectiveSearchIndex,
+            total: searchRes.hits.total.value,
+          };
+          publishCounts();
 
           // For NLQ searches, surface the backend-detected filters so the Explore
           // filters tab can mark them. Non-NLQ responses omit applied_quick_filters.
@@ -341,6 +343,8 @@ export const fetchEntityData = async ({
           }
         } catch (error) {
           handleSearchError(error);
+        } finally {
+          onResultsSettled?.();
         }
       };
 

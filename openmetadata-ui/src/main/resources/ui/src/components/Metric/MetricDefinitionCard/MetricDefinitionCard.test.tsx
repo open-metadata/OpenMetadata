@@ -300,4 +300,81 @@ describe('MetricDefinitionCard', () => {
       screen.queryByTestId('metric-definition-edit')
     ).not.toBeInTheDocument();
   });
+
+  describe('version unit diff direction', () => {
+    it('shows the custom unit (with diff) on the version where unit changed TO Other', () => {
+      render(
+        <MemoryRouter>
+          <MetricDefinitionCard
+            changeDescription={{
+              fieldsAdded: [],
+              fieldsDeleted: [],
+              fieldsUpdated: [
+                {
+                  name: 'unitOfMeasurement',
+                  oldValue: UnitOfMeasurement.Percentage,
+                  newValue: UnitOfMeasurement.Other,
+                },
+                {
+                  name: 'customUnitOfMeasurement',
+                  oldValue: '',
+                  newValue: 'Leads',
+                },
+              ],
+            }}
+            metric={{
+              ...metric,
+              unitOfMeasurement: UnitOfMeasurement.Other,
+              customUnitOfMeasurement: 'Leads',
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      const unitSlot = screen.getByTestId('metric-definition-unit');
+
+      expect(unitSlot).toHaveTextContent('Leads');
+      expect(unitSlot).not.toHaveTextContent(UnitOfMeasurement.Percentage);
+      expect(unitSlot).not.toHaveTextContent(UnitOfMeasurement.Other);
+      // The custom unit is newly added on this version, so it is rendered
+      // with diff-added styling.
+      expect(screen.getByTestId('diff-added')).toHaveTextContent('Leads');
+    });
+
+    it('shows the unit diff on the version where unit changed FROM Other', () => {
+      render(
+        <MemoryRouter>
+          <MetricDefinitionCard
+            changeDescription={{
+              fieldsAdded: [],
+              fieldsDeleted: [],
+              fieldsUpdated: [
+                {
+                  name: 'unitOfMeasurement',
+                  oldValue: UnitOfMeasurement.Other,
+                  newValue: UnitOfMeasurement.Dollars,
+                },
+                {
+                  name: 'customUnitOfMeasurement',
+                  oldValue: 'Leads',
+                  newValue: '',
+                },
+              ],
+            }}
+            metric={{
+              ...metric,
+              unitOfMeasurement: UnitOfMeasurement.Dollars,
+              customUnitOfMeasurement: '',
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      const unitSlot = screen.getByTestId('metric-definition-unit');
+
+      expect(unitSlot).toHaveTextContent(UnitOfMeasurement.Other);
+      expect(unitSlot).toHaveTextContent(UnitOfMeasurement.Dollars);
+      expect(unitSlot).not.toHaveTextContent('Leads');
+    });
+  });
 });

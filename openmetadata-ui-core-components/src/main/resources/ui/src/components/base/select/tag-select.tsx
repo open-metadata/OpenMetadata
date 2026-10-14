@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown, XClose } from '@untitledui/icons';
+import { ChevronDown, XClose } from '../../../icons';
 import type { ReactNode } from 'react';
 import { useId, useRef } from 'react';
 import {

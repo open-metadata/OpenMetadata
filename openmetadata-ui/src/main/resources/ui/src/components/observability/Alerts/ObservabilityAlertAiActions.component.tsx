@@ -16,7 +16,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit03, Trash01 } from '@untitledui/icons';
+import { Edit03, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';

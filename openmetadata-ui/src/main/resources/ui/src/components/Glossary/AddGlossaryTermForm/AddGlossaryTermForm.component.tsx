@@ -23,7 +23,7 @@ import {
   HintText,
   HookForm,
 } from '@openmetadata/ui-core-components';
-import { Delete, Plus } from '@openmetadata/ui-core-components/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { Control, useFieldArray, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -337,7 +337,7 @@ const AddGlossaryTermForm = ({
               className="tw:mt-6"
               color="tertiary"
               data-testid={`remove-reference-${index}`}
-              iconLeading={Delete}
+              iconLeading={Trash01}
               size="sm"
               onPress={() => removeReference(index)}
             />

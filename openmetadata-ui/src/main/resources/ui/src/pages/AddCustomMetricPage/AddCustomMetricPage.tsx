@@ -10,10 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Row, Space, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
@@ -55,11 +61,13 @@ const AddCustomMetricPage = () => {
   const navigate = useNavigate();
   const location = useCustomLocation();
   const isColumnMetric = dashboardType === ProfilerDashboardType.COLUMN;
-  const [form] = Form.useForm<CustomMetric>();
+  const form = useForm<CustomMetric>({
+    defaultValues: { name: '', expression: '' },
+  });
   const [table, setTable] = useState<Table>();
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
-  const columnName = Form.useWatch('columnName', form);
+  const columnName = useWatch({ control: form.control, name: 'columnName' });
   const entityFqn = useMemo(() => table?.fullyQualifiedName ?? '', [table]);
 
   const breadcrumb = useMemo(() => {
@@ -99,7 +107,7 @@ const AddCustomMetricPage = () => {
   const initialValues = useMemo(
     () =>
       activeColumnFqn
-        ? ({ columnName: getNameFromFQN(activeColumnFqn) } as CustomMetric)
+        ? { columnName: getNameFromFQN(activeColumnFqn) }
         : undefined,
     [activeColumnFqn]
   );
@@ -212,23 +220,27 @@ const AddCustomMetricPage = () => {
         allowScroll: true,
         children: (
           <div data-testid="add-custom-metric-page-container">
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
+            <Grid
+              className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+              rowGap="4">
+              <Grid.Item className="layout-column" span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
-              </Col>
-              <Col span={24}>
-                <Typography.Title
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={24}>
+                <Typography
+                  as="h5"
                   className="m-b-0"
                   data-testid="heading"
-                  level={5}>
+                  size="text-md"
+                  weight="semibold">
                   {t('label.add-entity-metric', {
                     entity: isColumnMetric
                       ? t('label.column')
                       : t('label.table'),
                   })}
-                </Typography.Title>
-              </Col>
-              <Col span={24}>
+                </Typography>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={24}>
                 <CustomMetricForm
                   form={form}
                   initialValues={initialValues}
@@ -236,24 +248,32 @@ const AddCustomMetricPage = () => {
                   table={table}
                   onFinish={handleFormSubmit}
                 />
-                <Space className="w-full justify-end">
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal w-full justify-end"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <Button
+                    color="secondary"
                     data-testid="cancel-button"
-                    disabled={isActionLoading}
-                    onClick={handleBackClick}>
+                    isDisabled={isActionLoading}
+                    size="md"
+                    onPress={handleBackClick}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="submit-button"
-                    htmlType="submit"
-                    loading={isActionLoading}
-                    type="primary"
-                    onClick={() => form.submit()}>
+                    form="custom-metric-form"
+                    isLoading={isActionLoading}
+                    size="md"
+                    type="submit">
                     {t('label.create')}
                   </Button>
-                </Space>
-              </Col>
-            </Row>
+                </Box>
+              </Grid.Item>
+            </Grid>
           </div>
         ),
         minWidth: 700,

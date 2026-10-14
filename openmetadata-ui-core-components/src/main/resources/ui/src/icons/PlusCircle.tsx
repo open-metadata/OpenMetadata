@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const PlusCircle: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -32,15 +32,11 @@ export const PlusCircle: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g clipPath="url(#a)" stroke="currentColor" strokeWidth={1.8}>
-      <circle cx={10.441} cy={9.613} r={8} />
-      <path d="M10.441 5.613v8m4-4h-8" />
-    </g>
-    <defs>
-      <clipPath id="a">
-        <path d="M0 0h20v20H0z" fill="currentColor" />
-      </clipPath>
-    </defs>
+    <path
+      d="M10 6.667v6.667m-3.333-3.333h6.667m5 0A8.334 8.334 0 1 1 10 1.667 8.333 8.333 0 0 1 18.333 10Z"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
   </svg>
 );
 PlusCircle.displayName = 'PlusCircle';

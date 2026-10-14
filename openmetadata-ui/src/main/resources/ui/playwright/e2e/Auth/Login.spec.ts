@@ -25,6 +25,7 @@ import {
   visitOwnProfilePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { signInThroughForm } from '../../utils/formSignIn';
 import { updateJWTTokenExpiryTime } from '../../utils/login';
 
 const user = new UserClass();
@@ -163,7 +164,7 @@ test.describe(
 
       try {
         await nonAsciiUser.create(apiContext);
-        await nonAsciiUser.login(page);
+        await signInThroughForm(page, nonAsciiUser);
 
         await expect
           .poll(() => new URL(page.url()).pathname)
@@ -232,7 +233,7 @@ test.describe(
         await test.step('Login and wait for refresh call is made', async () => {
           // User login
 
-          await testUser.login(page1);
+          await signInThroughForm(page1, testUser);
           await redirectToHomePage(page1);
           await waitForAllLoadersToDisappear(page1);
           await redirectToHomePage(page2);
@@ -279,7 +280,7 @@ test.describe(
         const page2 = await browserContext.newPage();
 
         const admin = new AdminClass();
-        await admin.login(page1);
+        await signInThroughForm(page1, admin);
 
         await redirectToHomePage(page1);
         await page1.getByTestId('dropdown-profile').click();

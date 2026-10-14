@@ -10,16 +10,19 @@ import {
 } from '@/components/base/select/select';
 import { Typography } from '@/components/foundations/typography';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '../../../icons';
 import type {
   FocusEventHandler,
   KeyboardEvent,
   PointerEventHandler,
+  UIEvent,
   ReactNode,
   RefAttributes,
   RefObject,
+  UIEventHandler,
 } from 'react';
 import {
   Children,
@@ -28,6 +31,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -45,6 +49,8 @@ import {
   Input as AriaInput,
   ListBox as AriaListBox,
   ComboBoxStateContext,
+  ListLayout,
+  Virtualizer,
 } from 'react-aria-components';
 import type { ListData } from 'react-stately';
 import { Avatar } from '../avatar/avatar';
@@ -100,6 +106,14 @@ export interface AutocompleteProps
   placeholder?: string;
   items?: SelectItemType[];
   popoverClassName?: string;
+  /** Fires when the dropdown list scrolls — use it to page in more async results. */
+  onPopoverScroll?: UIEventHandler<HTMLElement>;
+  /** Pinned above the dropdown list (e.g. a result count); the list scrolls beneath it. */
+  popoverHeader?: ReactNode;
+  /** Pinned below the dropdown list (e.g. keyboard hints). */
+  popoverFooter?: ReactNode;
+  /** Shown when the list is empty, in place of the default "no data" state (e.g. while loading). */
+  emptyState?: ReactNode;
   selectedItems: SelectItemType[] | ListData<SelectItemType>;
   icon?: IconComponentType | null;
   children: AriaListBoxProps<SelectItemType>['children'];
@@ -142,6 +156,7 @@ const InnerAutocomplete = ({
   isDisabled?: boolean;
   placeholder?: string;
 }) => {
+  const { t } = useCoreTranslation();
   const focusManager = useFocusManager();
   const context = useContext(AutocompleteContext);
   const comboBoxStateContext = useContext(ComboBoxStateContext);
@@ -244,18 +259,22 @@ const InnerAutocomplete = ({
       : allSelected.length - visibleSelected.length;
 
   return (
-    <div className="tw:relative tw:flex tw:w-full tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
+    <div className="tw:relative tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
       {!isSelectionEmpty &&
         visibleSelected.map((item) =>
           context.renderTag ? (
             context.renderTag(item, () => context.onRemove(new Set([item.id])))
           ) : (
             <BadgeWithButton
+              // Capped at the field width so a long label ends in an ellipsis.
+              buttonLabel={t('label.remove-entity', { entity: item.label })}
+              className="tw:max-w-full"
               color="gray"
               data-testid="autocomplete-selected-item"
               isDisabled={isDisabled}
               key={item.id}
               size="lg"
+              title={item.label}
               type="modern"
               onButtonClick={() => context.onRemove(new Set([item.id]))}
               onButtonKeyDown={(e) => handleTagKeyDown(e, item.id)}>
@@ -304,7 +323,7 @@ const InnerAutocomplete = ({
 const AutocompleteTrigger = ({
   size,
   placeholder,
-  icon: Icon = SearchLg,
+  icon: Icon = Search,
   isDisabled: _isDisabled,
   isInvalid,
   ...otherProps
@@ -345,6 +364,16 @@ const AutocompleteTrigger = ({
   );
 };
 
+/**
+ * Option count above which the listbox renders only the rows in view. Small
+ * lists keep plain DOM rows so their height and styling stay as they are.
+ */
+const AUTOCOMPLETE_VIRTUALIZATION_THRESHOLD = 200;
+
+// Estimate only: ListLayout measures each row, so wrapped labels and
+// supporting text still get their real height.
+const VIRTUALIZED_LAYOUT_OPTIONS = { estimatedRowHeight: 40 };
+
 const resolveSelectedItems = (
   value: SelectItemType[] | ListData<SelectItemType>
 ): SelectItemType[] => (Array.isArray(value) ? value : value.items);
@@ -361,6 +390,10 @@ export const AutocompleteBase = ({
   onItemInserted,
   placeholder = 'Search',
   popoverClassName,
+  onPopoverScroll,
+  popoverHeader,
+  popoverFooter,
+  emptyState,
   renderTag,
   filterOption,
   onFocus,
@@ -522,6 +555,54 @@ export const AutocompleteBase = ({
 
   const triggerRef = useRef<HTMLDivElement>(null);
 
+  // Decided on the full list, not the filtered one, so typing never swaps
+  // the listbox between plain and virtualized rendering.
+  const isVirtualized = allItems.length > AUTOCOMPLETE_VIRTUALIZATION_THRESHOLD;
+
+  // Crossing the threshold moves scrolling from the popover to the listbox.
+  // React's onScroll does not bubble, so the handler follows the scroller, and
+  // the offset is carried over so the newly loaded page stays in view instead
+  // of the list jumping back to the top.
+  const listBoxRef = useRef<HTMLDivElement>(null);
+  const scrollTopRef = useRef(0);
+
+  const handleScroll = useCallback(
+    (event: UIEvent<HTMLElement>) => {
+      scrollTopRef.current = event.currentTarget.scrollTop;
+      onPopoverScroll?.(event);
+    },
+    [onPopoverScroll]
+  );
+
+  useLayoutEffect(() => {
+    if (isVirtualized && listBoxRef.current) {
+      listBoxRef.current.scrollTop = scrollTopRef.current;
+    }
+  }, [isVirtualized]);
+
+  const listBox = (
+    <AriaListBox
+      className={cx(
+        'tw:size-full tw:outline-hidden',
+        isVirtualized && 'tw:max-h-80 tw:overflow-y-auto tw:py-1'
+      )}
+      ref={listBoxRef}
+      renderEmptyState={() => emptyState ?? <SelectEmptyState />}
+      selectionMode="multiple"
+      onScroll={isVirtualized ? handleScroll : undefined}>
+      {visibleChildren}
+    </AriaListBox>
+  );
+
+  const dropdownList = isVirtualized ? (
+    <Virtualizer layout={ListLayout} layoutOptions={VIRTUALIZED_LAYOUT_OPTIONS}>
+      {listBox}
+    </Virtualizer>
+  ) : (
+    listBox
+  );
+  const hasPopoverChrome = Boolean(popoverHeader || popoverFooter);
+
   // Match the popover width to the trigger. The base Popover relies on
   // `--trigger-width`, but react-aria only sets that on a trigger's own context
   // popover — a standalone `<Popover triggerRef>` (as used here) never receives
@@ -613,16 +694,36 @@ export const AutocompleteBase = ({
 
               {!hideDropdown && (
                 <Popover
-                  className={popoverClassName}
+                  className={cx(
+                    // A virtualized listbox is its own bounded scroller.
+                    isVirtualized && 'tw:overflow-hidden tw:py-0',
+                    // Header/footer stay put; the list gets its own scroller.
+                    hasPopoverChrome &&
+                      'tw:flex tw:flex-col tw:overflow-hidden tw:py-0',
+                    popoverClassName
+                  )}
                   size="md"
                   style={{ width: popoverWidth }}
-                  triggerRef={triggerRef}>
-                  <AriaListBox
-                    className="tw:size-full tw:outline-hidden"
-                    renderEmptyState={() => <SelectEmptyState />}
-                    selectionMode="multiple">
-                    {visibleChildren}
-                  </AriaListBox>
+                  triggerRef={triggerRef}
+                  onScroll={
+                    isVirtualized || hasPopoverChrome ? undefined : handleScroll
+                  }>
+                  {hasPopoverChrome ? (
+                    <>
+                      {popoverHeader}
+                      <div
+                        className={cx(
+                          'tw:min-h-0 tw:flex-1',
+                          !isVirtualized && 'tw:overflow-y-auto tw:py-1'
+                        )}
+                        onScroll={isVirtualized ? undefined : handleScroll}>
+                        {dropdownList}
+                      </div>
+                      {popoverFooter}
+                    </>
+                  ) : (
+                    dropdownList
+                  )}
                 </Popover>
               )}
 

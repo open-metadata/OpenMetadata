@@ -75,6 +75,10 @@ module.exports = {
     // <ResizableTableContainer>" even though the container is right there.
     '^(react-aria-components|react-aria|react-stately|@react-aria/utils|@react-stately/utils)$':
       '<rootDir>/node_modules/$1',
+    // The charts entry loads ESM echarts/core; app tests use a props-capturing
+    // stand-in instead (see the mock for how to read the props).
+    '^@openmetadata/ui-core-components/charts$':
+      '<rootDir>/src/test/unit/mocks/coreCharts.mock.tsx',
     '\\.svg': '<rootDir>/src/test/unit/mocks/svg.mock.js', // Mock SVG imports
     '\\.(scss)$': 'identity-obj-proxy', // Mock style imports
     '\\.(jpg|JPG|gif|GIF|png|PNG|webp|WEBP|mp4|MP4|webm|WEBM|less|LESS|css|CSS)$':

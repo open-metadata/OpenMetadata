@@ -22,7 +22,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@untitledui/icons';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -136,21 +136,30 @@ const TestSuiteAddTestCaseDialog = ({
         <Modal>
           <Dialog
             showCloseButton
+            dividers="scroll"
             title={t('label.add-entity', {
               entity: t('label.test-case-plural'),
             })}
             onClose={onClose}>
-            <Dialog.Content>
-              <AddTestCaseList
-                existingTest={existingTests ?? []}
-                getPopupContainer={(trigger) =>
-                  (trigger.closest('[role="dialog"]') as HTMLElement) ??
-                  document.body
-                }
-                onCancel={onClose}
-                onSubmit={onSubmit}
-              />
-            </Dialog.Content>
+            <AddTestCaseList
+              existingTest={existingTests ?? []}
+              getPopupContainer={(trigger) =>
+                (trigger.closest('[role="dialog"]') as HTMLElement) ??
+                document.body
+              }
+              renderLayout={(content, actions) => (
+                <>
+                  <Dialog.Content>
+                    <Box direction="col" gap={2}>
+                      {content}
+                    </Box>
+                  </Dialog.Content>
+                  <Dialog.Footer>{actions}</Dialog.Footer>
+                </>
+              )}
+              onCancel={onClose}
+              onSubmit={onSubmit}
+            />
           </Dialog>
         </Modal>
       </ModalOverlay>
@@ -193,7 +202,7 @@ const TestSuiteDetail = () => {
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
-    fetchTestCases,
+    handleTestCasesRemoved,
     handleSortTestCase,
     handleAddTestCaseSubmit,
     onUpdateOwner,
@@ -282,9 +291,8 @@ const TestSuiteDetail = () => {
         {renderDescription()}
         <div className="tw:w-full">
           <DataQualityTab
-            afterDeleteAction={fetchTestCases}
+            afterDeleteAction={handleTestCasesRemoved}
             breadcrumbData={incidentUrlState}
-            editVariant="modal"
             fetchTestCases={handleSortTestCase}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
@@ -305,7 +313,7 @@ const TestSuiteDetail = () => {
     permissions.hasEditDescriptionPermission,
     onDescriptionUpdate,
     flags,
-    fetchTestCases,
+    handleTestCasesRemoved,
     incidentUrlState,
     handleSortTestCase,
     isLoading,

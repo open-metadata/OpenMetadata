@@ -21,7 +21,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isNil } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -174,7 +174,7 @@ function NotificationFiltersEditor({
     filters.length < (supportedFilters?.length ?? 1) && !isViewMode;
 
   return (
-    <Card className="tw:w-full" size="md">
+    <Card className="tw:w-full" size="md" variant="muted">
       <Card.Content>
         <Box direction="col" gap={3}>
           <Box direction="col" gap={1}>

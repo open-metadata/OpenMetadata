@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Divider, Drawer, Row, Tooltip, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Divider,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
@@ -64,7 +70,10 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
         })}
         {hiddenVersions?.length > 0 ? (
           <>
-            <Tooltip title={`+${hiddenVersions.length} more versions`}>
+            <Tooltip
+              excludeTriggerFromTabOrder
+              title={`+${hiddenVersions.length} more versions`}
+              triggerClassName="tw:block">
               <div className="version-hidden">
                 {hiddenVersions.map((v) =>
                   renderVersionButton(v, currentVersion, versionHandler)
@@ -72,18 +81,17 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
               </div>
             </Tooltip>
             <div className="version-pricing-reached">
-              <Typography.Title className="font-medium" level={4}>
+              <Typography as="h4" className="font-medium">
                 {t('message.unlock-all-version-history')}
-              </Typography.Title>
-              <Typography.Text className="text-grey-muted font-normal">
+              </Typography>
+              <Typography className="font-normal" color="secondary">
                 {t('message.upgrade-to-paid-plan-for-version-history')}
-              </Typography.Text>
+              </Typography>
 
               <Button
-                block
-                className="m-t-lg"
-                href="/settings/billing/plans"
-                type="primary">
+                className="m-t-lg tw:w-full"
+                color="primary"
+                href="/settings/billing/plans">
                 {t('label.see-upgrade-option-plural')}
               </Button>
             </div>
@@ -94,33 +102,22 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
   }, [versionList, currentVersion, versionHandler]);
 
   return (
-    <Drawer
-      destroyOnClose
-      open
+    <aside
+      aria-label={t('label.version-plural-history')}
       className="versions-list-container"
-      closable={false}
       data-testid="versions-list-container"
-      getContainer={false}
-      mask={false}
-      maskClosable={false}
-      title={
-        <>
-          <Row className="p-b-xss" justify="space-between">
-            <Col>
-              <Typography.Text className="font-medium">
-                {t('label.version-plural-history')}
-              </Typography.Text>
-            </Col>
-            <Col>
-              <CloseIcon handleCancel={onBack} />
-            </Col>
-          </Row>
-          <Divider className="m-0" />
-        </>
-      }
-      width={330}>
-      {versions}
-    </Drawer>
+      role="dialog">
+      <div className="versions-list-header">
+        <Box align="center" className="p-b-xss" justify="between">
+          <Typography className="font-medium tw:text-primary">
+            {t('label.version-plural-history')}
+          </Typography>
+          <CloseIcon handleCancel={onBack} />
+        </Box>
+        <Divider className="m-0" />
+      </div>
+      <div className="versions-list-body">{versions}</div>
+    </aside>
   );
 };
 

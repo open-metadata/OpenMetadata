@@ -12,9 +12,8 @@
  */
 import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { expect, test as base } from '../../support/fixtures/base';
+import { expect, test as base } from '../../support/fixtures/isolatedUser';
 import { PersonaClass } from '../../support/persona/PersonaClass';
-import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
@@ -23,29 +22,31 @@ import {
   setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
 
-const adminUser = new UserClass();
 const persona = new PersonaClass();
 
-const test = base.extend<{ adminPage: Page; userPage: Page }>({
-  adminPage: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
+// The worker's isolated admin (created, signed in once and deleted by the
+// fixture) owns this file's persona, so no other test's account is touched.
+const test = base.extend<{ adminPage: Page }>({
+  adminPage: async ({ isolatedUserPage }, use) => {
+    await use(isolatedUserPage);
   },
 });
 
-base.beforeAll('Setup pre-requests', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
-  await persona.create(apiContext, [adminUser.responseData.id]);
-  await afterAction();
-});
+test.use({ isolatedUserOptions: { isAdmin: true } });
 
-base.afterAll('Cleanup', async ({ browser }) => {
+test.beforeAll(
+  'Setup pre-requests',
+  async ({ browser, isolatedUserSession }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    await persona.create(apiContext, [
+      isolatedUserSession.user.responseData.id,
+    ]);
+    await afterAction();
+  }
+);
+
+test.afterAll('Cleanup', async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
   await persona.delete(apiContext);
   await afterAction();
 });
@@ -89,14 +90,10 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .click();
 
     // Navigation blocker modal should appear
+    await expect(adminPage.getByTestId('unsaved-changes-modal')).toBeVisible();
     await expect(
-      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
-    ).toBeVisible();
-    await expect(
-      adminPage.locator(
-        '.unsaved-changes-modal-title:has-text("Unsaved changes")'
-      )
-    ).toBeVisible();
+      adminPage.getByTestId('unsaved-changes-modal-title')
+    ).toHaveText('Unsaved changes');
     await expect(
       adminPage.locator('text=Do you want to save or discard changes?')
     ).toBeVisible();
@@ -120,7 +117,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Make changes to trigger unsaved state
     await removeAndCheckWidget(adminPage, {
-      widgetKey: 'KnowledgePanel.Following',
+      widgetKey: 'KnowledgePanel.YoursAndFollowed',
     });
 
     // Try to navigate away
@@ -131,9 +128,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .click();
 
     // Modal should appear
-    await expect(
-      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
-    ).toBeVisible();
+    await expect(adminPage.getByTestId('unsaved-changes-modal')).toBeVisible();
 
     // Click "Save changes" button (should save changes and then navigate)
     const saveResponse = adminPage.waitForResponse('api/v1/docStore*');
@@ -144,7 +139,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Modal should disappear and navigate to settings
     await expect(
-      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
+      adminPage.getByTestId('unsaved-changes-modal')
     ).not.toBeVisible();
 
     // Should navigate to the settings page
@@ -157,7 +152,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Verify the widget was removed (changes were saved)
     await expect(
-      adminPage.locator('[data-testid="KnowledgePanel.Following"]')
+      adminPage.locator('[data-testid="KnowledgePanel.YoursAndFollowed"]')
     ).not.toBeVisible();
 
     // Verify save button is disabled (no unsaved changes)
@@ -189,16 +184,14 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .click();
 
     // Modal should appear
-    await expect(
-      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
-    ).toBeVisible();
+    await expect(adminPage.getByTestId('unsaved-changes-modal')).toBeVisible();
 
     // Click "Discard" button (acts as "Leave")
     await adminPage.getByTestId('unsaved-changes-modal-discard').click();
 
     // Modal should disappear
     await expect(
-      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
+      adminPage.getByTestId('unsaved-changes-modal')
     ).not.toBeVisible();
 
     // Should navigate to the settings page
@@ -218,7 +211,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Make changes
     await removeAndCheckWidget(adminPage, {
-      widgetKey: 'KnowledgePanel.TotalAssets',
+      widgetKey: 'KnowledgePanel.PlatformHealth',
     });
 
     // Verify save button is enabled
@@ -260,7 +253,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Modal should not appear
     await expect(
-      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
+      adminPage.getByTestId('unsaved-changes-modal')
     ).not.toBeVisible();
   });
 
@@ -276,7 +269,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Make changes to trigger unsaved state
     await removeAndCheckWidget(adminPage, {
-      widgetKey: 'KnowledgePanel.DataAssets',
+      widgetKey: 'KnowledgePanel.DataEstate',
     });
 
     // Try to navigate away
@@ -287,16 +280,17 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .click();
 
     // Modal should appear
-    await expect(
-      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
-    ).toBeVisible();
+    await expect(adminPage.getByTestId('unsaved-changes-modal')).toBeVisible();
 
     // Click X button to close modal
-    await adminPage.locator('.ant-modal-close-x').click();
+    await adminPage
+      .getByTestId('unsaved-changes-modal')
+      .getByRole('button', { name: 'Close' })
+      .click();
 
     // Modal should disappear
     await expect(
-      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
+      adminPage.getByTestId('unsaved-changes-modal')
     ).not.toBeVisible();
 
     // Should remain on the same page with unsaved changes
@@ -304,7 +298,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Verify changes are still there and save button is enabled
     await expect(
-      adminPage.locator('[data-testid="KnowledgePanel.DataAssets"]')
+      adminPage.locator('[data-testid="KnowledgePanel.DataEstate"]')
     ).not.toBeVisible();
     await expect(
       adminPage.locator('[data-testid="save-button"]')

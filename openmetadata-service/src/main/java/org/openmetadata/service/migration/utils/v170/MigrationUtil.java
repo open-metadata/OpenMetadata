@@ -487,7 +487,7 @@ public class MigrationUtil {
     serviceTypes.remove(ServiceType.MCP); // Exclude MCP as it doesn't exist until v1.13.0
 
     for (ServiceType serviceType : serviceTypes) {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityRepository<? extends EntityInterface<?>> repository =
           Entity.getServiceEntityRepository(serviceType);
       ListFilter filter = new ListFilter(Include.ALL);
       List<ServiceEntityInterface> services =

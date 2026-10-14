@@ -91,6 +91,8 @@ export interface FieldPropsMap {
   children?: ReactNode;
   colors?: string[];
   'data-testid'?: string;
+  /** TEXT / PASSWORD / NUMBER only: test id on the inner `<input>`, not the wrapper. */
+  inputDataTestId?: string;
   defaultCamera?: 'environment' | 'user';
   defaultIcon?: { component: FC };
   disabled?: boolean;
@@ -115,6 +117,8 @@ export interface FieldPropsMap {
   options?: FormSelectItem[];
   coverImageLabels?: CoverImageUploadLabels;
   maxDimensions?: { width: number; height: number };
+  /** Autocomplete: selected tags drawn before collapsing the rest into a +N badge. */
+  maxVisibleItems?: number;
   maxSizeMB?: number;
   onValidationError?: (message: string) => void;
   previewClassName?: string;
