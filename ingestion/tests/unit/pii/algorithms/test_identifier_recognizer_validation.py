@@ -24,7 +24,6 @@ from metadata.pii.algorithms.presidio_utils import (
     ValidatedPlPeselRecognizer,
 )
 
-
 # ---------------------------------------------------------------------------
 # PlPeselRecognizer — complement step was missing
 # ---------------------------------------------------------------------------
@@ -107,8 +106,8 @@ class TestValidatedAuAcnRecognizer:
     @pytest.mark.parametrize(
         "acn",
         [
-            "000250000",   # from the issue; weighted sum % 10 == 0 → check digit 0
-            "004085616",   # real ACN format
+            "000250000",  # from the issue; weighted sum % 10 == 0 → check digit 0
+            "004085616",  # real ACN format
         ],
     )
     def test_valid_acn_accepted(self, acn: str):
