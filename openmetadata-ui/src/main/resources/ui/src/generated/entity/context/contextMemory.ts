@@ -40,7 +40,9 @@ export interface ContextMemory {
      */
     displayName?: string;
     /**
-     * Memories owned by someone else whose claims contradict this one.
+     * Unresolved conflicts that hold this Draft memory in review, one per contradicting memory.
+     * Only a Draft memory records disputes, and leaving Draft clears them; version history
+     * keeps them. A memory that enters Draft with disputes opens a memory conflict review task.
      */
     disputes?: MemoryDispute[];
     /**
@@ -337,11 +339,12 @@ export interface EntityReference {
 }
 
 /**
- * A memory owned by someone else whose claim contradicts this one. Both remain Approved.
+ * An Approved memory whose claim contradicts the Draft memory that records the dispute.
  */
 export interface MemoryDispute {
     /**
-     * When the contradiction was detected.
+     * When the contradiction was detected. Defaults to the time of the write that records the
+     * dispute.
      */
     detectedAt?: number;
     /**

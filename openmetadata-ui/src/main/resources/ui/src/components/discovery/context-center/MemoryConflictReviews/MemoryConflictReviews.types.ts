@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,3 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Task } from '../../../../generated/entity/tasks/task';
+
+export type ClaimRecency = 'newer' | 'older';
+
+export interface ConflictRecency {
+  reviewed?: ClaimRecency;
+  disputed: Record<string, ClaimRecency>;
+}
+
+export interface MemoryConflictReviewsProps {
+  reviews: Task[];
+  isLoading: boolean;
+  isError: boolean;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
+  onRetry: () => void;
+  onResolved: () => void;
+}

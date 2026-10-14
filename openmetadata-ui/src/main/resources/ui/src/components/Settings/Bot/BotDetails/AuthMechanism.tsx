@@ -16,9 +16,9 @@ import {
   Box,
   Button,
   Divider,
+  PasswordInput,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Input } from 'antd';
 import classNames from 'classnames';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -120,8 +120,9 @@ const AuthMechanism: FC<Props> = ({
           )}`}
           gap={2}
           itemClassName="layout-space-item">
-          <Input.Password
-            readOnly
+          <PasswordInput
+            isReadOnly
+            aria-label={t('label.token')}
             autoComplete="off"
             data-testid="token"
             placeholder="Generate new token..."

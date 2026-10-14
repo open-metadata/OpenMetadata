@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,11 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ResolutionType } from '../../../../generated/api/tasks/resolveTask';
+import { ClaimRecency } from './MemoryConflictReviews.types';
 
-@import '../../styles/variables.less';
+/** The server-opened task's transition ids and the resolution each records. */
+export const REVIEW_DECISIONS = {
+  approve: ResolutionType.Approved,
+  reject: ResolutionType.Rejected,
+} as const;
 
-.kpi-slider {
-  .ant-slider-track {
-    background: @primary-color;
-  }
-}
+export type ReviewDecision = keyof typeof REVIEW_DECISIONS;
+
+export const CLAIM_RECENCY_LABELS: Record<ClaimRecency, string> = {
+  newer: 'label.newer',
+  older: 'label.older',
+};

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.ant-input-group .ant-input.style-color-picker {
-  width: 15%;
-}
-.ant-input-group .ant-input.style-color-input {
-  width: 85%;
-}
+
+package org.openmetadata.service.context.review;
+
+import org.openmetadata.schema.entity.context.ContextMemory;
+
+/** One memory write a conflict review decision makes: the memory as read, and as it must become. */
+record MemoryChange(ContextMemory before, ContextMemory after) {}

@@ -157,7 +157,6 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
         {errorPlaceHolder}
         {Boolean(addEditPersona) && (
           <AddEditPersonaForm
-            persona={addEditPersona}
             onCancel={handlePersonalAddEditCancel}
             onSave={handlePersonaAddEditSave}
           />
@@ -237,7 +236,6 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
 
         {Boolean(addEditPersona) && (
           <AddEditPersonaForm
-            persona={addEditPersona}
             onCancel={handlePersonalAddEditCancel}
             onSave={handlePersonaAddEditSave}
           />
