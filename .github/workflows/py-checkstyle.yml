@@ -11,12 +11,10 @@
 
 name: Python Checkstyle
 
-# read-write repo token
-# access to secrets
 on:
   merge_group:
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - "openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
       - "openmetadata-ui/src/main/resources/ui/playwright/docs/**"
@@ -26,19 +24,27 @@ permissions:
 
 concurrency:
   group: py-checkstyle-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  cancel-in-progress: true
 
 jobs:
   py-checkstyle:
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name != 'pull_request_target' || github.base_ref != '1.13') && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ !github.event.pull_request.draft }}
     permissions:
       pull-requests: write
+    env:
+      FAILURE_HELP: |
+        **The Python checkstyle failed.**
+
+        Please run `make py_format` and `py_format_check` in the root of your repository and commit the changes to this PR.
+        You can also use [pre-commit](https://pre-commit.com/) to automate the Python code formatting.
+
+        You can install the pre-commit hooks with `make install_test precommit_install`.
 
     steps:
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request' }}
         with:
           filters: |
             python:
@@ -48,32 +54,13 @@ jobs:
 
       - name: Resolve Python check scope
         id: scope
-        run: echo "python=${{ github.event_name != 'pull_request_target' && 'true' || steps.filter.outputs.python }}" >> "$GITHUB_OUTPUT"
-
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
-        if: ${{ github.event_name == 'pull_request_target' && steps.scope.outputs.python == 'true' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@657d111bbbe13e22bbd55870f1813c699bde1401 # v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' && steps.scope.outputs.python == 'true' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
+        run: echo "python=${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.python }}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout
         if: ${{ steps.scope.outputs.python == 'true' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Set up Python 3.10
         if: ${{ steps.scope.outputs.python == 'true' }}
@@ -100,20 +87,18 @@ jobs:
           source env/bin/activate
           make py_format_check
 
+      # Fork PRs get a read-only token, so only same-repo PRs get the comment; everyone gets the
+      # job summary and the error annotation from the next step.
       - name: Create a comment in the PR with the instructions
-        if: ${{ steps.scope.outputs.python == 'true' && steps.style.outcome != 'success' && github.event_name == 'pull_request_target' }}
+        if: ${{ steps.scope.outputs.python == 'true' && steps.style.outcome != 'success' && github.event.pull_request.head.repo.full_name == github.repository }}
         uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            **The Python checkstyle failed.**
+          body: ${{ env.FAILURE_HELP }}
 
-            Please run `make py_format` and `py_format_check` in the root of your repository and commit the changes to this PR.
-            You can also use [pre-commit](https://pre-commit.com/) to automate the Python code formatting.
-
-            You can install the pre-commit hooks with `make install_test precommit_install`.
-
-      - name: Python checkstyle failed, check the comment in the PR
+      - name: Python checkstyle failed
         if: ${{ steps.scope.outputs.python == 'true' && steps.style.outcome != 'success' }}
         run: |
+          echo "$FAILURE_HELP" >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=Python checkstyle failed::Run 'make py_format' in the repository root and commit the changes. The Code style check step lists the files."
           exit 1

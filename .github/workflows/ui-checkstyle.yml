@@ -17,27 +17,21 @@ on:
   # required status check (report) always completes. Path filtering is handled
   # inside the workflow via dorny/paths-filter so PRs without UI changes skip
   # the expensive jobs while still reporting a passing status.
-  pull_request_target:
-    # main only. Release branches carry their own ui-checkstyle.yml and must be
-    # validated by it: this workflow assumes tooling (eslint-pr-report,
-    # tw-audit, tw-deprecation-guard, core-components check-i18n-all) that older
-    # branches do not have, so running it against them fails on MODULE_NOT_FOUND
-    # before the PR's code is ever examined.
-    branches:
-      - main
+  # pull_request reads the workflow from the PR's merge commit, so release-branch
+  # PRs run their own branch's ui-checkstyle.yml, which matches their tooling.
+  pull_request:
     types:
       - opened
       - synchronize
       - reopened
       - ready_for_review
-      - labeled
 
 permissions:
   contents: read
 
 concurrency:
-  group: ui-checkstyle-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  group: ui-checkstyle-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 env:
   UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
@@ -67,34 +61,9 @@ jobs:
               - '.github/workflows/ui-checkstyle.yml'
               - 'openmetadata-ui-core-components/src/main/resources/ui/**'
 
-  authorize:
-    needs: check-changes
-    if: |
-      needs.check-changes.outputs.ui-changed == 'true' &&
-      (github.event_name != 'pull_request_target' ||
-       (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.9.1
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true
-
   checkstyle:
-    needs: authorize
+    needs: check-changes
+    if: needs.check-changes.outputs.ui-changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -130,7 +99,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
@@ -196,12 +164,6 @@ jobs:
           # Report findings BEFORE --fix, so the PR comment reflects what the
           # contributor actually wrote. Reporting only; the gate is the git-diff
           # check at the end of this step.
-          #
-          # Deliberately part of this step rather than its own: every `run:`
-          # executing PR-authored code in this pull_request_target job is a
-          # CodeQL "poisonable step" (there are already 5 in this file, and 22
-          # repo-wide). Adding a separate step would add a sixth for no gain in
-          # isolation — it would run the same command with the same privileges.
           if [ -n "$TS_FILES" ]; then
             yarn lint:base -f json $TS_FILES > /tmp/eslint.json 2>/dev/null || true
             node scripts/eslint-pr-report.js /tmp/eslint.json >> "$GITHUB_OUTPUT"
@@ -619,7 +581,7 @@ jobs:
           fi
 
   ui-checkstyle:
-    needs: [authorize, checkstyle]
+    needs: [checkstyle]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -628,7 +590,7 @@ jobs:
       - name: Find existing summary comment
         uses: peter-evans/find-comment@v4
         id: fc
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         continue-on-error: true
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -637,8 +599,11 @@ jobs:
 
       - name: Post or update summary comment
         uses: actions/github-script@v9
-        if: ${{ github.event_name == 'pull_request_target' && steps.fc.outcome == 'success' }}
+        if: ${{ github.event_name == 'pull_request' && steps.fc.outcome != 'failure' }}
         continue-on-error: true
+        env:
+          # Fork PRs get a read-only token: they get the job summary but no comment.
+          POST_COMMENT: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         with:
           script: |
             const checks = [
@@ -718,6 +683,7 @@ jobs:
 
             const failures = checks.filter(c => c.result === 'failure');
             const commentId = '${{ steps.fc.outputs.comment-id }}';
+            const postComment = process.env.POST_COMMENT === 'true';
 
             const eslintFindings = ${{ toJSON(needs.checkstyle.outputs.eslint_has_findings) }} === 'true';
             const eslintSummary  = ${{ toJSON(needs.checkstyle.outputs.eslint_summary) }} || '';
@@ -735,7 +701,7 @@ jobs:
             // Warnings do not fail the build, so a comment posted only on
             // failure would hide them entirely — which defeats the warn tier.
             if (failures.length === 0 && !eslintFindings && !jobFailed) {
-              if (commentId) {
+              if (postComment && commentId) {
                 await github.rest.issues.deleteComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -796,6 +762,11 @@ jobs:
               'make ui-checkstyle-changed',
               '```',
             ].join('\n');
+
+            await core.summary.addRaw(body).write();
+            if (!postComment) {
+              return;
+            }
 
             if (commentId) {
               await github.rest.issues.updateComment({
