@@ -44,6 +44,9 @@ a permission-based `isProtected` here and an amendment to this record.
   the top banner (`CriticalAnnouncements`). Other types stay admin-only bookkeeping in Settings.
   Several live criticals share the banner slot as a carousel moved only by the user; it wraps at
   either end rather than disabling a button and dropping its focus.
+- The banner reads **every** page of live criticals (until `paging.after` runs out) and orders them
+  newest-first in the browser. The server pages in its own order, not by start time, so sorting a
+  single page could silently leave the newest out; the page size is not a cap.
 - The Home announcements rail and its dialog list asset announcements only (`system=false`), so a
   system announcement never appears twice.
 - Dismissal stays per user and browser-local, as the rail's already was, but each Home surface

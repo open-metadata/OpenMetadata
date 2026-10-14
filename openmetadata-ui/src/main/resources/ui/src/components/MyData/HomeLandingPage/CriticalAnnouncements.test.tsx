@@ -19,7 +19,7 @@ import {
 } from '../../../rest/announcementsAPI';
 import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 import CriticalAnnouncements from './CriticalAnnouncements';
-import { CRITICAL_ANNOUNCEMENTS_FETCH_LIMIT } from './CriticalAnnouncements.constants';
+import { CRITICAL_ANNOUNCEMENTS_PAGE_SIZE } from './CriticalAnnouncements.constants';
 import {
   DismissedAnnouncementsScope,
   getDismissedAnnouncementsStorageKey,
@@ -114,11 +114,37 @@ describe('CriticalAnnouncements', () => {
     await waitFor(() => {
       expect(mockListAnnouncements).toHaveBeenCalledWith({
         active: true,
-        limit: CRITICAL_ANNOUNCEMENTS_FETCH_LIMIT,
+        after: undefined,
+        limit: CRITICAL_ANNOUNCEMENTS_PAGE_SIZE,
         system: true,
         type: AnnouncementType.Critical,
       });
     });
+  });
+
+  it('reads every page, so the newest is shown even when it is not on the first', async () => {
+    mockListAnnouncements
+      .mockResolvedValueOnce({
+        data: [makeCritical('older', 3)],
+        paging: { after: 'cursor-2', total: 2 },
+      })
+      .mockResolvedValueOnce({
+        data: [makeCritical('newest', 1)],
+        paging: { total: 2 },
+      });
+
+    renderBanner();
+
+    expect(
+      await screen.findByTestId('critical-announcement-title')
+    ).toHaveTextContent('Title newest');
+    expect(mockListAnnouncements).toHaveBeenCalledTimes(2);
+    expect(mockListAnnouncements).toHaveBeenLastCalledWith(
+      expect.objectContaining({ after: 'cursor-2' })
+    );
+    expect(
+      screen.getByTestId('critical-announcement-position')
+    ).toHaveTextContent('1 of 2');
   });
 
   it('renders nothing when no critical announcement is live', async () => {

@@ -22,9 +22,10 @@ export const CRITICAL_ANNOUNCEMENTS_TTL_MS = 60_000;
 export const CRITICAL_ANNOUNCEMENTS_GC_TIME_MS =
   CRITICAL_ANNOUNCEMENTS_TTL_MS + 5 * 60 * 1000;
 
-// Admins write critical system announcements rarely; this bounds the fetch
-// without any chance of hiding a live one.
-export const CRITICAL_ANNOUNCEMENTS_FETCH_LIMIT = 25;
+// A page size, not a cap: the banner pages until the cursor runs out, so no
+// live critical is ever left behind. Live criticals are a handful, so this is
+// one request in practice.
+export const CRITICAL_ANNOUNCEMENTS_PAGE_SIZE = 25;
 
 // The same 28px circle as the announcements rail's pager, so the two read as
 // one control family; the glyph is sized down for the core chevrons' tight

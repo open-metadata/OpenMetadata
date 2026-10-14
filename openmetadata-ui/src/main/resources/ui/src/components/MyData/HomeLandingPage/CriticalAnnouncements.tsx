@@ -28,8 +28,8 @@ import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUt
 import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 import CriticalAnnouncementBanner from './CriticalAnnouncementBanner';
 import {
-  CRITICAL_ANNOUNCEMENTS_FETCH_LIMIT,
   CRITICAL_ANNOUNCEMENTS_GC_TIME_MS,
+  CRITICAL_ANNOUNCEMENTS_PAGE_SIZE,
   CRITICAL_ANNOUNCEMENTS_QUERY_KEY,
   CRITICAL_ANNOUNCEMENTS_TTL_MS,
   CRITICAL_PAGER_BUTTON_CLASSES,
@@ -39,16 +39,27 @@ import {
   useDismissedAnnouncements,
 } from './useDismissedAnnouncements';
 
-// Newest first, so the most recent critical notice is the one users see.
+// Every live critical, newest first. The server pages in its own order, not by
+// start time, so the newest may sit on any page: sorting one page alone could
+// leave it out of the banner without a trace.
 const fetchCriticalAnnouncements = async (): Promise<AnnouncementEntity[]> => {
-  const response = await listAnnouncements({
-    active: true,
-    limit: CRITICAL_ANNOUNCEMENTS_FETCH_LIMIT,
-    system: true,
-    type: AnnouncementType.Critical,
-  });
+  const announcements: AnnouncementEntity[] = [];
+  let after: string | undefined;
 
-  return [...(response.data ?? [])].sort((a, b) => b.startTime - a.startTime);
+  do {
+    // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- sequential page walk
+    const response = await listAnnouncements({
+      active: true,
+      after,
+      limit: CRITICAL_ANNOUNCEMENTS_PAGE_SIZE,
+      system: true,
+      type: AnnouncementType.Critical,
+    });
+    announcements.push(...(response.data ?? []));
+    after = response.paging?.after;
+  } while (after);
+
+  return announcements.sort((a, b) => b.startTime - a.startTime);
 };
 
 const getCriticalAnnouncementsQueryOptions = () => ({
