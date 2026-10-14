@@ -39,6 +39,7 @@ import { getFilterTabClassName } from '../../../utils/ContextCenterPureUtils';
 import {
   CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
   CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+  reconcileCountAfterAsyncDelete,
 } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
@@ -212,9 +213,6 @@ const ContextCenterArchivePage: FC = () => {
     try {
       setIsDeleting(true);
       await deleteDriveFile(itemToDelete.id, true);
-      queryClient.invalidateQueries({
-        queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
-      });
       showSuccessToast(
         t('server.entity-deleted-successfully', { entity: itemToDelete.name })
       );
@@ -224,6 +222,13 @@ const ContextCenterArchivePage: FC = () => {
         total: Math.max(0, prev.total - 1),
       }));
       setItemToDelete(undefined);
+      // A 202 finishes on a background thread, so the count is converged, not
+      // invalidated once. Not awaited — holding `isDeleting` through the poll
+      // would spin the modal button for seconds.
+      reconcileCountAfterAsyncDelete(
+        queryClient,
+        CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY
+      );
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
