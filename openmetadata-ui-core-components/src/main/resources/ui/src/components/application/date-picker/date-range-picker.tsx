@@ -143,6 +143,14 @@ export const DateRangePicker = ({
       onChange={(range) => {
         setPresetKey(undefined);
         setValue(range);
+      }}
+      onOpenChange={(isOpen) => {
+        // Apply reads the key before closing, so a key still set here belongs
+        // to a dismissed picker and must not reach the next Apply.
+        if (!isOpen) {
+          setPresetKey(undefined);
+        }
+        props.onOpenChange?.(isOpen);
       }}>
       <AriaGroup>
         <Button
@@ -201,6 +209,9 @@ export const DateRangePicker = ({
                     lastYear: presets.lastYear,
                   }}
                   onFocusChange={setFocusedValue}
+                  onPresetSelect={(key) =>
+                    setPresetKey(key as DateRangePresetKey)
+                  }
                 />
                 <div className="tw:flex tw:justify-between tw:gap-3 tw:border-t tw:border-secondary tw:p-4">
                   <div className="tw:hidden tw:items-center tw:gap-3 tw:md:flex">
@@ -213,7 +224,6 @@ export const DateRangePicker = ({
                       color="secondary"
                       size="md"
                       onClick={() => {
-                        setPresetKey(undefined);
                         onCancel?.();
                         close();
                       }}>
