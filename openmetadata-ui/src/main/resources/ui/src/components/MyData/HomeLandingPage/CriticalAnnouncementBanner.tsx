@@ -17,7 +17,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
-import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import { getAnnouncementTypeConfig } from '../../../utils/AnnouncementsUtils';
@@ -27,8 +26,6 @@ import { stripMarkdown } from '../../../utils/RichTextStringUtils';
 export interface CriticalAnnouncementBannerProps {
   announcement: AnnouncementEntity;
   onDismiss: () => void;
-  /** The carousel position, shown under the description when several are live. */
-  children?: ReactNode;
 }
 
 // FeaturedIcon's light theme fills solid red under `dark-mode`; the design
@@ -49,7 +46,6 @@ const TITLE_CLASS =
  */
 const CriticalAnnouncementBanner = ({
   announcement,
-  children,
   onDismiss,
 }: CriticalAnnouncementBannerProps) => {
   const { t } = useTranslation();
@@ -97,8 +93,6 @@ const CriticalAnnouncementBanner = ({
             {description}
           </Typography>
         )}
-
-        {children}
       </div>
 
       <ButtonUtility

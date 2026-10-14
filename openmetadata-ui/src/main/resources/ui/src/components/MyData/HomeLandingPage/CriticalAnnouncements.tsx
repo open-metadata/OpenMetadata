@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 import {
   ChevronLeft,
   ChevronRight,
@@ -127,14 +127,16 @@ const CriticalAnnouncements = () => {
       aria-label={t('label.critical-announcement-plural')}
       className="tw:flex tw:items-center tw:gap-3"
       data-testid="critical-announcements">
+      {/* No tooltip — the arrows explain themselves — so the name the
+          tooltip would carry is given as `aria-label` instead. */}
       {hasPager && (
         <ButtonUtility
+          aria-label={t('label.previous')}
           className={CRITICAL_PAGER_BUTTON_CLASSES}
           color="secondary"
           data-testid="critical-announcement-previous"
           icon={ChevronLeft}
           size="xs"
-          tooltip={t('label.previous')}
           onClick={() => step(-1)}
         />
       )}
@@ -142,29 +144,28 @@ const CriticalAnnouncements = () => {
       <div className="tw:min-w-0 tw:flex-1">
         <CriticalAnnouncementBanner
           announcement={announcement}
-          onDismiss={() => dismiss(announcement.id)}>
-          {hasPager && (
-            <Typography
-              aria-live="polite"
-              as="span"
-              className="tw:mt-1 tw:text-tertiary"
-              data-testid="critical-announcement-position"
-              size="text-xs"
-              weight="medium">
-              {t('label.current-of-total', { current: current + 1, total })}
-            </Typography>
-          )}
-        </CriticalAnnouncementBanner>
+          onDismiss={() => dismiss(announcement.id)}
+        />
+        {/* Not shown, but announced: with no visible counter, this is how a
+            screen reader learns where it is in the carousel. */}
+        {hasPager && (
+          <span
+            aria-live="polite"
+            className="tw:sr-only"
+            data-testid="critical-announcement-position">
+            {t('label.current-of-total', { current: current + 1, total })}
+          </span>
+        )}
       </div>
 
       {hasPager && (
         <ButtonUtility
+          aria-label={t('label.next')}
           className={CRITICAL_PAGER_BUTTON_CLASSES}
           color="secondary"
           data-testid="critical-announcement-next"
           icon={ChevronRight}
           size="xs"
-          tooltip={t('label.next')}
           onClick={() => step(1)}
         />
       )}

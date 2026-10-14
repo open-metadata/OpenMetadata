@@ -174,6 +174,13 @@ describe('CriticalAnnouncements', () => {
     expect(
       screen.getByTestId('critical-announcement-position')
     ).toHaveTextContent('1 of 2');
+    // The arrows carry no tooltip, but keep their accessible names.
+    expect(
+      screen.getByRole('button', { name: 'label.previous' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'label.next' })
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('critical-announcement-next'));
 
