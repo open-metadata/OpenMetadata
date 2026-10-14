@@ -179,7 +179,7 @@ class TestVerticaSourceCommentBatches:
         # Three tables in batches of two: two comment queries instead of three joins.
         assert len(_comment_queries(catalog)) == 2
         # Columns are read without the per-table comments join.
-        assert all(call.kwargs["include_comments"] is False for call in inspector.get_columns.call_args_list)
+        assert all(call.kwargs["vertica_include_comments"] is False for call in inspector.get_columns.call_args_list)
         inspector.get_table_comment.assert_not_called()
 
     def test_previous_batch_is_released_before_the_next_and_at_the_end(self, source):
@@ -236,7 +236,7 @@ class TestVerticaSourceFallsBackTableByTable:
 
         assert not _comment_queries(catalog)
         assert processed == [("from the per-table path", {"id": ""})]
-        assert "include_comments" not in inspector.get_columns.call_args.kwargs
+        assert "vertica_include_comments" not in inspector.get_columns.call_args.kwargs
 
     def test_failed_comment_query_falls_back_without_stopping_ingestion(self, source, catalog):
         catalog.execute(text("DROP TABLE v_catalog.comments"))
@@ -245,7 +245,7 @@ class TestVerticaSourceFallsBackTableByTable:
             processed = [_process(source, inspector, name, kind) for name, kind in source.get_tables_name_and_type()]
 
         assert processed == [("from the per-table path", {"id": ""})]
-        assert "include_comments" not in inspector.get_columns.call_args.kwargs
+        assert "vertica_include_comments" not in inspector.get_columns.call_args.kwargs
 
 
 class TestGetColumnsWithoutComments:
@@ -255,7 +255,7 @@ class TestGetColumnsWithoutComments:
         dialect = VerticaDialect()
         dialect._column_comment_support = True  # pylint: disable=protected-access
 
-        list(get_columns(dialect, connection, "orders", schema="public", include_comments=False))
+        list(get_columns(dialect, connection, "orders", schema="public", vertica_include_comments=False))
 
         executed = [str(call.args[0]) for call in connection.execute.call_args_list]
         columns_statement = next(statement for statement in executed if "v_catalog.columns" in statement)

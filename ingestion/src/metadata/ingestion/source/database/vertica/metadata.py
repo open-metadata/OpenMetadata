@@ -18,7 +18,8 @@ import traceback
 from collections.abc import Iterable
 from textwrap import dedent
 
-from sqlalchemy import sql, text, util
+from sqlalchemy import Table, sql, text, util
+from sqlalchemy.dialects import registry
 from sqlalchemy.engine import Inspector, reflection
 from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
@@ -146,7 +147,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
     """
     Method to handle column details.
 
-    ``include_comments=False`` skips the per-table comments join, for callers that
+    ``vertica_include_comments=False`` skips the per-table comments join, for callers that
     attach comments themselves from a batch (see `VerticaSource`).
 
     Primary keys are not looked up here: nothing reads a per-column primary-key flag,
@@ -158,7 +159,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
     else:
         schema_condition = "1"
 
-    include_comments = kw.get("include_comments", True)
+    include_comments = kw.get("vertica_include_comments", True)
     columns_query = (
         VERTICA_GET_COLUMNS
         if include_comments and supports_column_comments(self, connection)
@@ -314,6 +315,8 @@ def get_table_comment(
     schema=None,
     **kw,  # pylint: disable=unused-argument
 ):
+    if not kw.get("vertica_include_comments", True):
+        return {"text": None}
     return get_table_comment_wrapper(
         self,
         connection,
@@ -347,6 +350,23 @@ def _get_default_schema_name(self, connection):  # pylint: disable=unused-argume
     """
     return connection.scalar(text(VERTICA_GET_CURRENT_SCHEMA))
 
+
+class VerticaInspector(Inspector):
+    """Vertica inspector with comment-free DDL reflection."""
+
+    def get_all_table_ddls(self, connection, query, schema_name, **kw):
+        kw["vertica_include_comments"] = False
+        return get_all_table_ddls(self, connection, query, schema_name, **kw)
+
+
+# Table argument registration mutates the nested dictionaries inherited from PostgreSQL.
+VerticaDialect.construct_arguments = [
+    (construct, dict(arguments)) for construct, arguments in VerticaDialect.construct_arguments
+]
+registry.register("vertica", "sqlalchemy_vertica.dialect_vertica_python", "VerticaDialect")
+Table.argument_for("vertica", "include_comments", True)
+VerticaDialect.reflection_options = (*VerticaDialect.reflection_options, "vertica_include_comments")
+VerticaDialect.inspector = VerticaInspector
 
 VerticaDialect.get_columns = get_columns
 VerticaDialect._get_column_info = _get_column_info  # pylint: disable=protected-access
@@ -516,7 +536,7 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
             schema_name,
             table_type=table_type,
             db_name=db_name,
-            include_comments=False,
+            vertica_include_comments=False,
         )
         # Without a comment the join yielded NULL for a table column and '' for a view
         # column; keep that so unchanged entities are not seen as changed.
