@@ -298,3 +298,72 @@ def test_safe_orm_attr_collision_between_normal_and_remapped_dunder():
 
     # Both keys are distinct — no column was silently overwritten.
     assert real_key != dunder_key
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+def test_dotted_column_names_are_mapped(mock_schema, mock_database):
+    """Columns with dots in their names (common in Druid nested-JSON ingestion) must not
+    raise a hard SQLAlchemy mapper error (ArgumentError: property '...' is not represented
+    in the mapper's table).  The dot is replaced with underscore in the class-attribute key
+    while Column.name and Column.key retain the original value, so profiler queries use the
+    real column name.  See #35449.
+    """
+    column_definition = [
+        ("nested_field.subfield", DataType.STRING),  # dotted — raises mapper error without fix
+        ("normal_col", DataType.INT),
+        ("also.dotted.deeply", DataType.FLOAT),  # multiple dots
+    ]
+
+    columns = [Column(name=name, dataType=data_type) for name, data_type in column_definition]
+
+    table = Table(
+        id=UUID("2a8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name="druid_dotted_table",
+        columns=columns,
+        serviceType=DatabaseServiceType.Druid,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    # ORM class must be created without raising ArgumentError
+    assert orm_table is not None
+    # Every column must be present in the underlying Table under its ORIGINAL name
+    col_names = [col.name for col in orm_table.__table__.columns]
+    assert col_names == ["nested_field.subfield", "normal_col", "also.dotted.deeply"]
+    # The first column is the PK
+    pk_cols = list(orm_table.__table__.primary_key)
+    assert len(pk_cols) == 1
+    assert pk_cols[0].name == "nested_field.subfield"
+
+
+def test_safe_orm_attr_non_identifier_characters():
+    """_safe_orm_attr must replace dots, hyphens and other non-identifier chars with
+    underscores in the returned attribute key while a separate Column.name is used for
+    the actual DB access.  Collision between sanitised names is resolved by appending
+    underscores.
+    """
+    existing: set = set()
+
+    # Dot is replaced with underscore
+    key1 = _safe_orm_attr("nested_field.subfield", existing)
+    existing.add(key1)
+    assert key1 == "nested_field_subfield"
+
+    # Hyphen is replaced with underscore
+    key2 = _safe_orm_attr("column-name", existing)
+    existing.add(key2)
+    assert key2 == "column_name"
+
+    # Multiple dots become multiple underscores
+    key3 = _safe_orm_attr("a.b.c", existing)
+    existing.add(key3)
+    assert key3 == "a_b_c"
+
+    # Collision between two different names that sanitise to the same key
+    key4 = _safe_orm_attr("nested_field_subfield", existing)  # already taken by key1
+    existing.add(key4)
+    assert key4 == "nested_field_subfield_"
+
+    # All keys are distinct
+    assert len({key1, key2, key3, key4}) == 4
