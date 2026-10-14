@@ -937,43 +937,47 @@ class CreateTaskTest {
         CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
   }
 
-  // ---- isSupersededBy ----
+  // ---- newestApprovalTask ----
 
   @Test
-  void testConcurrentRunsSupersedeOnlyTheOlderTask() {
+  void testInterleavedRunsKeepOnlyTheNewestTask() {
+    // Run A takes TASK-00041 and run B TASK-00042. B lists first and sees only itself; A lists
+    // second and sees B. B must keep its task and A must give up its own.
     UUID workflowDefinitionId = UUID.randomUUID();
-    Task older = openApprovalTask(workflowDefinitionId, "TASK-00041");
-    Task newer = openApprovalTask(workflowDefinitionId, "TASK-00042");
+    Task runA = openApprovalTask(workflowDefinitionId, "TASK-00041");
+    Task runB = openApprovalTask(workflowDefinitionId, "TASK-00042");
 
-    assertTrue(CreateTask.isSupersededBy(older, newer));
-    assertFalse(CreateTask.isSupersededBy(newer, older));
+    assertSame(runB, CreateTask.newestApprovalTask(runB, List.of()));
+    assertSame(runB, CreateTask.newestApprovalTask(runA, List.of(runB)));
   }
 
   @Test
-  void testSupersedeOrdersByTaskNumberNotByIdLength() {
+  void testRunsThatSeeEachOtherAgreeOnTheSameSurvivor() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task runA = openApprovalTask(workflowDefinitionId, "TASK-00041");
+    Task runB = openApprovalTask(workflowDefinitionId, "TASK-00042");
+
+    assertSame(runB, CreateTask.newestApprovalTask(runA, List.of(runB)));
+    assertSame(runB, CreateTask.newestApprovalTask(runB, List.of(runA)));
+  }
+
+  @Test
+  void testNewestIsDecidedByTaskNumberNotByIdLength() {
     UUID workflowDefinitionId = UUID.randomUUID();
     Task older = openApprovalTask(workflowDefinitionId, "TASK-99999");
     Task newer = openApprovalTask(workflowDefinitionId, "TASK-100000");
 
-    assertTrue(CreateTask.isSupersededBy(older, newer));
-    assertFalse(CreateTask.isSupersededBy(newer, older));
+    assertSame(newer, CreateTask.newestApprovalTask(older, List.of(newer)));
+    assertSame(newer, CreateTask.newestApprovalTask(newer, List.of(older)));
   }
 
   @Test
-  void testPriorTaskWithoutTaskIdCountsAsOlder() {
+  void testTaskWithoutTaskIdNeverOutlivesANumberedTask() {
     UUID workflowDefinitionId = UUID.randomUUID();
     Task legacy = openApprovalTask(workflowDefinitionId, null);
     Task current = openApprovalTask(workflowDefinitionId, "TASK-00007");
 
-    assertTrue(CreateTask.isSupersededBy(legacy, current));
-  }
-
-  @Test
-  void testOlderTaskOfAnotherWorkflowIsNotSuperseded() {
-    Task older = openApprovalTask(UUID.randomUUID(), "TASK-00001");
-    Task current = openApprovalTask(UUID.randomUUID(), "TASK-00002");
-
-    assertFalse(CreateTask.isSupersededBy(older, current));
+    assertSame(current, CreateTask.newestApprovalTask(current, List.of(legacy)));
   }
 
   private static Task openApprovalTask(UUID workflowDefinitionId, String taskId) {

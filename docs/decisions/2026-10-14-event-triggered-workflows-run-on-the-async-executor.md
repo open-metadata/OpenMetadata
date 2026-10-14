@@ -1,9 +1,9 @@
-# Event-triggered workflows run on the Flowable async executor, and approval supersede only replaces older tasks
+# Event-triggered workflows run on the Flowable async executor, and only the newest open approval task survives
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-14 (initial)
 - **Deciders:** Ram Narayan Balaji
-- **Guard:** `EventBasedEntityTriggerTest`, `FreshReadJobRunnableFactoryTest`, `CreateTaskTest` (isSupersededBy), `MetricResourceIT.rapidCreateThenUpdateLeavesExactlyOneOpenApprovalTask`, `WorkflowDefinitionResourceIT.test_NewApprovalRunSupersedesStalePendingTask`
+- **Guard:** `EventBasedEntityTriggerTest`, `FreshReadJobRunnableFactoryTest`, `CreateTaskTest` (newestApprovalTask), `MetricResourceIT.rapidCreateThenUpdateLeavesExactlyOneOpenApprovalTask`, `WorkflowDefinitionResourceIT.test_NewApprovalRunSupersedesStalePendingTask`
 - **Related:** #17837 (original async trigger), #18664 (async dropped in the CallActivity refactor), #18744 (async-leave on the periodic trigger), #32335 (seeded MetricApprovalWorkflow)
 
 ## Context
@@ -20,9 +20,13 @@ out. Locally the consumer spent 62.4s on 749 signals synchronously and 34.3s wit
    instance, its start listener and one job; the body runs on the async executor.
 2. Every Flowable async job runs inside a `FreshReadScope` (`FreshReadJobRunnableFactory`), so
    workflow gates read the database on executor threads as they did on the consumer thread.
-3. Runs for the same entity may now overlap, so an approval task supersedes only tasks created
-   before it, ordered by the task-ID sequence (`TASK-n`, one database sequence for the cluster).
-   Without the order, two concurrent runs could close each other's task and leave none open.
+3. Runs for the same entity may now overlap, so after creating its approval task every run keeps
+   only the newest open task of the workflow it can see, ordered by the task-ID sequence (`TASK-n`,
+   one database sequence for the cluster), and closes the rest. If the newest is another run's
+   task, the run closes its own task and ends its own process after its Flowable commit. The run
+   that looks last sees every task, so exactly one survives; no run closes the newest, so at least
+   one does. The old symmetric rule let two concurrent runs close each other's task; a one-way
+   "close only older tasks" rule left two open when the older run looked last.
 
 ## Consequences
 - One workflow type can no longer delay every other entity's workflow.
