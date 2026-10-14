@@ -380,13 +380,13 @@ class GluepipelineSource(PipelineServiceSource):
         """
         Snowflake refs carry database and schema, so the first attempt is exact.
         When the script's sfDatabase does not match the ingested database name
-        fall back to schema.table, then to the bare table name, but only while
-        the match stays unambiguous.
+        fall back to schema.table. The bare table name is only tried when the
+        schema is unknown: with a known schema a name-only hit would belong to
+        another schema. Every attempt requires an unambiguous match.
         """
         for ref in refs:
-            attempts = ((ref.database, ref.schema), (None, ref.schema), (None, None))
             table_entity = None
-            for database_name, schema_name in attempts:
+            for database_name, schema_name in self._snowflake_lookup_attempts(ref):
                 table_entity = self._search_unique_table(ref.table, database_name, schema_name)
                 if table_entity:
                     break
@@ -397,6 +397,20 @@ class GluepipelineSource(PipelineServiceSource):
                     f"Could not find table entity for Snowflake reference "
                     f"{ref.database}.{ref.schema}.{ref.table}. Ensure the Snowflake service has been ingested."
                 )
+
+    @staticmethod
+    def _snowflake_lookup_attempts(ref) -> list:
+        """Ordered (database, schema) pairs to try, most specific first, without repeats."""
+        attempts = [(ref.database, ref.schema)]
+        if ref.schema:
+            attempts.append((None, ref.schema))
+        else:
+            attempts.append((None, None))
+        unique = []
+        for attempt in attempts:
+            if attempt not in unique:
+                unique.append(attempt)
+        return unique
 
     def _search_unique_table(
         self, table_name: str, database_name: str | None, schema_name: str | None

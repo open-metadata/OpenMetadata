@@ -151,6 +151,21 @@ df = spark.read.format("snowflake").options(**sf_options).option("dbtable", '{db
 
         assert result.snowflake_sources == [expected]
 
+    def test_script_wide_fallback_needs_a_single_value(self):
+        """Two blocks with their own sfSchema: a block without one must not inherit the first match."""
+        script = """
+raw = spark.read.format("snowflake").options(**sf).option("sfSchema", "RAW").option("dbtable", "ORDERS").load()
+cur = spark.read.format("snowflake").options(**sf).option("sfSchema", "CURATED").option("dbtable", "ORDERS_DAILY").load()
+other = spark.read.format("snowflake").options(**sf).option("dbtable", "CUSTOMERS").load()
+"""
+        result = parse_glue_script(script)
+
+        assert [(ref.table, ref.schema) for ref in result.snowflake_sources] == [
+            ("ORDERS", "RAW"),
+            ("ORDERS_DAILY", "CURATED"),
+            ("CUSTOMERS", None),
+        ]
+
     def test_dbtable_missing_is_ignored(self):
         script = """
 df = spark.read.format("snowflake").options(**sf_options).option("query", "select 1").load()
@@ -255,6 +270,32 @@ class TestResolveSnowflakeEntities:
 
         assert lineage_details["sources"] == []
         glue_source.metadata.get_entity_reference.assert_not_called()
+
+    def test_known_schema_never_falls_back_to_bare_name(self, glue_source):
+        """ORDERS is not ingested in RAW yet: a same-named table in another schema must not be linked."""
+        lineage_details = {"sources": [], "targets": []}
+
+        with patch("metadata.ingestion.source.pipeline.gluepipeline.metadata.fqn.build") as build:
+            build.side_effect = [None, None, ["svc.SALES_DB.ARCHIVE.ORDERS"]]
+            glue_source._resolve_snowflake_entities(
+                [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")], lineage_details, "targets"
+            )
+
+        assert lineage_details["targets"] == []
+        assert [call.kwargs["schema_name"] for call in build.call_args_list] == ["RAW", "RAW"]
+        glue_source.metadata.get_entity_reference.assert_not_called()
+
+    def test_unknown_schema_uses_bare_name_once(self, glue_source):
+        glue_source.metadata.get_entity_reference.return_value = ORDERS_REF
+        lineage_details = {"sources": [], "targets": []}
+
+        with patch("metadata.ingestion.source.pipeline.gluepipeline.metadata.fqn.build") as build:
+            build.return_value = ["svc.SALES_DB.RAW.ORDERS"]
+            glue_source._resolve_snowflake_entities([SnowflakeRef(table="ORDERS")], lineage_details, "sources")
+
+        assert lineage_details["sources"] == [ORDERS_REF]
+        assert len(build.call_args_list) == 1
+        assert build.call_args.kwargs["schema_name"] is None
 
     def test_not_found(self, glue_source):
         lineage_details = {"sources": [], "targets": []}

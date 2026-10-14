@@ -435,23 +435,28 @@ def _parse_spark_write(source_code: str, result: ScriptLineageResult):
             logger.debug(f"Found Spark saveAsTable/insertInto target: {table_ref}")
 
 
+def _unique_script_option(pattern: re.Pattern, source_code: str) -> str | None:
+    """
+    Script-wide fallback for sfDatabase / sfSchema (the shared options dict).
+    Only trusted when the script defines exactly one distinct value: with
+    several candidates the first match could belong to another block, so the
+    value is left unset and the resolver falls back to a less specific lookup.
+    """
+    values = {match.group(1) for match in pattern.finditer(source_code)}
+    return values.pop() if len(values) == 1 else None
+
+
 def _snowflake_ref(block: str, source_code: str) -> SnowflakeRef | None:
     """
     `dbtable` may be qualified (DB.SCHEMA.TABLE or SCHEMA.TABLE); otherwise
-    sfDatabase / sfSchema are taken from the block or, failing that, from
-    anywhere in the script (the usual shared options dict).
+    sfDatabase / sfSchema are taken from the block or, failing that, from the
+    script when it defines a single value (the usual shared options dict).
     """
     table = _extract_option(block, "dbtable")
     if not table:
         return None
-    database = _extract_option(block, "sfDatabase")
-    schema = _extract_option(block, "sfSchema")
-    if not database:
-        match = SNOWFLAKE_DATABASE_PATTERN.search(source_code)
-        database = match.group(1) if match else None
-    if not schema:
-        match = SNOWFLAKE_SCHEMA_PATTERN.search(source_code)
-        schema = match.group(1) if match else None
+    database = _extract_option(block, "sfDatabase") or _unique_script_option(SNOWFLAKE_DATABASE_PATTERN, source_code)
+    schema = _extract_option(block, "sfSchema") or _unique_script_option(SNOWFLAKE_SCHEMA_PATTERN, source_code)
 
     parts = table.replace('"', "").split(".")
     if len(parts) == 3:
