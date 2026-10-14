@@ -52,7 +52,8 @@
 
     // The design's text-editor icons, which the composer draws into Quill's
     // buttons, replace Quill's and quill-emoji's icons and the @ / # glyphs.
-    // They fill Quill's own button box, so the bar keeps its size.
+    // They sit at 16px, centred in Quill's own button box, so the bar keeps
+    // its size.
     .ql-formats {
       vertical-align: middle;
     }
@@ -83,8 +84,11 @@
     }
 
     .inbox-comment-composer__icon {
-      width: 100%;
-      height: 100%;
+      display: block;
+      float: none;
+      width: 16px;
+      height: 16px;
+      margin: 1px auto;
     }
   }
 
