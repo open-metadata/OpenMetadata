@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const EnumType: FC<Props> = ({
-  size = 20,
+  size = 24,
   color = 'currentColor',
   ...props
 }) => (
