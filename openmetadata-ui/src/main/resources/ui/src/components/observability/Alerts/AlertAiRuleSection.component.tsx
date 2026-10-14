@@ -77,9 +77,9 @@ const getSearchResultItems = (
   nextItems: SelectItemType[]
 ) =>
   mergeSelectItems([
+    ...nextItems,
     ...currentItems.filter((item) => selectedValues.includes(String(item.id))),
     ...getSelectedValueItems(selectedValues),
-    ...nextItems,
   ]);
 
 /** Persists the next selected values for a single rule argument input. */
@@ -102,7 +102,9 @@ const updateArgumentInput = (
 /** Renders a comma-separated text input for rule arguments that accept free-form values. */
 const AiArgumentTextInput = ({
   argument,
+  testId,
   field,
+  isLabelHidden,
   isViewOnly,
   index,
   label,
@@ -122,11 +124,12 @@ const AiArgumentTextInput = ({
   return (
     <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
       <Input
-        data-testid={`${argument}-input`}
+        aria-label={isLabelHidden ? label : undefined}
+        data-testid={testId ?? `${argument}-input`}
         hint={error}
         isDisabled={isViewOnly}
         isInvalid={Boolean(error)}
-        label={label}
+        label={isLabelHidden ? undefined : label}
         placeholder={placeholder}
         size="sm"
         value={getCommaSeparatedValues(inputValue)}
@@ -146,7 +149,9 @@ const AiArgumentTextInput = ({
 /** Renders a Core UI autocomplete for rule arguments backed by a fixed option set. */
 const AiArgumentMultiSelect = ({
   argument,
+  testId,
   field,
+  isLabelHidden,
   isViewOnly,
   index,
   items,
@@ -174,13 +179,19 @@ const AiArgumentMultiSelect = ({
         ALERT_AI_FORM_CLASS_NAMES.autocompleteField
       )}>
       <Autocomplete
-        data-testid={`${argument}-autocomplete`}
+        aria-label={isLabelHidden ? label : undefined}
+        data-testid={testId ?? `${argument}-autocomplete`}
+        filterOption={(item, search) =>
+          [String(item.id), item.label ?? ''].some((text) =>
+            text.toLocaleLowerCase().includes(search.toLocaleLowerCase())
+          )
+        }
         hint={error}
         isDisabled={isViewOnly}
         isInvalid={Boolean(error)}
         items={items}
         key={selectedValues.join('|')}
-        label={label}
+        label={isLabelHidden ? undefined : label}
         placeholder={placeholder}
         selectedItems={selectedValueItems}
         onItemCleared={(key) =>
@@ -217,8 +228,11 @@ const NO_RESULTS_ID = '__no_results__';
 /** Renders a searchable Core UI autocomplete for rule arguments backed by OSS search utilities. */
 const AiArgumentAutocomplete = ({
   argument,
+  testId,
+  sourceSearch,
   containerEntities,
   field,
+  isLabelHidden,
   isViewOnly,
   index,
   label,
@@ -256,8 +270,8 @@ const AiArgumentAutocomplete = ({
   useEffect(() => {
     setItems((currentItems) =>
       mergeSelectItems([
-        ...getSelectedValueItems(selectedValues),
         ...currentItems,
+        ...getSelectedValueItems(selectedValues),
       ])
     );
   }, [selectedValues]);
@@ -268,12 +282,13 @@ const AiArgumentAutocomplete = ({
       containerEntities: stableContainerEntities,
       searchText: '',
       selectedSource,
+      sourceSearch,
     }).then((nextItems) => {
       setItems((currentItems) =>
-        mergeSelectItems([...currentItems, ...nextItems])
+        mergeSelectItems([...nextItems, ...currentItems])
       );
     });
-  }, [argument, selectedSource, stableContainerEntities]);
+  }, [argument, selectedSource, sourceSearch, stableContainerEntities]);
 
   const selectedItems = useMemo(
     () =>
@@ -309,6 +324,7 @@ const AiArgumentAutocomplete = ({
           containerEntities: stableContainerEntities,
           searchText,
           selectedSource,
+          sourceSearch,
         });
 
         setHasNoResults(searchText.trim() !== '' && nextItems.length === 0);
@@ -320,7 +336,7 @@ const AiArgumentAutocomplete = ({
           )
         );
       }, 500),
-    [argument, selectedSource, stableContainerEntities]
+    [argument, selectedSource, sourceSearch, stableContainerEntities]
   );
 
   useEffect(
@@ -340,6 +356,7 @@ const AiArgumentAutocomplete = ({
           containerEntities: stableContainerEntities,
           searchText: '',
           selectedSource,
+          sourceSearch,
         }).then((nextItems) => {
           setItems(mergeSelectItems([...nextItems]));
         });
@@ -349,6 +366,7 @@ const AiArgumentAutocomplete = ({
       argument,
       hasNoResults,
       selectedSource,
+      sourceSearch,
       selectedValues.length,
       stableContainerEntities,
     ]
@@ -361,14 +379,15 @@ const AiArgumentAutocomplete = ({
         ALERT_AI_FORM_CLASS_NAMES.autocompleteField
       )}>
       <Autocomplete
-        data-testid={`${argument}-autocomplete`}
+        aria-label={isLabelHidden ? label : undefined}
+        data-testid={testId ?? `${argument}-autocomplete`}
         filterOption={() => true}
         hint={error}
         isDisabled={isViewOnly}
         isInvalid={Boolean(error)}
         items={displayItems}
         key={resetKey}
-        label={label}
+        label={isLabelHidden ? undefined : label}
         placeholder={placeholder}
         selectedItems={selectedItems}
         onItemCleared={(key) =>
@@ -406,10 +425,13 @@ const AiArgumentAutocomplete = ({
 };
 
 /** Chooses the correct argument input renderer based on the OSS alert rule descriptor. */
-const RuleArgumentField = ({
+export const RuleArgumentField = ({
   argument,
+  testId,
+  sourceSearch,
   containerEntities,
   field,
+  isLabelHidden,
   isViewOnly,
   index,
   name,
@@ -433,8 +455,11 @@ const RuleArgumentField = ({
         argument={argument}
         field={field}
         index={index}
+        isLabelHidden={isLabelHidden}
         isViewOnly={isViewOnly}
         name={name}
+        sourceSearch={sourceSearch}
+        testId={testId}
         validationErrors={validationErrors}
         value={value}
         onChange={onChange}
@@ -450,9 +475,12 @@ const RuleArgumentField = ({
         containerEntities={containerEntities}
         field={field}
         index={index}
+        isLabelHidden={isLabelHidden}
         isViewOnly={isViewOnly}
         name={name}
         selectedSource={selectedSource}
+        sourceSearch={sourceSearch}
+        testId={testId}
         validationErrors={validationErrors}
         value={value}
         onChange={onChange}
@@ -466,8 +494,10 @@ const RuleArgumentField = ({
       argument={argument}
       field={field}
       index={index}
+      isLabelHidden={isLabelHidden}
       isViewOnly={isViewOnly}
       name={name}
+      testId={testId}
       validationErrors={validationErrors}
       value={value}
       onChange={onChange}
@@ -476,7 +506,6 @@ const RuleArgumentField = ({
   );
 };
 
-/** Renders filter or trigger rules for the alert form and read-only configuration view. */
 const AlertAiRuleSection = ({
   containerEntities,
   field,

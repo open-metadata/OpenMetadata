@@ -15,6 +15,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  Card,
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -50,53 +51,52 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
   return (
     <Box direction="col" gap={3}>
       {isAdding && (
-        <Box
-          className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
-          direction="col"
-          gap={4}>
-          <Typography
-            className="tw:text-primary"
-            size="text-sm"
-            weight="semibold">
-            {t('label.add-entity', { entity: entityLabel })}
-          </Typography>
-          <Autocomplete
-            data-testid={addSelectTestId}
-            filterOption={filterOption}
-            items={items}
-            placeholder={t('label.search-entity', { entity: entityLabel })}
-            selectedItems={selectedNew.map((id) => {
-              const match = available.find(
-                (r) => (r.fullyQualifiedName ?? r.name) === id
-              );
+        <Card variant="muted">
+          <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+            <Typography
+              className="tw:text-primary"
+              size="text-sm"
+              weight="semibold">
+              {t('label.add-entity', { entity: entityLabel })}
+            </Typography>
+            <Autocomplete
+              data-testid={addSelectTestId}
+              filterOption={filterOption}
+              items={items}
+              placeholder={t('label.search-entity', { entity: entityLabel })}
+              selectedItems={selectedNew.map((id) => {
+                const match = available.find(
+                  (r) => (r.fullyQualifiedName ?? r.name) === id
+                );
 
-              return {
-                id,
-                label: match?.displayName || match?.name || id,
-              };
-            })}
-            onItemCleared={(key: Key) => onItemCleared(String(key))}
-            onItemInserted={(key: Key) => onItemInserted(String(key))}>
-            {(item) => (
-              <Autocomplete.Item id={item.id} key={item.id}>
-                {item.label}
-              </Autocomplete.Item>
-            )}
-          </Autocomplete>
-          <Box direction="row" gap={3} justify="end">
-            <Button color="tertiary" size="sm" onPress={onCancelAdd}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              color="primary"
-              isDisabled={selectedNew.length === 0}
-              isLoading={isSavingInline}
-              size="sm"
-              onPress={onConfirmAdd}>
-              {t('label.save')}
-            </Button>
-          </Box>
-        </Box>
+                return {
+                  id,
+                  label: match?.displayName || match?.name || id,
+                };
+              })}
+              onItemCleared={(key: Key) => onItemCleared(String(key))}
+              onItemInserted={(key: Key) => onItemInserted(String(key))}>
+              {(item) => (
+                <Autocomplete.Item id={item.id} key={item.id}>
+                  {item.label}
+                </Autocomplete.Item>
+              )}
+            </Autocomplete>
+            <Box direction="row" gap={3} justify="end">
+              <Button color="tertiary" size="sm" onPress={onCancelAdd}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                isDisabled={selectedNew.length === 0}
+                isLoading={isSavingInline}
+                size="sm"
+                onPress={onConfirmAdd}>
+                {t('label.save')}
+              </Button>
+            </Box>
+          </Card.Content>
+        </Card>
       )}
       {canEditAll && !isAdding && (
         <Box align="center" className="tw:pb-3" direction="row" justify="end">

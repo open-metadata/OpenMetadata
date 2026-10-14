@@ -111,6 +111,30 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Card: Object.assign(
+    ({
+      children,
+      className,
+      'data-testid': testId,
+    }: {
+      children?: React.ReactNode;
+      className?: string;
+      'data-testid'?: string;
+    }) => (
+      <div className={className} data-testid={testId}>
+        {children}
+      </div>
+    ),
+    {
+      Content: ({
+        children,
+        className,
+      }: {
+        children?: React.ReactNode;
+        className?: string;
+      }) => <div className={className}>{children}</div>,
+    }
+  ),
   Autocomplete: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
     <div data-testid={testId} />
   ),

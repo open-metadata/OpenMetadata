@@ -23,6 +23,7 @@ import {
   fetchOverviewPage,
   fetchUnownedCount,
   OverviewFilter,
+  OverviewOrder,
   OVERVIEW_PAGE_SIZE,
 } from './useDomainOverview';
 
@@ -104,7 +105,8 @@ const fetchDomainCount = async (): Promise<number> => {
  * it also gives the total and the "empty" bucket.
  */
 export const useDataProducts = (
-  filter: OverviewFilter = OverviewFilter.ALL
+  filter: OverviewFilter = OverviewFilter.ALL,
+  order: OverviewOrder = OverviewOrder.NAME
 ): DataProductsOverview => {
   const [countsQuery, unownedQuery, domainsQuery] = useQueries({
     queries: [
@@ -137,11 +139,12 @@ export const useDataProducts = (
     // loads, instead of dropping the card back to its first-load skeleton.
     placeholderData: keepPreviousData,
     queryFn: () =>
-      fetchOverviewPage(SearchIndex.DATA_PRODUCT, filter, emptyFqns),
+      fetchOverviewPage(SearchIndex.DATA_PRODUCT, filter, emptyFqns, order),
     queryKey: [
       ...DATA_PRODUCTS_QUERY_KEY,
       'list',
       filter,
+      order,
       needsCounts ? emptyFqns.slice(0, OVERVIEW_PAGE_SIZE) : [],
     ],
     staleTime: TTL_MS,

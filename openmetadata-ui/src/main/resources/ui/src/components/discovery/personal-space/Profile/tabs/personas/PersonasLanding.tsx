@@ -195,6 +195,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
                 role="button"
                 size="md"
                 tabIndex={0}
+                variant="muted"
                 onClick={() =>
                   onNavigate({
                     type: 'detail',

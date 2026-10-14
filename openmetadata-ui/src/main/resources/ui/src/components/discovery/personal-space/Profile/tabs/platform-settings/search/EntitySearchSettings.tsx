@@ -221,7 +221,7 @@ const EntitySearchSettings = ({
           data-testid="restore-defaults-btn"
           iconLeading={RefreshCcw01}
           isDisabled={!config || isSaving}
-          size="sm"
+          size="xs"
           onPress={() => setIsRestoreOpen(true)}>
           {t('label.restore-default-plural')}
         </Button>
@@ -230,7 +230,7 @@ const EntitySearchSettings = ({
           data-testid="save-btn"
           isDisabled={!isChanged || isSaving}
           isLoading={isSaving}
-          size="sm"
+          size="xs"
           onPress={handleSave}>
           {t('label.save')}
         </Button>
