@@ -242,7 +242,6 @@ export const MultiSelectTagsValue = ({
   return (
     <AriaGroup
       {...otherProps}
-      ref={triggerRef}
       className={({ isFocusWithin, isDisabled }) =>
         cx(
           // Border drawn with outline, not a ring (WebKit does not pixel-snap box-shadow,
@@ -253,7 +252,8 @@ export const MultiSelectTagsValue = ({
           isFocusWithin && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
           sizes[size].root
         )
-      }>
+      }
+      ref={triggerRef}>
       {({ isDisabled }) => (
         <>
           {Icon && (
