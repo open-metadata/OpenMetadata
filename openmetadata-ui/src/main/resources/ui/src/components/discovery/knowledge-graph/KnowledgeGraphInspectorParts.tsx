@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   AlertTriangle,
   ArrowRight,
@@ -320,9 +325,9 @@ export const InspectorRelationshipRow = ({
         className="tw:shrink-0 tw:text-tertiary"
         size={12}
       />
-      <Typography className="tw:text-tertiary" size="text-sm" weight="medium">
+      <Badge color="gray" size="sm" type="pill-color">
         {predicate}
-      </Typography>
+      </Badge>
       <ArrowRight
         aria-hidden="true"
         className="tw:shrink-0 tw:text-tertiary"

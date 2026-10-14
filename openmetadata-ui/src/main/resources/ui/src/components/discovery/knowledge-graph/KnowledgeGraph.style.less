@@ -293,20 +293,21 @@
     color: var(--tw-text-color-quaternary);
   }
 
-  // Plain-row click target: strip the native `<button>` chrome so each
-  // relationship/member row reads as a flat list item, with only a hover
-  // wash and the standard focus outline for keyboard discovery.
+  // Card-style click target: a bordered row so a listing of relationships
+  // reads as discrete items. The native `<button>` chrome is stripped and
+  // replaced with a clean rounded border + hover + focus-visible outline.
   .kg-inspector-row {
-    padding: var(--om-space-6) var(--om-space-8);
+    padding: var(--om-space-10) var(--om-space-12);
     background: transparent;
-    border: 0;
-    border-radius: var(--om-radius-md);
+    border: var(--om-space-1) solid var(--tw-border-color-secondary);
+    border-radius: var(--om-radius-lg);
     outline: none;
     cursor: pointer;
-    transition: background-color 100ms ease-out;
+    transition: background-color 100ms ease-out, border-color 100ms ease-out;
 
     &:hover:not(:disabled) {
       background: var(--tw-background-color-secondary_hover);
+      border-color: var(--tw-border-color-primary);
     }
 
     &:focus-visible {
