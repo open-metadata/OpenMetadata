@@ -13,15 +13,19 @@
 
 import {
   Badge,
+  Box,
   Button,
   ButtonUtility,
   Card,
   Checkbox,
   Input,
+  Select,
   TextArea,
+  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
+import { useControlledState } from '@react-stately/utils';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -36,10 +40,12 @@ import {
 import { patchGlossaryTerm } from '../../rest/glossaryAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
-  InspectorAddButton,
   InspectorEmptyText,
+  InspectorForm,
   InspectorList,
+  InspectorRemoveButton,
   InspectorRow,
+  InspectorSection,
   InspectorSectionHeading,
 } from './OntologyInspectorSection';
 
@@ -53,6 +59,9 @@ interface OntologyConceptAttributesBaseProps {
   readonly isEditMode: boolean;
   readonly showEditControls?: boolean;
   readonly variant?: 'default' | 'inspector';
+  /** Lets the parent drawer open the add form, e.g. from its "Add more details" chips. */
+  readonly isAdding?: boolean;
+  readonly onAddingChange?: (isAdding: boolean) => void;
 }
 
 interface PersistedOntologyConceptAttributesProps {
@@ -95,6 +104,8 @@ export const OntologyConceptAttributes: React.FC<
   isEditMode,
   showEditControls = isEditMode,
   variant = 'default',
+  isAdding: controlledIsAdding,
+  onAddingChange,
   onTermUpdate,
   onAttributesChange,
 }) => {
@@ -104,7 +115,11 @@ export const OntologyConceptAttributes: React.FC<
       (effectiveAttributes ?? []).filter((attribute) => attribute.inherited),
     [effectiveAttributes]
   );
-  const [isAdding, setIsAdding] = useState(false);
+  const [isAdding, setIsAdding] = useControlledState(
+    controlledIsAdding,
+    false,
+    onAddingChange
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [draftName, setDraftName] = useState('');
   const [draftDataType, setDraftDataType] = useState<DataType>(DataType.String);
@@ -122,7 +137,7 @@ export const OntologyConceptAttributes: React.FC<
     setDraftUnit('');
     setDraftIsIdentifier(false);
     setIsAdding(false);
-  }, []);
+  }, [setIsAdding]);
 
   const buildDraftAttribute = useCallback((): OntologyAttribute | null => {
     const name = draftName.trim();
@@ -250,27 +265,36 @@ export const OntologyConceptAttributes: React.FC<
     [attributes, onAttributesChange, persistAttributes]
   );
 
+  // A draft concept edits its local list; a saved one needs the edit lease.
+  const canRemove =
+    Boolean(onAttributesChange) || (showEditControls && isEditMode);
+
   const renderAttributeRow = (attribute: OntologyAttribute) => {
     if (isInspector) {
       return (
         <InspectorRow
           key={attribute.id}
           testId={`ontology-attribute-${attribute.name}`}>
-          <Typography
-            className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-primary"
-            size="text-sm"
-            weight="medium">
-            {attribute.name}
-          </Typography>
+          <Box className="tw:min-w-0 tw:flex-1" direction="col">
+            <Typography
+              ellipsis
+              className="tw:text-primary"
+              size="text-sm"
+              weight="medium">
+              {attribute.name}
+            </Typography>
+            {attribute.unit || attribute.description ? (
+              <Typography ellipsis className="tw:text-tertiary" size="text-xs">
+                {[attribute.unit, attribute.description]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </Typography>
+            ) : null}
+          </Box>
           {attribute.isIdentifier ? (
-            <Badge color="warning" size="sm" type="color">
+            <Badge color="warning" size="sm" type="pill-color">
               {t('label.id')}
             </Badge>
-          ) : null}
-          {attribute.unit ? (
-            <Typography color="secondary" size="text-xs">
-              {attribute.unit}
-            </Typography>
           ) : null}
           <Badge
             color={DATA_TYPE_BADGE_COLORS[attribute.dataType]}
@@ -278,14 +302,12 @@ export const OntologyConceptAttributes: React.FC<
             type="pill-color">
             {attribute.dataType.toLowerCase()}
           </Badge>
-          {onAttributesChange ? (
-            <ButtonUtility
-              color="tertiary"
-              data-testid={`remove-attribute-${attribute.name}`}
-              icon={XClose}
-              size="xs"
-              tooltip={`${t('label.remove')} ${attribute.name}`}
-              onClick={() => handleRemoveAttribute(attribute.id)}
+          {canRemove ? (
+            <InspectorRemoveButton
+              isDisabled={isSaving}
+              label={t('label.remove-entity', { entity: attribute.name })}
+              testId={`remove-attribute-${attribute.name}`}
+              onRemove={() => handleRemoveAttribute(attribute.id)}
             />
           ) : null}
         </InspectorRow>
@@ -339,11 +361,13 @@ export const OntologyConceptAttributes: React.FC<
         key={`${attribute.declaringTerm?.id}-${attribute.id}`}
         testId={`inherited-attribute-${attribute.name}`}>
         <Typography
-          className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-secondary"
-          size="text-sm">
+          ellipsis
+          className="tw:min-w-0 tw:flex-1 tw:text-secondary"
+          size="text-sm"
+          weight="medium">
           {attribute.name}
         </Typography>
-        <Badge color="gray" size="sm" type="color">
+        <Badge color="gray" size="sm" type="pill-color">
           {t('label.inherited-from')}{' '}
           {attribute.declaringTerm?.displayName ??
             attribute.declaringTerm?.name}
@@ -378,6 +402,81 @@ export const OntologyConceptAttributes: React.FC<
         </span>
       </div>
     );
+
+  const dataTypeItems = Object.values(DataType).map((dataType) => ({
+    id: dataType,
+    label: dataType.toLowerCase(),
+  }));
+
+  const renderInspectorForm = () => (
+    <InspectorForm
+      isSubmitDisabled={!isEditMode || isSaving || !draftName.trim()}
+      submitLabel={t('label.add-entity', { entity: t('label.property') })}
+      submitTestId="save-attribute"
+      title={t('label.new-entity', { entity: t('label.property') })}
+      onCancel={resetDraft}
+      onSubmit={handleAddAttribute}>
+      <Input
+        isRequired
+        data-testid="attribute-name-input"
+        label={t('label.name')}
+        placeholder={t('message.property-name-placeholder')}
+        value={draftName}
+        onChange={setDraftName}
+      />
+      <Box gap={3} itemClassName="tw:min-w-0 tw:flex-1">
+        <Select
+          data-testid="attribute-data-type-select"
+          fontSize="sm"
+          items={dataTypeItems}
+          label={t('label.data-type')}
+          value={draftDataType}
+          onChange={(key) => setDraftDataType(key as DataType)}>
+          {(item) => (
+            <Select.Item
+              data-testid={`attribute-type-${item.id}`}
+              id={item.id}
+              key={item.id}
+              label={item.label}
+            />
+          )}
+        </Select>
+        <Input
+          data-testid="attribute-unit-input"
+          label={t('label.unit')}
+          placeholder={t('message.unit-placeholder')}
+          value={draftUnit}
+          onChange={setDraftUnit}
+        />
+      </Box>
+      {draftDataType === DataType.Enum ? (
+        <Input
+          isRequired
+          data-testid="attribute-enum-values"
+          label={t('label.enum-value-plural')}
+          placeholder={t('label.enum-value-plural')}
+          value={draftEnumValues}
+          onChange={setDraftEnumValues}
+        />
+      ) : null}
+      <TextArea
+        data-testid="attribute-description-input"
+        label={t('label.description')}
+        placeholder={t('message.property-description-placeholder')}
+        rows={3}
+        value={draftDescription}
+        onChange={setDraftDescription}
+      />
+      <Toggle
+        data-testid="attribute-identifier-toggle"
+        hint={t('message.attribute-identifier-hint')}
+        isDisabled={!isEditMode}
+        isSelected={draftIsIdentifier}
+        label={t('label.identifier')}
+        onChange={setDraftIsIdentifier}
+      />
+    </InspectorForm>
+  );
 
   const renderAddForm = () => (
     <Card
@@ -479,17 +578,6 @@ export const OntologyConceptAttributes: React.FC<
       return renderAddForm();
     }
 
-    if (isInspector) {
-      return (
-        <InspectorAddButton
-          isDisabled={!isEditMode}
-          label={t('label.add-entity', { entity: t('label.property') })}
-          testId="add-attribute"
-          onClick={() => setIsAdding(true)}
-        />
-      );
-    }
-
     return (
       <Button
         noTextPadding
@@ -512,12 +600,16 @@ export const OntologyConceptAttributes: React.FC<
 
   const propertyCount = attributes.length + inheritedAttributes.length;
 
-  if (isInspector) {
+  const renderInspectorSection = () => {
+    const canAdd = showEditControls && isEditMode && !isAdding;
+
     return (
-      <section data-testid="ontology-attributes">
+      <InspectorSection testId="ontology-attributes">
         <InspectorSectionHeading
+          addTestId="add-attribute"
           count={propertyCount}
           label={t('label.properties')}
+          onAdd={canAdd ? () => setIsAdding(true) : undefined}
         />
         {propertyCount === 0 ? (
           <InspectorEmptyText>
@@ -529,9 +621,13 @@ export const OntologyConceptAttributes: React.FC<
             {inheritedAttributes.map(renderInheritedAttributeRow)}
           </InspectorList>
         )}
-        {renderEditControls()}
-      </section>
+        {showEditControls && isAdding ? renderInspectorForm() : null}
+      </InspectorSection>
     );
+  };
+
+  if (isInspector) {
+    return renderInspectorSection();
   }
 
   return (

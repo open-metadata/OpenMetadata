@@ -13,6 +13,7 @@
 
 import {
   Badge,
+  BadgeWithDot,
   Button,
   ButtonUtility,
   Card,
@@ -84,9 +85,12 @@ const OntologyHealthPanel = ({
             {health.connectedPercent}%
           </span>
           {hasIsolated ? (
-            <Badge color="warning" size="xs" type="pill-color">
+            <BadgeWithDot
+              color="warning"
+              size="sm"
+              type="pill-color">
               {isolatedLabel}
-            </Badge>
+            </BadgeWithDot>
           ) : null}
         </span>
       </Button>
