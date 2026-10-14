@@ -130,7 +130,7 @@ cd openmetadata-ui/src/main/resources/ui
 yarn test <ChangedComponent> --coverage
 ```
 
-**Playwright (UI E2E):** PR checks no longer run Playwright (the merge queue runs smoke + affected specs, with full fallback; nightly runs are full),
+**Playwright (UI E2E):** PR checks run every new or modified Playwright spec (the merge queue runs smoke + affected specs, with full fallback; nightly runs are full),
 so run the impact-mapped specs locally and record the results in the PR body:
 ```bash
 make playwright_affected                          # specs selected from .github/playwright/impact-map.json

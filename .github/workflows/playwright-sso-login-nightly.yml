@@ -12,6 +12,17 @@
 name: SSO Login Nightly
 
 on:
+  workflow_call:
+    outputs:
+      execution_result:
+        description: Auth execution and per-spec verification must both succeed.
+        value: ${{ jobs.verify-changed-specs.outputs.execution_result }}
+    inputs:
+      changed_specs:
+        description: JSON list of new or modified specs to validate on a PR.
+        required: true
+        type: string
+
   schedule:
     - cron: '0 3 * * *'
   # PR gate: runs whenever a PR touches auth code — every provider fixture
@@ -108,7 +119,7 @@ concurrency:
   # PR runs key on the PR number so re-pushes on the same PR cancel the
   # in-flight run; scheduled + dispatch runs key on ref+provider so branch
   # and per-provider dispatches don't cancel each other.
-  group: sso-login-nightly-${{ github.event_name == 'pull_request' && github.event.pull_request.number || format('{0}-{1}', github.ref, github.event.inputs.sso_provider || 'scheduled') }}
+  group: sso-login-nightly-${{ inputs.changed_specs != '' && 'changed-specs' || 'all' }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || format('{0}-{1}', github.ref, github.event.inputs.sso_provider || 'scheduled') }}
   cancel-in-progress: true
 
 jobs:
@@ -129,7 +140,8 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      okta: ${{ steps.filter.outputs.okta }}
+      auth_specs: ${{ steps.filter.outputs.auth_specs }}
+      okta: ${{ inputs.changed_specs != '' && 'true' || steps.filter.outputs.okta }}
     steps:
       # Pinned by SHA — same policy the other paths-filter callers in this
       # repo use, since this action decides which PR-critical legs run.
@@ -138,6 +150,8 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         with:
           filters: |
+            auth_specs:
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Auth/**/*.spec.ts'
             okta:
               # Playwright fixture + Okta-only spec
               - 'openmetadata-ui/src/main/resources/ui/playwright/utils/sso-providers/okta.ts'
@@ -172,6 +186,7 @@ jobs:
   #   4. Every SsoScenarios describe block is tagged `[@<slug>, @sso-matrix]`
   #      — the filter picks a leg's own describes automatically.
   sso-login:
+    if: ${{ inputs.changed_specs != '' || github.event_name != 'pull_request' || needs.check-changes.outputs.auth_specs != 'true' }}
     needs: check-changes
     runs-on: ubuntu-latest
     environment: test
@@ -255,7 +270,7 @@ jobs:
             && github.event.inputs.sso_provider != 'all'
             && github.event.inputs.sso_provider != matrix.provider.name)
           || ((github.event_name == 'pull_request' || github.event_name == 'push')
-              && matrix.provider.name == 'keycloak-azure-saml-crosssite')
+              && matrix.provider.name == 'keycloak-azure-saml-crosssite' && inputs.changed_specs == '')
           || ((github.event_name == 'pull_request' || github.event_name == 'push')
               && matrix.provider.name == 'okta'
               && needs.check-changes.outputs.okta != 'true')
@@ -409,6 +424,7 @@ jobs:
         if: env.SKIP_LEG != 'true'
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
+          CHANGED_SPECS: ${{ inputs.changed_specs }}
           SSO_PROVIDER_TYPE: ${{ matrix.provider.name }}
           SSO_USERNAME: ${{ vars[format('{0}_SSO_USERNAME', matrix.provider.env_prefix)] }}
           SSO_PASSWORD: ${{ vars[format('{0}_SSO_PASSWORD', matrix.provider.env_prefix)] || secrets[format('{0}_SSO_PASSWORD', matrix.provider.env_prefix)] }}
@@ -426,7 +442,13 @@ jobs:
           MOCK_OIDC_URL: ${{ matrix.provider.needs_docker == 'mock-oidc' && 'http://localhost:9090' || '' }}
           MOCK_OIDC_INTERNAL_URL: ${{ matrix.provider.needs_docker == 'mock-oidc' && 'http://mock-oidc-provider:9090' || '' }}
           PLAYWRIGHT_IS_OSS: true
-        run: npx playwright test --project=sso-auth --workers=1 ${{ matrix.provider.filter }}
+        run: |
+          files=() empty_args=()
+          if [[ -n "$CHANGED_SPECS" ]]; then
+            mapfile -t files < <(jq -r '.[]' <<< "$CHANGED_SPECS")
+            empty_args=(--pass-with-no-tests)
+          fi
+          npx playwright test --project=sso-auth --workers=1 ${{ matrix.provider.filter }} "${files[@]}" "${empty_args[@]}"
 
       - name: Upload HTML report
         if: always()
@@ -532,7 +554,7 @@ jobs:
   # GITHUB_TOKEN and the comment API returns 403 — swallow that rather
   # than red-x'ing the whole workflow for a nice-to-have.
   notify-pr:
-    if: ${{ always() && github.event_name == 'pull_request' }}
+    if: ${{ always() && github.event_name == 'pull_request' && inputs.changed_specs == '' && needs.sso-login.result != 'skipped' }}
     needs: sso-login
     runs-on: ubuntu-latest
     permissions:
@@ -585,3 +607,31 @@ jobs:
             gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
               -F body=@/tmp/sso-summary/pr_comment.md
           fi
+
+  verify-changed-specs:
+    outputs:
+      execution_result: ${{ steps.verify.outputs.execution_result }}
+    needs: sso-login
+    if: ${{ always() && inputs.changed_specs != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: sso-login-outcome-*
+          path: sso-results
+      - name: Verify every changed auth spec executed
+        id: verify
+        env:
+          CHANGED_SPECS: ${{ inputs.changed_specs }}
+        run: |
+          python3 .github/scripts/verify_playwright_changed_specs.py \
+            --specs-json "$CHANGED_SPECS" \
+            --report-glob 'sso-results/**/results.json'
+          [[ '${{ needs.sso-login.result }}' == 'success' ]]
+          echo "execution_result=success" >> "$GITHUB_OUTPUT"

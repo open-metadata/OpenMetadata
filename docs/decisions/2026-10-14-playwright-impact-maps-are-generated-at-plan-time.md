@@ -1,7 +1,7 @@
 # Generate Playwright impact maps from the checkout being planned
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial)
+- **Revisions:** v1 2026-10-14 (initial); v2 2026-10-14 (changed specs gate PRs)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `.github/scripts/tests/test_playwright_impact_map.py` and the Playwright impact-map drift check
 - **Related:** `.github/playwright/README.md`
@@ -18,7 +18,7 @@ The selector generates a temporary map by default and ignores legacy sibling sna
 
 The generated and handwritten mappings continue to add coverage. Merge groups run smoke, directly changed specs and affected coverage from their whole base-to-head diff. The planner must check out that exact head and fail when the diff is unavailable. Shared test infrastructure and unknown production paths widen queue coverage to full.
 
-Scheduled, cache-warming push and explicit full manual events retain full coverage. Delegated suites and engine routing retain their existing behavior. Queue plans use the existing fallback duration estimates for new specs without nightly history and still enforce shard budgets. The drift check becomes read-only generation and routing validation under its existing name.
+New or modified Playwright specs must pass on the PR before queue entry, including draft PRs. Run entire changed files with the full entity matrix, route dedicated environments explicitly, and require passing execution for every changed spec. Empty or skipped test runs cannot satisfy the required check. Scheduled, cache-warming push and explicit full manual events retain full coverage. Queue plans use the existing fallback duration estimates for new specs without nightly history and still enforce shard budgets. The drift check becomes read-only generation and routing validation under its existing name.
 
 ## Consequences
 

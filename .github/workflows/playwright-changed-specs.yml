@@ -1,0 +1,86 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Changed Playwright helper specs
+
+on:
+  workflow_call:
+    outputs:
+      execution_result:
+        description: Result of the job that executes and verifies changed specs.
+        value: ${{ jobs.helpers.outputs.execution_result }}
+    inputs:
+      matrix:
+        description: Changed helper specs grouped by environment.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  helpers:
+    outputs:
+      execution_result: ${{ steps.run.outputs.execution_result }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(inputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
+      - name: Install UI and component-library dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: yarn --frozen-lockfile
+      - name: Install Chromium
+        run: yarn --cwd openmetadata-ui/src/main/resources/ui playwright install chromium --with-deps
+      - name: Run changed helpers in their config
+        id: run
+        working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          CHANGED_SPECS: ${{ toJSON(matrix.specs) }}
+          PW_BROWSER_HELPER_OUTPUT: ${{ runner.temp }}/browser-helper-results
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/helper-results"
+          handled=0
+          for kind in helper-tests browser-tests; do
+            mapfile -t files < <(jq -r --arg prefix "playwright/$kind/" '.[] | select(startswith($prefix))' <<< "$CHANGED_SPECS")
+            [[ "${#files[@]}" -gt 0 ]] || continue
+            handled=$((handled + ${#files[@]}))
+            config=playwright/helper-tests.config.ts
+            if [[ "$kind" == 'browser-tests' ]]; then config=playwright/browser-helper-tests.config.ts; fi
+            PLAYWRIGHT_JSON_OUTPUT_NAME="$RUNNER_TEMP/helper-results/$kind.json" \
+              yarn playwright test --config="$config" --reporter=json "${files[@]}"
+            expected=$(printf '%s\n' "${files[@]}" | jq -R . | jq -s .)
+            python3 "$GITHUB_WORKSPACE/.github/scripts/verify_playwright_changed_specs.py" \
+              --specs-json "$expected" \
+              --test-dir "playwright/$kind" \
+              --report-glob "$RUNNER_TEMP/helper-results/$kind.json"
+          done
+          [[ "$handled" -gt 0 && "$handled" -eq "$(jq length <<< "$CHANGED_SPECS")" ]] || {
+            echo 'A changed helper spec has no configured execution' >&2
+            exit 1
+          }
+          echo "execution_result=success" >> "$GITHUB_OUTPUT"
+      - name: Upload helper execution evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-changed-helper-results
+          path: ${{ runner.temp }}/helper-results
+          if-no-files-found: warn
+          retention-days: 5

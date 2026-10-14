@@ -66,6 +66,7 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--full-suite", choices=("true", "false"), default="false")
+    parser.add_argument("--changed-specs-only", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--github-output", type=Path)
     return parser.parse_args()
@@ -147,7 +148,7 @@ def load_generated_map(path: Path | None, repo_root: Path) -> dict[str, Any]:
 def main() -> None:
     args = parse_args()
     repo_root = Path.cwd()
-    if args.event_name == "merge_group" and (
+    if (args.event_name == "merge_group" or args.changed_specs_only) and (
         args.changed_files is None or not args.changed_files.is_file()
     ):
         raise SystemExit(
@@ -166,7 +167,33 @@ def main() -> None:
         args.event_name == "workflow_dispatch" and args.full_suite == "true"
     )
 
-    if full_event or full_requested:
+    if args.changed_specs_only:
+        from plan_playwright_pr import route_spec
+
+        changed_files = args.changed_files.read_text().splitlines()
+        specs = sorted(
+            {
+                path.removeprefix(UI_ROOT)
+                for path in changed_files
+                if path.startswith(RUNNABLE_SPEC_PREFIX)
+                and path.endswith((".spec.ts", ".test.ts"))
+                and (repo_root / path).is_file()
+                and route_spec(path.removeprefix(UI_ROOT))
+                in {"normal", "http2", "nightly"}
+            }
+        )
+        if not specs:
+            raise SystemExit("No changed PostgreSQL specs were selected for this PR")
+        plan = {
+            "version": 1,
+            "mode": "targeted",
+            "reason": "PR runs complete added or modified spec files",
+            "changedSpecsOnly": True,
+            "directChangedSpecs": specs,
+            "changedFiles": changed_files,
+            "selectors": [{"spec": spec, "projects": ["auto"]} for spec in specs],
+        }
+    elif full_event or full_requested:
         plan = {
             "version": 1,
             "mode": "full",
@@ -286,7 +313,10 @@ def main() -> None:
 
     plan["eventName"] = args.event_name
     plan["entityMatrix"] = (
-        "representative" if args.event_name in REPRESENTATIVE_ENTITY_EVENTS else "full"
+        "representative"
+        if args.event_name in REPRESENTATIVE_ENTITY_EVENTS
+        and not args.changed_specs_only
+        else "full"
     )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)

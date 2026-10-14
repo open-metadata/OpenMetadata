@@ -17,6 +17,8 @@ from typing import Any, Iterable
 
 FULL_PROJECTS = {
     "chromium",
+    "chromium-h2",
+    "changed-nightly",
     "Basic",
     "Data Insight",
     "Ingestion",
@@ -34,6 +36,8 @@ FULL_PROJECTS = {
 }
 PROJECT_LANES = {
     "chromium": "chromium",
+    "chromium-h2": "chromium",
+    "changed-nightly": "ingestion",
     "Basic": "chromium",
     "Data Insight": "chromium",
     "Ingestion": "ingestion",
@@ -126,7 +130,10 @@ AUDITED_PARALLEL_SUITES = {
     # landed in main — split into per-spec units to stay within budget.
     ("Features/ContextCenterArticles.spec.ts", "Context Center Articles"),
     ("Features/CuratedAssets.spec.ts", "Curated Assets Widget"),
-    ("Pages/CustomProperties.spec.ts", "Add update and delete custom properties for dashboard"),
+    (
+        "Pages/CustomProperties.spec.ts",
+        "Add update and delete custom properties for dashboard",
+    ),
     ("Pages/DataContracts.spec.ts", "Data Contracts"),
     ("Pages/ExplorePageRightPanel.spec.ts", "Right Panel Test Suite"),
     ("Pages/Glossary.spec.ts", "Glossary tests"),
@@ -499,7 +506,10 @@ def emit_unweighted_warnings(
             stats[unit.file]["count"] += 1
     for file, entry in sorted(stats.items()):
         reserved_ms = entry["count"] * FALLBACK_TEST_MS
-        if entry["count"] < UNWEIGHTED_WARN_MIN_TESTS and reserved_ms < UNWEIGHTED_WARN_MIN_MS:
+        if (
+            entry["count"] < UNWEIGHTED_WARN_MIN_TESTS
+            and reserved_ms < UNWEIGHTED_WARN_MIN_MS
+        ):
             continue
         message = (
             f"{entry['count']} test(s) in {file} have no timing history; "
@@ -535,8 +545,7 @@ def stale_baseline_files_in_plan(
     return sorted(
         (file, by_file_planned[file])
         for file, planned in by_file_planned.items()
-        if planned >= STALE_BASELINE_MIN_TESTS
-        and by_file_unweighted[file] == planned
+        if planned >= STALE_BASELINE_MIN_TESTS and by_file_unweighted[file] == planned
     )
 
 
@@ -557,9 +566,7 @@ def misrouted_lane_hint_violations(
                 continue
             if unit.project == expected_project:
                 continue
-            violations.append(
-                (unit.file, unit.project, expected_project, expected_tag)
-            )
+            violations.append((unit.file, unit.project, expected_project, expected_tag))
             break  # one hint per file — first-match wins
     # Sort + dedupe: multiple units per file (audit-split) collapse to one line.
     return sorted(set(violations))
@@ -765,7 +772,7 @@ def main() -> None:
     # stale/typo'd path that matches nothing anywhere — keep failing on that.
     missing_selectors = []
     for spec in unmatched_selectors:
-        if spec_file_exists(spec):
+        if spec_file_exists(spec) and not selection.get("changedSpecsOnly"):
             print(
                 f"::warning file={spec}::Playwright selector matched no runnable "
                 "tests in this lane; skipping (it may run in a different lane).",
@@ -774,6 +781,11 @@ def main() -> None:
         else:
             missing_selectors.append(spec)
     if missing_selectors:
+        if selection.get("changedSpecsOnly"):
+            raise SystemExit(
+                "Changed PR specs have no runnable tests in their configured projects: "
+                + ", ".join(missing_selectors)
+            )
         raise SystemExit(
             "Playwright selectors reference specs that do not exist: "
             + ", ".join(missing_selectors)
@@ -795,7 +807,9 @@ def main() -> None:
     # emit_unweighted_warnings above still surfaces the issue as a warning.
     stale_files = (
         stale_baseline_files_in_plan(units, test_weights, identity_weights)
-        if selection["mode"] != "full" and selection.get("eventName") != "merge_group"
+        if selection["mode"] != "full"
+        and selection.get("eventName") != "merge_group"
+        and not selection.get("changedSpecsOnly")
         else []
     )
     if stale_files:

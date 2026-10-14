@@ -62,10 +62,7 @@ on:
         required: true
         type: boolean
         default: true
-  # Playwright runs only in the merge queue. PRs still trigger the workflow
-  # because `playwright-summary` is a required check: every job is skipped by
-  # its `if:` (no runner starts), and GitHub counts a skipped required check
-  # as passing. With no PR trigger the check would hang at "Expected — waiting".
+  # New and modified specs must pass their PR environment before queue entry.
   pull_request:
     types:
       - opened
@@ -79,8 +76,47 @@ permissions:
   pull-requests: read
 
 jobs:
+  plan-pr-specs:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      normal: ${{ steps.plan.outputs.normal }}
+      normal_count: ${{ steps.plan.outputs.normal_count }}
+      http2_count: ${{ steps.plan.outputs.http2_count }}
+      auth: ${{ steps.plan.outputs.auth }}
+      auth_count: ${{ steps.plan.outputs.auth_count }}
+      rdf: ${{ steps.plan.outputs.rdf }}
+      rdf_count: ${{ steps.plan.outputs.rdf_count }}
+      visual: ${{ steps.plan.outputs.visual }}
+      visual_count: ${{ steps.plan.outputs.visual_count }}
+      special_matrix: ${{ steps.plan.outputs.special_matrix }}
+      special_count: ${{ steps.plan.outputs.special_count }}
+      changed_specs: ${{ steps.plan.outputs.changed_specs }}
+    steps:
+      - name: Checkout PR candidate
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - name: Route changed Playwright specs
+        id: plan
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git diff --name-only --no-renames "$PR_BASE_SHA"..."$PR_HEAD_SHA" > "$RUNNER_TEMP/changed-files.txt"
+          python3 .github/scripts/plan_playwright_pr.py \
+            --changed-files "$RUNNER_TEMP/changed-files.txt" \
+            --output "$RUNNER_TEMP/playwright-pr-specs.json" \
+            --github-output "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/playwright-pr-specs.json" >> "$GITHUB_STEP_SUMMARY"
+
   playwright:
-    if: ${{ github.event_name != 'pull_request' }}
+    needs: plan-pr-specs
+    if: ${{ always() && !cancelled() && (github.event_name != 'pull_request' || needs.plan-pr-specs.outputs.normal_count > 0) }}
     uses: ./.github/workflows/playwright-e2e-reusable.yml
     # secrets: inherit passes the full TEST_* / GITHUB_TOKEN set into the
     # reusable without re-listing each one; the reusable only reads what it
@@ -95,21 +131,63 @@ jobs:
       database: postgresql
       profile: postgresql-pr
       workflow_filename: playwright-postgresql-e2e.yml
+      changed_specs_only: ${{ github.event_name == 'pull_request' }}
       # Defaults inline what workflow_dispatch collects; non-dispatch events
       # fall back to the reusable's own defaults (full_suite=true, http,
       # coarse_bundle=true).
       full_suite: ${{ github.event_name == 'workflow_dispatch' && inputs.full_suite || true }}
-      protocol: ${{ github.event_name == 'workflow_dispatch' && inputs.protocol || 'http' }}
+      protocol: ${{ github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.http2_count > 0 && 'h2' || (github.event_name == 'workflow_dispatch' && inputs.protocol || 'http') }}
       coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
       # One retry everywhere while the first-attempt signal is collected: the
       # main-health job alerts Slack on every failure and flaky pass so each can
       # be fixed.
       retries: 1
 
+  changed-auth-specs:
+    needs: plan-pr-specs
+    if: ${{ github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.auth_count > 0 }}
+    uses: ./.github/workflows/playwright-sso-login-nightly.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    with:
+      changed_specs: ${{ needs.plan-pr-specs.outputs.auth }}
+
+  changed-rdf-specs:
+    needs: plan-pr-specs
+    if: ${{ github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.rdf_count > 0 }}
+    uses: ./.github/workflows/playwright-knowledge-graph-postgresql-e2e.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      pull-requests: read
+    with:
+      changed_specs: ${{ needs.plan-pr-specs.outputs.rdf }}
+
+  changed-visual-specs:
+    needs: plan-pr-specs
+    if: ${{ github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.visual_count > 0 }}
+    uses: ./.github/workflows/playwright-visual.yml
+    secrets: inherit
+    with:
+      changed_specs: ${{ needs.plan-pr-specs.outputs.visual }}
+
+  changed-special-specs:
+    needs: plan-pr-specs
+    if: ${{ github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.special_count > 0 }}
+    uses: ./.github/workflows/playwright-changed-specs.yml
+    secrets: inherit
+    with:
+      matrix: ${{ needs.plan-pr-specs.outputs.special_matrix }}
+
   playwright-summary:
     name: playwright-summary
-    if: ${{ always() && !cancelled() && github.event_name != 'pull_request' }}
-    needs: [playwright]
+    if: ${{ always() && !cancelled() }}
+    needs: [plan-pr-specs, playwright, changed-auth-specs, changed-rdf-specs, changed-visual-specs, changed-special-specs]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -121,6 +199,35 @@ jobs:
       # breaches step below).
       issues: write
     steps:
+      - name: Gate changed-spec PR environments
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        env:
+          PLAN_RESULT: ${{ needs.plan-pr-specs.result }}
+          NORMAL_COUNT: ${{ needs.plan-pr-specs.outputs.normal_count }}
+          NORMAL_RESULT: ${{ needs.playwright.result == 'success' && needs.playwright.outputs.playwright_ci_result || needs.playwright.result }}
+          AUTH_COUNT: ${{ needs.plan-pr-specs.outputs.auth_count }}
+          AUTH_RESULT: ${{ needs.changed-auth-specs.result == 'success' && needs.changed-auth-specs.outputs.execution_result || needs.changed-auth-specs.result }}
+          RDF_COUNT: ${{ needs.plan-pr-specs.outputs.rdf_count }}
+          RDF_RESULT: ${{ needs.changed-rdf-specs.result == 'success' && needs.changed-rdf-specs.outputs.execution_result || needs.changed-rdf-specs.result }}
+          VISUAL_COUNT: ${{ needs.plan-pr-specs.outputs.visual_count }}
+          VISUAL_RESULT: ${{ needs.changed-visual-specs.result == 'success' && needs.changed-visual-specs.outputs.execution_result || needs.changed-visual-specs.result }}
+          SPECIAL_COUNT: ${{ needs.plan-pr-specs.outputs.special_count }}
+          SPECIAL_RESULT: ${{ needs.changed-special-specs.result == 'success' && needs.changed-special-specs.outputs.execution_result || needs.changed-special-specs.result }}
+          CHANGED_SPECS: ${{ needs.plan-pr-specs.outputs.changed_specs }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          if (process.env.PLAN_RESULT !== 'success') throw new Error('Failed to obtain the changed-spec plan');
+          for (const lane of ['NORMAL', 'AUTH', 'RDF', 'VISUAL', 'SPECIAL']) {
+            if (Number(process.env[`${lane}_COUNT`]) > 0 && process.env[`${lane}_RESULT`] !== 'success') {
+              throw new Error(`Changed specs in ${lane} did not pass: ${process.env[`${lane}_RESULT`]}`);
+            }
+          }
+          const specs = JSON.parse(process.env.CHANGED_SPECS);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            specs.length ? `Changed Playwright specs validated by their PR environments:\n${specs.map(s => `- ${s}`).join('\n')}\n` : 'No new or modified Playwright specs in this PR.\n');
+          NODE
+
       - name: Gate verified merge-group shards
         if: ${{ github.event_name == 'merge_group' }}
         env:
@@ -257,7 +364,7 @@ jobs:
 
       - name: Download blob reports
         id: download-blobs
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -267,7 +374,7 @@ jobs:
 
       - name: Download timing metrics
         id: download-timings
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -276,7 +383,7 @@ jobs:
 
       - name: Download shard plans
         id: download-plans
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/download-artifact@v7
         with:
@@ -285,7 +392,7 @@ jobs:
 
       - name: Download all results JSON
         id: download-results
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -309,7 +416,7 @@ jobs:
           merge-multiple: false
 
       - name: Keep only the newest attempt per shard
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         run: python3 .github/scripts/keep_latest_playwright_attempt.py results
 
@@ -325,14 +432,14 @@ jobs:
         # Checks every shard's results came from this commit and run, collapses
         # transport duplicates, and fails on conflicting evidence. Advisory: its
         # outcome feeds the classifier's artifactIntegrityVerified measurement.
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXPECTED_HEAD_SHA: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
         run: node .github/scripts/normalize_playwright_artifacts.cjs results "$EXPECTED_HEAD_SHA"
 
       - name: Diagnose downloaded results layout
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         run: |
           echo "=== results/ tree ==="
@@ -345,7 +452,7 @@ jobs:
 
       - name: Setup Node.js
         id: setup-node
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/setup-node@v5
         with:
@@ -359,7 +466,7 @@ jobs:
       # yarn-pkg-cache-* key is written under main by
       # populate-playwright-caches.yml, so this hits on every event.
       - name: Restore yarn package cache
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/cache/restore@v6
         with:
@@ -370,7 +477,7 @@ jobs:
 
       - name: Install report dependencies
         id: install-report-dependencies
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
@@ -380,13 +487,13 @@ jobs:
 
       - name: Mark report generation start
         id: mark-report-start
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         run: echo "PW_REPORT_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
 
       - name: Merge HTML report
         id: merge-report
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
@@ -401,7 +508,7 @@ jobs:
 
       - name: Merge Playwright timing history
         id: merge-timings
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
@@ -416,7 +523,7 @@ jobs:
 
       - name: Verify Playwright timing coverage
         id: verify-coverage
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         run: |
           timeout --foreground --signal=TERM --kill-after=30s 1m \
@@ -428,7 +535,7 @@ jobs:
 
       - name: Evaluate Playwright performance
         id: evaluate-performance
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
@@ -449,7 +556,7 @@ jobs:
 
       - name: Upload merged Playwright report
         id: upload-report
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
@@ -460,7 +567,7 @@ jobs:
 
       - name: Record reporting and report-upload duration
         id: record-report-duration
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
@@ -571,7 +678,7 @@ jobs:
 
       - name: Upload timing history
         id: upload-timing-history
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
@@ -581,7 +688,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Evaluate zero-retry gate in shadow mode
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXPECTED_MATRIX: ${{ needs.playwright.outputs.plan_playwright_matrix }}
@@ -609,7 +716,7 @@ jobs:
             --output "$RUNNER_TEMP/playwright-shadow-gate/outcome.json"
 
       - name: Upload Playwright shadow-gate ledger
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
@@ -624,8 +731,17 @@ jobs:
       # negative match) would treat an unset gate output the same as an
       # explicit skip decision — hiding the gate failure and letting a
       # required check pass on an invalid pipeline state.
+      - name: Verify execution of every changed PostgreSQL spec
+        if: ${{ always() && github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.normal_count > 0 }}
+        env:
+          CHANGED_SPECS: ${{ needs.plan-pr-specs.outputs.normal }}
+        run: |
+          python3 .github/scripts/verify_playwright_changed_specs.py \
+            --specs-json "$CHANGED_SPECS" \
+            --report-glob 'results/playwright-results-json-*/results.json'
+
       - name: Guard against missing gate decision
-        if: ${{ github.event_name != 'merge_group' && needs.playwright.outputs.gate_result != 'success' }}
+        if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || needs.plan-pr-specs.outputs.normal_count > 0) && needs.playwright.outputs.gate_result != 'success' }}
         run: |
           echo "::error::gate did not succeed (result=${{ needs.playwright.outputs.gate_result }}, should_run=${{ needs.playwright.outputs.gate_should_run }}). Refusing synthetic green — this playwright-summary must not report success without a valid gate decision."
           exit 1

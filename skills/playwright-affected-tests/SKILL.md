@@ -5,7 +5,7 @@ description: Select, run and record the Playwright specs an OpenMetadata branch 
 
 # Run affected Playwright tests locally
 
-PR checks skip browser tests; the merge queue runs smoke and affected specs from its combined candidate diff. Shared test infrastructure or unknown production changes widen queue coverage to the full suite; nightly runs remain full. Run affected specs before review so failures surface while the author is working.
+PR checks run every new or modified spec in its environment; the merge queue runs smoke and affected specs from its combined candidate diff. Shared test infrastructure or unknown production changes widen queue coverage to the full suite; nightly runs remain full. Run affected specs before review so failures surface while the author is working.
 
 ## Prepare the checkout
 
@@ -29,6 +29,8 @@ Read the plan before running:
 - **Dependency expansion:** the planner isolates specs that would otherwise pull in a whole project. Keep that protection; do not replace an empty selection with a bare Playwright command.
 
 Generation or collection failures are failures to obtain a valid plan. Fix the cause before running; do not reuse an old generated map.
+
+New and modified specs also run automatically in PR CI, including dedicated environments. Check `playwright-summary`: a skipped spec or a selection without execution cannot satisfy it. Source changes still need the affected local run above.
 
 ## Record evidence
 

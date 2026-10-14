@@ -54,6 +54,11 @@ on:
         required: false
         type: boolean
         default: true
+      changed_specs_only:
+        description: Run complete new or modified PostgreSQL specs on a PR.
+        required: false
+        type: boolean
+        default: false
       protocol:
         description: Application protocol used by Playwright (http | h2).
         required: false
@@ -168,8 +173,7 @@ concurrency:
   cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
-  # Playwright runs only in the merge queue (plus schedule / dispatch / main
-  # cache-warm pushes); callers skip this workflow on PR events.
+  # Callers start PR runs only when PostgreSQL specs changed.
   gate:
     runs-on: ubuntu-latest
     permissions: {}
@@ -182,7 +186,7 @@ jobs:
           EVENT: ${{ github.event_name }}
         run: |
           case "$EVENT" in
-            merge_group|schedule|workflow_dispatch|push) echo "should_run=true" >> "$GITHUB_OUTPUT" ;;
+            pull_request|merge_group|schedule|workflow_dispatch|push) echo "should_run=true" >> "$GITHUB_OUTPUT" ;;
             *) echo "should_run=false" >> "$GITHUB_OUTPUT" ;;
           esac
 
@@ -265,7 +269,7 @@ jobs:
     needs: check-changes
     runs-on: ubuntu-latest
     if: |
-      !github.event.pull_request.draft &&
+      (!github.event.pull_request.draft || inputs.changed_specs_only) &&
       (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     outputs:
       bundle_mode: ${{ steps.fingerprints.outputs.bundle_mode }}
@@ -315,7 +319,7 @@ jobs:
     needs: [check-changes, cache-keys]
     runs-on: ubuntu-latest
     if: |
-      !github.event.pull_request.draft &&
+      (!github.event.pull_request.draft || inputs.changed_specs_only) &&
       (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     env:
       DISTRIBUTION_FINGERPRINT: ${{ needs.cache-keys.outputs.distribution }}
@@ -514,7 +518,7 @@ jobs:
     needs: check-changes
     runs-on: ubuntu-latest
     if: |
-      !github.event.pull_request.draft &&
+      (!github.event.pull_request.draft || inputs.changed_specs_only) &&
       (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     outputs:
       mode: ${{ steps.select.outputs.mode }}
@@ -544,6 +548,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           MERGE_BASE_SHA: ${{ github.event.merge_group.base_sha }}
           MERGE_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+          CHANGED_SPECS_ONLY: ${{ inputs.changed_specs_only }}
         run: |
           mkdir -p "$RUNNER_TEMP/playwright-selection"
           if [[ "$EVENT_NAME" == 'merge_group' ]]; then
@@ -563,7 +568,12 @@ jobs:
           fi
           python3 .github/scripts/generate_playwright_impact_map.py \
             --output "$RUNNER_TEMP/playwright-selection/impact-map.generated.json"
+          spec_args=()
+          if [[ "$CHANGED_SPECS_ONLY" == 'true' ]]; then
+            spec_args=(--changed-specs-only)
+          fi
           python3 .github/scripts/select_playwright_tests.py \
+            "${spec_args[@]}" \
             --event-name "${{ github.event_name }}" \
             --changed-files "$RUNNER_TEMP/playwright-selection/changed-files.txt" \
             --impact-map .github/playwright/impact-map.json \
@@ -584,6 +594,9 @@ jobs:
           retention-days: 1
 
   plan-playwright:
+    env:
+      PW_PROTOCOL: ${{ inputs.protocol }}
+      PLAYWRIGHT_RUN_CHANGED_NIGHTLY: ${{ inputs.changed_specs_only }}
     needs: [build, detect-changes]
     runs-on: ubuntu-latest
     outputs:
@@ -1371,6 +1384,7 @@ jobs:
       PW_EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
       PW_ENTITY_MATRIX: ${{ needs.detect-changes.outputs.entity_matrix }}
       PW_DIRECT_CHANGED_SPECS: ${{ needs.detect-changes.outputs.direct_changed_specs }}
+      PLAYWRIGHT_RUN_CHANGED_NIGHTLY: ${{ inputs.changed_specs_only }}
       PW_PROTOCOL: ${{ matrix.requiresAirflow && 'http' || inputs.protocol }}
       PW_SHARD_ID: ${{ matrix.shardId }}
       PW_PRESEEDED_STATE: "true"

@@ -24,6 +24,9 @@ on:
       - '.github/scripts/generate_playwright_impact_map.py'
       - '.github/scripts/select_playwright_tests.py'
       - '.github/scripts/plan_local_playwright.py'
+      - '.github/scripts/plan_playwright_pr.py'
+      - '.github/scripts/verify_playwright_changed_specs.py'
+      - '.github/scripts/tests/test_playwright_pr_specs.py'
       - '.github/scripts/tests/test_playwright_impact_map.py'
       - '.github/scripts/tests/test_playwright_ci_planning.py'
       - '.github/workflows/playwright-impact-map-drift.yml'
@@ -65,9 +68,10 @@ jobs:
 
       - name: Test impact-map generation and routing
         run: |
-          python3 -m pip install pytest
+          python3 -m pip install pytest pyyaml
           python3 -m pytest \
-            .github/scripts/tests/test_playwright_impact_map.py -q
+            .github/scripts/tests/test_playwright_impact_map.py \
+            .github/scripts/tests/test_playwright_pr_specs.py -q
           python3 -m pytest \
             .github/scripts/tests/test_playwright_ci_planning.py \
             -k 'impact_map or generator' -q

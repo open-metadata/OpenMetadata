@@ -675,7 +675,7 @@ def test_main_fails_when_a_targeted_plan_has_a_stale_baseline_file(tmp_path):
     assert not (output_dir / "matrix.json").exists()
 
 
-@pytest.mark.parametrize("mode,event_name", [("full", "schedule"), ("targeted", "merge_group")])
+@pytest.mark.parametrize("mode,event_name", [("full", "schedule"), ("targeted", "merge_group"), ("targeted", "pull_request")])
 def test_main_skips_stale_baseline_gate_for_full_runs_and_queue(tmp_path, mode, event_name):
     import subprocess
     planner_path = SCRIPTS / "build_playwright_shards.py"
@@ -712,6 +712,7 @@ def test_main_skips_stale_baseline_gate_for_full_runs_and_queue(tmp_path, mode, 
     selection.write_text(json.dumps({
         "mode": mode,
         "eventName": event_name,
+        "changedSpecsOnly": event_name == "pull_request",
         "selectors": [{"spec": "playwright/e2e/" + file, "projects": ["chromium"]}],
     }))
     history.write_text(json.dumps({"mode": "full", "tests": []}))
@@ -2801,7 +2802,7 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     assert "playwright-results-json-*/results.json" in coverage_step
     assert "evaluate_playwright_performance.py" not in coverage_step
     assert "evaluate_playwright_performance.py" in performance_step
-    assert "if: ${{ always() && !cancelled() && github.event_name != 'pull_request' }}" in summary_job
+    assert "if: ${{ always() && !cancelled() }}" in summary_job
     assert "require('./.github/scripts/render_playwright_summary.cjs')" in summary_job
     assert "await renderPlaywrightSummary({ github, context, core });" in summary_job
     summary_script = summary_job.split("          script: |\n", 1)[1].split(

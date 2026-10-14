@@ -1,6 +1,6 @@
 # Playwright CI planning
 
-`playwright-postgresql-e2e.yml` runs smoke and affected specs in the merge queue, selected from the entire candidate diff between the merge group's base and head. Shared test infrastructure and unmapped production changes fall back to the full suite. Scheduled and explicit full manual runs execute the complete suite. `pull_request` events skip every job — PR CI runs no Playwright, so run the impacted specs locally (see [Local pre-merge runs](#local-pre-merge-runs) below). Manual runs can opt out of the full suite and can select HTTP/1.1 or HTTP/2.
+`playwright-postgresql-e2e.yml` runs smoke and affected specs in the merge queue, selected from the entire candidate diff between the merge group's base and head. Shared test infrastructure and unmapped production changes fall back to the full suite. Scheduled and explicit full manual runs execute the complete suite. Every new or modified Playwright spec runs on `pull_request`, including draft PRs. PostgreSQL specs run as complete files with the full entity matrix; auth, RDF, visual and browser-helper specs run in their own environments. HTTP/2 specs enable the TLS environment, and changed nightly specs use a dedicated Airflow-backed project. The required `playwright-summary` check rejects failed or skipped environments and changed specs with no passing execution. PRs without changed specs avoid browser work; run their impacted specs locally (see [Local pre-merge runs](#local-pre-merge-runs) below). Manual runs can opt out of the full suite and can select HTTP/1.1 or HTTP/2.
 
 The manual HTTP/2 benchmark applies to browser/server lanes. Dedicated Airflow shards stay on HTTP/1.1 because the fixture's self-signed browser certificate is not part of generated ingestion workflow configuration.
 
@@ -22,7 +22,7 @@ The output is under the ignored `target/playwright/` directory. Use `--output <p
 
 ## Local pre-merge runs
 
-PR checks run unit tests only; Playwright runs in the merge queue. Before requesting review, run the specs the PR impacts on your machine against a local stack (`./docker/run_local_docker.sh -m ui -d mysql`):
+PR checks run unit tests and new or modified Playwright specs; the merge queue runs smoke and affected Playwright coverage. Before requesting review, run the specs the PR impacts on your machine against a local stack (`./docker/run_local_docker.sh -m ui -d mysql`):
 
 ```bash
 make playwright_affected                                         # list impacted specs + the exact command

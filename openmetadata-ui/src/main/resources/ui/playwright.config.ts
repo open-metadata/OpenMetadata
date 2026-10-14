@@ -33,6 +33,7 @@ dotenv.config();
  * `yarn playwright:run` flow is unaffected and still targets HTTP/1.1.
  */
 const isH2Mode = process.env.PW_PROTOCOL === 'h2';
+const runChangedNightly = process.env.PLAYWRIGHT_RUN_CHANGED_NIGHTLY === 'true';
 const defaultBaseURL = isH2Mode
   ? 'https://localhost:8585'
   : 'http://localhost:8585';
@@ -359,6 +360,19 @@ export default defineConfig({
             testMatch: '**/Http2/**',
             use: { ...devices['Desktop Chrome'] },
             fullyParallel: true,
+          },
+        ]
+      : []),
+    ...(runChangedNightly
+      ? [
+          {
+            name: 'changed-nightly',
+            testMatch: '**/nightly/**/*.spec.ts',
+            dependencies: entityDependencies,
+            fullyParallel: false,
+            teardown: entityTeardown,
+            grep: shardGrep,
+            use: { ...devices['Desktop Chrome'] },
           },
         ]
       : []),
