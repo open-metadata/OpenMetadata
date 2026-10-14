@@ -257,8 +257,12 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         const newPath = getEntityDetailsPath(type, columnFqn, routeTab);
 
         // Only navigate if the path is different from current path to avoid loops
+        // Keep the query string: list pagination (currentPage, pageSize, cursor) lives there.
         if (location.pathname !== newPath) {
-          navigate(newPath, { replace: true });
+          navigate(
+            { pathname: newPath, search: location.search },
+            { replace: true }
+          );
         }
       }
     },
@@ -268,6 +272,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       routeTab,
       navigate,
       location.pathname,
+      location.search,
       extractedColumns,
     ]
   );
@@ -283,7 +288,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         data.fullyQualifiedName,
         routeTab
       );
-      navigate(newPath, { replace: true });
+      navigate(
+        { pathname: newPath, search: location.search },
+        { replace: true }
+      );
     } else if (location.hash) {
       // Fallback: just remove hash if no FQN available
       navigate(
