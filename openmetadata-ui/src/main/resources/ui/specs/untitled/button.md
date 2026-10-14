@@ -40,7 +40,7 @@ span, `tw:font-medium`), optional **leading/trailing icon** (`data-icon`),
 | Part | `tw:` utility (from tsx) |
 | --- | --- |
 | Root layout | `tw:inline-flex tw:items-center tw:justify-center` |
-| Radius | `tw:rounded-lg` (sm–xl), `tw:rounded-md` (xxs/xs) |
+| Radius | `tw:rounded-lg` (sm–xl), `tw:rounded-md` (xs) |
 | Label weight / size | `tw:font-medium` · `tw:text-xs`/`tw:text-sm`/`tw:text-md` |
 | Primary fill | `tw:bg-brand-solid tw:text-white tw:hover:bg-brand-solid_hover` |
 | Secondary surface | `tw:bg-primary tw:text-secondary tw:hover:bg-primary_hover` |
@@ -57,7 +57,7 @@ span, `tw:font-medium`), optional **leading/trailing icon** (`data-icon`),
 | Prop | Values |
 | --- | --- |
 | `color` | `primary`, `secondary`, `tertiary`, `link-gray`, `link-color`, `primary-destructive`, `secondary-destructive`, `tertiary-destructive`, `link-destructive`, `secondary-success`, `secondary-warning`, `secondary-brand` (default `primary`) |
-| `size` | `xxs`, `xs`, `sm`, `md`, `lg`, `xl` (default `sm`) |
+| `size` | `xs`, `sm`, `md`, `lg`, `xl` (default `md`) |
 | `isDisabled` / `isLoading` | boolean |
 | `iconLeading` / `iconTrailing` | `@untitledui/icons` component or node |
 | `noTextPadding` / `showTextWhileLoading` / `ellipsis` | boolean |
