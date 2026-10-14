@@ -29,11 +29,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/AdvancedSearch.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
   "playwright/e2e/Features/BulkEditEntity.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 6

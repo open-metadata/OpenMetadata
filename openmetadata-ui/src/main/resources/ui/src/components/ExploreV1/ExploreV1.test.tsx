@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
+import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
@@ -879,5 +880,129 @@ describe('ExploreV1', () => {
     expect(lastCall).toEqual(
       expect.objectContaining({ showResultCount: true })
     );
+  });
+
+  describe('result count badge', () => {
+    const TOTAL = 1234;
+    const searchResults = {
+      ...MOCK_EXPLORE_SEARCH_RESULTS,
+      hits: {
+        ...MOCK_EXPLORE_SEARCH_RESULTS.hits,
+        total: { value: TOTAL, relation: 'eq' },
+      },
+    };
+    const noAdvancedSearch = {
+      toggleModal: jest.fn(),
+      sqlQuery: '',
+      queryFilter: undefined,
+      onResetQueryFilter: jest.fn(),
+      onResetAllFilters: jest.fn(),
+    };
+
+    beforeEach(() => {
+      (SearchedData as jest.Mock).mockImplementation(
+        jest.requireActual('../SearchedData/SearchedData').default
+      );
+    });
+
+    afterEach(() => {
+      (SearchedData as jest.Mock).mockReturnValue(<div>SearchedData</div>);
+      (getDropDownItems as jest.Mock).mockReturnValue([]);
+    });
+
+    it('shows the advanced search total and drops it once the filter is cleared', () => {
+      const onResetQueryFilter = jest.fn();
+      (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
+        ...noAdvancedSearch,
+        sqlQuery: "description LIKE '%test%'",
+        queryFilter: {
+          query: { bool: { must: [{ wildcard: { description: '*test*' } }] } },
+        },
+        onResetQueryFilter,
+      }));
+
+      const { rerender } = render(
+        <ExploreV1
+          {...props}
+          quickFilters={undefined}
+          searchResults={searchResults}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      expect(screen.getByTestId('search-results-count')).toHaveTextContent(
+        `${TOTAL.toLocaleString()} results`
+      );
+
+      fireEvent.click(screen.getByTestId('advance-search-clear-btn'));
+
+      expect(onResetQueryFilter).toHaveBeenCalledTimes(1);
+
+      (useAdvanceSearch as jest.Mock).mockImplementation(
+        () => noAdvancedSearch
+      );
+      rerender(
+        <ExploreV1
+          {...props}
+          quickFilters={undefined}
+          searchResults={searchResults}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('search-results-count')
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows the quick filter total with only the chip Clear action', () => {
+      (getDropDownItems as jest.Mock).mockReturnValue([
+        { label: 'label.data-asset-plural', key: 'entityType' },
+      ]);
+
+      render(
+        <ExploreV1
+          {...props}
+          quickFilters={{
+            query: {
+              bool: {
+                must: [
+                  { bool: { should: [{ term: { entityType: 'table' } }] } },
+                ],
+              },
+            },
+          }}
+          searchResults={searchResults}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      expect(screen.getByTestId('search-results-count')).toHaveTextContent(
+        `${TOTAL.toLocaleString()} results`
+      );
+      expect(
+        screen.getByTestId('query-chip-entityType-table')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('clear-all-chips')).toBeInTheDocument();
+      expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
+    });
+
+    it('shows no count while browsing without search or filters', () => {
+      render(
+        <ExploreV1
+          {...props}
+          quickFilters={undefined}
+          searchResults={searchResults}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      expect(screen.getByTestId('search-results')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('advance-search-filter-container')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('search-results-count')
+      ).not.toBeInTheDocument();
+    });
   });
 });

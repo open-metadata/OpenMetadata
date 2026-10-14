@@ -796,52 +796,6 @@ export const runRuleGroupTests = async (
   }
 };
 
-export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
-  await showAdvancedSearchDialog(page);
-  const ruleLocator = page.getByTestId('query-builder-rule-0');
-
-  // Perform click on rule field
-  await selectOption(
-    page,
-    ruleLocator.getByTestId('advanced-search-field-select'),
-    'Database',
-    true
-  );
-  await selectOption(
-    page,
-    ruleLocator.getByTestId('advanced-search-operator-select'),
-    '=='
-  );
-
-  const inputElement = ruleLocator.locator(
-    '[data-testid=advanced-search-value] input[role="combobox"]'
-  );
-
-  await inputElement.fill('non-existing-value');
-  await inputElement.press('ArrowDown');
-
-  // Scope to this input's own popup — a popup from a previous step may
-  // still be visible, which would break a global :visible locator.
-  let listboxId: string | null = null;
-  await expect(async () => {
-    listboxId = await inputElement.getAttribute('aria-controls');
-    if (!listboxId) {
-      throw new Error('Combobox popup did not open (aria-controls not set)');
-    }
-  }).toPass({ timeout: 15000 });
-
-  const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
-
-  await expect(listbox).toBeVisible();
-
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
-  await page.waitForTimeout(1000);
-
-  // allowsEmptyCollection keeps the popup open and renders the "No data"
-  // empty state (as an option row) instead of an empty listbox.
-  await expect(listbox.getByText('No data')).toBeVisible();
-};
-
 // For fields backed by hard-coded listValues (no aggregate API call), options are
 // rendered immediately — use selectOption directly instead of fillRule which waits
 // for a network response that never comes.

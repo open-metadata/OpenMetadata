@@ -4147,7 +4147,6 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/explore.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ChangeSummaryBadge.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Features/ExploreFilterComposition.spec.ts",
@@ -5784,7 +5783,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ExploreQueryBar.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
         "playwright/e2e/Pages/InputOutputPorts.spec.ts"
@@ -7003,7 +7001,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Explore/ExploreQueryFilterChips/ExploreQueryFilterChips.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ExploreQueryBar.spec.ts",
         "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
         "playwright/e2e/Features/ExploreUrlState.spec.ts"
@@ -8049,7 +8046,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/SearchedData/SearchedData.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
         "playwright/e2e/Flow/GlobalSearch.spec.ts",
         "playwright/e2e/Flow/MetricSearch.spec.ts",
@@ -8747,7 +8743,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
-        "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
@@ -10114,7 +10109,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ExploreQueryBar.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts"
       ]
@@ -12174,7 +12168,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ExploreQueryBar.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts"
       ]
