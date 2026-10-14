@@ -1493,11 +1493,6 @@
       "count": 3
     }
   },
-  "src/components/common/DomainSelectableTree/DomainSelectableTree.interface.ts": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/common/DraggableTabs/DraggableTabs.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 4

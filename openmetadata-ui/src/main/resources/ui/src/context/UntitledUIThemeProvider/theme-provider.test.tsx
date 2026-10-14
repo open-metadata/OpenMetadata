@@ -16,6 +16,12 @@ import { createPortal } from 'react-dom';
 import { ThemeProvider, useTheme } from './theme-provider';
 import { BrandColors } from './theme-provider.interface';
 
+let mockIsAiMode = true;
+
+jest.mock('../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode,
+}));
+
 const ThemeProbe = () => {
   const { setTheme, theme, themePreference } = useTheme();
 
@@ -88,6 +94,7 @@ const setSystemTheme = (theme: 'light' | 'dark') => {
 
 describe('ThemeProvider', () => {
   afterEach(() => {
+    mockIsAiMode = true;
     jest.restoreAllMocks();
     localStorage.clear();
     document.documentElement.classList.remove('dark-mode');
@@ -99,6 +106,18 @@ describe('ThemeProvider', () => {
       .forEach((property) =>
         document.documentElement.style.removeProperty(property)
       );
+  });
+
+  it('forces light in classic mode without changing the stored preference', () => {
+    mockIsAiMode = false;
+    localStorage.setItem('ui-theme', 'dark');
+
+    renderProvider();
+
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
+    expect(screen.getByTestId('theme-preference')).toHaveTextContent('dark');
+    expect(document.documentElement).not.toHaveClass('dark-mode');
+    expect(localStorage.getItem('ui-theme')).toBe('dark');
   });
 
   it('uses light mode when no preference is stored', () => {
