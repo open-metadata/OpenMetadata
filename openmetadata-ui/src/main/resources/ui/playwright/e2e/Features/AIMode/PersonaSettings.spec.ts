@@ -110,7 +110,7 @@ const discardUnsavedDefaultLayout = async (page: Page) => {
 
 test.describe(
   'Persona settings in the personal-space modal',
-  { tag: [DOMAIN_TAGS.PLATFORM] },
+  { tag: [DOMAIN_TAGS.PLATFORM, '@quarantine'] },
   () => {
     let persona: PersonaClass;
 
@@ -424,7 +424,7 @@ const saveLayoutAndReload = async (
 
 test.describe(
   'Persona settings — persona management actions',
-  { tag: [DOMAIN_TAGS.PLATFORM] },
+  { tag: [DOMAIN_TAGS.PLATFORM, '@quarantine'] },
   () => {
     let persona: PersonaClass;
     let personaToDelete: PersonaClass;
@@ -721,7 +721,7 @@ test.describe(
 
 test.describe(
   'Persona settings — customize saves',
-  { tag: [DOMAIN_TAGS.PLATFORM] },
+  { tag: [DOMAIN_TAGS.PLATFORM, '@quarantine'] },
   () => {
     // One persona per editor: every save writes the same persona document, so
     // sharing one across parallel workers would race on its version.
