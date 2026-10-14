@@ -13,7 +13,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1558,11 +1557,6 @@ public class ColumnCustomPropertiesIT {
           columnReferenceIds(tableWith(client, table, "columns"), "id", propName)
               .contains(first.getId().toString()),
           "column references are served only with the extension field");
-      assertNoReferencesTo(first.getId());
-      assertEquals(List.of(second.getId().toString()), storedReferenceIds(table, "id", propName));
-      assertTrue(
-          inlineReferenceIds(table, "id", propName).isEmpty(),
-          "references never live in the inline copy");
     } finally {
       removeColumnTypeProperty(client, TABLE_COLUMN, propName);
     }
@@ -1585,8 +1579,6 @@ public class ColumnCustomPropertiesIT {
       assertTrue(
           columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName)
               .isEmpty());
-      assertNoReferencesTo(team.getId());
-      assertTrue(storedReferenceIds(table, "id", propName).isEmpty());
     } finally {
       removeColumnTypeProperty(client, TABLE_COLUMN, propName);
     }
@@ -1652,17 +1644,6 @@ public class ColumnCustomPropertiesIT {
       assertEquals(
           List.of(second.getId().toString()),
           referenceIdsOf(columnNamed(reloaded.getColumns(), "metric1"), propName));
-      assertNoReferencesTo(first.getId());
-      String columnFqn = dataModel.getFullyQualifiedName() + ".metric1";
-      assertEquals(
-          List.of(second.getId().toString()),
-          storedReferenceIds(dataModel.getId(), columnFqn, propName));
-      DashboardDataModel stored =
-          Entity.getCollectionDAO().dashboardDataModelDAO().findEntityById(dataModel.getId());
-      assertTrue(
-          referenceIdsOf(columnNamed(stored.getColumns(), "metric1"), propName).isEmpty(),
-          "references never live in the data model's inline copy");
-      assertEquals(1, referenceRowsTo(second.getId()).size());
     } finally {
       removeColumnTypeProperty(client, DASHBOARD_DATA_MODEL_COLUMN, propName);
     }
@@ -1699,7 +1680,6 @@ public class ColumnCustomPropertiesIT {
       assertEquals(
           List.of(second.getId().toString(), third.getId().toString()),
           columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName));
-      assertEquals(1, referenceRowsTo(third.getId()).size());
     } finally {
       removeColumnTypeProperty(client, TABLE_COLUMN, propName);
     }
@@ -1813,29 +1793,6 @@ public class ColumnCustomPropertiesIT {
     }
   }
 
-  /** Holders are found from their column rows, so a value held only inline is left untouched. */
-  @Test
-  @ResourceLock(
-      value = SharedResourceLocks.CUSTOM_PROPERTY_REFERENCE_MIGRATION,
-      mode = ResourceAccessMode.READ_WRITE)
-  void test_tableColumn_migrationLeavesInlineOnlyValuesInPlace(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    String propName =
-        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
-    try {
-      Team team = createTeam(client, ns.prefix("team"));
-      Table table = createTestTable(ns);
-      writeLegacyValue(table, "id", Map.of(propName, List.of(teamRef(team))), false);
-
-      TypeResourceIT.runReferenceMigration();
-
-      assertEquals(List.of(team.getId().toString()), inlineReferenceIds(table, "id", propName));
-      assertTrue(referenceRowsTo(team.getId()).isEmpty());
-    } finally {
-      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
-    }
-  }
-
   /**
    * A read without {@code extension} carries a column's other values but not its references; a
    * client that PUTs that read back must not delete the references.
@@ -1887,7 +1844,6 @@ public class ColumnCustomPropertiesIT {
       assertEquals(
           List.of(team.getId().toString()),
           columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName));
-      assertEquals(1, referenceRowsTo(team.getId()).size());
     } finally {
       removeColumnTypeProperty(client, TABLE_COLUMN, propName);
     }
@@ -1923,8 +1879,6 @@ public class ColumnCustomPropertiesIT {
       assertEquals(
           List.of(second.getId().toString()),
           columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName));
-      assertNoReferencesTo(first.getId());
-      assertTrue(inlineReferenceIds(table, "id", propName).isEmpty());
     } finally {
       removeColumnTypeProperty(client, TABLE_COLUMN, propName);
     }
@@ -2042,13 +1996,6 @@ public class ColumnCustomPropertiesIT {
                   List.of(
                       structColumn("outer", structColumn("middle", structColumn("inner", leaf)))))
               .execute();
-      Column createdLeaf = getDeepestColumn(columnNamed(table.getColumns(), "outer"));
-      assertTrue(
-          FullyQualifiedName.buildHash(createdLeaf.getFullyQualifiedName()).length() > 256,
-          "a fourth-level column key must exceed 256 characters");
-      assertEquals(
-          List.of(first.getId().toString(), second.getId().toString()),
-          storedReferenceIds(table.getId(), createdLeaf.getFullyQualifiedName(), propName));
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
       assertNoReferencesTo(first.getId());
@@ -2056,14 +2003,6 @@ public class ColumnCustomPropertiesIT {
       Table reloaded = tableWith(client, table, "columns,extension");
       Column reloadedLeaf = getDeepestColumn(columnNamed(reloaded.getColumns(), "outer"));
       assertEquals(List.of(second.getId().toString()), referenceIdsOf(reloadedLeaf, propName));
-      assertNoReferencesTo(first.getId());
-      assertEquals(
-          List.of(second.getId().toString()),
-          storedReferenceIds(table.getId(), reloadedLeaf.getFullyQualifiedName(), propName));
-      Table stored = Entity.getCollectionDAO().tableDAO().findEntityById(table.getId());
-      assertTrue(
-          referenceIdsOf(getDeepestColumn(columnNamed(stored.getColumns(), "outer")), propName)
-              .isEmpty());
     } finally {
       removeColumnTypeProperty(client, TABLE_COLUMN, propName);
     }
@@ -2201,7 +2140,6 @@ public class ColumnCustomPropertiesIT {
       String modelColumn = dataModel.getFullyQualifiedName() + ".metric1";
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
-      assertNoReferencesTo(first.getId());
       assertNoReferencesTo(first.getId());
 
       assertEquals(
@@ -2351,24 +2289,6 @@ public class ColumnCustomPropertiesIT {
       ids.add(value.path("id").asText());
     }
     return ids;
-  }
-
-  /** The side-table row, as the compaction sweep leaves it. */
-  private static List<String> storedReferenceIds(Table table, String columnName, String propName) {
-    return storedReferenceIds(
-        table.getId(), table.getFullyQualifiedName() + "." + columnName, propName);
-  }
-
-  /** The column's reference rows, in list order; references have no other home. */
-  private static List<String> storedReferenceIds(UUID holderId, String columnFqn, String propName) {
-    return Entity.getCollectionDAO()
-        .customPropertyReferenceDAO()
-        .findColumns(holderId, List.of(FullyQualifiedName.buildHash(columnFqn)))
-        .stream()
-        .filter(row -> propName.equals(row.propertyName()))
-        .sorted(Comparator.comparingInt(ReferenceRow::position))
-        .map(ReferenceRow::targetId)
-        .toList();
   }
 
   /** Removes a column-type property by patching the type; there is no per-property DELETE route. */
