@@ -13,6 +13,7 @@ import type {
   KeyboardEvent,
   PointerEventHandler,
   RefAttributes,
+  RefObject,
 } from 'react';
 import {
   createContext,
@@ -39,10 +40,11 @@ import {
 import type { ListData } from 'react-stately';
 import { SelectItem } from './select-item';
 
-interface ComboBoxValueProps
-  extends AriaGroupProps,
-    RefAttributes<HTMLDivElement> {
+// The trigger ref is a named prop, not `ref`: React 18 does not pass `ref` to a
+// function component, so the popover would have no trigger to anchor to.
+interface ComboBoxValueProps extends AriaGroupProps {
   size: 'sm' | 'md';
+  triggerRef: RefObject<HTMLDivElement>;
   shortcut?: boolean;
   isDisabled?: boolean;
   placeholder?: string;
@@ -234,11 +236,13 @@ export const MultiSelectTagsValue = ({
   icon: Icon = Search,
   // Omit this prop to avoid invalid HTML attribute warning
   isDisabled: _isDisabled,
+  triggerRef,
   ...otherProps
 }: ComboBoxValueProps) => {
   return (
     <AriaGroup
       {...otherProps}
+      ref={triggerRef}
       className={({ isFocusWithin, isDisabled }) =>
         cx(
           // Border drawn with outline, not a ring (WebKit does not pixel-snap box-shadow,
@@ -419,9 +423,9 @@ export const MultiSelectBase = ({
 
             <MultiSelectTagsValue
               placeholder={placeholder}
-              ref={placeholderRef}
               shortcut={shortcut}
               size={size}
+              triggerRef={placeholderRef}
               // This is a workaround to correctly calculating the trigger width
               // while using ResizeObserver wasn't 100% reliable.
               onFocus={onResize}
