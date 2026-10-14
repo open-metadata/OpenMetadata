@@ -11,29 +11,24 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
 import {
   Calendar,
   DataQuality,
   ShieldTick,
 } from '@openmetadata/ui-core-components/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { TestCaseType } from '../../../../enums/TestSuite.enum';
-import { TestCase } from '../../../../generated/tests/testCase';
+import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import {
-  DATA_QUALITY_FAILED_ROWS,
-  useDataQualitySummary,
-} from '../../../../hooks/useDataQualitySummary';
+import { useDataQualitySummary } from '../../../../hooks/useDataQualitySummary';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import {
   DataQualityRange,
   DataQualityScope,
   DEFAULT_DATA_QUALITY_FILTERS,
 } from '../../../../utils/dataQualityFilters';
-import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import FilterButton from '../Common/TopicWidget/FilterButton';
 import TestStatusBar from '../Common/TopicWidget/TestStatusBar';
@@ -42,101 +37,12 @@ import {
   TopicEmptyStateConfig,
   TopicKey,
 } from '../Common/TopicWidget/topics.types';
+import DataQualityTestRows from './DataQualityTestRows';
+import { DataQualityGroupBy } from './DataQualityTestRows.utils';
 
 const TONE = {
   icon: DataQuality,
   tile: 'tw:bg-utility-error-50 tw:text-utility-error-600',
-};
-
-interface FailedTestRowsProps {
-  tests: TestCase[];
-  /** Every test in scope — what tells "nothing failing" from "nothing run". */
-  total: number;
-}
-
-/**
- * The failing tests, or why there are none: "no results yet" is reserved for
- * a scope where nothing has run, and a scope whose tests all came back clean
- * says so instead of reading as though it were empty.
- */
-const FailedTestRows: React.FC<FailedTestRowsProps> = ({ tests, total }) => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-
-  if (tests.length === 0) {
-    return (
-      // `!` on the colour: Typography renders `.prose`, whose unlayered
-      // `color` rule is emitted after the Tailwind utilities.
-      <Typography
-        className="tw:mt-4 tw:text-text-secondary!"
-        data-testid="data-quality-empty"
-        size="text-xs">
-        {total === 0
-          ? t('message.no-test-results-yet')
-          : t('message.no-failing-tests')}
-      </Typography>
-    );
-  }
-
-  return (
-    <ul
-      className="tw:mt-4 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
-      data-testid="data-quality-rows">
-      {tests.map((test) => {
-        const tableFqn = getEntityFQN(test.entityLink ?? '');
-
-        return (
-          <li
-            className="tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3"
-            data-testid={`failed-test-${test.id}`}
-            key={test.id}>
-            <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-              <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
-                <Typography
-                  className="tw:min-w-0 tw:text-text-primary!"
-                  ellipsis={{ rows: 1 }}
-                  size="text-xs"
-                  weight="medium">
-                  {test.displayName ?? test.name}
-                </Typography>
-                <Badge
-                  className="tw:shrink-0"
-                  color="error"
-                  size="sm"
-                  type="pill-color">
-                  {t('label.failed')}
-                </Badge>
-              </span>
-              {tableFqn && (
-                <Typography
-                  className="tw:min-w-0 tw:text-text-tertiary!"
-                  ellipsis={{ rows: 1 }}
-                  size="text-xs">
-                  {tableFqn}
-                </Typography>
-              )}
-            </div>
-            {/* The test's own page, where its results and incident live — the
-              Data Quality list has no `testCase` parameter to land on. */}
-            <Button
-              className="tw:shrink-0"
-              color="link-color"
-              data-testid={`dq-view-test-${test.id}`}
-              size="xs"
-              onPress={() =>
-                navigate(
-                  observabilityRouterClassBase.getTestCaseDetailPagePath(
-                    test.fullyQualifiedName ?? ''
-                  )
-                )
-              }>
-              {t('label.view-entity', { entity: t('label.test') })}
-            </Button>
-          </li>
-        );
-      })}
-    </ul>
-  );
 };
 
 export type DataQualityWidgetProps = WidgetCommonProps;
@@ -151,12 +57,14 @@ const DataQualityWidget: React.FC<DataQualityWidgetProps> = ({
   const navigate = useNavigate();
   const currentUser = useApplicationStore((state) => state.currentUser);
   const [filters, setFilters] = useState(DEFAULT_DATA_QUALITY_FILTERS);
+  // Arranges the rows, not a query filter: the same tests either way.
+  const [groupBy, setGroupBy] = useState(DataQualityGroupBy.TABLE);
   const {
     passed,
     failed,
     aborted,
     total,
-    failedTests,
+    tests,
     hasNoTests,
     isError,
     isFetching,
@@ -180,20 +88,20 @@ const DataQualityWidget: React.FC<DataQualityWidgetProps> = ({
       })),
     [t]
   );
-  const typeOptions = useMemo(
+  const groupOptions = useMemo(
     () => [
-      { label: t('label.all'), value: TestCaseType.all },
-      { label: t('label.table'), value: TestCaseType.table },
-      { label: t('label.column'), value: TestCaseType.column },
+      { label: t('label.table'), value: DataQualityGroupBy.TABLE },
+      { label: t('label.test-case'), value: DataQualityGroupBy.TEST_CASE },
     ],
     [t]
   );
 
-  // The card is a digest; the footer link opens the full Data Quality view.
-  const visibleTests = failedTests.slice(0, DATA_QUALITY_FAILED_ROWS);
-  // Against the bucket total, not the page fetched: the rows are a sample of
-  // the failing tests, and "N more" is the rest of the bucket.
-  const hiddenFailures = Math.max(0, failed - visibleTests.length);
+  // Against the bucket total, not the rows shown: the rows are the latest
+  // results, and "N more" is the rest of the failing bucket.
+  const shownFailures = tests.filter(
+    (test) => test.testCaseResult?.testCaseStatus === TestCaseStatus.Failed
+  ).length;
+  const hiddenFailures = Math.max(0, failed - shownFailures);
 
   // Offered whatever the viewer's role, as on the Data Quality page it opens:
   // whether a test may be added depends on the table picked there.
@@ -276,16 +184,11 @@ const DataQualityWidget: React.FC<DataQualityWidgetProps> = ({
               }
             />
             <FilterButton
-              label={t('label.test')}
-              options={typeOptions}
-              testId="dq-type-filter"
-              value={filters.testCaseType}
-              onChange={(testCaseType) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  testCaseType: testCaseType as TestCaseType,
-                }))
-              }
+              label={t('label.group-by')}
+              options={groupOptions}
+              testId="dq-group-by"
+              value={groupBy}
+              onChange={(value) => setGroupBy(value as DataQualityGroupBy)}
             />
           </div>
 
@@ -296,7 +199,20 @@ const DataQualityWidget: React.FC<DataQualityWidgetProps> = ({
             total={total}
           />
 
-          <FailedTestRows tests={visibleTests} total={total} />
+          {tests.length === 0 ? (
+            // `!` on the colour: Typography renders `.prose`, whose unlayered
+            // `color` rule is emitted after the Tailwind utilities.
+            <Typography
+              className="tw:mt-4 tw:text-text-secondary!"
+              data-testid="data-quality-empty"
+              size="text-xs">
+              {total === 0
+                ? t('message.no-test-results-yet')
+                : t('message.no-failing-tests')}
+            </Typography>
+          ) : (
+            <DataQualityTestRows groupBy={groupBy} tests={tests} />
+          )}
         </>
       )}
     </TopicCard>

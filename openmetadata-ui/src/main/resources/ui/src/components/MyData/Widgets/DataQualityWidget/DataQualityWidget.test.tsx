@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { useDataQualitySummary } from '../../../../hooks/useDataQualitySummary';
 import { FilterButtonOption } from '../Common/TopicWidget/FilterButton';
 import DataQualityWidget from './DataQualityWidget';
@@ -26,6 +27,9 @@ jest.mock('react-i18next', () => ({
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
   useNavigate: () => mockNavigate,
 }));
 
@@ -82,12 +86,13 @@ const failingTest = (index: number) => ({
   fullyQualifiedName: `svc.db.schema.orders_${index}.null_check #${index}`,
   id: `test-${index}`,
   name: `null_check_${index}`,
+  testCaseResult: { testCaseStatus: TestCaseStatus.Failed },
 });
 
 const SUMMARY = {
   aborted: 1,
   failed: 25,
-  failedTests: [0, 1, 2, 3].map(failingTest),
+  tests: [0, 1, 2, 3].map(failingTest),
   hasNoTests: false,
   isError: false,
   isFetching: false,
@@ -109,11 +114,44 @@ const renderWidget = (summary: Partial<typeof SUMMARY> = {}) => {
 describe('DataQualityWidget', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('lists the failing tests with a view action each', () => {
+  it('lists the latest tests with a view action each', () => {
     renderWidget();
 
-    expect(screen.getByTestId('failed-test-test-0')).toBeInTheDocument();
+    expect(screen.getByTestId('dq-test-test-0')).toBeInTheDocument();
     expect(screen.getByTestId('dq-view-test-test-3')).toBeInTheDocument();
+  });
+
+  it('groups the tests under the table each runs on by default', () => {
+    renderWidget({
+      tests: [
+        failingTest(0),
+        {
+          ...failingTest(1),
+          entityLink: '<#E::table::svc.db.schema.orders_0::columns::id>',
+          testCaseResult: { testCaseStatus: TestCaseStatus.Success },
+        },
+      ],
+    });
+
+    const group = screen.getByTestId('dq-table-group-svc.db.schema.orders_0');
+
+    expect(group).toContainElement(screen.getByTestId('dq-test-test-0'));
+    expect(group).toContainElement(screen.getByTestId('dq-test-test-1'));
+    expect(group).toHaveTextContent('message.count-passed-test {"count":1}');
+    expect(group).toHaveTextContent('message.count-failed-test {"count":1}');
+    // Under its table, a column test names its column, not the table again.
+    expect(screen.getByTestId('dq-test-test-1')).toHaveTextContent('id');
+  });
+
+  it('lists the tests flat, each naming its table, when grouped by test case', () => {
+    renderWidget();
+
+    fireEvent.click(screen.getByTestId(`dq-group-by-testCase`));
+
+    expect(screen.queryByTestId(/^dq-table-group-/)).toBeNull();
+    expect(screen.getByTestId('dq-test-test-2')).toHaveTextContent(
+      'svc.db.schema.orders_2'
+    );
   });
 
   // "View test" used to open the Data Quality list with a `?testCase=` param
@@ -154,7 +192,7 @@ describe('DataQualityWidget', () => {
     renderWidget({
       aborted: 0,
       failed: 0,
-      failedTests: [],
+      tests: [],
       passed: 12,
       total: 12,
     });
@@ -169,7 +207,7 @@ describe('DataQualityWidget', () => {
     renderWidget({
       aborted: 0,
       failed: 0,
-      failedTests: [],
+      tests: [],
       passed: 0,
       total: 0,
     });
@@ -194,7 +232,7 @@ describe('DataQualityWidget', () => {
   });
 
   it('shows an error body, not "no results", when the fetch fails', () => {
-    renderWidget({ failed: 0, failedTests: [], isError: true, total: 0 });
+    renderWidget({ failed: 0, tests: [], isError: true, total: 0 });
 
     expect(screen.getByTestId('topic-error-dataQuality')).toBeInTheDocument();
     expect(screen.queryByTestId('data-quality-empty')).toBeNull();
@@ -206,7 +244,7 @@ describe('DataQualityWidget', () => {
     renderWidget({
       aborted: 0,
       failed: 0,
-      failedTests: [],
+      tests: [],
       hasNoTests: true,
       passed: 0,
       total: 0,
