@@ -3139,7 +3139,6 @@
         "playwright/e2e/Flow/SchemaTable.spec.ts",
         "playwright/e2e/Flow/SearchRBAC.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
-        "playwright/e2e/Flow/Tour.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
@@ -3628,6 +3627,7 @@
         "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Flow/TestConnectionModal.spec.ts",
+        "playwright/e2e/Flow/Tour.spec.ts",
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
@@ -6401,7 +6401,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
-        "playwright/e2e/Features/SampleDataTableOperations.spec.ts"
+        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Flow/Tour.spec.ts"
       ]
     },
     {
@@ -6734,7 +6735,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
-        "playwright/e2e/Features/SampleDataTableOperations.spec.ts"
+        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Flow/Tour.spec.ts"
       ]
     },
     {
@@ -6939,6 +6941,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityHeaderTitle/EntityHeaderTitle.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Flow/Tour.spec.ts",
         "playwright/e2e/Pages/DataProducts.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/VersionPages/ClassificationVersionPage.spec.ts"
@@ -7530,6 +7533,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/Lineage.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Flow/Tour.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
@@ -9038,7 +9042,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
-        "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts"
+        "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
     {

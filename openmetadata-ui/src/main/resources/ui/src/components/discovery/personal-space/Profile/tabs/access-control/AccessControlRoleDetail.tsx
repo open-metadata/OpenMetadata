@@ -16,6 +16,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   EmptyPlaceholder,
   Input,
   SelectItemType,
@@ -822,57 +823,56 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     () => (
       <Box className="tw:w-full" direction="col" gap={3}>
         {isAddingPolicy && (
-          <Box
-            className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
-            direction="col"
-            gap={4}>
-            <Typography
-              className="tw:text-primary"
-              size="text-sm"
-              weight="semibold">
-              {t('label.add-entity', { entity: t('label.policy') })}
-            </Typography>
-            {isLoadingPolicies ? (
-              <Loader />
-            ) : (
-              <Autocomplete
-                data-testid="add-policy-select"
-                filterOption={(item, filterText) =>
-                  contains(item.label || '', filterText) ||
-                  contains(String(item.id), filterText)
-                }
-                items={policyItems}
-                placeholder={t('label.select-a-policy')}
-                selectedItems={selectedPolicyItems}
-                onItemCleared={handlePolicyItemCleared}
-                onItemInserted={handlePolicyItemInserted}>
-                {(item) => (
-                  <Autocomplete.Item id={item.id} key={item.id}>
-                    {item.label}
-                  </Autocomplete.Item>
-                )}
-              </Autocomplete>
-            )}
-            <Box direction="row" gap={3} justify="end">
-              <Button
-                color="tertiary"
-                size="sm"
-                onPress={() => {
-                  setIsAddingPolicy(false);
-                  setSelectedNewPolicies([]);
-                }}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                isDisabled={selectedNewPolicies.length === 0}
-                isLoading={isLoadingOnSave}
-                size="sm"
-                onPress={handleConfirmAddPolicies}>
-                {t('label.save')}
-              </Button>
-            </Box>
-          </Box>
+          <Card variant="muted">
+            <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+              <Typography
+                className="tw:text-primary"
+                size="text-sm"
+                weight="semibold">
+                {t('label.add-entity', { entity: t('label.policy') })}
+              </Typography>
+              {isLoadingPolicies ? (
+                <Loader />
+              ) : (
+                <Autocomplete
+                  data-testid="add-policy-select"
+                  filterOption={(item, filterText) =>
+                    contains(item.label || '', filterText) ||
+                    contains(String(item.id), filterText)
+                  }
+                  items={policyItems}
+                  placeholder={t('label.select-a-policy')}
+                  selectedItems={selectedPolicyItems}
+                  onItemCleared={handlePolicyItemCleared}
+                  onItemInserted={handlePolicyItemInserted}>
+                  {(item) => (
+                    <Autocomplete.Item id={item.id} key={item.id}>
+                      {item.label}
+                    </Autocomplete.Item>
+                  )}
+                </Autocomplete>
+              )}
+              <Box direction="row" gap={3} justify="end">
+                <Button
+                  color="tertiary"
+                  size="sm"
+                  onPress={() => {
+                    setIsAddingPolicy(false);
+                    setSelectedNewPolicies([]);
+                  }}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  isDisabled={selectedNewPolicies.length === 0}
+                  isLoading={isLoadingOnSave}
+                  size="sm"
+                  onPress={handleConfirmAddPolicies}>
+                  {t('label.save')}
+                </Button>
+              </Box>
+            </Card.Content>
+          </Card>
         )}
 
         <EntityTable
@@ -887,7 +887,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
               <Button
                 color="primary"
                 data-testid="add-policy"
-                size="sm"
+                size="xs"
                 onPress={handleStartAddPolicy}>
                 {t('label.add-entity', { entity: t('label.policy') })}
               </Button>

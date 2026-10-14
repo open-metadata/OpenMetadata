@@ -4934,6 +4934,7 @@
     "no-failing-tests": "실패한 테스트가 없습니다.",
     "no-features-data-available": "사용 가능한 기능 데이터가 없습니다",
     "no-feed-available-for-selected-filter": "피드를 찾을 수 없습니다. 필터를 변경해 보세요.",
+    "no-fields-configured": "아직 필드가 구성되지 않았습니다",
     "no-file-selected": "선택된 파일 없음",
     "no-filter-patterns-available": "이 커넥터에는 필터 패턴이 없습니다.",
     "no-folders-yet-create-one": "아직 폴더가 없습니다. 폴더를 만들어 주제나 팀별로 문서를 정리해 보세요.",

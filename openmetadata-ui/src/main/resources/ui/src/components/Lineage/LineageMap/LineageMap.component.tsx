@@ -1001,7 +1001,12 @@ const LineageMapCanvas = ({
   const { t } = useTranslation();
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const { isTourOpen, isTourPage } = useTourProvider();
+  const { isTourOpen, isTourPage, tourMockDatasetData } = useTourProvider();
+  // The tour's table is mock data, so its scene is too — never ask the server.
+  const tourLineageScene = isTourPage
+    ? (tourMockDatasetData as { lineageScene?: LineageScene } | undefined)
+        ?.lineageScene
+    : undefined;
   const { activeDomain, isDomainRestricted } = useDomainStore();
   const { onNodeClick: onProviderNodeClick } = useLineageHandlers();
   const request = useMemo(
@@ -1245,7 +1250,10 @@ const LineageMapCanvas = ({
       try {
         response = await sceneCache.load(
           cacheKey,
-          () => getLineageScene({ ...nextRequest, config, queryFilter }),
+          () =>
+            tourLineageScene
+              ? Promise.resolve(tourLineageScene)
+              : getLineageScene({ ...nextRequest, config, queryFilter }),
           options.bypassCache
         );
         if (sceneRequestIdRef.current === requestId) {
@@ -1272,7 +1280,7 @@ const LineageMapCanvas = ({
 
       return response;
     },
-    [config, queryFilter, sceneCache]
+    [config, queryFilter, sceneCache, tourLineageScene]
   );
   const refetchCurrentScene = useCallback(
     async (isExpectedScene?: (response: LineageScene) => boolean) => {
@@ -1298,6 +1306,10 @@ const LineageMapCanvas = ({
   const prefetchAdjacentBands = useMemo(
     () =>
       debounce((currentScene: LineageScene) => {
+        // The tour scene is a fixed mock; there is nothing to prefetch.
+        if (tourLineageScene) {
+          return;
+        }
         prefetchSceneBands(
           currentScene,
           request,
@@ -1306,7 +1318,7 @@ const LineageMapCanvas = ({
           sceneCache
         );
       }, 300),
-    [config, queryFilter, request, sceneCache]
+    [config, queryFilter, request, sceneCache, tourLineageScene]
   );
 
   useEffect(() => {
