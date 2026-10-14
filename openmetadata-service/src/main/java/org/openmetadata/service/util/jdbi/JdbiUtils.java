@@ -26,6 +26,7 @@ public class JdbiUtils {
 
     Jdbi jdbiInstance = new JdbiFactory().build(environment, dbFactory, "database");
     jdbiInstance.setSqlLogger(new OMSqlLogger());
+    LazySqlObjectFactory.install(jdbiInstance);
     // Set the Database type for choosing correct queries from annotations
     jdbiInstance
         .getConfig(SqlObjects.class)
@@ -47,6 +48,7 @@ public class JdbiUtils {
 
     Jdbi jdbiInstance = Jdbi.create(dbFactory.build(new NoopMetricRegistry(), "open-metadata-ops"));
     jdbiInstance.installPlugin(new SqlObjectPlugin());
+    LazySqlObjectFactory.install(jdbiInstance);
     jdbiInstance
         .getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));

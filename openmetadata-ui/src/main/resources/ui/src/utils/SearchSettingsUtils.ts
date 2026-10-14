@@ -258,13 +258,13 @@ export const getEffectiveRankingConfiguration = (
 };
 
 export const boostModeOptions = Object.values(BoostMode).map((value) => ({
+  id: value,
   label: startCase(value),
-  value: value,
 }));
 
 export const scoreModeOptions = Object.values(ScoreMode).map((value) => ({
+  id: value,
   label: startCase(value),
-  value: value,
 }));
 
 export const modifierOptions = Object.values(Modifier).map((value) => ({

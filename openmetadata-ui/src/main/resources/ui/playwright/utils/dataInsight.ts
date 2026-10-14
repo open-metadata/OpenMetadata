@@ -14,7 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Kpi } from '../../src/generated/dataInsight/kpi/kpi';
 import { KPIData } from '../constant/dataInsight.interface';
 import { deleteFixtureEntity, okJson, settleAll } from './apiResponse';
-import { fillDescriptionBox } from './common';
+import { fillDescriptionBox, selectOptionWithRetry } from './common';
 
 export const deleteKpiRequest = async (
   apiRequest: APIRequestContext,
@@ -77,12 +77,16 @@ export const addKpi = async (page: Page, data: KPIData) => {
       : currentDate.getDate();
   const endDate = `${currentDate.getFullYear()}-${nextMonth}-${nextDate}`;
 
-  await page.click('#chartType');
-  await page.click(`.ant-select-dropdown [title="${data.dataInsightChart}"]`);
+  await selectOptionWithRetry(
+    page.getByTestId('chartType').getByRole('button'),
+    page.getByRole('option', { name: data.dataInsightChart, exact: true })
+  );
   await page.getByTestId('displayName').fill(data.displayName);
-  await page.getByTestId('metricType').click();
-  await page.click(`.ant-select-dropdown [title="${data.metricType}"]`);
-  await page.locator('.ant-slider-mark-text', { hasText: '100%' }).click();
+  await selectOptionWithRetry(
+    page.getByTestId('metricType').getByRole('button'),
+    page.getByRole('option', { name: data.metricType, exact: true })
+  );
+  await page.getByRole('spinbutton').fill('100');
 
   await page.getByTestId('start-date').click();
   await page.getByTestId('start-date').fill(startDate);

@@ -60,7 +60,6 @@ export type ProfileNavGroup =
   | 'administration'
   | 'features'
   | 'workspace'
-  | 'application'
   | 'credentials';
 
 /** Translation key for each group's sidebar header + breadcrumb root. */
@@ -69,7 +68,6 @@ export const PROFILE_NAV_GROUP_LABEL: Record<ProfileNavGroup, string> = {
   administration: 'label.administration',
   features: 'label.feature-plural',
   workspace: 'label.workspace',
-  application: 'label.application',
   credentials: 'label.credential-plural',
 };
 
@@ -79,7 +77,6 @@ export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
   'administration',
   'features',
   'workspace',
-  'application',
   'credentials',
 ];
 
@@ -281,25 +278,6 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
   },
 ];
 
-export const APPLICATION_NAV_ITEMS: ProfileNavItem[] = [
-  {
-    id: 'notification',
-    group: 'application',
-    label: 'label.notification',
-    description: 'message.alerts-description',
-    icon: Bell01 as FC<{ className?: string }>,
-    isVisible: (permissions) =>
-      userPermissions.hasViewPermissions(
-        ResourceEntity.EVENT_SUBSCRIPTION,
-        permissions
-      ),
-    selfContainedLayout: true,
-    render: ({ onHeaderChange }) => (
-      <NotificationPanel onHeaderChange={onHeaderChange} />
-    ),
-  },
-];
-
 export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
   {
     id: 'governance',
@@ -329,12 +307,25 @@ export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
       <ApplicationsPanel onHeaderChange={onHeaderChange} />
     ),
   },
+  {
+    id: 'notification',
+    group: 'features',
+    label: 'label.notification',
+    description: 'message.alerts-description',
+    icon: Bell01 as FC<{ className?: string }>,
+    isVisible: (permissions) =>
+      userPermissions.hasViewPermissions(
+        ResourceEntity.EVENT_SUBSCRIPTION,
+        permissions
+      ),
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <NotificationPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
 ];
 
 export const getProfileNavItem = (id: ProfileNavId): ProfileNavItem =>
-  [
-    ...PROFILE_NAV_ITEMS,
-    ...WORKSPACE_NAV_ITEMS,
-    ...APPLICATION_NAV_ITEMS,
-    ...FEATURES_NAV_ITEMS,
-  ].find((item) => item.id === id) ?? PROFILE_NAV_ITEMS[0];
+  [...PROFILE_NAV_ITEMS, ...WORKSPACE_NAV_ITEMS, ...FEATURES_NAV_ITEMS].find(
+    (item) => item.id === id
+  ) ?? PROFILE_NAV_ITEMS[0];

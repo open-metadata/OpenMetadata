@@ -477,6 +477,26 @@ describe('TestDetailsPageV1 component', () => {
       );
     });
 
+    it('does not request the query count for the tour mock table', async () => {
+      (getQueriesList as jest.Mock).mockClear();
+      (useTourProvider as jest.Mock).mockImplementation(() => ({
+        isTourOpen: true,
+        activeTabForTourDatasetPage: EntityTabs.TABLE_QUERIES,
+        isTourPage: true,
+        tourMockDatasetData: mockDatasetData,
+      }));
+      setMockPermissions({});
+
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+
+      expect(await screen.findByText('testTableQueries')).toBeInTheDocument();
+      expect(getQueriesList).not.toHaveBeenCalled();
+    });
+
     it('uses tour permissions for Lineage edit access', async () => {
       (useTourProvider as jest.Mock).mockImplementation(() => ({
         isTourOpen: true,
