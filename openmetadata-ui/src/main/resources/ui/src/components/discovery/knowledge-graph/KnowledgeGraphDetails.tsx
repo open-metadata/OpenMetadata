@@ -642,38 +642,25 @@ const KnowledgeGraphDetails = ({
             <Box
               align="center"
               className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-3.5 tw:py-1.5"
-              gap={2}
               wrap="wrap">
-              {[
-                {
-                  id: 'all',
-                  label: t('label.all'),
-                  count: searched.length,
-                },
-                ...chips,
-              ].map((chip) => (
-                <Button
-                  aria-pressed={filter === chip.id}
-                  className="tw:rounded-full"
-                  color={filter === chip.id ? 'secondary-brand' : 'secondary'}
-                  key={chip.id}
-                  size="xs"
-                  onPress={() => {
-                    setFilter(chip.id);
-                    setLimit(PAGE_SIZE);
-                  }}>
-                  <Box align="center" gap={1}>
-                    {chip.label}
-                    <Typography
-                      as="span"
-                      className="tw:text-tertiary"
-                      size="text-xs"
-                      weight="semibold">
-                      {chip.count}
-                    </Typography>
-                  </Box>
-                </Button>
-              ))}
+              <Tabs
+                className="tw:w-fit"
+                selectedKey={filter}
+                onSelectionChange={(key) => {
+                  setFilter(String(key));
+                  setLimit(PAGE_SIZE);
+                }}>
+                <Tabs.List size="sm" type="button-border">
+                  <Tabs.Item badge={searched.length} id="all">
+                    {t('label.all')}
+                  </Tabs.Item>
+                  {chips.map((chip) => (
+                    <Tabs.Item badge={chip.count} id={chip.id} key={chip.id}>
+                      {chip.label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+              </Tabs>
             </Box>
           )}
           {view.error ? (
@@ -688,17 +675,25 @@ const KnowledgeGraphDetails = ({
           ) : null}
           <Box
             aria-busy={view.loading}
-            className="tw:flex-1 tw:min-h-0 tw:overflow-auto"
+            className="tw:flex-1 tw:min-h-0"
             direction="col">
             <Table
               aria-label={titles[drawer]}
               className="kg-details-table"
               columns={tableColumns}
+              // TableV2's root `.table-container` is `display: block` by default
+              // so its inner `flex-1 min-h-0` chain can't bound against it
+              // (block parent ignores flex child sizing). Making the root itself
+              // the flex child + container lets the UntitledTable scroll
+              // container's `max-height: 100%` resolve to the real bounded
+              // height; `scroll.y` wires the overflowY on that container.
+              containerClassName="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
               dataSource={rows.slice(0, limit)}
               loading={view.loading}
               locale={tableLocale}
               pagination={false}
               rowKey="id"
+              scroll={{ y: '100%' }}
               size="small"
               onRow={getRowHandlers}
             />

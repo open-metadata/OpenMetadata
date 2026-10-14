@@ -53,6 +53,9 @@ const openDetails = (changes: Partial<typeof props> = {}) =>
 
 beforeEach(() => jest.useRealTimers());
 
+// TableV2's react-aria row materialisation is heavy for 300 rows in jsdom
+// (~15s) — the default 5s Jest timeout is enough in the browser but too tight
+// here. The real E2E path is covered by the KG Playwright suite.
 it('pages and searches all loaded columns without declaring uninspected columns unmapped', async () => {
   openDetails();
   const grid = screen.getByRole('grid');
@@ -77,7 +80,7 @@ it('pages and searches all loaded columns without declaring uninspected columns 
   expect(
     screen.queryByRole('button', { name: /label.kg-show-more/ })
   ).not.toBeInTheDocument();
-});
+}, 30_000);
 
 it('lists the gaps first, names what is missing and links to the asset to fix it', async () => {
   openDetails({

@@ -17,23 +17,24 @@
   justify-content: center;
   position: relative;
   user-select: none;
-  box-shadow: var(--shadow-xs);
-  border-radius: 10px;
+  box-shadow: var(--om-shadow-xs);
+  border-radius: var(--om-radius-10);
   background-color: var(--tw-background-color-surface);
-  border: 1px solid var(--tw-border-color-primary);
+  border: var(--om-space-1) solid var(--tw-border-color-primary);
   box-sizing: border-box;
   width: 100%;
   height: 100%;
   cursor: pointer;
   touch-action: none;
-  transition: opacity 150ms ease, box-shadow 150ms ease;
+  transition: opacity var(--om-duration-150) ease,
+    box-shadow var(--om-duration-150) ease;
 
   .kg-node-select {
     width: 100%;
-    min-height: calc(var(--spacing) * 12);
+    min-height: var(--om-space-48);
     height: auto;
-    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
-    border-radius: 10px;
+    padding: var(--om-space-8) var(--om-space-12);
+    border-radius: var(--om-radius-10);
     box-shadow: none;
     white-space: normal;
     > [data-text] {
@@ -43,27 +44,27 @@
 
   &.kg-node-group {
     justify-content: flex-start;
-    box-shadow: var(--shadow-sm);
-    // Stacked-card illusion: two offset outlined rectangles behind the main
-    // card suggest "there are more members here" without rendering them.
+    box-shadow: var(--om-shadow-sm);
     &::before,
     &::after {
       content: '';
       position: absolute;
-      inset: calc(var(--spacing) * -1) var(--spacing) 0;
-      border: 1px solid var(--tw-border-color-secondary);
-      border-radius: 10px;
+      inset: calc(-1 * var(--om-space-4)) var(--om-space-4) 0;
+      border: var(--om-space-1) solid var(--tw-border-color-secondary);
+      border-radius: var(--om-radius-10);
       z-index: -1;
     }
     &::after {
-      inset: calc(var(--spacing) * -2) calc(var(--spacing) * 2) 0;
+      inset: calc(-1 * var(--om-space-8)) var(--om-space-8) 0;
     }
   }
 
+  // Design: the subject card carries a brand border with a soft brand halo so
+  // it reads as the centre of the graph at any zoom.
   &.kg-node-root {
     border-color: var(--tw-color-fg-brand-primary);
-    box-shadow: 0 0 0 var(--spacing) var(--tw-color-utility-brand-100),
-      var(--shadow-md);
+    box-shadow: 0 0 0 var(--om-space-4) var(--tw-color-utility-brand-100),
+      var(--om-shadow-md);
   }
   &.kg-node-gap {
     border-color: var(--tw-color-fg-warning-primary);
@@ -74,7 +75,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: calc(var(--spacing) * 2);
+    gap: var(--om-space-8);
     width: 100%;
     min-width: 0;
   }
@@ -82,82 +83,86 @@
   .node-icon {
     display: flex;
     flex-shrink: 0;
-    width: calc(var(--spacing) * 7);
-    height: calc(var(--spacing) * 7);
+    width: var(--om-space-28);
+    height: var(--om-space-28);
     color: var(--tw-text-color-tertiary);
   }
 
+  // Design typography: 13.5/11 on cards, 15.5 on the subject; the closest
+  // tokens are used so the cards stop reading a step heavier than the design.
   .kg-node-name {
     display: block;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1.25;
+    font-size: var(--om-font-size-13);
+    font-weight: var(--om-font-weight-semibold);
+    line-height: var(--om-line-height-tight);
     color: var(--tw-text-color-primary);
   }
 
   .kg-node-type {
     display: block;
-    font-size: 11px;
-    font-weight: 500;
-    line-height: 1.375;
+    font-size: var(--om-font-size-11);
+    font-weight: var(--om-font-weight-medium);
+    line-height: var(--om-line-height-snug);
     color: var(--tw-text-color-tertiary);
   }
 
   .kg-node-count {
     flex-shrink: 0;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1.5;
+    font-size: var(--om-font-size-11);
+    font-weight: var(--om-font-weight-semibold);
+    line-height: var(--om-line-height-normal);
   }
 
   .kg-node-note {
-    font-size: 11.5px;
-    font-weight: 600;
+    font-size: var(--om-font-size-11_5);
+    font-weight: var(--om-font-weight-semibold);
   }
 
   .kg-node-member {
     display: block;
-    font-size: var(--text-xs);
-    line-height: 1.625;
+    font-size: var(--om-font-size-xs);
+    line-height: var(--om-line-height-relaxed);
     color: var(--tw-text-color-secondary);
   }
 
   .kg-node-more {
-    font-size: 11px;
-    font-weight: 500;
+    font-size: var(--om-font-size-11);
+    font-weight: var(--om-font-weight-medium);
     color: var(--tw-text-color-quaternary);
   }
 
   &.kg-node-root .kg-node-name {
-    font-size: 15px;
+    font-size: var(--om-font-size-15);
   }
 
   &.kg-node-root .node-icon {
-    width: calc(var(--spacing) * 8);
-    height: calc(var(--spacing) * 8);
+    width: var(--om-space-32);
+    height: var(--om-space-32);
   }
 
   .asset-type-tag {
-    padding: calc(var(--spacing) / 2) var(--spacing);
-    border-radius: var(--radius-sm);
-    border-width: 1px;
+    padding: var(--om-space-2) var(--om-space-4);
+    border-radius: var(--om-radius-sm);
+    border-width: var(--om-space-1);
     border-style: solid;
     border-color: var(--tw-border-color-primary);
     white-space: nowrap;
   }
 
   &.highlighted {
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--om-shadow-md);
     border-color: var(--tw-border-color-brand);
   }
 
+  // Non-focused nodes stay visible as context but stop competing with the
+  // highlighted path for attention.
   &.dimmed {
     opacity: 0.55;
   }
 
   &:focus-visible {
-    outline: calc(var(--spacing) / 2) solid var(--tw-border-color-brand);
-    outline-offset: calc(var(--spacing) / 2);
+    outline: var(--om-space-2) solid var(--tw-border-color-brand);
+    outline-offset: var(--om-space-2);
   }
 
   @media (prefers-reduced-motion: reduce) {

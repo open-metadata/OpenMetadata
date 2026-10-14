@@ -1646,7 +1646,7 @@
     "kg-balanced": "Balanced",
     "kg-balanced-summary": "Balanced · repeats bundled",
     "kg-band": "Level {{level}} · {{name}}",
-    "kg-bundle-subtitle": "{{count}} individual relationships · bundled",
+    "kg-bundle-subtitle": "Grouped · {{count}} relationships",
     "kg-bundle-summary": "{{individual}} individual · {{bundled}} bundled into {{groups}} groups",
     "kg-cardinality": "Cardinality",
     "kg-collapse-bundle": "Collapse bundle",

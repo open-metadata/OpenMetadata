@@ -89,8 +89,10 @@ interface StatementProps {
   statement: ReactNode;
   code?: string;
   codeTestId?: string;
-  color: string;
-  family: string;
+  /** Dot colour for the family row. Omit together with `family` to hide the row. */
+  color?: string;
+  /** Family label (e.g. "Ownership · outgoing"). Omit to hide the dot+family row. */
+  family?: string;
 }
 
 /** The grey card under the header: the statement, its identifier and its family. */
@@ -114,16 +116,18 @@ export const InspectorStatement = ({
         {code}
       </Typography>
     )}
-    <Box align="center" gap={2}>
-      <span
-        aria-hidden="true"
-        className="kg-inspector-dot"
-        style={{ backgroundColor: color }}
-      />
-      <Typography className="tw:text-tertiary" size="text-xs" weight="medium">
-        {family}
-      </Typography>
-    </Box>
+    {family && (
+      <Box align="center" gap={2}>
+        <span
+          aria-hidden="true"
+          className="kg-inspector-dot"
+          style={{ backgroundColor: color }}
+        />
+        <Typography className="tw:text-tertiary" size="text-xs" weight="medium">
+          {family}
+        </Typography>
+      </Box>
+    )}
   </Box>
 );
 

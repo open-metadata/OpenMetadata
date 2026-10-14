@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import { getGroupRelationship } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
+import {
+  getColorSetForType,
+  getGroupRelationship,
+} from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import {
   getGroupMemberLabelKey,
   getSharedMemberType,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
+import { getNodeIcon } from './GraphElements/CustomNode';
 import { GraphNode, KnowledgeGraphG6Edge } from './KnowledgeGraph.interface';
 import { getRelationStyle } from './KnowledgeGraph.relations';
 import {
@@ -40,7 +44,11 @@ interface GroupInspectorProps {
 /** How many members an expanded bundle lays out on the canvas. */
 const PREVIEW_SIZE = 6;
 
-/** The statement, identifier and family line of a bundle, resolved once. */
+/**
+ * The statement, identifier and family line of a bundle, resolved once. The
+ * aggregate side (`N Users`, `N Columns`) renders as a coloured pill with its
+ * entity-family icon so the user reads the bundle member type at a glance.
+ */
 const describeBundle = (
   node: GraphNode,
   edges: KnowledgeGraphG6Edge[],
@@ -54,27 +62,50 @@ const describeBundle = (
   const memberType = memberKey
     ? t(memberKey)
     : getPluralizeEntityName(getSharedMemberType(members));
-  const memberSummary = `${members.length} ${memberType}`;
-  const endpoint = (id?: string) =>
-    id === node.id ? memberSummary : nodes.get(id ?? '')?.label;
-  const direction = t(
-    presentation?.direction === 'in' ? 'label.kg-incoming' : 'label.kg-outgoing'
+  const memberLabel = `${members.length} ${memberType}`;
+  // Mixed-type bundles have no shared type — fall back to the first member's
+  // type so the pill still carries a sensible icon and colour.
+  const memberFamilyType =
+    getSharedMemberType(members) ?? members[0]?.type ?? node.type;
+  const memberPalette = getColorSetForType(memberFamilyType);
+  const MemberIcon = getNodeIcon(memberFamilyType);
+  const aggregatePill = (
+    <span
+      className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-full tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium"
+      style={{
+        color: memberPalette.main,
+        backgroundColor: memberPalette.light,
+        border: '1px solid ' + memberPalette.main,
+      }}>
+      <MemberIcon aria-hidden="true" size={12} />
+      {memberLabel}
+    </span>
   );
+  const endpoint = (id?: string): React.ReactNode =>
+    id === node.id ? aggregatePill : nodes.get(id ?? '')?.label ?? '';
   const style = bundle ? getRelationStyle(bundle.data.category) : undefined;
+  const arrow = (
+    <span aria-hidden="true" className="tw:text-tertiary">
+      {' → '}
+    </span>
+  );
 
   return {
     bundle,
     members,
-    statement: [
-      endpoint(bundle?.source),
-      presentation?.predicate,
-      endpoint(bundle?.target),
-    ]
-      .filter(Boolean)
-      .join(' → '),
+    statement: (
+      <span
+        className="tw:inline-flex tw:flex-wrap tw:items-center tw:gap-1"
+        data-testid="group-relationship-summary">
+        <span>{endpoint(bundle?.source)}</span>
+        {arrow}
+        <span className="tw:font-medium">{presentation?.predicate}</span>
+        {arrow}
+        <span>{endpoint(bundle?.target)}</span>
+      </span>
+    ),
     code: bundle?.data.relationType ?? bundle?.data.label,
     color: style?.color ?? 'var(--tw-color-fg-quaternary)',
-    family: style ? t(style.labelKey) + ' · ' + direction : '',
   };
 };
 
@@ -88,7 +119,7 @@ const KnowledgeGraphGroupInspector = ({
 }: GroupInspectorProps) => {
   const { t } = useTranslation();
   const presentation = node.presentation;
-  const { bundle, members, statement, code, color, family } = describeBundle(
+  const { bundle, members, statement, code } = describeBundle(
     node,
     edges,
     nodes,
@@ -100,18 +131,13 @@ const KnowledgeGraphGroupInspector = ({
   return (
     <>
       <Box className="kg-inspector-body" direction="col">
+        {/* Family moved to the drawer header subtitle so the statement card
+            stays as the statement + its system name only (mock 2f). */}
         <InspectorStatement
           code={code}
           codeTestId="relationship-predicate"
-          color={color}
-          family={family}
-          statement={
-            <span data-testid="group-relationship-summary">{statement}</span>
-          }
+          statement={statement}
         />
-        <Typography className="tw:text-tertiary" size="text-xs">
-          {t('message.kg-group-explanation', { count: members.length })}
-        </Typography>
         <InspectorSection
           meta={t('label.kg-showing-of', {
             shown: preview.length,

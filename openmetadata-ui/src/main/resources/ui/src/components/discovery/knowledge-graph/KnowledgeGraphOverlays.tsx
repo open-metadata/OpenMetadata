@@ -27,7 +27,10 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { GraphSelection } from '../../../hooks/discovery/knowledge-graph/useKnowledgeGraphCanvas';
 import { MappingCoverage } from '../../../interface/discovery/knowledge-graph.interface';
-import { getColorSetForType } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
+import {
+  getColorSetForType,
+  getGroupRelationship,
+} from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import {
   getGraphNodeHref,
   isGraphColumnNode,
@@ -41,6 +44,7 @@ import {
   GraphNode,
   KnowledgeGraphG6Edge,
 } from './KnowledgeGraph.interface';
+import { getRelationStyle } from './KnowledgeGraph.relations';
 import KnowledgeGraphGroupInspector from './KnowledgeGraphGroupInspector';
 import {
   entityTile,
@@ -62,12 +66,19 @@ const EntitySummaryPanel = withSuspenseFallback(
 const getInspectorSubtitle = (
   t: (key: string, options?: Record<string, unknown>) => string,
   node?: GraphNode,
-  edge?: KnowledgeGraphG6Edge
+  edge?: KnowledgeGraphG6Edge,
+  edges?: KnowledgeGraphG6Edge[]
 ) => {
-  if (node?.presentation?.members) {
-    return t('label.kg-bundle-subtitle', {
+  if (node?.presentation?.members && edges) {
+    // Mock 2f: "Grouped · N relationships · <Family>" — the family name
+    // belongs on the drawer header so the statement card stays uncluttered.
+    const bundle = getGroupRelationship(node, edges);
+    const style = bundle ? getRelationStyle(bundle.data.category) : undefined;
+    const base = t('label.kg-bundle-subtitle', {
       count: node.presentation.members.length,
     });
+
+    return style ? base + ' · ' + t(style.labelKey) : base;
   }
   if (node) {
     const type = getNodeTypeLabel(node.type, t);
@@ -451,7 +462,12 @@ const KnowledgeGraphOverlays = ({
   };
   const inspectorTitle =
     getInspectorTitle(selectedNode, selectedEdge) ?? t('label.relationship');
-  const inspectorSubtitle = getInspectorSubtitle(t, selectedNode, selectedEdge);
+  const inspectorSubtitle = getInspectorSubtitle(
+    t,
+    selectedNode,
+    selectedEdge,
+    edges
+  );
   const inspectorTile = getInspectorTile(selectedNode, selectedEdge);
 
   return (
