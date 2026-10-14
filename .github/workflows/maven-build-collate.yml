@@ -32,8 +32,8 @@ on:
       - "yarn.lock"
       - "Makefile"
       - "bootstrap/**"
-  pull_request_target:
-    types: [opened, synchronize, labeled, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
     paths:
       - "openmetadata-service/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
@@ -42,7 +42,6 @@ on:
 
 permissions:
   contents: read
-  checks: write
 
 concurrency:
   group: maven-build-collate-${{ github.event.pull_request.number || github.run_id }}
@@ -50,40 +49,22 @@ concurrency:
 jobs:
   maven-collate-ci:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    # Fork and Dependabot PRs get no COLLATE_PAT, so they skip the Collate build.
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) }}
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-
       - name: Trigger Collate build & wait
         uses: the-actions-org/workflow-dispatch@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}
+          # Collate's openmetadata-dispatch.yml recognises a PR run by the event name
+          # 'pull_request_target' (it skips the Collate integration tests for it), so a
+          # pull_request run keeps reporting itself under that name.
+          EVENT: ${{ github.event_name == 'pull_request' && 'pull_request_target' || github.event_name }}
         with:
           workflow: OpenMetadata Collate Test
           ref: main
           repo: open-metadata/openmetadata-collate
           token: ${{ secrets.COLLATE_PAT }}
           wait-for-completion: true
-          inputs: '{ "sha": "${{ env.SHA }}", "event": "${{ github.event_name }}" }'
+          inputs: '{ "sha": "${{ env.SHA }}", "event": "${{ env.EVENT }}" }'

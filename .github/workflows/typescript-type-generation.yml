@@ -2,8 +2,8 @@ name: TypeScript Type Generation
 
 on:
   merge_group:
-  pull_request_target:
-    types: [opened, synchronize, reopened, labeled, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'openmetadata-spec/src/main/resources/json/schema/**'
       - 'openmetadata-ui/src/main/resources/ui/src/generated/**'
@@ -15,7 +15,7 @@ on:
         default: 'main'
         type: string
       pr_number:
-        description: 'PR number to run the workflow for (works for both forked and non-forked PRs)'
+        description: 'PR number to run the workflow for (same-repo PRs only; fork PRs regenerate the types locally)'
         required: false
         type: string
 
@@ -46,24 +46,6 @@ jobs:
           echo "head_sha=$(echo "$PR_DATA" | jq -r '.headRefOid')" >> $GITHUB_OUTPUT
           echo "full_repo=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login + "/" + .headRepository.name')" >> $GITHUB_OUTPUT
 
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' && github.actor != 'github-actions[bot]' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' && github.actor != 'github-actions[bot]' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true
-
       - name: Check if repository is a fork
         id: check-fork
         env:
@@ -71,16 +53,18 @@ jobs:
           FULL_REPO: ${{ steps.pr-details.outputs.full_repo }}
           HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
         run: |
           if [ "$EVENT_NAME" == "workflow_dispatch" ] && [ -n "$FULL_REPO" ]; then
-            # For workflow_dispatch with PR number
+            # For workflow_dispatch with PR number. A dispatch runs with a write token, so it
+            # stops here rather than check out and run a fork's code.
             if [ "$FULL_REPO" != "$BASE_REPO" ]; then
-              echo "is_fork=true" >> $GITHUB_OUTPUT
+              echo "::error title=Fork PRs are not regenerated on dispatch::PR #$PR_NUMBER comes from $FULL_REPO, so this workflow will not check out its code. Regenerate the types locally with 'cd openmetadata-ui/src/main/resources/ui && ./json2ts-generate-all.sh -l true', then commit src/generated/ and push."
+              exit 1
             else
               echo "is_fork=false" >> $GITHUB_OUTPUT
             fi
-          elif [ "$EVENT_NAME" == "pull_request_target" ]; then
-            # For pull_request_target events
+          elif [ "$EVENT_NAME" == "pull_request" ]; then
             if [ "$HEAD_REPO_FULL_NAME" != "$BASE_REPO" ]; then
               echo "is_fork=true" >> $GITHUB_OUTPUT
             else
@@ -98,7 +82,6 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          PR_DETAILS_HEAD_SHA: ${{ steps.pr-details.outputs.head_sha }}
           PR_DETAILS_HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
           INPUT_BRANCH: ${{ github.event.inputs.branch }}
           GITHUB_REF: ${{ github.ref }}
@@ -106,12 +89,10 @@ jobs:
         run: |
           if [ "$EVENT_NAME" == "merge_group" ]; then
             echo "ref=$GITHUB_SHA_VAL" >> $GITHUB_OUTPUT
-          elif [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request_target" ]; then
+          elif [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request" ]; then
             echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
-          elif [ "$EVENT_NAME" == "pull_request_target" ]; then
+          elif [ "$EVENT_NAME" == "pull_request" ]; then
             echo "ref=$PR_HEAD_REF" >> $GITHUB_OUTPUT
-          elif [ "$IS_FORK" == "true" ] && [ -n "$PR_DETAILS_HEAD_SHA" ]; then
-            echo "ref=$PR_DETAILS_HEAD_SHA" >> $GITHUB_OUTPUT
           elif [ -n "$PR_DETAILS_HEAD_REF" ]; then
             echo "ref=$PR_DETAILS_HEAD_REF" >> $GITHUB_OUTPUT
           elif [ -n "$INPUT_BRANCH" ]; then
@@ -156,14 +137,16 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
+      # Dependabot runs get a read-only token, so its PRs are not pushed to or commented on;
+      # like fork PRs they fail below with the regeneration instructions.
       - name: Commit and push changes
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false'
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.actor != 'dependabot[bot]'
         run: |
           git commit -m "Update generated TypeScript types"
           git push --force-with-lease
 
       - name: Create PR comment about auto-update
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.actor != 'dependabot[bot]' && (github.event_name == 'pull_request' || github.event.inputs.pr_number != '')
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
@@ -172,29 +155,28 @@ jobs:
 
             The generated TypeScript types have been automatically updated based on JSON schema changes in this PR.
 
-      - name: Create PR comment for fork repository
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
-          body: |
-            ## ⚠️ TypeScript Types Need Update
-
-            **The generated TypeScript types are out of sync with the JSON schema changes.**
-
-            Since this is a pull request from a forked repository, the types cannot be automatically committed.
-            Please generate and commit the types manually:
-
-            ```bash
-            cd openmetadata-ui/src/main/resources/ui
-            ./json2ts-generate-all.sh -l true
-            git add src/generated/
-            git commit -m "Update generated TypeScript types"
-            git push
-            ```
-
-            After pushing the changes, this check will pass automatically.
-
+      # Fork and Dependabot PRs can't be pushed to and get a read-only token, so the instructions
+      # go to the job summary and an error annotation instead of a commit and a comment.
       - name: Fail workflow for fork PRs with type changes
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true'
-        run: exit 1
+        if: steps.git-check.outcome != 'success' && (steps.check-fork.outputs.is_fork == 'true' || github.actor == 'dependabot[bot]')
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ## ⚠️ TypeScript Types Need Update
+
+          **The generated TypeScript types are out of sync with the JSON schema changes.**
+
+          CI can't push to a pull request from a fork or from Dependabot, so the types cannot be automatically committed.
+          Please generate and commit the types manually:
+
+          ```bash
+          cd openmetadata-ui/src/main/resources/ui
+          ./json2ts-generate-all.sh -l true
+          git add src/generated/
+          git commit -m "Update generated TypeScript types"
+          git push
+          ```
+
+          After pushing the changes, this check will pass automatically.
+          EOF
+          echo "::error title=TypeScript types need update::Regenerate the TypeScript types and commit them; the job summary has the commands."
+          exit 1
