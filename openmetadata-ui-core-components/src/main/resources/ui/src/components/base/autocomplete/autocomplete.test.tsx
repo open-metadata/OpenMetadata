@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SelectItemType } from '../select/select';
 import { Autocomplete } from './autocomplete';
@@ -286,5 +287,99 @@ describe('Autocomplete – empty state', () => {
     await userEvent.click(screen.getByRole('combobox'));
 
     expect(await screen.findByText('Loading results')).toBeInTheDocument();
+  });
+});
+
+const TagField = () => {
+  const [tags, setTags] = useState<SelectItemType[]>([]);
+
+  return (
+    <>
+      <Autocomplete
+        allowsCreation
+        hideDropdown
+        aria-label="Identities"
+        items={[]}
+        selectedItems={tags}
+        onItemInserted={(key) =>
+          setTags((prev) => [...prev, { id: String(key), label: String(key) }])
+        }>
+        {(item) => (
+          <Autocomplete.Item id={item.id} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        )}
+      </Autocomplete>
+      <input aria-label="Next field" />
+    </>
+  );
+};
+
+/** Lets React flush sync-lane work without running a macrotask. */
+const flushMicrotasks = async () => {
+  for (let i = 0; i < 10; i++) {
+    await Promise.resolve();
+  }
+};
+
+const typeNative = (input: HTMLInputElement, value: string) => {
+  Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    'value'
+  )?.set?.call(input, value);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+};
+
+const pressEnterNative = (input: HTMLInputElement) => {
+  input.dispatchEvent(
+    new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Enter',
+    })
+  );
+};
+
+describe('Autocomplete – focus leaves before a deferred open lands', () => {
+  // react-stately reopens the menu from a passive effect when the input value
+  // changes, and that update renders in a later task. Fast input (typing, Enter,
+  // then moving to the next field) can blur the input first, so the open lands
+  // on an unfocused combobox and nothing closes it again. While open, react-aria
+  // aria-hides everything outside the combobox, including nodes added later.
+  it('does not leave the combobox open after focus moves on', async () => {
+    const actEnvironment = (
+      globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT;
+    render(<TagField />);
+    const input = screen.getByRole('combobox', { name: 'Identities' });
+    const nextField = screen.getByRole('textbox', { name: 'Next field' });
+
+    (
+      globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = false;
+    try {
+      input.focus();
+      typeNative(input as HTMLInputElement, 'identity_1');
+      pressEnterNative(input as HTMLInputElement);
+      await waitFor(() => expect(screen.getByText('identity_1')).toBeVisible());
+
+      typeNative(input as HTMLInputElement, 'identity_2');
+      await flushMicrotasks();
+      pressEnterNative(input as HTMLInputElement);
+      await flushMicrotasks();
+      nextField.focus();
+
+      await waitFor(() => expect(screen.getByText('identity_2')).toBeVisible());
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    } finally {
+      (
+        globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+      ).IS_REACT_ACT_ENVIRONMENT = actEnvironment;
+    }
+
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.getByRole('textbox', { name: 'Next field' })
+    ).toBeInTheDocument();
   });
 });

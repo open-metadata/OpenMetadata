@@ -163,6 +163,17 @@ const InnerAutocomplete = ({
     context.allowsCreation &&
     (context.hideDropdown || context.visibleItemCount === 0);
 
+  // react-stately reopens the menu from a passive effect when the input value
+  // changes, and that update renders in a later task. Fast input (type, Enter,
+  // move to the next field) can blur first, so the open lands on an unfocused
+  // combobox that no later blur will close — and while open, react-aria
+  // aria-hides the rest of the page, including nodes added afterwards.
+  useEffect(() => {
+    if (comboBoxStateContext?.isOpen && !comboBoxStateContext.isFocused) {
+      comboBoxStateContext.close();
+    }
+  }, [comboBoxStateContext]);
+
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     const inputValue = event.currentTarget.value;
     const isCaretAtStart =
@@ -199,8 +210,14 @@ const InnerAutocomplete = ({
     }
   };
 
+  // Reopens a focused input whose menu was closed (e.g. by Escape); an
+  // unfocused input opens on the focus this press is about to cause.
   const handleInputMouseDown = (_event: React.MouseEvent<HTMLInputElement>) => {
-    if (comboBoxStateContext && !comboBoxStateContext.isOpen) {
+    if (
+      comboBoxStateContext &&
+      comboBoxStateContext.isFocused &&
+      !comboBoxStateContext.isOpen
+    ) {
       comboBoxStateContext.open();
     }
   };
