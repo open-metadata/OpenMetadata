@@ -16,8 +16,12 @@ import {
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Input } from 'antd';
+import {
+  Box,
+  Button,
+  Input,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -143,14 +147,14 @@ const TeamsHeadingLabel = ({
         role="presentation"
         onClick={(e) => e.stopPropagation()}>
         <Input
-          className="flex-1 w-min-0"
-          data-testid="team-name-input"
+          aria-label={t('label.display-name')}
+          className="tw:min-w-0 tw:flex-1"
+          inputDataTestId="team-name-input"
           placeholder={t('message.enter-comma-separated-field', {
             field: t('label.term-lowercase'),
           })}
-          type="text"
           value={heading}
-          onChange={(e) => setHeading(e.target.value)}
+          onChange={setHeading}
         />
         <Box
           inline

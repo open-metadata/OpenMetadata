@@ -15,15 +15,22 @@ import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
+  FormField,
   Grid,
+  HintText,
+  HookForm,
+  Input,
   SimpleModal,
+  TextArea,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Form, Input, Table } from 'antd';
-import { FormInstance } from 'antd/es/form/Form';
+import { Registry } from '@rjsf/utils';
+import { Table } from 'antd';
 import { AxiosError } from 'axios';
+import { noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../assets/svg/add-placeholder.svg';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
@@ -124,11 +131,11 @@ export const useSemanticsRulesState = () => {
 export const SemanticsRuleForm: React.FC<{
   semanticsRule: SemanticsRule;
   otherSemanticsRules: SemanticsRule[];
-  form: FormInstance<SemanticsRule>;
+  form: UseFormReturn<SemanticsRule>;
 }> = ({ semanticsRule, otherSemanticsRules, form }) => {
   useEffect(() => {
-    form.setFieldsValue(semanticsRule);
-  }, [semanticsRule]);
+    form.reset(semanticsRule);
+  }, [semanticsRule, form]);
 
   const queryBuilderFields = useMemo(() => {
     const fields = jsonLogicSearchClassBase.getMapFields();
@@ -142,57 +149,82 @@ export const SemanticsRuleForm: React.FC<{
     };
   }, []);
 
-  return (
-    <Form form={form} layout="vertical">
-      <Form.Item
-        label={t('label.name')}
-        name="name"
-        rules={[
-          {
-            required: true,
-            // Do not allow name if already exists
-            validator: (_, value) => {
-              if (otherSemanticsRules.some((rule) => rule.name === value)) {
-                return Promise.reject(
-                  new Error(t('message.name-already-exists'))
-                );
-              }
+  const requiredRule = (field: string) => ({
+    required: t('label.field-required', { field }),
+  });
 
-              return Promise.resolve();
-            },
-          },
-        ]}>
-        <Input placeholder={t('label.name')} />
-      </Form.Item>
-      <Form.Item
-        label={t('label.description')}
+  return (
+    <HookForm className="tw:flex tw:flex-col tw:gap-4" form={form}>
+      <FormField
+        control={form.control}
+        name="name"
+        rules={{
+          ...requiredRule(t('label.name')),
+          validate: (value) =>
+            !otherSemanticsRules.some((rule) => rule.name === value) ||
+            t('message.name-already-exists'),
+        }}>
+        {({ field, fieldState }) => (
+          <Input
+            isRequired
+            hint={fieldState.error?.message}
+            isInvalid={fieldState.invalid}
+            label={t('label.name')}
+            placeholder={t('label.name')}
+            value={field.value}
+            onBlur={field.onBlur}
+            onChange={field.onChange}
+          />
+        )}
+      </FormField>
+      <FormField
+        control={form.control}
         name="description"
-        rules={[
-          {
-            required: true,
-          },
-        ]}>
-        <Input.TextArea placeholder={t('label.description')} rows={2} />
-      </Form.Item>
-      <Form.Item
+        rules={requiredRule(t('label.description'))}>
+        {({ field, fieldState }) => (
+          <TextArea
+            isRequired
+            hint={fieldState.error?.message}
+            isInvalid={fieldState.invalid}
+            label={t('label.description')}
+            placeholder={t('label.description')}
+            rows={2}
+            value={field.value}
+            onBlur={field.onBlur}
+            onChange={field.onChange}
+          />
+        )}
+      </FormField>
+      <FormField
+        control={form.control}
         name="rule"
-        rules={[
-          {
-            required: true,
-          },
-        ]}>
-        {/* @ts-expect-error because Form.Item will provide value and onChange */}
-        <QueryBuilderWidget
-          defaultField={EntityReferenceFields.TAG}
-          fields={queryBuilderFields}
-          label={t('label.rule')}
-          schema={{
-            outputType: SearchOutputType.JSONLogic,
-          }}
-          subField="tagFQN"
-        />
-      </Form.Item>
-    </Form>
+        rules={requiredRule(t('label.rule'))}>
+        {({ field, fieldState }) => (
+          <Box direction="col" gap={1}>
+            <QueryBuilderWidget
+              defaultField={EntityReferenceFields.TAG}
+              fields={queryBuilderFields}
+              id="semantics-rule"
+              label={t('label.rule')}
+              name="rule"
+              options={{}}
+              registry={{} as Registry}
+              schema={{
+                outputType: SearchOutputType.JSONLogic,
+              }}
+              subField="tagFQN"
+              value={field.value}
+              onBlur={noop}
+              onChange={field.onChange}
+              onFocus={noop}
+            />
+            {fieldState.error && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
+    </HookForm>
   );
 };
 
@@ -209,13 +241,11 @@ export const AddEditSemanticsRuleModal: React.FC<{
   isSaveLoading,
   otherSemanticsRules,
 }) => {
-  const [form] = Form.useForm();
+  const form = useForm<SemanticsRule>({ defaultValues: semanticsRule });
 
-  const handleSave = () => {
-    form.validateFields().then((values) => {
-      onSave(values, semanticsRule.name);
-    });
-  };
+  const handleSave = form.handleSubmit((values) =>
+    onSave(values, semanticsRule.name)
+  );
 
   return (
     <SimpleModal

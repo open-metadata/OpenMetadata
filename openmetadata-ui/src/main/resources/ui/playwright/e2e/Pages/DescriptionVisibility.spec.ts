@@ -355,7 +355,7 @@ test.describe(
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
 
       await adminPage.getByText('Data Assets').click();
-      await adminPage.getByText('Table', { exact: true }).click();
+      await adminPage.getByTestId('Table').click();
       await waitForAllLoadersToDisappear(adminPage);
 
       // Add custom tab
