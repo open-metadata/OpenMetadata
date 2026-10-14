@@ -19,9 +19,10 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Announcement02,
+  Collapse,
   Download01,
   Edit01,
-  ExpandRight,
+  Expand,
   RefreshCcw01,
   Trash01,
   Upload01,
@@ -1085,9 +1086,8 @@ const DataProductsDetailsPage = ({
                   actions={
                     isExpandViewSupported && (
                       <ButtonUtility
-                        className={isTabExpanded ? 'rotate-180' : ''}
                         data-testid="tab-expand-button"
-                        icon={ExpandRight}
+                        icon={isTabExpanded ? Collapse : Expand}
                         size="lg"
                         tooltip={
                           isTabExpanded

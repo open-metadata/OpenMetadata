@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
-import { ExpandRight } from '@openmetadata/ui-core-components/icons';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
@@ -433,9 +433,8 @@ function FileDetails({
                 actions={
                   isExpandViewSupported && (
                     <ButtonUtility
-                      className={isTabExpanded ? 'rotate-180' : ''}
                       data-testid="tab-expand-button"
-                      icon={ExpandRight}
+                      icon={isTabExpanded ? Collapse : Expand}
                       size="lg"
                       tooltip={
                         isTabExpanded ? t('label.collapse') : t('label.expand')

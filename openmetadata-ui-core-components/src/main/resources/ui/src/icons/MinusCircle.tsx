@@ -37,9 +37,9 @@ export const MinusCircle: FC<Props> = ({
       cy={9.941}
       r={8}
       stroke="currentColor"
-      strokeWidth={1.3}
+      strokeWidth={1.8}
     />
-    <path d="M14.441 9.941h-8" stroke="currentColor" strokeWidth={1.3} />
+    <path d="M14.441 9.941h-8" stroke="currentColor" strokeWidth={1.8} />
   </svg>
 );
 MinusCircle.displayName = 'MinusCircle';

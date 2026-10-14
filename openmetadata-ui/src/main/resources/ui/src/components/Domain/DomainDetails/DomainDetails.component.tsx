@@ -21,8 +21,9 @@ import {
 import {
   Announcement02,
   ChevronDown,
+  Collapse,
   Edit01,
-  ExpandRight,
+  Expand,
   Trash01,
   Version,
 } from '@openmetadata/ui-core-components/icons';
@@ -1146,9 +1147,8 @@ const DomainDetails = ({
                   actions={
                     isExpandViewSupported && (
                       <ButtonUtility
-                        className={isTabExpanded ? 'rotate-180' : ''}
                         data-testid="tab-expand-button"
-                        icon={ExpandRight}
+                        icon={isTabExpanded ? Collapse : Expand}
                         size="lg"
                         tooltip={
                           isTabExpanded

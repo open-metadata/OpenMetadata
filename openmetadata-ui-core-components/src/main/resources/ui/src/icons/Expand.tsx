@@ -17,7 +17,7 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const ExpandRight: FC<Props> = ({
+export const Expand: FC<Props> = ({
   size = 20,
   color = 'currentColor',
   ...props
@@ -32,16 +32,20 @@ export const ExpandRight: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M16.647 12V8c0-3.333-1.333-4.666-4.667-4.666h-4c-3.333 0-4.667 1.333-4.667 4.667v4c0 3.333 1.334 4.666 4.667 4.666h4c3.333 0 4.667-1.333 4.667-4.666M11.98 3.334v13.333"
+    <rect
+      height={16}
+      rx={5}
       stroke="currentColor"
       strokeWidth={1.3}
+      width={16}
+      x={2}
+      y={2}
     />
     <path
-      d="M7.314 8.293 9.02 10l-1.706 1.706"
+      d="M13.557 12.665 10.891 10l2.666-2.667M8.223 2.89v14.223"
       stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>
 );
-ExpandRight.displayName = 'ExpandRight';
+Expand.displayName = 'Expand';

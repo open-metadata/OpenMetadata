@@ -12,7 +12,7 @@
  */
 
 import { ButtonUtility } from '@openmetadata/ui-core-components';
-import { ExpandRight } from '@openmetadata/ui-core-components/icons';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import type { UseTestCaseDetailPageResult } from './useTestCaseDetailPage';
 
@@ -35,9 +35,8 @@ const TestCaseTabBarExtraContent = ({
 
   return (
     <ButtonUtility
-      className={isTabExpanded ? 'rotate-180' : ''}
       data-testid="tab-expand-button"
-      icon={ExpandRight}
+      icon={isTabExpanded ? Collapse : Expand}
       size="lg"
       tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
       onClick={toggleTabExpanded}

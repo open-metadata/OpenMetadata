@@ -17,7 +17,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ExpandRight } from '@openmetadata/ui-core-components/icons';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -470,9 +470,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 actions={
                   isExpandViewSupported && (
                     <ButtonUtility
-                      className={isTabExpanded ? 'rotate-180' : ''}
                       data-testid="tab-expand-button"
-                      icon={ExpandRight}
+                      icon={isTabExpanded ? Collapse : Expand}
                       size="lg"
                       tooltip={
                         isTabExpanded ? t('label.collapse') : t('label.expand')

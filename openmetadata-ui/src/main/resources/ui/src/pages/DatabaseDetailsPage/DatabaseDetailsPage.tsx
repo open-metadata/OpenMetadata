@@ -12,7 +12,7 @@
  */
 
 import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
-import { ExpandRight } from '@openmetadata/ui-core-components/icons';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AxiosError } from 'axios';
@@ -167,9 +167,8 @@ const TabExpandToggle = ({
 
   return (
     <ButtonUtility
-      className={isTabExpanded ? 'rotate-180' : ''}
       data-testid="tab-expand-button"
-      icon={ExpandRight}
+      icon={isTabExpanded ? Collapse : Expand}
       size="lg"
       tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
       onClick={onToggle}
