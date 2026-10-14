@@ -11,29 +11,44 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
-import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { Status } from '../../../../generated/events/api/typedEvent';
-import { usePaging } from '../../../../hooks/paging/usePaging';
 import {
   mockAlertDetails,
   MOCK_TYPED_EVENT_LIST_RESPONSE,
 } from '../../../../mocks/Alerts.mock';
 import { getAlertEventsFromId } from '../../../../rest/alertsAPI';
+import { NextPreviousWithOffsetProps } from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset.interface';
 import AlertRecentEventsTab from './AlertRecentEventsTab';
 
-jest.mock('../../../../hooks/paging/usePaging', () => ({
-  usePaging: jest.fn().mockReturnValue({
-    currentPage: 8,
-    paging: {},
-    pageSize: 5,
-    handlePagingChange: jest.fn(),
-    handlePageChange: jest.fn(),
-    handlePageSizeChange: jest.fn(),
-    showPagination: true,
-  }),
-}));
+let mockInitialPage = 1;
+
+jest.mock('../../../../hooks/paging/usePaging', () => {
+  const { useState } = jest.requireActual('react');
+
+  return {
+    usePaging: () => {
+      const [paging, setPaging] = useState({});
+      const [currentPage, setCurrentPage] = useState(mockInitialPage);
+
+      return {
+        currentPage,
+        paging,
+        pageSize: 5,
+        handlePagingChange: setPaging,
+        handlePageChange: setCurrentPage,
+        handlePageSizeChange: jest.fn(),
+        showPagination: true,
+      };
+    },
+  };
+});
 
 jest.mock('../../../../rest/alertsAPI', () => ({
   getAlertEventsFromId: jest
@@ -50,14 +65,42 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 );
 
 jest.mock('../../../common/NextPreviousWithOffset/NextPreviousWithOffset', () =>
-  jest.fn().mockImplementation(() => <div>NextPreviousWithOffset</div>)
+  jest
+    .fn()
+    .mockImplementation(
+      ({
+        currentPage,
+        pageSize,
+        pagingHandler,
+      }: NextPreviousWithOffsetProps) => (
+        <div>
+          <span data-testid="current-page">{currentPage}</span>
+          <button
+            onClick={() =>
+              pagingHandler({
+                offset: currentPage * pageSize,
+                page: currentPage + 1,
+              })
+            }>
+            next
+          </button>
+        </div>
+      )
+    )
 );
 
 jest.mock('../../../Database/SchemaEditor/SchemaEditor', () =>
   jest.fn().mockImplementation(() => <div>SchemaEditor</div>)
 );
 
+const mockGetEvents = getAlertEventsFromId as jest.Mock;
+
 describe('AlertRecentEventsTab', () => {
+  beforeEach(() => {
+    mockInitialPage = 1;
+    mockGetEvents.mockClear();
+  });
+
   it('should render the component', async () => {
     await act(async () => {
       render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
@@ -113,37 +156,105 @@ describe('AlertRecentEventsTab', () => {
     expect(await screen.findByTestId('applied-filter-text')).toHaveTextContent(
       ': label.successful'
     );
-
-    const { handlePageChange } = (usePaging as jest.Mock)();
-
-    expect(handlePageChange).toHaveBeenCalledWith(INITIAL_PAGING_VALUE);
   });
 
-  it('should reset pagination to the first page when the status filter changes', async () => {
+  it('should go back to the first page when the filter changes', async () => {
     await act(async () => {
       render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
     });
 
-    const mockHandlePageChange = (usePaging as jest.Mock)().handlePageChange;
+    fireEvent.click(screen.getByText('next'));
+    fireEvent.click(await screen.findByText('next'));
 
-    const filterButton = screen.getByTestId('filter-button');
-    fireEvent.click(filterButton);
+    expect(await screen.findByTestId('current-page')).toHaveTextContent('3');
 
-    const filterOption = await screen.findByText('label.successful');
-    fireEvent.click(filterOption);
+    fireEvent.click(screen.getByTestId('filter-button'));
+    fireEvent.click(await screen.findByText('label.failed'));
 
-    expect(await screen.findByTestId('applied-filter-text')).toHaveTextContent(
-      ': label.successful'
+    expect(await screen.findByTestId('current-page')).toHaveTextContent('1');
+
+    await waitFor(() =>
+      expect(mockGetEvents).toHaveBeenLastCalledWith({
+        id: mockAlertDetails.id,
+        params: { limit: 5, paginationOffset: 0, status: Status.Failed },
+      })
+    );
+  });
+
+  it('should fetch the next page by offset', async () => {
+    await act(async () => {
+      render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
+    });
+
+    fireEvent.click(screen.getByText('next'));
+
+    await waitFor(() =>
+      expect(mockGetEvents).toHaveBeenLastCalledWith({
+        id: mockAlertDetails.id,
+        params: { limit: 5, paginationOffset: 5 },
+      })
+    );
+  });
+
+  it('should load the page restored from the URL', async () => {
+    mockInitialPage = 3;
+
+    await act(async () => {
+      render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
+    });
+
+    expect(mockGetEvents).toHaveBeenCalledTimes(1);
+    expect(mockGetEvents).toHaveBeenCalledWith({
+      id: mockAlertDetails.id,
+      params: { limit: 5, paginationOffset: 10 },
+    });
+  });
+
+  it('should fall back to the first page when the URL page is past the end', async () => {
+    mockInitialPage = 99;
+    mockGetEvents.mockImplementationOnce(() =>
+      Promise.resolve({ data: [], paging: { total: 3 } })
     );
 
-    expect(mockHandlePageChange).toHaveBeenCalledTimes(1);
-    expect(mockHandlePageChange).toHaveBeenCalledWith(INITIAL_PAGING_VALUE);
+    await act(async () => {
+      render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
+    });
 
-    const calls = (getAlertEventsFromId as jest.Mock).mock.calls;
-    const lastCallParams = calls[calls.length - 1][0].params;
+    expect(mockGetEvents).toHaveBeenLastCalledWith({
+      id: mockAlertDetails.id,
+      params: { limit: 5, paginationOffset: 0 },
+    });
+    expect(screen.getByTestId('current-page')).toHaveTextContent('1');
+    expect(screen.getByTestId('recent-events-list')).toBeInTheDocument();
+  });
 
-    expect(lastCallParams.paginationOffset).toBe(0);
-    expect(lastCallParams.status).toBe(AlertRecentEventFilters.SUCCESSFUL);
+  it('should ignore a response that arrives after a newer request', async () => {
+    await act(async () => {
+      render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
+    });
+
+    let resolveStale: (value: unknown) => void = jest.fn();
+    mockGetEvents.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveStale = resolve))
+    );
+
+    fireEvent.click(screen.getByText('next'));
+    fireEvent.click(screen.getByTestId('filter-button'));
+    fireEvent.click(await screen.findByText('label.failed'));
+
+    expect(await screen.findByTestId('recent-events-list')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveStale({
+        data: [{ status: Status.Failed, data: [], timestamp: 1700000000001 }],
+        paging: { offset: 5 },
+      });
+    });
+
+    expect(screen.getByTestId('current-page')).toHaveTextContent('1');
+    expect(
+      screen.queryByTestId('event-collapse-unreadable-failed-1700000000001')
+    ).not.toBeInTheDocument();
   });
 
   it('renders an unreadable (empty-data) row without crashing the page', async () => {
