@@ -15,9 +15,12 @@ out. Locally the consumer spent 62.4s on 749 signals synchronously and 34.3s wit
 (glossary term creates 520ms to 50ms average).
 
 ## Decision
-1. Every signal start event of an event-based trigger leaves asynchronously
+1. Every change-event signal start event of an event-based trigger leaves asynchronously
    (`setAsynchronousLeave(true)`), as the periodic trigger already does. The signal commits the
-   instance, its start listener and one job; the body runs on the async executor.
+   instance, its start listener and one job; the body runs on the async executor. A change
+   request's start event stays synchronous: `ChangeRequestDelivery` counts a request as delivered
+   when the signal returns and retries a review run that fails, and it runs on the request thread
+   or the recovery scanner, not on the shared consumer.
 2. Every Flowable async job runs inside a `FreshReadScope` (`FreshReadJobRunnableFactory`), so
    workflow gates read the database on executor threads as they did on the consumer thread.
 3. Runs for the same entity may now overlap, so after creating its approval task every run keeps

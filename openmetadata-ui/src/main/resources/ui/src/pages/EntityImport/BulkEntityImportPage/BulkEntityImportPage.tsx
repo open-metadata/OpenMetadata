@@ -125,7 +125,11 @@ import {
   getEntityDetailsPath,
   getTestSuitePath,
 } from '../../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+  showWarningToast,
+} from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { DataQualityPageTabs } from '../../DataQuality/DataQualityPage.interface';
 import './bulk-entity-import-page.less';
@@ -1031,12 +1035,22 @@ const BulkEntityImportPage = () => {
           handleResetImportJob();
           setIsValidating(false);
         } else {
-          showSuccessToast(
-            t('message.entity-details-updated', {
-              entityType: capitalize(entityType),
-              fqn,
-            })
-          );
+          const pendingApproval =
+            importResults?.numberOfRowsPendingApproval ?? 0;
+          if (pendingApproval > 0) {
+            showWarningToast(
+              t('message.import-rows-pending-approval', {
+                count: pendingApproval,
+              })
+            );
+          } else {
+            showSuccessToast(
+              t('message.entity-details-updated', {
+                entityType: capitalize(entityType),
+                fqn,
+              })
+            );
+          }
 
           navigate(
             getBulkEntityNavigationPath(

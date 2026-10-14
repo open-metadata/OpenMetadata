@@ -52,6 +52,10 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.approval.ApprovalDecisionService;
+import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
+import org.openmetadata.service.governance.approval.ChangeRequestReview;
+import org.openmetadata.service.governance.approval.ChangeRequestTasks;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -138,6 +142,31 @@ public class TaskWorkflowHandler {
       Object resolvedPayload,
       String comment,
       String user) {
+    return resolveTask(
+        task,
+        transitionId,
+        requestedResolutionType,
+        newValue,
+        resolvedPayload,
+        comment,
+        user,
+        null);
+  }
+
+  /**
+   * Resolve a task, first recording the resolver's decision in the catalog when the task reviews a
+   * change request. {@code review} names the revision the resolver reviewed and, when they decided
+   * change by change, their decision on each.
+   */
+  public Task resolveTask(
+      Task task,
+      String transitionId,
+      TaskResolutionType requestedResolutionType,
+      String newValue,
+      Object resolvedPayload,
+      String comment,
+      String user,
+      ChangeRequestReview review) {
     UUID taskId = task.getId();
     TaskAvailableTransition selectedTransition =
         TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
@@ -150,6 +179,23 @@ public class TaskWorkflowHandler {
         effectiveResolutionType,
         user);
 
+    ReviewOutcome outcome =
+        ApprovalDecisionService.recordForTask(task, effectiveResolutionType, review, comment, user);
+    if (outcome == ReviewOutcome.WAIT) {
+      LOG.info(
+          "[TaskWorkflowHandler] Recorded {}'s decision on task '{}'; no change is agreed yet",
+          user,
+          taskId);
+      return refreshTask(taskId);
+    }
+    // A review decided change by change routes the workflow by what the reviewers agreed on: a
+    // partial outcome is settled inside the approval step without resolving the task, which stays
+    // open with the changes still pending.
+    String routedTransition = outcome == ReviewOutcome.NONE ? transitionId : outcome.transition();
+    TaskResolutionType routedResolution = routedResolution(outcome, effectiveResolutionType);
+    TaskAvailableTransition routedSelection =
+        outcome == ReviewOutcome.NONE ? selectedTransition : null;
+
     // During migration cutover, legacy workflow tasks can be converted to Task entities before
     // workflowInstanceId is backfilled. Runtime-task presence is the source of truth in that case.
     boolean isWorkflowManaged = isWorkflowManaged(task);
@@ -157,9 +203,9 @@ public class TaskWorkflowHandler {
     if (isWorkflowManaged) {
       return resolveWorkflowTask(
           task,
-          transitionId,
-          effectiveResolutionType,
-          selectedTransition,
+          routedTransition,
+          routedResolution,
+          routedSelection,
           newValue,
           resolvedPayload,
           comment,
@@ -570,6 +616,15 @@ public class TaskWorkflowHandler {
 
     if (aboutRef == null) {
       LOG.warn("[TaskWorkflowHandler] aboutRef is null, skipping entity changes");
+      return;
+    }
+
+    // A change request's task publishes through its workflow's commit step, which applies exactly
+    // the reviewed change, so the task form's own entity actions do not run.
+    if (ChangeRequestTasks.reviewsChangeRequest(task)) {
+      LOG.debug(
+          "[TaskWorkflowHandler] Task '{}' reviews a change request, skipping entity changes",
+          task.getId());
       return;
     }
 
@@ -1356,6 +1411,16 @@ public class TaskWorkflowHandler {
       case Revoked -> "revoke";
       case TimedOut -> "timeout";
       case Expired -> "expired";
+    };
+  }
+
+  private static TaskResolutionType routedResolution(
+      ReviewOutcome outcome, TaskResolutionType requested) {
+    return switch (outcome) {
+      case NONE -> requested;
+      case APPROVE -> TaskResolutionType.Approved;
+      case REJECT -> TaskResolutionType.Rejected;
+      case WAIT, PARTIAL_APPROVE, PARTIAL_REJECT -> null;
     };
   }
 

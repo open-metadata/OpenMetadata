@@ -74,14 +74,17 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.RelationshipTypeUsage;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -1017,7 +1020,17 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         permissionAssets(request.getAssets()),
         MetadataOperation.EDIT_GLOSSARY_TERMS);
-    return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
+    TagLabel label = glossaryLabel(id);
+    List<BulkResponse> held =
+        ApprovalGate.holdGatedAssets(
+            request.getAssets(),
+            Entity.FIELD_TAGS,
+            securityContext.getUserPrincipal().getName(),
+            Boolean.TRUE.equals(request.getDryRun()),
+            asset -> asset.setTags(ApprovalGate.withTag(asset.getTags(), label)));
+    return ApprovalGate.bulkResponse(
+        ApprovalGate.withHeld(repository.bulkAddAndValidateGlossaryToAssets(id, request), held),
+        Boolean.TRUE.equals(request.getDryRun()));
   }
 
   @PUT
@@ -1071,7 +1084,26 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         permissionAssets(request.getAssets()),
         MetadataOperation.EDIT_GLOSSARY_TERMS);
-    return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
+    String termFqn = glossaryLabel(id).getTagFQN();
+    List<BulkResponse> held =
+        ApprovalGate.holdGatedAssets(
+            request.getAssets(),
+            Entity.FIELD_TAGS,
+            securityContext.getUserPrincipal().getName(),
+            Boolean.TRUE.equals(request.getDryRun()),
+            asset -> asset.setTags(ApprovalGate.withoutTag(asset.getTags(), termFqn)));
+    return ApprovalGate.bulkResponse(
+        ApprovalGate.withHeld(repository.bulkRemoveGlossaryToAssets(id, request), held),
+        Boolean.TRUE.equals(request.getDryRun()));
+  }
+
+  private static TagLabel glossaryLabel(UUID termId) {
+    return new TagLabel()
+        .withTagFQN(
+            Entity.getEntityReferenceById(Entity.GLOSSARY_TERM, termId, Include.NON_DELETED)
+                .getFullyQualifiedName())
+        .withSource(TagLabel.TagSource.GLOSSARY)
+        .withLabelType(TagLabel.LabelType.MANUAL);
   }
 
   /**
