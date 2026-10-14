@@ -37,8 +37,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('./forms/WorkflowConfigFormV1', () => ({
-  WorkflowConfigFormV1: ({ config }: { config: NodeConfig }) => (
+  WorkflowConfigFormV1: ({
+    config,
+    updateConfig,
+  }: {
+    config: NodeConfig;
+    updateConfig: (key: keyof NodeConfig, value: string) => void;
+  }) => (
     <div>
+      <textarea
+        aria-label="description"
+        data-testid="workflow-description-input"
+        value={config.description}
+        onChange={(e) => updateConfig('description', e.target.value)}
+      />
       <span data-testid="selected-data-assets">
         {config.dataAssets.join(',')}
       </span>
@@ -57,12 +69,18 @@ jest.mock('./forms/FormActionButtons', () => ({
   ),
 }));
 
+const FULL_WORKFLOW_MODE = {
+  allowFullStartNodeConfiguration: true,
+  allowStartNodeFilterScheduleAndBatchEdit: true,
+  allowScheduledTrigger: true,
+};
+
+const mockUseWorkflowModeContext = jest
+  .fn()
+  .mockReturnValue(FULL_WORKFLOW_MODE);
+
 jest.mock('../../../contexts/WorkflowModeContext', () => ({
-  useWorkflowModeContext: () => ({
-    allowFullStartNodeConfiguration: true,
-    allowStartNodeFilterScheduleAndBatchEdit: true,
-    allowScheduledTrigger: true,
-  }),
+  useWorkflowModeContext: () => mockUseWorkflowModeContext(),
 }));
 
 jest.mock('../../../rest/metadataTypeAPI', () => ({
@@ -149,6 +167,60 @@ describe('NodeConfigSidebar trigger of a workflow with a Git sink', () => {
     expect(getSavedTriggerConfig(onSave)).toEqual(
       expect.objectContaining({
         dataAssets: [EntityType.TABLE, EntityType.QUERY],
+      })
+    );
+  });
+});
+
+describe('NodeConfigSidebar start node description', () => {
+  afterEach(() => {
+    mockUseWorkflowModeContext.mockReturnValue(FULL_WORKFLOW_MODE);
+  });
+
+  const renderWithMetadata = async () => {
+    const onWorkflowMetadataUpdate = jest.fn();
+    render(
+      <NodeConfigSidebar
+        isOpen
+        node={START_NODE}
+        triggerFieldsConfig={{ common: [], entitySpecific: {} }}
+        workflowDefinition={null}
+        workflowMetadata={{
+          displayName: 'Git Sync Workflow',
+          description: 'Old description',
+        }}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        onWorkflowMetadataUpdate={onWorkflowMetadataUpdate}
+        onWorkflowUpdate={jest.fn()}
+      />
+    );
+    await act(async () => undefined);
+
+    fireEvent.change(screen.getByTestId('workflow-description-input'), {
+      target: { value: 'New description' },
+    });
+    fireEvent.click(screen.getByTestId('save-node-configuration-button'));
+
+    return onWorkflowMetadataUpdate;
+  };
+
+  it.each([
+    ['OSS (restricted start node)', false],
+    ['full start node configuration', true],
+  ])('persists the edited description in %s', async (_, allowFull) => {
+    mockUseWorkflowModeContext.mockReturnValue({
+      allowFullStartNodeConfiguration: allowFull,
+      allowStartNodeFilterScheduleAndBatchEdit: allowFull,
+      allowScheduledTrigger: allowFull,
+    });
+
+    const onWorkflowMetadataUpdate = await renderWithMetadata();
+
+    expect(onWorkflowMetadataUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        displayName: 'Git Sync Workflow',
+        description: 'New description',
       })
     );
   });

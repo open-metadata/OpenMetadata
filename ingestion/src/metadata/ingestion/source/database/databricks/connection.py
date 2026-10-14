@@ -64,6 +64,7 @@ from metadata.ingestion.source.database.databricks.client import DatabricksClien
 from metadata.ingestion.source.database.databricks.log_filters import (
     suppress_user_agent_entry_deprecation_log,
 )
+from metadata.ingestion.source.database.databricks.metadata import _quote_identifier
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_SQL_STATEMENT_TEST,
@@ -193,7 +194,7 @@ class DatabricksEngineWrapper:
         if schema_name is not None:
             if self.first_catalog:
                 with self.engine.connect() as connection:
-                    connection.execute(text(f"USE CATALOG `{self.first_catalog}`"))
+                    connection.execute(text(f"USE CATALOG {_quote_identifier(self.first_catalog)}"))
             self.first_schema = schema_name
             return [schema_name]
         if self.schemas is None:
@@ -226,7 +227,9 @@ class DatabricksEngineWrapper:
             self.get_schemas()
         catalog, schema = self._require_resolved_catalog_and_schema()
         with self.engine.connect() as connection:
-            tables = connection.execute(text(f"SHOW TABLES IN `{catalog}`.`{schema}`"))
+            tables = connection.execute(
+                text(f"SHOW TABLES IN {_quote_identifier(catalog)}.{_quote_identifier(schema)}")
+            )
             return tables.fetchmany(DEFAULT_SAMPLE_ROWS)
 
     def get_views(self):
@@ -235,7 +238,7 @@ class DatabricksEngineWrapper:
             self.get_schemas()
         catalog, schema = self._require_resolved_catalog_and_schema()
         with self.engine.connect() as connection:
-            views = connection.execute(text(f"SHOW VIEWS IN `{catalog}`.`{schema}`"))
+            views = connection.execute(text(f"SHOW VIEWS IN {_quote_identifier(catalog)}.{_quote_identifier(schema)}"))
             return views.fetchmany(DEFAULT_SAMPLE_ROWS)
 
     def get_catalogs(self, catalog_name: str | None = None):

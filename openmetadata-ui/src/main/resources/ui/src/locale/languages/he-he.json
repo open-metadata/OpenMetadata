@@ -4923,6 +4923,7 @@
     "no-failing-tests": "אין בדיקות שנכשלו.",
     "no-features-data-available": "אין נתוני יכולות זמינים",
     "no-feed-available-for-selected-filter": "לא נמצאה הזרמה. נסה לשנות את המסנן.",
+    "no-fields-configured": "עדיין לא הוגדרו שדות",
     "no-file-selected": "לא נבחר קובץ",
     "no-filter-patterns-available": "אין תבניות סינון זמינות עבור מחבר זה.",
     "no-folders-yet-create-one": "אין עדיין תיקיות, צור אחת כדי לארגן מסמכים לפי נושא או צוות.",

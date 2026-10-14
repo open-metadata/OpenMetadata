@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const UploadCloud01: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const UploadCloud01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M4 16.242A4.5 4.5 0 0 1 6.08 8.02a6.002 6.002 0 0 1 11.84 0A4.5 4.5 0 0 1 20 16.242M8 16l4-4m0 0 4 4m-4-4v9"
+      d="M3.333 13.535a3.75 3.75 0 0 1 1.734-6.852 5.002 5.002 0 0 1 9.867 0 3.75 3.75 0 0 1 1.733 6.852m-10-.202L10 10m0 0 3.333 3.333M10 10v7.5"
       stroke="currentColor"
       strokeWidth={1.3}
     />
