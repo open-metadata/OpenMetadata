@@ -77,14 +77,19 @@ else
 fi
 
 # The JVM echoes JAVA_TOOL_OPTIONS to stderr at startup ("Picked up JAVA_TOOL_OPTIONS: ..."), which
-# puts any secret set there, such as a truststore password, into the container log. Pass the options
-# to java as arguments instead, ahead of ours so ours still take precedence. A value with quotes stays
-# in the environment: the JVM strips the quotes, but word splitting would keep them.
+# puts any secret set there, such as a truststore password, into the container log. Plain arguments
+# would show in ps instead, so hand the options to the java launcher as an @argfile read from fd 3:
+# argv only shows the file name (except on musl, where the launcher re-execs with them expanded),
+# and the heredoc leaves no file behind. It goes ahead of our options so ours still take precedence.
+# A value with quotes or '#' stays in the environment, because argfiles read those differently.
 JAVA_TOOL_ARGS=""
 case "$JAVA_TOOL_OPTIONS" in
-  *\"* | *\'*) ;;
+  *\"* | *\'* | *#*) ;;
   ?*)
-    JAVA_TOOL_ARGS="$JAVA_TOOL_OPTIONS"
+    exec 3<<EOF
+$JAVA_TOOL_OPTIONS
+EOF
+    JAVA_TOOL_ARGS="@/dev/fd/3"
     unset JAVA_TOOL_OPTIONS
     ;;
 esac

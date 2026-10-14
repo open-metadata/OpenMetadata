@@ -32,17 +32,6 @@ else
   JAVA="${JAVA_HOME}/bin/java"
 fi
 
-# As in bin/openmetadata-server-start.sh: the JVM would echo JAVA_TOOL_OPTIONS, and any secret in
-# it, to stderr, so pass the options as arguments instead (a value with quotes stays in the env).
-JAVA_TOOL_ARGS=""
-case "$JAVA_TOOL_OPTIONS" in
-  *\"* | *\'*) ;;
-  ?*)
-    JAVA_TOOL_ARGS="$JAVA_TOOL_OPTIONS"
-    unset JAVA_TOOL_OPTIONS
-    ;;
-esac
-
 OPENMETADATA_SETUP_MAIN_CLASS=org.openmetadata.service.util.OpenMetadataOperations
 LIBS_DIR="${BOOTSTRAP_DIR}"/../libs/
 if  [ ${debug} ] ; then
@@ -63,6 +52,20 @@ if [ -d "${LIBS_DIR}" ]; then
 else
   CLASSPATH=`mvn -pl openmetadata-service -q exec:exec -Dexec.executable=echo -Dexec.args="%classpath"`
 fi
+
+# As in bin/openmetadata-server-start.sh: hand JAVA_TOOL_OPTIONS to java as an @argfile on fd 3, so
+# neither the JVM's startup echo nor ps shows it (a value with quotes or '#' stays in the env).
+JAVA_TOOL_ARGS=""
+case "$JAVA_TOOL_OPTIONS" in
+  *\"* | *\'* | *#*) ;;
+  ?*)
+    exec 3<<EOF
+$JAVA_TOOL_OPTIONS
+EOF
+    JAVA_TOOL_ARGS="@/dev/fd/3"
+    unset JAVA_TOOL_OPTIONS
+    ;;
+esac
 
 ${JAVA} ${JAVA_TOOL_ARGS} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${OPENMETADATA_SETUP_MAIN_CLASS} -c $CONFIG_FILE_PATH "$@"
 exit $?
