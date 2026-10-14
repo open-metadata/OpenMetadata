@@ -116,7 +116,7 @@ const ContextCenterAIContextPage = () => {
   // The URL owns the cursor alongside the page number, so a reload or browser Back lands on the
   // same personas the pager says it is showing; page clicks only write the URL.
   useEffect(() => {
-    fetchPersonas(
+    void fetchPersonas(
       urlCursorType && urlCursorValue
         ? { [urlCursorType]: urlCursorValue }
         : undefined
