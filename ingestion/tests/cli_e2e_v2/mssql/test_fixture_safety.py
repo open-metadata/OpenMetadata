@@ -59,8 +59,10 @@ def test_ingestion_account_can_read_but_cannot_mutate(mssql_source, mssql_ingest
     quote = mssql_ingestion_engine.dialect.identifier_preparer.quote_identifier
     owned = quote(mssql_source.schema)
     assert _rows(mssql_ingestion_engine, f"SELECT COUNT(*) FROM {owned}.customers") == [(5,)]
-    with pytest.raises(DBAPIError, match="permission was denied"), mssql_ingestion_engine.begin() as connection:
-        connection.execute(text(f"UPDATE {owned}.customers SET credit_score = 1 WHERE id = 1"))
+    with mssql_ingestion_engine.begin() as connection:
+        with pytest.raises(DBAPIError, match="permission was denied"):
+            connection.execute(text(f"UPDATE {owned}.customers SET credit_score = 1 WHERE id = 1"))
+        connection.rollback()
 
 
 def test_seed_failure_removes_owned_schema(mssql_admin_engine, monkeypatch):

@@ -19,6 +19,7 @@ from sqlalchemy.sql.sqltypes import TypeEngine
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.orm.registry import CustomTypes
+from metadata.profiler.orm.types.custom_xml import XML
 
 
 class CommonMapTypes:
@@ -47,8 +48,9 @@ class CommonMapTypes:
         DataType.MEDIUMTEXT: sqlalchemy.TEXT,
         DataType.TEXT: sqlalchemy.TEXT,
         # An XML column is a text document in every dialect that has one, and every
-        # driver hands it back as a string.
-        DataType.XML: sqlalchemy.TEXT,
+        # driver hands it back as a string. It keeps its own TEXT subclass so
+        # `NOT_COMPUTE` still recognises it by name and skips its column metrics.
+        DataType.XML: XML,
         DataType.CHAR: sqlalchemy.CHAR,
         DataType.VARCHAR: sqlalchemy.VARCHAR,
         DataType.BOOLEAN: sqlalchemy.BOOLEAN,
@@ -105,7 +107,8 @@ class CommonMapTypes:
             sqlalchemy.DATETIME: {DataType.DATETIME},
             sqlalchemy.Interval: {DataType.INTERVAL},
             sqlalchemy.String: {DataType.STRING},
-            sqlalchemy.TEXT: {DataType.TEXT, DataType.MEDIUMTEXT, DataType.XML},
+            sqlalchemy.TEXT: {DataType.TEXT, DataType.MEDIUMTEXT},
+            XML: {DataType.XML},
             sqlalchemy.CHAR: {DataType.CHAR},
             sqlalchemy.VARCHAR: {DataType.VARCHAR},
             sqlalchemy.BOOLEAN: {DataType.BOOLEAN},

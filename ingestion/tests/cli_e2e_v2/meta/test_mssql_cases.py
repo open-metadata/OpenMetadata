@@ -160,6 +160,5 @@ def test_baseline_names_avoid_the_connector_default_filters():
     assert not _SCHEMA.startswith(("db_", "guest", "sys", "information_schema"))
     assert _DATABASE not in {"msdb", "model", "tempdb"}
     procedures = [statement for statement in baseline.ddl if "CREATE PROCEDURE" in statement]
-    assert procedures and all(
-        prefix not in statement for statement in procedures for prefix in (".sp_", ".xp_", ".ms_")
-    )
+    assert procedures
+    assert all(prefix not in statement for statement in procedures for prefix in (".sp_", ".xp_", ".ms_"))
