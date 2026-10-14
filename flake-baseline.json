@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T03:32:52Z",
+  "generatedAt": "2026-10-14T03:40:35Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "37174398749",
-      "sourceSha": "507f5d783c6ca2ee22c76c0eb92b44ff6055cc79",
-      "recordedAt": "2026-10-04T04:09:12Z"
-    },
     {
       "runId": "37257479217",
       "sourceSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
@@ -53,9 +48,34 @@
       "runId": "38339539850",
       "sourceSha": "29fd2650e19d9e84e2907594ab2d6a5715e99a36",
       "recordedAt": "2026-10-13T03:32:52Z"
+    },
+    {
+      "runId": "38502607895",
+      "sourceSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
+      "recordedAt": "2026-10-14T03:40:35Z"
     }
   ],
   "entries": {
+    "Basic :: Features/DescriptionSuggestion.spec.ts :: Description Task Workflows \u203a should add and accept a requested table description": {
+      "observations": [
+        "38502607895"
+      ],
+      "project": "Basic",
+      "file": "Features/DescriptionSuggestion.spec.ts",
+      "title": "Description Task Workflows \u203a should add and accept a requested table description",
+      "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
+      "hardFailure": false
+    },
+    "Basic :: Features/LandingPageWidgets/LandingPageDataEstate.spec.ts :: Landing page data estate \u203a widening the range refetches the window and keeps the estate on screen": {
+      "observations": [
+        "38502607895"
+      ],
+      "project": "Basic",
+      "file": "Features/LandingPageWidgets/LandingPageDataEstate.spec.ts",
+      "title": "Landing page data estate \u203a widening the range refetches the window and keeps the estate on screen",
+      "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
+      "hardFailure": false
+    },
     "Basic :: Flow/Metric.spec.ts :: Metric Entity Special Test Cases \u203a verify metric expression update": {
       "observations": [
         "37406058596"
@@ -64,6 +84,16 @@
       "file": "Flow/Metric.spec.ts",
       "title": "Metric Entity Special Test Cases \u203a verify metric expression update",
       "lastSeenSha": "0328cf7323da424c7f646fc6b6f43251073897d6",
+      "hardFailure": false
+    },
+    "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database service": {
+      "observations": [
+        "38502607895"
+      ],
+      "project": "ImportExport",
+      "file": "Features/BulkImport.spec.ts",
+      "title": "Bulk Import Export \u203a Database service",
+      "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
       "hardFailure": false
     },
     "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 customize saves \u203a Data Assets \u2192 Table: a new tab is saved": {
@@ -84,6 +114,16 @@
       "file": "Features/ActivityFeed.spec.ts",
       "title": "ActivityFeed: activity + conversation merge (regression #25894) \u203a All badge, header and rendered list agree on the count",
       "lastSeenSha": "fc6a14d76d6ea58c4a13d49991e44e9423dc805a",
+      "hardFailure": false
+    },
+    "chromium :: Features/CuratedAssets.spec.ts :: Curated Assets Widget \u203a Test Stored Procedures with display name filter": {
+      "observations": [
+        "38502607895"
+      ],
+      "project": "chromium",
+      "file": "Features/CuratedAssets.spec.ts",
+      "title": "Curated Assets Widget \u203a Test Stored Procedures with display name filter",
+      "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
       "hardFailure": false
     },
     "chromium :: Features/DataQuality/ColumnLevelTests.spec.ts :: Column Level Data Quality Test Cases \u203a Column Values To Be In Set": {
@@ -167,6 +207,16 @@
       "lastSeenSha": "29fd2650e19d9e84e2907594ab2d6a5715e99a36",
       "hardFailure": true
     },
+    "chromium :: Pages/DataProducts.spec.ts :: Data Products \u203a Search Data Products": {
+      "observations": [
+        "38502607895"
+      ],
+      "project": "chromium",
+      "file": "Pages/DataProducts.spec.ts",
+      "title": "Data Products \u203a Search Data Products",
+      "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
+      "hardFailure": false
+    },
     "chromium :: Pages/Domains.spec.ts :: Domains \u203a Verify redirect path on data product delete": {
       "observations": [
         "37257479217"
@@ -175,16 +225,6 @@
       "file": "Pages/Domains.spec.ts",
       "title": "Domains \u203a Verify redirect path on data product delete",
       "lastSeenSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
-      "hardFailure": false
-    },
-    "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for apiEndpoint -> mlModel": {
-      "observations": [
-        "37174398749"
-      ],
-      "project": "chromium",
-      "file": "Pages/Lineage/DataAssetLineage.spec.ts",
-      "title": "Column Level Lineage \u203a Column lineage for apiEndpoint -> mlModel",
-      "lastSeenSha": "507f5d783c6ca2ee22c76c0eb92b44ff6055cc79",
       "hardFailure": false
     },
     "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for dashboardDataModel -> dashboard": {
@@ -225,6 +265,16 @@
       "file": "Pages/Tags.spec.ts",
       "title": "Verify Owner Add Delete",
       "lastSeenSha": "fc6a14d76d6ea58c4a13d49991e44e9423dc805a",
+      "hardFailure": false
+    },
+    "chromium :: Pages/TasksUIFlow.spec.ts :: Task Activity Feed Integration \u203a Verify task shows correct metadata": {
+      "observations": [
+        "38502607895"
+      ],
+      "project": "chromium",
+      "file": "Pages/TasksUIFlow.spec.ts",
+      "title": "Task Activity Feed Integration \u203a Verify task shows correct metadata",
+      "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
       "hardFailure": false
     },
     "chromium :: VersionPages/EntityVersionPages.spec.ts :: Entity Version pages \u203a MlModel": {
