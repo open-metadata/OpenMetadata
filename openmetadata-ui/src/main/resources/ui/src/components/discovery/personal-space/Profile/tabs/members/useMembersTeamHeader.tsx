@@ -95,14 +95,14 @@ const buildTitleInput = (
       <Button
         color="primary"
         data-testid="save-display-name"
-        size="sm"
+        size="xs"
         onPress={onSaveDisplayName}>
         {t('label.save')}
       </Button>
       <Button
         color="tertiary"
         data-testid="cancel-display-name"
-        size="sm"
+        size="xs"
         onPress={onCancelEditName}>
         {t('label.cancel')}
       </Button>
@@ -226,7 +226,7 @@ const buildHeaderActions = (
           data-testid={
             isCurrentUserMember ? 'leave-team-button' : 'join-team-button'
           }
-          size="sm"
+          size="xs"
           onPress={isCurrentUserMember ? onLeaveTeam : onJoinTeam}>
           {isCurrentUserMember ? t('label.leave-team') : t('label.join-team')}
         </Button>

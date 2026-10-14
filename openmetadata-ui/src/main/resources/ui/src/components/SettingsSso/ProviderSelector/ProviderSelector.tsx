@@ -17,6 +17,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { PROVIDER_OPTIONS } from '../../../utils/SSOUtils';
+import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
 import './provider-selector.less';
 import { ProviderSelectorProps } from './ProviderSelector.interface';
 
@@ -71,16 +72,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
             }}>
             <div className="provider-icon">
               <div className="provider-icon-inner">
-                {typeof provider.icon === 'string' ? (
-                  <img
-                    alt={provider.label}
-                    height="24"
-                    src={provider.icon}
-                    width="24"
-                  />
-                ) : (
-                  provider.icon
-                )}
+                <SsoProviderIcon alt={provider.label} icon={provider.icon} />
               </div>
             </div>
             <Typography className="provider-name">{provider.label}</Typography>

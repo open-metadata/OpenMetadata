@@ -36,6 +36,7 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -92,6 +93,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm<ProfilerForm>();
+  // The include rows sit in a `h-max-40 overflow-y-auto` box once there are two
+  // or more, and a popup mounted inside it is clipped to 160px. Mount the row
+  // pickers on the include section instead: it is outside the clip box but
+  // still inside the drawer's scroll body, so the popup scrolls with its field.
+  const includeSectionRef = useRef<HTMLDivElement>(null);
+  const getIncludeRowPopupContainer = useCallback(
+    () => includeSectionRef.current ?? document.body,
+    []
+  );
 
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -645,7 +655,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             onValuesChange={handleIncludeColumnsProfiler}>
             <List name="includeColumns">
               {(fields, { add, remove }) => (
-                <>
+                <Box
+                  className="tw:relative"
+                  data-testid="include-column-section"
+                  direction="col"
+                  ref={includeSectionRef}>
                   <div className="d-flex items-center m-b-xss">
                     <p className="w-form-label text-xs m-r-xs">
                       {`${t('label.include')}:`}
@@ -676,7 +690,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               showSearch
                               className="w-full"
                               data-testid="include-column-select"
-                              getPopupContainer={getPopupContainer}
+                              getPopupContainer={getIncludeRowPopupContainer}
                               options={columnWithAllOption}
                               placeholder={t(
                                 'label.select-column-plural-to-include'
@@ -693,7 +707,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             <TreeSelect
                               treeCheckable
                               className="w-full"
-                              getPopupContainer={getPopupContainer}
+                              getPopupContainer={getIncludeRowPopupContainer}
                               maxTagCount={2}
                               placeholder={t('label.please-select')}
                               showCheckedStrategy="SHOW_PARENT"
@@ -710,7 +724,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       </Grid>
                     ))}
                   </div>
-                </>
+                </Box>
               )}
             </List>
             <Grid

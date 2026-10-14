@@ -143,11 +143,15 @@ export const getChildTeamColumns = (
     dataIndex: 'name',
     key: 'name',
     width: '30%',
+    ellipsis: true,
     render: (_: unknown, record: Team) => (
       <Button
+        className="tw:max-w-full tw:truncate tw:block tw:text-left"
         color="link-color"
         data-testid={`team-link-${record.name}`}
         size="sm"
+        tooltip={getEntityName(record)}
+        tooltipPlacement="top"
         onPress={() =>
           onNavigate({
             type: 'team-detail',
@@ -271,10 +275,15 @@ export const getEntityRefColumns = (
     title: t('label.name'),
     dataIndex: 'name',
     key: 'name',
+    width: '30%',
+    ellipsis: true,
     render: (_: unknown, record: EntityReference) => (
       <Button
+        className="tw:max-w-full tw:truncate tw:block tw:text-left"
         color="link-color"
         size="sm"
+        tooltip={getEntityName(record)}
+        tooltipPlacement="top"
         onPress={() => goTo(nameHashOf(record))}>
         {getEntityName(record)}
       </Button>

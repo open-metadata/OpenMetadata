@@ -17,6 +17,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   EmptyPlaceholder,
   Input,
   SelectItemType,
@@ -199,62 +200,64 @@ const BotDescriptionSection: FC<BotDescriptionSectionProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="tw:border tw:border-subtle tw:rounded-xl tw:p-5 tw:px-6">
-      <Box align="center" direction="row" justify="between">
-        <Typography size="text-sm" weight="medium">
-          {t('label.description')}
-        </Typography>
-        {canEditAll && !isEditingDesc && (
-          <Button
-            color="link-color"
-            data-testid="edit-description-btn"
-            size="sm"
-            onPress={() => setIsEditingDesc(true)}>
-            {t('label.edit')}
-          </Button>
-        )}
-      </Box>
-
-      {isEditingDesc ? (
-        <Box
-          className="tw:mt-2"
-          data-testid="edit-description-modal"
-          direction="col"
-          gap={2}>
-          <RichTextEditor
-            className="new-form-style"
-            initialValue={botData.description ?? ''}
-            ref={descEditorRef}
-          />
-          <Box direction="row" gap={2} justify="end">
+    <Card variant="muted">
+      <Card.Content>
+        <Box align="center" direction="row" justify="between">
+          <Typography size="text-sm" weight="medium">
+            {t('label.description')}
+          </Typography>
+          {canEditAll && !isEditingDesc && (
             <Button
-              color="tertiary"
-              isDisabled={isSavingDesc}
+              color="link-color"
+              data-testid="edit-description-btn"
               size="sm"
-              onPress={() => setIsEditingDesc(false)}>
-              {t('label.cancel')}
+              onPress={() => setIsEditingDesc(true)}>
+              {t('label.edit')}
             </Button>
-            <Button
-              color="primary"
-              isLoading={isSavingDesc}
-              size="sm"
-              onPress={handleSaveDescription}>
-              {t('label.save')}
-            </Button>
-          </Box>
-        </Box>
-      ) : (
-        <div className="tw:mt-1.5">
-          {botData.description ? (
-            <RichTextEditorPreviewerV1 markdown={botData.description} />
-          ) : (
-            <Typography className="tw:text-tertiary" size="text-sm">
-              --
-            </Typography>
           )}
-        </div>
-      )}
-    </div>
+        </Box>
+
+        {isEditingDesc ? (
+          <Box
+            className="tw:mt-2"
+            data-testid="edit-description-modal"
+            direction="col"
+            gap={2}>
+            <RichTextEditor
+              className="new-form-style"
+              initialValue={botData.description ?? ''}
+              ref={descEditorRef}
+            />
+            <Box direction="row" gap={2} justify="end">
+              <Button
+                color="tertiary"
+                isDisabled={isSavingDesc}
+                size="sm"
+                onPress={() => setIsEditingDesc(false)}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                isLoading={isSavingDesc}
+                size="sm"
+                onPress={handleSaveDescription}>
+                {t('label.save')}
+              </Button>
+            </Box>
+          </Box>
+        ) : (
+          <Box className="tw:mt-1.5">
+            {botData.description ? (
+              <RichTextEditorPreviewerV1 markdown={botData.description} />
+            ) : (
+              <Typography className="tw:text-tertiary" size="text-sm">
+                --
+              </Typography>
+            )}
+          </Box>
+        )}
+      </Card.Content>
+    </Card>
   );
 };
 
@@ -296,7 +299,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
         weight="medium">
         {t('label.access')}
       </Typography>
-      <div className="tw:border tw:border-subtle tw:rounded-xl">
+      <Card variant="muted">
         {/* Roles */}
         <div className="tw:p-4 tw:px-6 tw:border-b tw:border-subtle">
           <Box align="center" direction="row" justify="between">
@@ -403,7 +406,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
             )}
           </Box>
         </div>
-      </div>
+      </Card>
     </>
   );
 };

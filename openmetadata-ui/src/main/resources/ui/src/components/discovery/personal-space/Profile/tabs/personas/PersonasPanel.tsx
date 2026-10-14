@@ -260,7 +260,7 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
           <Button
             color="primary"
             data-testid="add-persona-button"
-            size="sm"
+            size="xs"
             onPress={() => onNavigate({ type: 'add' })}>
             {addPersonaLabel}
           </Button>

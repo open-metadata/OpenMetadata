@@ -169,7 +169,7 @@ const LearningResourcesSettings = ({
         color="primary"
         data-testid="create-resource"
         iconLeading={Plus}
-        size="sm"
+        size="xs"
         onPress={() =>
           onNavigate({
             type: 'page',

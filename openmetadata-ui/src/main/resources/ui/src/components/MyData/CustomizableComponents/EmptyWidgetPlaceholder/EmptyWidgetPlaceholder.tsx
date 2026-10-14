@@ -24,7 +24,6 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { SIZE } from '../../../../enums/common.enum';
-import './empty-widget-placeholder.less';
 import { EmptyWidgetPlaceholderProps } from './EmptyWidgetPlaceholder.interface';
 
 function EmptyWidgetPlaceholder({
@@ -49,50 +48,56 @@ function EmptyWidgetPlaceholder({
 
   return (
     <Card
-      className="empty-widget-placeholder tw:flex tw:h-full tw:flex-col tw:p-6"
-      data-testid={widgetKey}>
-      {isEditable && (
-        <Box align="center" direction="row" gap={2} justify="end">
-          {/* Grid drag handle: react-grid-layout starts a drag on mousedown here. */}
-          <span
-            aria-hidden
-            className="drag-widget-icon tw:flex tw:cursor-grab tw:text-fg-quaternary tw:active:cursor-grabbing"
-            data-testid="drag-widget-button">
-            <DotsGrid className="tw:size-4" />
-          </span>
-          <ButtonUtility
-            aria-label={t('label.remove-entity', { entity: t('label.widget') })}
-            data-testid="remove-widget-button"
-            icon={XClose}
-            size="md"
-            onPress={handleCloseClick}
+      className="empty-widget-placeholder tw:h-full"
+      color="secondary"
+      data-testid={widgetKey}
+      size="lg">
+      <Card.Content className="tw:flex tw:h-full tw:flex-col">
+        {isEditable && (
+          <Box align="center" direction="row" gap={2} justify="end">
+            {/* Grid drag handle: react-grid-layout starts a drag on mousedown here. */}
+            <span
+              aria-hidden
+              className="drag-widget-icon tw:flex tw:cursor-grab tw:text-fg-quaternary tw:active:cursor-grabbing"
+              data-testid="drag-widget-button">
+              <DotsGrid className="tw:size-4" />
+            </span>
+            <ButtonUtility
+              aria-label={t('label.remove-entity', {
+                entity: t('label.widget'),
+              })}
+              data-testid="remove-widget-button"
+              icon={XClose}
+              size="md"
+              onPress={handleCloseClick}
+            />
+          </Box>
+        )}
+        <Box
+          align="center"
+          className="tw:flex-1 tw:text-center"
+          direction="col"
+          justify="center">
+          <AddPlaceHolderIcon
+            data-testid="no-data-image"
+            height={iconHeight}
+            width={iconWidth}
           />
+          <Typography>
+            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+              entity: t('label.widget'),
+            })}
+          </Typography>
+          <Button
+            className="tw:mt-4"
+            color="secondary"
+            data-testid="add-widget-button"
+            iconLeading={Plus}
+            onPress={handleAddClick}>
+            {t('label.add')}
+          </Button>
         </Box>
-      )}
-      <Box
-        align="center"
-        className="tw:flex-1 tw:text-center"
-        direction="col"
-        justify="center">
-        <AddPlaceHolderIcon
-          data-testid="no-data-image"
-          height={iconHeight}
-          width={iconWidth}
-        />
-        <Typography>
-          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-            entity: t('label.widget'),
-          })}
-        </Typography>
-        <Button
-          className="tw:mt-4"
-          color="secondary"
-          data-testid="add-widget-button"
-          iconLeading={Plus}
-          onPress={handleAddClick}>
-          {t('label.add')}
-        </Button>
-      </Box>
+      </Card.Content>
     </Card>
   );
 }

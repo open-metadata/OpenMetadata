@@ -14,6 +14,7 @@
 import {
   Box,
   ButtonUtility,
+  Card,
   Grid,
   Skeleton,
   Typography,
@@ -78,49 +79,53 @@ function NotificationDiagnosticInfo({
 
   if (diagnosticIsLoading) {
     return (
-      <Grid
-        className="tw:border tw:border-secondary tw:rounded-lg tw:p-4"
-        colGap="4"
-        gap="4">
-        {Array.from({ length: 6 }, (_, i) => (
-          <Grid.Item key={i} span={12}>
-            <Skeleton height={20} variant="rounded" />
-          </Grid.Item>
-        ))}
-      </Grid>
+      <Card variant="muted">
+        <Card.Content>
+          <Grid colGap="4" gap="4">
+            {Array.from({ length: 6 }, (_, i) => (
+              <Grid.Item key={i} span={12}>
+                <Skeleton height={20} variant="rounded" />
+              </Grid.Item>
+            ))}
+          </Grid>
+        </Card.Content>
+      </Card>
     );
   }
 
   return (
-    <Grid
-      className="tw:w-full tw:border tw:border-secondary tw:rounded-lg tw:p-4"
-      colGap="4"
+    <Card
+      className="tw:w-full"
       data-testid="diagnostic-info-container"
-      gap="4">
-      {diagnosticItems.map((item) => (
-        <Grid.Item key={item.key} span={12}>
-          <Box align="center" direction="row" gap={2}>
-            <Box
-              align="center"
-              className="tw:basis-48 tw:shrink-0"
-              direction="row"
-              gap={1}>
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {`${item.key}:`}
-              </Typography>
-              <ButtonUtility
-                icon={InfoCircle}
-                size="xs"
-                tooltip={String(item.description)}
-              />
-            </Box>
-            <Typography className="tw:font-medium" size="text-sm">
-              {formatValue(item.value, t)}
-            </Typography>
-          </Box>
-        </Grid.Item>
-      ))}
-    </Grid>
+      variant="muted">
+      <Card.Content>
+        <Grid colGap="4" gap="4">
+          {diagnosticItems.map((item) => (
+            <Grid.Item key={item.key} span={12}>
+              <Box align="center" direction="row" gap={2}>
+                <Box
+                  align="center"
+                  className="tw:basis-48 tw:shrink-0"
+                  direction="row"
+                  gap={1}>
+                  <Typography color="secondary" size="text-sm">
+                    {`${item.key}:`}
+                  </Typography>
+                  <ButtonUtility
+                    icon={InfoCircle}
+                    size="xs"
+                    tooltip={String(item.description)}
+                  />
+                </Box>
+                <Typography size="text-sm" weight="medium">
+                  {formatValue(item.value, t)}
+                </Typography>
+              </Box>
+            </Grid.Item>
+          ))}
+        </Grid>
+      </Card.Content>
+    </Card>
   );
 }
 

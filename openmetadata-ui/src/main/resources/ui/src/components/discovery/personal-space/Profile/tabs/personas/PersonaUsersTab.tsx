@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   EmptyPlaceholder,
   FormFields,
   HookForm,
@@ -222,40 +223,39 @@ const PersonaUsersTab = ({
   return (
     <Box data-testid="persona-users-tab" direction="col" gap={4}>
       {isAdding && (
-        <Box
-          className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
-          direction="col"
-          gap={4}>
-          <Typography
-            className="tw:text-primary"
-            size="text-sm"
-            weight="semibold">
-            {t('label.add-entity', { entity: t('label.user-plural') })}
-          </Typography>
-          <HookForm form={addUsersForm}>
-            <FormFields fields={[usersField]} />
-          </HookForm>
-          <Box direction="row" gap={3} justify="end">
-            <Button color="tertiary" size="sm" onPress={handleCancelAdd}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              color="primary"
-              data-testid="save-persona-users"
-              isDisabled={pendingUsers.length === 0}
-              size="sm"
-              onPress={handleConfirmAdd}>
-              {t('label.save')}
-            </Button>
-          </Box>
-        </Box>
+        <Card variant="muted">
+          <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+            <Typography
+              className="tw:text-primary"
+              size="text-sm"
+              weight="semibold">
+              {t('label.add-entity', { entity: t('label.user-plural') })}
+            </Typography>
+            <HookForm form={addUsersForm}>
+              <FormFields fields={[usersField]} />
+            </HookForm>
+            <Box direction="row" gap={3} justify="end">
+              <Button color="tertiary" size="sm" onPress={handleCancelAdd}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="save-persona-users"
+                isDisabled={pendingUsers.length === 0}
+                size="sm"
+                onPress={handleConfirmAdd}>
+                {t('label.save')}
+              </Button>
+            </Box>
+          </Card.Content>
+        </Card>
       )}
       {canEdit && !isAdding && (
         <Box justify="end">
           <Button
             color="primary"
             data-testid="add-persona-user"
-            size="sm"
+            size="xs"
             onPress={() => setIsAdding(true)}>
             {t('label.add-entity', { entity: t('label.user') })}
           </Button>
