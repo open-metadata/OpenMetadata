@@ -30,6 +30,7 @@ import {
   InfoCircle,
   LinkExternal01,
 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import {
   FC,
   ReactNode,
@@ -39,7 +40,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import classNames from 'classnames';
 import { Checkbox as AriaCheckbox } from 'react-aria-components';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
