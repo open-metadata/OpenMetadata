@@ -3,31 +3,29 @@
 # member of each team labelled on a PR.
 
 ingestion:
-  - '@ayush-shah'
   - '@TeddyCr'
   - '@ulixius9'
   - '@pmbrull'
   - '@IceS2'
   - '@harshsoni2024'
   - '@mohittilala'
+  - '@Khairajani'
+  - '@stout-yeoman'
 
 UI:
-  - '@aniketkatkar97'
   - '@chirag-madlani'
-  - '@shahsank3t'
   - '@ShaileshParmar11'
   - '@karanh37'
   - '@sweta1308'
-  - '@siddhant1'
   - '@Rohit0301'
   - '@shrabantipaul-collate'
   - '@harsh-vador'
   - '@anuj-kumary'
+  - '@shah-harshit'
 
 backend:
   - '@harshach'
   - '@mohityadav766'
-  - '@sureshms'
   - '@sonika-shah'
   - '@manerow'
   - '@yan-3005'
@@ -37,3 +35,4 @@ devops:
   - '@tutte'
   - '@pellejador'
   - '@miriann-uu'
+  - '@akashverma0786'
