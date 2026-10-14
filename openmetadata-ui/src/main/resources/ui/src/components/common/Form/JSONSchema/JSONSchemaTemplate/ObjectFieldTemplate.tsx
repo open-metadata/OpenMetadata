@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   ObjectFieldTemplatePropertyType,
@@ -103,13 +103,11 @@ export const ObjectFieldTemplate: FunctionComponent<
             {t('label.additional-property-plural')}
           </label>
 
-          <Button
-            aria-label={t('label.add')}
-            color="primary"
+          <ButtonUtility
             data-testid={`add-item-${title}`}
-            iconLeading={Plus}
+            icon={Plus}
             id={`${idSchema.$id}`}
-            size="xs"
+            tooltip={t('label.add')}
             onClick={() => {
               onAddClick(schema)();
             }}

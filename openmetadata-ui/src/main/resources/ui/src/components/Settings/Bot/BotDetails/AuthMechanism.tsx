@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -128,8 +129,10 @@ const AuthMechanism: FC<Props> = ({
           {!isSCIMBot ? (
             <CopyToClipboardButton copyText={JWTToken} />
           ) : (
-            <CopyIcon
-              className="tw:mt-2 tw:cursor-pointer"
+            <ButtonUtility
+              className="tw:mt-2"
+              icon={CopyIcon}
+              tooltip={t('message.copy-to-clipboard')}
               onClick={() => navigator.clipboard.writeText(JWTToken)}
             />
           )}

@@ -14,6 +14,7 @@
 import {
   Badge,
   Box,
+  ButtonUtility,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -181,13 +182,13 @@ export const tagRender = (customTagProps: CustomTagProps) => {
           {tagLabel}
         </Typography>
       </Tooltip>
-      <button
+      <ButtonUtility
         aria-label={t('label.remove')}
-        className="tw:flex tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-quaternary"
-        type="button"
-        onClick={onClose}>
-        <XClose data-testid="remove-tags" height={8} width={8} />
-      </button>
+        data-testid="remove-tags"
+        icon={XClose}
+        size="xs"
+        onClick={onClose}
+      />
     </Badge>
   );
 };

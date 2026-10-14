@@ -342,8 +342,7 @@ const renderGlossaryExpandIcon = (
         <ButtonUtility
           aria-expanded={expanded}
           aria-label={t(expanded ? 'label.collapse' : 'label.expand')}
-          className="tw:mr-1 tw:p-0.5"
-          color="tertiary"
+          className="tw:mr-1"
           data-testid="expand-icon"
           icon={expanded ? ChevronDown : ChevronRight}
           size="xs"

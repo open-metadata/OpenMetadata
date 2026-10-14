@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
+import { Dialog, DialogTrigger, Popover } from 'react-aria-components';
 import { describe, expect, it, vi } from 'vitest';
 import { Edit01 } from '@/icons';
 import { Button } from './button';
@@ -346,6 +347,24 @@ describe('ButtonUtility — icon size and color', () => {
     await userEvent.click(button);
 
     expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('does not open a parent trigger while disabled with a tooltip', async () => {
+    render(
+      <DialogTrigger>
+        <ButtonUtility isDisabled icon={Edit01} tooltip="Edit" />
+        <Popover>
+          <Dialog>Menu body</Dialog>
+        </Popover>
+      </DialogTrigger>
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.queryByText('Menu body')).not.toBeInTheDocument();
+
+    await userEvent.keyboard('{Enter}');
+
+    expect(screen.queryByText('Menu body')).not.toBeInTheDocument();
   });
 
   it('disables a button without a tooltip natively', () => {

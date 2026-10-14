@@ -252,18 +252,16 @@ const LearningResourcesSettings = ({
         return (
           <Box gap={1}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`edit-${record.name}`}
               icon={Edit01}
-              size="xs"
+              size="md"
               tooltip={t('label.edit')}
               onPress={() => openForm(record)}
             />
             <ButtonUtility
-              color="tertiary"
               data-testid={`delete-${record.name}`}
               icon={Trash01}
-              size="xs"
+              size="md"
               tooltip={t('label.delete')}
               onPress={() => handleDelete(record)}
             />

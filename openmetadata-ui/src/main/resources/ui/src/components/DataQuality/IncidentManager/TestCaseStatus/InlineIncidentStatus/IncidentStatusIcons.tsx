@@ -11,18 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Check as CheckIcon,
-  XClose as CloseIcon,
-} from '@openmetadata/ui-core-components/icons';
-
-/** Close (X) — dark icon for secondary/utility surfaces. */
-export const BlackCloseIcon = ({ className }: { className?: string }) => (
-  <CloseIcon
-    className={className}
-    style={{ color: 'var(--color-gray-900)', height: 14, width: 14 }}
-  />
-);
+import { Check as CheckIcon } from '@openmetadata/ui-core-components/icons';
 
 /** Check — white on primary-filled buttons. */
 export const WhiteCheckIcon = ({ className }: { className?: string }) => (

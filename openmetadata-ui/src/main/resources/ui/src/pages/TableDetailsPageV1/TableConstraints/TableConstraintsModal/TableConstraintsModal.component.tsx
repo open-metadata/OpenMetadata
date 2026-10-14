@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   EmptyPlaceholder,
   SimpleModal,
   Typography,
@@ -560,17 +561,14 @@ const TableConstraintsModal = ({
                           )}
                         </Select>
                       </Form.Item>
-                      <Button
-                        aria-label={t('label.delete-entity', {
+                      <ButtonUtility
+                        className="tw:absolute tw:top-2.5 tw:right-3"
+                        data-testid={`${key}-delete-constraint-button`}
+                        icon={IconDelete}
+                        size="md"
+                        tooltip={t('label.delete-entity', {
                           entity: t('label.constraint'),
                         })}
-                        className="tw:absolute tw:top-2.5 tw:right-3"
-                        color="tertiary"
-                        data-testid={`${key}-delete-constraint-button`}
-                        iconLeading={
-                          <IconDelete className="align-middle text-grey-muted tw:size-3.5 tw:shrink-0" />
-                        }
-                        size="xs"
                         onClick={() => remove(name)}
                       />
                     </div>

@@ -16,8 +16,6 @@ import {
   ButtonUtility,
   Dropdown,
   Tabs,
-  Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
@@ -27,14 +25,11 @@ import {
   FC,
   memo,
   MouseEventHandler,
-  ReactNode,
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
-import { useFocusable } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
@@ -79,30 +74,6 @@ import LineageTimeFilter from './LineageTimeFilter.component';
 type LineageFilterNodeData = {
   node?: { id?: string };
   sceneNode?: { sourceEntity?: { id?: string } };
-};
-
-const DisabledEditTooltipTrigger = ({
-  children,
-  label,
-}: {
-  children: ReactNode;
-  label: string;
-}) => {
-  const ref = useRef<HTMLSpanElement>(null);
-  // Disabled controls ignore the tooltip context; a focusable span keeps the
-  // hint available without nesting the disabled button in another button.
-  const { focusableProps } = useFocusable({}, ref);
-
-  return (
-    <span
-      {...focusableProps}
-      aria-label={label}
-      className="tw:inline-flex"
-      ref={ref}
-      role="group">
-      {children}
-    </span>
-  );
 };
 
 const CustomControls: FC<{
@@ -452,33 +423,20 @@ const CustomControls: FC<{
       !SERVICE_TYPES.includes(entityType as AssetsUnion);
     const isLayerBand = sceneBand === LineageBand.Layer;
     const editLabel = t('label.edit-entity', { entity: t('label.lineage') });
-    const editButton = (
-      <Button
-        aria-label={editLabel}
-        color={isEditMode ? 'primary' : 'secondary'}
-        data-testid="edit-lineage"
-        iconLeading={Edit01}
-        isDisabled={isLayerBand}
-        onClick={toggleEditMode}
-      />
-    );
 
     return showEditOption ? (
-      <Tooltip
-        placement="top"
-        title={
-          isLayerBand
-            ? t('label.zoom-in')
-            : t('label.edit-entity', { entity: t('label.lineage') })
-        }>
-        {isLayerBand ? (
-          <DisabledEditTooltipTrigger label={editLabel}>
-            {editButton}
-          </DisabledEditTooltipTrigger>
-        ) : (
-          editButton
-        )}
-      </Tooltip>
+      <ButtonUtility
+        aria-label={editLabel}
+        className={classNames({
+          'tw:*:data-icon:text-utility-brand-600': isEditMode,
+        })}
+        data-testid="edit-lineage"
+        icon={Edit01}
+        isDisabled={isLayerBand}
+        size="md"
+        tooltip={isLayerBand ? t('label.zoom-in') : editLabel}
+        onClick={toggleEditMode}
+      />
     ) : null;
   }, [
     hasEditAccess,
@@ -500,6 +458,7 @@ const CustomControls: FC<{
       <ButtonUtility
         data-testid="lineage-config"
         icon={SettingsOutlined}
+        size="md"
         onClick={handleSettingsClick}
       />
     );
@@ -620,17 +579,16 @@ const CustomControls: FC<{
     <div>
       <div className={classNames('tw:flex tw:w-full tw:justify-between')}>
         <div className="tw:flex tw:items-center tw:gap-4">
-          <Tooltip placement="top" title={t('label.filter-plural')}>
-            <TooltipTrigger>
-              <Button
-                aria-label={t('label.filter-plural')}
-                color={filterSelectionActive ? 'primary' : 'secondary'}
-                data-testid="filters-button"
-                iconLeading={FilterLinesIcon}
-                onClick={toggleFilterSelection}
-              />
-            </TooltipTrigger>
-          </Tooltip>
+          <ButtonUtility
+            className={classNames({
+              'tw:*:data-icon:text-utility-brand-600': filterSelectionActive,
+            })}
+            data-testid="filters-button"
+            icon={FilterLinesIcon}
+            size="md"
+            tooltip={t('label.filter-plural')}
+            onClick={toggleFilterSelection}
+          />
           {searchBarComponent}
         </div>
         <div className="tw:flex tw:gap-4 tw:items-center">
@@ -644,31 +602,25 @@ const CustomControls: FC<{
             />
           )}
           {lineageEditButton}
-          <Tooltip placement="top" title={exportButtonLabel}>
-            <TooltipTrigger>
-              <ButtonUtility
-                aria-label={exportButtonLabel}
-                data-testid="export-button"
-                disabled={isEditMode}
-                icon={DownloadIcon}
-                onClick={handleExportClick}
-              />
-            </TooltipTrigger>
-          </Tooltip>
+          <ButtonUtility
+            data-testid="export-button"
+            icon={DownloadIcon}
+            isDisabled={isEditMode}
+            size="md"
+            tooltip={exportButtonLabel}
+            onClick={handleExportClick}
+          />
           {settingsButton}
-          <Tooltip placement="top" title={fullScreenLabel}>
-            <TooltipTrigger>
-              <ButtonUtility
-                aria-label={fullScreenLabel}
-                icon={fullScreenIcon}
-                onClick={() =>
-                  updateURLParams({
-                    [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
-                  })
-                }
-              />
-            </TooltipTrigger>
-          </Tooltip>
+          <ButtonUtility
+            icon={fullScreenIcon}
+            size="md"
+            tooltip={fullScreenLabel}
+            onClick={() =>
+              updateURLParams({
+                [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
+              })
+            }
+          />
         </div>
       </div>
       {filterSelectionSection}

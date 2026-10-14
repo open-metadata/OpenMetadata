@@ -168,6 +168,7 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
                   className="tw:shrink-0"
                   data-testid={`edit-description-${item.name}`}
                   icon={Edit01}
+                  size="md"
                   tooltip={t('label.edit-entity', {
                     entity: t('label.description'),
                   })}

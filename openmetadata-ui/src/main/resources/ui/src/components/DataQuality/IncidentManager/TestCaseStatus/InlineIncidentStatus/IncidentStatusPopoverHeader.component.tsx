@@ -13,13 +13,15 @@
 
 import {
   Box,
-  Button,
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowLeft } from '@openmetadata/ui-core-components/icons';
+import {
+  ArrowLeft,
+  Check,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { BlackCloseIcon, WhiteCheckIcon } from './IncidentStatusIcons';
 
 export type IncidentStatusPopoverHeaderProps = {
   title: string;
@@ -50,8 +52,6 @@ export const IncidentStatusPopoverHeader = ({
       gap={2}
       justify="start">
       <ButtonUtility
-        className="tw:outline-none"
-        color="tertiary"
         icon={ArrowLeft}
         size="sm"
         tooltip={t('label.back')}
@@ -62,23 +62,19 @@ export const IncidentStatusPopoverHeader = ({
       </Typography>
       <span className="tw:flex-1" />
       <ButtonUtility
-        className="tw:size-6"
-        color="secondary"
         data-testid={cancelTestId}
-        icon={BlackCloseIcon}
+        icon={XClose}
         size="sm"
         tooltip={t('label.cancel')}
         onClick={onCancel}
       />
-      <Button
-        aria-label={t('label.save')}
-        className="tw:size-6"
-        color="primary"
+      <ButtonUtility
         data-testid={submitTestId}
-        iconLeading={WhiteCheckIcon}
+        icon={Check}
         isDisabled={submitDisabled}
         size="sm"
-        onPress={onSubmit}
+        tooltip={t('label.save')}
+        onClick={onSubmit}
       />
     </Box>
   );

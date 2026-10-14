@@ -1374,11 +1374,10 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                       </Box>
 
                       <ButtonUtility
-                        color="tertiary"
                         data-testid="remove-file-button"
-                        icon={<Trash01 size={16} />}
-                        size="sm"
-                        title={t('label.delete-entity', {
+                        icon={Trash01}
+                        size="md"
+                        tooltip={t('label.delete-entity', {
                           entity: t('label.file'),
                         })}
                         onClick={handleRemoveFile}

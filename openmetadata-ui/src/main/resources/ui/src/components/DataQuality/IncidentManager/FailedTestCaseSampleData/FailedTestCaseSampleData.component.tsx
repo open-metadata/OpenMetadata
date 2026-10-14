@@ -301,6 +301,7 @@ const FailedTestCaseSampleData = ({
               label={t('label.manage-entity', {
                 entity: t('label.sample-data'),
               })}
+              triggerSize="md"
               onOpenChange={setShowActions}
             />
           )}

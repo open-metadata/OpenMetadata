@@ -12,7 +12,7 @@
  */
 
 import {
-  Button,
+  ButtonUtility,
   Toggle,
   Tooltip,
   Typography,
@@ -377,12 +377,10 @@ const buildArraySetField = ({
         label={
           <>
             <Typography>{data.displayName}</Typography>
-            <Button
-              aria-label={t('label.add')}
+            <ButtonUtility
               className="tw:mx-3"
-              color="primary"
-              iconLeading={Plus}
-              size="xs"
+              icon={Plus}
+              tooltip={t('label.add')}
               onClick={() => add()}
             />
           </>
@@ -411,12 +409,10 @@ const buildArraySetField = ({
                 />
               )}
             </Form.Item>
-            <Button
-              aria-label={t('label.remove')}
-              color="tertiary"
-              iconLeading={
-                <IconDelete className="tw:align-middle tw:size-4 tw:shrink-0" />
-              }
+            <ButtonUtility
+              icon={IconDelete}
+              size="md"
+              tooltip={t('label.remove')}
               onClick={() => remove(name)}
             />
           </div>

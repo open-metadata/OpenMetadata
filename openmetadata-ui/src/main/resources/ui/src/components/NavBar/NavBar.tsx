@@ -18,7 +18,6 @@ import {
   Popover,
   PopoverTrigger,
   Tooltip as CoreTooltip,
-  Tooltip,
 } from '@openmetadata/ui-core-components';
 import { Alert, Badge, InputRef } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
@@ -588,21 +587,18 @@ const NavBar = () => {
       <Header style={headerStyle}>
         <div className="navbar-container">
           <div className="flex-center gap-2">
-            <Tooltip arrow placement="right" title={sidebarTooltipTitle}>
-              <ButtonUtility
-                color="tertiary"
-                data-testid="sidebar-toggle"
-                icon={
-                  isSidebarCollapsed
-                    ? SidebarCollapsedIcon
-                    : SidebarExpandedIcon
-                }
-                size="sm"
-                onClick={() =>
-                  setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
-                }
-              />
-            </Tooltip>
+            <ButtonUtility
+              data-testid="sidebar-toggle"
+              icon={
+                isSidebarCollapsed ? SidebarCollapsedIcon : SidebarExpandedIcon
+              }
+              size="lg"
+              tooltip={sidebarTooltipTitle}
+              tooltipPlacement="right"
+              onClick={() =>
+                setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
+              }
+            />
             {/* The home page used to own a search bar and a domain scope
               control of its own, so the navbar suppressed its own pair there.
               HomeLandingPage renders neither, so suppressing them now leaves
@@ -664,12 +660,11 @@ const NavBar = () => {
               </Popover>
             </PopoverTrigger>
             <Dropdown.Root>
-              <Button
-                aria-label={t('label.need-help')}
-                color="tertiary"
+              <ButtonUtility
                 data-testid="help-icon"
-                iconLeading={<Help width={20} />}
-                size="sm"
+                icon={Help}
+                size="lg"
+                tooltip={t('label.need-help')}
               />
               <Dropdown.Popover className="tw:w-44" placement="bottom end">
                 <Dropdown.Menu

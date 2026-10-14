@@ -272,13 +272,11 @@ const OntologyQuerySidebar = ({
                   </span>
                 </Button>
                 <ButtonUtility
-                  className={classNames(
-                    'tw:size-7 tw:shrink-0 tw:border-0 tw:p-0',
-                    'tw:bg-transparent tw:text-quaternary hover:tw:bg-error-primary hover:tw:text-error-primary'
-                  )}
+                  className="tw:shrink-0"
+                  color="tertiary-destructive"
                   data-testid={`ontology-query-saved-delete-${savedQuery.id}`}
                   icon={Trash01}
-                  size="xs"
+                  size="md"
                   tooltip={`${t('label.delete')} ${savedQuery.name}`}
                   onClick={() => onDeleteSavedQuery(savedQuery.id)}
                 />

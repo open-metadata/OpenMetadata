@@ -16,6 +16,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card as CoreCard,
   Dialog,
   Divider,
@@ -890,14 +891,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => sortOrder === SORT_ORDER.ASC,
     [sortOrder]
   );
-  const sortProps = useMemo(
-    () => ({
-      className: 'text-base tw:text-fg-secondary',
-      'data-testid': 'last-updated',
-    }),
-    []
-  );
-
   const handleSummaryPanelDisplay = useCallback(
     (details: SearchedDataProps['data'][number]['_source']) => {
       setShowSummaryPanel(true);
@@ -1281,20 +1274,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
               dividers — which are `self-stretch` — grow with it, towering over
               the controls they separate. */}
           <div className="d-flex items-start justify-end gap-3 tw:relative tw:mt-1 tw:min-h-px tw:max-w-full tw:flex-none tw:self-start">
-            <Button
-              aria-label={t('label.sort-order')}
-              className="tw:p-0"
-              color="tertiary"
+            <ButtonUtility
               data-testid="sort-order-button"
-              iconLeading={
-                isAscSortOrder ? (
-                  <IconAscending {...sortProps} />
-                ) : (
-                  <IconDescending {...sortProps} />
-                )
-              }
-              size="sm"
-              onPress={() =>
+              icon={isAscSortOrder ? IconAscending : IconDescending}
+              size="lg"
+              tooltip={t('label.sort-order')}
+              onClick={() =>
                 onChangeSortOder(
                   isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
                 )

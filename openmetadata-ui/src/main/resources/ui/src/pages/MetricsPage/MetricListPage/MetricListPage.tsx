@@ -18,6 +18,7 @@ import {
   Button,
   ButtonGroup,
   ButtonGroupItem,
+  ButtonUtility,
   Card,
   Checkbox,
   Dialog,
@@ -678,23 +679,22 @@ const MetricListPage = () => {
     if (!hasMetricChildren(metric)) {
       // Keep names aligned with the header unless some row has a toggle.
       return hasExpandableRows ? (
-        <Box aria-hidden="true" className="tw:size-6 tw:shrink-0" />
+        <Box aria-hidden="true" className="tw:size-5 tw:shrink-0" />
       ) : null;
     }
 
     return (
-      <Button
+      <ButtonUtility
         aria-expanded={isExpanded}
         aria-label={
           isExpanded ? t('label.collapse-all') : t('label.expand-all')
         }
         className="tw:shrink-0"
-        color="tertiary"
         data-testid={`expand-${metric.id}`}
-        iconLeading={isExpanded ? ChevronDown : ChevronRight}
-        isLoading={loadingParentIds.includes(metric.id)}
+        icon={isExpanded ? ChevronDown : ChevronRight}
+        isDisabled={loadingParentIds.includes(metric.id)}
         size="xs"
-        onPress={() => toggleExpand(!isExpanded, metric)}
+        onClick={() => toggleExpand(!isExpanded, metric)}
       />
     );
   };

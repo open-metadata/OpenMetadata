@@ -12,7 +12,6 @@
  */
 import {
   Box,
-  Button,
   ButtonUtility,
   Popover,
   PopoverTrigger,
@@ -317,25 +316,21 @@ export const PersonaSelectableList = ({
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button
-              aria-label={t('label.save')}
-              color="primary"
+            <ButtonUtility
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }persona-edit-cancel`}
-              iconLeading={<ClosePopoverIcon height={24} />}
-              size="xs"
+              icon={ClosePopoverIcon}
+              tooltip={t('label.cancel')}
               onClick={handleCloseEditTeam}
             />
-            <Button
-              aria-label={t('label.cancel')}
-              color="primary"
+            <ButtonUtility
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }-persona-edit-save`}
-              iconLeading={<SavePopoverIcon height={24} />}
-              isLoading={isSaving}
-              size="xs"
+              icon={SavePopoverIcon}
+              isDisabled={isSaving}
+              tooltip={t('label.save')}
               onClick={handlePersonaUpdate}
             />
           </div>

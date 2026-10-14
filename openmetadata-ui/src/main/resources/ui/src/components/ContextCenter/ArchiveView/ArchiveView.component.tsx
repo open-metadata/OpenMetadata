@@ -102,20 +102,18 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
       <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
         {canRestore && (
           <ButtonUtility
-            color="tertiary"
             data-testid="restore-btn"
-            icon={<RefreshIcon height={20} width={20} />}
-            size="sm"
+            icon={RefreshIcon}
+            size="md"
             tooltip={t('label.restore')}
             onClick={() => onRestore(item)}
           />
         )}
         {canDelete && (
           <ButtonUtility
-            color="tertiary"
             data-testid="delete-btn"
-            icon={<TrashIcon height={20} width={20} />}
-            size="sm"
+            icon={TrashIcon}
+            size="md"
             tooltip={t('label.delete')}
             onClick={() => onDelete(item)}
           />

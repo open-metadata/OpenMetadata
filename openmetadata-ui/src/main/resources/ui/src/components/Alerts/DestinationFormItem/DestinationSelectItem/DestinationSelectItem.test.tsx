@@ -146,6 +146,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+    ButtonUtility: ({
+      'data-testid': dataTestId,
+      isDisabled,
+      onClick,
+      tooltip,
+    }: {
+      'data-testid'?: string;
+      isDisabled?: boolean;
+      onClick?: () => void;
+      tooltip?: string;
+    }) => (
+      <button
+        aria-label={tooltip}
+        data-testid={dataTestId}
+        disabled={isDisabled}
+        onClick={onClick}
+      />
+    ),
     Grid,
     Input: forwardRef<
       HTMLInputElement,

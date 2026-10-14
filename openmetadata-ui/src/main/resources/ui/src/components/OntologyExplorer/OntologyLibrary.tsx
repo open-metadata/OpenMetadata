@@ -14,6 +14,7 @@
 import {
   Alert,
   Button,
+  ButtonUtility,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -309,16 +310,12 @@ const OntologyLibrary = ({
           data-testid="ontology-library-installed-count">
           {installedCount} {t('label.installed-lowercase')}
         </span>
-        <Button
-          aria-label={t('label.close')}
-          className="tw:size-8! tw:rounded-lg! tw:border tw:border-secondary tw:p-0! tw:shadow-none! tw:before:hidden tw:after:outline-0!"
-          color="secondary"
+        <ButtonUtility
           data-testid="ontology-library-close"
-          iconLeading={
-            <XClose className="tw:size-[17px] tw:text-fg-quaternary_hover" />
-          }
-          size="xs"
-          onPress={onClose}
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.close')}
+          onClick={onClose}
         />
       </header>
 

@@ -15,6 +15,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -222,15 +223,14 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
 
         {menuActions.length > 0 && (
           <Dropdown.Root isOpen={isMenuOpen} onOpenChange={setIsMenuOpen}>
-            <Button
-              aria-label={t('label.more-action-plural')}
-              color="secondary"
+            <ButtonUtility
               data-testid="task-actions-menu"
-              iconLeading={<DotsVertical className="tw:size-4" />}
+              icon={DotsVertical}
               // Like the header buttons, the menu waits out a running
               // transition, so no second one can start.
               isDisabled={loadingTransitionId !== undefined}
-              size="sm"
+              size="xl"
+              tooltip={t('label.more-action-plural')}
             />
             <Dropdown.Popover className="tw:w-max tw:min-w-40">
               <Dropdown.Menu

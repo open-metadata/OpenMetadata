@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, Select } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Select } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import type { FieldProps } from '@react-awesome-query-builder/ui';
 import classNames from 'classnames';
@@ -215,12 +215,12 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
           </span>
           {/* `h-10` matches the control height, so the button sits level with the row's first line. */}
           <Box align="center" className="tw:h-10">
-            <Button
-              aria-label={t('label.remove')}
-              color="link-destructive"
+            <ButtonUtility
+              color="tertiary-destructive"
               data-testid={preset.testIds.delRule}
-              iconLeading={XClose}
-              size="sm"
+              icon={XClose}
+              size="md"
+              tooltip={t('label.remove')}
               onClick={() => actions.removeRule(path)}
             />
           </Box>

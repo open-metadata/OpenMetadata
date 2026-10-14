@@ -167,10 +167,9 @@ const TermBoostCard = ({
 
       <ButtonUtility
         className="tw:self-end"
-        color="tertiary"
         data-testid="delete-term-boost"
         icon={Trash01}
-        size="xs"
+        size="md"
         tooltip={t('label.delete')}
         onPress={() => onDelete(draft.value)}
       />

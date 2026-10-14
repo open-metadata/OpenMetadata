@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  ButtonUtility,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   Plus,
@@ -86,12 +91,12 @@ export const DataAssetFiltersSection: React.FC<
                     weight="semibold">
                     {upperFirst(dataAssetFilter.dataAsset)}
                   </Typography>
-                  <Button
-                    color="tertiary"
-                    iconLeading={XClose}
+                  <ButtonUtility
+                    icon={XClose}
                     isDisabled={isDisabled}
-                    size="sm"
-                    onPress={() => onRemoveDataAssetFilter(dataAssetFilter.id)}
+                    size="md"
+                    tooltip={t('label.remove')}
+                    onClick={() => onRemoveDataAssetFilter(dataAssetFilter.id)}
                   />
                 </div>
 

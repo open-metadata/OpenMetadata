@@ -13,7 +13,6 @@
 
 import {
   Badge,
-  Button,
   ButtonUtility,
   Card,
   Grid,
@@ -160,23 +159,19 @@ const BotDetails: FC<BotsDetailProps> = ({
                           onChange={onDisplayNameChange}
                         />
                         <div className="flex justify-end" data-testid="buttons">
-                          <Button
-                            aria-label={t('label.cancel')}
+                          <ButtonUtility
                             className="tw:mr-1"
-                            color="primary"
                             data-testid="cancel-displayName"
-                            iconLeading={XClose}
-                            size="xs"
+                            icon={XClose}
+                            tooltip={t('label.cancel')}
                             onMouseDown={() => setIsDisplayNameEdit(false)}
                           />
 
-                          <Button
-                            aria-label={t('label.save')}
+                          <ButtonUtility
                             className="tw:mr-1"
-                            color="primary"
                             data-testid="save-displayName"
-                            iconLeading={Check}
-                            size="xs"
+                            icon={Check}
+                            tooltip={t('label.save')}
                             onClick={handleDisplayNameChange}
                           />
                         </div>

@@ -172,14 +172,13 @@ export const ContractSemanticFormTab: React.FC<{
           size="md"
           onClick={() => setEditingKey(index)}
         />
-        <Button
-          aria-label={t('label.delete')}
-          className="delete-expand-button"
-          color="secondary-destructive"
+        <ButtonUtility
+          color="tertiary-destructive"
           data-testid={`delete-semantic-${index}`}
-          iconLeading={DeleteIcon}
-          size="sm"
-          onPress={() => handleDeleteSemantic(index)}
+          icon={DeleteIcon}
+          size="md"
+          tooltip={t('label.delete')}
+          onClick={() => handleDeleteSemantic(index)}
         />
       </div>
     </div>

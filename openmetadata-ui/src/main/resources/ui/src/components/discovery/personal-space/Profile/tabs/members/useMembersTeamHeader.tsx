@@ -60,10 +60,8 @@ const buildTitleSuffix = (
           aria-label={t('label.edit-entity', {
             entity: t('label.display-name'),
           })}
-          color="tertiary"
           data-testid="edit-display-name"
           icon={Edit01}
-          size="xs"
           onClick={() => onStartEditName(getEntityName(team))}
         />
       )}

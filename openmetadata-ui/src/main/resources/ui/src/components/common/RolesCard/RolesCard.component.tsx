@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  ButtonUtility,
-  Card,
-} from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Card } from '@openmetadata/ui-core-components';
 import { Check, Edit01, XClose } from '@openmetadata/ui-core-components/icons';
 import { Select } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
@@ -129,21 +124,19 @@ const RolesCard = ({
                   onSearch={searchRolesOptions}
                 />
                 <div className="flex justify-end" data-testid="buttons">
-                  <Button
-                    aria-label={t('label.cancel')}
+                  <ButtonUtility
                     className="tw:mr-1"
-                    color="primary"
                     data-testid="cancel-roles"
-                    iconLeading={XClose}
-                    size="xs"
+                    icon={XClose}
+                    size="md"
+                    tooltip={t('label.cancel')}
                     onMouseDown={() => setIsRolesEdit(false)}
                   />
-                  <Button
-                    aria-label={t('label.save')}
-                    color="primary"
+                  <ButtonUtility
                     data-testid="save-roles"
-                    iconLeading={Check}
-                    size="xs"
+                    icon={Check}
+                    size="md"
+                    tooltip={t('label.save')}
                     onClick={handleRolesChange}
                   />
                 </div>

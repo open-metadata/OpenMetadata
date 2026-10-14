@@ -402,7 +402,6 @@ export const FileListItemProgressBar = ({
           </div>
           <ButtonUtility
             className="tw:-mr-2 tw:-mt-2 tw:self-start"
-            color="tertiary"
             icon={Trash01}
             size="xs"
             tooltip={deleteLabel}
@@ -524,7 +523,6 @@ export const FileListItemProgressFill = ({
         </div>
         <ButtonUtility
           className="tw:-mr-2 tw:-mt-2 tw:self-start"
-          color="tertiary"
           icon={Trash01}
           size="xs"
           tooltip={deleteLabel}

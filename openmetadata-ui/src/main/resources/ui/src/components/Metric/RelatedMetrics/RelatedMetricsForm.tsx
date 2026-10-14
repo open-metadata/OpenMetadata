@@ -14,6 +14,7 @@ import {
   Alert,
   Box,
   Button,
+  ButtonUtility,
   Checkbox,
   Input,
   Skeleton,
@@ -136,20 +137,18 @@ export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
       <Box direction="col" gap={3}>
         {showActions && (
           <Box align="center" gap={2} justify="end">
-            <Button
-              aria-label={t('label.cancel')}
-              color="secondary"
+            <ButtonUtility
               data-testid="cancelRelatedMetrics"
-              iconLeading={XClose}
+              icon={XClose}
               isDisabled={isSubmitting}
-              onPress={onCancel}
+              tooltip={t('label.cancel')}
+              onClick={onCancel}
             />
-            <Button
-              aria-label={t('label.save')}
-              color="primary"
+            <ButtonUtility
               data-testid="saveRelatedMetrics"
-              iconLeading={Check}
-              isLoading={isSubmitting}
+              icon={Check}
+              isDisabled={isSubmitting}
+              tooltip={t('label.save')}
               type="submit"
             />
           </Box>

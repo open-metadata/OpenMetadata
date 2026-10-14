@@ -16,10 +16,10 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import { FunctionComponent } from 'react';
 import type { Placement } from 'react-aria';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import { useClipboard } from '../../../hooks/useClipBoard';
 
 interface Props {
@@ -54,7 +54,7 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
       <TooltipTrigger>
         <ButtonUtility
           data-testid="copy-secret"
-          icon={<CopyIcon data-testid="copy-icon" width="16" />}
+          icon={Copy01}
           onClick={() => onCopyToClipBoard(copyText)}
         />
       </TooltipTrigger>

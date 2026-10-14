@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -171,8 +172,11 @@ const WhatsNewAlert = () => {
                 </div>
               </Box>
               <Box className="layout-column tw:block tw:flex-[0_0_48px]">
-                <CloseIcon
-                  className="whats-new-alert-close tw:size-3.5 tw:shrink-0"
+                <ButtonUtility
+                  className="whats-new-alert-close"
+                  icon={CloseIcon}
+                  size="lg"
+                  tooltip={t('label.close')}
                   onClick={handleCancel}
                 />
               </Box>

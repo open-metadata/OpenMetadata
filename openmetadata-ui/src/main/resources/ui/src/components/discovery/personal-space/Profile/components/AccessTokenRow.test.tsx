@@ -68,6 +68,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+    ButtonUtility: ({
+      onClick,
+      isDisabled,
+      tooltip,
+      'data-testid': testId,
+    }: {
+      onClick?: (...args: unknown[]) => void;
+      isDisabled?: boolean;
+      tooltip?: string;
+      'data-testid'?: string;
+    }) => (
+      <button
+        aria-label={tooltip}
+        data-testid={testId}
+        disabled={isDisabled}
+        onClick={onClick}
+      />
+    ),
     Typography: ({ children }: { children?: ReactNode }) => (
       <span>{children}</span>
     ),

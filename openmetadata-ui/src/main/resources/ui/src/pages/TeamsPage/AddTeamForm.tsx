@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, SimpleModal } from '@openmetadata/ui-core-components';
+import { ButtonUtility, SimpleModal } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Form, Input, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
@@ -95,12 +95,10 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         : undefined,
       multiple: true,
       children: (
-        <Button
-          aria-label={t('label.add-entity', { entity: t('label.domain') })}
-          color="primary"
+        <ButtonUtility
           data-testid="add-domain"
-          iconLeading={Plus}
-          size="xs"
+          icon={Plus}
+          tooltip={t('label.add-entity', { entity: t('label.domain') })}
         />
       ),
     },

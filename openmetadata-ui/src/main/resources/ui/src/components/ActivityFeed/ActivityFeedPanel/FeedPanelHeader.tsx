@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
@@ -70,19 +70,15 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
       </p>
       <div className="d-flex items-center">
         {onShowNewConversation ? (
-          <Button
-            aria-label={t('label.start-entity', {
-              entity: t('label.conversation-lowercase'),
-            })}
-            color="primary"
+          <ButtonUtility
             data-testid="add-new-conversation"
-            iconLeading={Plus}
-            size="sm"
+            icon={Plus}
+            size="lg"
             tooltip={t('label.start-entity', {
               entity: t('label.conversation-lowercase'),
             })}
             tooltipPlacement="bottom"
-            onPress={() => {
+            onClick={() => {
               onShowNewConversation(true);
             }}
           />

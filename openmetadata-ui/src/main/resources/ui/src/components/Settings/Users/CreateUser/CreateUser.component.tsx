@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -89,12 +90,10 @@ const buildDomainsField = (
     selectedDomain: activeDomainEntityRef ? [activeDomainEntityRef] : undefined,
     multiple: true,
     children: (
-      <Button
-        aria-label={t('label.add-entity', { entity: t('label.domain') })}
-        color="primary"
+      <ButtonUtility
         data-testid="add-domain"
-        iconLeading={Plus}
-        size="xs"
+        icon={Plus}
+        tooltip={t('label.add-entity', { entity: t('label.domain') })}
       />
     ),
   },
@@ -245,23 +244,18 @@ const PasswordConfigSection = ({
               readOnly
               addonAfter={
                 <div className="flex-center w-16">
-                  <div
-                    className="w-8 h-7 flex-center cursor-pointer"
+                  <ButtonUtility
                     data-testid="password-generator"
-                    role="button"
-                    tabIndex={0}
+                    icon={
+                      isPasswordGenerating ? (
+                        <Loader size="small" type="default" />
+                      ) : (
+                        IconSync
+                      )
+                    }
+                    tooltip={t('label.generate')}
                     onClick={onGeneratePassword}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        onGeneratePassword();
-                      }
-                    }}>
-                    {isPasswordGenerating ? (
-                      <Loader size="small" type="default" />
-                    ) : (
-                      <IconSync className="tw:align-middle tw:size-4 tw:shrink-0" />
-                    )}
-                  </div>
+                  />
 
                   <div className="w-8 h-7 flex-center">
                     <CopyToClipboardButton copyText={generatedPassword ?? ''} />

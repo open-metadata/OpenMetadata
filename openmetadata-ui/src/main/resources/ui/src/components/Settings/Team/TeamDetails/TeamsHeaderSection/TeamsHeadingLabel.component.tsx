@@ -13,7 +13,6 @@
 
 import {
   Box,
-  Button,
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -163,20 +162,20 @@ const TeamsHeadingLabel = ({
           data-testid="buttons"
           gap={1}
           itemClassName="layout-space-item">
-          <Button
-            color="primary"
+          <ButtonUtility
             data-testid="cancelAssociatedTag"
+            icon={XClose}
             isDisabled={isLoading}
-            onMouseDown={handleClose}>
-            <XClose className="tw:shrink-0" size={14} />
-          </Button>
-          <Button
-            color="primary"
+            tooltip={t('label.cancel')}
+            onMouseDown={handleClose}
+          />
+          <ButtonUtility
             data-testid="saveAssociatedTag"
-            isLoading={isLoading}
-            onMouseDown={onHeadingSave}>
-            <Check className="tw:shrink-0" size={14} />
-          </Button>
+            icon={Check}
+            isDisabled={isLoading}
+            tooltip={t('label.save')}
+            onMouseDown={onHeadingSave}
+          />
         </Box>
       </div>
     ) : (

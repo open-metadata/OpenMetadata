@@ -394,11 +394,10 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
       case 'actions':
         return (
           <ButtonUtility
-            color="tertiary"
             data-testid={`delete-action-${getEntityName(policy)}`}
             icon={Trash01}
             isDisabled={!deletePolicyPermission}
-            size="xs"
+            size="md"
             tooltip={
               deletePolicyPermission
                 ? t('label.delete-entity', { entity: t('label.policy') })

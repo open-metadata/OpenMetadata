@@ -35,7 +35,6 @@ export const SendButton: FC<SendButtonProp> = ({
     <ButtonUtility
       aria-label={t('label.send')}
       className={classNames('send-button', className)}
-      color="tertiary"
       data-testid="send-button"
       icon={IconPaperPlanePrimary}
       isDisabled={editorValue.length === 0}

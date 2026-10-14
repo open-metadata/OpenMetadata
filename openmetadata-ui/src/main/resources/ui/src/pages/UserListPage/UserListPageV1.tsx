@@ -18,7 +18,6 @@ import {
   Grid,
   SimpleModal,
   Toggle,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -337,51 +336,43 @@ const UserListPageV1 = () => {
             gap={2}
             itemClassName="layout-space-item">
             {showRestore && (
-              <Tooltip
-                arrow
-                placement={isAdminUser ? 'bottom' : 'left'}
-                title={
+              <ButtonUtility
+                data-testid={`restore-user-btn-${record.name}`}
+                icon={IconRestore}
+                isDisabled={!isAdminUser}
+                size="md"
+                tooltip={
                   isAdminUser
                     ? t('label.restore-entity', {
                         entity: t('label.user'),
                       })
                     : t(ADMIN_ONLY_ACTION)
-                }>
-                <ButtonUtility
-                  color="tertiary"
-                  data-testid={`restore-user-btn-${record.name}`}
-                  icon={IconRestore}
-                  isDisabled={!isAdminUser}
-                  size="sm"
-                  onClick={() => {
-                    setSelectedUser(record);
-                    setShowReactiveModal(true);
-                  }}
-                />
-              </Tooltip>
+                }
+                tooltipPlacement={isAdminUser ? 'bottom' : 'left'}
+                onClick={() => {
+                  setSelectedUser(record);
+                  setShowReactiveModal(true);
+                }}
+              />
             )}
-            <Tooltip
-              arrow
-              placement={isAdminUser ? 'bottom' : 'left'}
-              title={
+            <ButtonUtility
+              data-testid={`delete-user-btn-${record.name}`}
+              icon={IconDelete}
+              isDisabled={!isAdminUser}
+              size="md"
+              tooltip={
                 isAdminUser
                   ? t('label.delete-entity', {
                       entity: t('label.user'),
                     })
                   : t(ADMIN_ONLY_ACTION)
-              }>
-              <ButtonUtility
-                color="tertiary"
-                data-testid={`delete-user-btn-${record.name}`}
-                icon={IconDelete}
-                isDisabled={!isAdminUser}
-                size="xs"
-                onClick={() => {
-                  setSelectedUser(record);
-                  setShowDeleteModal(true);
-                }}
-              />
-            </Tooltip>
+              }
+              tooltipPlacement={isAdminUser ? 'bottom' : 'left'}
+              onClick={() => {
+                setSelectedUser(record);
+                setShowDeleteModal(true);
+              }}
+            />
           </Box>
         ),
       },

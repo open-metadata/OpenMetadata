@@ -164,10 +164,9 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           )}
           {props.handleRemoveWidget && (
             <ButtonUtility
-              color="secondary"
               data-testid="remove-widget-button"
               icon={MinusCircle}
-              size="xs"
+              size="md"
               tooltip={t('label.remove-entity', {
                 entity: t('label.widget'),
               })}
@@ -176,10 +175,9 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           )}
           {isConfigurable && (
             <ButtonUtility
-              color="secondary"
               data-testid="widget-settings-button"
               icon={Settings01}
-              size="xs"
+              size="md"
               tooltip={t('label.configure-entity', { entity: widgetName })}
               onClick={() => setIsSettingsOpen(true)}
             />

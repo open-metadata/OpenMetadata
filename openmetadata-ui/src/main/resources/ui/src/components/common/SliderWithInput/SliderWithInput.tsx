@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import { InputNumber, Slider } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -56,15 +56,13 @@ const SliderWithInput = ({
             value={value}
             onChange={onChange}
           />
-          <Tooltip arrow title={t('label.clear')}>
-            <ButtonUtility
-              color="tertiary"
-              data-testid="clear-slider-input"
-              icon={XClose}
-              size="xs"
-              onClick={() => onChange(null)}
-            />
-          </Tooltip>
+          <ButtonUtility
+            data-testid="clear-slider-input"
+            icon={XClose}
+            size="xs"
+            tooltip={t('label.clear')}
+            onClick={() => onChange(null)}
+          />
         </div>
       </Box>
     </Box>

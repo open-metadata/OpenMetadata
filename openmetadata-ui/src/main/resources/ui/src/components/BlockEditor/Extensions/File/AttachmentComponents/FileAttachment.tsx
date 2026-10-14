@@ -56,9 +56,8 @@ const UploadStatus = ({
     <>
       <span className="separator">|</span>
       <ButtonUtility
-        color="tertiary"
         data-testid="download-file-attachment"
-        icon={<DownloadIcon height={18} width={18} />}
+        icon={DownloadIcon}
         isDisabled={isFileLoading}
         size="sm"
         tooltip={t('label.download')}
@@ -137,10 +136,9 @@ const FileAttachment = ({
       </div>
       {!isUploading && (
         <ButtonUtility
-          color="tertiary"
           data-testid="delete-icon"
-          icon={<TrashIcon height={18} width={18} />}
-          size="sm"
+          icon={TrashIcon}
+          size="md"
           tooltip={t('label.delete')}
           onClick={(e: React.MouseEvent) => {
             e.preventDefault();

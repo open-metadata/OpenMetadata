@@ -14,7 +14,6 @@
 import {
   ButtonUtility,
   Grid,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
@@ -155,20 +154,17 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
         />
 
         <div className="workflow-array-field-divider" />
-        <Tooltip
-          arrow
-          placement="top"
-          title={hasCopied ? 'Copied to clipboard' : 'Copy'}>
-          <ButtonUtility
-            color="tertiary"
-            icon={CopyLeft}
-            size="xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCopy(e);
-            }}
-          />
-        </Tooltip>
+        <ButtonUtility
+          icon={CopyLeft}
+          size="xs"
+          tooltip={
+            hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
+          }
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            handleCopy(e);
+          }}
+        />
       </Grid.Item>
     </Grid>
   );

@@ -72,11 +72,10 @@ const CalloutComponent: FC<NodeViewProps> = ({
           isOpen={isPopupVisible}
           onOpenChange={handlePopoverVisibleChange}>
           <ButtonUtility
-            aria-label={startCase(calloutType)}
-            className="callout-type-btn"
-            color="tertiary"
             data-testid={`callout-${calloutType}-btn`}
-            icon={<CallOutIcon width={28} />}
+            icon={CallOutIcon}
+            size="lg"
+            tooltip={startCase(calloutType)}
           />
           <Popover containerClassName="tw:px-1 tw:py-3" placement="bottom end">
             <PopoverContent

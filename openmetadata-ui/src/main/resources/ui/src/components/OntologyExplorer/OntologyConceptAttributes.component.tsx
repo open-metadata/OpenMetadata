@@ -288,10 +288,6 @@ export const OntologyConceptAttributes: React.FC<
           </span>
           {onAttributesChange ? (
             <ButtonUtility
-              className={classNames(
-                'tw:size-5 tw:shrink-0 tw:rounded-md tw:border-0 tw:p-0',
-                'tw:bg-transparent tw:text-quaternary hover:tw:bg-primary_hover hover:tw:text-secondary'
-              )}
               data-testid={`remove-attribute-${attribute.name}`}
               icon={XClose}
               size="xs"

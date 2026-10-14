@@ -114,25 +114,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, as: Tag = 'span', className }) => (
       <Tag className={className}>{children}</Tag>
     )),
-  ButtonUtility: jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        onClick,
-        disabled,
-        'aria-label': ariaLabel,
-        'data-testid': testId,
-      }) => (
-        <button
-          aria-label={ariaLabel}
-          data-testid={testId}
-          disabled={disabled}
-          onClick={onClick}>
-          {children}
-        </button>
-      )
-    ),
+  ButtonUtility: jest.requireActual('@openmetadata/ui-core-components')
+    .ButtonUtility,
   Tabs: Object.assign(
     jest.fn().mockImplementation(({ children, onSelectionChange }) => (
       <div
@@ -317,8 +300,7 @@ describe('CustomControls', () => {
     });
     const button = screen.getByRole('button', { name: 'label.edit-entity' });
 
-    expect(button).toBeDisabled();
-    expect(button.parentElement?.closest('button')).toBeNull();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
 
     fireEvent.mouseMove(document);
     await user.hover(button);
@@ -332,18 +314,14 @@ describe('CustomControls', () => {
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
     );
 
-    const trigger = screen.getByRole('group', { name: 'label.edit-entity' });
-
-    expect(trigger).toHaveAttribute('tabindex', '0');
-
     fireEvent.keyDown(document, { key: 'Tab' });
-    act(() => trigger.focus());
+    act(() => button.focus());
 
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
       'label.zoom-in'
     );
 
-    act(() => trigger.blur());
+    act(() => button.blur());
     await waitFor(() =>
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
     );

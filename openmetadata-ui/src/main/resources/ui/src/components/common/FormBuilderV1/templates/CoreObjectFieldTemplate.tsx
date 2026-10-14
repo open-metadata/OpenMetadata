@@ -17,6 +17,7 @@ import {
   AccordionItem,
   AccordionPanel,
   Button,
+  ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
@@ -213,16 +214,13 @@ const getAddButton = (
   }
 
   return (
-    <Button
-      aria-label={t('label.add-entity', { entity: addEntityLabel })}
-      className="core-object-field-template-add-button tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-md tw:p-0 tw:leading-none"
-      color="primary"
+    <ButtonUtility
       data-testid={`add-item-${addEntityLabel}`}
+      icon={Plus}
       id={`${idSchema.$id}`}
-      size="sm"
-      onClick={() => onAddClick(schema)()}>
-      <Plus data-icon size={14} />
-    </Button>
+      tooltip={t('label.add-entity', { entity: addEntityLabel })}
+      onClick={() => onAddClick(schema)()}
+    />
   );
 };
 

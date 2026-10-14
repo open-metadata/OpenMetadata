@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility, Card, Tooltip } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Card } from '@openmetadata/ui-core-components';
 
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
@@ -83,16 +83,15 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           )}>
           {isRightPanelCollapsed && (
             <Card className="reflex-card">
-              <Tooltip arrow placement="right" title={t('label.expand')}>
-                <ButtonUtility
-                  className="mr-2"
-                  color="tertiary"
-                  data-testid="sidebar-toggle"
-                  icon={SidebarCollapsedIcon}
-                  size="sm"
-                  onClick={handleCollapse}
-                />
-              </Tooltip>
+              <ButtonUtility
+                className="mr-2"
+                data-testid="sidebar-toggle"
+                icon={SidebarCollapsedIcon}
+                size="lg"
+                tooltip={t('label.expand')}
+                tooltipPlacement="right"
+                onClick={handleCollapse}
+              />
             </Card>
           )}
           {!isRightPanelCollapsed && (

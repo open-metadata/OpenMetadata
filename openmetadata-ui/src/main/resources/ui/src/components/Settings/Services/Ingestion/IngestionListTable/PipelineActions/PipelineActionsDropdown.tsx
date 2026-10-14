@@ -270,11 +270,10 @@ function PipelineActionsDropdown({
         onOpenChange={setIsOpen}>
         <ButtonUtility
           aria-label={t('label.more-action-plural')}
-          color="tertiary"
           data-testid="more-actions"
           icon={MoreIcon}
           isDisabled={moreActionButtonProps?.disabled}
-          size="sm"
+          size="md"
         />
         <Dropdown.Popover className="tw:w-30">
           <Dropdown.Menu

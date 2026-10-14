@@ -8,7 +8,9 @@ import type {
   ButtonHTMLAttributes,
   DetailedHTMLProps,
   FC,
+  KeyboardEvent,
   ReactNode,
+  SyntheticEvent,
 } from 'react';
 import { forwardRef, isValidElement } from 'react';
 import type { Placement } from 'react-aria';
@@ -17,6 +19,13 @@ import type {
   LinkProps as AriaLinkProps,
 } from 'react-aria-components';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
+
+const stopPress = (event: SyntheticEvent) => event.stopPropagation();
+const stopKeyPress = (event: KeyboardEvent) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.stopPropagation();
+  }
+};
 
 const neutralIcon =
   'tw:text-utility-gray-500 tw:hover:text-utility-gray-600 tw:*:data-icon:text-current';
@@ -82,6 +91,8 @@ export interface ButtonProps
     > {
   /** Slot name for react-aria component */
   slot?: AriaButtonProps['slot'];
+  /** Handler called when the button is pressed */
+  onPress?: AriaButtonProps['onPress'];
 }
 
 /**
@@ -147,7 +158,7 @@ export const ButtonUtility = forwardRef<
     };
   }
 
-  const content = (
+  const button = (
     <Component
       aria-label={tooltip}
       {...props}
@@ -169,16 +180,33 @@ export const ButtonUtility = forwardRef<
     </Component>
   );
 
-  if (tooltip) {
-    return (
-      <Tooltip
-        offset={size === 'xs' || size === 'sm' ? 4 : 6}
-        placement={tooltipPlacement}
-        title={tooltip}>
-        {content}
-      </Tooltip>
-    );
+  const content = tooltip ? (
+    <Tooltip
+      offset={size === 'xs' || size === 'sm' ? 4 : 6}
+      placement={tooltipPlacement}
+      title={tooltip}>
+      {button}
+    </Tooltip>
+  ) : (
+    button
+  );
+
+  if (!softDisabled) {
+    return content;
   }
 
-  return content;
+  // A parent MenuTrigger / DialogTrigger presses through context, not props, so
+  // a soft-disabled button stops the press events before they reach it. The
+  // wrapper sits outside Tooltip, which would otherwise make it a second tab stop.
+  return (
+    <span
+      className="tw:contents"
+      onClickCapture={stopPress}
+      onKeyDownCapture={stopKeyPress}
+      onKeyUpCapture={stopKeyPress}
+      onMouseDownCapture={stopPress}
+      onPointerDownCapture={stopPress}>
+      {content}
+    </span>
+  );
 });

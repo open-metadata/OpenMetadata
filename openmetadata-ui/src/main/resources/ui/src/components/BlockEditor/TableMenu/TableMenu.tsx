@@ -160,48 +160,41 @@ const TableMenu = (props: TableMenuProps) => {
     <div className="table-menu" ref={menuRef}>
       <Box align="center" gap={4}>
         <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
           data-testid="Add row after current row"
-          icon={<IconAddRowAfter style={{ verticalAlign: 'middle' }} />}
+          icon={IconAddRowAfter}
+          size="md"
           tooltip="Add row after current row"
           onClick={() => editor.chain().focus().addRowAfter().run()}
         />
 
         <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
           data-testid="Add column after current column"
-          icon={<IconAddColumnAfter style={{ verticalAlign: 'middle' }} />}
+          icon={IconAddColumnAfter}
+          size="md"
           tooltip="Add column after current column"
           onClick={() => editor.chain().focus().addColumnAfter().run()}
         />
 
         <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
           data-testid="Delete current row"
-          icon={<IconDeleteRow style={{ verticalAlign: 'middle' }} />}
+          icon={IconDeleteRow}
+          size="md"
           tooltip="Delete current row"
           onClick={() => editor.chain().focus().deleteRow().run()}
         />
 
         <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
           data-testid="Delete current col"
-          icon={<IconDeleteColumn style={{ verticalAlign: 'middle' }} />}
+          icon={IconDeleteColumn}
+          size="md"
           tooltip="Delete current column"
           onClick={() => editor.chain().focus().deleteColumn().run()}
         />
 
         <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
           data-testid="Delete table"
-          icon={
-            <IconDeleteTable style={{ verticalAlign: 'middle' }} width={14} />
-          }
+          icon={IconDeleteTable}
+          size="md"
           tooltip="Delete table"
           onClick={() => {
             editor.chain().focus().deleteTable().run();

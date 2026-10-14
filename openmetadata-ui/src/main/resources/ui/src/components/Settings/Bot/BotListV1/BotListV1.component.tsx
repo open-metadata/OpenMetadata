@@ -331,16 +331,15 @@ const BotListV1 = ({
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
-            <Tooltip arrow placement="top right" title={title}>
-              <ButtonUtility
-                color="tertiary"
-                data-testid={`bot-delete-${record.name}`}
-                icon={IconDelete}
-                isDisabled={isDisabled}
-                size="sm"
-                onClick={() => setSelectedUser(record)}
-              />
-            </Tooltip>
+            <ButtonUtility
+              data-testid={`bot-delete-${record.name}`}
+              icon={IconDelete}
+              isDisabled={isDisabled}
+              size="md"
+              tooltip={title}
+              tooltipPlacement="top right"
+              onClick={() => setSelectedUser(record)}
+            />
           );
         },
       },

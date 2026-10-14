@@ -111,18 +111,18 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Button: ({
+  ButtonUtility: ({
     onClick,
     isDisabled,
     ...rest
   }: {
     onClick?: () => void;
     isDisabled?: boolean;
-    'aria-label'?: string;
+    tooltip?: string;
     'data-testid'?: string;
   }) => (
     <button
-      aria-label={rest['aria-label']}
+      aria-label={rest.tooltip}
       data-testid={rest['data-testid']}
       disabled={isDisabled}
       onClick={onClick}

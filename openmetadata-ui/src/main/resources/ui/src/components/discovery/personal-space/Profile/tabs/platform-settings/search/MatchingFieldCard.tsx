@@ -110,18 +110,16 @@ const MatchingFieldCard = ({
               </Badge>
               <ButtonUtility
                 aria-expanded={isOpen}
-                color="tertiary"
                 data-testid="field-configuration-toggle"
                 icon={isOpen ? ChevronUp : ChevronDown}
-                size="xs"
+                size="lg"
                 tooltip={t('label.edit')}
                 onPress={() => setIsOpen((open) => !open)}
               />
               <ButtonUtility
-                color="tertiary"
                 data-testid="delete-search-field"
                 icon={Trash01}
-                size="xs"
+                size="md"
                 tooltip={t('label.delete')}
                 onPress={onDelete}
               />

@@ -337,12 +337,11 @@ const DatePickerMenu = ({
       {datePickerMenu}
       {selectedTimeRangeKey && (
         <ButtonUtility
-          aria-label={t('label.clear')}
           className="tw:absolute tw:right-8 tw:top-1/2 tw:z-10 tw:-translate-y-1/2"
-          color="tertiary"
           data-testid="clear-date-picker"
-          icon={<CloseCircleFilled size={14} />}
+          icon={CloseCircleFilled}
           size="xs"
+          tooltip={t('label.clear')}
           onClick={(event: MouseEvent) => {
             event.stopPropagation();
             handleClear();

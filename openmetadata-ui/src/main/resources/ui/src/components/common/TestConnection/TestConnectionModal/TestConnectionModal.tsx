@@ -12,6 +12,7 @@
  */
 import {
   Button,
+  ButtonUtility,
   Dialog,
   Divider,
   Modal,
@@ -381,12 +382,11 @@ const TestConnectionModal = ({
                 {connectionDisplayName}
               </div>
             </div>
-            <Button
-              className="tw:flex tw:size-9 tw:items-center tw:justify-center tw:text-fg-quaternary"
-              color="tertiary"
+            <ButtonUtility
               data-testid="test-connection-close"
-              iconLeading={<XClose size={20} />}
-              size="xs"
+              icon={XClose}
+              size="lg"
+              tooltip={t('label.close')}
               onClick={handleModalClose}
             />
           </div>

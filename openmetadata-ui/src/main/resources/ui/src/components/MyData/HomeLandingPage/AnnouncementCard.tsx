@@ -144,15 +144,9 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
           {isDismissible && (
             // z-10 keeps the dismiss target above the title's stretched ::after.
             <ButtonUtility
-              // Bare glyph — no filled container. size-6 keeps the hit target at
-              // the 24px minimum even though the glyph itself is 14px.
-              className={classNames(
-                'tw:z-10 tw:size-6 tw:shrink-0 tw:rounded-md tw:p-0 tw:*:data-icon:size-3.5',
-                surface.icon
-              )}
-              color="tertiary"
+              className={classNames('tw:z-10', surface.icon)}
               icon={XClose}
-              size="xs"
+              size="md"
               tooltip={t('label.close')}
               onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();

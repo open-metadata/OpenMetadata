@@ -29,6 +29,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Edit01, UploadCloud01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { cloneDeep, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -492,49 +493,43 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         </Tooltip>
 
         <ButtonUtility
-          className={
-            voteStatus === QueryVoteType.votedUp
-              ? 'tw:text-fg-brand-primary'
-              : undefined
-          }
-          color="tertiary"
+          className={classNames({
+            'tw:*:data-icon:text-utility-brand-600':
+              voteStatus === QueryVoteType.votedUp,
+          })}
           data-testid="upvote-btn"
-          disabled={knowledgePage?.deleted || voteLoading !== null}
           icon={
-            voteStatus === QueryVoteType.votedUp ? (
-              <ThumbsUpActiveIcon height={20} width={20} />
-            ) : (
-              <ThumbsUpIcon height={20} width={20} />
-            )
+            voteStatus === QueryVoteType.votedUp
+              ? ThumbsUpActiveIcon
+              : ThumbsUpIcon
           }
+          isDisabled={knowledgePage?.deleted || voteLoading !== null}
+          size="xl"
           tooltip={t('label.up-vote')}
           onClick={() => handleVoteChange(QueryVoteType.votedUp)}
         />
 
         <ButtonUtility
-          className={
-            voteStatus === QueryVoteType.votedDown
-              ? 'tw:text-fg-brand-primary'
-              : undefined
-          }
-          color="tertiary"
+          className={classNames({
+            'tw:*:data-icon:text-utility-brand-600':
+              voteStatus === QueryVoteType.votedDown,
+          })}
           data-testid="downvote-btn"
-          disabled={knowledgePage?.deleted || voteLoading !== null}
           icon={
-            voteStatus === QueryVoteType.votedDown ? (
-              <ThumbsDownActiveIcon height={20} width={20} />
-            ) : (
-              <ThumbsDownIcon height={20} width={20} />
-            )
+            voteStatus === QueryVoteType.votedDown
+              ? ThumbsDownActiveIcon
+              : ThumbsDownIcon
           }
+          isDisabled={knowledgePage?.deleted || voteLoading !== null}
+          size="xl"
           tooltip={t('label.down-vote')}
           onClick={() => handleVoteChange(QueryVoteType.votedDown)}
         />
 
         <ButtonUtility
-          color="tertiary"
           data-testid="conversation"
-          icon={<ChatIcon height={20} width={20} />}
+          icon={ChatIcon}
+          size="xl"
           tooltip={t('label.conversation')}
           onClick={handleOpenConversation}
         />
@@ -557,34 +552,26 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     () => (
       <>
         <ButtonUtility
-          color="tertiary"
+          className={classNames({
+            'tw:*:data-icon:text-utility-brand-600': isFollowing,
+          })}
           data-testid="follow-btn"
-          disabled={isFollowLoading || knowledgePage?.deleted}
-          icon={
-            isFollowing ? (
-              <FollowActiveIcon height={20} width={20} />
-            ) : (
-              <FollowIcon height={20} width={20} />
-            )
-          }
+          icon={isFollowing ? FollowActiveIcon : FollowIcon}
+          isDisabled={isFollowLoading || knowledgePage?.deleted}
+          size="xl"
           tooltip={isFollowing ? t('label.un-follow') : t('label.follow')}
           onClick={handleFollowClick}
         />
-        <CopyLinkButton
-          className="tw:w-8 tw:h-8"
-          color="tertiary"
-          testId="copy-btn"
-          url={window.location.href}>
-          <CopyIcon height={20} width={20} />
+        <CopyLinkButton testId="copy-btn" url={window.location.href}>
+          <CopyIcon data-icon />
         </CopyLinkButton>
 
         {permissions?.Delete && (
           <Dropdown.Root>
             <ButtonUtility
-              color="tertiary"
               data-testid="manage-button"
-              icon={<DotsVerticalIcon height={20} width={20} />}
-              size="sm"
+              icon={DotsVerticalIcon}
+              size="xl"
               tooltip={t('label.manage-entity', {
                 entity: t('label.article'),
               })}

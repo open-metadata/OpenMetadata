@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Owner,
   Tooltip,
@@ -347,7 +348,12 @@ const TaskFeedCardFromTask = ({
       wrap="wrap">
       <Box>
         <Box align="center" gap={2} justify="center">
-          <ReplyIcon height={20} width={20} onClick={showReplies} />
+          <ButtonUtility
+            icon={ReplyIcon}
+            size="md"
+            tooltip={t('label.reply')}
+            onClick={showReplies}
+          />
           {commentsCount > 0 ? (
             <Button
               color="link-gray"

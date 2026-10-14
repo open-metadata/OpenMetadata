@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Dataflow01, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';
@@ -115,19 +119,21 @@ const ExpandHandle = ({
       onFocus={handleLineageNodeHandleMouseOver}
       onMouseOut={handleLineageNodeHandleMouseOut}
       onMouseOver={handleLineageNodeHandleMouseOver}>
-      <Plus
-        aria-hidden="false"
-        aria-label="expand"
-        className="lineage-expand-icon"
+      <ButtonUtility
         data-testid="plus-icon"
+        icon={Plus}
+        size="xs"
+        tooltip={t('label.expand')}
         onClick={handleLineageExpandIconClick}
       />
       {showExpandAll && (
         <>
           <div className="lineage-expand-icons-separator" />
-          <Dataflow01
-            className="lineage-expand-icon"
+          <ButtonUtility
             data-testid="lineage-expand-all-btn"
+            icon={Dataflow01}
+            size="xs"
+            tooltip={t('label.expand-all')}
             onClick={handleLineageExpandAllIconClick}
           />
         </>
@@ -148,30 +154,30 @@ export const getCollapseHandle = (
   onClickHandler: () => void
 ) => {
   return (
-    <Button
-      aria-label={t('label.collapse')}
+    <ButtonUtility
       // custom-node.less `.react-flow .lineage-node-handle` owns size, radius,
-      // border colour and surface bg (!important); these only replace what the
-      // antd button supplied (1px border, no padding).
+      // border colour and surface bg (!important).
       className={classNames(
-        'absolute lineage-node-minus lineage-node-handle flex-center nodrag nopan tw:border tw:p-0!',
+        'absolute lineage-node-minus lineage-node-handle flex-center nodrag nopan tw:border',
         direction === LineageDirection.Downstream
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
-      color="tertiary"
       data-testid={
         direction === LineageDirection.Downstream
           ? 'downstream-collapse-handle'
           : 'upstream-collapse-handle'
       }
-      iconLeading={
+      // Playwright targets the glyph by test id, so it stays an element.
+      icon={
         <MinusIcon
-          className="lineage-expand-icon tw:dark:[&_path]:fill-fg-quaternary"
+          data-icon
+          className="tw:dark:[&_path]:fill-fg-quaternary"
           data-testid="minus-icon"
         />
       }
-      size="sm"
+      size="xs"
+      tooltip={t('label.collapse')}
       onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
         onClickHandler();

@@ -12,7 +12,7 @@
  */
 import {
   Box,
-  Button,
+  ButtonUtility,
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -184,13 +184,13 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
           <Divider className="m-b-md m-t-0" />
         </Box>
         <Box className="layout-column d-flex items-center justify-end gap-2">
-          <Button
-            aria-label={t('label.delete-entity', {
+          <ButtonUtility
+            data-testid="delete-term-boost"
+            icon={Delete}
+            size="md"
+            tooltip={t('label.delete-entity', {
               entity: t('label.term-boost'),
             })}
-            color="secondary"
-            data-testid="delete-term-boost"
-            iconLeading={<Delete className="tw:size-3.5 tw:shrink-0" />}
             onClick={() => onDeleteBoost(termBoost.value)}
           />
         </Box>

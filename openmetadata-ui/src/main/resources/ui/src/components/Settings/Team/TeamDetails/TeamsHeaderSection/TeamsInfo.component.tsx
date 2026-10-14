@@ -12,7 +12,6 @@
  */
 import {
   Box,
-  Button,
   ButtonUtility,
   Divider,
   Owner,
@@ -242,22 +241,20 @@ const TeamsInfo = ({
                 className="layout-space layout-space-horizontal"
                 gap={1}
                 itemClassName="layout-space-item">
-                <Button
-                  color="primary"
+                <ButtonUtility
                   data-testid="cancel-edit-email"
+                  icon={XClose}
                   isDisabled={isLoading}
-                  size="xs"
-                  onClick={() => setIsEmailEdit(false)}>
-                  <XClose className="tw:shrink-0" size={14} />
-                </Button>
-                <Button
-                  color="primary"
+                  tooltip={t('label.cancel')}
+                  onClick={() => setIsEmailEdit(false)}
+                />
+                <ButtonUtility
                   data-testid="save-edit-email"
-                  isLoading={isLoading}
-                  size="xs"
-                  type="submit">
-                  <Check size={14} />
-                </Button>
+                  icon={Check}
+                  isDisabled={isLoading}
+                  tooltip={t('label.save')}
+                  type="submit"
+                />
               </Box>
             </Box>
           </Form>

@@ -797,7 +797,6 @@ const LineageMapControls = ({
         return (
           <ButtonUtility
             className="lineage-map-rail-button tw:z-1 tw:h-[30px] tw:w-6 tw:p-0!"
-            color="tertiary"
             data-testid={`lineage-map-band-${band}`}
             icon={
               <span

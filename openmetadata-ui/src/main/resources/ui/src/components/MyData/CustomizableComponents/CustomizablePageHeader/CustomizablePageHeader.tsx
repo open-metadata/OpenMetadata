@@ -180,10 +180,9 @@ export const CustomizablePageHeader = ({
             />
             <ButtonUtility
               aria-label={t('label.close')}
-              color="tertiary"
               data-testid="customize-minimize-button"
               icon={Minimize01}
-              size="sm"
+              size="lg"
               onPress={handleClose}
             />
           </Box>
@@ -237,10 +236,10 @@ export const CustomizablePageHeader = ({
               </Button>
               <ButtonUtility
                 aria-label={t('label.cancel')}
-                color="tertiary"
                 data-testid="cancel-button"
                 icon={XClose}
                 isDisabled={saving}
+                size="xl"
                 onPress={handleClose}
               />
             </Box>

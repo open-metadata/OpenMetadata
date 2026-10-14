@@ -468,11 +468,10 @@ const EdgeInfoDrawer = ({
             </div>
             <ButtonUtility
               aria-label={t('label.close')}
-              className="tw:mr-2 tw:size-9 tw:rounded-lg tw:p-0 tw:text-primary tw:hover:bg-transparent tw:hover:text-primary"
-              color="tertiary"
+              className="tw:mr-2"
               data-testid="drawer-close-icon"
               icon={XClose}
-              size="xs"
+              size="lg"
               onClick={onClose}
             />
           </div>

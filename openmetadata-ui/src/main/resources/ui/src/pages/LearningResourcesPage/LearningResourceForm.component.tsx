@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Drawer, Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
@@ -147,7 +152,13 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       <Typography className="drawer-title">
         {resource ? t('label.edit-resource') : t('label.add-resource')}
       </Typography>
-      <XClose className="drawer-close" onClick={onClose} />
+      <ButtonUtility
+        data-testid="drawer-close-icon"
+        icon={XClose}
+        size="lg"
+        tooltip={t('label.close')}
+        onClick={onClose}
+      />
     </div>
   );
 

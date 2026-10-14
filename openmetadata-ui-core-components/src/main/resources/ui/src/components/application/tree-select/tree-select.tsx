@@ -19,6 +19,7 @@ import {
   TriggerCountBadge,
 } from '../filter-select/filter-select.shared';
 import {
+  type MouseEvent,
   type ReactElement,
   type RefObject,
   useCallback,
@@ -31,6 +32,7 @@ import {
 import { FocusScope } from 'react-aria';
 import type { Key, Selection } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
+import { ButtonUtility } from '@/components/base/buttons/button-utility';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { HintText } from '@/components/base/input/hint-text';
@@ -1153,17 +1155,16 @@ export const TreeSelect = <T = unknown,>({
                 <p className="tw:max-w-40 tw:truncate tw:text-sm tw:font-medium tw:text-secondary">
                   {node.label}
                 </p>
-                <button
+                <ButtonUtility
                   aria-label={`Remove ${node.label}`}
-                  className="tw:flex tw:cursor-pointer tw:rounded-[3px] tw:p-0.5 tw:text-fg-quaternary tw:outline-transparent tw:transition tw:duration-100 tw:ease-linear tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:disabled:cursor-not-allowed"
-                  disabled={disabled}
-                  type="button"
-                  onClick={(event) => {
+                  icon={XClose}
+                  isDisabled={disabled}
+                  size="xs"
+                  onClick={(event: MouseEvent<HTMLButtonElement>) => {
                     event.stopPropagation();
                     removeSelection(node.id);
-                  }}>
-                  <XClose className="tw:size-2.5" strokeWidth={3} />
-                </button>
+                  }}
+                />
               </span>
             ))}
 

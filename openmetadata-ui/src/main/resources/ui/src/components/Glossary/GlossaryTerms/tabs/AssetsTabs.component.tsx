@@ -297,11 +297,9 @@ const AssetsFilterBar = ({
       <Grid.Item className="layout-column d-flex gap-3" span={24}>
         <Dropdown.Root>
           <ButtonUtility
-            className="tw:size-9"
-            color="secondary"
             data-testid="asset-filter-button"
             icon={FilterIcon}
-            size="sm"
+            size="md"
             tooltip={t('label.filter-plural')}
           />
           <Dropdown.Popover className="tw:w-auto" placement="bottom start">
@@ -998,6 +996,7 @@ const AssetsTabs = forwardRef(
                       label={t('label.manage-entity', {
                         entity: t('label.asset'),
                       })}
+                      triggerSize="md"
                     />
                   ) : null
                 }

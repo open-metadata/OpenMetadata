@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Input } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Input } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import {
   ADDITIONAL_PROPERTY_FLAG,
@@ -58,16 +58,14 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
         <div className="core-wrap-if-additional-value tw:min-w-0">
           {children}
         </div>
-        <Button
-          aria-label={t('label.remove')}
-          className="core-wrap-if-additional-remove-button tw:inline-flex tw:h-9 tw:w-9 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:p-0 tw:leading-none"
-          color="secondary"
+        <ButtonUtility
+          className="tw:shrink-0"
+          icon={Trash01}
           isDisabled={disabled || readonly}
-          size="sm"
-          type="button"
-          onClick={onDropPropertyClick(label)}>
-          <Trash01 data-icon size={14} />
-        </Button>
+          size="md"
+          tooltip={t('label.remove')}
+          onClick={onDropPropertyClick(label)}
+        />
       </div>
     </div>
   );

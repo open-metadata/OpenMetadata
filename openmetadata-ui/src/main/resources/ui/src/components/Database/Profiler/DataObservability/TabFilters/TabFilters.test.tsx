@@ -69,6 +69,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
     </button>
   );
 
+  const ButtonUtility = ({
+    icon: _icon,
+    size,
+    tooltip,
+    ...props
+  }: Record<string, unknown>) => (
+    <button aria-label={tooltip as string} data-size={size} {...props} />
+  );
+
   const Tooltip = ({ children }: PropsWithChildren) => <>{children}</>;
 
   const Dropdown = {
@@ -80,6 +89,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   return {
     Button,
+    ButtonUtility,
     Dropdown,
     Tooltip,
   };
@@ -594,21 +604,12 @@ describe('TabFilters', () => {
       );
     });
 
-    it('should render settings button with color="secondary"', () => {
-      renderComponent();
-
-      expect(screen.getByTestId('profiler-setting-btn')).toHaveAttribute(
-        'color',
-        'secondary'
-      );
-    });
-
-    it('should render settings button with size="lg"', () => {
+    it('should render settings button with size="md"', () => {
       renderComponent();
 
       expect(screen.getByTestId('profiler-setting-btn')).toHaveAttribute(
         'data-size',
-        'lg'
+        'md'
       );
     });
 

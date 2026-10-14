@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Tooltip } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -82,22 +82,18 @@ const EntityTasks = ({
     const hasData = !isEmpty(data.field);
 
     return (
-      <Tooltip
-        arrow
-        excludeTriggerFromTabOrder
-        title={
+      <ButtonUtility
+        className="hover-cell-icon"
+        data-testid="task-element"
+        icon={IconRequest}
+        size="md"
+        tooltip={
           hasData
             ? t(ENTITY_TASKS_TOOLTIP[entityTaskType].update)
             : t(ENTITY_TASKS_TOOLTIP[entityTaskType].request)
         }
-        triggerClassName="tw:inline-flex">
-        <IconRequest
-          className="table-action-icon hover-cell-icon"
-          data-testid="task-element"
-          name={t('label.request-tag-plural')}
-          onClick={() => handleTask(hasData)}
-        />
-      </Tooltip>
+        onClick={() => handleTask(hasData)}
+      />
     );
   }, [data.field]);
 

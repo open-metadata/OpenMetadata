@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { Fragment, FunctionComponent } from 'react';
+import { Fragment, FunctionComponent, MouseEvent } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../../../assets/svg/ic-delete.svg';
 import { t } from '../../../../../utils/i18next/LocalUtil';
 
@@ -30,13 +30,11 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
       <div className="d-flex justify-between items-center">
         <Typography className="control-label">{title}</Typography>
         {canAdd && (
-          <Button
-            aria-label={t('label.add')}
-            color="primary"
+          <ButtonUtility
             data-testid={`add-item-${title}`}
-            iconLeading={Plus}
+            icon={Plus}
             id={`${idSchema.$id}`}
-            size="xs"
+            tooltip={t('label.add')}
             onClick={onAddClick}
             onFocus={() => {
               if (!isUndefined(formContext.handleFocus)) {
@@ -54,9 +52,12 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
           key={element.key}>
           <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
-            <DeleteIcon
-              className="tw:ml-3 tw:size-3.5 tw:shrink-0"
-              onClick={(event) => {
+            <ButtonUtility
+              className="tw:ml-3"
+              icon={DeleteIcon}
+              size="md"
+              tooltip={t('label.remove')}
+              onClick={(event: MouseEvent<HTMLButtonElement>) => {
                 element.onDropIndexClick(element.index)(event);
               }}
             />

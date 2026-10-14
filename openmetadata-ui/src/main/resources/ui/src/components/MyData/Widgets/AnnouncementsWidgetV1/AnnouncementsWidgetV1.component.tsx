@@ -104,10 +104,10 @@ const AnnouncementsWidgetV1 = ({
           </Box>
           <ButtonUtility
             className="close-button"
-            color="tertiary"
             data-testid="announcements-widget-v1-close"
             icon={XClose}
             isDisabled={disabled}
+            size="md"
             onClick={handleClose}
           />
         </Box>

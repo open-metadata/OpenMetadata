@@ -12,7 +12,7 @@
  */
 import {
   Box,
-  Button,
+  ButtonUtility,
   Card,
   Divider,
   Grid,
@@ -52,11 +52,11 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   return (
     <Card className="welcome-screen-container" data-testid="welcome-screen">
       <div className="tw:flex tw:justify-end tw:px-4 tw:pt-4">
-        <Button
-          aria-label={t('label.close')}
-          color="tertiary"
+        <ButtonUtility
           data-testid="welcome-screen-close-btn"
-          iconLeading={<CloseIcon height={12} width={12} />}
+          icon={CloseIcon}
+          size="lg"
+          tooltip={t('label.close')}
           onClick={onClose}
         />
       </div>

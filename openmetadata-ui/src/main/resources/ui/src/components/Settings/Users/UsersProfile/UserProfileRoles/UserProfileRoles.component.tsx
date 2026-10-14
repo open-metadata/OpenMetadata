@@ -12,7 +12,6 @@
  */
 
 import {
-  Button,
   ButtonUtility,
   Divider,
   Popover,
@@ -333,27 +332,25 @@ const UserProfileRoles = ({
                   </div>
 
                   <div className="flex justify-end gap-2 mt-4">
-                    <Button
-                      aria-label={t('label.cancel')}
-                      color="primary"
+                    <ButtonUtility
                       data-testid="user-profile-edit-roles-cancel-button"
-                      iconLeading={<ClosePopoverIcon height={24} />}
-                      size="xs"
+                      icon={ClosePopoverIcon}
+                      size="md"
                       style={{
                         position: 'absolute',
                         bottom: '0px',
                         right: '38px',
                       }}
+                      tooltip={t('label.cancel')}
                       onClick={handleCloseEditRole}
                     />
-                    <Button
-                      aria-label={t('label.save')}
-                      color="primary"
+                    <ButtonUtility
                       data-testid="user-profile-edit-roles-save-button"
-                      iconLeading={<SavePopoverIcon height={24} />}
-                      isLoading={isLoading}
-                      size="xs"
+                      icon={SavePopoverIcon}
+                      isDisabled={isLoading}
+                      size="md"
                       style={{ position: 'absolute', bottom: '0px' }}
+                      tooltip={t('label.save')}
                       onClick={handleRolesSave}
                     />
                   </div>

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -51,24 +51,22 @@ const InlineEdit = ({
       {children}
 
       <Box data-testid="buttons" gap={1} justify="end">
-        <Button
-          aria-label={t('label.cancel')}
-          color="primary"
+        <ButtonUtility
           data-testid="inline-cancel-btn"
-          iconLeading={XClose}
+          icon={XClose}
           isDisabled={isLoading}
-          size="xs"
-          onPress={onCancel}
+          size="md"
+          tooltip={t('label.cancel')}
+          onClick={onCancel}
           {...cancelButtonProps}
         />
-        <Button
-          aria-label={t('label.save')}
-          color="primary"
+        <ButtonUtility
           data-testid="inline-save-btn"
-          iconLeading={Check}
-          isLoading={isLoading}
-          size="xs"
-          onPress={onSave}
+          icon={Check}
+          isDisabled={isLoading}
+          size="md"
+          tooltip={t('label.save')}
+          onClick={onSave}
           {...saveButtonProps}
         />
       </Box>

@@ -15,6 +15,7 @@ import {
   BadgeWithDot,
   Box,
   Button,
+  ButtonUtility,
   FeaturedIcon,
   Select,
   Skeleton,
@@ -207,14 +208,12 @@ const AccessTokenDetails = ({
                 : '************************************************************'}
             </span>
           </Box>
-          <Button
-            noTextPadding
-            aria-label={t('label.show')}
-            color="secondary"
+          <ButtonUtility
             data-testid="reveal-token"
-            iconLeading={reveal ? Eye : EyeOff}
+            icon={reveal ? Eye : EyeOff}
             isDisabled={!canReveal}
-            size="sm"
+            size="md"
+            tooltip={t('label.show')}
             onClick={() => setReveal(!reveal)}
           />
           <Button

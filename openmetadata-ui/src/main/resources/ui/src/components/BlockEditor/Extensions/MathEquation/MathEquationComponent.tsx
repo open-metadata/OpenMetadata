@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Button,
-  ButtonUtility,
-  TextArea,
-} from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, TextArea } from '@openmetadata/ui-core-components';
 import { Check, Edit01, XClose } from '@openmetadata/ui-core-components/icons';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import classNames from 'classnames';
@@ -71,19 +66,17 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
               textAreaRef={inputRef}
             />
             <Box align="center" gap={2}>
-              <Button
-                aria-label={t('label.cancel')}
-                color="secondary"
-                iconLeading={XClose}
-                size="xs"
-                onPress={() => setIsEditing(false)}
+              <ButtonUtility
+                icon={XClose}
+                size="md"
+                tooltip={t('label.cancel')}
+                onClick={() => setIsEditing(false)}
               />
-              <Button
-                aria-label={t('label.save')}
-                color="primary"
-                iconLeading={Check}
-                size="xs"
-                onPress={handleSaveEquation}
+              <ButtonUtility
+                icon={Check}
+                size="md"
+                tooltip={t('label.save')}
+                onClick={handleSaveEquation}
               />
             </Box>
           </div>

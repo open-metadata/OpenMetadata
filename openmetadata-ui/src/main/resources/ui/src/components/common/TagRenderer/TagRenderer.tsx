@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
+import { t } from '../../../utils/i18next/LocalUtil';
 
 export const TagRenderer = (props: CustomTagProps) => {
   const { label, closable, onClose } = props;
@@ -34,9 +35,13 @@ export const TagRenderer = (props: CustomTagProps) => {
     <span className="ant-select-selection-item">
       {labelNode}
       {closable && (
-        <button className="selected-chip-tag-remove" onClick={onClose}>
-          <XClose className="tw:shrink-0" size={14} />
-        </button>
+        <ButtonUtility
+          aria-label={t('label.remove')}
+          className="tw:ml-1"
+          icon={XClose}
+          size="xs"
+          onClick={onClose}
+        />
       )}
     </span>
   );

@@ -13,6 +13,7 @@
 
 import {
   Badge,
+  ButtonUtility,
   Grid,
   Tooltip,
   Typography,
@@ -28,6 +29,7 @@ import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { DEPRECATED_SSO_PROPERTIES } from '../../../constants/Services.constant';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { splitCSV } from '../../../utils/CSV/CSVPureUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { isValidUrl } from '../../../utils/SSOUtils';
 import './sso-configuration-form-array-field-template.less';
 
@@ -47,9 +49,13 @@ const SsoCustomTagRenderer = (props: CustomTagProps) => {
     <span className="ant-select-selection-item">
       {labelNode}
       {closable && (
-        <button className="ant-select-selection-item-remove" onClick={onClose}>
-          <CloseIcon width={8} />
-        </button>
+        <ButtonUtility
+          className="ant-select-selection-item-remove"
+          icon={CloseIcon}
+          size="xs"
+          tooltip={i18n.t('label.remove')}
+          onClick={onClose}
+        />
       )}
     </span>
   );

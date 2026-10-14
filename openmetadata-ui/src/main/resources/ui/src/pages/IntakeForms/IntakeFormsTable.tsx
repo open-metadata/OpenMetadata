@@ -14,11 +14,10 @@
 import {
   Badge,
   Box,
-  Button,
+  ButtonUtility,
   Table,
   TableCard,
   Toggle,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
@@ -144,24 +143,21 @@ const IntakeFormsTable: FC<IntakeFormsTableProps> = ({
               </Table.Cell>
               <Table.Cell>
                 <Box gap={2}>
-                  <Tooltip title={t('label.edit')}>
-                    <Button
-                      color="tertiary"
-                      data-testid={`edit-${record.entityType}`}
-                      iconLeading={Edit01}
-                      size="sm"
-                      onClick={() => onEdit(record)}
-                    />
-                  </Tooltip>
-                  <Tooltip title={t('label.delete')}>
-                    <Button
-                      color="tertiary-destructive"
-                      data-testid={`delete-${record.entityType}`}
-                      iconLeading={Trash01}
-                      size="sm"
-                      onClick={() => onDelete(record)}
-                    />
-                  </Tooltip>
+                  <ButtonUtility
+                    data-testid={`edit-${record.entityType}`}
+                    icon={Edit01}
+                    size="md"
+                    tooltip={t('label.edit')}
+                    onClick={() => onEdit(record)}
+                  />
+                  <ButtonUtility
+                    color="tertiary-destructive"
+                    data-testid={`delete-${record.entityType}`}
+                    icon={Trash01}
+                    size="md"
+                    tooltip={t('label.delete')}
+                    onClick={() => onDelete(record)}
+                  />
                 </Box>
               </Table.Cell>
             </Table.Row>

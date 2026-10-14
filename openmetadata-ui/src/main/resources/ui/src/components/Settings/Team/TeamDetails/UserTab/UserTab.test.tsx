@@ -279,7 +279,10 @@ describe('UserTab', () => {
         </BrowserRouter>
       );
 
-      expect(await screen.findByTestId('remove-user-btn')).toBeDisabled();
+      expect(await screen.findByTestId('remove-user-btn')).toHaveAttribute(
+        'aria-disabled',
+        'true'
+      );
     });
 
     it('enables the remove-user button via EditAll when EditUsers is not present', async () => {

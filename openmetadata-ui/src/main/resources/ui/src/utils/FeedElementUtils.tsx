@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { MouseEvent } from 'react';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
@@ -33,24 +34,20 @@ export const getFieldThreadElement = (
   );
 
   return (
-    <Tooltip
-      arrow
-      excludeTriggerFromTabOrder
-      title={t('label.list-entity', {
+    <ButtonUtility
+      className="hover-cell-icon"
+      data-testid="field-thread"
+      icon={IconComments}
+      size="md"
+      tooltip={t('label.list-entity', {
         entity: t('label.conversation'),
       })}
-      triggerClassName="tw:inline-flex">
-      <IconComments
-        className="table-action-icon hover-cell-icon"
-        data-testid="field-thread"
-        name="comments"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
+      onClick={(e: MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
 
-          onThreadLinkSelect(entityLink);
-        }}
-      />
-    </Tooltip>
+        onThreadLinkSelect(entityLink);
+      }}
+    />
   );
 };

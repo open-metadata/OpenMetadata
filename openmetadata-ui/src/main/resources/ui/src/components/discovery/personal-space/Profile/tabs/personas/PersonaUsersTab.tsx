@@ -176,11 +176,10 @@ const PersonaUsersTab = ({
       case 'actions':
         return (
           <ButtonUtility
-            color="tertiary"
             data-testid={`remove-user-${getEntityName(user)}`}
             icon={Trash01}
             isDisabled={!canEdit}
-            size="xs"
+            size="md"
             tooltip={
               canEdit
                 ? t('label.remove-entity', { entity: t('label.user') })

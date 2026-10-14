@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Grid,
   Typography,
@@ -353,15 +354,14 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
               </Grid.Item>
 
               <Grid.Item className="tw:flex tw:items-center" span={1}>
-                <Button
-                  aria-label={t('label.remove-entity', {
-                    entity: t('label.mapping'),
-                  })}
-                  color="tertiary"
+                <ButtonUtility
                   data-testid={`remove-mapping-btn-${mapping.id}`}
-                  iconLeading={<DeleteIcon height={20} width={20} />}
+                  icon={DeleteIcon}
                   isDisabled={disabled || readonly}
                   size="md"
+                  tooltip={t('label.remove-entity', {
+                    entity: t('label.mapping'),
+                  })}
                   onClick={() => handleRemoveMapping(mapping.id)}
                 />
               </Grid.Item>

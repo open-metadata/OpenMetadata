@@ -62,10 +62,9 @@ function EmptyWidgetPlaceholder({
           </span>
           <ButtonUtility
             aria-label={t('label.remove-entity', { entity: t('label.widget') })}
-            color="tertiary"
             data-testid="remove-widget-button"
             icon={XClose}
-            size="xs"
+            size="md"
             onPress={handleCloseClick}
           />
         </Box>

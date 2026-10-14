@@ -13,6 +13,7 @@
 
 import {
   Button,
+  ButtonUtility,
   Grid,
   Toggle,
   Typography,
@@ -125,13 +126,13 @@ function ObservabilityFormTriggerItem({
                         </Grid>
                       </div>
                       {!isViewMode && (
-                        <Button
-                          aria-label={t('label.remove-entity', {
+                        <ButtonUtility
+                          data-testid={`remove-trigger-${name}`}
+                          icon={XClose}
+                          size="md"
+                          tooltip={t('label.remove-entity', {
                             entity: t('label.trigger'),
                           })}
-                          color="secondary"
-                          data-testid={`remove-trigger-${name}`}
-                          iconLeading={XClose}
                           onClick={() => remove(name)}
                         />
                       )}

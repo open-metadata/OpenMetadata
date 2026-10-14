@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ButtonUtility,
-  SimpleModal,
-  Tooltip,
-} from '@openmetadata/ui-core-components';
+import { ButtonUtility, SimpleModal } from '@openmetadata/ui-core-components';
 import { isNil } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -99,19 +95,15 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
       render: (_: string, record: User) => {
         return (
           onRemoveUser && (
-            <Tooltip
-              arrow
-              title={t('label.remove-entity', {
+            <ButtonUtility
+              data-testid="remove-user-btn"
+              icon={IconRemove}
+              size="md"
+              tooltip={t('label.remove-entity', {
                 entity: t('label.user'),
-              })}>
-              <ButtonUtility
-                color="tertiary"
-                data-testid="remove-user-btn"
-                icon={IconRemove}
-                size="sm"
-                onClick={() => handleRemoveButtonClick(record)}
-              />
-            </Tooltip>
+              })}
+              onClick={() => handleRemoveButtonClick(record)}
+            />
           )
         );
       },

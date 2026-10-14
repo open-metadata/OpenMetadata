@@ -254,13 +254,13 @@ const ProfileSectionUserDetailsCard = ({
           isOpen={isPopoverVisible}
           onOpenChange={setisPopoverVisible}>
           <ButtonUtility
-            aria-label={t('label.manage-entity', {
+            className="user-details-menu-icon"
+            data-testid="user-profile-manage-btn"
+            icon={MenuDots}
+            size="md"
+            tooltip={t('label.manage-entity', {
               entity: t('label.profile'),
             })}
-            className="user-details-menu-icon tw:p-0"
-            color="tertiary"
-            data-testid="user-profile-manage-btn"
-            icon={<MenuDots height={24} width={24} />}
           />
           <Popover
             className="profile-management-popover"

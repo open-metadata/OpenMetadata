@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import {
-  Button,
+  ButtonUtility,
   Divider,
   Toggle,
   Tooltip,
@@ -123,11 +123,11 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
                   />
                 )}
               </div>
-              <Button
-                aria-label={t('label.delete')}
-                color="secondary"
+              <ButtonUtility
                 data-testid="delete-search-field"
-                iconLeading={<Delete className="tw:size-3.5 tw:shrink-0" />}
+                icon={Delete}
+                size="md"
+                tooltip={t('label.delete')}
                 onClick={(e: MouseEvent) => {
                   e.stopPropagation();
                   onDeleteSearchField(field.fieldName);

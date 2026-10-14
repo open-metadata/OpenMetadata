@@ -139,6 +139,7 @@ const LinkedAssetCard: FC<{
   asset: DataAssetOption;
   onRemove?: (fqn: string) => void;
 }> = ({ asset, onRemove }) => {
+  const { t } = useTranslation();
   const displayName =
     asset.displayName || (typeof asset.label === 'string' ? asset.label : '');
 
@@ -185,9 +186,10 @@ const LinkedAssetCard: FC<{
           )}
           {onRemove && (
             <ButtonUtility
-              color="tertiary"
               data-testid="remove-linked-asset-btn"
-              icon={<XClose size={18} strokeWidth={2} />}
+              icon={XClose}
+              size="md"
+              tooltip={t('label.remove')}
               onClick={() => onRemove(fqn)}
             />
           )}

@@ -53,8 +53,6 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
   field: 'tw:min-w-0',
   fieldFill: 'tw:flex-1',
   formStack: 'tw:gap-5',
-  removeButton:
-    'tw:h-9 tw:w-9 tw:min-w-[36px] tw:shrink-0 tw:p-0 tw:hover:text-error-600 tw:hover:*:data-icon:text-error-600 tw:focus:text-error-600 tw:focus:*:data-icon:text-error-600',
   ruleArgumentsField: 'tw:mr-12 tw:w-auto',
   ruleControlField: 'tw:w-full',
   ruleControlGroup: 'tw:w-full',

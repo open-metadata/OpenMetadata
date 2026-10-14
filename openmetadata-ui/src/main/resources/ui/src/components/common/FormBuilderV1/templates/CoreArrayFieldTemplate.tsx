@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
 import { Fragment, FunctionComponent } from 'react';
@@ -33,15 +33,13 @@ export const CoreArrayFieldTemplate: FunctionComponent<
           {title}
         </Typography>
         {canAdd && (
-          <Button
-            aria-label={t('label.add-entity', { entity: title })}
-            color="primary"
+          <ButtonUtility
             data-testid={`add-item-${title}`}
+            icon={Plus}
             id={`${idSchema.$id}`}
-            size="sm"
-            onClick={onAddClick}>
-            <Plus data-icon size={14} />
-          </Button>
+            tooltip={t('label.add-entity', { entity: title })}
+            onClick={onAddClick}
+          />
         )}
       </div>
       {items.map((element, index) => (
@@ -52,17 +50,15 @@ export const CoreArrayFieldTemplate: FunctionComponent<
           key={element.key}>
           <div className="tw:flex-1">{element.children}</div>
           {element.hasRemove && (
-            <Button
-              aria-label={t('label.remove')}
+            <ButtonUtility
               className="tw:ml-2"
-              color="secondary"
-              size="sm"
-              type="button"
+              icon={Trash01}
+              size="md"
+              tooltip={t('label.remove')}
               onClick={(event: React.MouseEvent<HTMLButtonElement>) =>
                 element.onDropIndexClick(element.index)(event)
-              }>
-              <Trash01 data-icon size={16} />
-            </Button>
+              }
+            />
           )}
         </div>
       ))}

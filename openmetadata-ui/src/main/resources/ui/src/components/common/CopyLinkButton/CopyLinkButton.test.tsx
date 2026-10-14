@@ -101,7 +101,7 @@ describe('CopyLinkButton', () => {
 
     const button = screen.getByTestId('copy-column-link-button');
 
-    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('should not call copyEntityLink when fieldFqn is empty', () => {

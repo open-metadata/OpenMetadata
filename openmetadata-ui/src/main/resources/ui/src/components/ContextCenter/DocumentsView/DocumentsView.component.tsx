@@ -297,10 +297,9 @@ const FileActions: FC<FileActionsProps> = ({
       <span className="tw:inline-flex">
         <Dropdown.Root>
           <ButtonUtility
-            color="tertiary"
             data-testid="manage-button"
-            icon={<DotsVerticalIcon height={20} width={20} />}
-            size="sm"
+            icon={DotsVerticalIcon}
+            size="md"
             tooltip={t('label.manage-entity', { entity: t('label.document') })}
           />
           <Dropdown.Popover className="tw:w-46">
@@ -763,21 +762,21 @@ const FileRow: FC<FileRowProps> = ({
           className={`tw:ml-1.5${
             isPreviewSupported ? '' : ' tw:invisible tw:pointer-events-none'
           }`}
-          color="tertiary"
           data-testid="preview-btn"
-          icon={<Eye height={20} width={20} />}
+          icon={Eye}
+          size="md"
           tooltip={t('label.preview')}
           onClick={isPreviewSupported ? () => onOpenPreview?.(file) : undefined}
         />
         <ButtonUtility
-          color="tertiary"
           data-testid="download-btn"
-          icon={<DownloadIcon height={20} width={20} />}
+          icon={DownloadIcon}
+          size="md"
           tooltip={t('label.download')}
           onClick={() => onDownload?.(file)}
         />
-        <CopyLinkButton url={rowUrl}>
-          <CopyIcon aria-hidden="true" height={20} width={20} />
+        <CopyLinkButton size="md" url={rowUrl}>
+          <CopyIcon data-icon aria-hidden="true" />
         </CopyLinkButton>
         <FileActions
           canDelete={canDelete}

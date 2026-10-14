@@ -208,20 +208,18 @@ const ReplyRow = ({
               gap={1}>
               {isAuthor && (
                 <ButtonUtility
-                  color="tertiary"
                   data-testid="edit-message"
-                  icon={<Edit01 height={16} width={16} />}
-                  size="xs"
+                  icon={Edit01}
+                  size="md"
                   tooltip={t('label.edit')}
                   onClick={() => setIsEditing(true)}
                 />
               )}
               {canDelete && (
                 <ButtonUtility
-                  color="tertiary"
                   data-testid="delete-message"
-                  icon={<Trash01 height={16} width={16} />}
-                  size="xs"
+                  icon={Trash01}
+                  size="md"
                   tooltip={t('label.delete')}
                   onClick={() => setShowDeleteDialog(true)}
                 />

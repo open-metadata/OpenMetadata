@@ -109,8 +109,6 @@ function NotificationDiagnosticInfo({
                 {`${item.key}:`}
               </Typography>
               <ButtonUtility
-                className="tw:p-0"
-                color="tertiary"
                 icon={InfoCircle}
                 size="xs"
                 tooltip={String(item.description)}

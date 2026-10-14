@@ -115,10 +115,8 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
         </Typography>
         {canEdit && !isEditing && (
           <ButtonUtility
-            color="tertiary"
             data-testid="edit-description-btn"
             icon={Edit01}
-            size="xs"
             tooltip={String(
               t('label.edit-entity', { entity: t('label.description') })
             )}
@@ -231,12 +229,10 @@ function buildHeaderActions({
   return (
     <Box direction="row" gap={2}>
       <ButtonUtility
-        color="tertiary"
         data-testid="sync-alert-btn"
         icon={RefreshCw01}
         isDisabled={isSyncing || !canEditAll}
-        isLoading={isSyncing}
-        size="xs"
+        size="xl"
         tooltip={String(
           canEditAll
             ? t('label.sync-alert-offset')
@@ -246,21 +242,19 @@ function buildHeaderActions({
       />
       {canEditAll && !isSystemProvider && (
         <ButtonUtility
-          color="tertiary"
           data-testid="edit-alert-btn"
           icon={Edit01}
-          size="xs"
+          size="xl"
           tooltip={String(t('label.edit'))}
           onPress={() => onNavigate({ type: 'edit', fqn })}
         />
       )}
       {canDelete && !isSystemProvider && (
         <ButtonUtility
-          color="tertiary"
           data-testid="delete-alert-btn"
           icon={Trash01}
           isDisabled={isDeleting}
-          size="xs"
+          size="xl"
           tooltip={String(t('label.delete'))}
           onPress={() => setIsDeleteModalOpen(true)}
         />

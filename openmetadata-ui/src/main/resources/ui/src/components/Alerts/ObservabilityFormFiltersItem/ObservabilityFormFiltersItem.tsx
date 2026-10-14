@@ -13,6 +13,7 @@
 
 import {
   Button,
+  ButtonUtility,
   Grid,
   Toggle,
   Typography,
@@ -125,13 +126,13 @@ function ObservabilityFormFiltersItem({
                       </div>
 
                       {!isViewMode && (
-                        <Button
-                          aria-label={t('label.remove-entity', {
+                        <ButtonUtility
+                          data-testid={`remove-filter-${name}`}
+                          icon={XClose}
+                          size="md"
+                          tooltip={t('label.remove-entity', {
                             entity: t('label.filter'),
                           })}
-                          color="secondary"
-                          data-testid={`remove-filter-${name}`}
-                          iconLeading={XClose}
                           onClick={() => remove(name)}
                         />
                       )}

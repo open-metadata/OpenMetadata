@@ -13,8 +13,7 @@
 
 import {
   Box,
-  Button,
-  Tooltip,
+  ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
@@ -80,27 +79,19 @@ const TestCaseHeaderTitle = ({
           {testCaseName}
         </Typography>
       </Box>
-      <Tooltip
-        placement="top"
-        title={
+      <ButtonUtility
+        data-testid="entity-header-copy-button"
+        icon={Copy01}
+        size="xl"
+        tooltip={
           hasCopied
             ? t('message.link-copy-to-clipboard')
             : t('label.copy-item', {
                 item: t('label.url-uppercase'),
               })
-        }>
-        <Button
-          aria-label={t('label.copy-item', {
-            item: t('label.url-uppercase'),
-          })}
-          color="tertiary"
-          data-testid="entity-header-copy-button"
-          iconLeading={Copy01}
-          size="xs"
-          type="button"
-          onClick={onCopy}
-        />
-      </Tooltip>
+        }
+        onClick={onCopy}
+      />
     </Box>
   );
 };

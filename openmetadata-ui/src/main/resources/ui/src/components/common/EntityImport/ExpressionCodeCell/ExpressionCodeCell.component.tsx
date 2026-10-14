@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import {
   KeyboardEvent,
@@ -124,22 +125,20 @@ const ExpressionCodeCell = ({
                   ))}
                 </div>
                 <div className="bulk-edit-code-editor-actions">
-                  <button
-                    aria-label={t('label.save')}
-                    className="bulk-edit-code-editor-btn"
+                  <ButtonUtility
                     data-testid="code-editor-save"
-                    type="button"
-                    onClick={() => onCommit(code, activeLanguage)}>
-                    <Check size={14} />
-                  </button>
-                  <button
-                    aria-label={t('label.cancel')}
-                    className="bulk-edit-code-editor-btn"
+                    icon={Check}
+                    size="md"
+                    tooltip={t('label.save')}
+                    onClick={() => onCommit(code, activeLanguage)}
+                  />
+                  <ButtonUtility
                     data-testid="code-editor-cancel"
-                    type="button"
-                    onClick={onCancel}>
-                    <XClose size={14} />
-                  </button>
+                    icon={XClose}
+                    size="md"
+                    tooltip={t('label.cancel')}
+                    onClick={onCancel}
+                  />
                 </div>
               </div>
               <div className="bulk-edit-code-editor-body">

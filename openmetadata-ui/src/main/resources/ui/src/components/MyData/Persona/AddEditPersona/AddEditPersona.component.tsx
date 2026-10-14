@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, SimpleModal } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  SimpleModal,
+} from '@openmetadata/ui-core-components';
 import { Form } from 'antd';
 import { useForm } from 'antd/es/form/Form';
 
@@ -162,14 +166,12 @@ export const AddEditPersonaForm = ({
         'data-testid': 'user',
         hasPermission: true,
         children: (
-          <Button
+          <ButtonUtility
             aria-label={t('label.add-entity', {
               entity: t('label.user-plural'),
             })}
-            color="primary"
             data-testid="add-users"
-            iconLeading={Plus}
-            size="xs"
+            icon={Plus}
           />
         ),
       },

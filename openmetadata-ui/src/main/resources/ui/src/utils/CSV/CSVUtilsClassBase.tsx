@@ -1973,9 +1973,9 @@ const InlineDescriptionEditor = ({
             },
           ].map(({ label, icon, onClick }) => (
             <ButtonUtility
-              color="tertiary"
               icon={icon}
               key={label}
+              size="md"
               tooltip={t(label)}
               onClick={onClick}
               onMouseDown={handleToolbarMouseDown}
@@ -1983,8 +1983,8 @@ const InlineDescriptionEditor = ({
           ))}
           <Divider className="tw:mx-2 tw:h-5" orientation="vertical" />
           <ButtonUtility
-            color="tertiary"
             icon={Type01}
+            size="md"
             tooltip={t('label.clear-formatting')}
             onClick={clearFormatting}
             onMouseDown={handleToolbarMouseDown}

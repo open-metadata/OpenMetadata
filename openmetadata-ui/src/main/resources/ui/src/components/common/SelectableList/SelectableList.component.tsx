@@ -14,15 +14,15 @@
 import {
   Avatar,
   Button,
+  ButtonUtility,
   CheckboxBase,
-  Tooltip,
-  TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import { XCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import {
+  MouseEvent,
   UIEventHandler,
   useCallback,
   useEffect,
@@ -53,26 +53,21 @@ const RemoveIcon = ({
   const { t } = useTranslation();
 
   return (
-    <Tooltip
-      title={
+    <ButtonUtility
+      data-testid="remove-owner"
+      icon={XCircle}
+      size="xs"
+      tooltip={
         removeIconTooltipLabel ??
         t('label.remove-entity', {
           entity: t('label.owner-lowercase'),
         })
-      }>
-      <TooltipTrigger>
-        <button
-          className="tw:flex tw:items-center tw:justify-center tw:bg-transparent tw:border-0 tw:p-0 tw:cursor-pointer tw:text-tertiary hover:tw:text-primary"
-          data-testid="remove-owner"
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            removeOwner?.();
-          }}>
-          <XCircle aria-hidden className="tw:size-4" />
-        </button>
-      </TooltipTrigger>
-    </Tooltip>
+      }
+      onClick={(e: MouseEvent) => {
+        e.stopPropagation();
+        removeOwner?.();
+      }}
+    />
   );
 };
 

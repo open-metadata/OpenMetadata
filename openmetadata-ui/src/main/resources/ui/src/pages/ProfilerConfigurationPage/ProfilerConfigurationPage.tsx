@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Grid,
   Toggle,
   Typography,
@@ -292,12 +293,11 @@ const ProfilerConfigurationPage = () => {
                                 <Toggle data-testid="disabled-switch" />
                               </Form.Item>
                               <Form.Item>
-                                <Button
-                                  aria-label={t('label.remove')}
-                                  color="secondary"
+                                <ButtonUtility
                                   data-testid={`remove-filter-${name}`}
-                                  iconLeading={XClose}
-                                  size="xs"
+                                  icon={XClose}
+                                  size="md"
+                                  tooltip={t('label.remove')}
                                   onClick={() => remove(name)}
                                 />
                               </Form.Item>

@@ -16,13 +16,14 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
-  Button,
+  ButtonUtility,
   Divider,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
   ChevronRight,
+  Copy01,
   InfoCircle,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -30,7 +31,6 @@ import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AttentionIcon } from '../../../../assets/svg/attention.svg';
 import { ReactComponent as FailIcon } from '../../../../assets/svg/fail-badge.svg';
-import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';
 import { ReactComponent as SuccessIcon } from '../../../../assets/svg/success-badge.svg';
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
@@ -223,13 +223,12 @@ const ConnectionStepCard = ({
                     />
                     {t('label.show-log-plural')}
                   </AccordionHeader>
-                  <Button
-                    aria-label={t('message.copy-to-clipboard')}
-                    color="secondary"
+                  <ButtonUtility
                     data-testid="query-entity-copy-button"
-                    iconLeading={<CopyIcon height={16} width={16} />}
+                    icon={Copy01}
+                    size="md"
                     tooltip={t('message.copy-to-clipboard')}
-                    onPress={() => onCopyToClipBoard()}
+                    onClick={() => onCopyToClipBoard()}
                   />
                 </Box>
                 <AccordionPanel className="tw:border-t-0 tw:pt-1 tw:pr-4 tw:pb-0 tw:pl-6">

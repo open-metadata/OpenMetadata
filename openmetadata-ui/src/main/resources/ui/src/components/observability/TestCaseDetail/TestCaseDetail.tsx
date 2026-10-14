@@ -12,10 +12,8 @@
  */
 import {
   Box,
-  Button,
   ButtonUtility,
   Tabs,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01, RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
@@ -431,27 +429,19 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                     data-testid="entity-header-title"
                     gap={3}>
                     {renderHeaderTitle()}
-                    <Tooltip
-                      placement="top"
-                      title={
+                    <ButtonUtility
+                      data-testid="entity-header-copy-button"
+                      icon={Copy01}
+                      size="xl"
+                      tooltip={
                         hasCopied
                           ? t('message.link-copy-to-clipboard')
                           : t('label.copy-item', {
                               item: t('label.url-uppercase'),
                             })
-                      }>
-                      <Button
-                        aria-label={t('label.copy-item', {
-                          item: t('label.url-uppercase'),
-                        })}
-                        color="tertiary"
-                        data-testid="entity-header-copy-button"
-                        iconLeading={Copy01}
-                        size="xs"
-                        type="button"
-                        onClick={handleCopyEntityUrl}
-                      />
-                    </Tooltip>
+                      }
+                      onClick={handleCopyEntityUrl}
+                    />
                   </Box>
                 </Box>
                 <Box align="center" className="tw:shrink-0" gap={2}>

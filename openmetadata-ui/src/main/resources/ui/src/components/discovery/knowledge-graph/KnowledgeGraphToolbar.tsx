@@ -16,6 +16,7 @@ import {
   Button,
   ButtonGroup,
   ButtonGroupItem,
+  ButtonUtility,
   Checkbox,
   Dropdown,
   Input,
@@ -492,19 +493,18 @@ const KnowledgeGraphToolbar = ({
               </Box>
             </Popover>
           </PopoverTrigger>
-          <Button
-            aria-label={t(
+          <ButtonUtility
+            data-testid={
+              viewport.isFullscreen ? 'exit-full-screen' : 'full-screen'
+            }
+            icon={viewport.isFullscreen ? Minimize01 : Expand01}
+            size="lg"
+            tooltip={t(
               viewport.isFullscreen
                 ? 'label.exit-full-screen'
                 : 'label.full-screen-view'
             )}
-            color="tertiary"
-            data-testid={
-              viewport.isFullscreen ? 'exit-full-screen' : 'full-screen'
-            }
-            iconLeading={viewport.isFullscreen ? Minimize01 : Expand01}
-            size="sm"
-            onPress={viewport.onFullscreen}
+            onClick={viewport.onFullscreen}
           />
         </Box>
       </Box>

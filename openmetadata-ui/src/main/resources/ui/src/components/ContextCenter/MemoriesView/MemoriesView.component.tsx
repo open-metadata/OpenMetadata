@@ -53,10 +53,9 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
   return (
     <Dropdown.Root>
       <ButtonUtility
-        color="tertiary"
         data-testid="manage-button"
-        icon={<DotsVerticalIcon height={20} width={20} />}
-        size="sm"
+        icon={DotsVerticalIcon}
+        size="md"
         tooltip={t('label.manage-entity', { entity: t('label.memory') })}
       />
       <Dropdown.Popover className="tw:w-36">
@@ -244,7 +243,7 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
   return (
     <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
       <CopyLinkButton url={memoryUrl}>
-        <CopyIcon aria-hidden="true" height={20} width={20} />
+        <CopyIcon data-icon aria-hidden="true" />
       </CopyLinkButton>
       {canActOnMemory && canEdit && onEditMemory && (
         <ButtonUtility

@@ -294,10 +294,10 @@ const EntityFooter = ({
             'only-show-columns-with-lineage-filter-button',
             isOnlyShowColumnsWithLineageFilterActive && 'active'
           )}
-          color="tertiary"
           data-testid="lineage-filter-button"
           icon={FilterIcon}
           isDisabled={isEditMode}
+          size="md"
           tooltip={t('message.only-show-columns-with-lineage')}
           tooltipPlacement="right"
           onClick={handleOnlyShowColumnsWithLineage}

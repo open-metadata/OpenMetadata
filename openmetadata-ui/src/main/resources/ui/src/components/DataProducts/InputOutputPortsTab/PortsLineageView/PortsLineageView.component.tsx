@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 import { Maximize01, Minimize01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -251,35 +246,17 @@ const PortsLineageView = ({
       style={{ height: containerHeight }}>
       {onToggleFullScreen && (
         <div className="tw:absolute tw:top-2 tw:right-2 tw:z-10">
-          <Tooltip
-            title={
+          <ButtonUtility
+            data-testid="toggle-fullscreen-btn"
+            icon={isFullScreen ? Minimize01 : Maximize01}
+            size="lg"
+            tooltip={
               isFullScreen
                 ? t('label.exit-full-screen')
                 : t('label.full-screen')
-            }>
-            <TooltipTrigger>
-              <Button
-                color="secondary"
-                data-testid="toggle-fullscreen-btn"
-                iconLeading={
-                  isFullScreen ? (
-                    <Minimize01
-                      fill="var(--om-color-text-secondary)"
-                      height={18}
-                      width={18}
-                    />
-                  ) : (
-                    <Maximize01
-                      fill="var(--om-color-text-secondary)"
-                      height={18}
-                      width={18}
-                    />
-                  )
-                }
-                onClick={handleToggleFullScreen}
-              />
-            </TooltipTrigger>
-          </Tooltip>
+            }
+            onClick={handleToggleFullScreen}
+          />
         </div>
       )}
 

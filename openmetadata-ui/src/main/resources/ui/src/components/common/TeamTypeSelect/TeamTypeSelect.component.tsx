@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Select } from 'antd';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { getTeamOptionsFromType } from '../../../utils/TeamUtils';
 import { TeamTypeSelectProps } from './TeamTypeSelect.interface';
@@ -26,6 +27,7 @@ function TeamTypeSelect({
   updateTeamType,
   parentTeamType,
 }: TeamTypeSelectProps) {
+  const { t } = useTranslation();
   const [value, setValue] = useState<TeamType>(teamType);
 
   const handleSelect = (type: TeamType) => {
@@ -73,20 +75,20 @@ function TeamTypeSelect({
         className="layout-space layout-space-horizontal m-l-xs"
         gap={1}
         itemClassName="layout-space-item">
-        <Button
-          color="primary"
+        <ButtonUtility
           data-testid="cancel-btn"
-          size="xs"
-          onClick={handleCancel}>
-          <XClose className="tw:shrink-0" size={14} />
-        </Button>
-        <Button
-          color="primary"
+          icon={XClose}
+          size="md"
+          tooltip={t('label.cancel')}
+          onClick={handleCancel}
+        />
+        <ButtonUtility
           data-testid="save-btn"
-          size="xs"
-          onClick={handleSubmit}>
-          <Check className="tw:shrink-0" size={14} />
-        </Button>
+          icon={Check}
+          size="md"
+          tooltip={t('label.save')}
+          onClick={handleSubmit}
+        />
       </Box>
     </Box>
   );

@@ -138,11 +138,10 @@ const FolderRowContent = ({
 
           {canDelete && (
             <ButtonUtility
-              className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100 tw:p-0.5"
-              color="tertiary"
+              className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100"
               data-testid={`delete-folder-btn-${folder.id}`}
-              icon={<TrashIcon height={18} width={18} />}
-              size="xs"
+              icon={TrashIcon}
+              size="md"
               tooltip={t('label.delete')}
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
@@ -643,7 +642,6 @@ const DocumentFolderView = (
           </div>
           {canCreate && (
             <ButtonUtility
-              color="secondary"
               data-testid="add-folder-btn"
               icon={Plus}
               size="sm"

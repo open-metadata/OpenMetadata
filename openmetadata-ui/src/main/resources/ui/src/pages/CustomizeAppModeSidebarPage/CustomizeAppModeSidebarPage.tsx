@@ -15,6 +15,7 @@ import type { Key } from '@openmetadata/ui-core-components';
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Toggle,
   Tree,
@@ -381,13 +382,13 @@ const CustomizeAppModeSidebarPage = () => {
                     onPress={handleSave}>
                     {t('label.save')}
                   </Button>
-                  <Button
-                    aria-label={t('label.cancel')}
-                    color="secondary"
+                  <ButtonUtility
                     data-testid="cancel-button"
-                    iconLeading={<XClose className="tw:shrink-0" size={14} />}
+                    icon={XClose}
                     isDisabled={isSaving}
-                    onPress={handleCancel}
+                    size="xl"
+                    tooltip={t('label.cancel')}
+                    onClick={handleCancel}
                   />
                 </Box>
               </Box>

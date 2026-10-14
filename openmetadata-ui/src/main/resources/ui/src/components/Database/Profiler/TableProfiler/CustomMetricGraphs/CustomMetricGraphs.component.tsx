@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import {
-  Button,
+  ButtonUtility,
   Dropdown,
   SimpleModal,
 } from '@openmetadata/ui-core-components';
@@ -234,12 +234,11 @@ const CustomMetricGraphs = ({
                       onOpenChange={(isOpen) =>
                         setOpenMenuKey(isOpen ? key : null)
                       }>
-                      <Button
-                        aria-label={t('label.more-action')}
-                        color="secondary"
+                      <ButtonUtility
                         data-testid={`${key}-custom-metrics-menu`}
-                        iconLeading={DotsVertical}
-                        size="sm"
+                        icon={DotsVertical}
+                        size="md"
+                        tooltip={t('label.more-action')}
                       />
                       <Dropdown.Popover className="tw:w-max">
                         <Dropdown.Menu items={items}>

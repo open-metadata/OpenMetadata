@@ -13,7 +13,6 @@
 
 import {
   Box,
-  Button,
   ButtonUtility,
   Card,
   Tooltip,
@@ -951,12 +950,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               </div>
             </div>
             <div className="tw:shrink-0">
-              <Button
-                aria-label={t('label.close')}
-                color="secondary"
+              <ButtonUtility
                 data-testid="close-button"
-                iconLeading={XClose}
-                size="sm"
+                icon={XClose}
+                size="lg"
+                tooltip={t('label.close')}
                 onClick={onClose}
               />
             </div>
@@ -1041,20 +1039,18 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const navFooter = (
     <div className="tw:flex tw:justify-between tw:items-center tw:w-full navigation-container">
       <div className="tw:flex tw:items-center tw:gap-1 tw:mt-2">
-        <Button
-          aria-label={t('label.previous')}
-          color="secondary"
-          iconLeading={ChevronUp}
+        <ButtonUtility
+          icon={ChevronUp}
           isDisabled={isPreviousDisabled}
-          size="sm"
+          size="md"
+          tooltip={t('label.previous')}
           onClick={handlePreviousColumn}
         />
-        <Button
-          aria-label={t('label.next')}
-          color="secondary"
-          iconLeading={ChevronDown}
+        <ButtonUtility
+          icon={ChevronDown}
           isDisabled={isNextDisabled}
-          size="sm"
+          size="md"
+          tooltip={t('label.next')}
           onClick={handleNextColumn}
         />
         {renderColumnCountLabel()}

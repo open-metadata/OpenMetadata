@@ -233,25 +233,21 @@ const RolesListPage = () => {
         key: 'actions',
         render: (_, record) => {
           return (
-            <Tooltip
-              arrow
-              placement="left"
-              title={
+            <ButtonUtility
+              data-testid={`delete-action-${getEntityName(record)}`}
+              icon={IconDelete}
+              isDisabled={!deleteRolePermission}
+              size="md"
+              tooltip={
                 deleteRolePermission
                   ? t('label.delete-entity', {
                       entity: t('label.role-plural').toString(),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
-              }>
-              <ButtonUtility
-                color="tertiary"
-                data-testid={`delete-action-${getEntityName(record)}`}
-                icon={IconDelete}
-                isDisabled={!deleteRolePermission}
-                size="sm"
-                onClick={() => setSelectedRole(record)}
-              />
-            </Tooltip>
+              }
+              tooltipPlacement="left"
+              onClick={() => setSelectedRole(record)}
+            />
           );
         },
       },

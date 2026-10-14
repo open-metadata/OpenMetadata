@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Grid,
   SlideoutMenu,
   Toggle,
@@ -650,11 +651,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     <p className="w-form-label text-xs m-r-xs">
                       {`${t('label.include')}:`}
                     </p>
-                    <Button
-                      aria-label={t('label.add')}
-                      color="primary"
-                      iconLeading={Plus}
-                      size="xs"
+                    <ButtonUtility
+                      icon={Plus}
+                      tooltip={t('label.add')}
                       onClick={() => add({ metrics: ['all'] })}
                     />
                   </div>
@@ -702,12 +701,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               treeData={metricsOptions}
                             />
                           </Form.Item>
-                          <Button
-                            aria-label={t('label.remove')}
-                            color="tertiary"
-                            iconLeading={
-                              <IconDelete className="tw:size-3.5 tw:shrink-0" />
-                            }
+                          <ButtonUtility
+                            icon={IconDelete}
+                            size="md"
+                            tooltip={t('label.remove')}
                             onClick={() => remove(name)}
                           />
                         </Grid.Item>
@@ -949,11 +946,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                           <p className="w-form-label text-xs m-r-sm">
                             {`${t('label.value')}:`}
                           </p>
-                          <Button
-                            aria-label={t('label.add')}
-                            color="primary"
-                            iconLeading={Plus}
-                            size="xs"
+                          <ButtonUtility
+                            icon={Plus}
+                            tooltip={t('label.add')}
                             onClick={() => add()}
                           />
                         </div>
@@ -988,12 +983,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                   })}
                                 />
                               </Form.Item>
-                              <Button
-                                aria-label={t('label.remove')}
-                                color="tertiary"
-                                iconLeading={
-                                  <IconDelete className="tw:size-3.5 tw:shrink-0" />
-                                }
+                              <ButtonUtility
+                                icon={IconDelete}
+                                size="md"
+                                tooltip={t('label.remove')}
                                 onClick={() => remove(name)}
                               />
                             </Grid.Item>

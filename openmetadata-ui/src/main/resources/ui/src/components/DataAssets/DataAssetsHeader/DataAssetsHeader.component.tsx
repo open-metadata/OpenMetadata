@@ -946,21 +946,13 @@ export const DataAssetsHeader = ({
               {t('label.deleted')}
             </span>
           )}
-          <Tooltip placement="top" title={copyTooltipTitle}>
-            <TooltipTrigger className="tw:flex tw:items-center">
-              <Button
-                aria-label={t('label.copy-item', {
-                  item: t('label.url-uppercase'),
-                })}
-                color="tertiary"
-                data-testid="entity-header-copy-button"
-                iconLeading={Copy01}
-                size="xs"
-                type="button"
-                onClick={handleCopyEntityUrl}
-              />
-            </TooltipTrigger>
-          </Tooltip>
+          <ButtonUtility
+            data-testid="entity-header-copy-button"
+            icon={Copy01}
+            size="xl"
+            tooltip={copyTooltipTitle}
+            onClick={handleCopyEntityUrl}
+          />
           <LearningIcon pageId={entityType} />
         </div>
       </div>
@@ -973,7 +965,6 @@ export const DataAssetsHeader = ({
       afterDeleteAction={afterDeleteAction}
       allowRename={allowRename}
       allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
-      buttonClassName="data-assets-header-manage-button"
       canDelete={flags.canDelete}
       canRestore={ungatedFlags.canEditAll}
       deleted={dataAsset.deleted}

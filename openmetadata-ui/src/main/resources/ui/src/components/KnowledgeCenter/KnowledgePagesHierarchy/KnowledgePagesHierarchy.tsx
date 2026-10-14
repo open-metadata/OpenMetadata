@@ -755,11 +755,10 @@ const KnowledgePagesHierarchy = forwardRef<
 
         const deleteButton = canDelete ? (
           <ButtonUtility
-            className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0 tw:p-0"
-            color="tertiary"
+            className="tw:opacity-0 group-hover-opacity-100"
             data-testid={`${displayName}-delete-page-btn`}
             icon={Trash01}
-            size="xs"
+            size="md"
             tooltip={t('label.delete')}
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();
@@ -873,9 +872,8 @@ const KnowledgePagesHierarchy = forwardRef<
     const renderExpandCollapseButton = () =>
       isUserExpandedAll ? (
         <ButtonUtility
-          color="tertiary"
-          icon={<CollapseAllIcon className="tw:size-6" />}
-          size="sm"
+          icon={CollapseAllIcon}
+          size="lg"
           tooltip={t('label.collapse-all')}
           onClick={() => {
             setExpandedKeys([]);
@@ -884,10 +882,9 @@ const KnowledgePagesHierarchy = forwardRef<
         />
       ) : (
         <ButtonUtility
-          color="tertiary"
-          icon={<ExpandAllIcon className="tw:size-6" />}
+          icon={ExpandAllIcon}
           isDisabled={isExpandingAll}
-          size="sm"
+          size="lg"
           tooltip={t('label.expand-all')}
           onClick={handleExpandAll}
         />

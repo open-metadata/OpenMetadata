@@ -12,7 +12,7 @@
  */
 import {
   Box,
-  Button,
+  ButtonUtility,
   Tab,
   TabList,
   Tabs,
@@ -95,13 +95,13 @@ const QueryBuilderGroupHeader: FC<QueryBuilderGroupHeaderProps> = ({
       </Typography>
 
       {canRemove && !readonly && (
-        <Button
-          aria-label={t('label.remove')}
+        <ButtonUtility
           className="tw:ml-auto"
-          color="link-destructive"
+          color="tertiary-destructive"
           data-testid={preset.testIds.delGroup}
-          iconLeading={Trash01}
-          size="sm"
+          icon={Trash01}
+          size="md"
+          tooltip={t('label.remove')}
           onClick={() => actions.removeGroup(path)}
         />
       )}

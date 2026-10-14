@@ -17,10 +17,13 @@ import {
   ButtonUtility,
   Card,
   Grid,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  Maximize01,
+  Minimize01,
+} from '@openmetadata/ui-core-components/icons';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -29,8 +32,6 @@ import Qs from 'qs';
 import { FC, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
-import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import {
   ONE_MINUTE_IN_MILLISECOND,
   PIPE_SYMBOL,
@@ -199,24 +200,10 @@ const QueryCard: FC<QueryCardProp> = ({
     </Box>
   );
 
-  const renderExpandIcon = () =>
-    isExpanded ? (
-      <Tooltip
-        arrow
-        excludeTriggerFromTabOrder
-        title={t('label.exit-fit-to-screen')}
-        triggerClassName="tw:inline-flex">
-        <ExitFullScreen height={16} width={16} />
-      </Tooltip>
-    ) : (
-      <Tooltip
-        arrow
-        excludeTriggerFromTabOrder
-        title={t('label.fit-to-screen')}
-        triggerClassName="tw:inline-flex">
-        <FullScreen height={16} width={16} />
-      </Tooltip>
-    );
+  const getExpandButtonProps = () =>
+    isExpanded
+      ? { icon: Minimize01, tooltip: t('label.exit-fit-to-screen') }
+      : { icon: Maximize01, tooltip: t('label.fit-to-screen') };
 
   const renderEditActions = () =>
     isEditMode && (
@@ -289,22 +276,19 @@ const QueryCard: FC<QueryCardProp> = ({
               className="layout-space layout-space-horizontal query-entity-button"
               gap={2}
               itemClassName="layout-space-item">
-              <Button
-                aria-label={t('label.expand')}
-                color="secondary"
+              <ButtonUtility
                 data-testid="query-entity-expand-button"
-                iconLeading={renderExpandIcon()}
+                size="md"
                 onClick={handleExpandClick}
+                {...getExpandButtonProps()}
               />
-              <Tooltip arrow title={t('message.copy-to-clipboard')}>
-                <ButtonUtility
-                  color="secondary"
-                  data-testid="query-entity-copy-button"
-                  icon={Copy01}
-                  size="sm"
-                  onClick={onCopyToClipBoard}
-                />
-              </Tooltip>
+              <ButtonUtility
+                data-testid="query-entity-copy-button"
+                icon={Copy01}
+                size="md"
+                tooltip={t('message.copy-to-clipboard')}
+                onClick={onCopyToClipBoard}
+              />
             </Box>
 
             <div

@@ -13,6 +13,7 @@
 import {
   Badge,
   Button,
+  ButtonUtility,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -255,24 +256,17 @@ const EntityHeaderTitle = ({
             <LinkExternal01 className="tw:text-fg-quaternary" size={14} />
           )}
 
-          <Tooltip
-            placement="top right"
-            title={
-              copyTooltip ??
+          <ButtonUtility
+            data-testid="entity-header-copy-button"
+            icon={Copy01}
+            size="xl"
+            tooltip={
+              copyTooltip ||
               t('label.copy-item', { item: t('label.url-uppercase') })
-            }>
-            <Button
-              aria-label={t('label.copy-item', {
-                item: t('label.url-uppercase'),
-              })}
-              color="tertiary"
-              data-testid="entity-header-copy-button"
-              iconLeading={Copy01}
-              size="xs"
-              type="button"
-              onClick={handleShareButtonClick}
-            />
-          </Tooltip>
+            }
+            tooltipPlacement="top right"
+            onClick={handleShareButtonClick}
+          />
           {(isEmpty(displayName) || !showName) && suffix}
           {renderFollowButton()}
         </div>

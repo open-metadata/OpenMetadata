@@ -276,10 +276,9 @@ const PoliciesDetailPage = () => {
       return (
         <Dropdown.Root>
           <ButtonUtility
-            color="tertiary"
             data-testid={`manage-button-${rule.name}`}
             icon={DotsVertical}
-            size="xs"
+            size="md"
             tooltip={t('label.manage-entity', {
               entity: t('label.rule'),
             })}

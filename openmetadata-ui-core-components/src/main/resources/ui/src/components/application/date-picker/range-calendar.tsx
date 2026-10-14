@@ -18,6 +18,7 @@ import {
   useSlottedContext,
 } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
+import { ButtonUtility } from '@/components/base/buttons/button-utility';
 import { useBreakpoint } from '@/hooks/use-breakpoint';
 import { CalendarCell } from './cell';
 import { DateInput } from './date-input';
@@ -113,23 +114,16 @@ export const RangeCalendar = ({ presets, ...props }: RangeCalendarProps) => {
         {...props}>
         <div className="tw:flex tw:flex-col tw:gap-3 tw:px-6 tw:py-5">
           <header className="tw:relative tw:flex tw:items-center tw:justify-between tw:md:justify-start">
-            <Button
-              className="tw:size-8"
-              color="tertiary"
-              iconLeading={ChevronLeft}
-              size="sm"
-              slot="previous"
-            />
+            <ButtonUtility icon={ChevronLeft} size="lg" slot="previous" />
 
             <h2 className="tw:absolute tw:top-1/2 tw:left-1/2 tw:-translate-x-1/2 tw:-translate-y-1/2 tw:text-sm tw:font-semibold tw:text-fg-secondary">
               <RangeCalendarTitle part="start" />
             </h2>
 
-            <Button
-              className="tw:size-8 tw:md:hidden"
-              color="tertiary"
-              iconLeading={ChevronRight}
-              size="sm"
+            <ButtonUtility
+              className="tw:md:hidden"
+              icon={ChevronRight}
+              size="lg"
               slot="next"
             />
           </header>
@@ -175,13 +169,7 @@ export const RangeCalendar = ({ presets, ...props }: RangeCalendarProps) => {
                 <RangeCalendarTitle part="end" />
               </h2>
 
-              <Button
-                className="tw:size-8"
-                color="tertiary"
-                iconLeading={ChevronRight}
-                size="sm"
-                slot="next"
-              />
+              <ButtonUtility icon={ChevronRight} size="lg" slot="next" />
             </header>
 
             <AriaCalendarGrid

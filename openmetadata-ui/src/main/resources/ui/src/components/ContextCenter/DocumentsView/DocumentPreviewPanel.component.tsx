@@ -92,14 +92,13 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
           </div>
         </Box>
         <Box align="center" gap={2}>
-          <CopyLinkButton className="tw:w-8 tw:h-8" url={url}>
-            <CopyIcon aria-hidden="true" height={20} width={20} />
+          <CopyLinkButton size="lg" url={url}>
+            <CopyIcon data-icon aria-hidden="true" />
           </CopyLinkButton>
           <ButtonUtility
-            color="tertiary"
             data-testid="close-preview-btn"
-            icon={<XClose height={20} width={20} />}
-            size="xs"
+            icon={XClose}
+            size="lg"
             tooltip={t('label.close')}
             onClick={onClose}
           />

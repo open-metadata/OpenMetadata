@@ -41,6 +41,7 @@
  */
 
 import {
+  ButtonUtility,
   EmptyPlaceholder,
   PaginationCardWithControls,
   Table as UntitledTable,
@@ -52,7 +53,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, MouseEvent } from 'react';
 import React, {
   forwardRef,
   ReactElement,
@@ -740,6 +741,8 @@ const ExpandControl = <T extends object>({
   rowKey,
   onToggle,
 }: ExpandControlProps<T>) => {
+  const { t } = useTranslation();
+
   if (hasChildren) {
     if (ExpandIcon) {
       return (
@@ -757,20 +760,18 @@ const ExpandControl = <T extends object>({
     }
 
     return (
-      <button
+      <ButtonUtility
         aria-expanded={isExpanded}
-        className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
+        aria-label={isExpanded ? t('label.collapse') : t('label.expand')}
+        className="tw:mr-1"
         data-testid="expand-icon"
-        onClick={(e) => {
+        icon={isExpanded ? ChevronDown : ChevronRight}
+        size="xs"
+        onClick={(e: MouseEvent) => {
           e.stopPropagation();
           onToggle(record, rowKey);
-        }}>
-        {isExpanded ? (
-          <ChevronDown className="tw:size-4" />
-        ) : (
-          <ChevronRight className="tw:size-4" />
-        )}
-      </button>
+        }}
+      />
     );
   }
 
@@ -786,7 +787,7 @@ const ExpandControl = <T extends object>({
     );
   }
 
-  return <span className="tw:inline-block tw:w-4 tw:mr-1" />;
+  return <span className="tw:inline-block tw:w-5 tw:mr-1" />;
 };
 
 interface SizeChangerProps {
