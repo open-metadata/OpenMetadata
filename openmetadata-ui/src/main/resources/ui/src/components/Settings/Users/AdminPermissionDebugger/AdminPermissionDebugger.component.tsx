@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
-import { AutoComplete, Button, Form, Input, Select, Spin } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { AutoComplete, Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -30,6 +36,7 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
@@ -176,7 +183,7 @@ const AdminPermissionDebugger: React.FC = () => {
             <div className="evaluation-summary">
               <Typography as="h4">
                 {t('label.decision') + ': '}{' '}
-                <span>{evaluationInfo.finalDecision}</span>
+                <Typography>{evaluationInfo.finalDecision}</Typography>
               </Typography>
               <Typography>
                 {t('label.user')} <strong>{evaluationInfo.user.name}</strong>{' '}
@@ -193,7 +200,7 @@ const AdminPermissionDebugger: React.FC = () => {
                 <strong>{evaluationInfo.operation}</strong> {t('label.on')}{' '}
                 <strong>{evaluationInfo.resource}</strong>
                 {evaluationInfo.resourceId && (
-                  <span>{` (${evaluationInfo.resourceId})`}</span>
+                  <Typography>{` (${evaluationInfo.resourceId})`}</Typography>
                 )}
               </Typography>
             </div>
@@ -255,7 +262,8 @@ const AdminPermissionDebugger: React.FC = () => {
                         gap={2}
                         itemClassName="layout-space-item">
                         <Typography>
-                          {t('label.step')} <span>{step.stepNumber}</span>
+                          {t('label.step')}{' '}
+                          <Typography>{step.stepNumber}</Typography>
                           {' : '}
                         </Typography>
                         <Typography weight="semibold">
@@ -263,7 +271,7 @@ const AdminPermissionDebugger: React.FC = () => {
                         </Typography>
                         <Typography>
                           {' - '} {t('label.rule') + ': '}{' '}
-                          <span>{step.rule}</span>
+                          <Typography>{step.rule}</Typography>
                         </Typography>
                       </Box>
                     }
@@ -277,8 +285,9 @@ const AdminPermissionDebugger: React.FC = () => {
                       gap={2}
                       itemClassName="layout-space-item">
                       <Typography>
-                        {t('label.source') + ': '} <span>{step.source}</span>{' '}
-                        <span>({step.sourceEntity.name})</span>
+                        {t('label.source') + ': '}{' '}
+                        <Typography>{step.source}</Typography>{' '}
+                        <Typography>({step.sourceEntity.name})</Typography>
                       </Typography>
                       <Typography>
                         {t('label.effect')}:{' '}
@@ -315,14 +324,16 @@ const AdminPermissionDebugger: React.FC = () => {
                               </Typography>
                               <Typography>
                                 {' → '}
-                                <span>
+                                <Typography>
                                   {cond.result
                                     ? t('label.true')
                                     : t('label.false')}
-                                </span>
+                                </Typography>
                               </Typography>
                               <Typography color="secondary">
-                                <span>(${cond.evaluationDetails})</span>
+                                <Typography>
+                                  (${cond.evaluationDetails})
+                                </Typography>
                               </Typography>
                             </div>
                           ))}
@@ -342,7 +353,7 @@ const AdminPermissionDebugger: React.FC = () => {
                 {evaluationInfo.summary.reasonsForDecision.map((reason) => (
                   <Typography className="decision-reason" key={reason}>
                     {'• '}
-                    <span>{reason}</span>
+                    <Typography>{reason}</Typography>
                   </Typography>
                 ))}
               </div>
@@ -382,7 +393,7 @@ const AdminPermissionDebugger: React.FC = () => {
                 <AutoComplete
                   className="w-full"
                   notFoundContent={
-                    searchingUsers ? <Spin size="small" /> : null
+                    searchingUsers ? <Loader size="x-small" /> : null
                   }
                   options={userOptions}
                   placeholder={t('label.search-entity', {
@@ -401,7 +412,7 @@ const AdminPermissionDebugger: React.FC = () => {
                       })}
                       {': '}
                       <strong>
-                        <span>{selectedUsername}</span>
+                        <Typography>{selectedUsername}</Typography>
                       </strong>
                     </Typography>
                   </>
@@ -493,9 +504,9 @@ const AdminPermissionDebugger: React.FC = () => {
 
                     <Form.Item>
                       <Button
-                        htmlType="submit"
-                        loading={loadingEvaluation}
-                        type="primary">
+                        color="primary"
+                        isLoading={loadingEvaluation}
+                        type="submit">
                         {t('label.evaluate')}
                       </Button>
                     </Form.Item>
@@ -508,9 +519,9 @@ const AdminPermissionDebugger: React.FC = () => {
           {renderEvaluationResult()}
 
           {loadingPermissions && (
-            <div className="loading-container">
-              <Spin size="large" />
-            </div>
+            <Box align="center" className="tw:min-h-75" justify="center">
+              <Loader />
+            </Box>
           )}
 
           {permissionInfo && !loadingPermissions && (

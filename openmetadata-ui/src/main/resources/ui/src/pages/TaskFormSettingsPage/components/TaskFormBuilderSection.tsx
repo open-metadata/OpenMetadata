@@ -25,8 +25,15 @@
  */
 
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { Button, Checkbox, Empty, Form, Input, Select } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { List } from '@openmetadata/ui-core-components/icons';
+import { Checkbox, Form, Input, Select } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
@@ -121,8 +128,9 @@ const TaskFormBuilderSection = ({
           ) : null}
         </div>
         <Button
+          color="secondary"
           data-testid={`${testIdPrefix}-add-field`}
-          icon={<PlusOutlined />}
+          iconLeading={<PlusOutlined />}
           onClick={() => onChange([...fields, createEmptyDesignerField()])}>
           {t('label.add-field')}
         </Button>
@@ -152,11 +160,10 @@ const TaskFormBuilderSection = ({
                   <Card.Header
                     extra={
                       <Button
-                        danger
+                        color="tertiary-destructive"
                         data-testid={`${testIdPrefix}-field-remove-${index}`}
-                        icon={<DeleteOutlined />}
-                        size="small"
-                        type="text"
+                        iconLeading={<DeleteOutlined />}
+                        size="xs"
                         onClick={() =>
                           onChange(
                             fields.filter(
@@ -316,11 +323,13 @@ const TaskFormBuilderSection = ({
               );
             })
           ) : (
-            <Empty
-              data-testid={`${testIdPrefix}-empty`}
-              description="No fields configured yet"
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            />
+            <Box className="tw:relative tw:min-h-40">
+              <EmptyPlaceholder
+                data-testid={`${testIdPrefix}-empty`}
+                icon={<List className="tw:text-secondary" />}
+                title={t('message.no-fields-configured')}
+              />
+            </Box>
           )}
         </div>
 

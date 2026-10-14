@@ -18,9 +18,9 @@ import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  descriptionBox,
   fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   uuid,
 } from './common';
@@ -38,7 +38,6 @@ import { waitForResponseWithStatus } from './waitHelpers';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
 
-const ADD_TEAM_MODAL = '[role="dialog"].ant-modal';
 // A success toast self-dismisses after 3.5s; give it a beat past that.
 const TOAST_DISMISS_TIMEOUT = 6_000;
 const MODAL_OPEN_TIMEOUT = 10_000;
@@ -50,7 +49,7 @@ export const openAddTeamModal = async (
   trigger: AddTeamTrigger = 'add-team'
 ) => {
   const addButton = page.getByTestId(trigger);
-  const addTeamModal = page.locator(ADD_TEAM_MODAL).last();
+  const addTeamModal = page.getByTestId('add-team-modal');
 
   await expect(page.getByTestId('alert-bar')).toHaveCount(0, {
     timeout: TOAST_DISMISS_TIMEOUT,
@@ -224,7 +223,7 @@ export const createTeam = async (
     ...overrides,
   };
 
-  const teamModal = page.locator('[role="dialog"].ant-modal');
+  const teamModal = page.getByTestId('add-team-modal');
 
   await teamModal.waitFor();
 
@@ -246,7 +245,7 @@ export const createTeam = async (
       response.request().method() === 'POST'
   );
 
-  await page.locator('button[type="submit"]').click();
+  await teamModal.getByRole('button', { name: 'Save' }).click();
 
   const response = await createTeamResponse;
   const createdTeam = await response.json();
@@ -428,7 +427,15 @@ export const addTeamHierarchy = async (
     await page.click(`.ant-select-dropdown [title="${teamDetails.teamType}"]`);
   }
 
-  await page.locator(descriptionBox).fill(teamDetails.description);
+  // Under load ProseMirror can drop a fill, and the team is then created with
+  // "No description". Re-fill until the editor holds the text.
+  const descriptionEditor = getDescriptionBox(addTeamModal);
+  await expect(async () => {
+    await descriptionEditor.fill(teamDetails.description, { timeout: 5_000 });
+    await expect(descriptionEditor).toHaveText(teamDetails.description, {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 20_000 });
 
   // Saving the created team
   const saveTeamResponse = waitForResponseWithStatus(
@@ -444,8 +451,14 @@ export const addTeamHierarchy = async (
       response.url().includes('fields=') &&
       response.request().method() === 'GET'
   );
-  await page.click('[form="add-team-form"]');
-  await saveTeamResponse;
+  await page
+    .getByTestId('add-team-modal')
+    .getByRole('button', { name: 'Save' })
+    .click();
+  const savedTeam = await saveTeamResponse;
+  expect(savedTeam.request().postDataJSON().description).toContain(
+    teamDetails.description
+  );
   const teamsListResponseResult = await teamsListResponse;
 
   expect(teamsListResponseResult.status()).toBe(200);

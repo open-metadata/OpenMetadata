@@ -13,12 +13,12 @@
 
 import {
   Box,
+  Button,
   Card,
   Grid,
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -145,8 +145,8 @@ const TestDefinitionList = () => {
                 {createPermission && (
                   <Box className="layout-column tw:block">
                     <Button
+                      color="primary"
                       data-testid="add-test-definition-button"
-                      type="primary"
                       onClick={openCreateForm}>
                       {t('label.add-entity', {
                         entity: t('label.test-definition'),

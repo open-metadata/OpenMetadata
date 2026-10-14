@@ -12,8 +12,13 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Grid, Toggle, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Select } from 'antd';
+import {
+  Button,
+  Grid,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, Select } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -121,8 +126,12 @@ function ObservabilityFormFiltersItem({
 
                       {!isViewMode && (
                         <Button
+                          aria-label={t('label.remove-entity', {
+                            entity: t('label.filter'),
+                          })}
+                          color="secondary"
                           data-testid={`remove-filter-${name}`}
-                          icon={<CloseOutlined />}
+                          iconLeading={<CloseOutlined />}
                           onClick={() => remove(name)}
                         />
                       )}
@@ -146,9 +155,9 @@ function ObservabilityFormFiltersItem({
               {showAddFilterButton ? (
                 <Grid.Item className="layout-column" span={24}>
                   <Button
+                    color="primary"
                     data-testid="add-filters"
-                    disabled={isEmpty(sources)}
-                    type="primary"
+                    isDisabled={isEmpty(sources)}
                     onClick={() =>
                       add({
                         effect: Effect.Include,

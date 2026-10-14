@@ -708,6 +708,13 @@ describe('DataAssetSummaryPanelV1', () => {
       await waitFor(() => {
         expect(mockGetEntityPermission).not.toHaveBeenCalled();
       });
+
+      // An empty entity id keeps useChangeSummary from requesting the mock entity's history.
+      expect(useChangeSummary).toHaveBeenLastCalledWith(
+        expect.anything(),
+        '',
+        expect.anything()
+      );
     });
   });
 

@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
 
 @Slf4j
@@ -39,6 +40,12 @@ public final class RdfProjectionStateResolver {
       final AppExtensionTimeSeries runStore, final BooleanSupplier isDegraded) {
     this.runStore = runStore;
     this.isDegraded = isDegraded;
+  }
+
+  /** Resolves the state from the server's own run store; the production wiring. */
+  public static RdfProjectionState resolveConfigured() {
+    return new RdfProjectionStateResolver(Entity.getCollectionDAO().appExtensionTimeSeriesDao())
+        .resolve();
   }
 
   public RdfProjectionState resolve() {

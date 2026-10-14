@@ -16,7 +16,7 @@
 pipeline). One primary action per view; everything else is secondary/tertiary.
 
 **Don't use when** navigating to another page — use a link
-(`--om-color-link`). Don't use a button as a container or for pure layout.
+(`tw:text-link` / `--color-text-link`). Don't use a button as a container or for pure layout.
 
 ## Anatomy
 
