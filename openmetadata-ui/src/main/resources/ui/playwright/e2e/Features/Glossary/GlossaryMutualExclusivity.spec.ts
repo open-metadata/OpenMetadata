@@ -95,9 +95,6 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         );
         await expect(parentTermNode).toBeVisible();
 
-        // Search and expand the ME parent term
-        await parentTermNode.getByTestId('expand-icon').first().click();
-
         // Verify children have checkboxes
         const child1Node = page.getByTestId(
           `tag-${child1.responseData.fullyQualifiedName}`
@@ -179,9 +176,6 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           `tag-${parentTerm.responseData.fullyQualifiedName}`
         );
         await expect(parentTermNode).toBeVisible();
-
-        // Expand the parent term
-        await parentTermNode.getByTestId('expand-icon').first().click();
 
         // Select first child
         const child1Node = page
@@ -289,9 +283,6 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         );
         await expect(parentTermNode).toBeVisible();
 
-        // Expand the parent term
-        await parentTermNode.getByTestId('expand-icon').first().click();
-
         // Select first child
         const child1Node = page
           .getByRole('tree')
@@ -381,9 +372,6 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           `tag-${parentTerm.responseData.fullyQualifiedName}`
         );
         await expect(parentTermNode).toBeVisible();
-
-        // Expand the parent term
-        await parentTermNode.getByTestId('expand-icon').first().click();
 
         const child1Node = page
           .getByRole('tree')
@@ -475,19 +463,16 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         // Search for the glossary to bring it into view
         await searchGlossaryInSelector(page, glossary.responseData.name);
 
-        // Assert and expand ME parent
+        // Search auto-expands every level, so parents are already open
         const meParentNode = page.getByTestId(
           `tag-${meParent.responseData.fullyQualifiedName}`
         );
         await expect(meParentNode).toBeVisible();
-        await meParentNode.getByTestId('expand-icon').first().click();
 
-        // Assert and expand non-ME parent
         const nonMeParentNode = page.getByTestId(
           `tag-${nonMeParent.responseData.fullyQualifiedName}`
         );
         await expect(nonMeParentNode).toBeVisible();
-        await nonMeParentNode.getByTestId('expand-icon').first().click();
 
         // Select non-ME children first
         const nonMeChild1Node = page
@@ -606,9 +591,6 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           `tag-${parentTerm.responseData.fullyQualifiedName}`
         );
         await expect(parentTermNode).toBeVisible();
-
-        // Expand the parent term
-        await parentTermNode.getByTestId('expand-icon').first().click();
 
         const childNode = page
           .getByRole('tree')
@@ -821,9 +803,6 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         );
         await expect(parentTermNode).toBeVisible();
 
-        // Expand the parent term
-        await parentTermNode.getByTestId('expand-icon').first().click();
-
         // Children should now have checkboxes with ME behavior (ME was toggled on)
         const child1Node = page.getByTestId(
           `tag-${child1.responseData.fullyQualifiedName}`
@@ -999,19 +978,16 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await searchGlossaryInSelector(page, glossary.responseData.name);
 
-        // Expand ME grandparent
+        // Search auto-expands every level, so parents are already open
         const grandparentNode = page.getByTestId(
           `tag-${meGrandparent.responseData.fullyQualifiedName}`
         );
         await expect(grandparentNode).toBeVisible();
-        await grandparentNode.getByTestId('expand-icon').first().click();
 
-        // Expand non-ME parent
         const nonMeParentNode = page.getByTestId(
           `tag-${nonMeParent.responseData.fullyQualifiedName}`
         );
         await expect(nonMeParentNode).toBeVisible();
-        await nonMeParentNode.getByTestId('expand-icon').first().click();
 
         // Children under non-ME parent should allow multi-select (checkboxes)
         const child1Node = page
@@ -1039,12 +1015,11 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           /ant-select-tree-checkbox-checked/
         );
 
-        // Expand ME sibling to verify its children enforce ME
+        // ME sibling's children should enforce ME
         const meSiblingNode = page.getByTestId(
           `tag-${meSibling.responseData.fullyQualifiedName}`
         );
         await expect(meSiblingNode).toBeVisible();
-        await meSiblingNode.getByTestId('expand-icon').first().click();
 
         const sibChild1Node = page
           .getByRole('tree')
@@ -1144,12 +1119,11 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await searchGlossaryInSelector(page, glossary.responseData.name);
 
-        // Expand the non-ME parent (search auto-expands glossary, need to expand parent)
+        // Search auto-expands every level, so the non-ME parent is already open
         const nonMeParentNode = page.getByTestId(
           `tag-${nonMeParent.responseData.fullyQualifiedName}`
         );
         await expect(nonMeParentNode).toBeVisible();
-        await nonMeParentNode.getByTestId('expand-icon').first().click();
 
         // Select all three children - all should remain selected (non-ME parent)
         const child1Node = page
