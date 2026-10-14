@@ -310,7 +310,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
                 self._clear_tag_scope()
 
     def yield_directory_tags(self, directory_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
-        """Register native directory tags for the current directory item."""
+        """Register native directory and file tags for the current directory item."""
         return ()
 
     def yield_directory_tag_details(self, directory_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -326,13 +326,6 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
             if not completed:
                 self._clear_tag_scope()
 
-    def yield_file_tags(self, directory_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
-        """Register native file tags for the current directory item."""
-        return ()
-
-    def yield_file_tag_details(self, directory_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
-        yield from self._yield_tag_details(self.yield_file_tags, directory_details)
-
     def yield_file_details(self, directory_details: Any) -> Iterable[Either[CreateFileRequest]]:
         """Yield file requests and release the stage's tag attachments."""
         try:
@@ -341,7 +334,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
             self._clear_tag_scope()
 
     def yield_spreadsheet_tags(self, spreadsheet_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
-        """Register native spreadsheet tags for the current spreadsheet item."""
+        """Register native spreadsheet and worksheet tags for the current spreadsheet item."""
         return ()
 
     def yield_spreadsheet_tag_details(self, spreadsheet_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -356,13 +349,6 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         finally:
             if not completed:
                 self._clear_tag_scope()
-
-    def yield_worksheet_tags(self, spreadsheet_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
-        """Register native worksheet tags for the current spreadsheet item."""
-        return ()
-
-    def yield_worksheet_tag_details(self, spreadsheet_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
-        yield from self._yield_tag_details(self.yield_worksheet_tags, spreadsheet_details)
 
     def yield_worksheet_details(self, spreadsheet_details: Any) -> Iterable[Either[CreateWorksheetRequest]]:
         """Yield worksheet requests and release the stage's tag attachments."""

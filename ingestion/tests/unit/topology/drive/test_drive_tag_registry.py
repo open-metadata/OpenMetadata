@@ -69,7 +69,7 @@ ASSETS = [
 
 
 @pytest.mark.parametrize("kind,entity_fqn,payload", ASSETS)
-def test_each_asset_hook_publishes_definitions_before_attaching_labels(source, kind, entity_fqn, payload):
+def test_each_asset_receives_labels_after_definitions_are_published(source, kind, entity_fqn, payload):
     source.native_assets[kind] = [(entity_fqn, payload)]
     source.native_tags[kind] = [(entity_fqn, definition("Shared"))]
     published, assets, errors = consume(source, drive_stages(source, kind))

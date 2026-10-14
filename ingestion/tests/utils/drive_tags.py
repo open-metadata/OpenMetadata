@@ -63,16 +63,10 @@ class TaggedDriveSource(InMemoryDriveSource):
 
     def yield_directory_tags(self, directory_details):
         yield from self.tags("directory")
-        yield from self.yield_file_tags(directory_details)
-
-    def yield_file_tags(self, directory_details):
         yield from self.tags("file")
 
     def yield_spreadsheet_tags(self, spreadsheet_details):
         yield from self.tags("spreadsheet")
-        yield from self.yield_worksheet_tags(spreadsheet_details)
-
-    def yield_worksheet_tags(self, spreadsheet_details):
         yield from self.tags("worksheet")
 
 
