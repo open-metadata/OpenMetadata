@@ -187,17 +187,24 @@ describe('Tooltip — show/hide behaviour', () => {
     expect(screen.getByText('Always visible')).toBeInTheDocument();
   });
 
-  // A tooltip that flips placement can sit under the cursor for a frame while
-  // it is positioned; if it took the pointer, the trigger would get
-  // pointerleave and the tooltip would close mid-hover.
-  it('never takes the pointer from its trigger', () => {
+  // Pointer events are blocked only while a tooltip enters (see tooltip.tsx);
+  // a settled tooltip must take the pointer so links and "view more" buttons
+  // in it stay hoverable and clickable.
+  it('keeps a settled tooltip interactive', async () => {
+    const onPress = vi.fn();
     render(
-      <Tooltip isOpen title="Tier.Tier1">
+      <Tooltip isOpen title={<Button onPress={onPress}>View more</Button>}>
         <button>trigger</button>
       </Tooltip>
     );
 
-    expect(screen.getByRole('tooltip')).toHaveClass('tw:pointer-events-none');
+    expect(screen.getByRole('tooltip')).not.toHaveClass(
+      'tw:pointer-events-none'
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'View more' }));
+
+    expect(onPress).toHaveBeenCalled();
   });
 
   it('does not show tooltip on interaction when trigger is disabled', async () => {

@@ -266,15 +266,13 @@ export const Tooltip = ({
         {...tooltipProps}
         className={({ isEntering, isExiting }) =>
           cx(
-            isEntering && 'tw:ease-out tw:animate-in',
+            // While it is first positioned, an overlay that flips (top → bottom)
+            // can sit under the cursor for a frame; taking the pointer then ends
+            // the hover and closes the tooltip. Ignore the pointer only until it
+            // has entered, so a settled tooltip stays hoverable and clickable.
+            isEntering && 'tw:ease-out tw:animate-in tw:pointer-events-none',
             isExiting && 'tw:ease-in tw:animate-out',
-            'tw:break-words', // Ensure long words in the tooltip wrap instead of overflowing.
-            // While it is positioned, an overlay that flips (top → bottom) can
-            // land under the cursor for a frame; taking the pointer then fires
-            // pointerleave on the trigger and closes the tooltip mid-hover.
-            // react-aria tooltips close once the cursor leaves the trigger, so
-            // they are never hovered or clicked anyway.
-            'tw:pointer-events-none'
+            'tw:break-words' // Ensure long words in the tooltip wrap instead of overflowing.
           )
         }
         crossOffset={crossOffset ?? calculatedCrossOffset}
