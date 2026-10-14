@@ -14,10 +14,12 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
   Button,
+  EmptyPlaceholder,
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Empty, Form, Select } from 'antd';
+import { Columns03 } from '@openmetadata/ui-core-components/icons';
+import { Form, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -530,12 +532,16 @@ const TableConstraintsModal = ({
                             isRelatedColumnLoading ? (
                               <Loader size="small" />
                             ) : (
-                              <Empty
-                                description={t('label.no-entity-available', {
-                                  entity: t('label.column-plural'),
-                                })}
-                                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                              />
+                              <Box className="tw:relative tw:min-h-24">
+                                <EmptyPlaceholder
+                                  icon={
+                                    <Columns03 className="tw:text-secondary" />
+                                  }
+                                  title={t('label.no-entity-available', {
+                                    entity: t('label.column-plural'),
+                                  })}
+                                />
+                              </Box>
                             )
                           }
                           optionLabelProp="label"

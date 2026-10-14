@@ -81,7 +81,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
       className="ai-profile-page__content-header tw:shrink-0 tw:border-b tw:border-utility-gray-200 tw:px-6 tw:py-4 tw:mb-7"
       data-testid="profile-content-header"
       direction="col"
-      gap={3}>
+      gap={5}>
       <Breadcrumbs
         divider="chevron"
         items={resolvedBreadcrumbs}
@@ -104,7 +104,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
           <Box align="center" direction="row" gap={1}>
             {titleInput ?? (
               <Typography
-                className="tw:text-primary-900"
+                className="tw:text-primary"
                 data-testid="profile-content-header-title"
                 size="text-lg"
                 weight="bold">

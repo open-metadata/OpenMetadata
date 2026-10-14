@@ -412,7 +412,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
           <Button
             color="primary"
             data-testid="add-alert"
-            size="sm"
+            size="xs"
             onPress={() => onNavigate({ type: 'add' })}>
             {addAlertLabel}
           </Button>
