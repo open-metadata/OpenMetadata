@@ -143,7 +143,7 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
             color="primary"
             data-testid="add-intake-form"
             iconTrailing={ChevronDown}
-            size="sm">
+            size="xs">
             {t('label.add-entity', { entity: t('label.intake-form') })}
           </Button>
         </Tooltip>
@@ -156,7 +156,7 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
           color="primary"
           data-testid="add-intake-form"
           iconTrailing={ChevronDown}
-          size="sm">
+          size="xs">
           {t('label.add-entity', { entity: t('label.intake-form') })}
         </Button>
         <Dropdown.Popover className="tw:w-max">

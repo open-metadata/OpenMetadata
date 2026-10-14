@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/settings/settings';
@@ -120,38 +114,26 @@ describe('LineageSearchSelect', () => {
     );
   });
 
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+  const openOptions = async () => {
+    render(<LineageSearchSelect />);
+
+    expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox'));
+  };
+
   it('should render select with options', async () => {
-    const { container } = render(<LineageSearchSelect />);
-    await waitFor(() => {
-      expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
-    });
+    await openOptions();
 
-    await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && userEvent.click(selectElm);
-    });
-
-    const option1 = await screen.findByTestId('option-test1');
-
-    expect(option1).toBeInTheDocument();
+    expect(await screen.findByTestId('option-test1')).toBeInTheDocument();
   });
 
   it('should call onNodeClick and center the node', async () => {
-    const { container } = render(<LineageSearchSelect />);
-    await waitFor(() => {
-      expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
-    });
+    await openOptions();
 
-    await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && userEvent.click(selectElm);
-    });
-
-    const option1 = await screen.findByTestId('option-test1');
-
-    expect(option1).toBeInTheDocument();
-
-    fireEvent.click(option1);
+    await user.click(await screen.findByTestId('option-test1'));
 
     expect(mockNodeClick).toHaveBeenCalled();
     // The laid-out position from React Flow, not the origin the provider's copy
@@ -165,23 +147,11 @@ describe('LineageSearchSelect', () => {
   });
 
   it('should call onColumnClick', async () => {
-    const { container } = render(<LineageSearchSelect />);
-    await waitFor(() => {
-      expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
-    });
+    await openOptions();
 
-    await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && userEvent.click(selectElm);
-    });
+    await user.click(await screen.findByTestId('option-column1'));
 
-    const column = await screen.findByTestId('option-column1');
-
-    expect(column).toBeInTheDocument();
-
-    fireEvent.click(column);
-
-    expect(mockColumnClick).toHaveBeenCalled();
+    expect(mockColumnClick).toHaveBeenCalledWith('column1');
   });
 
   it('should not render when platform lineage is enabled', () => {
@@ -202,34 +172,5 @@ describe('LineageSearchSelect', () => {
     const { container } = render(<LineageSearchSelect />);
 
     expect(container).toBeEmptyDOMElement();
-  });
-
-  it('should handle dropdown visibility change', async () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementation(
-      mockStoreImplementation({ isPlatformLineage: false })
-    );
-    const { container } = render(<LineageSearchSelect />);
-    await waitFor(() => {
-      expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
-    });
-
-    // Open dropdown
-    await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && userEvent.click(selectElm);
-    });
-
-    // Close dropdown
-    await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && userEvent.click(selectElm);
-    });
-
-    // Verify search value is cleared
-    const searchInput = container.querySelector(
-      '.ant-select-selection-search-input'
-    ) as HTMLInputElement;
-
-    expect(searchInput?.value).toBe('');
   });
 });

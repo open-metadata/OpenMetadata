@@ -29,20 +29,21 @@ jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => ({
   DomainLabel: jest.fn().mockImplementation(() => <div>DomainLabel</div>),
 }));
 
-jest.mock('../../utils/formUtils', () => ({
-  getField: jest
+jest.mock(
+  '../../components/common/DomainSelectableList/DomainSelectableList.component',
+  () => jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+);
+
+jest.mock('../../components/common/RichTextEditor/RichTextEditor', () =>
+  jest
     .fn()
-    .mockImplementation(({ name }) => <div data-testid={name}>{name}</div>),
-}));
+    .mockImplementation(() => <div data-testid="description">Editor</div>)
+);
 
 jest.mock('../../utils/TeamUtils', () => ({
-  getTeamOptionsFromType: jest.fn().mockImplementation(() => [
-    {
-      label: 'Organization',
-      value: TeamType.Organization,
-      type: TeamType.Organization,
-    },
-  ]),
+  getTeamOptionsFromType: jest
+    .fn()
+    .mockImplementation(() => [TeamType.Group, TeamType.Department]),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -74,7 +75,7 @@ describe('AddTeamForm component', () => {
     expect(getByTestId('email')).toBeInTheDocument();
     expect(getByTestId('description')).toBeInTheDocument();
     expect(getByTestId('team-selector')).toBeInTheDocument();
-    expect(getByTestId('isJoinable')).toBeInTheDocument();
+    expect(getByTestId('isJoinable-switch-button')).toBeInTheDocument();
   });
 
   it('should call onCancel function when cancel button is clicked', () => {
@@ -135,6 +136,8 @@ describe('AddTeamForm component', () => {
       email: 'testteam@gmail.com',
       description: '',
       teamType: 'Group',
+      isJoinable: false,
+      domains: [{ id: '1', type: 'domain' }],
     });
   });
 
@@ -174,6 +177,8 @@ describe('AddTeamForm component', () => {
       email: undefined,
       description: '',
       teamType: 'Group',
+      isJoinable: false,
+      domains: [{ id: '1', type: 'domain' }],
     });
   });
 });

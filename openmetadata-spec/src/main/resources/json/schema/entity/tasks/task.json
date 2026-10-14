@@ -47,7 +47,8 @@
         "PipelineReview",
         "DataQualityReview",
         "RecognizerFeedbackApproval",
-        "CustomTask"
+        "CustomTask",
+        "MemoryConflictReview"
       ],
       "javaEnums": [
         {"name": "GlossaryApproval"},
@@ -64,7 +65,8 @@
         {"name": "PipelineReview"},
         {"name": "DataQualityReview"},
         {"name": "RecognizerFeedbackApproval"},
-        {"name": "CustomTask"}
+        {"name": "CustomTask"},
+        {"name": "MemoryConflictReview"}
       ]
     },
     "taskStatus": {
