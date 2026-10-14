@@ -484,6 +484,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   public Response createNewSetting(Settings setting) {
+    OpenMetadataBaseUrlValidator.validate(setting);
     try {
       updateSetting(setting);
     } catch (BadRequestException | SettingsManagedByEnvironmentException ex) {
