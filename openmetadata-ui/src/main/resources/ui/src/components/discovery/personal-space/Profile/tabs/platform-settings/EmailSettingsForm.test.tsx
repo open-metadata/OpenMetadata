@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { MASKED_PASSWORD_VALUE } from '../../../../../../constants/Secrets.constants';
 import {
   SMTPSettings,
@@ -25,21 +19,27 @@ import {
   TransportationStrategy,
 } from '../../../../../../generated/email/smtpSettings';
 import { SettingType } from '../../../../../../generated/settings/settings';
+import { SettingType as SourceSettingType } from '../../../../../../generated/system/settingsSourceResponse';
 import {
   getSettingsConfigFromConfigType,
+  getSettingsSource,
   updateSettingsConfig,
 } from '../../../../../../rest/settingConfigAPI';
+import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import { showSuccessToast } from '../../../../../../utils/ToastUtils';
 import EmailSettingsForm, {
   toEmailFormValues,
   toSmtpSettings,
 } from './EmailSettingsForm';
+import { deploymentOwnedSource } from './PlatformSettings.mock';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 jest.mock('../../../../../../rest/settingConfigAPI', () => ({
+  getSettingsSource: jest.fn().mockResolvedValue({ settings: [] }),
+  adoptDeploymentConfig: jest.fn(),
   getSettingsConfigFromConfigType: jest.fn(),
   updateSettingsConfig: jest.fn(),
 }));
@@ -69,7 +69,9 @@ const CONFIG: SMTPSettings = {
 const onNavigate = jest.fn();
 
 const renderForm = async () => {
-  render(<EmailSettingsForm showHint={false} onNavigate={onNavigate} />);
+  renderWithQueryClient(
+    <EmailSettingsForm showHint={false} onNavigate={onNavigate} />
+  );
   await screen.findByTestId('email-config-form');
 };
 
@@ -99,11 +101,28 @@ describe('toSmtpSettings', () => {
       })
     );
   });
+
+  it('keeps the stored value of every deployment-owned field', () => {
+    const settings = toSmtpSettings(
+      {
+        ...toEmailFormValues(CONFIG),
+        serverEndpoint: 'smtp.example.com',
+        senderMail: 'alerts@example.com',
+      },
+      CONFIG,
+      ['/serverEndpoint', '/password']
+    );
+
+    expect(settings.serverEndpoint).toBe('smtp.gmail.com');
+    expect(settings.senderMail).toBe('alerts@example.com');
+    expect(settings).not.toHaveProperty('password');
+  });
 });
 
 describe('EmailSettingsForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getSettingsSource as jest.Mock).mockResolvedValue({ settings: [] });
     (getSettingsConfigFromConfigType as jest.Mock).mockResolvedValue({
       data: { config_value: CONFIG },
     });
@@ -185,5 +204,51 @@ describe('EmailSettingsForm', () => {
       isEditing: false,
     });
     expect(updateSettingsConfig).not.toHaveBeenCalled();
+  });
+});
+
+describe('EmailSettingsForm with deployment-owned fields', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getSettingsConfigFromConfigType as jest.Mock).mockResolvedValue({
+      data: { config_value: CONFIG },
+    });
+  });
+
+  it('locks only the fields the deployment owns', async () => {
+    (getSettingsSource as jest.Mock).mockResolvedValue({
+      settings: [
+        deploymentOwnedSource(SourceSettingType.EmailConfiguration, [
+          '/serverEndpoint',
+          '/password',
+        ]),
+      ],
+    });
+    await renderForm();
+    await screen.findByTestId('settings-source-env-alert');
+
+    await waitFor(() =>
+      expect(inputOf('server-endpoint-input')).toBeDisabled()
+    );
+
+    expect(inputOf('password-input')).toBeDisabled();
+    expect(inputOf('sender-email-input')).toBeEnabled();
+    expect(screen.getByTestId('save-button')).toBeEnabled();
+  });
+
+  it('offers no save when the deployment owns the whole setting', async () => {
+    (getSettingsSource as jest.Mock).mockResolvedValue({
+      settings: [
+        deploymentOwnedSource(SourceSettingType.EmailConfiguration, ['/']),
+      ],
+    });
+    await renderForm();
+    await screen.findByTestId('settings-source-env-alert');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('save-button')).toBeDisabled()
+    );
+
+    expect(inputOf('sender-email-input')).toBeDisabled();
   });
 });

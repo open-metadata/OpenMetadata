@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -64,14 +63,17 @@ const ContractSemantics: React.FC<{
               <InheritIcon className="inherit-icon cursor-pointer" width={14} />
             </Tooltip>
           ) : null;
+          const RuleIcon = getSemanticIconPerLastExecution(item);
 
           return (
             <div className="rule-item" key={item.rule}>
-              <Icon
+              <RuleIcon
                 className={classNames('rule-icon', {
                   'rule-icon-default': !latestContractResults || !item.enabled,
                 })}
-                component={getSemanticIconPerLastExecution(item)}
+                fill="currentColor"
+                height="1em"
+                width="1em"
               />
               <div className="rule-item-content">
                 <div className="d-flex items-center gap-1">

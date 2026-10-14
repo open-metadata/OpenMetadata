@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Card,
   Toggle,
   Tree,
   Typography,
@@ -213,10 +214,10 @@ const AiSidebarEditor = ({
   };
 
   return (
-    <Box
-      className="tw:w-[40%] tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
+    <Card
+      className="tw:flex tw:flex-col tw:w-[40%]"
       data-testid="ai-sidebar-editor"
-      direction="col">
+      variant="muted">
       <Tree
         aria-label={t('label.app-mode-sidebar')}
         defaultExpandedKeys={new Set([MORE_NAV_KEY])}
@@ -225,7 +226,7 @@ const AiSidebarEditor = ({
         onItemRootDrop={handleItemRootDrop}>
         {treeData.map((node) => renderNode(node))}
       </Tree>
-    </Box>
+    </Card>
   );
 };
 

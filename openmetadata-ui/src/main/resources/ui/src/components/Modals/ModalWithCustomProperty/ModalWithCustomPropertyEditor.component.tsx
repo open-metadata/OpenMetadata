@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Button, SimpleModal } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -90,37 +89,33 @@ export const ModalWithCustomPropertyEditor = ({
   }, []);
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      className="description-markdown-editor"
-      closable={false}
+    <SimpleModal
       data-testid="custom-property-editor"
       footer={
         <KeyDownStopPropagationWrapper>
           <Button
+            color="link-color"
             data-testid="cancel"
-            disabled={isSaveLoading}
+            isDisabled={isSaveLoading}
             key="cancelButton"
-            type="link"
             onClick={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
+            color="primary"
             data-testid="save"
+            isLoading={isSaveLoading}
             key="saveButton"
-            loading={isSaveLoading}
-            type="primary"
             onClick={handleSaveData}>
             {t('label.save')}
           </Button>
         </KeyDownStopPropagationWrapper>
       }
-      maskClosable={false}
-      open={visible}
-      title={<Typography data-testid="header">{header}</Typography>}
+      isDismissable={false}
+      isOpen={visible}
+      title={header}
       width={650}
-      onCancel={onCancel}>
+      onCancel={() => onCancel?.()}>
       <KeyDownStopPropagationWrapper>
         {isLoading ? (
           <Loader />
@@ -145,6 +140,6 @@ export const ModalWithCustomPropertyEditor = ({
           </GenericProvider>
         )}
       </KeyDownStopPropagationWrapper>
-    </Modal>
+    </SimpleModal>
   );
 };

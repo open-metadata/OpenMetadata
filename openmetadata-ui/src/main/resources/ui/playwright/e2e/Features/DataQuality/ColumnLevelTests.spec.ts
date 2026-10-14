@@ -22,6 +22,7 @@ import {
   clickCreateTestCaseButton,
   clickEditTestCaseButton,
   clickUpdateButton,
+  expectFormHint,
   selectTestType,
   visitCreateTestCasePanelFromEntityPage,
 } from '../../../utils/dataQuality';
@@ -78,7 +79,7 @@ test.describe(
 
         // Click column dropdown and wait for documentation panel to be visible
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for test definitions API response
         const testDefinitionResponse = page.waitForResponse(
@@ -96,7 +97,7 @@ test.describe(
 
         // Fill test case name and wait for documentation panel
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -104,9 +105,7 @@ test.describe(
 
         // Select test type and wait for documentation panel
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close after test type selection
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -183,7 +182,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown and wait for documentation panel
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for test definitions API response
         const testDefinitionResponse = page.waitForResponse(
@@ -200,7 +199,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -208,9 +207,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -270,7 +267,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -287,7 +284,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -295,9 +292,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -352,7 +347,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -369,7 +364,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -377,9 +372,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -462,7 +455,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -479,7 +472,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -487,9 +480,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -555,7 +546,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -572,7 +563,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -580,9 +571,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -639,7 +628,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -656,7 +645,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -664,9 +653,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -731,7 +718,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -748,7 +735,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -756,9 +743,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -833,7 +818,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -850,7 +835,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -858,9 +843,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -935,7 +918,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -952,7 +935,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -960,9 +943,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -1037,7 +1018,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -1054,7 +1035,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -1062,9 +1043,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -1139,7 +1118,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -1156,7 +1135,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -1164,9 +1143,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -1242,7 +1219,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -1259,7 +1236,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -1267,9 +1244,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -1340,7 +1315,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -1357,7 +1332,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -1365,9 +1340,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -1427,7 +1400,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -1444,7 +1417,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -1452,9 +1425,7 @@ test.describe(
 
         // Select test type
         await selectTestType(page, testCase.label);
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
@@ -1515,7 +1486,7 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
@@ -1532,7 +1503,7 @@ test.describe(
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('test-case-name')
           .locator('input')
@@ -1541,7 +1512,7 @@ test.describe(
         // Select test type
         await selectTestType(page, testCase.label);
         // Todo: uncomment below assertion after adding docs for columnValuesToBeAtExpectedLocation test case -> @ShaileshParmar11
-        // await expect(page.locator(`[data-id="${testCase.type}"]`)).toBeVisible();
+        // await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();

@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { compare } from 'fast-json-patch';
 import { orderBy } from 'lodash';
 import { ItemCallback, Layout, utils } from 'react-grid-layout';
 import {
   GRID_ROW_HEIGHT,
   GRID_VERTICAL_MARGIN,
 } from '../../constants/CustomizeWidgets.constants';
+import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
+import { Page } from '../../generated/system/ui/page';
 import type { WidgetConfig } from '../../interface/customization.interface';
 
 /**
@@ -262,3 +265,46 @@ export const placeWidgetBesideLeftPanel = (
     ),
   ];
 };
+
+const toComparableWidget = ({
+  i,
+  x,
+  y,
+  w,
+  h,
+  config,
+  children,
+}: WidgetConfig): WidgetConfig => ({
+  i,
+  x,
+  y,
+  w,
+  h,
+  config,
+  ...(children && {
+    children: getLeftPanelFlowLayout(children).map(toComparableWidget),
+  }),
+});
+
+const toComparablePage = (page: Page): Page => ({
+  ...page,
+  tabs: page.tabs?.map((tab) => ({
+    ...tab,
+    layout: ((tab.layout ?? []) as WidgetConfig[])
+      .filter(({ i }) => i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER)
+      .map(toComparableWidget),
+  })),
+});
+
+/**
+ * Whether two detail page layouts draw the same page.
+ *
+ * Both grids report their layout on mount, and the two handlers write it into
+ * the page from the same render, so which one lands last is down to timing:
+ * the left panel's re-flowed children, react-grid-layout's own `moved` and
+ * `static` flags, and the empty-widget placeholder may or may not be in the
+ * edited page. None of that is something the user changed, so it is dropped
+ * from both sides before comparing.
+ */
+export const isSameDetailsPageLayout = (original: Page, edited: Page) =>
+  compare(toComparablePage(original), toComparablePage(edited)).length === 0;

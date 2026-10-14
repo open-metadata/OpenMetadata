@@ -117,8 +117,10 @@ export enum SettingType {
  *
  * Administrator-managed SPARQL query templates available across the installation.
  *
- * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
- * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
+ * App-wide UI configuration. It exists both in the server configuration (yaml/env) and in
+ * the database, and configSource.app (APP_CONFIG_SOURCE, default DB) decides which one
+ * wins. In DB mode the stored value wins, and the server configuration only fills values
+ * the stored setting lacks.
  *
  * Fingerprints of bundled resources successfully applied during server startup.
  */
@@ -737,6 +739,10 @@ export interface PipelineServiceClientConfiguration {
      * is configured, and columns are ordered alphabetically.
      */
     defaultColumnOrder?: DefaultColumnOrder | null;
+    /**
+     * Tenant-wide default time format for UI display.
+     */
+    defaultTimeFormat?: DefaultTimeFormat;
     /**
      * Timestamp when the fingerprints were last persisted.
      */
@@ -1978,6 +1984,14 @@ export enum DefaultAppMode {
 export enum DefaultColumnOrder {
     Alphabetical = "alphabetical",
     SourceOrder = "sourceOrder",
+}
+
+/**
+ * Tenant-wide default time format for UI display.
+ */
+export enum DefaultTimeFormat {
+    The12H = "12h",
+    The24H = "24h",
 }
 
 /**

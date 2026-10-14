@@ -12,7 +12,7 @@
  */
 
 import {
-  Button as CoreButton,
+  Button,
   ButtonUtility,
   Dropdown,
   Grid,
@@ -20,7 +20,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Select } from 'antd';
+import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
@@ -242,7 +242,11 @@ const SchemaTable = () => {
       columnSortBy?: 'name' | 'ordinalPosition',
       columnSortOrder?: 'asc' | 'desc'
     ) => {
+      // The customize page previews this table without a route FQN, so there
+      // is nothing to fetch and the loader would otherwise never clear.
       if (!tableFqn) {
+        setColumnsLoading(false);
+
         return;
       }
 
@@ -293,7 +297,11 @@ const SchemaTable = () => {
       columnSortBy?: 'name' | 'ordinalPosition',
       columnSortOrder?: 'asc' | 'desc'
     ) => {
+      // The customize page previews this table without a route FQN, so there
+      // is nothing to fetch and the loader would otherwise never clear.
       if (!tableFqn) {
+        setColumnsLoading(false);
+
         return;
       }
 
@@ -765,14 +773,13 @@ const SchemaTable = () => {
       {
         title: (
           <Button
-            className="d-flex items-center cursor-pointer bg-transparent border-none p-0 h-auto hover:bg-transparent"
+            color="tertiary"
             data-testid="name-column-header"
-            type="text"
             onClick={handleColumnHeaderSortToggle}>
-            <span
+            <Typography
               className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
               {t('label.name')}
-            </span>
+            </Typography>
             <IconSortIndicator
               className="m-l-xss"
               data-testid="sort-indicator"
@@ -991,13 +998,13 @@ const SchemaTable = () => {
           extraTableFilters={
             <div className="d-flex items-center gap-4">
               <Dropdown.Root>
-                <CoreButton
+                <Button
                   color="tertiary"
                   data-testid="sort-dropdown"
                   iconLeading={<IconSort height={14} width={14} />}
                   size="sm">
                   {t('label.sort')}
-                </CoreButton>
+                </Button>
                 <Dropdown.Popover className="tw:w-auto">
                   <Dropdown.Menu
                     aria-label={t('label.sort')}
@@ -1006,17 +1013,17 @@ const SchemaTable = () => {
                     <Dropdown.Item
                       id="name"
                       textValue={t('label.alphabetical')}>
-                      <span data-testid="sort-alphabetical">
+                      <Typography data-testid="sort-alphabetical">
                         {/* eslint-disable-next-line i18next/no-literal-string -- decorative sort-direction glyph */}
                         {t('label.alphabetical')} (A → Z)
-                      </span>
+                      </Typography>
                     </Dropdown.Item>
                     <Dropdown.Item
                       id="ordinalPosition"
                       textValue={t('label.original-order')}>
-                      <span data-testid="sort-original-order">
+                      <Typography data-testid="sort-original-order">
                         {t('label.original-order')}
-                      </span>
+                      </Typography>
                     </Dropdown.Item>
                   </Dropdown.Menu>
                 </Dropdown.Popover>

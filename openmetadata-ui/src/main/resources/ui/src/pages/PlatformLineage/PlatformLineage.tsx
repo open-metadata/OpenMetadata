@@ -12,6 +12,7 @@
  */
 import {
   ButtonUtility,
+  Card,
   Grid,
   Tooltip,
   TooltipTrigger,
@@ -21,7 +22,7 @@ import {
   Home02,
   Minimize02,
 } from '@openmetadata/ui-core-components/icons';
-import { Card, Select } from 'antd';
+import { Select } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce, startCase } from 'lodash';
@@ -399,16 +400,18 @@ const PlatformLineage = () => {
 
             <Grid.Item span={24}>
               <Card>
-                <PageHeader
-                  data={{
-                    header: t('label.platform-type-lineage', {
-                      platformType: startCase(platformView),
-                    }),
-                    subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
-                  }}
-                  learningPageId={LEARNING_PAGE_IDS.LINEAGE}
-                  title={t('label.lineage')}
-                />
+                <Card.Content>
+                  <PageHeader
+                    data={{
+                      header: t('label.platform-type-lineage', {
+                        platformType: startCase(platformView),
+                      }),
+                      subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
+                    }}
+                    learningPageId={LEARNING_PAGE_IDS.LINEAGE}
+                    title={t('label.lineage')}
+                  />
+                </Card.Content>
               </Card>
             </Grid.Item>
           </>
