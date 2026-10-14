@@ -28,7 +28,10 @@ import {
 import { exportMetricDetailsInCSVSync } from '../../rest/metricsAPI';
 import { exportDatabaseServiceDetailsInCSV } from '../../rest/serviceAPI';
 import { exportTableDetailsInCSV } from '../../rest/tableAPI';
-import { exportTestCasesInCSV } from '../../rest/testAPI';
+import {
+  exportTestCasesInCSV,
+  TestCaseExportFilters,
+} from '../../rest/testAPI';
 import entityUtilClassBase from '../EntityUtilClassBase';
 import { t } from '../i18next/LocalUtil';
 import { getDataQualityPagePath } from '../RouterUtils';
@@ -37,7 +40,10 @@ export const isBulkEditRoute = (pathname: string) => {
   return pathname.includes(ROUTES.BULK_EDIT_ENTITY);
 };
 
-export const getBulkEditCSVExportEntityApi = (entityType: EntityType) => {
+export const getBulkEditCSVExportEntityApi = (
+  entityType: EntityType,
+  testCaseExportFilters?: TestCaseExportFilters
+) => {
   switch (entityType) {
     case EntityType.DATABASE_SERVICE:
       return exportDatabaseServiceDetailsInCSV;
@@ -63,7 +69,8 @@ export const getBulkEditCSVExportEntityApi = (entityType: EntityType) => {
       return exportMetricDetailsInCSVSync;
 
     case EntityType.TEST_CASE:
-      return exportTestCasesInCSV;
+      return (name: string, params?: { recursive?: boolean }) =>
+        exportTestCasesInCSV(name, { ...params, ...testCaseExportFilters });
 
     default:
       return exportTableDetailsInCSV;

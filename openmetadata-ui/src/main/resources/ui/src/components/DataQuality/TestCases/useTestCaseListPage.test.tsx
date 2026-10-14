@@ -23,6 +23,7 @@ import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import { getTestCaseExportFiltersFromSearch } from '../../../utils/DataQuality/DataQualityPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import { useTestCaseListPage } from './useTestCaseListPage';
@@ -407,6 +408,53 @@ describe('useTestCaseListPage', () => {
     // Default sort order is spread into the request.
     expect(payload.sortField).toBe('testCaseResult.timestamp');
     expect(payload.sortType).toBe('desc');
+  });
+
+  it('should open Bulk Edit with the filters the list sent to search', async () => {
+    mockPermissions.testCase = {
+      ViewAll: true,
+      ViewBasic: true,
+      EditAll: true,
+    };
+    mockLocation.search = QueryString.stringify(
+      {
+        testCaseStatus: [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+        testCaseType: 'column',
+        serviceName: 'sample_data',
+        searchValue: 'orders',
+        currentPage: 2,
+      },
+      { arrayFormat: 'brackets' }
+    );
+    const { result } = renderHook(() => useTestCaseListPage());
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ serviceName: 'sample_data' })
+      )
+    );
+    const listParams = (getListTestCaseBySearch as jest.Mock).mock.calls.at(
+      -1
+    )?.[0];
+
+    act(() => {
+      result.current.extraDropdownContent
+        .find((item) => item.key === 'bulk-edit-button')
+        ?.onClick?.();
+    });
+
+    const [path, search] = (
+      mockNavigate.mock.calls.at(-1)?.[0] as string
+    ).split('?');
+
+    expect(path).toBe('/bulk/edit/testCase/*');
+    expect(getTestCaseExportFiltersFromSearch(search)).toEqual({
+      testCaseStatus: listParams.testCaseStatus,
+      testCaseType: listParams.testCaseType,
+      serviceName: listParams.serviceName,
+      q: listParams.q,
+    });
+    expect(listParams.q).toBe('orders');
   });
 
   it('should prefetch the default table and tag filter options on mount', async () => {

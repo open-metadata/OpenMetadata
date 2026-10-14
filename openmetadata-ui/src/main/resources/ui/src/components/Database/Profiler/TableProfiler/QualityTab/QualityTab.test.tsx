@@ -608,6 +608,41 @@ describe('QualityTab', () => {
     expect(ExtraTestCaseDropdownOptions).toHaveBeenCalled();
   });
 
+  it('should open Bulk Edit with the search text and the type the tab shows', async () => {
+    const { ExtraTestCaseDropdownOptions } = jest.requireMock(
+      '../../../../../utils/TestCaseUtils'
+    );
+    const Searchbar = jest.requireMock(
+      '../../../../common/SearchBarComponent/SearchBar.component'
+    );
+
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        fullyQualifiedName: 'test.table.fqn',
+        deleted: false,
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+    await act(async () => {
+      Searchbar.mock.calls.at(-1)[0].onSearch('nulls');
+    });
+
+    expect(ExtraTestCaseDropdownOptions).toHaveBeenLastCalledWith(
+      'test.table.fqn',
+      expect.anything(),
+      false,
+      expect.anything(),
+      expect.anything(),
+      'table',
+      { testCaseType: 'all', q: 'nulls' }
+    );
+  });
+
   it('should not call ExtraTestCaseDropdownOptions when table has no fullyQualifiedName', async () => {
     const { ExtraTestCaseDropdownOptions } = jest.requireMock(
       '../../../../../utils/TestCaseUtils'

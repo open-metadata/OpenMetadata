@@ -41,6 +41,7 @@ import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
 import { ListTestCaseParamsBySearch } from '../../../../../rest/testAPI';
+import { getTestCaseExportFilters } from '../../../../../utils/DataQuality/DataQualityPureUtils';
 import { getBreadcrumbForTable } from '../../../../../utils/EntityDataBreadcrumbUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
@@ -279,10 +280,23 @@ export const QualityTab = () => {
           table?.deleted ?? false,
           navigate,
           showModal,
-          EntityType.TABLE
+          EntityType.TABLE,
+          getTestCaseExportFilters({
+            testCaseType: selectedTestType,
+            testCaseStatus: selectedTestCaseStatus,
+            q: searchValue,
+          })
         )
       : [];
-  }, [globalPermissions, table, navigate, showModal]);
+  }, [
+    globalPermissions,
+    table,
+    navigate,
+    showModal,
+    selectedTestType,
+    selectedTestCaseStatus,
+    searchValue,
+  ]);
 
   const handleTestCaseTypeChange = (value: TestCaseType) => {
     if (value !== selectedTestType) {

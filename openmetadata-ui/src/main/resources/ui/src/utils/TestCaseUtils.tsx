@@ -26,7 +26,8 @@ import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import LimitWrapper from '../hoc/LimitWrapper';
-import { exportTestCasesInCSV } from '../rest/testAPI';
+import { exportTestCasesInCSV, TestCaseExportFilters } from '../rest/testAPI';
+import { getTestCaseBulkEditSearch } from './DataQuality/DataQualityPureUtils';
 import { getEntityBulkEditPath, getEntityImportPath } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
 
@@ -56,7 +57,8 @@ export const getTestCaseManageMenuItems = (
   deleted: boolean,
   navigate: NavigateFunction,
   showModal: (data: ExportData) => void,
-  sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE
+  sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE,
+  bulkEditFilters?: TestCaseExportFilters
 ): ManageMenuItem[] => {
   const { ViewAll, EditAll } = permission;
 
@@ -118,7 +120,13 @@ export const getTestCaseManageMenuItems = (
             limitResource: 'testCase',
             onClick: () =>
               navigate(
-                withSource(getEntityBulkEditPath(EntityType.TEST_CASE, fqn))
+                `${getEntityBulkEditPath(
+                  EntityType.TEST_CASE,
+                  fqn
+                )}${getTestCaseBulkEditSearch(
+                  sourceEntityType,
+                  bulkEditFilters
+                )}`
               ),
           },
         ]
@@ -132,7 +140,8 @@ export const ExtraTestCaseDropdownOptions = (
   deleted: boolean,
   navigate: NavigateFunction,
   showModal: (data: ExportData) => void,
-  sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE
+  sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE,
+  bulkEditFilters?: TestCaseExportFilters
 ): ItemType[] =>
   getTestCaseManageMenuItems(
     fqn,
@@ -140,7 +149,8 @@ export const ExtraTestCaseDropdownOptions = (
     deleted,
     navigate,
     showModal,
-    sourceEntityType
+    sourceEntityType,
+    bulkEditFilters
   ).map((item) => {
     const label = (
       <ManageButtonItemLabel

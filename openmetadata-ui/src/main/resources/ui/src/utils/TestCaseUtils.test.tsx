@@ -16,6 +16,8 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { MemoryRouter } from 'react-router-dom';
 import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
+import { TestCaseType } from '../enums/TestSuite.enum';
+import { TestCaseStatus } from '../generated/tests/testCase';
 import { exportTestCasesInCSV } from '../rest/testAPI';
 import { ExtraTestCaseDropdownOptions } from './TestCaseUtils';
 
@@ -245,6 +247,29 @@ describe('TestCaseUtils', () => {
 
       expect(mockNavigate).toHaveBeenCalledWith(
         `/bulk-edit/testCase/${fqn}?sourceEntityType=testSuite`
+      );
+    });
+
+    it('should carry the list filters into the bulk edit URL', () => {
+      const permission = { ViewAll: true, EditAll: true };
+      const result = ExtraTestCaseDropdownOptions(
+        fqn,
+        permission,
+        false,
+        mockNavigate,
+        mockShowModal,
+        EntityType.TABLE,
+        {
+          testCaseStatus: [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+          testCaseType: TestCaseType.column,
+          q: '',
+        }
+      );
+
+      (result[2] as { onClick?: () => void }).onClick?.();
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        `/bulk-edit/testCase/${fqn}?sourceEntityType=table&testCaseStatus=Failed,Aborted&testCaseType=column`
       );
     });
 
