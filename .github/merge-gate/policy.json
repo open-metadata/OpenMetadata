@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "statusContext": "merge-gate",
+  "shadowStatusContext": "merge-gate (shadow)",
+  "workflow": ".github/workflows/ci.yml",
+  "summaryJob": "ci-summary",
+  "verify": {
+    "entryRuns": 3,
+    "parentRuns": 3,
+    "maxFailingTests": 10,
+    "timeoutMinutes": 45,
+    "parentArtifactWaitMinutes": 15,
+    "suites": {
+      "java-it": {
+        "jobs": [
+          "it / *"
+        ],
+        "maxFailingTests": 20
+      },
+      "python": {
+        "jobs": [
+          "py-it / *"
+        ],
+        "maxFailingTests": 20
+      },
+      "playwright": {
+        "jobs": [
+          "playwright / *"
+        ],
+        "maxFailingTests": 10
+      }
+    }
+  },
+  "budgets": {
+    "maxAttempts": 2,
+    "maxInfraRerunsPerPrPerDay": 3,
+    "maxRerunsPerHour": 8,
+    "maxEntryAgeMinutes": 180,
+    "maxPrRerunsPerHour": 20
+  },
+  "strictPaths": [
+    ".github/**",
+    ".claude/**",
+    "openmetadata-integration-tests/pom.xml",
+    "openmetadata-ui/src/main/resources/ui/playwright.config.ts",
+    "ingestion/noxfile.py",
+    "ingestion/setup.py",
+    "ingestion/pyproject.toml"
+  ],
+  "deterministicJobs": [
+    "static / *"
+  ],
+  "verifyJobs": [
+    "verify / *"
+  ],
+  "deterministicSignatures": [
+    {
+      "id": "compile-error",
+      "pattern": "COMPILATION ERROR|cannot find symbol|error TS\\d{4}:"
+    },
+    {
+      "id": "build-commit-mismatch",
+      "pattern": "The build artifact does not match the checked-out commit"
+    },
+    {
+      "id": "merge-group-validation",
+      "pattern": "Merge-group validation failed: (authorization|planning|nonemptyPlan)"
+    }
+  ],
+  "infraClassifications": [
+    "setup_failure",
+    "infrastructure_failure",
+    "missing_results",
+    "hung_test"
+  ],
+  "infraSteps": "^(Set up job|Complete job|Checkout.*|Free [Dd]isk [Ss]pace.*|Install (Ubuntu|system|apt).*|Install .*(?:[Pp]ackages|[Dd]ependencies|deps|CLI)\\b.*|Download .*|(?:Post )?Run [\\w.-]+/[\\w.-]+@.*|Restore .*|Set ?up (Java|JDK|Python|Node|uv|Docker|Buildx|Openmetadata Test Environment).*|Start .*(environment|services|stack).*|Prepare .*|Login to .*|Pull .*image.*|Build [\\w.-]+/[\\w.-]+@.*)$",
+  "infraSignatures": [
+    {
+      "id": "apt-budget",
+      "pattern": "exhausted the \\d+s apt budget|apt-get .* failed after \\d+ attempts"
+    },
+    {
+      "id": "artifact-transport",
+      "pattern": "FinalizeArtifact.*\\(403\\)|\\(409\\) Conflict: an artifact with this name already exists|Failed to (upload|download) artifact"
+    },
+    {
+      "id": "runner-lost",
+      "pattern": "lost communication with the server|received a shutdown signal|The runner has received a shutdown signal|The operation was canceled"
+    },
+    {
+      "id": "disk-full",
+      "pattern": "No space left on device"
+    },
+    {
+      "id": "maven-transfer",
+      "pattern": "Could not transfer artifact .* (50\\d|Gateway|Service Unavailable)|Connection reset by peer"
+    },
+    {
+      "id": "pypi",
+      "pattern": "pypi\\.org.*(50\\d|Service Unavailable|timed out)|Request failed after \\d+ retries"
+    },
+    {
+      "id": "container-not-ready",
+      "pattern": "failed on setup with .*(not ready|TimeoutError|ConnectionError)|Container startup failed|Could not find a valid Docker environment|RyukResourceReaper|Could not connect to Ryuk|ContainerLaunchException|Timed out waiting for (?:container port to open|log output matching)"
+    },
+    {
+      "id": "docker-pull",
+      "pattern": "toomanyrequests|pull rate limit|manifest unknown.*registry"
+    },
+    {
+      "id": "lane-wedge",
+      "pattern": "exit code 124|unexpected end of stream on http://localhost"
+    },
+    {
+      "id": "killed",
+      "pattern": "exit code 1(37|43)\\b|Killed\\b.*out of memory|OOMKilled"
+    },
+    {
+      "id": "action-image",
+      "pattern": "Docker build failed with exit code"
+    },
+    {
+      "id": "network",
+      "pattern": "Connection reset by peer|ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|getaddrinfo|socket hang up|Temporary failure in name resolution|Could not resolve host|Name or service not known|No route to host|Network is unreachable|TLS handshake timeout|SSL_ERROR_SYSCALL|net/http: request canceled|connect timed out|Read timed out|Remote host terminated the handshake"
+    },
+    {
+      "id": "registry-5xx",
+      "pattern": "(?:registry\\.npmjs\\.org|registry\\.yarnpkg\\.com|repo1?\\.maven\\.org|repo\\.maven\\.apache\\.org|maven\\.pkg\\.github\\.com|pypi\\.org|files\\.pythonhosted\\.org|ghcr\\.io|docker\\.io|registry-1\\.docker\\.io|objects\\.githubusercontent\\.com|codeload\\.github\\.com|api\\.github\\.com|archive\\.ubuntu\\.com|ports\\.ubuntu\\.com|security\\.ubuntu\\.com)[^\\n]{0,160}\\b(?:429|50[0234])\\b|\\b(?:429|50[0234])\\b[^\\n]{0,160}(?:registry\\.npmjs\\.org|registry\\.yarnpkg\\.com|repo1?\\.maven\\.org|repo\\.maven\\.apache\\.org|maven\\.pkg\\.github\\.com|pypi\\.org|files\\.pythonhosted\\.org|ghcr\\.io|docker\\.io|registry-1\\.docker\\.io|objects\\.githubusercontent\\.com|codeload\\.github\\.com|api\\.github\\.com|archive\\.ubuntu\\.com|ports\\.ubuntu\\.com|security\\.ubuntu\\.com)"
+    }
+  ],
+  "testFailureMarkers": "(?m)Tests run: \\d+, Failures: [1-9]|Tests run: \\d+, Failures: \\d+, Errors: [1-9]|There (?:are|were) test failures|Tests:\\s+\\d+ failed|^FAILED \\S+::|=+ \\d+ failed|FAILED \\(failures=",
+  "transient": {
+    "maxAttempts": 3,
+    "triageMaxJobs": 5,
+    "excerptLines": 300,
+    "excerptChars": 16000
+  }
+}

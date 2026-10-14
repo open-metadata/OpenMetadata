@@ -1,0 +1,359 @@
+name: Queue Conflicts
+# Resolves merge-queue conflicts (docs/ci.md, "Conflict resolution").
+#
+#   requeue  a `queue conflict` PR (clean against main, clashed only with an entry
+#            ahead) goes back in the queue once that entry left, head unchanged
+#   scan     lists `merge conflict` PRs not attempted for their current head and
+#            dispatches `resolve` for each, within the daily budget
+#   resolve  merge main → mechanical resolvers → Claude for the rest (edit-only,
+#            conflicted files only) → checks → a git bundle. Holds only the AI
+#            credential and never runs PR code.
+#   verify   regenerates generated files, compiles and lints the result. Runs PR
+#            code, so it holds no secret at all.
+#   publish  re-checks the scope of what verify produced with main's code, pushes
+#            fast-forward onto the pinned head, comments, and re-queues only a
+#            purely mechanical resolution (approvals survive pushes here).
+#
+# vars.CI_CONFLICT_MODE: off | dry-run (default: comment a patch, push nothing) | on.
+# Labels added with the default token trigger no workflow (ADR 2026-10-13), hence
+# the schedule instead of the label.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: PR number to resolve
+        required: true
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+concurrency:
+  group: queue-conflicts-${{ inputs.pr || github.event.issue.number || github.event_name }}
+  cancel-in-progress: false
+
+env:
+  MODE: ${{ vars.CI_CONFLICT_MODE || 'dry-run' }}
+
+jobs:
+  requeue:
+    name: requeue
+    if: ${{ (github.event_name == 'schedule' || github.event_name == 'push') && vars.CI_CONFLICT_MODE != 'off' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      # A re-queue made with the default token may never start merge_group runs
+      # (spike S6), so the gate App does it when configured.
+      - name: Gate App token
+        id: app
+        if: ${{ vars.MERGE_GATE_APP_ID != '' }}
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.MERGE_GATE_APP_ID }}
+          private-key: ${{ secrets.MERGE_GATE_APP_KEY }}
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Re-queue queue conflicts that cleared
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
+        run: python3 .github/scripts/queue_conflicts.py --mode "$MODE" requeue
+
+  scan:
+    name: scan
+    if: ${{ github.event_name == 'schedule' && vars.CI_CONFLICT_MODE != 'off' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Dispatch the resolver within the daily budget
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DAILY_MAX: ${{ vars.CI_AI_DAILY_CONFLICT_MAX || '8' }}
+          REPO: ${{ github.repository }}
+        run: |
+          today=$(date -u +%F)
+          used=$(gh api "repos/$REPO/actions/workflows/ci-conflict-resolve.yml/runs?event=workflow_dispatch&created=>=$today&per_page=1" --jq .total_count)
+          left=$(( DAILY_MAX - used ))
+          if (( left <= 0 )); then
+            echo "Daily resolver budget used ($used/$DAILY_MAX)."
+            exit 0
+          fi
+          python3 .github/scripts/queue_conflicts.py --mode "$MODE" candidates --limit "$left" --out "$RUNNER_TEMP/candidates.json"
+          python3 -c 'import json,sys; [print(c["pr"]) for c in json.load(open(sys.argv[1]))["candidates"]]' "$RUNNER_TEMP/candidates.json" \
+            | while read -r pr; do gh workflow run ci-conflict-resolve.yml --repo "$REPO" -f pr="$pr"; done
+
+  resolve:
+    name: resolve
+    if: >-
+      ${{ vars.CI_CONFLICT_MODE != 'off' && (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+         startsWith(github.event.comment.body, '/ci-resolve') &&
+         contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ci-ai
+    permissions:
+      contents: read
+      pull-requests: read
+      id-token: write
+    outputs:
+      state: ${{ steps.result.outputs.state }}
+      head_sha: ${{ steps.pr.outputs.head_sha }}
+      head_repo: ${{ steps.pr.outputs.head_repo }}
+      head_ref: ${{ steps.pr.outputs.head_ref }}
+      pr: ${{ steps.pr.outputs.number }}
+    steps:
+      - name: Read the PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ inputs.pr || github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api "repos/$REPO/pulls/$NUMBER" > "$RUNNER_TEMP/pr.json"
+          python3 - "$RUNNER_TEMP/pr.json" <<'PY' >> "$GITHUB_OUTPUT"
+          import json, sys
+          pr = json.load(open(sys.argv[1]))
+          print(f"number={pr['number']}")
+          print(f"head_sha={pr['head']['sha']}")
+          print(f"head_ref={pr['head']['ref']}")
+          print(f"head_repo={pr['head']['repo']['full_name']}")
+          editable = pr['head']['repo']['full_name'] == pr['base']['repo']['full_name'] or pr.get('maintainer_can_modify')
+          print(f"editable={'true' if editable else 'false'}")
+          PY
+      # Main's scripts and agent configuration, never the PR's: a PR could ship
+      # hooks or MCP servers that would run inside the agent.
+      - name: Checkout trusted tooling (main)
+        uses: actions/checkout@v7
+        with:
+          path: trusted
+          persist-credentials: false
+      - name: Checkout the PR head
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ steps.pr.outputs.head_repo }}
+          ref: ${{ steps.pr.outputs.head_sha }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+      # The agent runs from the workspace root, not from `pr/`, so a PR's own
+      # .claude hooks, settings and MCP servers are never loaded.
+      - name: Merge main and resolve mechanically
+        id: merge
+        working-directory: pr
+        env:
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          git config user.name "openmetadata-ci"
+          git config user.email "ci@open-metadata.org"
+          git fetch --quiet "https://github.com/$BASE_REPO.git" main:refs/remotes/upstream/main
+          if git merge --no-ff --no-commit upstream/main; then
+            echo "clean=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python3 ../trusted/.github/scripts/conflict_resolvers.py --repo . apply --out "$RUNNER_TEMP/plan.json"
+          # File names come from the PR: a fixed heredoc delimiter could be closed by
+          # a file named after it and forge the outputs below.
+          python3 - "$RUNNER_TEMP/plan.json" <<'PY' >> "$GITHUB_OUTPUT"
+          import json, secrets, sys
+          plan = json.load(open(sys.argv[1]))["plan"]
+          delimiter = f"FILES_{secrets.token_hex(16)}"
+          print(f"human={'true' if plan['human'] else 'false'}")
+          print(f"needs_model={'true' if plan['ai'] or plan['sensitive'] else 'false'}")
+          print(f"files<<{delimiter}")
+          print("\n".join(plan["ai"] + plan["sensitive"]))
+          print(delimiter)
+          PY
+      - name: Scrub git credentials
+        run: git -C pr config --unset-all http.https://github.com/.extraheader || true
+      - name: Resolve the rest with Claude
+        if: ${{ steps.merge.outputs.clean != 'true' && steps.merge.outputs.human != 'true' && steps.merge.outputs.needs_model == 'true' && vars.CI_AI_MODE == 'on' }}
+        uses: anthropics/claude-code-action@v1
+        with:
+          # A key from the dedicated Console workspace, whose monthly limit is the
+          # hard spend cap. Workload identity can replace it once the pinned action
+          # version exposes those inputs.
+          anthropic_api_key: ${{ secrets.CI_AI_ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: |
+            You are resolving merge conflicts in an OpenMetadata pull request. Work only
+            in the `pr` directory. Do not commit, push, stage, or use `gh` — later steps
+            do that and check your work.
+
+            `git merge upstream/main` into PR #${{ steps.pr.outputs.number }} stopped with
+            conflicts. Generated files, lockfiles and locale JSON are already resolved.
+            These files are still conflicted and are the ONLY files you may edit:
+
+            ${{ steps.merge.outputs.files }}
+
+            1. Run `git -C pr log --oneline -n 20 upstream/main -- <file>` and
+               `git -C pr log --oneline HEAD -- <file>` to see what each side changed
+               and why. Read `trusted/CLAUDE.md` for the repository's conventions.
+            2. Resolve each file so BOTH sides' intent survives: the PR's change applied
+               to main's current code.
+            3. Rules:
+               - Never take one whole side of a file. Dropping either side's change is
+                 the failure this workflow exists to prevent, and a check compares the
+                 lines each side added against your result.
+               - For bootstrap/sql migrations keep main's statements as the prefix and
+                 append the PR's; keep any statement main requires to stay last, last.
+               - Do not reference APIs, helpers or keys that do not exist after the merge.
+               - Never leave a conflict marker. Do not edit any other file.
+            4. Write `CONFLICT_NOTES.md` in `pr/`: what conflicted, how you resolved it,
+               and what a reviewer should check by hand.
+
+            If you cannot resolve a file without guessing the authors' intent, write
+            `CONFLICT_ABORT.md` in `pr/` with the reason instead, and stop.
+          claude_args: |
+            --model ${{ vars.CI_AI_CONFLICT_MODEL || 'claude-opus-5-5' }}
+            --max-turns 40
+            --allowedTools "Read,Edit,Write,Grep,Glob,TodoWrite,Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git ls-files:*),Bash(rg:*)"
+      - name: Check, stage and bundle the resolution
+        id: result
+        if: ${{ always() && steps.merge.outcome == 'success' }}
+        working-directory: pr
+        env:
+          CLEAN: ${{ steps.merge.outputs.clean }}
+          HUMAN: ${{ steps.merge.outputs.human }}
+          NEEDS_MODEL: ${{ steps.merge.outputs.needs_model }}
+          AI_MODE: ${{ vars.CI_AI_MODE }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          out="$RUNNER_TEMP/resolution"
+          mkdir -p "$out"
+          state() { echo "state=$1" >> "$GITHUB_OUTPUT"; }
+          if [ "$CLEAN" = "true" ]; then state clean; exit 0; fi
+          if [ "$HUMAN" = "true" ]; then state human; exit 0; fi
+          if [ "$NEEDS_MODEL" = "true" ] && [ "$AI_MODE" != "on" ]; then state needs-model; exit 0; fi
+          if [ -f CONFLICT_ABORT.md ]; then cp CONFLICT_ABORT.md "$out/abort.md"; rm -f CONFLICT_ABORT.md; state declined; exit 0; fi
+          [ -f CONFLICT_NOTES.md ] && cp CONFLICT_NOTES.md "$out/notes.md"
+          rm -f CONFLICT_NOTES.md
+          python3 ../trusted/.github/scripts/conflict_resolvers.py --repo . check --plan "$RUNNER_TEMP/plan.json" --out "$out/check.json" || { state failed-check; exit 0; }
+          python3 ../trusted/.github/scripts/conflict_resolvers.py --repo . finalize --plan "$RUNNER_TEMP/plan.json" --out "$out/finalize.json" || { state failed-check; exit 0; }
+          git commit --quiet --no-edit
+          git bundle create "$out/resolution.bundle" "$HEAD_SHA..HEAD"
+          # publish checks that verify's result builds on exactly this commit, made
+          # before any PR code ran.
+          git rev-parse HEAD > "$out/merge-commit.txt"
+          cp "$RUNNER_TEMP/plan.json" "$out/plan.json"
+          state resolved
+      - name: Upload the resolution
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: conflict-resolution-${{ steps.pr.outputs.number }}
+          path: ${{ runner.temp }}/resolution
+          if-no-files-found: ignore
+          retention-days: 7
+
+  verify:
+    name: verify
+    needs: resolve
+    if: ${{ needs.resolve.outputs.state == 'resolved' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ needs.resolve.outputs.head_repo }}
+          ref: ${{ needs.resolve.outputs.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          name: conflict-resolution-${{ needs.resolve.outputs.pr }}
+          path: ${{ runner.temp }}/resolution
+      - name: Apply the resolution
+        run: |
+          git config user.name "openmetadata-ci"
+          git config user.email "ci@open-metadata.org"
+          git fetch --quiet "$RUNNER_TEMP/resolution/resolution.bundle" HEAD
+          git checkout --quiet FETCH_HEAD
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Regenerate generated files and lockfiles
+        run: |
+          python3 - "$RUNNER_TEMP/resolution/plan.json" <<'PY' > "$RUNNER_TEMP/regenerate.sh"
+          import json, shlex, sys
+          for argv in json.load(open(sys.argv[1]))["regenerate"]:
+              print(shlex.join(argv))
+          PY
+          bash -euo pipefail "$RUNNER_TEMP/regenerate.sh"
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit --quiet -m "Regenerate generated files after merging main"
+          fi
+      - name: Compile and lint what changed
+        run: |
+          changed=$(git diff --name-only "${{ needs.resolve.outputs.head_sha }}" HEAD)
+          if echo "$changed" | grep -qE '\.java$|pom\.xml$'; then
+            mvn -B -ntp -DskipTests -Dspring-boot.repackage.skip=true compile -pl openmetadata-service -am
+            mvn -B -ntp spotless:check
+          fi
+      - name: Bundle the verified result
+        run: git bundle create "$RUNNER_TEMP/resolution/verified.bundle" "${{ needs.resolve.outputs.head_sha }}..HEAD"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: conflict-verified-${{ needs.resolve.outputs.pr }}
+          path: ${{ runner.temp }}/resolution/verified.bundle
+          retention-days: 7
+
+  publish:
+    name: publish
+    needs: [resolve, verify]
+    if: ${{ always() && needs.resolve.result == 'success' && needs.resolve.outputs.state != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Publish App token
+        id: app
+        if: ${{ vars.CI_PUBLISH_APP_ID != '' }}
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.CI_PUBLISH_APP_ID }}
+          private-key: ${{ secrets.CI_PUBLISH_APP_KEY }}
+          repositories: ${{ github.event.repository.name }}
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: conflict-*-${{ needs.resolve.outputs.pr }}
+          path: ${{ runner.temp }}/artifacts
+          merge-multiple: true
+      - name: Publish and comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUSH_TOKEN: ${{ steps.app.outputs.token }}
+          STATE: ${{ needs.resolve.outputs.state }}
+          VERIFY_RESULT: ${{ needs.verify.result }}
+          PR: ${{ needs.resolve.outputs.pr }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          HEAD_REPO: ${{ needs.resolve.outputs.head_repo }}
+          HEAD_REF: ${{ needs.resolve.outputs.head_ref }}
+          REPO: ${{ github.repository }}
+        run: python3 .github/scripts/publish_conflict_resolution.py --artifacts "$RUNNER_TEMP/artifacts"

@@ -1,0 +1,39 @@
+name: CI Scripts Tests
+# Runs the tests of the CI's own scripts, including the Guard tests that decision
+# records in docs/decisions/ name. Until this workflow nothing ran them, and seven
+# had already gone stale on main (docs/ci.md, "Known issues").
+
+on:
+  pull_request:
+    paths:
+      - '.github/scripts/**'
+      - '.github/merge-gate/**'
+      - '.github/java-tests/**'
+      - '.github/playwright/**'
+      - '.github/workflows/workflow-scripts-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-scripts-tests-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  scripts-tests:
+    name: scripts-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      # anthropic: without it the CI AI model and explain tests skip instead of running.
+      - name: Run the CI scripts' tests
+        run: |
+          pip install --quiet pytest pyyaml anthropic
+          python -m pytest -q -p no:cacheprovider .github/scripts/tests .github/scripts/test_*.py
