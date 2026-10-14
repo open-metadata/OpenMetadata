@@ -190,9 +190,13 @@ jobs:
       # leaves one "Retry pass in merge queue" annotation listing its retry
       # passes (one per line), so this reads those instead of uploading reports;
       # inline for the same reason as the failed-test annotation above.
+      # success() posts once per queue run, from the attempt whose shards all
+      # passed: a failed attempt gets re-run and would post the same flakes
+      # again, and its failures go to the dequeue report instead. A re-run
+      # attempt lists the shard jobs it carried over, so their flakes are kept.
       - name: Build the merge-queue flaky message
         id: queue-flaky
-        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' }}
+        if: ${{ success() && github.event_name == 'merge_group' }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -226,7 +230,7 @@ jobs:
           echo "posted=true" >> "$GITHUB_OUTPUT"
 
       - name: Post merge-queue flaky tests to Slack (pw-health)
-        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' && steps.queue-flaky.outputs.posted == 'true' }}
+        if: ${{ success() && github.event_name == 'merge_group' && steps.queue-flaky.outputs.posted == 'true' }}
         continue-on-error: true
         uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         with:
