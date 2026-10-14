@@ -49,7 +49,7 @@ const AssetSelectionFooter = ({
         {selectedCount >= 1 && (
           <Box align="center" gap={1}>
             <span className="tw:text-fg-success-primary tw:leading-0">
-              <CheckCircle size={20} />
+              <CheckCircle className="tw:size-5" />
             </span>
             <Typography as="span" size="text-sm">
               {selectedCount} {t('label.selected-lowercase')}
@@ -61,7 +61,7 @@ const AssetSelectionFooter = ({
             <Divider className="tw:mx-2" orientation="vertical" />
             <Box align="center" gap={1}>
               <span className="tw:text-fg-error-primary">
-                <AlertCircle size={20} />
+                <AlertCircle className="tw:size-5" />
               </span>
               <Typography
                 as="span"

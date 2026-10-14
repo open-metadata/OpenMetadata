@@ -648,7 +648,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                             bordered={false}
                             className="p-t-0"
                             clearIcon={
-                              <XCircle className="tw:shrink-0" size={14} />
+                              <XCircle className="tw:shrink-0 tw:size-4.5 tw:p-[0.25px]" />
                             }
                             data-testid="data-range-picker"
                             open={isClickedCalendar}

@@ -267,7 +267,7 @@ export const LineageOverlays: React.FC<LineageOverlaysProps> = ({
       ? [
           {
             name: '',
-            icon: <Home02 size={12} />,
+            icon: <Home02 className="tw:size-4 tw:p-[0.5px]" />,
             url: '/',
             activeTitle: true,
           },

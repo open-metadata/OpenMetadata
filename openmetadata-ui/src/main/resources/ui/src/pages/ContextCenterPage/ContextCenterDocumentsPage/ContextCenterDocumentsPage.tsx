@@ -173,7 +173,7 @@ const ContextCenterDocumentsEmptyState: FC<
         features={[
           {
             key: 'upload',
-            icon: <UploadIcon className="tw:text-fg-brand-primary" />,
+            icon: <UploadIcon className="tw:text-utility-brand-600" />,
             title: t('label.upload-files'),
             description: t(
               'message.context-center-documents-empty-feature-upload'

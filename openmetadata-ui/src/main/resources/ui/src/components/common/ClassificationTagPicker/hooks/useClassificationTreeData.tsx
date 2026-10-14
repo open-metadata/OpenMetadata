@@ -41,7 +41,7 @@ export const useClassificationTreeData =
           data: buildTagLabelFromResult(result),
           isLeaf: true,
           allowSelection: true,
-          icon: <TagIcon size={16} />,
+          icon: <TagIcon className="tw:size-5" />,
         }));
 
         return { nodes };

@@ -57,7 +57,7 @@ const IncidentGroupsSelectionBar = ({
       className="tw:rounded-xl tw:border tw:border-brand-subtle tw:bg-brand-primary tw:px-4 tw:py-2"
       data-testid="incident-groups-selection-bar"
       gap={3}>
-      <CheckCircle className="tw:size-5 tw:text-fg-brand-primary" />
+      <CheckCircle className="tw:size-5 tw:text-utility-brand-600" />
       <Typography
         as="span"
         className="tw:text-brand-secondary"

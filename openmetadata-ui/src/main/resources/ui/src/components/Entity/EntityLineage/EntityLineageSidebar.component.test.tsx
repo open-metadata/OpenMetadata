@@ -321,7 +321,7 @@ describe('EntityLineageSidebar component', () => {
 
   describe('integration with theme', () => {
     it('should render the drag handle for a draggable node', () => {
-      // the brand tint comes from --tw-color-fg-brand-primary, which the theme
+      // the brand tint comes from --tw-color-utility-brand-600, which the theme
       // provider sets at runtime — there is no value read through JS to assert
       render(<EntityLineageSidebar show newAddedNode={undefined} />);
 

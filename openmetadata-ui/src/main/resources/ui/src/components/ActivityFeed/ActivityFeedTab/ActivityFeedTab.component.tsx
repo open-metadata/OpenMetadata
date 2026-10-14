@@ -240,12 +240,12 @@ const ActivityFeedTabLeftPanel = ({
                 aria-current={isSelected ? 'page' : undefined}
                 className={classNames(
                   'tw:relative tw:flex tw:h-10 tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:overflow-hidden',
-                  'tw:border-0 tw:px-4 tw:text-left tw:text-sm tw:transition-colors tw:hover:text-fg-brand-primary',
+                  'tw:border-0 tw:px-4 tw:text-left tw:text-sm tw:transition-colors tw:hover:text-utility-brand-600',
                   'tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
                   isSelected
                     ? [
                         // antd inline Menu's selected look: brand tint + 3px left bar.
-                        'tw:bg-utility-brand-100 tw:font-semibold tw:text-fg-brand-primary tw:dark:bg-brand-primary',
+                        'tw:bg-utility-brand-100 tw:font-semibold tw:text-utility-brand-600 tw:dark:bg-brand-primary',
                         'tw:after:absolute tw:after:inset-y-0 tw:after:left-0 tw:after:w-0.75 tw:after:bg-fg-brand-primary',
                       ]
                     : 'tw:bg-transparent tw:text-primary'

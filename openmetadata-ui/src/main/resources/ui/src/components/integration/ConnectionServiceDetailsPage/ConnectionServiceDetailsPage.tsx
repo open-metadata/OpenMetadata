@@ -136,7 +136,7 @@ const getTabItemClassName = ({
   const base = 'tw:py-2 tw:px-0 tw:text-sm tw:font-medium tw:transition-colors';
 
   if (isSelected) {
-    return `${base} tw:border-fg-brand-primary tw:text-fg-brand-primary`;
+    return `${base} tw:border-fg-brand-primary tw:text-utility-brand-600`;
   }
 
   const hover = isHovered ? 'tw:border-gray-300 tw:text-secondary' : '';

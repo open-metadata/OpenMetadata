@@ -192,7 +192,7 @@ export const TestSuitesTable = ({
               : undefined
           }
           description={description}
-          icon={<EmptyTableSuiteIcon className="tw:text-fg-brand-primary" />}
+          icon={<EmptyTableSuiteIcon className="tw:text-utility-brand-600" />}
           title={title}
           variant="blank"
         />

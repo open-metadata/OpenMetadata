@@ -363,7 +363,7 @@ const LineageLayers = ({
                   </span>
                 </span>
                 {sceneLens === lens && (
-                  <CheckIcon className="lineage-scene-layer-menu-check tw:size-4 tw:text-fg-brand-primary" />
+                  <CheckIcon className="lineage-scene-layer-menu-check tw:size-4 tw:text-utility-brand-600" />
                 )}
               </ButtonGroupItem>
             ))}
@@ -398,7 +398,7 @@ const LineageLayers = ({
                   </span>
                 </span>
                 {sceneBand === band && (
-                  <CheckIcon className="lineage-scene-layer-menu-check tw:size-4 tw:text-fg-brand-primary" />
+                  <CheckIcon className="lineage-scene-layer-menu-check tw:size-4 tw:text-utility-brand-600" />
                 )}
               </ButtonGroupItem>
             ))}

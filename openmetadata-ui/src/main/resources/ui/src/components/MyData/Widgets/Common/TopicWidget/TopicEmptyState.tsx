@@ -40,7 +40,7 @@ const TopicEmptyState: React.FC<TopicEmptyStateProps> = ({
     className="tw:flex tw:flex-1 tw:flex-col tw:items-center tw:justify-center tw:pb-2 tw:text-center"
     data-testid={`topic-empty-${topicKey}`}>
     <FeaturedIcon
-      className="tw:text-fg-brand-primary tw:*:data-icon:size-6"
+      className="tw:text-utility-brand-600 tw:*:data-icon:size-6"
       color="gray"
       icon={icon}
       size="xl"

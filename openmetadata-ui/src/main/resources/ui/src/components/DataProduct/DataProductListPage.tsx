@@ -134,7 +134,7 @@ const renderDataProductDomainCell = (entity: DataProduct): ReactNode => {
       className={COMPACT_CELL_CLIP_CLASS}
       direction="row"
       gap={1}>
-      <Globe01 size={16} style={{ flexShrink: 0 }} />
+      <Globe01 className="tw:size-5" style={{ flexShrink: 0 }} />
       <Typography
         className={CLIPPED_NAME_CLASS}
         ellipsis={{
@@ -352,7 +352,7 @@ const DataProductListPage = ({
                 : undefined
             }
             description={t('label.no-data-products-yet-description')}
-            icon={<Package className="tw:text-fg-brand-primary" />}
+            icon={<Package className="tw:text-utility-brand-600" />}
             title={t('label.no-data-products-yet')}
             variant="blank"
           />

@@ -186,7 +186,7 @@ const OptionRow = ({
     {isSelected && (
       <Check
         aria-hidden
-        className={classNames(ICON_CLASS, 'tw:text-fg-brand-primary')}
+        className={classNames(ICON_CLASS, 'tw:text-utility-brand-600')}
       />
     )}
   </Box>

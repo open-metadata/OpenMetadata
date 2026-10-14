@@ -62,11 +62,7 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
                   aria-hidden="true"
                   className="copy-link-ring-pulse tw:absolute tw:-inset-0.5 tw:rounded-full tw:border-2 tw:border-utility-success-500 tw:pointer-events-none"
                 />
-                <Check
-                  aria-hidden="true"
-                  className="tw:size-3"
-                  strokeWidth={2.6}
-                />
+                <Check aria-hidden="true" className="tw:size-3" />
               </>
             ) : (
               children

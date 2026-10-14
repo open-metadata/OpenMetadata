@@ -63,7 +63,7 @@ const EntityNodeInternal: FC<EntityNodeProps> = ({
           {searchClassBase.getEntityIcon(type ?? '')}
         </span>
         <span className="d-flex m-l-xs">
-          <DragIconDotted className="tw:size-3.5 tw:shrink-0 tw:rotate-90 tw:text-fg-brand-primary" />
+          <DragIconDotted className="tw:size-3.5 tw:shrink-0 tw:rotate-90 tw:text-utility-brand-600" />
         </span>
       </div>
       <Typography className="text-grey-body text-xs p-t-xs">{label}</Typography>

@@ -338,7 +338,7 @@ const ClassificationDetails = forwardRef(
         isSystemClassification ? (
           <AppBadge
             className="whitespace-nowrap"
-            icon={<Lock01 size={12} />}
+            icon={<Lock01 className="tw:size-4 tw:p-[0.5px]" />}
             label={capitalize(currentClassification?.provider)}
           />
         ) : null,

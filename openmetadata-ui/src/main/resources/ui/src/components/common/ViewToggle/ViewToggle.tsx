@@ -27,7 +27,7 @@ const DEFAULT_VIEWS: PageViewMode[] = [PageViewMode.Table, PageViewMode.Card];
 
 const getIconElement = (mode: PageViewMode, isActive: boolean) => {
   const iconClass = `tw:size-4 ${
-    isActive ? 'tw:text-fg-brand-primary' : 'tw:text-fg-secondary'
+    isActive ? 'tw:text-utility-brand-600' : 'tw:text-fg-secondary'
   }`;
   switch (mode) {
     case PageViewMode.Card:

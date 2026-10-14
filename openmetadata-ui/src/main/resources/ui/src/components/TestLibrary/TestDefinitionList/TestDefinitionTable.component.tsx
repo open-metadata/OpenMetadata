@@ -313,7 +313,7 @@ const TestDefinitionTable = ({
                       hasActiveFilters ? (
                         <FilterOffIcon className="tw:text-fg-quaternary" />
                       ) : (
-                        <FileShield02 className="tw:text-fg-brand-primary" />
+                        <FileShield02 className="tw:text-utility-brand-600" />
                       )
                     }
                     title={t(

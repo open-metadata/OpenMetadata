@@ -195,7 +195,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                           </Typography>
                         )}
                         {canEditDisplayName && (
-                          <div>
+                          <div className="tw:flex">
                             <ButtonUtility
                               data-testid="edit-displayName"
                               icon={Edit01}

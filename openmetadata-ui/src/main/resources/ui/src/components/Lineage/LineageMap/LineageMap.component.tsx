@@ -725,7 +725,7 @@ const LineageMapOnboardingDialog = ({
             </div>
             <div className="lineage-map-onboarding-body tw:bg-primary tw:px-8 tw:pt-5 tw:pb-1">
               <div className="lineage-map-onboarding-row tw:grid tw:grid-cols-[44px_1fr] tw:gap-4 tw:border-b tw:border-secondary tw:pt-3 tw:pb-5">
-                <span className="lineage-map-onboarding-icon tw:flex tw:size-9 tw:items-center tw:justify-center tw:rounded-xl tw:bg-brand-primary tw:text-fg-brand-primary">
+                <span className="lineage-map-onboarding-icon tw:flex tw:size-9 tw:items-center tw:justify-center tw:rounded-xl tw:bg-brand-primary tw:text-utility-brand-600">
                   <ArrowsUp aria-hidden="true" className="tw:size-5" />
                 </span>
                 <div>
@@ -738,7 +738,7 @@ const LineageMapOnboardingDialog = ({
                 </div>
               </div>
               <div className="lineage-map-onboarding-row tw:grid tw:grid-cols-[44px_1fr] tw:gap-4 tw:pt-3 tw:pb-5">
-                <span className="lineage-map-onboarding-icon tw:flex tw:size-9 tw:items-center tw:justify-center tw:rounded-xl tw:bg-brand-primary tw:text-fg-brand-primary">
+                <span className="lineage-map-onboarding-icon tw:flex tw:size-9 tw:items-center tw:justify-center tw:rounded-xl tw:bg-brand-primary tw:text-utility-brand-600">
                   <LayersThree01 aria-hidden="true" className="tw:size-5" />
                 </span>
                 <div>

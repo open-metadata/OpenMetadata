@@ -852,7 +852,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
             : []
         }
         description={t('message.context-center-folder-empty-subtitle')}
-        icon={<UploadIcon className="tw:text-fg-brand-primary" />}
+        icon={<UploadIcon className="tw:text-utility-brand-600" />}
         title={t('label.folder-name-is-empty', {
           folderName: selectedFolderName,
         })}

@@ -137,7 +137,7 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
       data-testid="announcements-widget-v2">
       <div className="tw:flex tw:items-center tw:justify-between tw:mb-2 tw:px-3">
         <div className="tw:flex tw:items-center tw:gap-2">
-          <Announcement02 className="tw:size-5 tw:text-fg-brand-primary" />
+          <Announcement02 className="tw:size-5 tw:text-utility-brand-600" />
           <Typography
             as="span"
             className="tw:text-text-primary"
@@ -168,7 +168,7 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
 
         {announcements.length > DISPLAY_COUNT && (
           <button
-            className="tw:flex tw:items-center tw:gap-1 tw:py-3 tw:text-sm tw:font-medium tw:text-fg-brand-primary tw:cursor-pointer tw:border-none tw:bg-transparent"
+            className="tw:flex tw:items-center tw:gap-1 tw:py-3 tw:text-sm tw:font-medium tw:text-utility-brand-600 tw:cursor-pointer tw:border-none tw:bg-transparent"
             data-testid="view-all-btn"
             onClick={() => setShowAll((prev) => !prev)}>
             {showAll ? t('label.show-less') : t('label.view-all')}

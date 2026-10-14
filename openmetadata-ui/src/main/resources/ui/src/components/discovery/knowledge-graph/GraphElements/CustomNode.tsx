@@ -191,7 +191,7 @@ function CustomNode({
           align="center"
           className="kg-node-note tw:px-3 tw:pb-2 tw:text-success-primary"
           gap={1}>
-          <CheckCircle aria-hidden="true" size={12} />
+          <CheckCircle aria-hidden="true" className="tw:size-4 tw:p-[0.5px]" />
           <span>{t('label.kg-mapped-to-ontology')}</span>
         </Box>
       )}

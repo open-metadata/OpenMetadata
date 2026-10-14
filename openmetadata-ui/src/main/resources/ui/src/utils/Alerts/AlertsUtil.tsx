@@ -676,9 +676,9 @@ export const getDestinationStatusAlertData = (destinationStatus?: string) => {
       : 'destination-error-status';
   const alertIcon =
     destinationStatus === DestinationStatus.Success ? (
-      <CheckCircle height={14} />
+      <CheckCircle className="tw:size-4.5 tw:p-[0.25px]" />
     ) : (
-      <AlertCircle height={14} />
+      <AlertCircle className="tw:size-4.5 tw:p-[0.25px]" />
     );
 
   return {

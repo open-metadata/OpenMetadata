@@ -2037,7 +2037,7 @@ const TableV2 = <T extends object>(
                         (rest.locale?.emptyText as ReactNode) ?? (
                           <EmptyPlaceholder
                             icon={
-                              <Search className="tw:text-fg-brand-primary" />
+                              <Search className="tw:text-utility-brand-600" />
                             }
                             title={t('label.no-data')}
                             variant="blank"

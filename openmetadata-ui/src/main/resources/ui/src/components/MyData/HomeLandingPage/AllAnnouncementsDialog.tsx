@@ -159,7 +159,7 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
           <Dialog.Header>
             <div className="tw:flex tw:items-center tw:gap-3">
               <div className="tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-utility-blue-50 tw:text-utility-blue-700">
-                <Announcement02 height={16} width={16} />
+                <Announcement02 className="tw:size-5" />
               </div>
               <Typography size="text-sm" weight="semibold">
                 {t('label.all-entity', {

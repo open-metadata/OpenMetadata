@@ -198,7 +198,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                   allowClear
                   showNow
                   className="executions-date-picker"
-                  clearIcon={<XCircle size={14} />}
+                  clearIcon={<XCircle className="tw:size-4.5 tw:p-[0.25px]" />}
                   data-testid="data-range-picker"
                   placeholder={[t('label.date-filter'), '']}
                   suffixIcon={<Calendar className="tw:size-3 tw:shrink-0" />}

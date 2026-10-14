@@ -93,9 +93,8 @@ const DraggableMenuItemV2: FC<DraggableMenuItemProps> = ({
           data-testid="draggable-menu-item-drag-handle">
           <DotsGrid
             aria-hidden
-            className="tw:text-fg-quaternary"
+            className="tw:text-fg-quaternary tw:size-5"
             data-testid="draggable-menu-item-drag-icon"
-            size={16}
           />
         </span>
 

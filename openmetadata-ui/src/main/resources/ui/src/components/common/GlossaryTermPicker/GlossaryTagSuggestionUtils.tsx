@@ -73,7 +73,7 @@ export const glossaryTermToTreeNode = (
     isLeaf: !hasChildren,
     allowSelection: true,
     lazyLoad: true,
-    icon: <GlossaryTermIcon size={16} />,
+    icon: <GlossaryTermIcon className="tw:size-5" />,
     isParentMutuallyExclusive,
     // Declared, not inferred: a lazy branch has no children to infer from.
     hasExclusiveChildren: term.mutuallyExclusive === true && hasChildren,
@@ -126,7 +126,7 @@ export const convertToTreeNodes = (
     children: option.children ? convertToTreeNodes(option.children) : [],
     isLeaf: !option.children || option.children.length === 0,
     allowSelection: option.selectable !== false,
-    icon: <GlossaryTermIcon size={16} />,
+    icon: <GlossaryTermIcon className="tw:size-5" />,
     lazyLoad: option.lazyLoad !== false,
     isParentMutuallyExclusive: option.isParentMutuallyExclusive,
     data: option.data ? glossaryTermValue(option.data) : undefined,

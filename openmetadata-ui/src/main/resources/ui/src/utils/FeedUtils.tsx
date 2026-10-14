@@ -176,10 +176,7 @@ export const getEntityFieldDisplay = (entityField: string) => {
     const entityFields = entityField.split(ENTITY_LINK_SEPARATOR);
     const separator = (
       <span className="p-x-xss">
-        <ChevronRight
-          className="tw:mt-1 tw:cursor-default tw:text-quaternary tw:align-middle tw:shrink-0"
-          size={14}
-        />
+        <ChevronRight className="tw:mt-1 tw:cursor-default tw:text-quaternary tw:align-middle tw:shrink-0 tw:size-4.5 tw:p-[0.25px]" />
       </span>
     );
 

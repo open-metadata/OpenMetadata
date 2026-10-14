@@ -86,9 +86,7 @@ const DataAssetPickerRow: FC<DataAssetPickerRowProps> = ({
               )}
             </Box>
           </Box>
-          {state.isSelected && (
-            <Check className="tw:shrink-0" size={16} strokeWidth={1.5} />
-          )}
+          {state.isSelected && <Check className="tw:shrink-0 tw:size-5" />}
         </>
       )}
     </AriaListBoxItem>

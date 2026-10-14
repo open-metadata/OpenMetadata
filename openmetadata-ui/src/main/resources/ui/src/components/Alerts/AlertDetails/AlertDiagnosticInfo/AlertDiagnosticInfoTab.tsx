@@ -89,10 +89,7 @@ function AlertDiagnosticInfoTab() {
                         placement="bottom"
                         title={item.description}
                         triggerClassName="tw:inline-flex">
-                        <InfoCircle
-                          className="info-icon tw:shrink-0 tw:text-quaternary"
-                          size={14}
-                        />
+                        <InfoCircle className="info-icon tw:shrink-0 tw:text-quaternary tw:size-4.5 tw:p-[0.25px]" />
                       </Tooltip>
                     </Typography>
                   </Grid.Item>

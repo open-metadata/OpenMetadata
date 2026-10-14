@@ -429,14 +429,14 @@ export const CsvJobsTray = () => {
     const variant = getStatusVariant(job.status);
 
     if (variant === 'running') {
-      return <RefreshCw01 className="csv-jobs-tray-status-spin" size={16} />;
+      return <RefreshCw01 className="csv-jobs-tray-status-spin tw:size-5" />;
     }
 
     if (variant === 'success') {
-      return <CheckCircle size={16} />;
+      return <CheckCircle className="tw:size-5" />;
     }
 
-    return <AlertCircle size={16} />;
+    return <AlertCircle className="tw:size-5" />;
   };
 
   const renderJobRowActions = (job: CsvAsyncJob) => {
@@ -528,7 +528,7 @@ export const CsvJobsTray = () => {
               const variant = getStatusVariant(job.status);
               const KindIcon = getKindIcon(job.operation);
               const nonRunningIcon = downloadedJobIds.has(job.jobId) ? (
-                <Check size={16} />
+                <Check className="tw:size-5" />
               ) : (
                 <KindIcon size={16} />
               );

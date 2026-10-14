@@ -166,7 +166,7 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
                   <div
                     aria-hidden
                     className="tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-utility-blue-50 tw:text-utility-blue-600">
-                    <Domain size={16} />
+                    <Domain className="tw:size-5" />
                   </div>
                   <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
                     <Typography

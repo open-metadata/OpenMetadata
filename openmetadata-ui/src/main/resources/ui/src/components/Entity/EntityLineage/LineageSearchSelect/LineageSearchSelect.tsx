@@ -113,10 +113,7 @@ const LineageSearchSelect = () => {
                 <Typography className="text-xs" color="secondary">
                   {getEntityName(node)}
                 </Typography>
-                <ChevronRight
-                  className="tw:text-quaternary tw:shrink-0"
-                  size={14}
-                />
+                <ChevronRight className="tw:text-quaternary tw:shrink-0 tw:size-4.5 tw:p-[0.25px]" />
               </div>
               <div className="d-flex items-center gap-1 ">
                 {searchClassBase.getEntityIconWithBg(

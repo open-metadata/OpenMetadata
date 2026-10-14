@@ -55,7 +55,7 @@ import { ObjectFieldTemplate } from './ObjectFieldTemplate';
 const SingleCredentialNote = ({ method }: { method: string }) => {
   return (
     <div className="tw:flex tw:items-center tw:gap-1.5 tw:text-xs">
-      <InfoCircle className="tw:text-fg-quaternary" size={14} />
+      <InfoCircle className="tw:text-fg-quaternary tw:size-4.5 tw:p-[0.25px]" />
       <span className="tw:text-tertiary">
         <Transi18next
           i18nKey="message.auth-single-credential-stored"
@@ -194,10 +194,9 @@ const SectionHeader = ({
     {collapsible && (
       <ChevronDown
         className={classNames(
-          'tw:flex-shrink-0 tw:text-fg-quaternary tw:transition-transform',
+          'tw:size-5 tw:flex-shrink-0 tw:text-utility-gray-500 tw:transition-transform',
           open && 'tw:rotate-180'
         )}
-        size={18}
       />
     )}
   </button>

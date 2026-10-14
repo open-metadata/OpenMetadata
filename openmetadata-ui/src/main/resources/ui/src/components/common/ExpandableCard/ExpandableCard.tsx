@@ -66,7 +66,7 @@ const ExpandableCard = ({
         <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:py-4">
           {title}
         </div>
-        <div className="expandable-card-extra tw:ml-3 tw:font-normal tw:text-primary">
+        <div className="expandable-card-extra tw:ml-3 tw:flex tw:items-center tw:font-normal tw:text-primary">
           <ButtonUtility
             className={classNames('expand-collapse-icon', {
               'tw:rotate-180': !isExpanded,

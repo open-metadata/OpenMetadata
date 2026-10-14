@@ -241,9 +241,9 @@ const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
 };
 
 const VISIBILITY_ICON_MAP = {
-  Share07: <Share07 size={12} strokeWidth={2} />,
-  Database01: <Database01 size={12} strokeWidth={2} />,
-  FileLock02: <FileLock02 size={12} strokeWidth={2} />,
+  Share07: <Share07 className="tw:size-4 tw:p-[0.5px]" />,
+  Database01: <Database01 className="tw:size-4 tw:p-[0.5px]" />,
+  FileLock02: <FileLock02 className="tw:size-4 tw:p-[0.5px]" />,
 };
 
 const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
@@ -255,11 +255,7 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
 }) => (
   <div className="tw:flex tw:items-center tw:gap-3 tw:pt-5 tw:pb-4 tw:shrink-0 tw:px-6">
     <div className="tw:flex tw:items-center tw:justify-center tw:w-10 tw:h-10 tw:rounded-lg tw:bg-utility-brand-50 tw:border tw:border-utility-indigo-100 tw:shrink-0">
-      <Lightbulb03
-        className="tw:text-utility-brand-700"
-        size={20}
-        strokeWidth={1.5}
-      />
+      <Lightbulb03 className="tw:text-utility-brand-700 tw:size-5" />
     </div>
     <div className="tw:flex tw:flex-col tw:gap-0.5 tw:flex-1">
       <div className="tw:max-w-112">
@@ -288,11 +284,7 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
       )}
       {memorySource && memorySourceLink && (
         <div className="tw:flex tw:items-center tw:gap-1">
-          <FileLock02
-            className="tw:shrink-0 tw:text-utility-gray-400"
-            size={12}
-            strokeWidth={2}
-          />
+          <FileLock02 className="tw:shrink-0 tw:text-utility-gray-400 tw:size-4 tw:p-[0.5px]" />
           <Typography className="tw:text-quaternary" size="text-xs">
             {t('label.extracted-from')}
           </Typography>
@@ -323,11 +315,7 @@ const ReadOnlyBanner: FC<ReadOnlyBannerProps> = ({
 
   return (
     <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:px-3 tw:py-2.5">
-      <Lock01
-        className="tw:shrink-0 tw:text-fg-warning-primary tw:mt-0.5"
-        size={16}
-        strokeWidth={2}
-      />
+      <Lock01 className="tw:shrink-0 tw:text-fg-warning-primary tw:mt-0.5 tw:size-5" />
       <div className="tw:flex tw:flex-col">
         <Typography
           className="tw:text-utility-warning-700"
@@ -1223,11 +1211,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                                   contextCenterClassBase.getMemoryPromptTranslationKey()
                                 )}>
                                 <TooltipTrigger className="tw:leading-0">
-                                  <InfoCircle
-                                    className="tw:text-utility-gray-400 tw:cursor-pointer"
-                                    size={14}
-                                    strokeWidth={2}
-                                  />
+                                  <InfoCircle className="tw:text-utility-gray-400 tw:cursor-pointer tw:size-4.5 tw:p-[0.25px]" />
                                 </TooltipTrigger>
                               </Tooltip>
                             </div>

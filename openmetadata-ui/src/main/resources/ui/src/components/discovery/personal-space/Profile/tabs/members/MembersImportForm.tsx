@@ -103,7 +103,11 @@ const ImportStepper: FC<{ activeStep: VALIDATION_STEP }> = ({ activeStep }) => {
                 align="center"
                 className={`tw:size-4 tw:rounded-full tw:text-[10px] tw:font-semibold ${circleClass}`}
                 justify="center">
-                {isDone ? <Check size={10} strokeWidth={2.5} /> : index + 1}
+                {isDone ? (
+                  <Check className="tw:size-4 tw:p-[0.5px]" />
+                ) : (
+                  index + 1
+                )}
               </Box>
               {t(step.name)}
             </Badge>
@@ -158,10 +162,12 @@ const SelectedFileCard: FC<{
 
 const renderStageIcon = (state: StageState) => {
   if (state === 'done') {
-    return <CheckCircle size={14} />;
+    return <CheckCircle className="tw:size-4.5 tw:p-[0.25px]" />;
   }
   if (state === 'active') {
-    return <RefreshCw01 className="tw:animate-spin" size={14} />;
+    return (
+      <RefreshCw01 className="tw:animate-spin tw:size-4.5 tw:p-[0.25px]" />
+    );
   }
 
   return <Box className="tw:size-1.5 tw:rounded-full tw:bg-fg-quaternary" />;
@@ -217,7 +223,7 @@ const ProcessingBanner: FC<{
           className="tw:text-tertiary tw:text-sm"
           gap={2}
           justify="center">
-          <File06 className="tw:shrink-0" size={14} />
+          <File06 className="tw:shrink-0 tw:size-4.5 tw:p-[0.25px]" />
           <Typography as="span" ellipsis={{ tooltip: fileName }}>
             {fileName}
           </Typography>

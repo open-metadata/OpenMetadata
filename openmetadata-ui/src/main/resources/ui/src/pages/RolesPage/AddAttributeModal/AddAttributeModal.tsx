@@ -154,7 +154,7 @@ const AddAttributeModal: FC<Props> = ({
               entity: type,
             })}
             prefix={
-              <Search className="tw:shrink-0 tw:text-placeholder" size={14} />
+              <Search className="tw:shrink-0 tw:text-placeholder tw:size-4.5 tw:p-[0.25px]" />
             }
             onChange={(e) => handleSearch(e.target.value)}
           />

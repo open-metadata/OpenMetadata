@@ -143,7 +143,7 @@ function OntologyOnboardingEmptyState() {
         features={[
           {
             key: 'relationships',
-            icon: <LayoutGrid01 className="tw:text-fg-brand-primary" />,
+            icon: <LayoutGrid01 className="tw:text-utility-brand-600" />,
             title: t('label.relationship-plural'),
             description: t(
               'message.ontology-relationships-feature-description'
@@ -296,7 +296,7 @@ function NoTermsGraphEmptyState() {
       data-testid="ontology-graph-empty">
       <EmptyPlaceholder
         description={t('message.no-glossary-terms-found')}
-        icon={<Cube02 className="tw:text-fg-brand-primary" />}
+        icon={<Cube02 className="tw:text-utility-brand-600" />}
         title={t('message.ontology-empty-title')}
       />
     </div>

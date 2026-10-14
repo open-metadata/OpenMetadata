@@ -755,7 +755,7 @@ const OntologyImportExportModal = ({
           <div
             className="tw:flex tw:gap-2 tw:rounded-lg tw:bg-brand-50 tw:px-3.5 tw:py-3"
             data-testid="ontology-import-note">
-            <InfoCircle className="tw:mt-px tw:size-4 tw:shrink-0 tw:text-brand-600" />
+            <InfoCircle className="tw:mt-px tw:size-4 tw:shrink-0 tw:text-utility-brand-600" />
             <div className="tw:flex tw:flex-col tw:gap-1 tw:text-[12px] tw:leading-relaxed tw:text-brand-700">
               {hasReviewers ? (
                 <span>{t('message.import-terms-enter-draft')}</span>
@@ -780,7 +780,7 @@ const OntologyImportExportModal = ({
         className="tw:flex tw:items-center tw:gap-3.5 tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:px-4 tw:py-3.5"
         data-testid="ontology-import-file">
         <span className="tw:grid tw:size-11 tw:shrink-0 tw:place-items-center tw:rounded-lg tw:bg-brand-50">
-          <File02 className="tw:size-5 tw:text-brand-600" />
+          <File02 className="tw:size-5 tw:text-utility-brand-600" />
         </span>
         <span className="tw:min-w-0 tw:flex-1">
           <span className="tw:block tw:truncate tw:text-[14px] tw:font-semibold tw:text-primary">

@@ -437,7 +437,7 @@ const BulkEditEntity = ({
                   <span className="bulk-edit-name-value">
                     {baseRenderCell?.(props)}
                   </span>
-                  <Lock01 className="bulk-edit-name-lock" size={14} />
+                  <Lock01 className="bulk-edit-name-lock tw:size-4.5 tw:p-[0.25px]" />
                 </div>
               )
           : column.renderCell,

@@ -194,7 +194,7 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
         </span>
         <ArrowRight
           aria-hidden="true"
-          className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
+          className="tw:size-4 tw:shrink-0 tw:text-utility-brand-600"
         />
         <span className="tw:max-w-20 tw:truncate tw:font-body tw:text-xs tw:font-semibold tw:text-primary">
           {targetLabel}

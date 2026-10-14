@@ -78,9 +78,9 @@ const MetadataUploadStatusCard = ({
             }
           )}>
           {isSuccess ? (
-            <Check className="tw:text-fg-white tw:shrink-0" size={16} />
+            <Check className="tw:text-fg-white tw:shrink-0 tw:size-5" />
           ) : (
-            <XClose className="tw:text-fg-white tw:shrink-0" size={16} />
+            <XClose className="tw:text-fg-white tw:shrink-0 tw:size-5" />
           )}
         </div>
         <Typography className="text-grey-body text-sm font-medium">
@@ -330,7 +330,7 @@ const SSOConfigurationFormRJSF = ({
               <div
                 className="flex flex-shrink items-center justify-center bg-white border border-radius-xs"
                 style={{ width: '40px', height: '40px' }}>
-                <UploadCloud02 className="tw:text-tertiary" size={20} />
+                <UploadCloud02 className="tw:text-tertiary tw:size-5" />
               </div>
               <div
                 className="flex align-center flex-wrap gap-4 justify-center"

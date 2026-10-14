@@ -125,10 +125,8 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
         </span>
         <ChevronDown
           aria-hidden
-          className="dropdown-icon"
+          className="dropdown-icon tw:size-4.5 tw:p-[0.25px]"
           data-testid="dropdown-icon"
-          height={14}
-          width={14}
         />
       </button>
     );

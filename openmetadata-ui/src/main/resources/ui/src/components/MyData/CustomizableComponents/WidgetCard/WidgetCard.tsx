@@ -91,7 +91,7 @@ const WidgetCard = ({
         {isSelected && (
           <Box
             align="center"
-            className="tw:absolute tw:top-2 tw:right-2 tw:rounded-md tw:border tw:border-secondary tw:bg-surface tw:p-1.5 tw:text-fg-brand-primary"
+            className="tw:absolute tw:top-2 tw:right-2 tw:rounded-md tw:border tw:border-secondary tw:bg-surface tw:p-1.5 tw:text-utility-brand-600"
             data-testid="widget-selected-check"
             justify="center">
             <CheckIcon className="tw:size-4" />

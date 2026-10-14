@@ -159,7 +159,7 @@ const SubDomainsTable = ({
             description={t('message.no-data-message', {
               entity: t('label.sub-domain-lowercase-plural'),
             })}
-            icon={<Globe01 className="tw:text-fg-brand-primary" />}
+            icon={<Globe01 className="tw:text-utility-brand-600" />}
             permission={permissions.Create}
             title={t('label.no-entity', {
               entity: t('label.sub-domain-plural'),

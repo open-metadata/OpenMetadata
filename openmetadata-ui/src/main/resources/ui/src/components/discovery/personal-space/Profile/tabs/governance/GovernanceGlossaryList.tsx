@@ -154,7 +154,7 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
           <CreatePlaceholder
             data-testid="glossary-relations-empty"
             description={t('message.no-glossary-term-relation-yet-description')}
-            icon={<GlossaryTermIcon className="tw:text-fg-brand-primary" />}
+            icon={<GlossaryTermIcon className="tw:text-utility-brand-600" />}
             title={t('message.no-glossary-term-relation-yet')}
           />
         </div>

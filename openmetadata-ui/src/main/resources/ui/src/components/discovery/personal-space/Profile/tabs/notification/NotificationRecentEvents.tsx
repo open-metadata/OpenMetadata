@@ -208,7 +208,7 @@ function NotificationRecentEvents({
             isFiltered ? (
               <FilterOffIcon className="tw:text-fg-quaternary" />
             ) : (
-              <Bell01 className="tw:text-fg-brand-primary" />
+              <Bell01 className="tw:text-utility-brand-600" />
             )
           }
           title={t(

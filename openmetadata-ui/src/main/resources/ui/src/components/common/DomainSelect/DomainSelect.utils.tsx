@@ -120,7 +120,7 @@ export function withDomainIcon(
     icon: isSubDomain ? (
       <SubDomainIcon height={16} width={16} />
     ) : (
-      <DomainIcon height={16} width={16} />
+      <DomainIcon className="tw:size-5" />
     ),
     children: node.children
       ? withDomainIcon(node.children, true)

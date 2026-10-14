@@ -257,7 +257,7 @@ const IntakeFormsPage = () => {
             <CreatePlaceholder
               data-testid="intake-forms-empty"
               description={t('message.no-intake-form-yet-description')}
-              icon={<FileCheck02 className="tw:text-fg-brand-primary" />}
+              icon={<FileCheck02 className="tw:text-utility-brand-600" />}
               title={t('message.no-intake-form-yet')}
             />
           </div>

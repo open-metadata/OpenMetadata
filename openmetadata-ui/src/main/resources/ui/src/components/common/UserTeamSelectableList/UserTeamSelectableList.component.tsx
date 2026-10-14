@@ -381,7 +381,7 @@ export const UserTeamSelectableList = ({
   };
 
   const defaultTrigger = hasPermission ? (
-    <span ref={triggerRef}>
+    <span className="tw:inline-flex" ref={triggerRef}>
       <ButtonUtility
         data-testid={triggerDataTestId}
         icon={Edit01}
@@ -405,6 +405,7 @@ export const UserTeamSelectableList = ({
   // swallow the event, so the popover reliably opens for add-owner/edit-owner.
   const triggerElement = children ? (
     <span
+      className="tw:inline-flex"
       ref={triggerRef}
       onClickCapture={handleTriggerClick}
       onKeyDownCapture={handleTriggerKeyDown}>

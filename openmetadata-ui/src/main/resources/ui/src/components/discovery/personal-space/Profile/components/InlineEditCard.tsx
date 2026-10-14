@@ -144,7 +144,7 @@ const InlineEditCard: React.FC<InlineEditCardProps> = ({
             align="center"
             className="tw:absolute tw:top-1/2 tw:right-4 tw:-translate-y-1/2 tw:shrink-0 tw:gap-1 tw:text-quaternary"
             data-testid={subTestId('locked')}>
-            <Lock01 height={13} width={13} />
+            <Lock01 className="tw:size-4 tw:p-[0.5px]" />
             <Typography
               className="tw:text-quaternary"
               size="text-xs"

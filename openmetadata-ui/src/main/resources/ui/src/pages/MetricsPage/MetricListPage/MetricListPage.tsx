@@ -1124,7 +1124,7 @@ const MetricListPage = () => {
                     {
                       key: 'define',
                       icon: (
-                        <FileCheck03 className="tw:text-fg-brand-primary" />
+                        <FileCheck03 className="tw:text-utility-brand-600" />
                       ),
                       title: t('label.define-it'),
                       description: t('message.metric-define-it-description'),
@@ -1269,7 +1269,7 @@ const MetricListPage = () => {
         </Button>
         {permissionFlags.canEditAll && (
           <Button
-            className="tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
+            className="tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-utility-brand-600!"
             color="link-color"
             data-testid="bulk-edit-metric"
             iconLeading={Edit01}

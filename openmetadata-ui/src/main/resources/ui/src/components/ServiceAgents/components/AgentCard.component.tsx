@@ -114,7 +114,7 @@ const AgentIdentity: FC<AgentIdentityProps> = ({ agent, isRunning }) => {
               <span
                 className="tw:mt-px tw:flex tw:min-w-0 tw:items-center tw:gap-1 tw:text-xs tw:font-semibold tw:text-secondary"
                 data-testid="agent-schedule">
-                <Calendar className="tw:shrink-0" size={12} />
+                <Calendar className="tw:shrink-0 tw:size-4 tw:p-[0.5px]" />
                 <span className="tw:truncate">{scheduleText}</span>
               </span>
             </TooltipTrigger>
@@ -127,7 +127,11 @@ const AgentIdentity: FC<AgentIdentityProps> = ({ agent, isRunning }) => {
 
 /** Queries icon for query-count agents, asset icon otherwise. */
 const getUnitIcon = (unit: string): ReactNode =>
-  unit === 'queries' ? <Terminal size={15} /> : <Database01 size={15} />;
+  unit === 'queries' ? (
+    <Terminal className="tw:size-4.5 tw:p-[0.25px]" />
+  ) : (
+    <Database01 className="tw:size-4.5 tw:p-[0.25px]" />
+  );
 
 interface QueuedStartInfoProps {
   after: string | undefined;
@@ -247,7 +251,7 @@ const AgentLiveStatusZone: FC<AgentLiveStatusZoneProps> = ({
   const etaMetric = isRunning ? (
     <Metric
       dataTestId="agent-eta-metric"
-      icon={<Clock size={15} />}
+      icon={<Clock className="tw:size-4.5 tw:p-[0.25px]" />}
       value={etaLabel}
     />
   ) : null;
@@ -315,7 +319,7 @@ const AgentAlerts: FC<AgentAlertsProps> = ({ agent, t }) => {
       {agent.errors > 0 && (
         <Metric
           dataTestId="agent-errors-metric"
-          icon={<AlertCircle size={15} />}
+          icon={<AlertCircle className="tw:size-4.5 tw:p-[0.25px]" />}
           label={t('label.error-plural-lowercase')}
           tone="error"
           value={agent.errors}
@@ -324,7 +328,7 @@ const AgentAlerts: FC<AgentAlertsProps> = ({ agent, t }) => {
       {agent.warnings > 0 && (
         <Metric
           dataTestId="agent-warnings-metric"
-          icon={<AlertTriangle size={15} />}
+          icon={<AlertTriangle className="tw:size-4.5 tw:p-[0.25px]" />}
           label={t('label.warning-plural-lowercase')}
           tone="warn"
           value={agent.warnings}

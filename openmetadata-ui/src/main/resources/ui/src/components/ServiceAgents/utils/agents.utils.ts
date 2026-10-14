@@ -245,7 +245,7 @@ export const RUN_DOT_CLASS: Record<string, string> = {
 };
 
 export const AGENT_ICON_CLASS: Record<AgentStatus, string> = {
-  running: 'tw:text-fg-brand-primary',
+  running: 'tw:text-utility-brand-600',
   failed: 'tw:text-fg-error-primary',
   success: 'tw:text-fg-success-primary',
   queued: 'tw:text-fg-quaternary',

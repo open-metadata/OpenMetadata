@@ -631,9 +631,9 @@ export function ConnectionGateCard(
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2.5 tw:text-quaternary">
           <span className={gatePillClass}>{t('label.gate')}</span>
           {isGateExpanded ? (
-            <ChevronDown size={18} />
+            <ChevronDown className="tw:size-5" />
           ) : (
-            <ChevronRight size={18} />
+            <ChevronRight className="tw:size-5" />
           )}
         </div>
       </button>
@@ -875,10 +875,7 @@ export function ConnectionCapabilitySection(
                 <div className="tw:flex tw:items-center tw:gap-2">
                   <span className={resultTextClass}>{statusLabel}</span>
                   {canExpand && (
-                    <ChevronRight
-                      className="tw:text-utility-gray-400 tw:transition-transform tw:duration-200 tw:group-data-expanded/item:rotate-90"
-                      size={18}
-                    />
+                    <ChevronRight className="tw:text-utility-gray-400 tw:transition-transform tw:duration-200 tw:group-data-expanded/item:rotate-90 tw:size-5" />
                   )}
                 </div>
               </AccordionHeader>
@@ -934,7 +931,11 @@ export function ConnectionRawLogSection(
         )}
         type="button"
         onClick={() => setShowRawLog((current) => !current)}>
-        {showRawLog ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        {showRawLog ? (
+          <ChevronDown className="tw:size-5" />
+        ) : (
+          <ChevronRight className="tw:size-5" />
+        )}
         {toggleLabel}
       </button>
       {showRawLog && (
@@ -1185,7 +1186,7 @@ export function ConnectionRemediationCard(
   return (
     <div className={cardClass} data-testid="connection-remediation-card">
       <div className="tw:flex tw:items-center tw:gap-2">
-        <Lightbulb03 className="tw:shrink-0 tw:text-primary" size={17} />
+        <Lightbulb03 className="tw:shrink-0 tw:text-primary tw:size-5" />
         <span className="tw:text-sm tw:font-bold tw:text-primary">
           {titleText}
         </span>

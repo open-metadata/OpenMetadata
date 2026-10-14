@@ -308,7 +308,7 @@ const DatePickerMenu = ({
               open
               bordered={false}
               className="tw:pointer-events-none tw:size-0 tw:overflow-hidden tw:p-0 tw:opacity-0"
-              clearIcon={<XCircle size={14} />}
+              clearIcon={<XCircle className="tw:size-4.5 tw:p-[0.25px]" />}
               format={(value) => value.toFormat('yyyy-MM-dd')}
               getPopupContainer={getCustomRangeContainer}
               placement="bottomRight"

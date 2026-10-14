@@ -57,9 +57,9 @@ const RawLogSection: FC<{ stackLines: string[] }> = ({ stackLines }) => {
         type="button"
         onClick={toggleLog}>
         <ChevronRight
-          className={`tw:transition-transform ${showLog ? 'tw:rotate-90' : ''}`}
-          height={13}
-          width={13}
+          className={`tw:size-4 tw:p-[0.5px] tw:transition-transform ${
+            showLog ? 'tw:rotate-90' : ''
+          }`}
         />
         {showLog ? t('label.hide-raw-logs') : t('label.show-raw-logs')}
       </button>
@@ -99,7 +99,9 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
       <Box
         align="center"
         className={`tw:gap-2 tw:border-b tw:px-3 tw:py-2.5 ${dividerClass}`}>
-        <AlertTriangle className={accentIconClass} size={15} />
+        <AlertTriangle
+          className={`tw:size-4.5 tw:p-[0.25px] ${accentIconClass}`}
+        />
         <span className="tw:text-xs tw:font-semibold tw:text-primary">
           {att.title}
         </span>
@@ -113,7 +115,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
             className="tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:text-xs tw:font-medium tw:text-tertiary"
             type="button"
             onClick={() => onCopyToClipBoard()}>
-            <Copy01 size={13} />
+            <Copy01 className="tw:size-4 tw:p-[0.5px]" />
             {hasCopied ? t('label.copied') : t('label.copy')}
           </button>
         )}
@@ -124,11 +126,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
         </div>
         {att.hint && (
           <Box className="tw:mt-2.5 tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-2">
-            <Lightbulb03
-              className="tw:mt-px tw:shrink-0 tw:text-fg-brand-primary"
-              height={14}
-              width={14}
-            />
+            <Lightbulb03 className="tw:mt-px tw:shrink-0 tw:text-utility-brand-600 tw:size-4.5 tw:p-[0.25px]" />
             <span className="tw:text-xs tw:leading-normal tw:text-secondary">
               <strong className="tw:font-semibold tw:text-primary">
                 {t('label.how-to-fix')} &middot;{' '}

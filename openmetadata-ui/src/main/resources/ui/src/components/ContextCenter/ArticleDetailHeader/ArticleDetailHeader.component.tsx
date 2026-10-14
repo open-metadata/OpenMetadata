@@ -301,7 +301,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             color="success"
             size="lg"
             type="color">
-            <UploadCloud01 size={14} />{' '}
+            <UploadCloud01 className="tw:size-4.5 tw:p-[0.25px]" />{' '}
             <Typography className="tw:text-utility-success-700" weight="medium">
               {t('label.saved')}
             </Typography>
@@ -318,7 +318,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             color="gray"
             size="lg"
             type="color">
-            <UploadCloud01 size={14} />{' '}
+            <UploadCloud01 className="tw:size-4.5 tw:p-[0.25px]" />{' '}
             <Typography weight="medium">{t('label.unsaved')}</Typography>
           </Badge>
         </div>

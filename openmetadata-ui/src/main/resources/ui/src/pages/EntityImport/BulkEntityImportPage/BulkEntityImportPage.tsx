@@ -1478,7 +1478,7 @@ const BulkEntityImportPage = () => {
   }) => {
     const stageIcon =
       state === 'active' ? (
-        <RefreshCw01 className="csv-import-spin" size={16} />
+        <RefreshCw01 className="csv-import-spin tw:size-5" />
       ) : (
         <span className="csv-processing-stage-dot" />
       );
@@ -1488,7 +1488,7 @@ const BulkEntityImportPage = () => {
         className={`csv-processing-stage csv-processing-stage-${state}`}
         key={key}>
         <span className="csv-processing-stage-icon">
-          {state === 'done' ? <CheckCircle size={16} /> : stageIcon}
+          {state === 'done' ? <CheckCircle className="tw:size-5" /> : stageIcon}
         </span>
         <span>{label}</span>
       </div>
@@ -1550,7 +1550,7 @@ const BulkEntityImportPage = () => {
             className="tw:text-tertiary tw:text-sm tw:leading-5"
             gap={2}
             justify="center">
-            <File06 className="tw:shrink-0" size={14} />
+            <File06 className="tw:shrink-0 tw:size-4.5 tw:p-[0.25px]" />
             <Box className="tw:min-w-0">
               <Typography
                 as="span"

@@ -795,7 +795,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         </div>
         <div className="tw:mt-auto tw:pt-4 tw:border-t tw:border-utility-error-100">
           <Box align="center" gap={2}>
-            <XCircle className="tw:text-utility-error-600" size={16} />
+            <XCircle className="tw:text-utility-error-600 tw:size-5" />
             <Typography size="text-sm">
               {t('label.syntax')} :{' '}
               <strong className="tw:font-medium">{t('label.invalid')}</strong>
@@ -851,14 +851,14 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         </div>
         <div className="tw:mt-auto tw:pt-4 tw:border-t tw:border-secondary">
           <Box align="center" className="tw:mb-2" gap={2}>
-            <CheckCircle className="tw:text-utility-success-500" size={16} />
+            <CheckCircle className="tw:text-utility-success-500 tw:size-5" />
             <Typography>
               {t('label.syntax')} :{' '}
               <strong className="tw:font-medium">{t('label.valid')}</strong>
             </Typography>
           </Box>
           <Box align="center" gap={2}>
-            <XCircle className="tw:text-utility-error-600" size={16} />
+            <XCircle className="tw:text-utility-error-600 tw:size-5" />
             <Typography>
               {t('label.schema')} :{' '}
               <strong className="tw:font-medium">{t('label.error')}</strong>
@@ -933,14 +933,14 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         </div>
         <div className="tw:mt-auto tw:pt-4 tw:border-t tw:border-secondary">
           <Box align="center" className="tw:mb-2" gap={2}>
-            <CheckCircle className="tw:text-utility-success-500" size={16} />
+            <CheckCircle className="tw:text-utility-success-500 tw:size-5" />
             <Typography size="text-sm">
               {t('label.syntax')} :{' '}
               <strong className="tw:font-medium">{t('label.valid')}</strong>
             </Typography>
           </Box>
           <Box align="center" gap={2}>
-            <XCircle className="tw:text-utility-error-600" size={16} />
+            <XCircle className="tw:text-utility-error-600 tw:size-5" />
             <Typography size="text-sm">
               {t('label.schema')} : {serverValidation?.schemaValidation?.failed}{' '}
               {t('label.field-plural-lowercase')} {t('label.with-issues')}
@@ -995,14 +995,14 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         </div>
         <div className="tw:mt-auto tw:pt-4 tw:border-t tw:border-secondary">
           <Box align="center" className="tw:mb-2" gap={2}>
-            <CheckCircle className="tw:text-utility-success-500" size={16} />
+            <CheckCircle className="tw:text-utility-success-500 tw:size-5" />
             <Typography size="text-sm">
               {t('label.syntax')} :{' '}
               <strong className="tw:font-medium">{t('label.valid')}</strong>
             </Typography>
           </Box>
           <Box align="center" gap={2}>
-            <XCircle className="tw:text-utility-error-600" size={16} />
+            <XCircle className="tw:text-utility-error-600 tw:size-5" />
             <Typography size="text-sm">
               {t('label.contract')} :{' '}
               <strong className="tw:font-medium">
@@ -1070,10 +1070,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                       align="center"
                       gap={2}
                       key={`typemismatch-warning-${field}`}>
-                      <AlertTriangle
-                        className="tw:text-utility-warning-600"
-                        size={14}
-                      />
+                      <AlertTriangle className="tw:text-utility-warning-600 tw:size-4.5 tw:p-[0.25px]" />
                       <Typography
                         data-testid={`type-mismatch-warning-${index}`}
                         size="text-sm">
@@ -1088,7 +1085,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         </div>
         <div className="tw:mt-auto tw:pt-4 tw:border-t tw:border-secondary">
           <Box align="center" className="tw:mb-2" gap={2}>
-            <CheckCircle className="tw:text-utility-success-700" size={16} />
+            <CheckCircle className="tw:text-utility-success-700 tw:size-5" />
             <Typography size="text-sm">
               {t('label.syntax')} :{' '}
               <strong className="tw:font-medium">{t('label.valid')}</strong>
@@ -1097,10 +1094,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           {serverValidation?.schemaValidation?.total !== undefined &&
             serverValidation.schemaValidation.total > 0 && (
               <Box align="center" gap={2}>
-                <CheckCircle
-                  className="tw:text-utility-success-700"
-                  size={16}
-                />
+                <CheckCircle className="tw:text-utility-success-700 tw:size-5" />
                 <Typography size="text-sm">
                   {t('label.schema')} :{' '}
                   {serverValidation.schemaValidation?.passed}{' '}
@@ -1164,10 +1158,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           className="tw:flex tw:items-start tw:gap-3 tw:p-3"
           color="warning"
           data-testid="existing-contract-warning">
-          <AlertTriangle
-            className="tw:text-warning-600 tw:mt-0.5 tw:shrink-0"
-            size={16}
-          />
+          <AlertTriangle className="tw:text-warning-600 tw:mt-0.5 tw:shrink-0 tw:size-5" />
           <Typography as="p" className="tw:text-warning-800 tw:leading-5">
             {t('message.existing-contract-detected')}{' '}
             <strong className="tw:font-medium">
@@ -1360,7 +1351,10 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                       data-testid="file-info-card"
                       justify="between">
                       <Box align="center" gap={2}>
-                        <File06 className="tw:text-gray-500" size={24} />
+                        <File06
+                          className="tw:text-utility-gray-500"
+                          size={24}
+                        />
                         <div className="tw:max-w-70">
                           <Typography
                             ellipsis

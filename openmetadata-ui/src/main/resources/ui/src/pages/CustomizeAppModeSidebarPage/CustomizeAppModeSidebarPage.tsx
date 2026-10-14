@@ -302,9 +302,8 @@ const CustomizeAppModeSidebarPage = () => {
             <Box align="center" direction="row" gap={2}>
               <DotsGrid
                 aria-hidden
-                className="tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary"
+                className="tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary tw:size-5"
                 data-testid="ask-sidebar-drag-handle"
-                size={16}
               />
               {Icon && (
                 <Icon className="tw:text-fg-tertiary" height={20} width={20} />

@@ -51,15 +51,9 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             setIsActive((prev) => !prev)
           )}>
           {isActive ? (
-            <ChevronDown
-              className="tw:text-brand-secondary tw:cursor-pointer tw:shrink-0"
-              size={14}
-            />
+            <ChevronDown className="tw:text-brand-secondary tw:cursor-pointer tw:shrink-0 tw:size-4.5 tw:p-[0.25px]" />
           ) : (
-            <ChevronRight
-              className="tw:text-brand-secondary tw:cursor-pointer tw:shrink-0"
-              size={14}
-            />
+            <ChevronRight className="tw:text-brand-secondary tw:cursor-pointer tw:shrink-0 tw:size-4.5 tw:p-[0.25px]" />
           )}
         </span>
         <Typography className="font-medium m-y-0">

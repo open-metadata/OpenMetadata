@@ -177,13 +177,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
       <Box className="tw:flex-wrap" gap={3}>
         <StatTile
           count={stats.totalRoles}
-          icon={
-            <UserCheck01
-              className="tw:text-success-600"
-              height={20}
-              width={20}
-            />
-          }
+          icon={<UserCheck01 className="tw:text-success-600 tw:size-5" />}
           label={t('label.total-role-plural')}
           subLabel={t('label.direct-inherited-summary', {
             direct: stats.directRoles,

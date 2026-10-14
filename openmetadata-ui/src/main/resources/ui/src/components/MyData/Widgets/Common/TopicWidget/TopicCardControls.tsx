@@ -62,7 +62,7 @@ const TopicCardControls: React.FC<TopicCardControlsProps> = ({
           aria-hidden
           className="drag-widget-icon tw:flex tw:cursor-grab tw:items-center tw:p-1.5 tw:text-fg-quaternary"
           data-testid={`drag-widget-${widgetKey}`}>
-          <DotsGrid size={14} />
+          <DotsGrid className="tw:size-4.5 tw:p-[0.25px]" />
         </span>
       </Tooltip>
       <ButtonUtility

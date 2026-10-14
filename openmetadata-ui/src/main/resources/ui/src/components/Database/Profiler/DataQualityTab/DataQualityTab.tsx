@@ -1171,7 +1171,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                         ? 'message.no-matching-test-cases-description'
                         : 'message.no-test-cases-yet-description'
                     )}
-                    icon={<File02 className="tw:text-fg-brand-primary" />}
+                    icon={<File02 className="tw:text-utility-brand-600" />}
                     title={t(
                       hasActiveFilters
                         ? 'message.no-matching-test-cases'

@@ -394,7 +394,7 @@ const renderBulkEditSelectCell = (column: string, value: string) => (
     <span className="bulk-edit-select-cell-value">
       {getSelectCellDisplayValue(column, value) || '-'}
     </span>
-    <ChevronDown className="bulk-edit-select-cell-icon" size={14} />
+    <ChevronDown className="bulk-edit-select-cell-icon tw:size-4.5 tw:p-[0.25px]" />
   </span>
 );
 

@@ -135,7 +135,7 @@ const DataProductsTab = forwardRef(
               },
             ]}
             description={t('label.no-data-products-yet-description')}
-            icon={<Package className="tw:text-fg-brand-primary" />}
+            icon={<Package className="tw:text-utility-brand-600" />}
             permission={permissions.Create}
             title={t('label.no-data-products-yet')}
           />
