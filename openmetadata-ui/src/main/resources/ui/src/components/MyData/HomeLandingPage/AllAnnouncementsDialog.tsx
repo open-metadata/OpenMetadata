@@ -31,7 +31,7 @@ import {
 import AnnouncementCard from './AnnouncementCard';
 import { compareAnnouncements } from './announcementLifecycle';
 
-export const ALL_ANNOUNCEMENTS_QUERY_KEY = [
+const ALL_ANNOUNCEMENTS_QUERY_KEY = [
   'landingPage',
   'announcements',
   'all',

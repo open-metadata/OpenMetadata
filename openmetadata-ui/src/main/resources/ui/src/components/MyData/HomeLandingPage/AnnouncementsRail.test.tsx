@@ -755,55 +755,39 @@ describe('AnnouncementsRail persisted dismissals', () => {
   });
 });
 
-describe('AnnouncementsRail entry point with nothing live', () => {
+describe('AnnouncementsRail with nothing live', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     queryClient.clear();
     window.localStorage.clear();
     mockGetActiveAnnouncements.mockResolvedValue({ data: [] } as never);
     mockListAnnouncements.mockResolvedValue({
-      data: [makeAnnouncement('soon', SCHEDULED_WINDOW)],
+      data: [
+        makeAnnouncement('soon', SCHEDULED_WINDOW),
+        makeAnnouncement('old', EXPIRED_WINDOW),
+      ],
     } as never);
   });
 
-  it('keeps a compact "View all" for an admin when there are announcements to list', async () => {
-    mockCurrentUser = { id: USER_ID, isAdmin: true };
+  it.each([
+    ['an admin', { id: USER_ID, isAdmin: true }],
+    ['everyone else', { id: USER_ID }],
+  ])(
+    'shows %s no section even with scheduled or expired ones',
+    async (_, user) => {
+      mockCurrentUser = user;
 
-    renderWithQueryClient(<AnnouncementsRail />);
+      renderWithQueryClient(<AnnouncementsRail />);
 
-    fireEvent.click(await screen.findByTestId(VIEW_ALL_BTN));
+      await waitFor(() => {
+        expect(mockGetActiveAnnouncements).toHaveBeenCalled();
+      });
 
-    expect(await screen.findByTestId(cardId('soon'))).toBeInTheDocument();
-    expect(screen.queryByTestId(RAIL_TESTID)).not.toBeInTheDocument();
-  });
-
-  it('shows an admin nothing when there is nothing at all to list', async () => {
-    mockCurrentUser = { id: USER_ID, isAdmin: true };
-    mockListAnnouncements.mockResolvedValue({ data: [] } as never);
-
-    renderWithQueryClient(<AnnouncementsRail />);
-
-    await waitFor(() => {
-      expect(mockListAnnouncements).toHaveBeenCalledWith({ limit: 1 });
-    });
-
-    expect(
-      screen.queryByTestId('announcements-section')
-    ).not.toBeInTheDocument();
-  });
-
-  it('stands the section down for everyone else, without asking', async () => {
-    mockCurrentUser = { id: USER_ID };
-
-    renderWithQueryClient(<AnnouncementsRail />);
-
-    await waitFor(() => {
-      expect(mockGetActiveAnnouncements).toHaveBeenCalled();
-    });
-
-    expect(
-      screen.queryByTestId('announcements-section')
-    ).not.toBeInTheDocument();
-    expect(mockListAnnouncements).not.toHaveBeenCalled();
-  });
+      expect(
+        screen.queryByTestId('announcements-section')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(VIEW_ALL_BTN)).not.toBeInTheDocument();
+      expect(mockListAnnouncements).not.toHaveBeenCalled();
+    }
+  );
 });

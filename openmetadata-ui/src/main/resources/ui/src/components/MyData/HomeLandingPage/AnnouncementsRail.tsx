@@ -35,13 +35,10 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   AnnouncementEntity,
   getActiveAnnouncements,
-  listAnnouncements,
 } from '../../../rest/announcementsAPI';
 import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
 import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
-import AllAnnouncementsDialog, {
-  ALL_ANNOUNCEMENTS_QUERY_KEY,
-} from './AllAnnouncementsDialog';
+import AllAnnouncementsDialog from './AllAnnouncementsDialog';
 import AnnouncementCard from './AnnouncementCard';
 import { useDismissedAnnouncements } from './useDismissedAnnouncements';
 
@@ -77,22 +74,8 @@ const getActiveAnnouncementsQueryOptions = () => ({
   staleTime: ACTIVE_ANNOUNCEMENTS_TTL_MS,
 });
 
-// Nested under the dialog's key so invalidating the full list refreshes this
-// answer with it.
-const HAS_ANY_ANNOUNCEMENT_QUERY_KEY = [
-  ...ALL_ANNOUNCEMENTS_QUERY_KEY,
-  'exists',
-] as const;
-
-const fetchHasAnyAnnouncement = async (): Promise<boolean> => {
-  const response = await listAnnouncements({ limit: 1 });
-
-  return (response.data ?? []).length > 0;
-};
-
 interface AnnouncementsHeaderProps {
-  /** Live announcements on the rail; omitted when only the dialog is reachable. */
-  count?: number;
+  count: number;
   pager?: React.ReactNode;
   onViewAll: () => void;
 }
@@ -109,15 +92,9 @@ const AnnouncementsHeader = ({
       <Typography size="text-md" weight="semibold">
         {t('label.announcement-plural')}
       </Typography>
-      {count !== undefined && (
-        <Badge
-          className="tw:rounded-md"
-          color="gray-blue"
-          size="sm"
-          type="color">
-          {count}
-        </Badge>
-      )}
+      <Badge className="tw:rounded-md" color="gray-blue" size="sm" type="color">
+        {count}
+      </Badge>
 
       <div className="tw:ml-auto tw:flex tw:items-center tw:gap-4">
         {pager}
@@ -227,21 +204,6 @@ const AnnouncementsRail: React.FC = () => {
 
   const hasLive = !isError && count > 0;
 
-  // With nothing live the rail stands down, which also takes "View all" — the
-  // only way to the scheduled and expired ones — with it. Reading ahead and
-  // housekeeping are the admin's job, so admins keep a compact entry point
-  // whenever there is anything to list; everyone else gets no empty heading.
-  // Asked only once the rail is known to be empty, so a live rail costs nothing.
-  const { data: hasAnyAnnouncement = false } = useQuery({
-    enabled:
-      Boolean(currentUser?.isAdmin) && announcements !== undefined && !hasLive,
-    queryFn: fetchHasAnyAnnouncement,
-    queryKey: HAS_ANY_ANNOUNCEMENT_QUERY_KEY,
-    staleTime: ACTIVE_ANNOUNCEMENTS_TTL_MS,
-  });
-  const showEntryOnly =
-    !hasLive && !isError && Boolean(currentUser?.isAdmin) && hasAnyAnnouncement;
-
   // The dialog is mounted beside the section, not inside it: dismissing the
   // last live card from the open dialog empties the rail, and unmounting the
   // dialog with it would close it on the scheduled and expired ones it lists.
@@ -254,17 +216,10 @@ const AnnouncementsRail: React.FC = () => {
     />
   );
 
+  // With nothing live the whole section stands down — no heading, no "View
+  // all" into a list of only scheduled and expired ones.
   if (!hasLive) {
-    return (
-      <>
-        {showEntryOnly && (
-          <section data-testid="announcements-section">
-            <AnnouncementsHeader onViewAll={openAll} />
-          </section>
-        )}
-        {dialog}
-      </>
-    );
+    return dialog;
   }
 
   return (
