@@ -121,7 +121,7 @@ class SparqlBuilderNestedFieldsTest {
 
       var toColumnField = nestedMapping.get().getField("toColumn");
       assertTrue(toColumnField.isPresent());
-      assertEquals("om:toColumn", toColumnField.get().getRdfProperty());
+      assertEquals("om:toColumnFqn", toColumnField.get().getRdfProperty());
     }
   }
 

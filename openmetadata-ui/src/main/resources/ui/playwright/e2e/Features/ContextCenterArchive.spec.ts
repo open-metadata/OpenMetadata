@@ -383,7 +383,6 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
     // ── 3. File is visible in the documents list ─────────────────────────────
 
     await test.step('uploaded file is visible with correct folder label', async () => {
-      await selectFolderInSidebar(page, folderName);
       const docRow = getDocumentRowByName(page, documentFileName);
       await expect(docRow).toBeVisible();
       await expect(docRow.getByTestId('document-folder-name')).toContainText(

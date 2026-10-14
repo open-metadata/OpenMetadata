@@ -658,7 +658,7 @@ test.describe('User Profile Feed Interactions', () => {
       .first();
 
     await avatar.hover();
-    const popover = page.locator('.ant-popover-card');
+    const popover = page.getByTestId('user-popover-card');
     await popover.waitFor({ state: 'visible' });
 
     // Get the expected username from the popover BEFORE clicking. The popover

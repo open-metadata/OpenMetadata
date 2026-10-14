@@ -79,6 +79,7 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
             "token_uri": "https://oauth2.googleapis.com/token",
             "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
             "client_x509_cert_url": "http://localhost:1234/",
+            "universe_domain": "googleapis.com",
         }
 
         self.assertEqual(expected_dict, build_google_credentials_dict(gcp_values))
@@ -87,6 +88,72 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
 
         with self.assertRaises(InvalidPrivateKeyException):
             build_google_credentials_dict(gcp_values)
+
+    def test_build_service_account_google_credentials_dict_with_universe_domain(self):
+        """
+        A sovereign/partner cloud service account (e.g. S3NS PREMI3NS) sets a
+        non-default `universeDomain`; it must be forwarded verbatim so
+        google-auth resolves the correct API endpoint domain.
+        """
+        gcp_values = GcpCredentialsValues(
+            type="service_account",
+            projectId=["s3ns:project_name"],
+            privateKeyId="private_key_id",
+            privateKey="""-----BEGIN RSA PRIVATE KEY-----
+MIICXQIBAAKBgQDMGwM93kIt3D4r4+dWAGdoTboSaZcFLhsG1lvnZlYEpnZoFo1M
+ek7laRKDUW3CkdTlSid9p4/RTs9SYKuuXvNKNSLApHUeR2zgKBIHYTGGv1t1bEWc
+ohVeqr7w8HkFr9LV4qxgFEWBBd3QYncY/Y1iZgTtbmMiUxJN9vj/kuH0xQIDAQAB
+AoGAPDqAY2JRrwy9v9/ZpPQrj4jYLpS//sRTL1pT9l2pZmfkquR0v6ub2nB+CQgf
+VnoIE70lGBw5AS+7V/i00JiuO6GP/MWWqxKdc5McjBGYDIb+9gQ/DrryVDHsqgGX
+iZrWr7rIrpGsbCB2xt2HPpKR7D9IpI8FA+EEU9fIPfETM6ECQQDv69L78zdijSNk
+CYx70dVHqCiDZT5RbkJqDmQwKabIGXBqZLTM+7ZAHotq0EXGc5BvQGyIMso/qIOs
+Wq3imi3dAkEA2ci4xEzj5guQcGxoVcxfGm+M/VqXLuw/eW1sYdOp52OwdDywxG+I
+6tpm5ByVowhqT8PHDJVOy8GEV9QNw0Y4CQJBAJiyn/rJJlPr/j1aMnZP642KwhY2
+pr4PDegQNsXMjKDISBr+82+POMSAbD1UR0RyItgbybe5k62GZB+bKxaRCGUCQEVj
+l8MrwH0eeCHp2IBlwnN40VIz1/GiYkL9I0g0GXFZKPKQF74uz1AM0DWkCeVNHBpY
+BYaz18xB1znonY33RIkCQQDE3wAWxFrvr582J12qJkE4enmNhRJFdcSREDX54d/5
+VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
+-----END RSA PRIVATE KEY-----""",
+            clientEmail="email@mail.com",
+            clientId="client_id",
+            universeDomain="s3nsapis.fr",
+        )
+
+        credentials_dict = build_google_credentials_dict(gcp_values)
+
+        assert credentials_dict["universe_domain"] == "s3nsapis.fr"
+
+    def test_build_service_account_google_credentials_dict_default_universe_domain(self):
+        """
+        Without an explicit `universeDomain`, the schema default keeps the
+        `googleapis.com` behaviour unchanged.
+        """
+        gcp_values = GcpCredentialsValues(
+            type="service_account",
+            projectId=["project_id"],
+            privateKeyId="private_key_id",
+            privateKey="""-----BEGIN RSA PRIVATE KEY-----
+MIICXQIBAAKBgQDMGwM93kIt3D4r4+dWAGdoTboSaZcFLhsG1lvnZlYEpnZoFo1M
+ek7laRKDUW3CkdTlSid9p4/RTs9SYKuuXvNKNSLApHUeR2zgKBIHYTGGv1t1bEWc
+ohVeqr7w8HkFr9LV4qxgFEWBBd3QYncY/Y1iZgTtbmMiUxJN9vj/kuH0xQIDAQAB
+AoGAPDqAY2JRrwy9v9/ZpPQrj4jYLpS//sRTL1pT9l2pZmfkquR0v6ub2nB+CQgf
+VnoIE70lGBw5AS+7V/i00JiuO6GP/MWWqxKdc5McjBGYDIb+9gQ/DrryVDHsqgGX
+iZrWr7rIrpGsbCB2xt2HPpKR7D9IpI8FA+EEU9fIPfETM6ECQQDv69L78zdijSNk
+CYx70dVHqCiDZT5RbkJqDmQwKabIGXBqZLTM+7ZAHotq0EXGc5BvQGyIMso/qIOs
+Wq3imi3dAkEA2ci4xEzj5guQcGxoVcxfGm+M/VqXLuw/eW1sYdOp52OwdDywxG+I
+6tpm5ByVowhqT8PHDJVOy8GEV9QNw0Y4CQJBAJiyn/rJJlPr/j1aMnZP642KwhY2
+pr4PDegQNsXMjKDISBr+82+POMSAbD1UR0RyItgbybe5k62GZB+bKxaRCGUCQEVj
+l8MrwH0eeCHp2IBlwnN40VIz1/GiYkL9I0g0GXFZKPKQF74uz1AM0DWkCeVNHBpY
+BYaz18xB1znonY33RIkCQQDE3wAWxFrvr582J12qJkE4enmNhRJFdcSREDX54d/5
+VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
+-----END RSA PRIVATE KEY-----""",
+            clientEmail="email@mail.com",
+            clientId="client_id",
+        )
+
+        credentials_dict = build_google_credentials_dict(gcp_values)
+
+        assert credentials_dict["universe_domain"] == "googleapis.com"
 
     def test_build_external_account_google_credentials_dict(self):
         """

@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import type { AntdIconProps } from '@ant-design/icons/lib/components/AntdIcon';
-import type { ForwardRefExoticComponent, RefAttributes } from 'react';
 import type { SortingField } from '../../components/Explore/SortingDropDown';
 import type { SORT_ORDER } from '../../enums/common.enum';
 
@@ -22,13 +20,7 @@ export type TabsInfoData = {
   sortField: string;
   sortOrder?: SORT_ORDER;
   path: string;
-  icon:
-    | React.ReactNode
-    | React.ElementType
-    | SvgComponent
-    | ForwardRefExoticComponent<
-        Omit<AntdIconProps, 'ref'> & RefAttributes<HTMLSpanElement>
-      >;
+  icon: React.ReactNode | React.ElementType | SvgComponent;
   iconClassName?: string;
 };
 

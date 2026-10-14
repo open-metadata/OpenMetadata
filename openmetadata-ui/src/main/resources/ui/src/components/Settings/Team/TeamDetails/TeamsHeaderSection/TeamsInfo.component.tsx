@@ -15,18 +15,22 @@ import {
   CloseOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
-import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Space, Tooltip } from 'antd';
+import {
+  Box,
+  Button,
+  Divider,
+  Owner,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
-  DE_ACTIVE_COLOR,
   GRAYED_OUT_COLOR,
-  ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
@@ -43,6 +47,7 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
+import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
 import { UserTeamSelectableList } from '../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
@@ -143,6 +148,7 @@ const TeamsInfo = ({
       const updatedData: Team = {
         ...currentTeam,
         profile: {
+          ...currentTeam.profile,
           subscription: isEmpty(data)
             ? undefined
             : {
@@ -175,35 +181,29 @@ const TeamsInfo = ({
 
   const emailRender = useMemo(
     () => (
-      <Space align="start" className="d-flex flex-col gap-2">
+      <Box
+        align="start"
+        className="layout-space layout-space-horizontal d-flex flex-col"
+        gap={2}
+        itemClassName="layout-space-item">
         <div className="d-flex gap-1">
           <Typography className="text-primary" weight="medium">{`${t(
             'label.email'
           )}`}</Typography>
           {hasEditPermission && (
-            <Tooltip
+            <EditIconButton
+              newLook
+              data-testid="edit-email"
+              size="small"
               title={t('label.edit-entity', {
                 entity: t('label.email'),
-              })}>
-              <Button
-                className="flex-center teams-info-email-edit-button p-0"
-                data-testid="edit-email"
-                icon={
-                  <EditIcon
-                    color={DE_ACTIVE_COLOR}
-                    {...ICON_DIMENSION}
-                    width="12px"
-                  />
-                }
-                size="small"
-                type="text"
-                onClick={(e) => {
-                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                  e.stopPropagation();
-                  setIsEmailEdit(true);
-                }}
-              />
-            </Tooltip>
+              })}
+              onClick={(e) => {
+                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                e.stopPropagation();
+                setIsEmailEdit(true);
+              }}
+            />
           )}
         </div>
         {isEmailEdit ? (
@@ -213,7 +213,12 @@ const TeamsInfo = ({
             //  TeamsDetailV1 collapsible panel
             onClick={(e) => e.stopPropagation()}
             onFinish={onEmailSave}>
-            <Space align="baseline">
+            <Box
+              inline
+              align="baseline"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <Form.Item
                 className="m-b-0"
                 name="email"
@@ -234,39 +239,47 @@ const TeamsInfo = ({
                   })}
                 />
               </Form.Item>
-              <Space size={4}>
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal"
+                gap={1}
+                itemClassName="layout-space-item">
                 <Button
-                  className="h-8 p-x-xss"
+                  color="primary"
                   data-testid="cancel-edit-email"
-                  disabled={isLoading}
-                  size="small"
-                  type="primary"
+                  isDisabled={isLoading}
+                  size="xs"
                   onClick={() => setIsEmailEdit(false)}>
                   <CloseOutlined />
                 </Button>
                 <Button
-                  className="h-8 p-x-xss"
+                  color="primary"
                   data-testid="save-edit-email"
-                  htmlType="submit"
-                  loading={isLoading}
-                  size="small"
-                  type="primary">
+                  isLoading={isLoading}
+                  size="xs"
+                  type="submit">
                   <CheckOutlined />
                 </Button>
-              </Space>
-            </Space>
+              </Box>
+            </Box>
           </Form>
         ) : (
-          <Space align="center">
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <Typography
               className="text-grey-700"
               data-testid="email-value"
               weight="medium">
               {email ?? NO_DATA_PLACEHOLDER}
             </Typography>
-          </Space>
+          </Box>
         )}
-      </Space>
+      </Box>
     ),
     [email, isEmailEdit, hasEditPermission, isLoading]
   );
@@ -279,35 +292,29 @@ const TeamsInfo = ({
     return (
       <>
         <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
-        <Space align="start" className="d-flex flex-col gap-2">
+        <Box
+          align="start"
+          className="layout-space layout-space-horizontal d-flex flex-col"
+          gap={2}
+          itemClassName="layout-space-item">
           <div className="d-flex  gap-2">
             <Typography className="text-primary" weight="medium">
               {`${t('label.type')}`}
             </Typography>
             {hasEditPermission && !showTypeSelector && !isGroupType && (
-              <Tooltip
+              <EditIconButton
+                newLook
+                data-testid="edit-team-type-icon"
+                size="small"
                 title={t('label.edit-entity', {
                   entity: t('label.team-type'),
-                })}>
-                <Button
-                  className="flex-center edit-team-type-icon p-0"
-                  data-testid="edit-team-type-icon"
-                  icon={
-                    <EditIcon
-                      color={DE_ACTIVE_COLOR}
-                      {...ICON_DIMENSION}
-                      width={12}
-                    />
-                  }
-                  size="small"
-                  type="text"
-                  onClick={(e) => {
-                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                    e.stopPropagation();
-                    setShowTypeSelector(true);
-                  }}
-                />
-              </Tooltip>
+                })}
+                onClick={(e: MouseEvent) => {
+                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                  e.stopPropagation();
+                  setShowTypeSelector(true);
+                }}
+              />
             )}
           </div>
 
@@ -329,7 +336,7 @@ const TeamsInfo = ({
               {teamType}
             </Typography>
           )}
-        </Space>
+        </Box>
       </>
     );
   }, [
@@ -351,7 +358,11 @@ const TeamsInfo = ({
     return (
       <>
         <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
-        <Space align="start" className="d-flex flex-col gap-2">
+        <Box
+          align="start"
+          className="layout-space layout-space-horizontal d-flex flex-col"
+          gap={2}
+          itemClassName="layout-space-item">
           <div className="d-flex gap-2">
             <Typography className="text-primary" weight="medium">
               {t('label.persona')}
@@ -382,7 +393,7 @@ const TeamsInfo = ({
               </Typography>
             )}
           </div>
-        </Space>
+        </Box>
       </>
     );
   }, [
@@ -394,10 +405,12 @@ const TeamsInfo = ({
   ]);
 
   return (
-    <Space
-      className="teams-info-header-container"
+    <Box
+      align="center"
+      className="layout-space layout-space-horizontal teams-info-header-container"
       data-testid="teams-info-header"
-      size={0}>
+      gap={0}
+      itemClassName="layout-space-item">
       <DomainLabel
         headerLayout
         multiple
@@ -439,14 +452,20 @@ const TeamsInfo = ({
 
       <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
 
-      <Space align="start" className="d-flex flex-col gap-2">
+      <Box
+        align="start"
+        className="layout-space layout-space-horizontal d-flex flex-col"
+        gap={2}
+        itemClassName="layout-space-item">
         <Typography
           className="text-primary d-flex items-center"
           weight="medium">
           {t('label.total-user-plural')}
           <Tooltip
-            destroyTooltipOnHide
-            title={t('message.team-distinct-user-description')}>
+            arrow
+            excludeTriggerFromTabOrder
+            title={t('message.team-distinct-user-description')}
+            triggerClassName="tw:inline-flex">
             <InfoCircleOutlined
               className="m-x-xss"
               data-testid="helper-icon"
@@ -461,8 +480,8 @@ const TeamsInfo = ({
           weight="medium">
           {currentTeam.userCount}
         </Typography>
-      </Space>
-    </Space>
+      </Box>
+    </Box>
   );
 };
 

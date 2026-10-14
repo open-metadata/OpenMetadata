@@ -15,7 +15,6 @@ package org.openmetadata.service.events.scheduled;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.db.DataSourceFactory;
@@ -49,29 +48,27 @@ import org.quartz.spi.OperableTrigger;
 class EventSubscriptionSchedulerTest {
 
   @Test
-  @DisplayName("Scheduler should use ALERT_JOB_GROUP for job grouping")
-  void testAlertJobGroupConstant() {
-    assertEquals(
-        "OMAlertJobGroup",
-        EventSubscriptionScheduler.ALERT_JOB_GROUP,
-        "Job group should be OMAlertJobGroup");
-  }
+  void configuresClusteredJdbcStore() {
+    DataSourceFactory postgres = new DataSourceFactory();
+    postgres.setDriverClass("org.postgresql.Driver");
+    postgres.setUrl("jdbc:postgresql://localhost/openmetadata_db");
+    postgres.setUser("openmetadata_user");
+    postgres.setPassword("openmetadata_password");
 
-  @Test
-  @DisplayName("Scheduler should use ALERT_TRIGGER_GROUP for trigger grouping")
-  void testAlertTriggerGroupConstant() {
-    assertEquals(
-        "OMAlertJobGroup",
-        EventSubscriptionScheduler.ALERT_TRIGGER_GROUP,
-        "Trigger group should be OMAlertJobGroup");
-  }
+    Properties quartz = EventSubscriptionScheduler.quartzProperties(postgres);
 
-  @Test
-  @DisplayName("Scheduler constants should be defined")
-  void testSchedulerConstantsExist() {
-    assertNotNull(EventSubscriptionScheduler.ALERT_JOB_GROUP, "ALERT_JOB_GROUP should be defined");
-    assertNotNull(
-        EventSubscriptionScheduler.ALERT_TRIGGER_GROUP, "ALERT_TRIGGER_GROUP should be defined");
+    assertEquals(
+        "org.quartz.impl.jdbcjobstore.JobStoreTX", quartz.get("org.quartz.jobStore.class"));
+    assertEquals("true", quartz.get("org.quartz.jobStore.isClustered"));
+    assertEquals(
+        "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate",
+        quartz.get("org.quartz.jobStore.driverDelegateClass"));
+    assertEquals("10", quartz.get("org.quartz.threadPool.threadCount"));
+    assertEquals("OMEventSubSchedulerDS", quartz.get("org.quartz.jobStore.dataSource"));
+    assertTrue(
+        quartz.stringPropertyNames().stream()
+            .noneMatch(name -> name.startsWith("org.quartz.dataSource.")),
+        "the pool is the server's own, so Quartz is given no data source of its own to build");
   }
 
   @Test
@@ -79,7 +76,7 @@ class EventSubscriptionSchedulerTest {
   void testEnsureAuditLogConsumerSchedulesWhenAbsent() throws SchedulerException {
     Scheduler scheduler = newStandbyScheduler("audit-absent");
     try {
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       assertTrue(scheduler.checkExists(auditJobKey()), "Audit log consumer job should exist");
       assertEquals(
@@ -103,7 +100,7 @@ class EventSubscriptionSchedulerTest {
           scheduler.getTriggerState(auditTriggerKey()),
           "Precondition: an abandoned trigger still reports as NORMAL/WAITING");
 
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       Date freshNextFire = scheduler.getTrigger(auditTriggerKey()).getNextFireTime();
       assertTrue(
@@ -119,14 +116,14 @@ class EventSubscriptionSchedulerTest {
   void testEnsureAuditLogConsumerRecoversPausedTrigger() throws SchedulerException {
     Scheduler scheduler = newStandbyScheduler("audit-paused");
     try {
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
       scheduler.pauseTrigger(auditTriggerKey());
       assertEquals(
           Trigger.TriggerState.PAUSED,
           scheduler.getTriggerState(auditTriggerKey()),
           "Precondition: trigger is paused");
 
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       assertEquals(
           Trigger.TriggerState.NORMAL,
@@ -142,8 +139,8 @@ class EventSubscriptionSchedulerTest {
   void testEnsureAuditLogConsumerIsIdempotent() throws SchedulerException {
     Scheduler scheduler = newStandbyScheduler("audit-idempotent");
     try {
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       assertEquals(
           1,
@@ -159,15 +156,67 @@ class EventSubscriptionSchedulerTest {
   }
 
   @Test
-  @DisplayName("Quartz treats a trigger as misfired after five seconds")
-  void testQuartzPropertiesUseFiveSecondMisfireThreshold() {
+  @DisplayName("A trigger waiting for a free thread stays acquirable for ten minutes")
+  void testQuartzPropertiesKeepAWaitingTriggerAcquirable() {
     Properties quartz =
         EventSubscriptionScheduler.quartzProperties(database(ConnectionType.MYSQL.label));
 
     assertEquals(
-        "5000",
+        "600000",
         quartz.get("org.quartz.jobStore.misfireThreshold"),
-        "The misfire handler rescans at this period, so a late poller waits at most this long");
+        "Far above a time budget plus one slow event, so an alert that waits keeps its turn");
+  }
+
+  @Test
+  @DisplayName("An alert whose tick ended past its next slot runs one interval after that tick")
+  void testLateAlertTriggerRestartsOneIntervalAfterTheTick() {
+    EventSubscription subscription = subscription(60);
+    OperableTrigger stored = (OperableTrigger) AlertJobs.trigger(subscription);
+    stored.setNextFireTime(new Date(NOW - Duration.ofMinutes(3).toMillis()));
+
+    SimpleTrigger restarted =
+        (SimpleTrigger) AlertJobs.restarted(stored, subscription, NOW).orElseThrow();
+
+    assertEquals(new Date(NOW + 60_000L), restarted.getStartTime());
+    assertEquals(stored.getKey(), restarted.getKey());
+    assertEquals(60_000L, restarted.getRepeatInterval());
+    assertEquals(
+        SimpleTrigger.MISFIRE_INSTRUCTION_RESCHEDULE_NOW_WITH_EXISTING_REPEAT_COUNT,
+        restarted.getMisfireInstruction());
+  }
+
+  @Test
+  @DisplayName("An alert whose next slot is still ahead keeps its timetable")
+  void testOnTimeAlertTriggerIsLeftAlone() {
+    EventSubscription subscription = subscription(60);
+    OperableTrigger stored = (OperableTrigger) AlertJobs.trigger(subscription);
+    stored.setNextFireTime(new Date(NOW + 30_000L));
+
+    assertTrue(AlertJobs.restarted(stored, subscription, NOW).isEmpty());
+  }
+
+  @Test
+  @DisplayName("A switched-off or deleted alert is not restarted")
+  void testAlertWithNothingToScheduleIsNotRestarted() {
+    EventSubscription subscription = subscription(60);
+    OperableTrigger stored = (OperableTrigger) AlertJobs.trigger(subscription);
+    stored.setNextFireTime(new Date(NOW - 60_000L));
+
+    assertTrue(AlertJobs.restarted(stored, subscription.withEnabled(false), NOW).isEmpty());
+    assertTrue(AlertJobs.restarted(stored, null, NOW).isEmpty());
+    assertTrue(AlertJobs.restarted(null, subscription(60), NOW).isEmpty());
+  }
+
+  @Test
+  @DisplayName("The audit log consumer runs one interval after a run that ended past its slot")
+  void testLateAuditLogTriggerRestartsOneIntervalAfterTheRun() {
+    OperableTrigger stored =
+        (OperableTrigger)
+            AuditLogSchedule.restarted(behindBy(Duration.ofMinutes(2)), NOW).orElseThrow();
+
+    assertEquals(new Date(NOW + 5_000L), stored.getStartTime());
+    assertEquals(auditTriggerKey(), stored.getKey());
+    assertTrue(AuditLogSchedule.restarted(aheadBy(Duration.ofSeconds(3)), NOW).isEmpty());
   }
 
   @Test
@@ -204,14 +253,13 @@ class EventSubscriptionSchedulerTest {
   void testAlertTriggerFiresNowAfterMisfire() {
     EventSubscription subscription = subscription(30);
 
-    SimpleTrigger trigger = (SimpleTrigger) EventSubscriptionScheduler.trigger(subscription);
+    SimpleTrigger trigger = (SimpleTrigger) AlertJobs.trigger(subscription);
 
     assertEquals(
         SimpleTrigger.MISFIRE_INSTRUCTION_RESCHEDULE_NOW_WITH_EXISTING_REPEAT_COUNT,
         trigger.getMisfireInstruction());
     assertEquals(
-        new TriggerKey(
-            subscription.getId().toString(), EventSubscriptionScheduler.ALERT_TRIGGER_GROUP),
+        AlertJobs.triggerKey(subscription.getId()),
         trigger.getKey(),
         "The key must stay the same so rescheduling replaces the stored trigger");
     assertEquals(30_000L, trigger.getRepeatInterval());
@@ -221,8 +269,7 @@ class EventSubscriptionSchedulerTest {
   @Test
   @DisplayName("A stalled alert trigger fires now instead of waiting for its next slot")
   void testStalledAlertTriggerFiresAtOnceInsteadOfNextSlot() {
-    OperableTrigger trigger =
-        (OperableTrigger) EventSubscriptionScheduler.trigger(subscription(60));
+    OperableTrigger trigger = (OperableTrigger) AlertJobs.trigger(subscription(60));
     trigger.setNextFireTime(Date.from(Instant.now().minus(Duration.ofMinutes(10))));
 
     trigger.updateAfterMisfire(null);
@@ -237,7 +284,7 @@ class EventSubscriptionSchedulerTest {
   void testAuditLogTriggerFiresNowAfterMisfire() throws SchedulerException {
     Scheduler scheduler = newStandbyScheduler("audit-misfire");
     try {
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       assertEquals(
           SimpleTrigger.MISFIRE_INSTRUCTION_RESCHEDULE_NOW_WITH_EXISTING_REPEAT_COUNT,
@@ -258,7 +305,7 @@ class EventSubscriptionSchedulerTest {
           scheduler.getTrigger(auditTriggerKey()).getMisfireInstruction(),
           "Precondition: a trigger stored by an older version uses the default policy");
 
-      EventSubscriptionScheduler.ensureAuditLogConsumerScheduled(scheduler);
+      AuditLogSchedule.ensureScheduled(scheduler);
 
       assertEquals(
           SimpleTrigger.MISFIRE_INSTRUCTION_RESCHEDULE_NOW_WITH_EXISTING_REPEAT_COUNT,
@@ -277,7 +324,7 @@ class EventSubscriptionSchedulerTest {
       JobDetail job = alertJob(subscription);
       scheduler.scheduleJob(job, olderVersionTrigger(subscription));
 
-      scheduler.scheduleJob(job, Set.of(EventSubscriptionScheduler.trigger(subscription)), true);
+      scheduler.scheduleJob(job, Set.of(AlertJobs.trigger(subscription)), true);
 
       assertEquals(1, scheduler.getTriggersOfJob(job.getKey()).size());
       assertEquals(
@@ -290,14 +337,13 @@ class EventSubscriptionSchedulerTest {
 
   private static JobDetail alertJob(EventSubscription subscription) {
     return JobBuilder.newJob(AlertPublisher.class)
-        .withIdentity(subscription.getId().toString(), EventSubscriptionScheduler.ALERT_JOB_GROUP)
+        .withIdentity(AlertJobs.jobKey(subscription.getId()))
         .build();
   }
 
   private static Trigger olderVersionTrigger(EventSubscription subscription) {
     return TriggerBuilder.newTrigger()
-        .withIdentity(
-            subscription.getId().toString(), EventSubscriptionScheduler.ALERT_TRIGGER_GROUP)
+        .withIdentity(AlertJobs.triggerKey(subscription.getId()))
         .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever(subscription.getPollInterval()))
         .startNow()
         .build();
@@ -307,6 +353,27 @@ class EventSubscriptionSchedulerTest {
     DataSourceFactory database = new DataSourceFactory();
     database.setDriverClass(driverClass);
     return database;
+  }
+
+  private static final long NOW = Instant.parse("2026-09-29T12:00:00Z").toEpochMilli();
+
+  private static Trigger behindBy(Duration behind) {
+    return auditTriggerNextFiringAt(NOW - behind.toMillis());
+  }
+
+  private static Trigger aheadBy(Duration ahead) {
+    return auditTriggerNextFiringAt(NOW + ahead.toMillis());
+  }
+
+  private static Trigger auditTriggerNextFiringAt(long at) {
+    OperableTrigger trigger =
+        (OperableTrigger)
+            TriggerBuilder.newTrigger()
+                .withIdentity(auditTriggerKey())
+                .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever(5))
+                .build();
+    trigger.setNextFireTime(new Date(at));
+    return trigger;
   }
 
   private static EventSubscription subscription(int pollSeconds) {
@@ -329,15 +396,11 @@ class EventSubscriptionSchedulerTest {
   }
 
   private static JobKey auditJobKey() {
-    return new JobKey(
-        EventSubscriptionScheduler.AUDIT_LOG_JOB_ID,
-        EventSubscriptionScheduler.AUDIT_LOG_JOB_GROUP);
+    return new JobKey(AuditLogSchedule.AUDIT_LOG_JOB_ID, AuditLogSchedule.AUDIT_LOG_JOB_GROUP);
   }
 
   private static TriggerKey auditTriggerKey() {
-    return new TriggerKey(
-        EventSubscriptionScheduler.AUDIT_LOG_JOB_ID,
-        EventSubscriptionScheduler.AUDIT_LOG_JOB_GROUP);
+    return new TriggerKey(AuditLogSchedule.AUDIT_LOG_JOB_ID, AuditLogSchedule.AUDIT_LOG_JOB_GROUP);
   }
 
   private static Scheduler newStandbyScheduler(String instanceName) throws SchedulerException {

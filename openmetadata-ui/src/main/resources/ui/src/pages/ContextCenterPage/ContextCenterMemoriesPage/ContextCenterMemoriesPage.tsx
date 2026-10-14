@@ -54,6 +54,7 @@ import {
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
 import {
+  DEFAULT_MEMORY_STATUSES,
   FILTER_TABS,
   MEMORIES_PER_PAGE,
   MEMORY_FIELDS,
@@ -64,7 +65,7 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import {
   ContextMemory,
-  EntityStatus,
+  ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { queryClient } from '../../../queryClient';
@@ -100,11 +101,10 @@ const getSortLabel = (
 ): string => options.find((option) => option.id === sortBy)?.label ?? '';
 
 const MEMORY_STATUSES = [
-  EntityStatus.Approved,
-  EntityStatus.Draft,
-  EntityStatus.Deprecated,
-  EntityStatus.Rejected,
-  EntityStatus.Archived,
+  ...DEFAULT_MEMORY_STATUSES,
+  ...Object.values(ContextMemoryStatus).filter(
+    (status) => !DEFAULT_MEMORY_STATUSES.includes(status)
+  ),
 ];
 const CREATED_BY_ME_FILTER = 'created-by-me' as const;
 
@@ -155,7 +155,7 @@ const getMemoriesViewFlags = ({
   selectedAsset?: DataAssetOption;
   selectedAuthor?: MemoryFilterOption;
   activeFilter: MemoryFilterTab;
-  selectedStatuses: EntityStatus[];
+  selectedStatuses: ContextMemoryStatus[];
   debouncedSearch: string;
   isMemoriesLoading: boolean;
   memoriesLength: number;
@@ -163,8 +163,10 @@ const getMemoriesViewFlags = ({
   const hasActiveFilters = Boolean(
     selectedAsset ||
       selectedAuthor ||
-      selectedStatuses.length !== 1 ||
-      selectedStatuses[0] !== EntityStatus.Approved
+      selectedStatuses.length !== DEFAULT_MEMORY_STATUSES.length ||
+      DEFAULT_MEMORY_STATUSES.some(
+        (status) => !selectedStatuses.includes(status)
+      )
   );
   const isMemoriesSearching = Boolean(debouncedSearch.trim());
   const isMemoriesFilteredOnly = Boolean(
@@ -304,9 +306,9 @@ const ContextCenterMemoriesPage: FC = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [activeFilter, setActiveFilter] = useState<MemoryFilterTab>('all');
-  const [selectedStatuses, setSelectedStatuses] = useState<EntityStatus[]>([
-    EntityStatus.Approved,
-  ]);
+  const [selectedStatuses, setSelectedStatuses] = useState<
+    ContextMemoryStatus[]
+  >(DEFAULT_MEMORY_STATUSES);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
   const [selectedAuthor, setSelectedAuthor] = useState<MemoryFilterOption>();
@@ -317,6 +319,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [debouncedAuthorSearch, setDebouncedAuthorSearch] = useState('');
   const isAuthorSearchMounted = useRef(false);
+  const latestAuthorRequest = useRef(0);
 
   const SORT_OPTIONS = useMemo(
     () => [
@@ -470,9 +473,15 @@ const ContextCenterMemoriesPage: FC = () => {
   ]);
 
   const fetchAuthorOptions = useCallback(async (query: string) => {
+    // Opening the menu searches '' and typing searches the text, so both can be in flight;
+    // only the latest may write, or a slow '' response replaces the typed results.
+    const request = ++latestAuthorRequest.current;
     setIsAuthorOptionsLoading(true);
     try {
       const response = await getUserAndTeamSearch(query, true, 25);
+      if (request !== latestAuthorRequest.current) {
+        return;
+      }
       const options = response.data.hits.hits
         .map((hit): MemoryFilterOption | undefined => {
           const source = hit._source as SearchOptionSource;
@@ -492,9 +501,13 @@ const ContextCenterMemoriesPage: FC = () => {
         .filter((option): option is MemoryFilterOption => Boolean(option));
       setAuthorOptions(options);
     } catch (err) {
-      showErrorToast(err as AxiosError);
+      if (request === latestAuthorRequest.current) {
+        showErrorToast(err as AxiosError);
+      }
     } finally {
-      setIsAuthorOptionsLoading(false);
+      if (request === latestAuthorRequest.current) {
+        setIsAuthorOptionsLoading(false);
+      }
     }
   }, []);
 
@@ -566,7 +579,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const handleClearFilters = useCallback(() => {
     setSelectedAsset(undefined);
     setSelectedAuthor(undefined);
-    setSelectedStatuses([EntityStatus.Approved]);
+    setSelectedStatuses(DEFAULT_MEMORY_STATUSES);
     setActiveFilter('all');
     setCurrentPage(1);
   }, []);
@@ -585,7 +598,7 @@ const ContextCenterMemoriesPage: FC = () => {
     setCurrentPage(1);
   }, []);
 
-  const handleStatusChange = useCallback((status: EntityStatus) => {
+  const handleStatusChange = useCallback((status: ContextMemoryStatus) => {
     setSelectedStatuses((current) => {
       if (current.includes(status)) {
         return current.length > 1
@@ -761,6 +774,10 @@ const ContextCenterMemoriesPage: FC = () => {
     entity: t('label.asset-plural'),
   });
   const allAuthorsLabel = t('label.all-entity', { entity: t('label.author') });
+  const selectedStatusLabelKey = MEMORY_STATUS_LABEL_KEYS[selectedStatuses[0]];
+  const selectedStatusLabel = selectedStatusLabelKey
+    ? t(selectedStatusLabelKey)
+    : selectedStatuses[0];
 
   const headerActions = (
     <Button
@@ -775,7 +792,7 @@ const ContextCenterMemoriesPage: FC = () => {
 
   return (
     <Box
-      className={`tw:w-full tw:h-full tw:bg-secondary tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:w-full tw:h-full tw:bg-canvas tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-memories-page"
       direction="col">
       <DocumentTitle title={t('label.memory-plural')} />
@@ -926,7 +943,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       size="md">
                       {t('label.status')}:{' '}
                       {selectedStatuses.length === 1
-                        ? t(MEMORY_STATUS_LABEL_KEYS[selectedStatuses[0]])
+                        ? selectedStatusLabel
                         : `${selectedStatuses.length} ${t(
                             'label.status-plural'
                           )}`}
@@ -936,13 +953,17 @@ const ContextCenterMemoriesPage: FC = () => {
                         selectedKeys={selectedStatuses}
                         selectionMode="multiple"
                         onAction={(key) =>
-                          handleStatusChange(key as EntityStatus)
+                          handleStatusChange(key as ContextMemoryStatus)
                         }>
                         {MEMORY_STATUSES.map((status) => (
                           <Dropdown.Item
                             id={status}
                             key={status}
-                            label={t(MEMORY_STATUS_LABEL_KEYS[status])}
+                            label={
+                              MEMORY_STATUS_LABEL_KEYS[status]
+                                ? t(MEMORY_STATUS_LABEL_KEYS[status])
+                                : status
+                            }
                           />
                         ))}
                       </Dropdown.Menu>
