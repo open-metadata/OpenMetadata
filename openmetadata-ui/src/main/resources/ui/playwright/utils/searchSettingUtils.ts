@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { getApiContext } from './common';
 
 export const mockScoreMode = 'first';
@@ -188,4 +188,21 @@ export const restoreDefaultSearchSettings = async (page: Page) => {
   );
 
   expect(tableConfig).toEqual(mockEntitySearchConfig);
+};
+
+// Expanding a panel smooth-scrolls it, and react-aria closes a select popover
+// whose trigger scrolls, so retry until the value sticks.
+export const selectSettingOption = async (
+  page: Page,
+  select: Locator,
+  optionName: string
+) => {
+  const trigger = select.getByRole('button');
+  await expect(async () => {
+    await trigger.click();
+    await page.getByRole('option', { name: optionName }).click({
+      timeout: 2_000,
+    });
+    await expect(trigger).toHaveText(optionName, { timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
 };

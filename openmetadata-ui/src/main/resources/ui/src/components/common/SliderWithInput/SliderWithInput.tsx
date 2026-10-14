@@ -13,14 +13,13 @@
 
 import {
   Box,
-  ButtonUtility,
+  Button,
   NumberInput,
   Slider,
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
-
-import classNames from 'classnames';
+import { isNumber } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { SliderWithInputProps } from './SliderWithInput.interface';
 const SliderWithInput = ({
@@ -33,45 +32,44 @@ const SliderWithInput = ({
 
   return (
     <Box
-      align="center"
-      className={classNames('tw:w-full', className)}
+      className={`layout-row ${className} tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5`}
       data-testid="percentage-input"
-      gap={5}>
-      <Box className="tw:block tw:min-w-0 tw:flex-1">
+      wrap="wrap">
+      <Box className="layout-column tw:block tw:flex-auto">
         <Slider
           showRange
-          aria-label={t('label.value')}
+          aria-label={t('label.profile-sample')}
           labelFormatter={(value) => `${value}%`}
           maxValue={100}
           minValue={min}
-          value={value}
-          onChange={(value) =>
-            onChange(Array.isArray(value) ? value[0] : value)
-          }
+          step={1}
+          value={value ?? min}
+          onChange={(next) => onChange(isNumber(next) ? next : next[0])}
         />
       </Box>
-      <Box align="center" className="tw:w-40 tw:shrink-0" gap={2}>
-        <NumberInput
-          aria-label={t('label.value')}
-          inputDataTestId="slider-input"
-          maxValue={100}
-          minValue={min}
-          step={1}
-          suffix="%"
-          value={value}
-          onChange={(value) =>
-            onChange(Array.isArray(value) ? value[0] : value)
-          }
-        />
-        <Tooltip arrow title={t('label.clear')}>
-          <ButtonUtility
-            color="tertiary"
-            data-testid="clear-slider-input"
-            icon={XClose}
-            size="xs"
-            onClick={() => onChange(null)}
+      <Box className="layout-column tw:block tw:w-44">
+        <Box align="center" gap={2}>
+          <NumberInput
+            aria-label={t('label.profile-sample')}
+            formatOptions={{ style: 'unit', unit: 'percent' }}
+            inputDataTestId="slider-input"
+            maxValue={100}
+            minValue={min}
+            step={1}
+            value={value ?? Number.NaN}
+            onChange={(next) => onChange(Number.isNaN(next) ? null : next)}
           />
-        </Tooltip>
+          <Tooltip arrow title={t('label.clear')}>
+            <Button
+              aria-label={t('label.clear')}
+              color="tertiary"
+              data-testid="clear-slider-input"
+              iconLeading={XClose}
+              size="xs"
+              onPress={() => onChange(null)}
+            />
+          </Tooltip>
+        </Box>
       </Box>
     </Box>
   );

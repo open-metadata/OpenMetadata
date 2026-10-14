@@ -44,6 +44,21 @@ describe('Card theme roles', () => {
     }
   );
 
+  it('muted variant matches the Explore card and lifts on hover when clickable', () => {
+    render(
+      <Card isClickable data-testid="card" variant="muted">
+        Content
+      </Card>
+    );
+
+    expect(screen.getByTestId('card')).toHaveClass(
+      'tw:border-secondary',
+      'tw:bg-primary_alt',
+      'tw:hover:shadow-lg',
+      'tw:motion-safe:hover:-translate-y-0.5'
+    );
+  });
+
   it('paints the secondary colour on a ghost card', () => {
     render(
       <Card color="secondary" data-testid="card" variant="ghost">

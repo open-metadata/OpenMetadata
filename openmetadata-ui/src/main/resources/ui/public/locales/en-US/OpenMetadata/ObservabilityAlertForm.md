@@ -49,7 +49,7 @@ $$section
 
 The type of asset this alert watches. Choose from **Table**, **Topic**, **Container**, **Pipeline**, **Ingestion Pipeline**, **Test Case**, **Test Suite**, or **Data Contract**.
 
-The source is the first choice because it determines everything after it — each asset type emits its own events, so the available filters and triggers change with it. Changing the source later resets the filters, triggers, and destinations you have configured.
+The source is the first choice because it determines everything after it — each asset type emits its own events, so the available filters and triggers change with it. Adding or removing a source resets the filters and triggers; removing one also resets the destinations.
 
 **Examples:**
 

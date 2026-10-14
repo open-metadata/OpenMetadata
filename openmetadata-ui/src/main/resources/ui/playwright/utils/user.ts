@@ -496,7 +496,7 @@ export const generateToken = async (page: Page) => {
 
   await page.click('[data-testid="token-expiry"]');
 
-  await page.locator('[title="1 hour"] div').click();
+  await page.getByRole('option', { name: '1 hour', exact: true }).click();
 
   await expect(page.locator('[data-testid="token-expiry"]')).toBeVisible();
 
@@ -521,23 +521,18 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
 
 export const updateExpiration = async (page: Page, expiry: number) => {
   await page.click('[data-testid="token-expiry"]');
-  await page.click(`text=${expiry} day${expiry > 1 ? 's' : ''}`);
+  await page
+    .getByRole('option', {
+      name: `${expiry} day${expiry > 1 ? 's' : ''}`,
+      exact: true,
+    })
+    .click();
 
   const expiryDate = customFormatDateTime(
     getEpochMillisForFutureDays(expiry as number),
     `ccc d'th' MMMM, yyyy`
   );
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown close animation delay
-  await page.waitForTimeout(100);
-
-  // Click outside to close any open dropdowns
-  await page.mouse.click(1, 1);
-
-  // Wait for any dropdown animations to complete
-  await page.locator('.ant-select-dropdown').waitFor({ state: 'hidden' });
-
-  // Now click the save button
   await page.click('[data-testid="save-edit"]');
 
   await expect(
@@ -731,12 +726,9 @@ export const addUser = async (
 
   await fillDescriptionBox(page, 'Adding new user');
 
-  await page
-    .getByRole('radiogroup')
-    .getByText('Create Password', { exact: true })
-    .click();
-  await page.fill('input[name="password"]', password);
-  await page.fill('input[name="confirmPassword"]', password);
+  await page.getByTestId('password-create').click();
+  await page.getByTestId('password').fill(password);
+  await page.getByTestId('confirmPassword').fill(password);
 
   const rolesCombobox = page
     .getByTestId('roles-dropdown')
@@ -746,29 +738,19 @@ export const addUser = async (
   const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
   await rolesCombobox.fill(role);
   await rolesSearchResponse;
-  const roleOption = page
-    .locator('.ant-select-item-option-content')
-    .filter({ hasText: new RegExp(`^${role}$`) });
+  const roleOption = page.getByRole('option', { name: role, exact: true });
   await expect(roleOption).toBeVisible({ timeout: LONG_ACTION_TIMEOUT });
   await roleOption.click();
-  await clickOutside(page);
+  await page.keyboard.press('Escape');
 
   if (personas?.length) {
-    await page
-      .locator('[data-testid="personas-dropdown"] .ant-select-selector')
-      .click();
-    await page
+    const personasCombobox = page
       .getByTestId('personas-dropdown')
-      .getByRole('combobox')
-      .fill(personas[0]);
-    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
-    const personaOption = page
-      .locator('.ant-select-dropdown:visible')
-      .locator('.ant-select-item-option')
-      .filter({ hasText: personas[0] });
-    await personaOption.waitFor({ state: 'visible' });
-    await personaOption.click();
-    await clickOutside(page);
+      .getByRole('combobox');
+    await personasCombobox.click();
+    await personasCombobox.fill(personas[0]);
+    await page.getByRole('option', { name: personas[0], exact: true }).click();
+    await page.keyboard.press('Escape');
   }
 
   const saveResponse = page.waitForResponse('/api/v1/users');
@@ -798,12 +780,9 @@ export const checkForUserExistError = async (
 
   await fillDescriptionBox(page, 'Adding new user');
 
-  await page
-    .getByRole('radiogroup')
-    .getByText('Create Password', { exact: true })
-    .click();
-  await page.fill('input[name="password"]', password);
-  await page.fill('input[name="confirmPassword"]', password);
+  await page.getByTestId('password-create').click();
+  await page.getByTestId('password').fill(password);
+  await page.getByTestId('confirmPassword').fill(password);
 
   const saveResponse = page.waitForResponse('/api/v1/users');
   await page.click('[data-testid="save-user"]');

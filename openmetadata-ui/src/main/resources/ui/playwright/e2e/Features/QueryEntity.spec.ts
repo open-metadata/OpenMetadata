@@ -85,25 +85,21 @@ test('Query Entity', async ({ page }) => {
     await page.click(descriptionBox);
     await page.keyboard.type(queryData.description);
 
-    await page
+    const queryUsedInInput = page
       .getByTestId('query-used-in')
-      .locator('div')
-      .filter({ hasText: 'Please Select a Query Used In' })
-      .click();
+      .getByRole('combobox');
+    await queryUsedInInput.click();
     const tableSearchResponse = page.waitForResponse(
       `/api/v1/search/query?q=*&index=table*`
     );
-    await page.keyboard.type(queryData.queryUsedIn.table1);
+    await queryUsedInInput.fill(queryData.queryUsedIn.table1);
     await tableSearchResponse;
 
     await page
-      .locator('.ant-select-dropdown:visible .ant-select-item-option')
-      .filter({
-        has: page.getByText(queryData.queryUsedIn.table1, { exact: true }),
-      })
+      .getByRole('option', { name: queryData.queryUsedIn.table1, exact: true })
       .click();
 
-    await clickOutside(page);
+    await page.keyboard.press('Escape');
 
     const createQueryResponse = page.waitForResponse('/api/v1/queries');
     await page.click('[data-testid="save-btn"]');
@@ -205,14 +201,18 @@ test('Query Entity', async ({ page }) => {
     await page.click(CODE_EDITOR_LINE, { clickCount: 3 });
     await page.keyboard.press('Backspace');
     await page.keyboard.type(`${queryData.queryUsedIn.table1}`);
-    await page.click('[data-testid="edit-query-used-in"]');
     const tableSearchResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=table*'
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('index=table')
     );
-    await page.keyboard.type(queryData.queryUsedIn.table2);
+    await page
+      .getByTestId('edit-query-used-in')
+      .getByRole('combobox')
+      .fill(queryData.queryUsedIn.table2);
     await tableSearchResponse;
     await page
-      .locator('.ant-select-dropdown:visible .ant-select-item-option')
+      .getByRole('option')
       .filter({
         has: page.getByText(queryData.queryUsedIn.table2, { exact: true }),
       })

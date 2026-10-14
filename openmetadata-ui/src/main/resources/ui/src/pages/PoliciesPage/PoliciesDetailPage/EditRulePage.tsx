@@ -15,23 +15,24 @@ import {
   Box,
   Button,
   Card,
-  HookForm,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { INITIAL_RULE } from '../../../components/discovery/personal-space/Profile/tabs/access-control/AccessControl.constants';
+import AccessControlRuleForm from '../../../components/discovery/personal-space/Profile/tabs/access-control/AccessControlRuleForm';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { Effect, Rule } from '../../../generated/api/policies/createPolicy';
+import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPolicyByName, patchPolicy } from '../../../rest/rolesAPIV1';
@@ -42,18 +43,8 @@ import {
   getSettingPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RuleForm, { PolicyRuleFormValues } from '../RuleForm/RuleForm';
 
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
-
-const InitialData: Rule = {
-  name: '',
-  description: '',
-  resources: [],
-  operations: [],
-  condition: '',
-  effect: Effect.Allow,
-};
 
 const EditRulePage = () => {
   const { t } = useTranslation();
@@ -61,20 +52,7 @@ const EditRulePage = () => {
   const { fqn, ruleName } = useFqn();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [policy, setPolicy] = useState<Policy>({} as Policy);
-  const [ruleData, setRuleData] = useState<Rule>(InitialData);
-
-  const selectedRuleRef = useRef<Rule | undefined>(InitialData);
-
-  const form = useForm<PolicyRuleFormValues>({
-    mode: 'onChange',
-    defaultValues: {
-      ruleName: '',
-      resources: [],
-      operations: [],
-      ruleEffect: Effect.Allow,
-      condition: '',
-    },
-  });
+  const ruleForm = useForm<Rule>({ defaultValues: INITIAL_RULE });
 
   const breadcrumb = useMemo(
     () => [
@@ -109,15 +87,7 @@ const EditRulePage = () => {
       if (data) {
         setPolicy(data);
         const selectedRule = data.rules.find((rule) => rule.name === ruleName);
-        selectedRuleRef.current = selectedRule;
-        setRuleData(selectedRule ?? InitialData);
-        form.reset({
-          ruleName: selectedRule?.name ?? '',
-          resources: selectedRule?.resources ?? [],
-          operations: selectedRule?.operations ?? [],
-          ruleEffect: selectedRule?.effect ?? Effect.Allow,
-          condition: selectedRule?.condition ?? '',
-        });
+        ruleForm.reset({ ...INITIAL_RULE, ...selectedRule });
       } else {
         setPolicy({} as Policy);
       }
@@ -132,7 +102,7 @@ const EditRulePage = () => {
     navigate(getPolicyWithFqnPath(fqn));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = ruleForm.handleSubmit(async (ruleData: Rule) => {
     const existingRules = policy.rules;
     const updatedRules = existingRules.map((rule) => {
       if (rule.name === ruleName) {
@@ -176,7 +146,7 @@ const EditRulePage = () => {
         );
       }
     }
-  };
+  });
 
   useEffect(() => {
     fetchPolicy();
@@ -199,18 +169,12 @@ const EditRulePage = () => {
             {t('label.edit-entity', { entity: t('label.rule') })}{' '}
             {`"${ruleName}"`}
           </Typography>
-          <HookForm
-            className="tw:flex tw:flex-col tw:gap-4"
+          <Box
+            className="tw:mt-4"
             data-testid="rule-form"
-            form={form}
-            id="rule-form"
-            onSubmit={form.handleSubmit(handleSubmit)}>
-            <RuleForm
-              description={selectedRuleRef.current?.description}
-              form={form}
-              ruleData={ruleData}
-              setRuleData={setRuleData}
-            />
+            direction="col"
+            gap={4}>
+            <AccessControlRuleForm form={ruleForm} />
             <Box
               inline
               align="center"
@@ -226,12 +190,11 @@ const EditRulePage = () => {
               <Button
                 color="primary"
                 data-testid="submit-btn"
-                form="rule-form"
-                type="submit">
+                onClick={() => handleSubmit()}>
                 {t('label.save')}
               </Button>
             </Box>
-          </HookForm>
+          </Box>
         </Card.Content>
       </Card>
     </PageLayoutV1>

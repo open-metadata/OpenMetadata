@@ -29,7 +29,6 @@ import { ComponentProps, Fragment, ReactNode } from 'react';
 import type { Placement } from 'react-aria';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
-import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
@@ -179,9 +178,6 @@ const FIELD_ELEMENT_RENDERERS: Partial<
       ),
     };
   },
-  [FieldTypes.COLOR_PICKER]: ({ props }) => ({
-    element: <ColorPicker {...props} />,
-  }),
   [FieldTypes.COMPONENT]: ({ props }) => ({
     element: props.children,
   }),

@@ -266,7 +266,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
       Menu: ({ children }: { children: React.ReactNode }) => (
         <div>{children}</div>
       ),
-      Item: ({ label }: { label: string }) => <div>{label}</div>,
+      Item: ({ label, onAction }: { label: string; onAction?: () => void }) => (
+        <button type="button" onClick={onAction}>
+          {label}
+        </button>
+      ),
     },
     Typography: ({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>
@@ -320,7 +324,11 @@ jest.mock('../../common/Loader/Loader', () => ({
 
 jest.mock('../../common/DeleteWidget/DeleteEntityModal', () => ({
   __esModule: true,
-  default: () => null,
+  default: ({ allowSoftDelete }: { allowSoftDelete?: boolean }) => (
+    <div data-testid="delete-modal">
+      {allowSoftDelete ? 'soft-and-hard-delete' : 'hard-delete-only'}
+    </div>
+  ),
 }));
 
 jest.mock(
@@ -631,6 +639,12 @@ describe('ConnectionServiceDetailsPage', () => {
 
     expect(screen.getByText('label.delete')).toBeInTheDocument();
     expect(screen.queryByText('label.restore')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.delete'));
+
+    expect(screen.getByTestId('delete-modal')).toHaveTextContent(
+      'soft-and-hard-delete'
+    );
   });
 
   describe('data assets fetch', () => {
@@ -810,7 +824,7 @@ describe('ConnectionServiceDetailsPage', () => {
       );
     });
 
-    it('offers restore instead of delete', async () => {
+    it('offers restore alongside delete', async () => {
       await renderDeleted();
 
       await waitFor(() =>
@@ -819,7 +833,21 @@ describe('ConnectionServiceDetailsPage', () => {
 
       // A soft delete is meant to be reversible; without restore the page is a dead end.
       expect(screen.getByText('label.restore')).toBeInTheDocument();
-      expect(screen.queryByText('label.delete')).not.toBeInTheDocument();
+      expect(screen.getByText('label.delete')).toBeInTheDocument();
+    });
+
+    it('offers only a permanent delete', async () => {
+      await renderDeleted();
+
+      await waitFor(() =>
+        expect(screen.getByTestId('deleted-badge')).toBeInTheDocument()
+      );
+
+      fireEvent.click(screen.getByText('label.delete'));
+
+      expect(screen.getByTestId('delete-modal')).toHaveTextContent(
+        'hard-delete-only'
+      );
     });
 
     it('has no deleted badge on a live service', async () => {

@@ -17,11 +17,10 @@ import {
   Divider,
   FormField,
   FormItemLabel,
-  HintText,
   HookForm,
+  Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -31,13 +30,14 @@ import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { INITIAL_RULE } from '../../../components/discovery/personal-space/Profile/tabs/access-control/AccessControl.constants';
+import AccessControlRuleForm from '../../../components/discovery/personal-space/Profile/tabs/access-control/AccessControlRuleForm';
 import { ADD_POLICY_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.constants';
 import { ERROR_MESSAGE } from '../../../constants/constants';
-import { NAME_FIELD_VALIDATION } from '../../../constants/Form.constants';
+import { NAME_FIELD_REGISTER_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import {
   CreatePolicy,
-  Effect,
   Rule,
 } from '../../../generated/api/policies/createPolicy';
 import { withPageLayout } from '../../../hoc/withPageLayout';
@@ -46,7 +46,6 @@ import { getIsErrorMatch } from '../../../utils/APIUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getPolicyWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RuleForm, { PolicyRuleFormValues } from '../RuleForm/RuleForm';
 
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
@@ -54,34 +53,33 @@ const AddPolicyPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [name, setName] = useState<string>('');
-  const [description, setDescription] = useState<string>('');
-  const [ruleData, setRuleData] = useState<Rule>({
-    name: '',
-    description: '',
-    resources: [],
-    operations: [],
-    condition: '',
-    effect: Effect.Allow,
-  });
-  const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
-
-  const form = useForm<PolicyRuleFormValues>({
+  // Validate while typing, as the antd form did.
+  const form = useForm<{ name: string }>({
     mode: 'onChange',
-    defaultValues: {
-      ruleName: '',
-      resources: [],
-      operations: [],
-      ruleEffect: Effect.Allow,
-      condition: '',
-    },
+    defaultValues: { name: '' },
   });
+  const ruleForm = useForm<Rule>({ defaultValues: INITIAL_RULE });
+  const [description, setDescription] = useState<string>('');
+  const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
 
   const handleCancel = () => {
     navigate(policiesPath);
   };
 
   const handleSubmit = async () => {
+    let ruleData: Rule | undefined;
+    let name: string | undefined;
+    // Validate both forms so every invalid field shows its error at once.
+    await ruleForm.handleSubmit((data) => {
+      ruleData = data;
+    })();
+    await form.handleSubmit((data) => {
+      name = data.name;
+    })();
+    if (!ruleData || name === undefined) {
+      return;
+    }
+
     const { condition, ...rest } = { ...ruleData, name: trim(ruleData.name) };
     const data: CreatePolicy = {
       name: trim(name),
@@ -139,38 +137,29 @@ const AddPolicyPage = () => {
                   entity: t('label.policy'),
                 })}
               </Typography>
-              <HookForm
-                className="tw:flex tw:flex-col tw:gap-4"
-                data-testid="policy-form"
-                form={form}
-                id="policy-form"
-                onSubmit={form.handleSubmit(handleSubmit)}>
-                <FormField
-                  control={form.control}
-                  name="name"
-                  rules={NAME_FIELD_VALIDATION}>
-                  {({ field, fieldState }) => (
-                    <Box direction="col" gap={2}>
-                      <FormItemLabel required label={t('label.name')} />
+              <Box data-testid="policy-form" direction="col" gap={4}>
+                <HookForm form={form}>
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    rules={NAME_FIELD_REGISTER_RULES}>
+                    {({ field, fieldState }) => (
                       <Input
-                        data-testid="policy-name"
+                        isRequired
+                        hint={fieldState.error?.message}
+                        inputDataTestId="policy-name"
+                        isInvalid={fieldState.invalid}
+                        label={t('label.name')}
                         placeholder={t('label.policy-name')}
-                        type="text"
-                        value={field.value ?? ''}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          setName(e.target.value);
-                        }}
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
                       />
-                      {fieldState.error && (
-                        <HintText isInvalid>
-                          {fieldState.error.message}
-                        </HintText>
-                      )}
-                    </Box>
-                  )}
-                </FormField>
-                <Box direction="col" gap={2}>
+                    )}
+                  </FormField>
+                </HookForm>
+
+                <Box direction="col" gap={1}>
                   <FormItemLabel label={t('label.description')} />
                   <RichTextEditor
                     data-testid="description"
@@ -179,6 +168,7 @@ const AddPolicyPage = () => {
                     onTextChange={setDescription}
                   />
                 </Box>
+
                 <Divider
                   className="tw:my-4"
                   data-testid="add-rule-divider"
@@ -191,11 +181,8 @@ const AddPolicyPage = () => {
                     </Typography>
                   }
                 />
-                <RuleForm
-                  form={form}
-                  ruleData={ruleData}
-                  setRuleData={setRuleData}
-                />
+                <AccessControlRuleForm form={ruleForm} />
+
                 <Box
                   inline
                   align="center"
@@ -211,13 +198,12 @@ const AddPolicyPage = () => {
                   <Button
                     color="primary"
                     data-testid="submit-btn"
-                    form="policy-form"
                     isLoading={isSaveLoading}
-                    type="submit">
+                    onClick={handleSubmit}>
                     {t('label.create')}
                   </Button>
                 </Box>
-              </HookForm>
+              </Box>
             </div>
           </div>
         ),

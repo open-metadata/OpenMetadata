@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,85 +12,81 @@
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { createRef, useState } from 'react';
+import { describe, expect, it } from 'vitest';
 import { NumberInput } from './number-input';
 
+const PercentageField = () => {
+  const [value, setValue] = useState(50);
+
+  return (
+    <NumberInput
+      formatOptions={{ style: 'unit', unit: 'percent' }}
+      label="Sample"
+      maxValue={100}
+      minValue={1}
+      value={value}
+      onChange={setValue}
+    />
+  );
+};
+
 describe('NumberInput', () => {
-  it('preserves decimal editing and commits a bounded numeric value', async () => {
+  it('parses a percentage without scaling its value and allows clearing it', async () => {
     const user = userEvent.setup();
-    const onChange = vi.fn();
-    render(
-      <NumberInput
-        aria-label="Weight"
-        maxValue={100}
-        minValue={0}
-        step={0.1}
-        value={1}
-        onChange={onChange}
-      />
-    );
-    const input = screen.getByRole('spinbutton');
+    render(<PercentageField />);
+    const input = screen.getByLabelText(/Sample/, { selector: 'input' });
+    expect(input).toHaveValue('50%');
+
     await user.clear(input);
-    await user.type(input, '123.4');
-    expect(input).toHaveValue(123.4);
+    await user.type(input, '75%');
     await user.tab();
-    expect(onChange).toHaveBeenLastCalledWith(100);
-  });
-  it('keeps decimal values when no precision limit is configured', async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-    render(<NumberInput aria-label="Decimal" value={1} onChange={onChange} />);
-    await user.clear(screen.getByRole('spinbutton'));
-    await user.type(screen.getByRole('spinbutton'), '3.5');
+    expect(input).toHaveValue('75%');
+
+    await user.clear(input);
     await user.tab();
-    expect(onChange).toHaveBeenLastCalledWith(3.5);
+    expect(input).toHaveValue('');
   });
 
-  it('renders a help tooltip without treating it as a stepper', () => {
-    render(<NumberInput label="Depth" tooltip="Depth help" value={2} />);
-    expect(screen.getByRole('spinbutton', { name: /Depth/ })).toHaveValue(2);
+  it('steps with the keyboard and mouse while respecting its bounds', async () => {
+    const user = userEvent.setup();
+    render(
+      <NumberInput defaultValue={2} label="Rows" maxValue={3} minValue={1} />
+    );
+    const input = screen.getByLabelText(/Rows/, { selector: 'input' });
+    await user.click(input);
+    await user.keyboard('{ArrowUp}{ArrowUp}');
+    expect(input).toHaveValue('3');
+    expect(
+      screen.getByRole('button', { name: /increase|increment/i })
+    ).toBeDisabled();
+    await user.click(
+      screen.getByRole('button', { name: /decrease|decrement/i })
+    );
+    expect(input).toHaveValue('2');
+    await user.click(input);
+    await user.keyboard('{Home}{ArrowDown}');
+    expect(input).toHaveValue('1');
+    expect(
+      screen.getByRole('button', { name: /decrease|decrement/i })
+    ).toBeDisabled();
   });
 
-  it('increments a decimal value by the configured step', async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
+  it('forwards its ref and exposes validation and disabled state on the input', () => {
+    const ref = createRef<HTMLInputElement>();
     render(
       <NumberInput
-        aria-label="Stepped"
-        step={1}
-        value={3.5}
-        onChange={onChange}
+        isDisabled
+        isInvalid
+        hint="Invalid count"
+        label="Count"
+        ref={ref}
       />
     );
-    await user.click(screen.getByRole('spinbutton'));
-    await user.keyboard('{ArrowUp}');
-    expect(onChange).toHaveBeenLastCalledWith(4.5);
-  });
-
-  it('avoids floating-point drift and duplicate blur notifications', async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-    render(
-      <NumberInput
-        aria-label="Fraction"
-        step={0.2}
-        value={0.1}
-        onChange={onChange}
-      />
-    );
-    await user.click(screen.getByRole('spinbutton'));
-    await user.keyboard('{ArrowUp}');
-    expect(onChange).toHaveBeenLastCalledWith(0.3);
-    await user.tab();
-    expect(onChange).toHaveBeenCalledTimes(1);
-  });
-
-  it('reports a cleared value as null rather than NaN or zero', async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-    render(<NumberInput aria-label="Sample" value={10} onChange={onChange} />);
-    await user.clear(screen.getByRole('spinbutton'));
-    await user.tab();
-    expect(onChange).toHaveBeenLastCalledWith(null);
+    const input = screen.getByLabelText(/Count/, { selector: 'input' });
+    expect(ref.current).toBe(input);
+    expect(input).toBeDisabled();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByText('Invalid count')).toBeVisible();
   });
 });

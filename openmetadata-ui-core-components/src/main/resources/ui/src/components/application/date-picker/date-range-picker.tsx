@@ -153,11 +153,12 @@ export const DateRangePicker = ({
         props.onOpenChange?.(isOpen);
       }}>
       <AriaGroup>
+        {/* The picker's sm/md match input heights (36/40px): Button md/lg. */}
         <Button
           className={cx(fullWidth && 'tw:w-full tw:justify-start')}
           color="secondary"
           iconLeading={CalendarIcon}
-          size={size}>
+          size={size === 'md' ? 'lg' : 'md'}>
           {!value ? (
             <span className="tw:text-placeholder">
               {t('label.select-dates', 'Select dates')}
@@ -222,7 +223,7 @@ export const DateRangePicker = ({
                   <div className="tw:grid tw:w-full tw:grid-cols-2 tw:gap-3 tw:md:flex tw:md:w-auto">
                     <Button
                       color="secondary"
-                      size="md"
+                      size="lg"
                       onClick={() => {
                         onCancel?.();
                         close();
@@ -231,7 +232,7 @@ export const DateRangePicker = ({
                     </Button>
                     <Button
                       color="primary"
-                      size="md"
+                      size="lg"
                       onClick={() => {
                         onApply?.(presetKey);
                         close();

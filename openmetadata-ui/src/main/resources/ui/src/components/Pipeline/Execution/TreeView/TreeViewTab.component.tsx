@@ -14,11 +14,12 @@
 import {
   Box,
   Card,
+  EmptyPlaceholder,
   Grid,
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Empty } from 'antd';
+import { ClockRewind } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -104,10 +105,12 @@ const TreeViewTab = ({
         </Box>
 
         {isEmpty(viewData) ? (
-          <Empty
-            className="my-4"
-            description={t('message.no-execution-runs-found')}
-          />
+          <Box className="tw:relative tw:my-4 tw:min-h-40">
+            <EmptyPlaceholder
+              icon={<ClockRewind className="tw:text-secondary" />}
+              title={t('message.no-execution-runs-found')}
+            />
+          </Box>
         ) : (
           <Grid className="layout-row layout-grid w-full">
             <Grid.Item className="layout-column" span={12}>

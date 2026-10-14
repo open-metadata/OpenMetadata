@@ -1725,7 +1725,9 @@ export const createAnnouncement = async (
   );
 
   await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
-  await page.reload();
+  // `load` waits on every asset and long-lived request, and on a loaded runner
+  // can outlast the 60s navigation timeout; the loaders are the real signal.
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId(announcementContainerTestId)).toBeVisible();
@@ -1804,7 +1806,8 @@ export const replyAnnouncement = async (page: Page) => {
     page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
   ).toHaveText('Reply message edited');
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const deleteAnnouncement = async (page: Page) => {
@@ -1844,7 +1847,8 @@ export const deleteAnnouncement = async (page: Page) => {
   await deleteConfirm.getByTestId('save-button').click();
   await deleteAnnouncementResponse;
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 

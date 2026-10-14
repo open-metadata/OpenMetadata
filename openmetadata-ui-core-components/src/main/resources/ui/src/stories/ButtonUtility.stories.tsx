@@ -38,17 +38,51 @@ export const Default: Story = {
 export const Colors: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 8 }}>
+      <ButtonUtility color="primary" icon={Edit01} tooltip="Primary" />
       <ButtonUtility color="secondary" icon={Edit01} tooltip="Secondary" />
       <ButtonUtility color="tertiary" icon={Edit01} tooltip="Tertiary" />
+      <ButtonUtility
+        color="secondary-destructive"
+        icon={Trash01}
+        tooltip="Secondary destructive"
+      />
+      <ButtonUtility
+        color="tertiary-destructive"
+        icon={Trash01}
+        tooltip="Tertiary destructive"
+      />
     </div>
   ),
 };
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <ButtonUtility icon={Edit01} size="xs" tooltip="Extra Small" />
-      <ButtonUtility icon={Edit01} size="sm" tooltip="Small" />
+    <div style={{ display: 'grid', gap: 12 }}>
+      {(
+        [
+          ['secondary', Edit01],
+          ['tertiary', Edit01],
+          ['secondary-destructive', Trash01],
+          ['tertiary-destructive', Trash01],
+        ] as const
+      ).map(([color, icon]) => (
+        <div
+          key={color}
+          style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {(['xl', 'lg', 'md', 'sm', 'xs'] as const)
+            // xs is borderless-only, so bordered rows stop at sm.
+            .filter((size) => size !== 'xs' || !color.startsWith('secondary'))
+            .map((size) => (
+              <ButtonUtility
+                color={color}
+                icon={icon}
+                key={size}
+                size={size}
+                tooltip={`${color} ${size}`}
+              />
+            ))}
+        </div>
+      ))}
     </div>
   ),
 };

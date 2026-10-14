@@ -16,46 +16,47 @@ import { Rule } from 'antd/lib/form';
 import i18n from '../utils/i18next/LocalUtil';
 import { ENTITY_NAME_REGEX } from './regex.constants';
 
-export const NAME_FIELD_RULES = [
-  {
-    required: true,
-    message: i18n.t('label.field-required', {
-      field: i18n.t('label.name'),
-    }),
-  },
-  {
-    min: 1,
-    max: 128,
-    message: i18n.t('message.entity-size-in-between', {
-      entity: i18n.t('label.name'),
-      min: 1,
-      max: 128,
-    }),
-  },
-  {
-    pattern: ENTITY_NAME_REGEX,
-    message: i18n.t('message.entity-name-validation'),
-  },
-] satisfies Rule[];
+const ENTITY_NAME_MAX_LENGTH = 128;
 
-export const DISPLAY_NAME_FIELD_RULES: Rule[] = [
-  {
-    min: 1,
-    max: 128,
-    message: i18n.t('message.entity-size-in-between', {
-      entity: i18n.t('label.display-name'),
+const sizeMessage = (labelKey: string) =>
+  String(
+    i18n.t('message.entity-size-in-between', {
+      entity: i18n.t(labelKey),
       min: 1,
-      max: 128,
-    }),
-  },
+      max: ENTITY_NAME_MAX_LENGTH,
+    })
+  );
+
+const NAME_REQUIRED_MESSAGE = String(
+  i18n.t('label.field-required', { field: i18n.t('label.name') })
+);
+const NAME_SIZE_MESSAGE = sizeMessage('label.name');
+const NAME_PATTERN_MESSAGE = String(i18n.t('message.entity-name-validation'));
+const DISPLAY_NAME_SIZE_MESSAGE = sizeMessage('label.display-name');
+
+// TODO(open-metadata/openmetadata-collate#6893): drop the antd `Rule[]` shapes
+// once the last antd forms (alerts, custom metrics) move to react-hook-form.
+export const NAME_FIELD_RULES: Rule[] = [
+  { required: true, message: NAME_REQUIRED_MESSAGE },
+  { min: 1, max: ENTITY_NAME_MAX_LENGTH, message: NAME_SIZE_MESSAGE },
+  { pattern: ENTITY_NAME_REGEX, message: NAME_PATTERN_MESSAGE },
 ];
 
-export const NAME_FIELD_VALIDATION = {
-  required: NAME_FIELD_RULES[0].message as string,
-  minLength: { value: 1, message: NAME_FIELD_RULES[1].message as string },
-  maxLength: { value: 128, message: NAME_FIELD_RULES[1].message as string },
-  pattern: {
-    value: ENTITY_NAME_REGEX,
-    message: NAME_FIELD_RULES[2].message as string,
+export const DISPLAY_NAME_FIELD_RULES: Rule[] = [
+  { min: 1, max: ENTITY_NAME_MAX_LENGTH, message: DISPLAY_NAME_SIZE_MESSAGE },
+];
+
+/** react-hook-form counterpart of NAME_FIELD_RULES. */
+export const NAME_FIELD_REGISTER_RULES = {
+  required: NAME_REQUIRED_MESSAGE,
+  maxLength: { value: ENTITY_NAME_MAX_LENGTH, message: NAME_SIZE_MESSAGE },
+  pattern: { value: ENTITY_NAME_REGEX, message: NAME_PATTERN_MESSAGE },
+};
+
+/** react-hook-form counterpart of DISPLAY_NAME_FIELD_RULES. */
+export const DISPLAY_NAME_FIELD_REGISTER_RULES = {
+  maxLength: {
+    value: ENTITY_NAME_MAX_LENGTH,
+    message: DISPLAY_NAME_SIZE_MESSAGE,
   },
 };

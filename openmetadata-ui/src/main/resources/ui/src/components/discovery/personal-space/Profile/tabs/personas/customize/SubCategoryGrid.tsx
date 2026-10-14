@@ -49,6 +49,7 @@ const SubCategoryGrid = ({
             role="button"
             size="md"
             tabIndex={0}
+            variant="muted"
             onClick={() => onSelectEntity(option.key)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

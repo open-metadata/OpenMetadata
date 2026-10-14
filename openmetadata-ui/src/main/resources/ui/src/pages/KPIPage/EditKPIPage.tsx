@@ -16,31 +16,23 @@ import {
   Button,
   FormField,
   FormItemLabel,
-  Grid,
-  HintText,
   HookForm,
-  NumberInput,
-  Slider,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
 import { useEffect, useMemo, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import MyDatePicker from '../../components/common/DatePicker/DatePicker';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES } from '../../constants/constants';
-import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
@@ -48,37 +40,39 @@ import { withPageLayout } from '../../hoc/withPageLayout';
 import { useAuth } from '../../hooks/authHooks';
 import { useFqn } from '../../hooks/useFqn';
 import { getKPIByName, patchKPI } from '../../rest/KpiAPI';
-import { getLayoutGutter } from '../../utils/common/layout.utils';
-import {
-  getDataInsightPathWithFqn,
-  getDisabledDates,
-} from '../../utils/DataInsightPureUtils';
-import {
-  getKPIChartType,
-  KPIChartOptions,
-  KPIMetricTypeOptions,
-} from '../../utils/KPI/KPIUtils';
+import { getDataInsightPathWithFqn } from '../../utils/DataInsightPureUtils';
+import { getKPIChartType, KPIChartOptions } from '../../utils/KPI/KPIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import KPIFormFields from './KPIFormFields';
 import { KPIFormValues } from './KPIPage.interface';
-import { normalizeKpiDates } from './KPIPage.utils';
+
+const CHART_ITEMS = KPIChartOptions.map(({ label, value }) => ({
+  id: value,
+  label,
+}));
+
+const toFormValues = (kpi?: Kpi): KPIFormValues => ({
+  chartType: kpi
+    ? getKPIChartType(kpi.fullyQualifiedName as DataInsightChart) ?? null
+    : null,
+  displayName: kpi?.displayName ?? '',
+  metricType: kpi?.metricType ?? KpiTargetType.Percentage,
+  targetValue: kpi?.targetValue ?? 0,
+  startDate: kpi ? DateTime.fromMillis(kpi.startDate) : null,
+  endDate: kpi ? DateTime.fromMillis(kpi.endDate) : null,
+  description: kpi?.description ?? '',
+});
+
 const EditKPIPage = () => {
   const { isAdminUser } = useAuth();
   const { fqn: kpiName } = useFqn();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const form = useForm<KPIFormValues>({
-    mode: 'onChange',
-    defaultValues: {
-      metricType: KpiTargetType.Percentage,
-      targetValue: 0,
-      description: '',
-    },
-  });
+  const form = useForm<KPIFormValues>({ defaultValues: toFormValues() });
 
   const [kpiData, setKpiData] = useState<Kpi>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isUpdatingKPI, setIsUpdatingKPI] = useState<boolean>(false);
-  const metricType = useWatch({ control: form.control, name: 'metricType' });
 
   const breadcrumb = useMemo(
     () => [
@@ -96,28 +90,12 @@ const EditKPIPage = () => {
         activeTitle: true,
       },
     ],
-    [kpiData, t]
+    [kpiData]
   );
 
-  const initialValues = useMemo(() => {
-    if (kpiData) {
-      const startDate = DateTime.fromMillis(kpiData.startDate);
-      const endDate = DateTime.fromMillis(kpiData.endDate);
-
-      const chartType = getKPIChartType(
-        kpiData.fullyQualifiedName as DataInsightChart
-      );
-
-      return {
-        ...kpiData,
-        startDate,
-        endDate,
-        chartType,
-      };
-    }
-
-    return {};
-  }, [kpiData]);
+  useEffect(() => {
+    form.reset(toFormValues(kpiData));
+  }, [kpiData, form]);
 
   const fetchKPI = async () => {
     setIsLoading(true);
@@ -141,33 +119,11 @@ const EditKPIPage = () => {
 
   const handleCancel = () => navigate(-1);
 
-  const handleFormValuesChange = (
-    changes: Partial<KPIFormValues>,
-    values: KPIFormValues
-  ) => {
-    const dates = normalizeKpiDates(changes, values);
-    if ('startDate' in dates) {
-      form.setValue('startDate', dates.startDate ?? null, {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
-    }
-    if ('endDate' in dates) {
-      form.setValue('endDate', dates.endDate ?? null, {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
-    }
-  };
-
   const handleSubmit = async (values: KPIFormValues) => {
-    if (values.targetValue == null || !values.startDate || !values.endDate) {
-      return;
-    }
     if (kpiData) {
       const { targetValue, description, displayName } = values;
-      const startDate = values.startDate.valueOf();
-      const endDate = values.endDate.valueOf();
+      const startDate = values.startDate?.valueOf() ?? kpiData.startDate;
+      const endDate = values.endDate?.valueOf() ?? kpiData.endDate;
 
       const updatedData = {
         ...kpiData,
@@ -191,12 +147,6 @@ const EditKPIPage = () => {
       }
     }
   };
-
-  useEffect(() => {
-    if (kpiData) {
-      form.reset(initialValues);
-    }
-  }, [kpiData, initialValues, form]);
 
   useEffect(() => {
     fetchKPI();
@@ -227,241 +177,20 @@ const EditKPIPage = () => {
               form={form}
               id="kpi-form"
               onSubmit={form.handleSubmit(handleSubmit)}>
-              <FormField
-                control={form.control}
-                name="chartType"
-                rules={{
-                  required: t('message.field-text-is-required', {
-                    fieldText: t('label.data-insight-chart'),
-                  }),
-                }}>
-                {({ field, fieldState }) => (
-                  <Box direction="col" gap={2}>
-                    <FormItemLabel required label={t('label.select-a-chart')} />
-                    <Select
-                      {...field}
-                      disabled
-                      aria-label={t('label.select-a-chart')}
-                      data-testid="chartType"
-                      notFoundContent={t('message.all-charts-are-mapped')}
-                      options={KPIChartOptions}
-                      placeholder={t('label.select-a-chart')}
-                    />
-                    {fieldState.error && (
-                      <HintText isInvalid>{fieldState.error.message}</HintText>
-                    )}
-                  </Box>
-                )}
-              </FormField>
-              <FormField control={form.control} name="displayName">
-                {({ field, fieldState }) => (
-                  <Box direction="col" gap={2}>
-                    <FormItemLabel
-                      label={t('label.display-name')}
-                      required={false}
-                    />
-                    <Input
-                      {...field}
-                      aria-label={t('label.display-name')}
-                      data-testid="displayName"
-                      placeholder={t('label.kpi-display-name')}
-                      type="text"
-                    />
-                    {fieldState.error && (
-                      <HintText isInvalid>{fieldState.error.message}</HintText>
-                    )}
-                  </Box>
-                )}
-              </FormField>
-              <FormField control={form.control} name="metricType">
-                {({ field, fieldState }) => (
-                  <Box direction="col" gap={2}>
-                    <FormItemLabel
-                      label={t('label.metric-type')}
-                      required={false}
-                    />
-                    <Select
-                      {...field}
-                      disabled
-                      aria-label={t('label.metric-type')}
-                      data-testid="metricType"
-                      options={KPIMetricTypeOptions}
-                    />
-                    {fieldState.error && (
-                      <HintText isInvalid>{fieldState.error.message}</HintText>
-                    )}
-                  </Box>
-                )}
-              </FormField>
-              {!isUndefined(metricType) && (
-                <FormField
-                  control={form.control}
-                  name="targetValue"
-                  rules={{
-                    validate: (value) =>
-                      (value != null && Number.isFinite(value) && value >= 0) ||
-                      t('message.field-text-is-required', {
-                        fieldText: t('label.metric-value'),
-                      }),
-                  }}>
-                  {({ field, fieldState }) => (
-                    <Box direction="col" gap={2}>
-                      <FormItemLabel required label={t('label.metric-value')} />
-                      <Box align="center" gap={4}>
-                        {metricType === KpiTargetType.Percentage && (
-                          <Slider
-                            showRange
-                            aria-label={t('label.metric-value')}
-                            className="tw:flex-1"
-                            labelFormatter={(value) => value + '%'}
-                            maxValue={100}
-                            minValue={0}
-                            value={field.value ?? 0}
-                            onChange={(value) =>
-                              field.onChange(
-                                Array.isArray(value) ? value[0] : value
-                              )
-                            }
-                          />
-                        )}
-                        <NumberInput
-                          aria-label={t('label.metric-value')}
-                          className="tw:w-24 tw:shrink-0"
-                          inputDataTestId="metric-number-input"
-                          isInvalid={!!fieldState.error}
-                          maxValue={
-                            metricType === KpiTargetType.Percentage
-                              ? 100
-                              : undefined
-                          }
-                          minValue={0}
-                          suffix={
-                            metricType === KpiTargetType.Percentage
-                              ? '%'
-                              : undefined
-                          }
-                          value={field.value}
-                          onBlur={field.onBlur}
-                          onChange={field.onChange}
-                        />
-                      </Box>
-                      {fieldState.error && (
-                        <HintText isInvalid>
-                          {fieldState.error.message}
-                        </HintText>
-                      )}
-                    </Box>
-                  )}
-                </FormField>
-              )}
-              <Grid
-                className="layout-row layout-grid"
-                style={getLayoutGutter(8, 8)}>
-                <Grid.Item className="layout-column" span={12}>
-                  <FormField
-                    control={form.control}
-                    name="startDate"
-                    rules={{
-                      required: t('label.field-required', {
-                        field: t('label.start-entity', {
-                          entity: t('label.date'),
-                        }),
-                      }),
-                    }}>
-                    {({ field, fieldState }) => (
-                      <Box direction="col" gap={2}>
-                        <FormItemLabel
-                          required
-                          label={t('label.start-entity', {
-                            entity: t('label.date'),
-                          })}
-                        />
-                        <MyDatePicker
-                          aria-label={t('label.start-entity', {
-                            entity: t('label.date'),
-                          })}
-                          className="w-full"
-                          data-testid="start-date"
-                          disabledDate={getDisabledDates}
-                          format={KPI_DATE_PICKER_FORMAT}
-                          value={field.value ?? null}
-                          onBlur={field.onBlur}
-                          onChange={(value) => {
-                            field.onChange(value);
-                            handleFormValuesChange(
-                              { startDate: value ?? undefined },
-                              form.getValues()
-                            );
-                          }}
-                        />
-                        {fieldState.error && (
-                          <HintText isInvalid>
-                            {fieldState.error.message}
-                          </HintText>
-                        )}
-                      </Box>
-                    )}
-                  </FormField>
-                </Grid.Item>
-                <Grid.Item className="layout-column" span={12}>
-                  <FormField
-                    control={form.control}
-                    name="endDate"
-                    rules={{
-                      required: t('label.field-required', {
-                        field: t('label.end-date'),
-                      }),
-                    }}>
-                    {({ field, fieldState }) => (
-                      <Box direction="col" gap={2}>
-                        <FormItemLabel required label={t('label.end-date')} />
-                        <MyDatePicker
-                          aria-label={t('label.end-date')}
-                          className="w-full"
-                          data-testid="end-date"
-                          disabledDate={getDisabledDates}
-                          format={KPI_DATE_PICKER_FORMAT}
-                          value={field.value ?? null}
-                          onBlur={field.onBlur}
-                          onChange={(value) => {
-                            field.onChange(value);
-                            handleFormValuesChange(
-                              { endDate: value ?? undefined },
-                              form.getValues()
-                            );
-                          }}
-                        />
-                        {fieldState.error && (
-                          <HintText isInvalid>
-                            {fieldState.error.message}
-                          </HintText>
-                        )}
-                      </Box>
-                    )}
-                  </FormField>
-                </Grid.Item>
-              </Grid>
+              <KPIFormFields isEditing chartItems={CHART_ITEMS} form={form} />
               <EntityAttachmentProvider
                 entityFqn={kpiData?.fullyQualifiedName}
                 entityType={EntityType.KPI}>
                 <FormField control={form.control} name="description">
-                  {({ field, fieldState }) => (
-                    <Box direction="col" gap={2}>
-                      <FormItemLabel
-                        label={t('label.description')}
-                        required={false}
-                      />
+                  {({ field }) => (
+                    <Box direction="col" gap={1}>
+                      <FormItemLabel label={t('label.description')} />
                       <RichTextEditor
                         data-testid="description"
-                        initialValue={kpiData?.description}
+                        initialValue={kpiData?.description ?? ''}
                         placeHolder={t('message.write-your-description')}
                         onTextChange={field.onChange}
                       />
-                      {fieldState.error && (
-                        <HintText isInvalid>
-                          {fieldState.error.message}
-                        </HintText>
-                      )}
                     </Box>
                   )}
                 </FormField>

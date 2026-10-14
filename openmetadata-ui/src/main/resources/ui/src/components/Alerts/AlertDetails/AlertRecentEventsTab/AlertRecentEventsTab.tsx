@@ -25,14 +25,15 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Bell01 } from '@openmetadata/ui-core-components/icons';
-
+import {
+  Bell01,
+  FilterLines,
+  NoFilterFunnel,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
-import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../enums/codemirror.enum';
@@ -51,7 +52,6 @@ import {
   getChangeEventDataFromTypedEvent,
   getLabelsForEventDetails,
 } from '../../../../utils/Alerts/AlertsUtilPure';
-import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
@@ -157,19 +157,19 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   const recentEventsList = useMemo(() => {
     if (loading) {
       return (
-        <Accordion allowsMultipleExpanded>
+        <Accordion>
           {Array.from(
             { length: 5 },
             (_, index) => `alert-event-skeleton-${index}`
           ).map((skeletonKey) => (
             <AccordionItem
+              isDisabled
               data-testid="skeleton-loading-panel"
-              id={String(skeletonKey)}
+              id={skeletonKey}
               key={skeletonKey}>
               <AccordionHeader>
                 <Skeleton height={16} width="100%" />
               </AccordionHeader>
-              <AccordionPanel>{null}</AccordionPanel>
             </AccordionItem>
           ))}
         </Accordion>
@@ -189,7 +189,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
             )}
             icon={
               isFiltered ? (
-                <FilterOffIcon className="tw:text-fg-quaternary" />
+                <NoFilterFunnel className="tw:text-fg-quaternary" />
               ) : (
                 <Bell01 className="tw:text-fg-brand-primary" />
               )
@@ -207,15 +207,13 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
     return (
       <Grid
-        className="layout-row layout-grid"
-        style={{ ...getLayoutGutter(16, 16) }}>
+        className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+        rowGap="4">
         <Grid.Item
           className="layout-column"
           data-testid="recent-events-list"
           span={24}>
-          <Accordion
-            allowsMultipleExpanded
-            defaultExpandedKeys={new Set(['1'])}>
+          <Accordion allowsMultipleExpanded>
             {alertRecentEvents?.map((typedEvent) => {
               // Get the change event data from the typedEvent object
               const { changeEventData, changeEventDataToDisplay } =
@@ -223,75 +221,71 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
               return (
                 <AccordionItem
-                  id={String(
-                    `${changeEventData.id}-${changeEventData.timestamp}`
-                  )}
+                  id={`${changeEventData.id}-${changeEventData.timestamp}`}
                   key={`${changeEventData.id}-${changeEventData.timestamp}`}>
                   <AccordionHeader>
-                    {
-                      <Box
-                        className="layout-row"
-                        data-testid={`event-collapse-${changeEventData.id}`}
-                        justify="between"
-                        wrap="wrap">
-                        <Box className="layout-column tw:block">
-                          <Box
-                            align="center"
-                            className="layout-row"
-                            style={{ ...getLayoutGutter(16, 16) }}
-                            wrap="wrap">
-                            <Box className="layout-column tw:block">
-                              {/* Display icon for the status of the alert event */}
-                              <Tooltip
-                                arrow
-                                excludeTriggerFromTabOrder
-                                title={startCase(typedEvent.status)}
-                                triggerClassName="tw:inline-flex flex-center">
-                                {getAlertStatusIcon(typedEvent.status)}{' '}
-                              </Tooltip>
-                            </Box>
-                            <Box className="layout-column tw:block">
-                              {/* Display icon for the asset the change event is related to */}
-                              <Tooltip
-                                arrow
-                                excludeTriggerFromTabOrder
-                                title={startCase(changeEventData.entityType)}
-                                triggerClassName="tw:inline-flex flex-center">
-                                {searchClassBase.getEntityIcon(
-                                  changeEventData.entityType ?? '',
-                                  'h-4 w-4'
-                                )}
-                              </Tooltip>
-                            </Box>
-                            <Box className="layout-column tw:block">
-                              {/* Display the change event id */}
-                              <Typography>
-                                {isEmpty(typedEvent.data)
-                                  ? t('label.unreadable-event')
-                                  : changeEventData.id}
-                              </Typography>
-                            </Box>
+                    <Box
+                      className="layout-row"
+                      data-testid={`event-collapse-${changeEventData.id}`}
+                      justify="between"
+                      wrap="wrap">
+                      <Box className="layout-column tw:block">
+                        <Box
+                          align="center"
+                          className="layout-row tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+                          rowGap={4}
+                          wrap="wrap">
+                          <Box className="layout-column tw:block">
+                            {/* Display icon for the status of the alert event */}
+                            <Tooltip
+                              arrow
+                              excludeTriggerFromTabOrder
+                              title={startCase(typedEvent.status)}
+                              triggerClassName="tw:inline-flex">
+                              {getAlertStatusIcon(typedEvent.status)}{' '}
+                            </Tooltip>
+                          </Box>
+                          <Box className="layout-column tw:block">
+                            {/* Display icon for the asset the change event is related to */}
+                            <Tooltip
+                              arrow
+                              excludeTriggerFromTabOrder
+                              title={startCase(changeEventData.entityType)}
+                              triggerClassName="tw:inline-flex">
+                              {searchClassBase.getEntityIcon(
+                                changeEventData.entityType ?? '',
+                                'h-4 w-4'
+                              )}
+                            </Tooltip>
+                          </Box>
+                          <Box className="layout-column tw:block">
+                            {/* Display the change event id */}
+                            <Typography>
+                              {isEmpty(typedEvent.data)
+                                ? t('label.unreadable-event')
+                                : changeEventData.id}
+                            </Typography>
                           </Box>
                         </Box>
-                        <Box className="layout-column tw:block">
-                          {/* Display the event timestamp */}
-                          <Typography color="secondary">
-                            {formatDateTime(typedEvent.timestamp)}
-                          </Typography>
-                        </Box>
                       </Box>
-                    }
+                      <Box className="layout-column tw:block">
+                        {/* Display the event timestamp */}
+                        <Typography color="secondary">
+                          {formatDateTime(typedEvent.timestamp)}
+                        </Typography>
+                      </Box>
+                    </Box>
                   </AccordionHeader>
                   <AccordionPanel unmountOnCollapse>
                     <Box
-                      className="layout-row"
+                      className="layout-row tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
                       data-testid={`event-details-${changeEventData.id}`}
-                      style={{ ...getLayoutGutter(16, 16) }}
+                      rowGap={4}
                       wrap="wrap">
                       <Box className="layout-column tw:block">
                         <Grid
-                          className="layout-row layout-grid"
-                          style={{ ...getLayoutGutter(16, 16) }}>
+                          className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+                          rowGap="4">
                           {Object.entries(changeEventDataToDisplay).map(
                             ([key, value]) =>
                               isUndefined(value) ? null : (
@@ -300,9 +294,9 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                                   key={key}
                                   span={key === 'reason' ? 24 : 8}>
                                   <Grid
-                                    className="layout-row layout-grid"
+                                    className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-4)] tw:-mx-0.5"
                                     data-testid={`event-data-${key}`}
-                                    style={{ ...getLayoutGutter(4, 4) }}>
+                                    rowGap="1">
                                     <Grid.Item
                                       className="layout-column"
                                       span={24}>
@@ -318,8 +312,8 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                                       className="layout-column"
                                       span={24}>
                                       <Typography
-                                        className="font-medium"
-                                        data-testid="event-data-value">
+                                        data-testid="event-data-value"
+                                        weight="medium">
                                         {value}
                                       </Typography>
                                     </Grid.Item>
@@ -331,18 +325,14 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                       </Box>
                       {!isEmpty(changeEventData.changeDescription) && (
                         <>
-                          <Box
-                            className="layout-column tw:block"
-                            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
-                            <Typography className="font-medium">
+                          <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
+                            <Typography weight="medium">
                               {`${t('label.change-entity', {
                                 entity: t('label.description'),
                               })}:`}
                             </Typography>
                           </Box>
-                          <Box
-                            className="layout-column tw:block"
-                            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+                          <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                             <SchemaEditor
                               className="border"
                               mode={{ name: CSMode.JAVASCRIPT }}
@@ -398,18 +388,23 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     };
   }, [currentPage, getAlertRecentEvents, pageSize]);
 
+  const appliedFilterText =
+    filter === AlertRecentEventFilters.ALL
+      ? ''
+      : ` : ${getAlertEventsFilterLabels(filter as AlertRecentEventFilters)}`;
+
   return (
     <Grid
-      className="layout-row layout-grid"
-      style={{ ...getLayoutGutter(16, 16) }}>
+      className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+      rowGap="4">
       <Grid.Item className="layout-column" span={24}>
         <Box className="layout-row" justify="between" wrap="wrap">
           <Box className="layout-column tw:block">
             <Grid
-              className="layout-row layout-grid"
-              style={{ ...getLayoutGutter(8, 8) }}>
+              className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-8)] tw:-mx-1"
+              rowGap="2">
               <Grid.Item className="layout-column" span={24}>
-                <Typography className="font-medium">
+                <Typography weight="medium">
                   {`${t('label.description')}:`}
                 </Typography>
               </Grid.Item>
@@ -423,16 +418,15 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           <Box className="layout-column tw:block">
             <Dropdown.Root>
               <Button
+                aria-label={`${t('label.filter-plural')}${appliedFilterText}`}
                 color="secondary"
                 data-testid="filter-button"
-                iconLeading={<FilterIcon height={16} width={16} />}
+                iconLeading={FilterLines}
                 size="sm">
-                {filter !== AlertRecentEventFilters.ALL && (
-                  <Typography
-                    className="font-medium"
-                    data-testid="applied-filter-text">{` : ${getAlertEventsFilterLabels(
-                    filter as AlertRecentEventFilters
-                  )}`}</Typography>
+                {appliedFilterText && (
+                  <Typography data-testid="applied-filter-text" weight="medium">
+                    {appliedFilterText}
+                  </Typography>
                 )}
               </Button>
               <Dropdown.Popover className="tw:w-auto">

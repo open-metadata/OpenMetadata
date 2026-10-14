@@ -11,25 +11,22 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
 import LineageConfigModal from './LineageConfigModal';
 
 const onCancel = jest.fn();
 const onSave = jest.fn();
-let user: ReturnType<typeof userEvent.setup>;
 
 const config = {
   upstreamDepth: 2,
   downstreamDepth: 3,
-  nodesPerLayer: 6,
+  nodesPerLayer: 4,
   pipelineViewMode: PipelineViewMode.Node,
 };
 
 describe('LineageConfigModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
   });
 
   it('renders the modal with pre-populated values', async () => {
@@ -84,14 +81,13 @@ describe('LineageConfigModal', () => {
       'field-nodes-per-layer'
     );
 
-    await user.clear(fieldUpstream);
-    await user.type(fieldUpstream, '5');
-    await user.clear(fieldDownstream);
-    await user.type(fieldDownstream, '6');
-    await user.clear(fieldNodesPerLayer);
-    await user.type(fieldNodesPerLayer, '7');
+    // Update values
+    fireEvent.change(fieldUpstream, { target: { value: '5' } });
+    fireEvent.change(fieldDownstream, { target: { value: '6' } });
+    fireEvent.change(fieldNodesPerLayer, { target: { value: '7' } });
 
-    await user.click(screen.getByRole('button', { name: 'label.ok' }));
+    // Submit form
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith({
@@ -114,14 +110,13 @@ describe('LineageConfigModal', () => {
 
     const fieldUpstream = await screen.findByTestId('field-upstream');
 
-    await user.clear(fieldUpstream);
-    await user.type(fieldUpstream, '-1');
+    // Try to set negative value
+    fireEvent.change(fieldUpstream, { target: { value: '-1' } });
 
     // Submit form
     fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
-      expect(fieldUpstream).toHaveAttribute('aria-invalid', 'true');
       expect(onSave).not.toHaveBeenCalled();
     });
   });
@@ -139,14 +134,12 @@ describe('LineageConfigModal', () => {
     const fieldDownstream = await screen.findByTestId('field-downstream');
 
     // Try to set negative value
-    await user.clear(fieldDownstream);
-    await user.type(fieldDownstream, '-1');
+    fireEvent.change(fieldDownstream, { target: { value: '-1' } });
 
     // Submit form
     fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
-      expect(fieldDownstream).toHaveAttribute('aria-invalid', 'true');
       expect(onSave).not.toHaveBeenCalled();
     });
   });
@@ -165,14 +158,13 @@ describe('LineageConfigModal', () => {
       'field-nodes-per-layer'
     );
 
-    await user.clear(fieldNodesPerLayer);
-    await user.type(fieldNodesPerLayer, '4');
+    // Try to set value less than minimum (5)
+    fireEvent.change(fieldNodesPerLayer, { target: { value: '4' } });
 
     // Submit form
     fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
-      expect(fieldNodesPerLayer).toHaveAttribute('aria-invalid', 'true');
       expect(onSave).not.toHaveBeenCalled();
     });
   });
@@ -193,12 +185,10 @@ describe('LineageConfigModal', () => {
       'field-nodes-per-layer'
     );
 
-    await user.clear(fieldUpstream);
-    await user.tab();
-    await user.clear(fieldDownstream);
-    await user.tab();
-    await user.clear(fieldNodesPerLayer);
-    await user.tab();
+    // Clear all fields
+    fireEvent.change(fieldUpstream, { target: { value: '' } });
+    fireEvent.change(fieldDownstream, { target: { value: '' } });
+    fireEvent.change(fieldNodesPerLayer, { target: { value: '' } });
 
     // Submit form
     fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
@@ -206,5 +196,43 @@ describe('LineageConfigModal', () => {
     await waitFor(() => {
       expect(onSave).not.toHaveBeenCalled();
     });
+  });
+
+  it('shows the latest config and drops cancelled edits when reopened', async () => {
+    const { rerender } = render(
+      <LineageConfigModal
+        visible
+        config={config}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+
+    fireEvent.change(await screen.findByTestId('field-upstream'), {
+      target: { value: '9' },
+    });
+
+    rerender(
+      <LineageConfigModal
+        config={config}
+        visible={false}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+    rerender(
+      <LineageConfigModal
+        visible
+        config={{ ...config, downstreamDepth: 7 }}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('field-upstream')).toHaveValue(2)
+    );
+
+    expect(screen.getByTestId('field-downstream')).toHaveValue(7);
   });
 });

@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { DateTime } from 'luxon';
-import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequest';
-import { KPIChartType } from '../../utils/KPI/KPIUtils';
+import { KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 
 export interface KPIFormValues {
-  chartType: KPIChartType;
-  displayName?: string;
-  description?: string;
+  chartType: string | null;
+  displayName: string;
   metricType: KpiTargetType;
-  targetValue: number | null;
+  targetValue: number;
   startDate: DateTime | null;
   endDate: DateTime | null;
+  description: string;
 }

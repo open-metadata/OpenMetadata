@@ -23,7 +23,6 @@ import {
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import { RefreshCw01 } from '@openmetadata/ui-core-components/icons';
-import { InputRef } from 'antd';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { startCase, upperCase } from 'lodash';
@@ -124,7 +123,6 @@ const NavBar = () => {
     isDomainRestricted,
   } = useDomainStore();
   const { t } = useTranslation();
-  const searchRef = useRef<InputRef>(null);
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
   const [hasMentionNotification, setHasMentionNotification] =
@@ -311,7 +309,7 @@ const NavBar = () => {
 
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
     if (isCommandKeyPress(event) && event.key === Keys.K) {
-      searchRef.current?.focus();
+      document.getElementById('searchBox')?.focus();
       event.preventDefault();
     }
   }, []);

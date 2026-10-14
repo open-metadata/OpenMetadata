@@ -54,14 +54,6 @@ p {
 
 // Global css
 
-.global-search-select-menu {
-  width: 200px !important;
-}
-
-.appbar-search .rc-virtual-list-holder {
-  max-height: max-content;
-}
-
 .global-border {
   border: @global-border;
 }
@@ -1104,23 +1096,6 @@ a[href].link-text-grey,
         color: @primary-color;
       }
     }
-  }
-}
-
-.error-boundary-result {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  height: 100%;
-
-  // antd Result hardcodes rgba(0,0,0,…) text, unreadable on the dark surface.
-  .ant-result-title {
-    color: var(--om-color-text-primary);
-  }
-
-  .ant-result-subtitle {
-    color: var(--om-color-text-tertiary);
   }
 }
 

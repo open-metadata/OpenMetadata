@@ -288,39 +288,52 @@ test.describe(
         await page
           .locator('[data-testid="sample-data-count-input"]')
           .fill(profilerSetting.sampleDataCount);
-        await page.locator('[data-testid="exclude-column-select"]').click();
-        await page.keyboard.type(`${profilerSetting.excludeColumns}`);
-        await page.keyboard.press('Enter');
+        await page
+          .getByTestId('exclude-column-select')
+          .getByRole('combobox')
+          .fill(profilerSetting.excludeColumns);
+        await page
+          .getByRole('listbox')
+          .getByRole('option', {
+            name: profilerSetting.excludeColumns,
+            exact: true,
+          })
+          .click();
+        await page.keyboard.press('Escape');
         await clickCodeEditor(page);
         await page.keyboard.type(profilerSetting.profileQuery);
 
-        await page.locator('[data-testid="include-column-select"]').click();
         await page
-          .locator('.ant-select-dropdown')
-          .locator(
-            `[title="${profilerSetting.includeColumns}"]:not(.ant-select-dropdown-hidden)`
-          )
-          .last()
+          .getByTestId('include-column-select')
+          .getByRole('combobox')
+          .fill(profilerSetting.includeColumns);
+        await page
+          .getByRole('listbox')
+          .getByRole('option', {
+            name: profilerSetting.includeColumns,
+            exact: true,
+          })
           .click();
         await page.locator('[data-testid="enable-partition-switch"]').click();
         await page.locator('[data-testid="interval-type"]').click();
         await page
-          .locator('.ant-select-dropdown')
-          .locator(
-            `[title="${profilerSetting.partitionIntervalType}"]:not(.ant-select-dropdown-hidden)`
-          )
+          .getByRole('listbox')
+          .getByRole('option', {
+            name: profilerSetting.partitionIntervalType,
+            exact: true,
+          })
           .click();
 
         await page
-          .getByTestId('profiler-settings-modal')
           .getByTestId('column-name')
-          .click();
+          .getByRole('combobox')
+          .fill(profilerSetting.partitionColumnName);
         await page
-          .locator('.ant-select-dropdown')
-          .locator(
-            `[title="${profilerSetting.partitionColumnName}"]:not(.ant-select-dropdown-hidden)`
-          )
-          .last()
+          .getByRole('listbox')
+          .getByRole('option', {
+            name: profilerSetting.partitionColumnName,
+            exact: true,
+          })
           .click();
         await page
           .locator('[data-testid="partition-value"]')
@@ -334,29 +347,27 @@ test.describe(
         );
         await page.getByRole('button', { name: 'Save' }).click();
         const updateResponse = await updateTableProfilerConfigResponse;
-        const requestBody = await updateResponse.request().postData();
+        const requestBody = updateResponse.request().postDataJSON();
 
-        expect(requestBody).toEqual(
-          JSON.stringify({
-            excludeColumns: [table.entity?.columns[0].name],
-            profileQuery: 'select * from table',
-            profileSampleConfig: {
-              sampleConfigType: 'STATIC',
-              config: {
-                profileSample: 60,
-                profileSampleType: 'PERCENTAGE',
-              },
+        expect(requestBody).toEqual({
+          excludeColumns: [table.entity?.columns[0].name],
+          profileQuery: 'select * from table',
+          profileSampleConfig: {
+            sampleConfigType: 'STATIC',
+            config: {
+              profileSample: 60,
+              profileSampleType: 'PERCENTAGE',
             },
-            includeColumns: [{ columnName: table.entity?.columns[1].name }],
-            partitioning: {
-              partitionColumnName: table.entity?.columns[2].name,
-              partitionIntervalType: 'COLUMN-VALUE',
-              partitionValues: ['test'],
-              enablePartitioning: true,
-            },
-            sampleDataCount: 100,
-          })
-        );
+          },
+          includeColumns: [{ columnName: table.entity?.columns[1].name }],
+          partitioning: {
+            partitionColumnName: table.entity?.columns[2].name,
+            partitionIntervalType: 'COLUMN-VALUE',
+            partitionValues: ['test'],
+            enablePartitioning: true,
+          },
+          sampleDataCount: 100,
+        });
       });
 
       await test.step('Reset profile sample type', async () => {
@@ -379,22 +390,20 @@ test.describe(
         );
         await page.getByRole('button', { name: 'Save' }).click();
         const updateResponse = await updateTableProfilerConfigResponse;
-        const requestBody = await updateResponse.request().postData();
+        const requestBody = updateResponse.request().postDataJSON();
 
-        expect(requestBody).toEqual(
-          JSON.stringify({
-            excludeColumns: [table.entity?.columns[0].name],
-            profileQuery: 'select * from table',
-            includeColumns: [{ columnName: table.entity?.columns[1].name }],
-            partitioning: {
-              partitionColumnName: table.entity?.columns[2].name,
-              partitionIntervalType: 'COLUMN-VALUE',
-              partitionValues: ['test'],
-              enablePartitioning: true,
-            },
-            sampleDataCount: 100,
-          })
-        );
+        expect(requestBody).toEqual({
+          excludeColumns: [table.entity?.columns[0].name],
+          profileQuery: 'select * from table',
+          includeColumns: [{ columnName: table.entity?.columns[1].name }],
+          partitioning: {
+            partitionColumnName: table.entity?.columns[2].name,
+            partitionIntervalType: 'COLUMN-VALUE',
+            partitionValues: ['test'],
+            enablePartitioning: true,
+          },
+          sampleDataCount: 100,
+        });
 
         await page.getByTestId('profiler-settings-modal').waitFor({
           state: 'detached',
@@ -411,7 +420,7 @@ test.describe(
           page.locator('[data-testid="slider-input"]')
         ).not.toBeVisible();
         await expect(
-          page.getByTestId('profile-sample').locator('div')
+          page.getByTestId('profile-sample').getByRole('button')
         ).toBeVisible();
       });
 
@@ -434,25 +443,23 @@ test.describe(
         );
         await page.getByRole('button', { name: 'Save' }).click();
         const updateResponse = await updateTableProfilerConfigResponse;
-        const requestBody = await updateResponse.request().postData();
+        const requestBody = updateResponse.request().postDataJSON();
 
         // Saving without touching anything must round-trip the stored
         // partitioning block. The backend replaces this extension wholesale,
         // so any field missing from the payload is erased on the server.
-        expect(requestBody).toEqual(
-          JSON.stringify({
-            excludeColumns: [table.entity?.columns[0].name],
-            profileQuery: 'select * from table',
-            includeColumns: [{ columnName: table.entity?.columns[1].name }],
-            partitioning: {
-              partitionColumnName: table.entity?.columns[2].name,
-              partitionIntervalType: 'COLUMN-VALUE',
-              partitionValues: ['test'],
-              enablePartitioning: true,
-            },
-            sampleDataCount: 100,
-          })
-        );
+        expect(requestBody).toEqual({
+          excludeColumns: [table.entity?.columns[0].name],
+          profileQuery: 'select * from table',
+          includeColumns: [{ columnName: table.entity?.columns[1].name }],
+          partitioning: {
+            partitionColumnName: table.entity?.columns[2].name,
+            partitionIntervalType: 'COLUMN-VALUE',
+            partitionValues: ['test'],
+            enablePartitioning: true,
+          },
+          sampleDataCount: 100,
+        });
       });
     });
   }

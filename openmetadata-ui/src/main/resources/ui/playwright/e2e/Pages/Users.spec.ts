@@ -947,12 +947,21 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .click();
     await adminPage.getByTestId('default-persona-select-list').waitFor();
 
-    await adminPage.locator('.ant-select-dropdown').waitFor({
-      state: 'visible',
-    });
+    await adminPage
+      .getByTestId('default-persona-select-list')
+      .getByTestId('autocomplete-selected-item')
+      .getByRole('button')
+      .click();
+    await adminPage
+      .getByTestId('default-persona-select-list')
+      .getByRole('combobox')
+      .click();
+    await adminPage.getByRole('listbox').waitFor({ state: 'visible' });
 
     // Select the second persona as default
-    await adminPage.getByTitle(persona2.data.displayName).click();
+    await adminPage
+      .getByRole('option', { name: persona2.data.displayName })
+      .click();
 
     const defaultPersonaChangeResponse =
       adminPage.waitForResponse('/api/v1/users/*');
@@ -1013,8 +1022,16 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .click();
     await adminPage.getByTestId('default-persona-select-list').waitFor();
     await adminPage
-      .locator('[data-testid="default-persona-select-list"] .ant-select-clear')
+      .getByTestId('default-persona-select-list')
+      .getByTestId('autocomplete-selected-item')
+      .getByRole('button')
       .click();
+
+    // Removing the chip refocuses the field, which reopens the list over Save.
+    await adminPage
+      .getByTestId('default-persona-select-list')
+      .getByRole('combobox')
+      .press('Escape');
 
     const removePersonaResponse = adminPage.waitForResponse('/api/v1/users/*');
     await adminPage
@@ -1151,9 +1168,25 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage.getByTestId('persona-select-list').waitFor();
 
       // Clear all selected personas
-      await adminPage
-        .locator('[data-testid="persona-select-list"] .ant-select-clear')
-        .click();
+      const personaSelect = adminPage.getByTestId('persona-select-list');
+      const selectedPersonaChips = personaSelect.getByTestId(
+        'autocomplete-selected-item'
+      );
+      // The open list hides the chips from the accessibility tree, and each
+      // removal refocuses the field and reopens it.
+      const closePersonaList = () =>
+        personaSelect.getByRole('combobox').press('Escape');
+      await closePersonaList();
+      // Only the first few chips render at once, so re-read after each removal.
+      let [chipName] = await selectedPersonaChips.allTextContents();
+      while (chipName) {
+        await selectedPersonaChips
+          .filter({ hasText: chipName })
+          .getByRole('button')
+          .click();
+        await closePersonaList();
+        [chipName] = await selectedPersonaChips.allTextContents();
+      }
 
       const updateUserPromise = adminPage.waitForResponse(
         (response) =>
@@ -1199,16 +1232,11 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage.getByTestId('default-persona-select-list').waitFor();
 
       // Wait for dropdown to open and options to load
-      await adminPage.locator('.ant-select-dropdown').waitFor({
-        state: 'visible',
-      });
+      await adminPage.getByRole('listbox').waitFor({ state: 'visible' });
 
-      // Select specific persona for default - try test ID first, fallback to role selector
-      const defaultPersonaOptionTestId = adminPage.getByTitle(
-        persona1.responseData.displayName
-      );
-
-      await defaultPersonaOptionTestId.click();
+      await adminPage
+        .getByRole('option', { name: persona1.responseData.displayName })
+        .click();
 
       // Save the changes
       const savePersonaResponse = adminPage.waitForResponse('/api/v1/users/*');
@@ -1277,10 +1305,16 @@ test.describe('User Profile Persona Interactions', () => {
 
       // Clear the selected default persona
       await adminPage
-        .locator(
-          '[data-testid="default-persona-select-list"] .ant-select-clear'
-        )
+        .getByTestId('default-persona-select-list')
+        .getByTestId('autocomplete-selected-item')
+        .getByRole('button')
         .click();
+
+      // Removing the chip refocuses the field, which reopens the list over Save.
+      await adminPage
+        .getByTestId('default-persona-select-list')
+        .getByRole('combobox')
+        .press('Escape');
 
       const defaultPersonaChangeResponse =
         adminPage.waitForResponse('/api/v1/users/*');

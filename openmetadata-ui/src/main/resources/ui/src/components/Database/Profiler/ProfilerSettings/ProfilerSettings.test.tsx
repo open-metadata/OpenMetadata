@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
   DatabaseProfilerConfig,
@@ -78,10 +79,11 @@ describe('ProfilerSettings profile sample minimum', () => {
   it('should not allow a percentage below 1 on the slider or input', async () => {
     await renderWithConfig(buildConfig(60));
 
-    expect(screen.getByTestId('slider-input')).toHaveAttribute(
-      'aria-valuemin',
-      '1'
-    );
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await user.click(screen.getByTestId('slider-input'));
+    await user.keyboard('{Home}{ArrowDown}');
+
+    expect(screen.getByTestId('slider-input')).toHaveValue('1%');
     expect(screen.getByRole('slider')).toHaveAttribute('min', '1');
   });
 
