@@ -14,11 +14,13 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -33,6 +35,7 @@ import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
+import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
@@ -62,6 +65,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
@@ -2706,6 +2710,63 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         SdkClients.adminClient().dataContracts().update(contract.getId().toString(), contract);
 
     assertTrue(updated.getReviewers() == null || updated.getReviewers().isEmpty());
+  }
+
+  @Test
+  void testContractResultsPreserveMetadata(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Type contractType =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, "/v1/metadata/types/name/dataContract", null, Type.class);
+    Type stringType =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, "/v1/metadata/types/name/string", null, Type.class);
+    String propertyName = ns.prefix("contractNote");
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metadata/types/" + contractType.getId(),
+            new CustomProperty()
+                .withName(propertyName)
+                .withDescription("A note that validation must preserve")
+                .withPropertyType(stringType.getEntityReference()),
+            Type.class);
+
+    Map<String, String> extension = Map.of(propertyName, "Keep this note");
+    CreateDataContract request =
+        createMinimalRequest(ns)
+            .withExtension(extension)
+            .withReviewers(List.of(SharedEntities.get().USER1_REF));
+    DataContract contract = client.dataContracts().create(request);
+    // A subsequent edit gives session consolidation a previous version with the extension.
+    request.setDescription("Reviewed contract");
+    contract = client.dataContracts().createOrUpdate(request);
+    assertTrue(contract.getVersion() > 0.1);
+
+    DataContractResult result =
+        new DataContractResult()
+            .withDataContractFQN(contract.getFullyQualifiedName())
+            .withTimestamp(System.currentTimeMillis())
+            .withExecutionTime(100L);
+    for (ContractExecutionStatus status :
+        List.of(ContractExecutionStatus.Running, ContractExecutionStatus.Success)) {
+      result =
+          client
+              .dataContracts()
+              .addResult(contract.getId(), result.withContractExecutionStatus(status));
+      DataContract stored =
+          client.dataContracts().get(contract.getId().toString(), "extension,reviewers");
+      assertEquals(
+          extension, stored.getExtension(), "Recording a result must preserve custom properties");
+      assertEquals("Reviewed contract", stored.getDescription());
+      assertEquals(
+          SharedEntities.get().USER1_REF.getId(), stored.getReviewers().getFirst().getId());
+      assertEquals(result.getId(), stored.getLatestResult().getResultId());
+      assertEquals(status, stored.getLatestResult().getStatus());
+    }
   }
 
   @Test
