@@ -61,8 +61,9 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // widgets they drove, taking six more with them, and the Data Contract
     // core-components migration removes three more. The Classic Observability
     // migration's core-component selectors in the Data Quality, Profiler and
-    // Profiler Configuration specs remove five more.
-    'om-playwright/no-positional-locator': 573,
+    // Profiler Configuration specs remove five more. The antd Form / Select /
+    // Input migration (standalone controls, settings forms) removes five more.
+    'om-playwright/no-positional-locator': 568,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
