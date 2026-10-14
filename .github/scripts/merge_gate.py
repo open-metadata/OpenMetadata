@@ -265,33 +265,49 @@ def write_report(path: Path | None, payload: dict) -> None:
     print(text)
 
 
-def cmd_entry(args: argparse.Namespace, token: str) -> int:
+def act(args: argparse.Namespace, token: str, run: dict) -> dict[str, Any]:
+    """Decide one CI run by its own event and act on the verdict (the status, and any
+    re-run it asks for) unless --dry-run. The report's `decision` is None when there is
+    nothing to decide."""
     policy_doc = json.loads(args.policy.read_text())
     policy = gate.Policy.from_dict(policy_doc)
-    run = mq.rest(f"/repos/{args.owner}/{args.repo}/actions/runs/{args.run_id}", token)
-    if run.get("event") != "merge_group":
-        write_report(args.out, {"context": {"runId": args.run_id, "mode": args.mode, "skipped": f"event {run.get('event')}"}})
-        return 0
-    decision, context = entry_decision(args.owner, args.repo, run, policy, policy_doc, args.mode, token)
+    if run.get("event") == "merge_group":
+        decision, context = entry_decision(args.owner, args.repo, run, policy, policy_doc, args.mode, token)
+        # An entry's status links the decision; a PR head's links its own run.
+        target = controller_url() or run.get("html_url")
+    elif run.get("event") == "pull_request":
+        decision, context = pr_decision(args.owner, args.repo, run, policy, policy_doc, args.mode, token)
+        target = run.get("html_url")
+    else:
+        return {"context": {"runId": run.get("id"), "mode": args.mode, "skipped": f"event {run.get('event')}"}, "decision": None}
     payload: dict[str, Any] = {"context": context, "decision": decision.as_dict() if decision else None}
     if decision and not args.dry_run:
-        status_context = policy_doc["shadowStatusContext"] if args.mode == "shadow" else policy_doc["statusContext"]
         if decision.verdict == gate.RERUN:
             payload["rerun"] = rerun(args.owner, args.repo, run, decision, context.get("jobIds", {}), token)
+        status_context = policy_doc["shadowStatusContext"] if args.mode == "shadow" else policy_doc["statusContext"]
         post(
             f"/repos/{args.owner}/{args.repo}/statuses/{run['head_sha']}",
-            {
-                "state": STATE[decision.verdict],
-                "context": status_context,
-                "description": decision.summary,
-                "target_url": controller_url() or run.get("html_url"),
-            },
+            {"state": STATE[decision.verdict], "context": status_context, "description": decision.summary, "target_url": target},
             token,
         )
         if decision.alert:
             print(f"::warning::merge-gate is holding PR #{context.get('pr')}: {decision.summary}")
+    return payload
+
+
+def decide_one(args: argparse.Namespace, token: str, event: str | None) -> int:
+    """The `entry`, `pr` and `auto` commands: one run, which must be of `event` if given."""
+    run = mq.rest(f"/repos/{args.owner}/{args.repo}/actions/runs/{args.run_id}", token)
+    if event and run.get("event") != event:
+        payload = {"context": {"runId": args.run_id, "mode": args.mode, "skipped": f"event {run.get('event')}"}, "decision": None}
+    else:
+        payload = act(args, token, run)
     write_report(args.out, payload)
     return 0
+
+
+def cmd_entry(args: argparse.Namespace, token: str) -> int:
+    return decide_one(args, token, "merge_group")
 
 
 def pr_decision(
@@ -339,34 +355,46 @@ def pr_decision(
 
 
 def cmd_pr(args: argparse.Namespace, token: str) -> int:
-    policy_doc = json.loads(args.policy.read_text())
-    policy = gate.Policy.from_dict(policy_doc)
-    run = mq.rest(f"/repos/{args.owner}/{args.repo}/actions/runs/{args.run_id}", token)
-    decision, context = pr_decision(args.owner, args.repo, run, policy, policy_doc, args.mode, token)
-    payload: dict[str, Any] = {"context": context, "decision": decision.as_dict() if decision else None}
-    if decision and not args.dry_run:
-        if decision.verdict == gate.RERUN:
-            payload["rerun"] = rerun(args.owner, args.repo, run, decision, context.get("jobIds", {}), token)
-        status_context = policy_doc["shadowStatusContext"] if args.mode == "shadow" else policy_doc["statusContext"]
-        post(
-            f"/repos/{args.owner}/{args.repo}/statuses/{run['head_sha']}",
-            {"state": STATE[decision.verdict], "context": status_context, "description": decision.summary, "target_url": run.get("html_url")},
-            token,
-        )
-    write_report(args.out, payload)
-    return 0
+    return decide_one(args, token, "pull_request")
 
 
 def cmd_auto(args: argparse.Namespace, token: str) -> int:
-    """Decide a run by its own event, for manual dispatch and the sweep."""
-    run = mq.rest(f"/repos/{args.owner}/{args.repo}/actions/runs/{args.run_id}", token)
-    return cmd_pr(args, token) if run.get("event") == "pull_request" else cmd_entry(args, token)
+    """Decide a run by its own event, for manual dispatch."""
+    return decide_one(args, token, None)
 
 
+# Verdicts per sweep; a run that gets none (outside the sample, superseded, out of the
+# queue, still going) does not count, so it cannot crowd out one that does.
 SWEEP_LIMIT = 50
-# The runs API filters on creation only, and a queue run finishes long after it is
-# created: list what was created within the longest a run and its re-runs can take.
-SWEEP_LOOKBACK = timedelta(hours=6)
+SWEEP_PAGES = 5
+# The runs API filters on creation only, and a run finishes long after it is created:
+# each listing reaches back past the longest its runs and their re-runs take. Queue runs
+# have their own listing and come first, so PR traffic cannot crowd them out.
+SWEEP_LISTINGS = (("merge_group", timedelta(hours=6)), ("pull_request", timedelta(hours=3)))
+
+
+def sweep_candidates(args: argparse.Namespace, token: str, workflow: str) -> tuple[list[dict], list[str]]:
+    """Runs that finished inside the sweep's window: queue runs, then PR runs, each oldest
+    first, since the oldest entry is the nearest its check timeout. A listing that cannot
+    be read is reported and skipped; the other is still swept."""
+    now = mq.utcnow()
+    oldest, newest = now - timedelta(minutes=args.minutes), now - timedelta(minutes=args.grace_minutes)
+    candidates, problems = [], []
+    for event, lookback in SWEEP_LISTINGS:
+        try:
+            runs = mq.paginated_items(
+                f"/repos/{args.owner}/{args.repo}/actions/workflows/{workflow}/runs"
+                f"?event={event}&status=completed&created=>={now - lookback:%Y-%m-%dT%H:%M:%SZ}",
+                "workflow_runs",
+                token,
+                max_pages=SWEEP_PAGES,
+            )
+        except mq.ApiError as exc:
+            problems.append(f"{event} runs unreadable: {exc}")
+            continue
+        finished = [run for run in runs if oldest <= mq.parse_ts(run["updated_at"]) <= newest]
+        candidates += sorted(finished, key=lambda run: mq.parse_ts(run["created_at"]))
+    return candidates, problems
 
 
 def cmd_sweep(args: argparse.Namespace, token: str) -> int:
@@ -376,38 +404,44 @@ def cmd_sweep(args: argparse.Namespace, token: str) -> int:
     A run qualifies when it finished between `--minutes` and `--grace-minutes` ago (the
     grace is the decide job's timeout, so a delivered decision is never raced) and its
     head's latest gate status is missing or pending. A re-run leaves the status pending
-    until its new attempt is decided, so a missed delivery for that attempt is caught."""
+    until its new attempt is decided, so a missed delivery for that attempt is caught; an
+    entry the gate holds is pending too, so it is decided again on each sweep in the
+    window (ADR:2026-10-13-merge-queue-entries-are-decided-by-the-merge-gate-status)."""
     policy_doc = json.loads(args.policy.read_text())
     context = policy_doc["shadowStatusContext"] if args.mode == "shadow" else policy_doc["statusContext"]
-    now = mq.utcnow()
-    oldest, newest = now - timedelta(minutes=args.minutes), now - timedelta(minutes=args.grace_minutes)
-    runs = mq.paginated_items(
-        f"/repos/{args.owner}/{args.repo}/actions/workflows/{Path(policy_doc['workflow']).name}/runs"
-        f"?status=completed&created=>={now - SWEEP_LOOKBACK:%Y-%m-%dT%H:%M:%SZ}",
-        "workflow_runs",
-        token,
-        max_pages=3,
-    )
-    finished = [run for run in runs if oldest <= mq.parse_ts(run["updated_at"]) <= newest]
-    decided = failed = 0
-    for run in finished[:SWEEP_LIMIT]:
-        if run.get("event") not in ("merge_group", "pull_request"):
+    candidates, problems = sweep_candidates(args, token, Path(policy_doc["workflow"]).name)
+    verdicts, reports, left = 0, [], 0
+    for listed in candidates:
+        if verdicts >= SWEEP_LIMIT:
+            left += 1
             continue
-        statuses = mq.rest(f"/repos/{args.owner}/{args.repo}/commits/{run['head_sha']}/statuses?per_page=100", token)
-        # Newest first, so the first one in the gate's context is the head's current state.
-        latest = next((s for s in statuses if s.get("context") == context), None)
-        if latest and latest.get("state") != "pending":
-            continue
-        args.run_id = run["id"]
         try:
-            result = cmd_auto(args, token)
+            statuses = mq.rest(f"/repos/{args.owner}/{args.repo}/commits/{listed['head_sha']}/statuses?per_page=100", token)
+            # Newest first, so the first one in the gate's context is the head's current state.
+            latest = next((s for s in statuses if s.get("context") == context), None)
+            if latest and latest.get("state") != "pending":
+                continue
+            # Read again: a re-run may have started since the listing.
+            run = mq.rest(f"/repos/{args.owner}/{args.repo}/actions/runs/{listed['id']}", token)
+            payload = act(args, token, run)
         except (mq.ApiError, OSError, ValueError, KeyError) as exc:
-            print(f"::warning::sweep could not decide run {run['id']}: {exc}")
-            result = 1
-        decided += 1
-        failed += int(result != 0)
-    print(f"sweep: {len(finished)} runs finished in the window, {decided} without a verdict decided, {failed} unreadable")
-    return 1 if failed else 0
+            # Counted, so an outage costs one sweep's budget and no more.
+            problems.append(f"run {listed['id']}: {exc}")
+            verdicts += 1
+            continue
+        if payload["decision"] is not None:
+            verdicts += 1
+            write_report(None, payload)
+        reports.append(payload)
+    if left:
+        print(f"::warning::sweep: {SWEEP_LIMIT} verdicts reached; the next sweep reaches the {left} runs not checked")
+    for problem in problems:
+        print(f"::warning::sweep: {problem}")
+    if args.out:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(json.dumps({"candidates": len(candidates), "verdicts": verdicts, "left": left, "problems": problems, "runs": reports}, indent=1, default=str))
+    print(f"sweep: {len(candidates)} runs finished in the window, {verdicts} verdicts, {left} left, {len(problems)} problems")
+    return 1 if problems else 0
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

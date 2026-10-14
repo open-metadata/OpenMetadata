@@ -48,7 +48,11 @@ the shadow period measures them.
 `merge-gate.yml` runs on every finished CI run (`workflow_run`), every 10 minutes, and
 by hand. It runs main's code only, and decides only finished runs. The sweep catches a
 missed delivery: a run that finished 15 to 60 minutes ago whose head has no gate status,
-or only a pending one (a re-run leaves it pending until the new attempt is decided).
+or only a pending one (a re-run leaves it pending until the new attempt is decided; an
+entry the gate holds is decided again on each sweep, without a second alert). Queue runs
+go first and oldest first, from their own listing; at most 50 verdicts per sweep, not
+counting runs that get none. The rules are in
+ADR:2026-10-13-merge-queue-entries-are-decided-by-the-merge-gate-status.
 
 | Evidence in the run | Verdict |
 |---|---|

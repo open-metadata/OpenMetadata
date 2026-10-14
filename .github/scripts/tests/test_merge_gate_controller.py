@@ -3,11 +3,12 @@
 import importlib.util
 import io
 import json
+import re
 import sys
 import zipfile
 from datetime import timedelta
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 import pytest
 
@@ -75,6 +76,9 @@ class FakeGitHub:
         self.parent_jobs = []
         self.recent_runs = []
         self.statuses = []
+        self.statuses_by_sha = {}
+        self.dead_refs = set()
+        self.unlistable = set()
         self.pull = None
         self.logs = {}
         monkeypatch.setattr(mq, "rest", self.rest)
@@ -87,14 +91,17 @@ class FakeGitHub:
     def rest(self, path, token):
         if path == "/repos/o/r/actions/runs/500":
             return self.run
+        if match := re.fullmatch(r"/repos/o/r/actions/runs/(\d+)", path):
+            return next(r for r in self.recent_runs if r["id"] == int(match.group(1)))
         if path.startswith(f"/repos/o/r/actions/runs?head_sha={PARENT}"):
             return {"workflow_runs": [{"id": 400, "path": ".github/workflows/ci.yml", "run_attempt": 1}]}
         if path.startswith("/repos/o/r/git/ref/heads/"):
-            if not self.ref_alive:
+            branch = unquote(path.removeprefix("/repos/o/r/git/ref/heads/"))
+            if not self.ref_alive or branch in self.dead_refs:
                 raise mq.ApiError("HTTP 404", 404)
-            return {"ref": BRANCH}
-        if path.startswith(f"/repos/o/r/commits/{HEAD}/statuses"):
-            return self.statuses
+            return {"ref": branch}
+        if match := re.fullmatch(r"/repos/o/r/commits/([0-9a-f]{40})/statuses\?per_page=100", path):
+            return self.statuses_by_sha.get(match.group(1), self.statuses if match.group(1) == HEAD else [])
         if path.startswith("/repos/o/r/pulls/") and self.pull is not None:
             return self.pull
         if path.startswith("/repos/o/r/compare/main..."):
@@ -108,10 +115,14 @@ class FakeGitHub:
             return self.jobs
         if "/artifacts" in path:
             return self.artifacts
-        if "/actions/workflows/ci.yml/runs?status=completed" in path:
-            # GitHub filters this list on creation time only.
-            created = mq.parse_ts(parse_qs(urlsplit(path).query)["created"][0].removeprefix(">="))
-            return [r for r in self.recent_runs if mq.parse_ts(r["created_at"]) >= created]
+        query = parse_qs(urlsplit(path).query)
+        if "/actions/workflows/ci.yml/runs" in path and query.get("status") == ["completed"]:
+            # The sweep's listing: GitHub filters on the event and on creation time only.
+            event = query["event"][0]
+            if event in self.unlistable:
+                raise mq.ApiError(f"Partial data: {path} exceeded {max_pages} pages")
+            created = mq.parse_ts(query["created"][0].removeprefix(">="))
+            return [r for r in self.recent_runs if r["event"] == event and mq.parse_ts(r["created_at"]) >= created]
         if "/actions/workflows/ci.yml/runs" in path:
             return []
         raise AssertionError(f"unexpected list {path}")
@@ -290,6 +301,68 @@ def test_the_sweep_leaves_runs_finished_inside_the_grace_or_before_its_window(mo
     fake.recent_runs = [finished(fake, created_minutes_ago=150, finished_minutes_ago=finished_minutes_ago)]
     assert run(["--mode", "shadow", "sweep"]) == 0
     assert fake.posts == []
+
+
+def another_run(fake, run_id, pr, created_minutes_ago, finished_minutes_ago, event="merge_group"):
+    """A further finished run with its own id, head commit and queue ref."""
+    now = mq.utcnow()
+    run = {
+        **fake.run,
+        "id": run_id,
+        "event": event,
+        "head_branch": f"gh-readonly-queue/main/pr-{pr}-{PARENT}" if event == "merge_group" else f"feature-{pr}",
+        "head_sha": f"{run_id:040x}",
+        "html_url": f"https://github.com/o/r/actions/runs/{run_id}",
+        "created_at": (now - timedelta(minutes=created_minutes_ago)).isoformat(),
+        "updated_at": (now - timedelta(minutes=finished_minutes_ago)).isoformat(),
+    }
+    fake.recent_runs.append(run)
+    return run
+
+
+def decided_heads(fake):
+    return [path.rsplit("/", 1)[1] for path, _ in fake.posts if "/statuses/" in path]
+
+
+def blip(monkeypatch):
+    return FakeGitHub(monkeypatch, jobs=[job(1, "playwright / chromium-03", step="Download backend distribution")])
+
+
+def test_the_sweep_decides_queue_runs_first_and_the_oldest_first(monkeypatch):
+    # Under its limit, the entry nearest its check timeout goes first, and PR runs wait
+    # behind every queue run.
+    monkeypatch.setattr(controller, "SWEEP_LIMIT", 1)
+    fake = blip(monkeypatch)
+    another_run(fake, 601, pr=1, created_minutes_ago=50, finished_minutes_ago=20, event="pull_request")
+    another_run(fake, 602, pr=2, created_minutes_ago=100, finished_minutes_ago=20)
+    oldest = another_run(fake, 603, pr=3, created_minutes_ago=200, finished_minutes_ago=30)
+    assert run(["--mode", "shadow", "sweep"]) == 0
+    assert decided_heads(fake) == [oldest["head_sha"]]
+
+
+def test_runs_that_get_no_verdict_do_not_use_up_the_sweep_limit(monkeypatch):
+    # Entries that left the queue, like runs outside the sample or superseded heads,
+    # never get a status, and a decided head keeps its own: neither may crowd out a run
+    # that still needs a verdict.
+    monkeypatch.setattr(controller, "SWEEP_LIMIT", 1)
+    fake = blip(monkeypatch)
+    for run_id, pr in ((701, 11), (702, 12)):
+        fake.dead_refs.add(another_run(fake, run_id, pr=pr, created_minutes_ago=300, finished_minutes_ago=25)["head_branch"])
+    decided = another_run(fake, 703, pr=13, created_minutes_ago=250, finished_minutes_ago=25)
+    fake.statuses_by_sha[decided["head_sha"]] = [{"context": "merge-gate (shadow)", "state": "failure"}]
+    waiting = another_run(fake, 704, pr=14, created_minutes_ago=100, finished_minutes_ago=25)
+    assert run(["--mode", "shadow", "sweep"]) == 0
+    assert decided_heads(fake) == [waiting["head_sha"]]
+
+
+def test_an_unreadable_listing_does_not_stop_the_queue_runs(monkeypatch):
+    # More PR runs than the listing's page budget: the queue runs are still decided, and
+    # the sweep fails so the gap shows.
+    fake = blip(monkeypatch)
+    fake.unlistable.add("pull_request")
+    entry = another_run(fake, 801, pr=21, created_minutes_ago=90, finished_minutes_ago=20)
+    assert run(["--mode", "shadow", "sweep"]) == 1
+    assert decided_heads(fake) == [entry["head_sha"]]
 
 
 @pytest.mark.parametrize("event, command", [("merge_group", "entry"), ("merge_group", "auto"), ("pull_request", "auto")])
