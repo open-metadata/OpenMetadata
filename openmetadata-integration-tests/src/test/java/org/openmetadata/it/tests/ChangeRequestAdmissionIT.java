@@ -31,6 +31,9 @@ import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -54,6 +57,10 @@ import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.MutationPlanner;
 import org.openmetadata.service.util.RestUtil;
 
+// Each test deploys its own Enforce workflow, which receives the signals of every event on its
+// entity type, so the class runs alone instead of beside the shared-lane tests.
+@Execution(ExecutionMode.SAME_THREAD)
+@Isolated
 @ExtendWith(TestNamespaceExtension.class)
 class ChangeRequestAdmissionIT {
   private static final String INCLUDE_DESCRIPTION = "\"description\"";

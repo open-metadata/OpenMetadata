@@ -36,6 +36,9 @@ import org.apache.commons.csv.CSVRecord;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.util.BulkApi;
@@ -77,6 +80,10 @@ import org.openmetadata.sdk.services.classification.TagService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.RestUtil;
 
+// Each test deploys its own Enforce workflow, which receives the signals of every event on its
+// entity type, so the class runs alone instead of beside the shared-lane tests.
+@Execution(ExecutionMode.SAME_THREAD)
+@Isolated
 @ExtendWith(TestNamespaceExtension.class)
 class ChangeRequestImportAndBulkIT {
   private static final String TERM_DESCRIPTION = "published term description";
