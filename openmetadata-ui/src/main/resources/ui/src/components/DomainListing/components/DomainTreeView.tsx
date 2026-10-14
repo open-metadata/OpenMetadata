@@ -48,7 +48,6 @@ import {
 } from '../../../rest/domainAPI';
 import { domainBuildESQuery } from '../../../utils/DomainFilterUtils';
 import { filterDomainsToAllowed } from '../../../utils/DomainRestrictionUtils';
-import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
@@ -285,9 +284,8 @@ const DomainTreeView = ({
             ? filterDomainsToAllowed(results, userDomains)
             : results;
 
-        const updatedTreeData = convertDomainsToTreeOptions(filteredResults);
-        setHierarchy(updatedTreeData as Domain[]);
-        selectDomain(updatedTreeData as Domain[]);
+        setHierarchy(filteredResults);
+        selectDomain(filteredResults);
       } catch (error) {
         showErrorToast(
           error as AxiosError,

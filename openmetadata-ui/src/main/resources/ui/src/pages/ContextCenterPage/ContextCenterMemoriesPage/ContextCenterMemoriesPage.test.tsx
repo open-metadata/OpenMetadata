@@ -345,6 +345,44 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       );
     });
   });
+
+  it('keeps the typed author results when the menu-open search resolves after them', async () => {
+    mockGetResourcePermission.mockResolvedValue({ EditAll: true });
+    const authorHits = (name: string, displayName: string) =>
+      ({
+        data: {
+          hits: { hits: [{ _id: name, _source: { name, displayName } }] },
+        },
+      } as Awaited<ReturnType<typeof getUserAndTeamSearch>>);
+    const menuOpenSearches: Array<(value: unknown) => void> = [];
+    (getUserAndTeamSearch as jest.Mock).mockImplementation((query: string) =>
+      query
+        ? Promise.resolve(authorHits('typed-user', 'Typed User'))
+        : new Promise((resolve) => {
+            menuOpenSearches.push(resolve);
+          })
+    );
+    renderPage();
+
+    fireEvent.click(screen.getByTestId('author-filter-button'));
+    fireEvent.change(
+      await screen.findByPlaceholderText('label.search-entity'),
+      {
+        target: { value: 'typed' },
+      }
+    );
+
+    expect(await screen.findByText('Typed User')).toBeInTheDocument();
+
+    await act(async () => {
+      menuOpenSearches.forEach((resolve) =>
+        resolve(authorHits('other-user', 'Other User'))
+      );
+    });
+
+    expect(screen.getByText('Typed User')).toBeInTheDocument();
+    expect(screen.queryByText('Other User')).not.toBeInTheDocument();
+  });
 });
 
 describe('ContextCenterMemoriesPage — memory links', () => {

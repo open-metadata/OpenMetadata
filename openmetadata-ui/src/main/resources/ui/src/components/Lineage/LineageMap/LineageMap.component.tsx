@@ -47,6 +47,7 @@ import ReactFlow, {
   ReactFlowInstance,
   ReactFlowProvider,
   type FitViewOptions,
+  type Viewport,
 } from 'reactflow';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import {
@@ -115,6 +116,7 @@ import {
   getRailStop,
   getRailStopLabelKey,
   getSceneFocus,
+  getSceneLandingViewport,
   getSceneLevelLabelKey,
   getSceneNodeCount,
   getSceneNodeTypeSubtitle,
@@ -146,6 +148,11 @@ const SCENE_MUTATION_MAX_ATTEMPTS = 5;
 const SCENE_MUTATION_RETRY_DELAY_MS = 500;
 const MAX_SCENE_DEPTH = 3;
 const CONTROL_INSET_PADDING = 0.2;
+// The lowest zoom a scene still reads at; a scene that would fit only below it
+// opens there on its focus node instead (getSceneLandingViewport).
+const SCENE_LAYER_FIT_VIEW_MIN_ZOOM = MIN_ZOOM_VALUE;
+const SCENE_ASSET_FIT_VIEW_MIN_ZOOM = 0.55;
+const SCENE_FIELD_FIT_VIEW_MIN_ZOOM = 0.9;
 const SCENE_FIT_VIEW_MAX_ZOOM = 1;
 // Containers carry a name, a subtitle and a count pill, so they take one width
 // in every band; assets keep the wider default for their column lists.
@@ -324,8 +331,37 @@ const getSceneNodeBounds = (
   };
 };
 
+const getSceneLayoutBoxes = (
+  flowNodes: Node<SceneFlowNodeData>[],
+  nodeIds?: string[]
+) => {
+  const selectedNodeIds = nodeIds ? new Set(nodeIds) : undefined;
+
+  return flowNodes
+    .filter((node) => !selectedNodeIds || selectedNodeIds.has(node.id))
+    .map((node) => ({
+      x: node.position.x,
+      y: node.position.y,
+      width: node.width ?? NODE_WIDTH,
+      height: node.height ?? NODE_HEIGHT,
+      isFocus: node.data.sceneNode.isFocus,
+      isOrigin: node.data.sceneNode.isOrigin,
+      isGhost: node.data.sceneNode.isGhost,
+    }));
+};
+
 const getActiveLayersFromBand = (band: LineageBand) =>
   band === LineageBand.Field ? [LineageLayer.ColumnLevelLineage] : [];
+
+const getSceneFitViewMinZoom = (band?: LineageBand) => {
+  if (band === LineageBand.Layer) {
+    return SCENE_LAYER_FIT_VIEW_MIN_ZOOM;
+  }
+
+  return band === LineageBand.Field
+    ? SCENE_FIELD_FIT_VIEW_MIN_ZOOM
+    : SCENE_ASSET_FIT_VIEW_MIN_ZOOM;
+};
 
 // Fit may zoom out as far as the graph needs: semantic zoom reads screen fill,
 // so a small fit zoom no longer switches level by itself.
@@ -407,10 +443,16 @@ const prefetchSceneBands = (
 
 const fitSceneBounds = (
   instance: ReactFlowInstance,
-  bounds: SceneNodeBounds
+  bounds: SceneNodeBounds,
+  landing?: Viewport
 ) => {
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(() => {
+      if (landing) {
+        instance.setViewport(landing);
+
+        return;
+      }
       instance.fitBounds(bounds, getSceneFitViewOptions());
     });
   });
@@ -1346,9 +1388,21 @@ const LineageMapCanvas = ({
         return;
       }
       suppressSemanticZoom();
-      fitSceneBounds(reactFlowInstance, nodeBounds);
+      fitSceneBounds(
+        reactFlowInstance,
+        nodeBounds,
+        getSceneLandingViewport(
+          getSceneLayoutBoxes(nodes, nodeIds),
+          {
+            width: wrapperRef.current?.clientWidth ?? 0,
+            height: wrapperRef.current?.clientHeight ?? 0,
+          },
+          getSceneFitViewMinZoom(scene?.band),
+          CONTROL_INSET_PADDING
+        )
+      );
     },
-    [nodes, reactFlowInstance, suppressSemanticZoom]
+    [nodes, reactFlowInstance, scene?.band, suppressSemanticZoom]
   );
 
   useEffect(
