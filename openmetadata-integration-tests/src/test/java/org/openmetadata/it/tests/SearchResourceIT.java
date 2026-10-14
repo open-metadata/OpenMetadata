@@ -10,9 +10,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -1769,23 +1771,29 @@ public class SearchResourceIT {
   // SEARCH EDGE CASES AND ERROR HANDLING
   // ===================================================================
 
+  /**
+   * A malformed {@code queryFilter} used to be logged and dropped, so the search came back 200 with
+   * every row the filter was meant to exclude. Silently widening the result set is worse than
+   * failing, so it is now rejected — see #27990.
+   */
   @Test
-  void testSearchWithMalformedQueryFilter(TestNamespace ns) throws Exception {
+  void testSearchWithMalformedQueryFilter(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
     String malformedFilter = "{\"query\": {\"invalid_syntax";
 
-    assertDoesNotThrow(
-        () -> {
-          String response =
-              client
-                  .search()
-                  .query("*")
-                  .index("table_search_index")
-                  .queryFilter(malformedFilter)
-                  .execute();
-          assertNotNull(response);
-        });
+    InvalidRequestException thrown =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .search()
+                    .query("*")
+                    .index("table_search_index")
+                    .queryFilter(malformedFilter)
+                    .execute());
+
+    assertTrue(thrown.getMessage().contains("queryFilter"), thrown.getMessage());
   }
 
   @Test
@@ -2055,5 +2063,65 @@ public class SearchResourceIT {
             .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
             .build();
     return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  // ===================================================================
+  // MALFORMED INPUT IS THE CALLER'S ERROR, NOT A SERVER FAULT (#27990)
+  // ===================================================================
+
+  /**
+   * Explore replays whatever {@code q} sits in the URL. A half-typed phrase carries Lucene syntax
+   * but cannot be parsed, and used to fail the whole search with {@code all shards failed}.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "revenue%20(draft",
+        "%22quoted%20phrase",
+        "%3Afoo*",
+        "name%3A(foo",
+        "foo%20AND",
+        "foo%5E"
+      })
+  void testUnparseableQueryStillReturnsResults(String encodedQuery) throws Exception {
+    HttpResponse<String> response =
+        httpGetSearch("/v1/search/query?q=" + encodedQuery + "&index=table_search_index");
+
+    assertEquals(
+        200,
+        response.statusCode(),
+        "unparseable q must be searched as text, got: " + response.body());
+  }
+
+  /**
+   * A {@code queryFilter} that is valid JSON but not query DSL is the caller's mistake. It used to
+   * reach the engine and come back as a 500; silently dropping it instead would widen the result
+   * set past what the caller asked for, so it is rejected.
+   */
+  @Test
+  void testMalformedQueryFilterIsRejectedAsBadRequest() throws Exception {
+    String malformedFilter =
+        URLEncoder.encode(
+            "{\"query\":{\"bool\":{\"must\":[[{\"term\":{\"entityType\":\"table\"}}]]}}}",
+            StandardCharsets.UTF_8);
+
+    HttpResponse<String> response =
+        httpGetSearch(
+            "/v1/search/query?q=*&index=table_search_index&query_filter=" + malformedFilter);
+
+    assertEquals(400, response.statusCode(), "expected a client error, got: " + response.body());
+  }
+
+  @Test
+  void testValidQueryFilterStillApplies() throws Exception {
+    String validFilter =
+        URLEncoder.encode(
+            "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}}}",
+            StandardCharsets.UTF_8);
+
+    HttpResponse<String> response =
+        httpGetSearch("/v1/search/query?q=*&index=table_search_index&query_filter=" + validFilter);
+
+    assertEquals(200, response.statusCode(), response.body());
   }
 }
