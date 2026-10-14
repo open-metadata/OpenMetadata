@@ -26,6 +26,7 @@ import {
   updateSettingsConfig,
 } from '../../../../../../rest/settingConfigAPI';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
+import { loadFormFieldDocs } from '../../../../../../utils/DataQuality/FormFieldDocs';
 import { showSuccessToast } from '../../../../../../utils/ToastUtils';
 import EmailSettingsForm, {
   toEmailFormValues,
@@ -191,6 +192,25 @@ describe('EmailSettingsForm', () => {
 
     expect(await screen.findByText('label.field-required')).toBeInTheDocument();
     expect(updateSettingsConfig).not.toHaveBeenCalled();
+  });
+
+  it('shows the field documentation on focus when hints are on', async () => {
+    (loadFormFieldDocs as jest.Mock).mockResolvedValueOnce({
+      serverEndpoint: 'Endpoint of the SMTP server.',
+    });
+    renderWithQueryClient(
+      <EmailSettingsForm showHint onNavigate={onNavigate} />
+    );
+    await screen.findByTestId('email-config-form');
+    await waitFor(() =>
+      expect(inputOf('server-endpoint-input')).toHaveValue('smtp.gmail.com')
+    );
+
+    fireEvent.focus(inputOf('server-endpoint-input'));
+
+    expect(
+      await screen.findByText('Endpoint of the SMTP server.')
+    ).toBeInTheDocument();
   });
 
   it('cancel goes back to the read-only view without saving', async () => {

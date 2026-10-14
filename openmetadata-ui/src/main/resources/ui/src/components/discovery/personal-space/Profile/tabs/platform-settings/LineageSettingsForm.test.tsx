@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import {
   LineageLayer,
@@ -98,6 +99,26 @@ describe('LineageSettingsForm', () => {
       type: 'page',
       page: 'lineage',
       isEditing: false,
+    });
+  });
+
+  it('saves a newly selected lineage layer', async () => {
+    render(<LineageSettingsForm showHint={false} onNavigate={onNavigate} />);
+    await waitFor(() => expect(inputOf('field-upstream')).toHaveValue(2));
+
+    fireEvent.click(
+      within(screen.getByTestId('field-lineage-layer')).getByRole('button')
+    );
+    fireEvent.click(
+      await screen.findByRole('option', { name: 'label.entity-lineage' })
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(updateSettingsConfig).toHaveBeenCalledWith({
+      config_type: SettingType.LineageSettings,
+      config_value: { ...STORED, lineageLayer: LineageLayer.EntityLineage },
     });
   });
 

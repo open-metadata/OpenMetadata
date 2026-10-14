@@ -121,6 +121,9 @@ jest.mock('./TableSchemaSettingsForm', () => () => (
 jest.mock('./AppModeSettingsForm', () => () => (
   <div data-testid="app-mode-form" />
 ));
+jest.mock('../../../../../governance/glossary/GlossarySettings', () => () => (
+  <div data-testid="glossary-view" />
+));
 
 const onHeaderChange = jest.fn();
 
@@ -146,6 +149,7 @@ describe('PlatformSettingsPanel', () => {
     renderPanel();
 
     [
+      'glossary',
       'theme',
       'email',
       'login-configuration',
@@ -274,6 +278,14 @@ describe('PlatformSettingsPanel', () => {
     ['data-asset-rules', 'data-asset-rules-view'],
     ['learning-resources', 'learning-resources-view'],
     ['learning-resources/edit/res-1', 'learning-resource-form'],
+    ['glossary', 'glossary-view'],
+    ['login-configuration', 'login-view'],
+    ['login-configuration/edit', 'login-form'],
+    ['health-check', 'health-view'],
+    ['brand-url', 'brand-url-view'],
+    ['brand-url/edit', 'brand-url-form'],
+    ['table-schema', 'table-schema-view'],
+    ['table-schema/edit', 'table-schema-form'],
   ])('routes "%s" to its view or edit form', (subPath, testId) => {
     mockSubPath = subPath;
     renderPanel();

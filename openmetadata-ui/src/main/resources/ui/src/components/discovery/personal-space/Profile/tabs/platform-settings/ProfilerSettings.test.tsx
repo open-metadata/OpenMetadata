@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { values } from 'lodash';
 import {
@@ -190,6 +191,30 @@ describe('Profiler configuration settings', () => {
       await screen.findByText('message.field-text-is-required')
     ).toBeInTheDocument();
     expect(updateSettingsConfig).not.toHaveBeenCalled();
+  });
+
+  it('saves a new row with the data type picked for it', async () => {
+    mockStored(STORED);
+    render(<ProfilerSettingsForm showHint={false} onNavigate={onNavigate} />);
+    await screen.findByTestId('metric-row-1');
+
+    fireEvent.click(screen.getByTestId('add-fields'));
+    const newRow = await screen.findByTestId('metric-row-2');
+    fireEvent.click(
+      within(within(newRow).getByTestId('data-type-select')).getByRole('button')
+    );
+    fireEvent.click(
+      await screen.findByRole('option', { name: DataType.String })
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    const payload = (updateSettingsConfig as jest.Mock).mock.calls[0][0];
+
+    expect(payload.config_value.metricConfiguration[2]).toEqual(
+      expect.objectContaining({ dataType: DataType.String, disabled: false })
+    );
   });
 
   it('enabling storage of sample data also enables reading it', async () => {

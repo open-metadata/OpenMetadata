@@ -257,11 +257,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/Pagination.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
-    }
-  },
   "playwright/e2e/Features/Permissions/DataProductPermissions.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 4
@@ -674,7 +669,7 @@
   },
   "playwright/utils/common.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 3
     }
   },
   "playwright/utils/customProperty.ts": {
@@ -758,11 +753,6 @@
   "playwright/utils/logsViewer.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
-    }
-  },
-  "playwright/utils/navbar.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
     }
   },
   "playwright/utils/reviewerWorkflow.utils.ts": {

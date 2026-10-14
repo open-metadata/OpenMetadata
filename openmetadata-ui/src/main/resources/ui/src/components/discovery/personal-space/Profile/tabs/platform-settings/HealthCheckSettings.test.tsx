@@ -71,6 +71,9 @@ describe('HealthCheckSettings', () => {
     expect(screen.getByTestId('database')).toHaveTextContent(
       'Connected to jdbc:mysql://db'
     );
+    expect(screen.getByTestId('searchInstance')).toHaveTextContent(
+      'Connected to opensearch'
+    );
     expect(screen.getByTestId('migrations')).toHaveTextContent(
       'Validate that all migrations ran.'
     );
