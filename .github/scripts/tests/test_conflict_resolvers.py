@@ -122,7 +122,6 @@ def test_mechanical_resolution_merges_locale_keys_and_takes_mains_generated_file
     flat = [" ".join(c) for c in commands]
     assert any("json2ts-generate-all.sh" in c for c in flat)
     assert any(f"cd {UI} && yarn install" in c for c in flat)
-    assert any("yarn i18n" in c for c in flat)
 
 
 def test_a_locale_key_both_sides_changed_goes_to_the_model(tmp_path):
@@ -186,6 +185,39 @@ def test_only_fully_mechanical_resolutions_requeue_themselves(tmp_path):
     result = resolvers.check(repo, plan, originals)
     assert (result.ok(), result.requeue(plan)) == (True, "auto")
     assert resolvers.finalize(repo, plan) == []
+
+
+def test_taking_mains_generated_files_leaves_the_requeue_to_a_person(tmp_path):
+    # Regenerating would run the PR's code, so nothing here does; until the PR's own
+    # workflows or its author regenerate, it does not go back in the queue by itself.
+    repo = conflicted_repo(
+        tmp_path,
+        base={GENERATED: "export interface Table { a: string }\n"},
+        pr={GENERATED: "export interface Table { a: string; pr: number }\n"},
+        main={GENERATED: "export interface Table { a: string; main: boolean }\n"},
+    )
+    plan = resolvers.classify(resolvers.conflicted_paths(repo))
+    originals = resolvers.capture_originals(repo, plan.conflicted())
+    plan, commands = resolvers.apply(repo, plan)
+    result = resolvers.check(repo, plan, originals)
+    assert (result.ok(), result.requeue(plan)) == (True, "human")
+    assert any("json2ts-generate-all.sh" in " ".join(c) for c in commands)
+
+
+def test_a_locale_file_the_checkout_made_a_symlink_is_never_written_through(tmp_path):
+    repo = conflicted_repo(
+        tmp_path,
+        base={LOCALE: locale(a="A")},
+        pr={LOCALE: locale(a="A", b="B")},
+        main={LOCALE: locale(a="A", c="C")},
+    )
+    outside = tmp_path / "tool.py"
+    outside.write_text("trusted\n")
+    (repo / LOCALE).unlink()
+    (repo / LOCALE).symlink_to(outside)
+    plan, _ = resolvers.apply(repo, resolvers.classify(resolvers.conflicted_paths(repo)))
+    assert outside.read_text() == "trusted\n"
+    assert (plan.locale, plan.human) == ([], [LOCALE])
 
 
 def test_finalize_refuses_a_staged_conflict_marker(repo):

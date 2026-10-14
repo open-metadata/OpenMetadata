@@ -96,3 +96,14 @@ def test_a_patch_not_built_on_its_base_is_refused(tmp_path):
     other = git(src, "commit-tree", "-m", "orphan", git(src, "rev-parse", "HEAD^{tree}"))
     head, result = publish.load_bundle(tmp_path / "scratch", str(src), other, bundle)
     assert result.violations == ["the patch does not build on the commit it started from"]
+
+
+def test_a_published_fix_says_which_ci_tests_it():
+    # Nothing in the fix workflow runs the patched code; the CI it lands in does.
+    policy = publish.PolicyResult()
+    on_pr = publish.render("pr", "7", policy, "", "", "Pushed onto `b` as abc.", "on")
+    assert "this PR's CI tests it" in on_pr and "merge queue" in on_pr
+    from_issue = publish.render("issue", "8", policy, "", "", "Opened #9 from `ci-fix/flaky-8`.", "on")
+    assert "the new PR's CI tests it" in from_issue
+    unfinished = publish.render("pr", "7", policy, "", "", "", "on", state="agent-failed")
+    assert "not published" in unfinished and "did not finish" in unfinished

@@ -1,7 +1,7 @@
 name: CI Scripts Tests
 # Runs the tests of the CI's own scripts, including the Guard tests that decision
-# records in docs/decisions/ name. Until this workflow nothing ran them, and seven
-# had already gone stale on main (docs/ci.md, "Known issues").
+# records in docs/decisions/ name. Those read the workflows themselves, so a workflow
+# change runs them too.
 
 on:
   pull_request:
@@ -10,7 +10,8 @@ on:
       - '.github/merge-gate/**'
       - '.github/java-tests/**'
       - '.github/playwright/**'
-      - '.github/workflows/workflow-scripts-tests.yml'
+      - '.github/workflows/**'
+      - '.github/actions/**'
   workflow_dispatch:
 
 permissions:
@@ -33,7 +34,12 @@ jobs:
         with:
           python-version: '3.11'
       # anthropic: without it the CI AI model and explain tests skip instead of running.
+      # The two whole-repository audits of the Java impact map stay out: map ownership
+      # is checked before the PR by the agent and pre-push hooks (#34984), not by CI, so
+      # code another PR left unowned never fails this one.
       - name: Run the CI scripts' tests
         run: |
           pip install --quiet pytest pyyaml anthropic
-          python -m pytest -q -p no:cacheprovider .github/scripts/tests .github/scripts/test_*.py
+          python -m pytest -q -p no:cacheprovider .github/scripts/tests .github/scripts/test_*.py \
+            --deselect .github/scripts/test_plan_local_java_tests.py::test_impact_map_owns_every_test_and_production_file \
+            --deselect .github/scripts/test_plan_local_java_tests.py::test_the_committed_map_owns_every_committed_test_and_production_file

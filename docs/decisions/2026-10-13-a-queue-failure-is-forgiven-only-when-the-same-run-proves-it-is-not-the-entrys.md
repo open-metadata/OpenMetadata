@@ -1,9 +1,9 @@
 # A queue failure is forgiven only when the same run proves it is not the entry's
 
 - **Status:** Accepted (shadow until the cutover in docs/ci.md)
-- **Revisions:** v1 2026-10-13 (initial); v2 2026-10-14 (strict entries still re-run blips; a job read as a blip gets one more run)
+- **Revisions:** v1 2026-10-13 (initial); v2 2026-10-14 (strict entries still re-run blips; a job read as a blip gets one more run); v3 2026-10-14 (a parent control recorded for the same parent stands in for running it again)
 - **Deciders:** Mohit Yadav
-- **Guard:** `test_verify_table`, `test_one_introduced_failure_ejects_even_beside_forgiven_ones` and `test_a_strict_entry_still_reruns_a_blip_but_forgives_no_test` in `.github/scripts/tests/test_merge_gate_policy.py`
+- **Guard:** `test_verify_table`, `test_one_introduced_failure_ejects_even_beside_forgiven_ones` and `test_a_strict_entry_still_reruns_a_blip_but_forgives_no_test` in `.github/scripts/tests/test_merge_gate_policy.py`; `test_a_parent_control_is_reused_only_for_the_same_test_failure_and_parent` in `.github/scripts/tests/test_merge_gate_registry.py`
 - **Related:** ADR:2026-10-13-merge-queue-entries-are-decided-by-the-merge-gate-status, docs/ci.md
 
 ## Context
@@ -20,6 +20,15 @@ was a stringent, same-run answer that redoes no work.
   (pre-existing). Ejected: reproduced on the entry and never on the parent. One failure in
   three on the entry with a clean parent is forgiven only with independent history (main,
   or entries sharing no PR) and no impact-map link to the entry's diff.
+- A parent control already recorded for the same test, the same failure fingerprint and
+  the same parent commit stands in for running it again: the parent is the same commit,
+  so it is the same experiment, and every later entry on that parent skips a rebuild.
+  One recorded failure is conclusive; clean records count once their runs reach a fresh
+  control's (`verify.parentRuns`). The record comes from the merge gate's ledger,
+  `ledger.jsonl` on the `ci/merge-gate` branch (one JSON object per line, written only by
+  `merge_gate_registry.py`; 30 days, at most 5,000 records and 2 MB). A forged record
+  could stand in for a control, so before enforce mode pushes to that branch are limited
+  to the gate App, which the record job pushes with.
 - No verification above the suite cap (Java IT 20, Python 20, Playwright 10), for static
   checks, compile errors, or entries changing CI configuration (strict). Strict entries
   are still re-run on infrastructure failures: a re-run forgives nothing.

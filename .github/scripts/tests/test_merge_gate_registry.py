@@ -153,7 +153,7 @@ def outside_code(markdown):
     """What GitHub renders as prose: not the JSON fence, a code span or an HTML comment."""
     text = re.sub(r"```.*?```", "", markdown, flags=re.DOTALL)
     text = re.sub(r"`[^`\n]*`", "", text)
-    return re.sub(r"<!--.*?-->", "", text)
+    return re.sub(r"<!--.*?--!?>", "", text, flags=re.DOTALL)
 
 
 class FakeGitHub:

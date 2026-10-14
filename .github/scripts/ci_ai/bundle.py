@@ -114,7 +114,9 @@ PY_FILE = re.compile(r'^\s*File "(?P<path>[^"]+\.py)", line (?P<line>\d+)')
 RUNNER_PREFIX = re.compile(r"^(?:file://)?(?:/home/runner/work/[^/]+/[^/]+/|/__w/[^/]+/[^/]+/|/github/workspace/)")
 UUID = re.compile(r"\b[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\b")
 HUNK_HEADER = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
-PARAMS = re.compile(r"(\(.*\)|\[.*\])+$")
+# From the first bracket to a closing one at the end; one quantifier, since a repeated
+# group of `.*` backtracks exponentially on a crafted name.
+PARAMS = re.compile(r"[(\[].*[)\]]$")
 JAVA_CLASS = re.compile(r"^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$")
 PYTHON_ID = re.compile(r"^[A-Za-z_][\w.]*#")
 SPEC_FILE = re.compile(r"^[\w@+. /-]+\.[cm]?[jt]sx?$")

@@ -5,7 +5,9 @@ import io
 import json
 import sys
 import zipfile
+from datetime import timedelta
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
@@ -59,7 +61,9 @@ class FakeGitHub:
             "head_sha": HEAD,
             "run_attempt": run_attempt,
             "created_at": mq.utcnow().isoformat(),
+            "updated_at": mq.utcnow().isoformat(),
             "html_url": "https://github.com/o/r/actions/runs/500",
+            "status": "completed",
             "conclusion": "failure",
             "pull_requests": [],
         }
@@ -105,7 +109,9 @@ class FakeGitHub:
         if "/artifacts" in path:
             return self.artifacts
         if "/actions/workflows/ci.yml/runs?status=completed" in path:
-            return self.recent_runs
+            # GitHub filters this list on creation time only.
+            created = mq.parse_ts(parse_qs(urlsplit(path).query)["created"][0].removeprefix(">="))
+            return [r for r in self.recent_runs if mq.parse_ts(r["created_at"]) >= created]
         if "/actions/workflows/ci.yml/runs" in path:
             return []
         raise AssertionError(f"unexpected list {path}")
@@ -241,16 +247,59 @@ def test_auto_decides_a_pull_request_run_strictly(monkeypatch):
     assert (status["context"], status["state"]) == ("merge-gate (shadow)", "success")
 
 
-def test_the_sweep_decides_only_runs_without_a_gate_status(monkeypatch):
+def finished(fake, created_minutes_ago, finished_minutes_ago):
+    now = mq.utcnow()
+    return {
+        **fake.run,
+        "created_at": (now - timedelta(minutes=created_minutes_ago)).isoformat(),
+        "updated_at": (now - timedelta(minutes=finished_minutes_ago)).isoformat(),
+    }
+
+
+def test_the_sweep_decides_a_long_queue_run_whose_delivery_was_missed(monkeypatch):
     fake = FakeGitHub(monkeypatch, jobs=[job(1, "playwright / chromium-03", step="Download backend distribution")])
-    fake.recent_runs = [dict(fake.run)]
-    fake.statuses = [{"context": "merge-gate (shadow)", "state": "pending"}]
+    fake.recent_runs = [finished(fake, created_minutes_ago=95, finished_minutes_ago=20)]
+    assert run(["--mode", "shadow", "sweep"]) == 0
+    assert statuses(fake)[0]["context"] == "merge-gate (shadow)"
+
+
+@pytest.mark.parametrize(
+    "history, decided",
+    [
+        ([], True),
+        ([{"context": "some-other-check", "state": "success"}], True),
+        # Newest first, as GitHub lists them: a re-run left the head pending.
+        ([{"context": "merge-gate (shadow)", "state": "pending"}, {"context": "merge-gate (shadow)", "state": "failure"}], True),
+        ([{"context": "merge-gate (shadow)", "state": "success"}, {"context": "merge-gate (shadow)", "state": "pending"}], False),
+        ([{"context": "merge-gate (shadow)", "state": "failure"}], False),
+    ],
+)
+def test_the_sweep_decides_heads_whose_latest_gate_status_is_missing_or_pending(monkeypatch, history, decided):
+    fake = FakeGitHub(monkeypatch, jobs=[job(1, "playwright / chromium-03", step="Download backend distribution")])
+    fake.recent_runs = [finished(fake, created_minutes_ago=95, finished_minutes_ago=20)]
+    fake.statuses = history
+    assert run(["--mode", "shadow", "sweep"]) == 0
+    assert bool(statuses(fake)) is decided
+
+
+@pytest.mark.parametrize("finished_minutes_ago", [5, 120])
+def test_the_sweep_leaves_runs_finished_inside_the_grace_or_before_its_window(monkeypatch, finished_minutes_ago):
+    # Inside the grace the delivered decision may still be posting; before the window,
+    # earlier sweeps covered the run.
+    fake = FakeGitHub(monkeypatch, jobs=[job(1, "playwright / chromium-03", step="Download backend distribution")])
+    fake.recent_runs = [finished(fake, created_minutes_ago=150, finished_minutes_ago=finished_minutes_ago)]
     assert run(["--mode", "shadow", "sweep"]) == 0
     assert fake.posts == []
 
-    fake.statuses = [{"context": "some-other-check", "state": "success"}]
-    assert run(["--mode", "shadow", "sweep"]) == 0
-    assert statuses(fake)[0]["context"] == "merge-gate (shadow)"
+
+@pytest.mark.parametrize("event, command", [("merge_group", "entry"), ("merge_group", "auto"), ("pull_request", "auto")])
+def test_a_run_still_in_progress_gets_no_verdict(monkeypatch, event, command):
+    # A dispatch on a live run, or a re-run starting between the sweep's list and its
+    # decision: jobs without a conclusion yet must not read as passed.
+    fake = FakeGitHub(monkeypatch, jobs=[job(1, "it / mysql-elasticsearch / parallel", conclusion=None)], event=event)
+    fake.run.update(status="in_progress", conclusion=None)
+    assert run(["--mode", "enforce", command, "--run-id", "500"]) == 0
+    assert fake.posts == []
 
 
 def ambiguous_run(monkeypatch):

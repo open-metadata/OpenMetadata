@@ -33,7 +33,7 @@ SECRETS = re.compile(
     r"(eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|gh[pousr]_[A-Za-z0-9]{20,}|"
     r"sk-ant-[A-Za-z0-9_-]{10,}|AKIA[0-9A-Z]{16}|(?i:bearer)\s+[A-Za-z0-9._~+/-]{16,}=*)"
 )
-INVISIBLE = re.compile("[​-‏‪-‮⁠-⁤﻿]")
+INVISIBLE = re.compile(r"[​-‏‪-‮⁠-⁤﻿]")
 JSON_BLOCK = re.compile(r"```json\s*(\{.*?\})\s*```", re.S)
 
 

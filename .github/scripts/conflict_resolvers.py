@@ -2,24 +2,28 @@
 """Merge-queue conflict resolution: the mechanical part, and the checks on the rest.
 
 Runs in a checkout where `git merge origin/main` has just stopped with conflicts on a
-PR branch. It never runs PR code.
+PR branch. It never runs PR code, and so never regenerates anything: generators and
+package managers execute the PR's tree.
 
   classify   sort every conflicted path into one of:
-               generated  output of the JSON schemas: take main's, then regenerate
-               lockfile   yarn.lock: take main's, then `yarn install` in its directory
+               generated  output of the JSON schemas: take main's; the PR still needs
+                          regenerating (typescript-type-generation.yml does it for
+                          same-repo PRs)
+               lockfile   yarn.lock: take main's; the PR still needs `yarn install`
                locale     UI locale JSON: three-way merge of keys
                human      .github/** and .claude/**: never resolved by a model
                sensitive  migrations and poms: the model may resolve, a person re-queues
                ai         everything else: the Claude resolver
   apply      write the mechanical resolutions and stage them; locale files whose
-             same key both sides changed differently fall back to `ai`
+             same key both sides changed differently fall back to `ai`. Returns the
+             regeneration the PR still needs, for its author.
   check      after the model's edits: no conflict markers, no edit outside the
              conflicted set, and the lines either side added that the resolution
              no longer contains
 
 The re-queue rule follows from the result: automatic only when every conflict was
-mechanical and nothing was dropped; a person re-queues anything a model touched,
-because approvals survive pushes in this repository.
+mechanical, nothing was dropped and nothing needs regenerating; a person re-queues
+anything a model touched, because approvals survive pushes in this repository.
 """
 
 from __future__ import annotations
@@ -45,7 +49,8 @@ LOCALES = (f"{UI}/src/locale/languages/*.json",)
 HUMAN_ONLY = (".github/**", ".claude/**")
 SENSITIVE = ("bootstrap/sql/**", "pom.xml", "**/pom.xml")
 MARKERS = ("<<<<<<< ", "=======", ">>>>>>> ")
-# Regeneration steps, mirroring typescript-type-generation.yml.
+# What the PR's author runs after main's generated files were taken, mirroring
+# typescript-type-generation.yml. Shown in the PR comment, never run here.
 REGENERATE = {
     "generated": [
         ["yarn", "install", "--frozen-lockfile"],
@@ -71,6 +76,9 @@ class Plan:
 
     def mechanical_only(self) -> bool:
         return not (self.human or self.sensitive or self.ai)
+
+    def needs_regeneration(self) -> bool:
+        return bool(self.generated or self.lockfile)
 
 
 def matches(path: str, patterns: tuple[str, ...]) -> bool:
@@ -156,14 +164,23 @@ def dump_locale(document: object) -> str:
     return json.dumps(document, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
 
 
+def inside(repo: Path, path: str) -> bool:
+    """Whether writing `path` stays in the checkout: the PR controls its symlinks."""
+    target = repo / path
+    return not target.is_symlink() and target.resolve().is_relative_to(repo.resolve())
+
+
 def apply(repo: Path, plan: Plan) -> tuple[Plan, list[list[str]]]:
     """Resolve and stage the mechanical conflicts. Returns the plan with any locale file
-    that could not be merged moved to `ai`, and the regeneration commands to run."""
+    that could not be merged moved to `ai`, and the regeneration the PR still needs."""
     for path in plan.generated + plan.lockfile:
         git("checkout", "--theirs", "--", path, cwd=repo)
         git("add", "--", path, cwd=repo)
     still_locale = []
     for path in plan.locale:
+        if not inside(repo, path):
+            plan.human.append(path)
+            continue
         versions = [stage(repo, path, n) for n in (1, 2, 3)]
         try:
             base, ours, theirs = (json.loads(v) if v else {} for v in versions)
@@ -182,8 +199,6 @@ def apply(repo: Path, plan: Plan) -> tuple[Plan, list[list[str]]]:
         # The path comes from the PR; quote it before it reaches a shell.
         directory = shlex.quote(str(Path(lockfile).parent) or ".")
         commands.append(["bash", "-c", f"cd {directory} && yarn install --ignore-scripts"])
-    if plan.locale:
-        commands.append(["bash", "-c", f"cd {UI} && yarn i18n"])
     return plan, commands
 
 
@@ -231,16 +246,17 @@ class CheckResult:
         if not self.ok():
             return "none"
         dropped_any = any(lines for sides in self.dropped.values() for lines in sides.values())
-        return "auto" if plan.mechanical_only() and not dropped_any else "human"
+        complete = plan.mechanical_only() and not plan.needs_regeneration()
+        return "auto" if complete and not dropped_any else "human"
 
 
 def check(repo: Path, plan: Plan, originals: dict[str, tuple[str, str, str]]) -> CheckResult:
-    """Verify the tree after mechanical resolution, the model's edits and regeneration,
-    before anything is staged.
+    """Verify the tree after mechanical resolution and the model's edits, before
+    anything is staged.
 
     The merge staged everything it merged cleanly and the mechanical step staged its
-    own resolutions, so the only unstaged or new files may be the conflicted ones and
-    regenerated output. Anything else is an edit outside the conflict.
+    own resolutions, so the only unstaged or new files may be the conflicted ones.
+    Anything else is an edit outside the conflict.
     `originals` holds each conflicted file's (base, ours, theirs) from before any
     resolution, since staging a file discards its index stages.
     """
@@ -248,8 +264,7 @@ def check(repo: Path, plan: Plan, originals: dict[str, tuple[str, str, str]]) ->
     unstaged = set(git("diff", "--name-only", cwd=repo).splitlines())
     untracked = set(git("ls-files", "--others", "--exclude-standard", cwd=repo).splitlines())
     touched = {path for path in unstaged | untracked if path}
-    allowed = set(plan.conflicted()) | {path for path in touched if matches(path, GENERATED)}
-    result.outside_scope = sorted(touched - allowed)
+    result.outside_scope = sorted(touched - set(plan.conflicted()))
     for path in plan.conflicted():
         file = repo / path
         if not file.exists():

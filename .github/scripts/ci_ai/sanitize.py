@@ -22,17 +22,16 @@ ALLOWED_LINK_PREFIX = "/open-metadata/"
 
 ANSI = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[@-Z\\-_]")
 CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+# Escapes, not the characters themselves: a reviewer cannot see these in source.
 INVISIBLE = re.compile(
-    "["
-    "­͏؜ᅟᅠ឴឵᠋-᠏"
-    "​-‏"  # zero-width space and joiners, LRM, RLM
-    "‪-‮"  # bidi embeddings and overrides
-    "⁠-⁯"  # word joiner, invisible operators, bidi isolates
-    "ㅤ︀-️﻿ﾠ￹-￻"
-    "\U0001d173-\U0001d17a"
-    "\U000e0000-\U000e007f"  # tag characters: invisible ASCII
-    "\U000e0100-\U000e01ef"
-    "]"
+    r"[­͏؜ᅟᅠ឴឵᠋-᠏"
+    r"​-‏"  # zero-width space and joiners, LRM, RLM
+    r"‪-‮"  # bidi embeddings and overrides
+    r"⁠-⁯"  # word joiner, invisible operators, bidi isolates
+    r"ㅤ︀-️﻿ﾠ￹-￻"
+    r"\U0001d173-\U0001d17a"
+    r"\U000e0000-\U000e007f"  # tag characters: invisible ASCII
+    r"\U000e0100-\U000e01ef]"
 )
 
 # Ported from redactSecrets in render_playwright_summary.cjs, then the token families

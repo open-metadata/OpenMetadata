@@ -138,13 +138,26 @@ def independent_history(
     return registry.independent_history(records, fingerprints.values(), entry.prs)
 
 
+def unfinished(run: dict, context: dict) -> bool:
+    """A run still going has no verdict yet: its jobs without a conclusion would read as
+    passed. The sweep and a dispatch can reach one (a re-run starting, a live run), and
+    its own completion is decided when it comes."""
+    if run.get("status") == "completed":
+        return False
+    context["skipped"] = f"run is {run.get('status') or 'not finished'}"
+    return True
+
+
 def entry_decision(
     owner: str, repo: str, run: dict, policy: gate.Policy, policy_doc: dict, mode: str, token: str
 ) -> tuple[gate.Decision | None, dict]:
     """The decision for one merge-group run of ci.yml, or None when there is nothing
-    to decide (not a queue ref, or the entry has already left the queue)."""
+    to decide (the run is not finished, not a queue ref, or the entry has already left
+    the queue)."""
     ref = entry_mod.parse_queue_ref(run.get("head_branch") or "")
     context: dict[str, Any] = {"runId": run["id"], "headSha": run.get("head_sha"), "mode": mode}
+    if unfinished(run, context):
+        return None, context
     if ref is None:
         context["skipped"] = "not a merge-queue ref"
         return None, context
@@ -288,6 +301,8 @@ def pr_decision(
     job which failed on infrastructure is re-run (gate.decide_pr), and drafts never pass.
     None when there is nothing to decide."""
     context: dict[str, Any] = {"runId": run["id"], "headSha": run.get("head_sha"), "mode": mode}
+    if unfinished(run, context):
+        return None, context
     attempt = int(run.get("run_attempt") or 1)
     jobs = evidence_mod.run_jobs(owner, repo, run, attempt, token)
     if evidence_mod.not_sampled(jobs):
@@ -349,27 +364,39 @@ def cmd_auto(args: argparse.Namespace, token: str) -> int:
 
 
 SWEEP_LIMIT = 50
+# The runs API filters on creation only, and a queue run finishes long after it is
+# created: list what was created within the longest a run and its re-runs can take.
+SWEEP_LOOKBACK = timedelta(hours=6)
 
 
 def cmd_sweep(args: argparse.Namespace, token: str) -> int:
-    """Decide finished CI runs whose head has no gate status yet: a missed or failed
-    `workflow_run` delivery must not leave an entry waiting for the queue timeout."""
+    """Decide finished CI runs whose head has no gate verdict: a missed or failed
+    `workflow_run` delivery must not leave an entry waiting for the queue timeout.
+
+    A run qualifies when it finished between `--minutes` and `--grace-minutes` ago (the
+    grace is the decide job's timeout, so a delivered decision is never raced) and its
+    head's latest gate status is missing or pending. A re-run leaves the status pending
+    until its new attempt is decided, so a missed delivery for that attempt is caught."""
     policy_doc = json.loads(args.policy.read_text())
     context = policy_doc["shadowStatusContext"] if args.mode == "shadow" else policy_doc["statusContext"]
-    since = mq.utcnow() - timedelta(minutes=args.minutes)
+    now = mq.utcnow()
+    oldest, newest = now - timedelta(minutes=args.minutes), now - timedelta(minutes=args.grace_minutes)
     runs = mq.paginated_items(
         f"/repos/{args.owner}/{args.repo}/actions/workflows/{Path(policy_doc['workflow']).name}/runs"
-        f"?status=completed&created=>={since:%Y-%m-%dT%H:%M:%SZ}",
+        f"?status=completed&created=>={now - SWEEP_LOOKBACK:%Y-%m-%dT%H:%M:%SZ}",
         "workflow_runs",
         token,
         max_pages=3,
     )
+    finished = [run for run in runs if oldest <= mq.parse_ts(run["updated_at"]) <= newest]
     decided = failed = 0
-    for run in runs[:SWEEP_LIMIT]:
+    for run in finished[:SWEEP_LIMIT]:
         if run.get("event") not in ("merge_group", "pull_request"):
             continue
         statuses = mq.rest(f"/repos/{args.owner}/{args.repo}/commits/{run['head_sha']}/statuses?per_page=100", token)
-        if any(s.get("context") == context for s in statuses):
+        # Newest first, so the first one in the gate's context is the head's current state.
+        latest = next((s for s in statuses if s.get("context") == context), None)
+        if latest and latest.get("state") != "pending":
             continue
         args.run_id = run["id"]
         try:
@@ -379,7 +406,7 @@ def cmd_sweep(args: argparse.Namespace, token: str) -> int:
             result = 1
         decided += 1
         failed += int(result != 0)
-    print(f"sweep: {len(runs)} recent runs, {decided} without a status decided, {failed} unreadable")
+    print(f"sweep: {len(finished)} runs finished in the window, {decided} without a verdict decided, {failed} unreadable")
     return 1 if failed else 0
 
 
@@ -396,7 +423,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         sub = commands.add_parser(name)
         sub.add_argument("--run-id", type=int, required=True)
     sweep = commands.add_parser("sweep")
-    sweep.add_argument("--minutes", type=int, default=30)
+    sweep.add_argument("--minutes", type=int, default=60, help="oldest completion to consider")
+    sweep.add_argument("--grace-minutes", type=int, default=15, help="newest completion to consider")
     return parser.parse_args(argv)
 
 

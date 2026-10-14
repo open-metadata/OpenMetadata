@@ -2,8 +2,11 @@
 """Publish a CI fix agent's patch, after checking it against the patch policy.
 
 Runs in ci-ai-fix.yml's publish job with main's code and the publish App token. The
-agent only edited files; the verify job (no secrets) ran the failing tests with the
-patch. This job decides whether the patch may be published at all:
+agent only edited files, and nothing in that workflow runs the patched code: its
+events run in main's context, where anything executed could write main's caches. The
+CI of the PR the patch lands in tests it — unit tests on the PR, the integration and
+Playwright suites in the merge queue once a person re-queues. This job decides
+whether the patch may be published at all:
 
   - it may not touch CI, agent or build configuration, dependency manifests,
     migrations or generated files;
@@ -17,7 +20,7 @@ branch with a new PR that says `Fixes #<issue>`. Nothing is re-queued: a person
 reviews the change first (ADR:2026-10-13-ci-ai-output-is-advisory-and-never-decides-a-merge).
 
 Env: TARGET (pr|issue), NUMBER, BASE_SHA, HEAD_REPO, HEAD_REF, REPO, MODE (CI_AI_MODE),
-VERIFY_RESULT, GH_TOKEN, PUSH_TOKEN.
+STATE (the fix job's), GH_TOKEN, PUSH_TOKEN.
 """
 
 from __future__ import annotations
@@ -124,13 +127,26 @@ def load_bundle(repo: Path, source: str, base_sha: str, bundle: Path) -> tuple[s
     return head, check_patch(numstat, patch)
 
 
-def render(target: str, number: str, policy: PolicyResult, verify_result: str, notes: str, abort: str, published: str, mode: str) -> str:
+UNPUBLISHED = {
+    "agent-failed": "Claude did not finish, so nothing it edited is used.",
+    "empty": "Claude changed no file.",
+}
+
+
+def render(
+    target: str, number: str, policy: PolicyResult, notes: str, abort: str, published: str, mode: str, state: str = ""
+) -> str:
     lines = ["### 🤖 CI fix " + ("published" if published else "not published"), ""]
+    if state in UNPUBLISHED:
+        lines.append(UNPUBLISHED[state])
     if abort:
         lines += ["Claude declined:", "", mq.sanitize_external(abort[:2000])]
     if published:
         lines.append(published)
-    lines.append(f"- Verification with the patch: **{verify_result or 'not run'}**")
+        where = "this PR's" if target == "pr" else "the new PR's"
+        lines.append(
+            f"- Not run yet: {where} CI tests it (unit tests now; integration and Playwright in the merge queue)."
+        )
     lines += [f"- ⛔ {mq.sanitize_external(v)}" for v in policy.violations]
     lines += [f"- ⚠️ {mq.sanitize_external(f)}" for f in policy.flags[:10]]
     if notes:
@@ -148,7 +164,7 @@ def main(argv: list[str] | None = None) -> int:
     env = os.environ
     target, number, repo = env["TARGET"], env["NUMBER"], env["REPO"]
     base_sha, head_repo, head_ref = env["BASE_SHA"], env["HEAD_REPO"], env.get("HEAD_REF", "")
-    mode, verify_result, token = env.get("MODE", "shadow"), env.get("VERIFY_RESULT", ""), mq.env_token()
+    mode, token = env.get("MODE", "shadow"), mq.env_token()
     notes_path, abort_path = args.artifacts / "notes.md", args.artifacts / "abort.md"
     notes = notes_path.read_text(errors="replace") if notes_path.exists() else ""
     abort = abort_path.read_text(errors="replace") if abort_path.exists() else ""
@@ -158,8 +174,7 @@ def main(argv: list[str] | None = None) -> int:
         with tempfile.TemporaryDirectory() as scratch:
             head, policy = load_bundle(Path(scratch), f"https://github.com/{head_repo}.git", base_sha, bundle)
             push_token = env.get("PUSH_TOKEN") or ""
-            ok = not policy.violations and verify_result == "success"
-            if ok and mode == "on" and push_token:
+            if not policy.violations and mode == "on" and push_token:
                 remote = f"https://x-access-token:{push_token}@github.com/{head_repo}.git"
                 if target == "pr":
                     subprocess.run(["git", "push", "-q", remote, f"{head}:refs/heads/{head_ref}"], cwd=scratch, check=True, capture_output=True)
@@ -175,7 +190,8 @@ def main(argv: list[str] | None = None) -> int:
                     )
                     post(f"/repos/{repo}/issues/{opened['number']}/labels", {"labels": ["ai-generated"]}, push_token)
                     published = f"Opened #{opened['number']} from `{branch}`."
-    post(f"/repos/{repo}/issues/{number}/comments", {"body": render(target, number, policy, verify_result, notes, abort, published, mode)}, token)
+    body = render(target, number, policy, notes, abort, published, mode, env.get("STATE", ""))
+    post(f"/repos/{repo}/issues/{number}/comments", {"body": body}, token)
     print(json.dumps({"published": bool(published), "violations": policy.violations, "flags": policy.flags}))
     return 0
 

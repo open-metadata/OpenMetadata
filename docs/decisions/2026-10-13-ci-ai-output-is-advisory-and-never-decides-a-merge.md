@@ -1,9 +1,9 @@
 # CI AI output is advisory and never decides a merge
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial); v2 2026-10-14 (a triage call may grant a bounded re-run of a job that failed on a blip)
+- **Revisions:** v1 2026-10-13 (initial); v2 2026-10-14 (a triage call may grant a bounded re-run of a job that failed on a blip); v3 2026-10-14 (the CI of the PR a patch lands in tests it; the agent workflows run no code they edit)
 - **Deciders:** Mohit Yadav
-- **Guard:** `test_only_the_triage_adapter_reaches_a_model` and `test_reading_a_job_as_a_blip_can_only_ever_add_a_rerun` in `.github/scripts/tests/test_merge_gate_policy.py`
+- **Guard:** `test_only_the_triage_adapter_reaches_a_model` and `test_reading_a_job_as_a_blip_can_only_ever_add_a_rerun` in `.github/scripts/tests/test_merge_gate_policy.py`; `test_workflows_in_mains_context_never_run_the_code_they_check_out` in `.github/scripts/tests/test_ci_workflow.py`
 - **Related:** ADR:2026-10-13-merge-queue-entries-are-decided-by-the-merge-gate-status, docs/ci.md
 
 ## Context
@@ -23,8 +23,12 @@ is the right call, and deciding that from the log is a judgement a model can mak
   on PR runs, and in the queue one attempt past the blind retry (`transient.maxAttempts`).
   The re-run's own result is what the gate then reads. Only `merge_gate_triage.py`
   reaches a model; the policy sees nothing but `FailedJob.log_signal`.
-- Models only edit files (no shell), from main's agent configuration; their patches are
-  verified in a job with no secrets and pushed by an App without the `workflows` permission.
+- Models only edit files (no shell), from main's agent configuration, and never reach the
+  tooling or the git metadata later steps run. Nothing in their workflows runs the code
+  they edit: those events run in main's context, where anything executed could write
+  main's caches. An App without the `workflows` permission pushes the patch, and the CI of
+  the PR it lands in tests it (unit tests on the PR; integration and Playwright in the
+  merge queue).
 - Spend is capped by a dedicated Console workspace's monthly limit and per-role daily caps;
   `CI_AI_MODE=off` turns the advisory roles off and `CI_AI_TRIAGE_MODE=off` the triage.
 

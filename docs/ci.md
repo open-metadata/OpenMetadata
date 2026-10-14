@@ -21,6 +21,11 @@ the cutover below.
 | Merge queue | the same run: one reactor build, IT lanes (MySQL+Elasticsearch, PostgreSQL+OpenSearch), Playwright, Python integration (3.10), then verification of failures | `merge-gate` decided from the run's evidence |
 | Nightly | Redis cache profile, Python 3.11/3.12 and PostgreSQL (`nightly.yml` dispatches the existing workflows); full Playwright with main health (`playwright-postgresql-e2e.yml`'s schedule) | each workflow's own reporting; a nightly summary naming the SHA range since the last green run is a follow-up |
 
+A PR runs the static checks and the unit suites only; integration tests (the Java IT
+lanes and Python integration) and Playwright run in the merge queue, as the workflows
+they replace do today. `test_prs_run_unit_tests_and_the_queue_adds_integration_and_playwright`
+in `.github/scripts/tests/test_ci_workflow.py` keeps it that way.
+
 Order inside a run: `plan` → static checks ∥ builds → suites → `verify / *` (queue
 only, failures only) → `ci-summary`. A static-check failure stops the run before any suite
 starts: PR runs cancel themselves (`fail-fast`), queue runs skip their suites through
@@ -40,8 +45,10 @@ the shadow period measures them.
 
 ## The merge gate
 
-`merge-gate.yml` runs on every finished CI run (`workflow_run`), every 10 minutes (the
-sweep decides runs whose head has no status), and by hand. It runs main's code only.
+`merge-gate.yml` runs on every finished CI run (`workflow_run`), every 10 minutes, and
+by hand. It runs main's code only, and decides only finished runs. The sweep catches a
+missed delivery: a run that finished 15 to 60 minutes ago whose head has no gate status,
+or only a pending one (a re-run leaves it pending until the new attempt is decided).
 
 | Evidence in the run | Verdict |
 |---|---|
@@ -112,13 +119,16 @@ always errors. Every Java verification attempt is a fresh JVM instead, and
 Every verified test, and every test a suite reports as flaky, is recorded on an append-only
 ledger (`ledger.jsonl` on the `ci/merge-gate` data branch, rolling 30 days, size-capped;
 `merge_gate_registry.py`).
-Entries built on the same parent reuse a recorded parent control instead of rebuilding
-the parent, and the ledger's independent history breaks the ambiguous tie. Forgiven
+Entries built on the same parent reuse a recorded parent control (same test, same failure
+fingerprint, same parent commit) instead of rebuilding the parent: one recorded failure is
+conclusive, clean records count once they add up to a fresh control's runs (v3 of the
+same-run record). The ledger's independent history breaks the ambiguous tie. Forgiven
 failures become `flaky-test` issues (`broken-main` when the parent was main's tip), owned
 through CODEOWNERS; the issue is closed by its fix and reopens if the failure recurs.
 
-Admin follow-ups: restrict pushes to `ci/merge-gate` to the gate App (a forged ledger
-record could let verification skip a parent control), and give
+Admin follow-ups: restrict pushes to `ci/merge-gate` to the gate App before enforce mode
+(a forged ledger record could stand in for a parent control; the `record` job pushes with
+the App's token once `MERGE_GATE_APP_ID` is set), and give
 `/openmetadata-integration-tests/` a CODEOWNERS owner — Java IT issues have none today.
 
 ## Conflicts
@@ -127,15 +137,29 @@ record could let verification skip a parent control), and give
 a `queue conflict` PR is re-queued unchanged once the entry it clashed with leaves (at
 most 3 times a day); a `merge conflict` PR gets main merged in, generated files, lockfiles
 and locale JSON resolved mechanically (`conflict_resolvers.py`), the rest resolved by
-Claude editing only the conflicted files, then checked (markers, scope, dropped lines),
-verified in a job with no secrets, and pushed by the publish App. Only a purely mechanical
-resolution re-queues itself; a person re-queues anything a model edited.
+Claude editing only the conflicted files, then checked (markers, scope, dropped lines) and
+pushed by the publish App. The publish job re-merges the two parents with
+`git merge-tree` and refuses a merge commit that differs from it outside the conflicted
+files.
+
+No job in that workflow runs the PR's code: schedules and dispatches run in main's
+context, where anything executed could write main's caches. Generated files and
+lockfiles are taken from main without regenerating them (`typescript-type-generation.yml`
+regenerates the TypeScript types of same-repo PRs; the comment lists the commands for the
+rest), and the push starts the PR's own CI, which builds and tests the merge commit. Only a
+purely mechanical resolution that needs no regeneration re-queues itself, through
+auto-merge, which waits for those checks; a person re-queues anything else. One PR on
+demand: `gh workflow run ci-conflict-resolve.yml -f pr=<number>`.
 
 ## AI
 
 Advisory only (ADR:2026-10-13-ci-ai-output-is-advisory-and-never-decides-a-merge):
 explanations of ejections, fixes for flaky tests, `/ci-fix` on request, conflict
-resolution. No model output is an input to the gate.
+resolution. No model output is an input to the gate. The agents edit files only, from
+main's agent configuration, and cannot reach the tooling or git metadata the later steps
+run; nothing in their workflows runs the code they edit. A fix is tested by the CI of the
+PR it lands in: unit tests on the PR, integration and Playwright in the merge queue once a
+person re-queues it.
 
 ## Switches
 
@@ -148,10 +172,10 @@ resolution. No model output is an input to the gate.
 | `CI_AI_MODE` | `off` · `shadow` · `on`: the advisory roles (explain, `/ci-fix`, conflicts) | unset (off) |
 | `CI_AI_TRIAGE_MODE` | `off` · `shadow` (answers reported only) · `on` (a blip earns a re-run) | unset (off) |
 | `CI_AI_TRIAGE_MODEL` / `CI_AI_TRIAGE_EFFORT` / `CI_AI_DAILY_TRIAGE_MAX` | the triage model, its effort, and calls per day | `claude-opus-5-5` / `low` / 100 |
-| `MERGE_GATE_APP_ID` + secret `MERGE_GATE_APP_KEY` | the App whose status the ruleset pins in enforce mode | unset |
+| `MERGE_GATE_APP_ID` + secret `MERGE_GATE_APP_KEY` | the App whose status the ruleset pins in enforce mode; it posts statuses, re-runs jobs, writes the ledger branch and flake issues, and re-queues cleared queue conflicts. Keep the key in the `ci-ai` environment, not as a repository secret: a dispatch on another branch could otherwise run a changed copy of a workflow with it | unset |
 | `MQ_SLACK_CHANNEL` + secret `COLLATE_BOT_SLACK_TOKEN` (shared with the queue health alert) | where the gate reports an entry it holds (enforce and strict modes only) | already set |
 | `CI_PUBLISH_APP_ID` + secret `CI_PUBLISH_APP_KEY` | the App that pushes conflict resolutions (no `workflows` permission) | unset |
-| environment `ci-ai`, secret `CI_AI_ANTHROPIC_API_KEY` | key of the dedicated Console workspace whose monthly limit is the AI spend cap. The gate's decide and sweep jobs use the environment without a deployment (`deployment: false`), so it must allow only `main` and have no reviewers or wait timer | unset |
+| environment `ci-ai`, secret `CI_AI_ANTHROPIC_API_KEY` | key of the dedicated Console workspace whose monthly limit is the AI spend cap. The gate's decide, record and sweep jobs and the conflict re-queue use the environment without a deployment (`deployment: false`), so it must allow only `main` and have no reviewers or wait timer | unset |
 
 ## Testing workflow changes locally
 
@@ -247,12 +271,11 @@ Deleting `yarn-coverage.yml` at the cutover ends the SonarCloud scan of UI pull 
 (it is not a required check, and nothing scans the UI on main). Keep that workflow for
 Sonar alone, or add a Sonar job to `ci.yml`; this is decided before the cutover.
 
-Seven tests of the CI scripts already failed on main before `workflow-scripts-tests.yml`
-started running them: stale workflow-text assertions in `test_playwright_ci_planning.py`
-×3 and `test_playwright_merge_group_validation.py`, a behaviour change in
-`test_merge_queue_recovery_metrics.py`, and two impact-map ownership checks in
-`test_plan_local_java_tests.py` (`IdBatchesIT` belongs to no area). Their owners decide
-whether the test or the code is right.
+`workflow-scripts-tests.yml` leaves out the two whole-repository audits of the Java impact
+map in `test_plan_local_java_tests.py`: map ownership is checked before the PR by the
+agent and pre-push hooks (#34984), not by CI, so code another PR left unowned never fails
+an unrelated one. Run locally, they currently report `IdBatchesIT` and
+`jdbi3/CustomPropertyReferences.java`, which no area owns on main.
 
 `ci_metrics.py` reads PR heads from `team-labeler.yml` runs (one per push) and merge groups
 from `java-checkstyle.yml` runs; after the cutover deletes `java-checkstyle.yml`, pass

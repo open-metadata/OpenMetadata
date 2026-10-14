@@ -173,11 +173,25 @@ jobs:
     if: ${{ needs.decide.result == 'success' && (github.event.workflow_run.event == 'merge_group' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # For the gate App's key only; see the decide job.
+    environment:
+      name: ci-ai
+      deployment: false
     permissions:
       contents: write
       issues: write
       actions: read
     steps:
+      # A ledger record can stand in for a parent control, so once pushes to the
+      # ledger branch are limited to the gate App, only this job can write one
+      # (ADR:2026-10-13-a-queue-failure-is-forgiven-only-when-the-same-run-proves-it-is-not-the-entrys).
+      - name: Gate App token
+        id: app
+        if: ${{ vars.MERGE_GATE_APP_ID != '' }}
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.MERGE_GATE_APP_ID }}
+          private-key: ${{ secrets.MERGE_GATE_APP_KEY }}
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
@@ -205,8 +219,9 @@ jobs:
           path: ${{ runner.temp }}/evidence
       - name: Record verified tests and forgiven failures
         env:
-          GH_TOKEN: ${{ github.token }}
-          MERGE_GATE_REGISTRY: ${{ vars.MERGE_GATE_REGISTRY || 'dry-run' }}
+          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
+          # A dispatched dry run posts nothing anywhere: no ledger record, no issue.
+          MERGE_GATE_REGISTRY: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && 'dry-run' || vars.MERGE_GATE_REGISTRY || 'dry-run' }}
         run: |
           python3 .github/scripts/merge_gate_registry.py record \
             --decision "$RUNNER_TEMP/gate/decision.json" --verify-dir "$RUNNER_TEMP/verify" \
@@ -264,7 +279,7 @@ jobs:
           CI_AI_TRIAGE_EFFORT: ${{ vars.CI_AI_TRIAGE_EFFORT }}
           CI_AI_DAILY_TRIAGE_MAX: ${{ vars.CI_AI_DAILY_TRIAGE_MAX }}
           CI_AI_TRIAGE_CACHE: ${{ runner.temp }}/ci-ai-triage-cache.json
-        run: python3 .github/scripts/merge_gate.py --out "$RUNNER_TEMP/gate/sweep.json" sweep --minutes 30
+        run: python3 .github/scripts/merge_gate.py --out "$RUNNER_TEMP/gate/sweep.json" sweep
       - name: Check for a triage cache
         id: triage-cache
         if: ${{ always() }}
