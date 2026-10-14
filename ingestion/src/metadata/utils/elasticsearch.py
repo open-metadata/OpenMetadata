@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.data.directory import Directory
 from metadata.generated.schema.entity.data.file import File
 from metadata.generated.schema.entity.data.glossary import Glossary
@@ -80,6 +81,7 @@ ES_INDEX_MAP = {
     Spreadsheet.__name__: "spreadsheet_search_index",
     Worksheet.__name__: "worksheet_search_index",
     Query.__name__: "query_search_index",
+    DataContract.__name__: "data_contract_search_index",
     ReportData.__name__: "entity_report_data_index",
     Metric.__name__: "metric_search_index",
     "web_analytic_user_activity_report": "web_analytic_user_activity_report_data_index",
