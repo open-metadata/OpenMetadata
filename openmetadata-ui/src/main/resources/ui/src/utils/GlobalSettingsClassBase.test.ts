@@ -81,6 +81,19 @@ describe('GlobalSettingsClassBase', () => {
 
   describe('getGlobalSettingsMenuWithPermission', () => {
     it.each([true, false])(
+      'shows Online Users to admins only (admin=%s)',
+      (isAdmin) => {
+        const item = globalSettingsClassBase
+          .getGlobalSettingsMenuWithPermission(mockNoPermissions, isAdmin)
+          .find((entry) => entry.key === 'members')
+          ?.items?.find((entry) => entry.key === 'members.online-users');
+
+        expect(item?.label).toBe('label.online-user-plural');
+        expect(item?.isProtected).toBe(isAdmin);
+      }
+    );
+
+    it.each([true, false])(
       'requires admin access for glossary preferences (admin=%s)',
       (isAdmin) => {
         const item = globalSettingsClassBase

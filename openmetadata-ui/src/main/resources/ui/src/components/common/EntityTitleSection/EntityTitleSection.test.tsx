@@ -581,6 +581,7 @@ describe('EntityTitleSection', () => {
       await user.click(cancelButton);
 
       expect(screen.queryByTestId('entity-name-modal')).not.toBeInTheDocument();
+      expect(mockPatchAPI).not.toHaveBeenCalled();
     });
   });
 

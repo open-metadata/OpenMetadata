@@ -737,8 +737,7 @@
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditOperationBadges.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
-        "playwright/e2e/Features/ClassificationImportExport.spec.ts",
-        "playwright/e2e/Features/CsvJobsTray.spec.ts"
+        "playwright/e2e/Features/ClassificationImportExport.spec.ts"
       ]
     },
     {

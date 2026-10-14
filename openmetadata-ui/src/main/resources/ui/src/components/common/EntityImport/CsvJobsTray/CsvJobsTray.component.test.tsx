@@ -679,4 +679,153 @@ describe('CsvJobsTray', () => {
       ).not.toBeInTheDocument()
     );
   });
+
+  describe('job rows', () => {
+    const runningExport = createJob({
+      jobId: 'export-job',
+      progress: 5,
+      result: undefined,
+      status: 'RUNNING',
+      total: 18,
+    });
+    const runningImport = createJob({
+      jobId: 'import-job',
+      operation: 'IMPORT',
+      progress: 3,
+      result: undefined,
+      status: 'RUNNING',
+      total: 10,
+    });
+
+    const openTray = async () =>
+      fireEvent.click(await screen.findByText('label.count-jobs-running'));
+
+    const refreshWith = async (jobs: CsvAsyncJob[]) => {
+      mockGetCsvAsyncJobs.mockResolvedValue(jobs);
+      await act(async () => {
+        window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+      });
+    };
+
+    it('shows a running export with its progress', async () => {
+      mockGetCsvAsyncJobs.mockResolvedValue([runningExport]);
+
+      await renderComponent();
+      await openTray();
+
+      expect(screen.getByTestId('csv-job-export-job')).toHaveClass(
+        'csv-jobs-tray-item-running'
+      );
+      expect(
+        screen.getByText('label.exporting-entity-plural')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('5 label.of-lowercase 18 · 28%')
+      ).toBeInTheDocument();
+    });
+
+    it('shows a running import', async () => {
+      mockGetCsvAsyncJobs.mockResolvedValue([runningImport]);
+
+      await renderComponent();
+      await openTray();
+
+      expect(
+        screen.getByText('label.importing-entity-plural')
+      ).toBeInTheDocument();
+    });
+
+    it('lists concurrent jobs and counts both on the launcher', async () => {
+      mockGetCsvAsyncJobs.mockResolvedValue([runningExport, runningImport]);
+
+      await renderComponent();
+
+      expect(
+        await screen.findByText('label.count-jobs-running')
+      ).toBeInTheDocument();
+      expect(
+        document.querySelector('.csv-jobs-tray-launcher-count')
+      ).toHaveTextContent('2');
+
+      await openTray();
+
+      expect(screen.getByTestId('csv-job-export-job')).toBeInTheDocument();
+      expect(screen.getByTestId('csv-job-import-job')).toBeInTheDocument();
+    });
+
+    it('marks a failed import as an error with its message and a dismiss button', async () => {
+      mockGetCsvAsyncJobs.mockResolvedValue([runningImport]);
+
+      await renderComponent();
+      await openTray();
+      await refreshWith([
+        {
+          ...runningImport,
+          error: 'Invalid CSV format',
+          progress: 0,
+          status: 'FAILED',
+          total: 0,
+        },
+      ]);
+
+      await waitFor(() =>
+        expect(screen.getByTestId('csv-job-import-job')).toHaveClass(
+          'csv-jobs-tray-item-error'
+        )
+      );
+
+      expect(screen.getByText('Invalid CSV format')).toBeInTheDocument();
+      expect(
+        document.querySelector('.csv-jobs-tray-dismiss')
+      ).toBeInTheDocument();
+    });
+
+    it('hides the tray once its only completed import is dismissed', async () => {
+      mockGetCsvAsyncJobs.mockResolvedValue([runningImport]);
+
+      await renderComponent();
+      await openTray();
+      await refreshWith([
+        { ...runningImport, progress: 10, status: 'COMPLETED' },
+      ]);
+
+      await waitFor(() =>
+        expect(screen.getByTestId('csv-job-import-job')).toHaveClass(
+          'csv-jobs-tray-item-success'
+        )
+      );
+
+      expect(
+        screen.queryByRole('button', { name: 'label.download' })
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(
+        document.querySelector('.csv-jobs-tray-dismiss') as Element
+      );
+
+      expect(document.querySelector('.csv-jobs-tray')).not.toBeInTheDocument();
+    });
+
+    it('surfaces a lineage export and offers its download once complete', async () => {
+      const lineageExport = {
+        ...runningExport,
+        entityType: 'lineage',
+        jobId: 'lineage-job',
+      };
+      mockGetCsvAsyncJobs.mockResolvedValue([lineageExport]);
+
+      await renderComponent();
+      await openTray();
+      await refreshWith([
+        { ...lineageExport, progress: 18, status: 'COMPLETED' },
+      ]);
+
+      expect(
+        await screen.findByText('label.exported-entity-plural')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'label.download' })
+      ).toBeInTheDocument();
+    });
+  });
 });
