@@ -1,0 +1,42 @@
+{
+  "$id": "https://open-metadata.org/schema/type/metadataCompletionPayload.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MetadataCompletionPayload",
+  "description": "Payload for Metadata Completion tasks: the fields an asset still has to fill in before its lifecycle workflow lets it leave the current stage (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task). Only the server writes it.",
+  "javaType": "org.openmetadata.schema.type.MetadataCompletionPayload",
+  "type": "object",
+  "properties": {
+    "workflow": {
+      "description": "Name of the workflow definition whose stage asks for the fields.",
+      "type": "string",
+      "minLength": 1
+    },
+    "node": {
+      "description": "Name of the node in that workflow that lists the required fields.",
+      "type": "string",
+      "minLength": 1
+    },
+    "stage": {
+      "description": "Stage the asset has to be in for the task to apply.",
+      "$ref": "status.json"
+    },
+    "targetStage": {
+      "description": "Stage the asset moves to once the fields are filled in and any approval passes.",
+      "$ref": "status.json"
+    },
+    "missingFields": {
+      "description": "Paths of the required fields that are still empty, in the order the stage lists them.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "workflow",
+    "node",
+    "stage",
+    "missingFields"
+  ],
+  "additionalProperties": false
+}

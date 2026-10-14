@@ -55,6 +55,7 @@ import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.metadata.MetadataCollectionService;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
@@ -414,6 +415,10 @@ public class TaskWorkflowHandler {
     // resolution. Other types mutate the target entity only on positive resolutions.
     if (MemoryConflictResolution.decides(task)) {
       MemoryConflictResolution.decide(task, resolutionType, comment, user, resolvedPayload);
+    } else if (MetadataCollectionService.decides(task)) {
+      // A metadata completion task changes no entity: resolving it re-checks the fields it asks
+      // for.
+      MetadataCollectionService.requireFilledIn(task);
     } else if (approved && task.getAbout() != null) {
       applyEntityChanges(task, approved, newValue, resolvedPayload, user);
     } else {

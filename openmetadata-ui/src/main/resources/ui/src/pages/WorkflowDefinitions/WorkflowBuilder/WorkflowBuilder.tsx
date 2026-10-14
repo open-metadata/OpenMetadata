@@ -620,6 +620,9 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
         <div className="tw:shrink-0">
           <WorkflowHeader
             breadcrumb={isAiMode ? breadcrumb : undefined}
+            editorLink={workflowClassBase.getWorkflowEditorLink(
+              workflowDefinition
+            )}
             handleDeleteWorkflow={handleShowDeleteModal}
             handleRevertAndCancel={handleRevertAndCancel}
             handleRunWorkflow={handleRunWorkflow}

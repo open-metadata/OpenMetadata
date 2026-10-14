@@ -23,6 +23,7 @@ import {
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import { WorkflowTriggerFieldsConfig } from '../rest/metadataTypeAPI';
+import type { WorkflowEditorLink } from '../utils/WorkflowClassBase';
 
 export interface DataAssetFilter {
   id: number;
@@ -294,6 +295,8 @@ export interface WorkflowControlsProps {
 
 export interface WorkflowHeaderProps {
   breadcrumb?: React.ReactNode;
+  /** Link to the editor that owns this workflow's shape, shown beside Edit Workflow. */
+  editorLink?: WorkflowEditorLink;
   isAiMode?: boolean;
   title: string;
   workflowName?: string;

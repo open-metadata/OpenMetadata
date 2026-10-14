@@ -20,7 +20,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 
-/** Checklist metadata is preserved across creation, reads and ordinary canvas updates. */
+/** Lifecycle metadata is preserved across creation, reads and ordinary canvas updates. */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class LifecycleWorkflowConfigurationIT {
@@ -37,7 +37,8 @@ public class LifecycleWorkflowConfigurationIT {
         [
           {"type":"startEvent","subType":"startEvent","name":"start"},
           {"type":"automatedTask","subType":"collectMetadataTask","name":"collect",
-            "config":{"field":"description","rules":"true","taskAssignees":"owners","stage":"Draft"}},
+            "config":{"stage":"Draft","targetStage":"In Review","taskAssignees":"owners",
+              "fields":[{"field":"description","rules":"true"}]}},
           {"type":"endEvent","subType":"endEvent","name":"end"}
         ]
         """));
@@ -85,9 +86,9 @@ public class LifecycleWorkflowConfigurationIT {
   }
 
   @Test
-  void rejectsUnknownChecklistRequirement(TestNamespace ns) {
+  void rejectsUnknownCheckValueType(TestNamespace ns) {
     final ObjectNode request = request(ns);
-    ((ObjectNode) request.at(LIFECYCLE + "/gates/0/checks/0")).put("requirement", "silently-pass");
+    ((ObjectNode) request.at(LIFECYCLE + "/gates/0/checks/0")).put("valueType", "silently-pass");
     final OpenMetadataException rejected =
         assertThrows(
             OpenMetadataException.class, () -> execute(HttpMethod.POST, WORKFLOWS, request));
@@ -97,11 +98,8 @@ public class LifecycleWorkflowConfigurationIT {
   private static void assertChecks(JsonNode workflow) {
     final JsonNode check = workflow.at(LIFECYCLE + "/gates/0/checks/0");
     assertEquals("extension.limit", check.get("field").asText());
-    assertEquals("recommended", check.get("requirement").asText());
     assertEquals("number", check.get("valueType").asText());
-    assertEquals("Zero is a valid limit", check.get("guidance").asText());
-    assertEquals("0", check.get("example").asText());
-    assertEquals("{\"==\":[{\"var\":\"critical\"},true]}", check.get("appliesWhen").asText());
+    assertEquals("owners", workflow.at(LIFECYCLE + "/gates/0/task/assignees").asText());
   }
 
   private static ObjectNode request(TestNamespace ns) {
@@ -115,11 +113,8 @@ public class LifecycleWorkflowConfigurationIT {
           "nodes":[], "edges":[],
           "config":{"storeStageStatus":true,"lifecycle":{
             "version":1,"entityType":"dataProduct","gates":[{
-              "stage":"Draft","checks":[{
-                "field":"extension.limit","requirement":"recommended","valueType":"number",
-                "guidance":"Zero is a valid limit","example":"0",
-                "appliesWhen":"{\\\"==\\\":[{\\\"var\\\":\\\"critical\\\"},true]}"
-              }]
+              "stage":"Draft","checks":[{"field":"extension.limit","valueType":"number"}],
+              "task":{"assignees":"owners"}
             }]
           }}
         }

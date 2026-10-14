@@ -38,6 +38,7 @@ const getInitialDisplayName = (title?: string) => title ?? '';
 
 export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   breadcrumb,
+  editorLink,
   isAiMode = false,
   title,
   workflowName,
@@ -125,15 +126,26 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   const editWorkflowButton = useMemo(
     () =>
       showEditButton && (
-        <Button
-          color="primary"
-          data-testid="edit-workflow-button"
-          size="sm"
-          onPress={enterEditMode}>
-          {t('label.edit-workflow')}
-        </Button>
+        <>
+          {editorLink && (
+            <Button
+              color="secondary"
+              data-testid="workflow-editor-link"
+              href={editorLink.path}
+              size="sm">
+              {t(editorLink.labelKey)}
+            </Button>
+          )}
+          <Button
+            color="primary"
+            data-testid="edit-workflow-button"
+            size="sm"
+            onPress={enterEditMode}>
+            {t('label.edit-workflow')}
+          </Button>
+        </>
       ),
-    [showEditButton, enterEditMode, t]
+    [showEditButton, enterEditMode, editorLink, t]
   );
 
   const systemBadge = useMemo(

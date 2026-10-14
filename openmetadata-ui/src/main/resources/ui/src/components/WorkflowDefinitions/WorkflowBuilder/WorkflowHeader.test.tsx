@@ -291,3 +291,37 @@ describe('WorkflowHeader — System badge', () => {
     );
   });
 });
+
+describe('WorkflowHeader — editor link', () => {
+  it('links to the editor that owns the workflow beside Edit Workflow', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(
+      <WorkflowHeader
+        {...defaultProps}
+        editorLink={{
+          path: '/workflows/lifecycle/domain',
+          labelKey: 'label.edit-stages',
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('workflow-editor-link')).toHaveTextContent(
+      'label.edit-stages'
+    );
+    expect(screen.getByTestId('workflow-editor-link')).toHaveAttribute(
+      'href',
+      '/workflows/lifecycle/domain'
+    );
+  });
+
+  it('shows no editor link for a workflow the builder owns', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(<WorkflowHeader {...defaultProps} />);
+
+    expect(
+      screen.queryByTestId('workflow-editor-link')
+    ).not.toBeInTheDocument();
+  });
+});

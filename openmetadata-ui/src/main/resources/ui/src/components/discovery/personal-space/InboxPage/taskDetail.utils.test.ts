@@ -689,3 +689,37 @@ describe('getPlainDescription', () => {
     expect(getPlainDescription({ description: '  ' })).toBe('');
   });
 });
+
+describe('metadata completion tasks', () => {
+  const task = buildTask({
+    type: TaskType.MetadataCompletion,
+    payload: {
+      workflow: 'DomainLifecycle',
+      node: 'Collect0',
+      stage: 'Draft',
+      targetStage: 'In Review',
+      missingFields: ['experts', 'extension.costCenter'],
+    },
+  });
+
+  it('gives a metadata completion task its own chip', () => {
+    expect(getTaskTypeBadge(task, t)).toEqual({
+      label: 'label.missing-metadata',
+      color: 'warning',
+      icon: 'description',
+    });
+  });
+
+  it('lists the missing fields by name and says which stage they unlock', () => {
+    const descriptor = getTaskDetailDescriptor(task, t);
+
+    expect(
+      descriptor.rows.find((row) => row.key === 'missingFields')?.value
+    ).toEqual({
+      kind: 'list',
+      items: [{ label: 'label.expert-plural' }, { label: 'costCenter' }],
+      title: 'label.missing-field-plural',
+    });
+    expect(descriptor.callout?.text).toBe('message.metadata-completion-move');
+  });
+});

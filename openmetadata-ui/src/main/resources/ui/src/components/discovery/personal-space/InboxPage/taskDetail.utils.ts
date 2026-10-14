@@ -30,6 +30,11 @@ import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseRe
 import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Fqn from '../../../../utils/Fqn';
+import {
+  getMetadataCompletionInstruction,
+  getMetadataCompletionPayload,
+  getRequiredFieldLabel,
+} from '../../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import type { ActivityChange } from './inbox.utils';
 import {
@@ -185,6 +190,11 @@ const TASK_TYPE_BADGE: Record<
     labelKey: 'label.memory-conflict',
     color: 'orange',
     icon: 'approval',
+  },
+  [TaskType.MetadataCompletion]: {
+    labelKey: 'label.missing-metadata',
+    color: 'warning',
+    icon: 'description',
   },
   [TaskType.RecognizerFeedbackApproval]: {
     labelKey: 'label.recognizer-feedback',
@@ -587,6 +597,42 @@ const describeDomainUpdate = (
   };
 };
 
+// The fields still missing, which the server rewrites as they are filled in; the
+// fixed instruction sits where other types put their requester's context.
+const describeMetadataCompletion = (
+  task: Task,
+  t: Translate
+): Partial<TaskDetailDescriptor> => {
+  const payload = getMetadataCompletionPayload(task);
+  const missingFields = payload.missingFields ?? [];
+
+  return {
+    rows: [
+      ...(missingFields.length > 0
+        ? [
+            {
+              key: 'missingFields',
+              icon: 'columns' as const,
+              label: t('label.missing-field-plural'),
+              value: {
+                kind: 'list' as const,
+                items: missingFields.map((field) => ({
+                  label: getRequiredFieldLabel(field, t),
+                })),
+                title: t('label.missing-field-plural'),
+              },
+            },
+          ]
+        : []),
+      ...getCommonRows(task, t),
+    ],
+    callout: {
+      label: t('label.context'),
+      text: getMetadataCompletionInstruction(payload, t),
+    },
+  };
+};
+
 type Describer = (task: Task, t: Translate) => Partial<TaskDetailDescriptor>;
 
 const DESCRIBERS: Record<string, Describer> = {
@@ -598,6 +644,7 @@ const DESCRIBERS: Record<string, Describer> = {
   [TaskType.OwnershipUpdate]: describeOwnershipUpdate,
   [TaskType.TierUpdate]: describeTierUpdate,
   [TaskType.DomainUpdate]: describeDomainUpdate,
+  [TaskType.MetadataCompletion]: describeMetadataCompletion,
 };
 
 /**

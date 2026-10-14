@@ -20,8 +20,8 @@ class CollectMetadataTaskTest {
         JsonUtils.readValue(
             """
             {"type":"automatedTask","subType":"collectMetadataTask","name":"collectDescription","config":{
-              "field":"description","rules":"{\\\"!!\\\":[{\\\"var\\\":\\\"description\\\"}]}",
-              "taskAssignees":"owners","stage":"Draft"
+              "stage":"Draft","targetStage":"In Review","taskAssignees":"owners",
+              "fields":[{"field":"description","rules":"{\\\"!!\\\":[{\\\"var\\\":\\\"description\\\"}]}"}]
             }%s}
             """
                 .formatted(namespaceProperty),
@@ -44,5 +44,15 @@ class CollectMetadataTaskTest {
     assertEquals(
         JsonUtils.readTree(namespaceProperty.isEmpty() ? "{}" : "{\"relatedEntity\":\"previous\"}"),
         JsonUtils.readTree(namespace));
+    assertEquals("lifecycle", fieldValue(collect, "workflowNameExpr"));
+    assertEquals("collectDescription", fieldValue(collect, "nodeNameExpr"));
+  }
+
+  private static String fieldValue(final ServiceTask task, final String name) {
+    return task.getFieldExtensions().stream()
+        .filter(field -> name.equals(field.getFieldName()))
+        .findFirst()
+        .orElseThrow()
+        .getStringValue();
   }
 }

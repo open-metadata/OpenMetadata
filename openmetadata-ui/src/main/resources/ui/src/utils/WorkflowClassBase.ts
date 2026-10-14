@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import { ComponentType } from 'react';
+import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
+
 export interface WorkflowCapabilities {
   allowCreateWorkflow: boolean;
   allowDeleteWorkflow: boolean;
@@ -22,8 +25,22 @@ export interface WorkflowCapabilities {
   allowViewModeDrag: boolean;
 }
 
+/** Another editor that owns a workflow's shape, linked from the workflow builder. */
+export interface WorkflowEditorLink {
+  path: string;
+  labelKey: string;
+}
+
+export interface WorkflowsPageTab {
+  id: string;
+  labelKey: string;
+  /** Keeps only the workflows this tab lists; every workflow when absent. */
+  includes?: (workflow: WorkflowDefinition) => boolean;
+}
+
 export class WorkflowClassBase {
-  public getCapabilities(): WorkflowCapabilities {
+  /** What the builder allows; `workflow` is the one open in it, when there is one. */
+  public getCapabilities(_workflow?: WorkflowDefinition): WorkflowCapabilities {
     return {
       allowCreateWorkflow: false,
       allowDeleteWorkflow: false,
@@ -34,6 +51,28 @@ export class WorkflowClassBase {
       allowScheduledTrigger: false,
       allowViewModeDrag: true,
     };
+  }
+
+  /** Content shown above the workflow list; OpenMetadata has none. */
+  public getWorkflowsPageSection(): ComponentType | null {
+    return null;
+  }
+
+  /** Tabs that narrow the workflow list; OpenMetadata lists every workflow untabbed. */
+  public getWorkflowsPageTabs(): WorkflowsPageTab[] {
+    return [];
+  }
+
+  /** The editor that owns this workflow's shape, if the builder is not that editor. */
+  public getWorkflowEditorLink(
+    _workflow?: WorkflowDefinition | null
+  ): WorkflowEditorLink | undefined {
+    return undefined;
+  }
+
+  /** Where opening a workflow leads; undefined keeps the workflow details page. */
+  public getWorkflowPath(_workflow: WorkflowDefinition): string | undefined {
+    return undefined;
   }
 }
 

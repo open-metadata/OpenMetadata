@@ -163,15 +163,20 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
         ? existingTransitionMetadata
         : DEFAULT_USER_APPROVAL_TRANSITIONS;
 
+    // Settings this form does not edit, such as domain-owner approvers or the task status, keep
+    // their saved values.
+    const savedConfig = (node?.data?.config ?? {}) as Record<string, unknown>;
     const config = createNodeConfig({
       displayName,
       description,
       type: NodeType.UserTask,
       subType: NodeSubType.UserApprovalTask,
       config: {
+        ...savedConfig,
         approvalThreshold,
         rejectionThreshold,
         assignees: {
+          ...(savedConfig.assignees as AssigneesConfigSlice | undefined),
           addReviewers,
           addOwners,
           emptyAssigneeStrategy,

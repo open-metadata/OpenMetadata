@@ -18,12 +18,7 @@
 export interface LifecycleConfiguration {
     entityType: EntityType;
     gates:      LifecycleGate[];
-    /**
-     * Names of workflows whose checks were explicitly imported by an administrator. Importing
-     * metadata does not suspend or delete these workflows.
-     */
-    sourceWorkflows?: string[];
-    version:          number;
+    version:    number;
 }
 
 export enum EntityType {
@@ -33,60 +28,61 @@ export enum EntityType {
     Metric = "metric",
 }
 
+/**
+ * A stage of the guided lifecycle: the fields an asset needs before it can leave the stage,
+ * and who is asked to fill them in.
+ */
 export interface LifecycleGate {
     /**
-     * Optional advanced JSON Logic condition evaluated in addition to the checklist.
+     * Fields the asset must fill in before it can leave the stage.
      */
-    additionalRules?: string;
-    checks:           LifecycleFieldCheck[];
-    stage:            EntityStatus;
+    checks: LifecycleFieldCheck[];
+    stage:  EntityStatus;
+    /**
+     * Who is asked to fill in the missing fields. Without it the stage holds the asset and asks
+     * no one (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
+     */
+    task?: Task;
 }
 
 /**
- * A field-presence check. Only blocking checks participate in a stage gate. An appliesWhen
- * expression that evaluates to false skips the check.
+ * A field the asset must fill in before it can leave the gate's stage.
  */
 export interface LifecycleFieldCheck {
+    field: string;
     /**
-     * Optional JSON Logic expression against the entity.
-     */
-    appliesWhen?: string;
-    example?:     string;
-    field:        string;
-    /**
-     * Fields for a completeness check; the executable completeness node enforces a non-empty
-     * selection.
-     */
-    fieldsToCheck?: string[];
-    guidance?:      string;
-    kind?:          Kind;
-    minimumScore?:  number;
-    requirement:    Requirement;
-    /**
-     * Optional metadata collection task. The field check, rather than task approval, controls
-     * stage advancement.
-     */
-    task?: Task;
-    /**
-     * Number and boolean fields accept zero and false as present values.
+     * Number and boolean fields accept zero and false as filled-in values.
      */
     valueType?: ValueType;
 }
 
-export enum Kind {
-    Completeness = "completeness",
-    Field = "field",
-}
-
-export enum Requirement {
-    Blocking = "blocking",
-    Optional = "optional",
-    Recommended = "recommended",
+/**
+ * Number and boolean fields accept zero and false as filled-in values.
+ */
+export enum ValueType {
+    Boolean = "boolean",
+    Number = "number",
 }
 
 /**
- * Optional metadata collection task. The field check, rather than task approval, controls
- * stage advancement.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
+ * Who is asked to fill in the missing fields. Without it the stage holds the asset and asks
+ * no one (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
  */
 export interface Task {
     assignees:   Assignees;
@@ -146,30 +142,4 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
-}
-
-/**
- * Number and boolean fields accept zero and false as present values.
- */
-export enum ValueType {
-    Boolean = "boolean",
-    Collection = "collection",
-    Number = "number",
-    Text = "text",
-}
-
-/**
- * General lifecycle stage for entities that reference this vocabulary. Specialized entities
- * can declare their own status schema and lifecycle policy. Entity types without an
- * entityStatus property have no lifecycle. When a create request omits the stage, the
- * server assigns the entity type's initial stage.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Archived = "Archived",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-    Unprocessed = "Unprocessed",
 }

@@ -168,6 +168,10 @@ const FeedbackApprovalTask = withSuspenseFallback(
   lazy(() => import('../../../../pages/TasksPage/shared/FeedbackApprovalTask'))
 );
 
+const MetadataCompletionTask = withSuspenseFallback(
+  lazy(() => import('../MetadataCompletionTask/MetadataCompletionTask'))
+);
+
 type ProposedChanges = Record<string, { added: string[]; removed: string[] }>;
 
 const FIELD_ROUTE_MAP: Record<string, (fqn: string) => string> = {
@@ -1874,6 +1878,10 @@ export const TaskTabNew = ({
           <FeedbackApprovalTask task={task} />
         </div>
       ) : null;
+    }
+
+    if (task.type === TaskEntityType.MetadataCompletion) {
+      return <MetadataCompletionTask task={task} />;
     }
 
     if (!shouldRenderTaskPayload) {

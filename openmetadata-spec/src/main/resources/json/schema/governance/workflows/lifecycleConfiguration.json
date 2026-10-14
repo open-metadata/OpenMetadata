@@ -26,14 +26,6 @@
       "items": {
         "$ref": "#/definitions/lifecycleGate"
       }
-    },
-    "sourceWorkflows": {
-      "description": "Names of workflows whose checks were explicitly imported by an administrator. Importing metadata does not suspend or delete these workflows.",
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "uniqueItems": true
     }
   },
   "required": [
@@ -49,85 +41,17 @@
         "stage": {
           "$ref": "../../type/status.json"
         },
-        "additionalRules": {
-          "description": "Optional advanced JSON Logic condition evaluated in addition to the checklist.",
-          "type": "string",
-          "minLength": 1
-        },
         "checks": {
+          "description": "Fields the asset must fill in before it can leave the stage.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/lifecycleFieldCheck"
           }
-        }
-      },
-      "required": [
-        "stage",
-        "checks"
-      ],
-      "additionalProperties": false
-    },
-    "lifecycleFieldCheck": {
-      "description": "A field-presence check. Only blocking checks participate in a stage gate. An appliesWhen expression that evaluates to false skips the check.",
-      "type": "object",
-      "properties": {
-        "field": {
-          "type": "string",
-          "minLength": 1
-        },
-        "kind": {
-          "type": "string",
-          "enum": [
-            "field",
-            "completeness"
-          ]
-        },
-        "fieldsToCheck": {
-          "description": "Fields for a completeness check; the executable completeness node enforces a non-empty selection.",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "uniqueItems": true
-        },
-        "minimumScore": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 100
-        },
-        "requirement": {
-          "type": "string",
-          "enum": [
-            "blocking",
-            "recommended",
-            "optional"
-          ]
-        },
-        "valueType": {
-          "description": "Number and boolean fields accept zero and false as present values.",
-          "type": "string",
-          "enum": [
-            "text",
-            "number",
-            "boolean",
-            "collection"
-          ]
-        },
-        "appliesWhen": {
-          "description": "Optional JSON Logic expression against the entity.",
-          "type": "string",
-          "minLength": 1
-        },
-        "guidance": {
-          "type": "string"
-        },
-        "example": {
-          "type": "string"
         },
         "task": {
-          "description": "Optional metadata collection task. The field check, rather than task approval, controls stage advancement.",
+          "description": "Who is asked to fill in the missing fields. Without it the stage holds the asset and asks no one (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).",
           "type": "object",
+          "javaType": "org.openmetadata.schema.governance.workflows.LifecycleTask",
           "properties": {
             "assignees": {
               "type": "string",
@@ -151,8 +75,31 @@
         }
       },
       "required": [
-        "field",
-        "requirement"
+        "stage",
+        "checks"
+      ],
+      "additionalProperties": false,
+      "description": "A stage of the guided lifecycle: the fields an asset needs before it can leave the stage, and who is asked to fill them in."
+    },
+    "lifecycleFieldCheck": {
+      "description": "A field the asset must fill in before it can leave the gate's stage.",
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "valueType": {
+          "description": "Number and boolean fields accept zero and false as filled-in values.",
+          "type": "string",
+          "enum": [
+            "number",
+            "boolean"
+          ]
+        }
+      },
+      "required": [
+        "field"
       ],
       "additionalProperties": false
     }

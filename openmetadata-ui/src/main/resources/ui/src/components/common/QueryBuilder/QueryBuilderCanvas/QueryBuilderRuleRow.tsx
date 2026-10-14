@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, Select } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import { X } from '@openmetadata/ui-core-components/icons';
 import type { FieldProps } from '@react-awesome-query-builder/ui';
 import classNames from 'classnames';
@@ -23,10 +23,12 @@ import {
 import type { QueryBuilderRuleRowProps } from './QueryBuilderCanvas.types';
 import {
   configUtils,
+  operatorTakesNoValue,
   resolveSelectedField,
   toFieldNodes,
 } from './QueryBuilderCanvas.utils';
 import QueryBuilderControl, { QueryBuilderCell } from './QueryBuilderControl';
+import QueryBuilderValueCell from './QueryBuilderValueCell';
 
 const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
   rule,
@@ -67,6 +69,8 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
       })
     );
   }, [config, field]);
+
+  const hasValueColumn = !operatorTakesNoValue(config, field, operator);
 
   // Delegate the value cell to the widget the config already names for this field/operator pair.
   const valueCells = useMemo(() => {
@@ -131,7 +135,8 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
         className="tw:grid tw:min-w-0 tw:flex-1 tw:gap-3.5"
         style={{
           gridTemplateColumns: getQueryBuilderColumnRatios(
-            fieldControls.length
+            fieldControls.length,
+            hasValueColumn
           ),
         }}>
         {/* Each level is a grid child of its own, so a row too narrow for all
@@ -169,41 +174,7 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
           onChange={(key) => actions.setOperator(path, key)}
         />
 
-        <QueryBuilderCell label={t('label.value')}>
-          <Box
-            className="tw:min-w-0"
-            data-testid="advanced-search-value"
-            gap={2}
-            wrap="wrap">
-            {/* Until the field and operator name a widget there is nothing to
-                edit, but the column still reads as part of the row — an empty
-                gap where a control belongs looks like a rendering fault. */}
-            {valueCells.length === 0 ? (
-              <Select
-                isDisabled
-                aria-label={t('label.value')}
-                className="tw:min-w-0 tw:flex-1"
-                items={[]}
-                placeholder={t('label.value')}
-                size="sm">
-                {(item) => (
-                  <Select.Item id={String(item.id)} key={String(item.id)}>
-                    {String(item.id)}
-                  </Select.Item>
-                )}
-              </Select>
-            ) : (
-              valueCells.map((cell) => (
-                // A two-valued operator keeps both slots readable: they share the column when it is wide enough and
-                // wrap when it is not.
-                // `min-w` is the narrowest a value slot may get before a two-valued operator's slots wrap.
-                <div className="tw:min-w-[130px] tw:flex-1" key={cell.id}>
-                  {cell.node}
-                </div>
-              ))
-            )}
-          </Box>
-        </QueryBuilderCell>
+        {hasValueColumn && <QueryBuilderValueCell cells={valueCells} />}
       </div>
 
       {canRemoveRule && !readonly && (

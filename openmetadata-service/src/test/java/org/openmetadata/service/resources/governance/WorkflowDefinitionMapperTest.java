@@ -14,6 +14,7 @@ import org.openmetadata.schema.api.governance.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.LifecycleConfiguration;
 import org.openmetadata.schema.governance.workflows.LifecycleFieldCheck;
 import org.openmetadata.schema.governance.workflows.LifecycleGate;
+import org.openmetadata.schema.governance.workflows.LifecycleTask;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.rules.RuleEngine;
 
@@ -32,9 +33,10 @@ class WorkflowDefinitionMapperTest {
                         .withChecks(
                             List.of(
                                 new LifecycleFieldCheck()
-                                    .withField("description")
-                                    .withRequirement(LifecycleFieldCheck.Requirement.RECOMMENDED)
-                                    .withGuidance("Describe the purpose")))));
+                                    .withField("extension.limit")
+                                    .withValueType(LifecycleFieldCheck.ValueType.NUMBER)))
+                        .withTask(
+                            new LifecycleTask().withAssignees(LifecycleTask.Assignees.OWNERS))));
     final CreateWorkflowDefinition request =
         new CreateWorkflowDefinition()
             .withName("lifecycle")

@@ -56,12 +56,14 @@ interface ComboBoxValueProps extends AriaGroupProps {
 
 const ComboboxContext = createContext<{
   size: 'sm' | 'md';
+  showTagAvatars: boolean;
   selectedKeys: Key[];
   selectedItems: ListData<SelectItemType>;
   onRemove: (keys: Set<Key>) => void;
   onInputChange: (value: string) => void;
 }>({
   size: 'sm',
+  showTagAvatars: true,
   selectedKeys: [],
   selectedItems: {} as ListData<SelectItemType>,
   onRemove: () => {},
@@ -82,6 +84,8 @@ interface MultiSelectProps
   shortcutClassName?: string;
   selectedItems: ListData<SelectItemType>;
   icon?: IconComponentType | null;
+  /** Chips show each item's avatar; off for items that are not people or teams. */
+  showTagAvatars?: boolean;
   children: AriaListBoxProps<SelectItemType>['children'];
   onItemCleared?: (key: Key) => void;
   onItemInserted?: (key: Key) => void;
@@ -177,7 +181,9 @@ const InnerMultiSelect = ({
           <span
             className="tw:flex tw:max-w-full tw:min-w-0 tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
             key={value.id}>
-            <Avatar alt={value?.label} size="xxs" src={value?.avatarUrl} />
+            {comboBoxContext.showTagAvatars && (
+              <Avatar alt={value?.label} size="xxs" src={value?.avatarUrl} />
+            )}
 
             <p className="tw:ml-1.25 tw:truncate tw:text-sm tw:font-medium tw:whitespace-nowrap tw:text-secondary tw:select-none">
               {value?.label}
@@ -283,6 +289,7 @@ export const MultiSelectBase = ({
   onItemInserted,
   shortcut,
   placeholder = 'Search',
+  showTagAvatars = true,
   onInputChange: onInputChangeProp,
   // Omit these props to avoid conflicts with the `Select` component
   name: _name,
@@ -394,8 +401,15 @@ export const MultiSelectBase = ({
   });
 
   const contextValues = useMemo(
-    () => ({ size, selectedKeys, selectedItems, onInputChange, onRemove }),
-    [size, selectedKeys, selectedItems, onInputChange, onRemove]
+    () => ({
+      size,
+      showTagAvatars,
+      selectedKeys,
+      selectedItems,
+      onInputChange,
+      onRemove,
+    }),
+    [size, showTagAvatars, selectedKeys, selectedItems, onInputChange, onRemove]
   );
 
   return (

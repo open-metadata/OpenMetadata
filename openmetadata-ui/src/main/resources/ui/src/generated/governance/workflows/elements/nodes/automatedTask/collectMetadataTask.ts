@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 /**
- * Maintains an assigned metadata task while an entity field fails its check. Stage gates
- * decide whether a missing field blocks advancement.
+ * Keeps one Metadata Completion task open on an asset while it is in this node's stage and
+ * any listed field is still empty
+ * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task). The stage
+ * gate, not the task, decides whether the asset advances.
  */
 export interface CollectMetadataTask {
     config:             MetadataCollectionConfiguration;
@@ -26,13 +28,25 @@ export interface CollectMetadataTask {
 }
 
 export interface MetadataCollectionConfiguration {
-    appliesWhen?:  string;
-    candidates?:   EntityReference[];
-    example?:      string;
-    field:         string;
-    guidance?:     string;
-    rules:         string;
-    stage:         EntityStatus;
+    /**
+     * Assignees when the task goes to specific users or teams.
+     */
+    candidates?: EntityReference[];
+    /**
+     * Fields the task asks for; it lists only the ones still empty.
+     */
+    fields: RequiredField[];
+    /**
+     * The task applies while the asset is in this stage.
+     */
+    stage: EntityStatus;
+    /**
+     * The stage the asset moves to once the fields are filled in.
+     */
+    targetStage?: EntityStatus;
+    /**
+     * Who is asked to fill in the missing fields.
+     */
     taskAssignees: TaskAssignees;
 }
 
@@ -86,10 +100,29 @@ export interface EntityReference {
 }
 
 /**
+ * A field the asset must fill in, with the JSON Logic condition that is true once it is
+ * filled in.
+ */
+export interface RequiredField {
+    /**
+     * Path of the field, such as description, owners or extension.<property>.
+     */
+    field: string;
+    /**
+     * JSON Logic condition that is true once the field is filled in.
+     */
+    rules: string;
+}
+
+/**
+ * The task applies while the asset is in this stage.
+ *
  * General lifecycle stage for entities that reference this vocabulary. Specialized entities
  * can declare their own status schema and lifecycle policy. Entity types without an
  * entityStatus property have no lifecycle. When a create request omits the stage, the
  * server assigns the entity type's initial stage.
+ *
+ * The stage the asset moves to once the fields are filled in.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -101,6 +134,9 @@ export enum EntityStatus {
     Unprocessed = "Unprocessed",
 }
 
+/**
+ * Who is asked to fill in the missing fields.
+ */
 export enum TaskAssignees {
     Candidates = "candidates",
     Owners = "owners",

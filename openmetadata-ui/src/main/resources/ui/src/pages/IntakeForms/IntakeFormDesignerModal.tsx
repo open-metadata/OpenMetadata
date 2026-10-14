@@ -50,6 +50,7 @@ const IntakeFormDesignerModal = ({
   return (
     <SlideoutMenu
       isDismissable
+      className="tw:z-9999"
       dialogClassName="tw:overflow-hidden!"
       isOpen={open}
       width="75%"

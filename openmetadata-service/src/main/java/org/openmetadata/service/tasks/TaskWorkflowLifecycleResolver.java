@@ -242,6 +242,9 @@ public final class TaskWorkflowLifecycleResolver {
         // The server opens it and applies its decision synchronously; no workflow drives it
         // (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
       case MemoryConflictReview -> null;
+        // Lifecycle workflows open and refresh it, and resolving it only re-checks its fields
+        // (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
+      case MetadataCompletion -> null;
       default -> "CustomTaskWorkflow";
     };
   }
@@ -286,7 +289,8 @@ public final class TaskWorkflowLifecycleResolver {
           OwnershipUpdate,
           TierUpdate,
           DomainUpdate,
-          Suggestion -> TaskCategory.MetadataUpdate;
+          Suggestion,
+          MetadataCompletion -> TaskCategory.MetadataUpdate;
       case GlossaryApproval, RequestApproval -> TaskCategory.Approval;
       case DataAccessRequest -> TaskCategory.DataAccess;
       case IncidentResolution, TestCaseResolution -> TaskCategory.Incident;

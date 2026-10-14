@@ -13,7 +13,6 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.metadata.MetadataCollectionService;
@@ -24,7 +23,8 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 public class CollectMetadataImpl implements JavaDelegate {
   private Expression configurationExpr;
   private Expression inputNamespaceMapExpr;
-  private Expression taskKeyExpr;
+  private Expression workflowNameExpr;
+  private Expression nodeNameExpr;
 
   @Override
   public void execute(final DelegateExecution execution) {
@@ -52,7 +52,11 @@ public class CollectMetadataImpl implements JavaDelegate {
     final var repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     final var actor =
         Entity.getEntityReferenceByName(Entity.USER, "governance-bot", Include.NON_DELETED);
-    new MetadataCollectionService(repository, WorkflowHandler.getInstance(), actor)
-        .reconcile(entity, configuration, (String) taskKeyExpr.getValue(execution));
+    new MetadataCollectionService(repository, actor)
+        .reconcile(
+            entity,
+            configuration,
+            (String) workflowNameExpr.getValue(execution),
+            (String) nodeNameExpr.getValue(execution));
   }
 }
