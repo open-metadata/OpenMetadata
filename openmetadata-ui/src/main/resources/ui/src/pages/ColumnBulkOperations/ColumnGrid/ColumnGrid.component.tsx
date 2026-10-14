@@ -38,7 +38,7 @@ import {
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { debounce, isEmpty, isUndefined, some } from 'lodash';
+import { compact, debounce, isEmpty, isUndefined, some, uniq } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -80,6 +80,7 @@ import {
 import {
   ColumnChild,
   ColumnGridItem,
+  ColumnMetadataGroup,
   ColumnOccurrenceRef,
   MetadataStatus,
 } from '../../../generated/api/data/columnGridResponse';
@@ -260,6 +261,14 @@ const getDescriptionPreview = (description?: string): string => {
       .textContent ?? ''
   ).slice(0, 100);
 };
+
+// A group omits dataType when its occurrences disagree; list each distinct type instead.
+const getGroupDataType = (group?: ColumnMetadataGroup): string | undefined =>
+  group?.dataType ??
+  (uniq(
+    compact(group?.occurrences.map((occurrence) => occurrence.dataType))
+  ).join(', ') ||
+    undefined);
 
 interface ColumnOccurrenceTarget {
   columnFQN: string;
@@ -843,7 +852,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             displayName: group.displayName,
             description: group.description,
             descriptionPreview: getDescriptionPreview(group.description),
-            dataType: group.dataType,
+            dataType: occurrence.dataType ?? group.dataType,
             tags: group.tags,
             occurrenceCount: 1,
             hasVariations: false,
@@ -901,7 +910,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       displayName: group?.displayName,
       description: group?.description,
       descriptionPreview: getDescriptionPreview(group?.description),
-      dataType: group?.dataType,
+      dataType: getGroupDataType(group),
       tags: aggregatedTags.length > 0 ? aggregatedTags : group?.tags,
       occurrenceCount: allOccurrences.length,
       hasVariations: false,
@@ -940,7 +949,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           displayName: group.displayName,
           description: group.description,
           descriptionPreview: getDescriptionPreview(group.description),
-          dataType: group.dataType,
+          dataType: occurrence.dataType ?? group.dataType,
           tags: group.tags,
           occurrenceCount: 1,
           hasVariations: false,
@@ -981,7 +990,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       displayName: group?.displayName,
       description: group?.description,
       descriptionPreview: getDescriptionPreview(group?.description),
-      dataType: group?.dataType,
+      dataType: getGroupDataType(group),
       tags: group?.tags,
       occurrenceCount: allOccurrences.length,
       hasVariations: false,

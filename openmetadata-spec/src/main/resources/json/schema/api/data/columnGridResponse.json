@@ -88,7 +88,7 @@
           }
         },
         "dataType": {
-          "description": "Data type (common across all columns in this group).",
+          "description": "Data type shared by every column in this group. Absent when the occurrences have different data types; each occurrence then carries its own.",
           "type": "string"
         },
         "metadataStatus": {
@@ -108,7 +108,7 @@
           }
         },
         "children": {
-          "description": "Nested columns for STRUCT, MAP, or UNION data types.",
+          "description": "Nested columns for STRUCT, MAP, or UNION data types. Absent when the occurrences in this group have different nested structures.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/columnChild"
@@ -192,6 +192,10 @@
         },
         "schemaName": {
           "description": "Name of the schema (if applicable).",
+          "type": "string"
+        },
+        "dataType": {
+          "description": "Data type of this column occurrence.",
           "type": "string"
         }
       },

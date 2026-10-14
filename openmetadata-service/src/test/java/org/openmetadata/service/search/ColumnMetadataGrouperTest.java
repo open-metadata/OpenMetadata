@@ -16,6 +16,7 @@ package org.openmetadata.service.search;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -23,9 +24,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.ColumnGridItem;
 import org.openmetadata.schema.api.data.ColumnMetadataGroup;
+import org.openmetadata.schema.api.data.ColumnOccurrenceRef;
+import org.openmetadata.schema.api.data.MetadataStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.TagLabel;
@@ -121,6 +125,70 @@ class ColumnMetadataGrouperTest {
     ColumnMetadataGroup group = item.getGroups().get(0);
     assertEquals(2, group.getOccurrenceCount());
     assertEquals(2, group.getOccurrences().size());
+    assertEquals("BIGINT", group.getDataType());
+    group.getOccurrences().forEach(occurrence -> assertEquals("BIGINT", occurrence.getDataType()));
+  }
+
+  @Test
+  void testGroupColumns_sameMetadataDifferentDataTypes_reportsTypePerOccurrence() {
+    Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName = new HashMap<>();
+    columnsByName.put(
+        "customer_id",
+        List.of(
+            occurrence(column("customer_id", ColumnDataType.BIGINT, "orders"), "orders"),
+            occurrence(column("customer_id", ColumnDataType.INT, "customers"), "customers")));
+
+    ColumnGridItem item = ColumnMetadataGrouper.groupColumns(columnsByName).get(0);
+
+    // Data type is not editable metadata, so a type-only difference must not split the group or
+    // mark the column INCONSISTENT.
+    assertFalse(item.getHasVariations());
+    assertEquals(MetadataStatus.COMPLETE, item.getMetadataStatus());
+    assertEquals(1, item.getGroups().size());
+    ColumnMetadataGroup group = item.getGroups().get(0);
+    assertNull(group.getDataType());
+    Map<String, String> typeByFqn =
+        group.getOccurrences().stream()
+            .collect(
+                Collectors.toMap(
+                    ColumnOccurrenceRef::getColumnFQN, ColumnOccurrenceRef::getDataType));
+    assertEquals("BIGINT", typeByFqn.get("svc.db.schema.orders.customer_id"));
+    assertEquals("INT", typeByFqn.get("svc.db.schema.customers.customer_id"));
+  }
+
+  @Test
+  void testGroupColumns_sameMetadataDifferentStructChildren_dropsGroupChildren() {
+    Column orders = column("address", ColumnDataType.STRUCT, "orders");
+    orders.setChildren(List.of(child("street", ColumnDataType.STRING)));
+    Column customers = column("address", ColumnDataType.STRUCT, "customers");
+    customers.setChildren(
+        List.of(child("street", ColumnDataType.STRING), child("zip", ColumnDataType.INT)));
+    Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName = new HashMap<>();
+    columnsByName.put(
+        "address", List.of(occurrence(orders, "orders"), occurrence(customers, "customers")));
+
+    ColumnMetadataGroup group =
+        ColumnMetadataGrouper.groupColumns(columnsByName).get(0).getGroups().get(0);
+
+    assertEquals("STRUCT", group.getDataType());
+    assertNull(group.getChildren());
+  }
+
+  @Test
+  void testGroupColumns_sameMetadataSameStructChildren_keepsGroupChildren() {
+    Column orders = column("address", ColumnDataType.STRUCT, "orders");
+    orders.setChildren(List.of(child("street", ColumnDataType.STRING)));
+    Column customers = column("address", ColumnDataType.STRUCT, "customers");
+    customers.setChildren(List.of(child("street", ColumnDataType.STRING)));
+    Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName = new HashMap<>();
+    columnsByName.put(
+        "address", List.of(occurrence(orders, "orders"), occurrence(customers, "customers")));
+
+    ColumnMetadataGroup group =
+        ColumnMetadataGrouper.groupColumns(columnsByName).get(0).getGroups().get(0);
+
+    assertEquals(1, group.getChildren().size());
+    assertEquals("street", group.getChildren().get(0).getName());
   }
 
   @Test
@@ -417,6 +485,30 @@ class ColumnMetadataGrouperTest {
 
     List<String> actual = result.stream().map(ColumnGridItem::getColumnName).toList();
     assertEquals(List.of("alpha", "beta"), actual);
+  }
+
+  private static Column column(String name, ColumnDataType dataType, String table) {
+    TagLabel tag = new TagLabel();
+    tag.setTagFQN("PII.Sensitive");
+    Column column = new Column();
+    column.setName(name);
+    column.setDescription("Shared description");
+    column.setTags(List.of(tag));
+    column.setDataType(dataType);
+    column.setFullyQualifiedName("svc.db.schema." + table + "." + name);
+    return column;
+  }
+
+  private static Column child(String name, ColumnDataType dataType) {
+    Column child = new Column();
+    child.setName(name);
+    child.setDataType(dataType);
+    return child;
+  }
+
+  private static ColumnMetadataGrouper.ColumnWithContext occurrence(Column column, String table) {
+    return new ColumnMetadataGrouper.ColumnWithContext(
+        column, "table", "svc.db.schema." + table, table, "svc", "db", "schema");
   }
 
   private static List<ColumnMetadataGrouper.ColumnWithContext> singleOccurrence(String columnName) {
