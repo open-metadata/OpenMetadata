@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
-import { Button, Space } from 'antd';
+import {
+  Box,
+  Button,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -226,9 +230,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     return (
       <Fragment>
         <Button
-          className="m-b-sm p-0"
-          size="small"
-          type="link"
+          className="tw:mb-3"
+          color="link-color"
+          size="xs"
           onClick={onBack}>
           {t('label.back')}
         </Button>
@@ -246,7 +250,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const renderActiveConversationView = () => (
     <Fragment>
-      <Button className="m-b-sm p-0" size="small" type="link" onClick={onBack}>
+      <Button className="tw:mb-3" color="link-color" size="xs" onClick={onBack}>
         {t('label.back')}
       </Button>
       <ActivityFeedCardNew
@@ -302,7 +306,13 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     return (
       <Fragment>
         {(showNewConversation || hasNoConversations) && isConversationType && (
-          <Space className="w-full" direction="vertical">
+          <Box
+            inline
+            align="stretch"
+            className="layout-space w-full"
+            direction="col"
+            gap={2}
+            itemClassName="layout-space-item">
             <Typography as="p">{t('message.new-conversation')}</Typography>
             <ActivityFeedEditor
               // Shown on demand (new conversation, or an empty panel just
@@ -314,7 +324,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               })}
               onSave={onPostConversation}
             />
-          </Space>
+          </Box>
         )}
 
         {isTaskType ? renderTaskList() : renderConversationList()}
@@ -352,10 +362,12 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           />
         )}
         {isTaskType && (
-          <Space
+          <Box
+            inline
             align="center"
-            className="w-full justify-end p-r-xs m-t-xs"
-            size={4}>
+            className="layout-space layout-space-horizontal w-full justify-end p-r-xs m-t-xs"
+            gap={1}
+            itemClassName="layout-space-item">
             <Toggle
               label={t('label.closed-task-plural')}
               size="sm"
@@ -365,7 +377,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                 )
               }
             />
-          </Space>
+          </Box>
         )}
 
         {renderMainContent()}

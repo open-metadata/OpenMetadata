@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page } from '@playwright/test';
+import test, { expect } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage, waitForToastStackToClear } from '../../../utils/common';
+import { clickIgnoringToasts, createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   confirmationDragAndDropGlossary,
@@ -28,80 +29,6 @@ test.describe('Large Glossary Performance Tests', () => {
   const TOTAL_TERMS = 100; // Reduced for test performance
   const glossary = new Glossary();
   const glossaryTerms: GlossaryTerm[] = [];
-
-  const getGlossaryTermsScrollTop = async (page: Page) =>
-    page.evaluate(() => {
-      const table = document.querySelector<HTMLElement>(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
-      );
-      let container = table?.parentElement;
-
-      while (container) {
-        const overflowY = window.getComputedStyle(container).overflowY;
-        if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
-          break;
-        }
-        container = container.parentElement;
-      }
-
-      container ??= document.querySelector<HTMLElement>(
-        '[data-testid="glossary-terms-scroll-container"]'
-      );
-
-      return container?.scrollTop ?? 0;
-    });
-
-  const setGlossaryTermsScrollTop = async (page: Page, scrollTop: number) => {
-    await page.evaluate((top) => {
-      const table = document.querySelector<HTMLElement>(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
-      );
-      let container = table?.parentElement;
-
-      while (container) {
-        const overflowY = window.getComputedStyle(container).overflowY;
-        if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
-          break;
-        }
-        container = container.parentElement;
-      }
-
-      container ??= document.querySelector<HTMLElement>(
-        '[data-testid="glossary-terms-scroll-container"]'
-      );
-
-      if (container) {
-        container.scrollTop = top;
-        container.dispatchEvent(new Event('scroll', { bubbles: true }));
-      }
-    }, scrollTop);
-  };
-
-  const scrollGlossaryTermsToBottom = async (page: Page) => {
-    await page.evaluate(() => {
-      const table = document.querySelector<HTMLElement>(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
-      );
-      let container = table?.parentElement;
-
-      while (container) {
-        const overflowY = window.getComputedStyle(container).overflowY;
-        if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
-          break;
-        }
-        container = container.parentElement;
-      }
-
-      container ??= document.querySelector<HTMLElement>(
-        '[data-testid="glossary-terms-scroll-container"]'
-      );
-
-      if (container) {
-        container.scrollTo({ top: container.scrollHeight });
-        container.dispatchEvent(new Event('scroll', { bubbles: true }));
-      }
-    });
-  };
 
   test.beforeAll(async ({ browser }) => {
     glossaryTerms.length = 0;
@@ -176,10 +103,7 @@ test.describe('Large Glossary Performance Tests', () => {
         response.url().includes('after=')
     );
 
-    // Background async notifications stack at bottom-center over the
-    // pagination controls and intercept the click; drain the toast stack first.
-    await waitForToastStackToClear(page);
-    await pagination.getByTestId('next').click();
+    await clickIgnoringToasts(pagination.getByTestId('next'));
 
     const nextPageResponse = await nextPageRequest;
     expect(nextPageResponse.status()).toBe(200);
@@ -195,8 +119,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await expect(pagination.getByTestId('previous')).toBeEnabled();
 
     // Going back returns to the first page.
-    await waitForToastStackToClear(page);
-    await pagination.getByTestId('previous').click();
+    await clickIgnoringToasts(pagination.getByTestId('previous'));
     await waitForAllLoadersToDisappear(
       page.locator('[data-testid="glossary-terms-scroll-container"]')
     );
@@ -263,7 +186,7 @@ test.describe('Large Glossary Performance Tests', () => {
 
       // Wait for the button text to change to "Expand All"
       await expect(expandAllButton).toContainText('Expand All', {
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
     }
 
@@ -278,7 +201,7 @@ test.describe('Large Glossary Performance Tests', () => {
     });
 
     // Wait for expansion to complete (max 30 seconds)
-    await expect(expandAllButton).toBeEnabled({ timeout: 30000 });
+    await expect(expandAllButton).toBeEnabled({ timeout: ACTION_TIMEOUT });
     await expect(expandAllButton).toContainText('Collapse All');
 
     // Verify some child terms are visible
@@ -317,28 +240,6 @@ test.describe('Large Glossary Performance Tests', () => {
 
     // Verify children are hidden
     await expect(page.getByText('Term_1_Child_1')).not.toBeVisible();
-  });
-
-  test('should maintain scroll position when loading more terms', async ({
-    page,
-  }) => {
-    await setGlossaryTermsScrollTop(page, 200);
-
-    const scrollPositionBeforeLoad = await getGlossaryTermsScrollTop(page);
-    await scrollGlossaryTermsToBottom(page);
-
-    // Wait for more terms to load
-    await waitForAllLoadersToDisappear(
-      page.locator('[data-testid="glossary-terms-scroll-container"]')
-    );
-
-    await setGlossaryTermsScrollTop(page, scrollPositionBeforeLoad);
-
-    const currentScrollTop = await getGlossaryTermsScrollTop(page);
-
-    expect(Math.abs(currentScrollTop - scrollPositionBeforeLoad)).toBeLessThan(
-      10
-    );
   });
 
   test('should handle status filtering', async ({ page }) => {

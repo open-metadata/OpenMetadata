@@ -249,45 +249,32 @@ test.describe(
     test('Search mode visible export count matches the first result tab count', async ({
       page,
     }) => {
-      const countApiPromise = waitForResponseWithStatus(
-        page,
-        (response) =>
-          response.request().method() === 'GET' &&
-          response.url().includes('/api/v1/search/query'),
-        200
-      );
+      // The active tab renders a count of 0 until entityTypeCounts resolves,
+      // and both counts move whenever another worker indexes a matching asset,
+      // so re-read the two together on each attempt rather than comparing a
+      // point-in-time read with one taken later.
+      await expect(async () => {
+        await page.goto(
+          '/explore/tables?search=sample_data.ecommerce_db.shopify.dim_customer',
+          { waitUntil: 'domcontentloaded' }
+        );
+        await expect(page.getByTestId('explore-page')).toBeVisible();
+        await openExportScopeModal(page);
 
-      await page.goto(
-        '/explore/tables?search=sample_data.ecommerce_db.shopify.dim_customer',
-        { waitUntil: 'domcontentloaded' }
-      );
-      await expect(page.getByTestId('explore-page')).toBeVisible();
-      await countApiPromise;
+        const visibleExportCount = await getExportCountFromModal(
+          getExportModalContent(page),
+          'export-scope-visible-count'
+        );
 
-      const firstTabCount =
-        await test.step('Read the count from the first left panel result tab', async () => {
-          const firstTabCountText = await page
+        // 0 would also match the active tab before its count has loaded.
+        expect(visibleExportCount).toBeGreaterThan(0);
+        await expect(
+          page
             .getByTestId('explore-left-panel')
-            .getByRole('tab')
-            .first()
+            .getByRole('tab', { selected: true })
             .getByTestId('filter-count')
-            .textContent();
-
-          return parseInt(firstTabCountText?.trim() ?? '0', 10);
-        });
-
-      await openExportScopeModal(page);
-
-      const visibleExportCount =
-        await test.step('Read the visible results count from the export modal', () =>
-          getExportCountFromModal(
-            getExportModalContent(page),
-            'export-scope-visible-count'
-          ));
-
-      await test.step('Visible export count matches the first result tab count', async () => {
-        expect(visibleExportCount).toBe(firstTabCount);
-      });
+        ).toHaveText(String(visibleExportCount), { timeout: 10_000 });
+      }).toPass({ timeout: 45_000 });
     });
 
     test('Filtered search visible export downloads CSV with the filtered record count', async ({

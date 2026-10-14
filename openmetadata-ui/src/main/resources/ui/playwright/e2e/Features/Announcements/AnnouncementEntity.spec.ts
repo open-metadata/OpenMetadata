@@ -24,6 +24,7 @@
  */
 
 import test from '@playwright/test';
+import { EXTENDED_TEST_TIMEOUT } from '../../../constant/common';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
@@ -73,7 +74,7 @@ const visitDomainPage = async (
 
 test.describe.serial('Announcement Entity Lifecycle', () => {
   test('creates an announcement on a domain', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const domain = new Domain();
     await redirectToHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);
@@ -97,7 +98,7 @@ test.describe.serial('Announcement Entity Lifecycle', () => {
   });
 
   test('edits an existing announcement on a domain', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const domain = new Domain();
     await redirectToHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);
@@ -123,7 +124,7 @@ test.describe.serial('Announcement Entity Lifecycle', () => {
   });
 
   test('deletes an existing announcement on a domain', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const domain = new Domain();
     await redirectToHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);

@@ -59,7 +59,7 @@ authorizerConfiguration:
 
 Restart the backend so the new config takes effect.
 
-## The 9 SSO scenarios — manually
+## The 11 SSO scenarios — manually
 
 Walk each one and check the box.
 
@@ -104,6 +104,15 @@ Walk each one and check the box.
       missing. NO redirect to Google should occur.
 - [ ] **Scenario 9: Config logging** — Same as 8, but check DevTools console
       for the exact log line: `[AuthConfig] ... discoveryUri ...`.
+- [ ] **Scenario 10: Silent re-auth on a blocked iframe** — Block third-party
+      cookies (Safari ITP) so the silent-refresh iframe in Scenario 3 fails.
+      Verify Network shows **one** top-level `/o/oauth2/v2/auth?…prompt=none`
+      redirect (not a popup), and the app lands back on the **same** page, never
+      `/signin`.
+- [ ] **Scenario 11: Dead IdP session, no loop** — Sign out of Google so the
+      IdP session is gone, then trigger Scenario 10. Verify exactly **one**
+      `prompt=none` redirect; Google answers `login_required` and the app lands
+      on `/signin`, with no second redirect.
 
 ## Provider-specific pitfalls
 

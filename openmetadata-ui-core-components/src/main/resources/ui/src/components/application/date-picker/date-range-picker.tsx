@@ -139,11 +139,12 @@ export const DateRangePicker = ({
       value={value}
       onChange={setValue}>
       <AriaGroup>
+        {/* The picker's sm/md match input heights (36/40px): Button md/lg. */}
         <Button
           className={cx(fullWidth && 'tw:w-full tw:justify-start')}
           color="secondary"
           iconLeading={CalendarIcon}
-          size={size}>
+          size={size === 'md' ? 'lg' : 'md'}>
           {!value ? (
             <span className="tw:text-placeholder">
               {t('label.select-dates', 'Select dates')}
@@ -163,7 +164,7 @@ export const DateRangePicker = ({
               'tw:duration-100 tw:ease-in tw:animate-out tw:fade-out tw:placement-right:slide-out-to-left-0.5 tw:placement-top:slide-out-to-bottom-0.5 tw:placement-bottom:slide-out-to-top-0.5'
           )
         }
-        offset={8}
+        offset={4}
         placement="bottom right">
         {/* `outline-[3px]` ports the bare `tw:ring` faithfully (3px in Tailwind v4 — likely
             unintended vs ring-1 elsewhere; tracked as a follow-up). `focus:outline-hidden`
@@ -204,7 +205,7 @@ export const DateRangePicker = ({
                   <div className="tw:grid tw:w-full tw:grid-cols-2 tw:gap-3 tw:md:flex tw:md:w-auto">
                     <Button
                       color="secondary"
-                      size="md"
+                      size="lg"
                       onClick={() => {
                         onCancel?.();
                         close();
@@ -213,7 +214,7 @@ export const DateRangePicker = ({
                     </Button>
                     <Button
                       color="primary"
-                      size="md"
+                      size="lg"
                       onClick={() => {
                         onApply?.();
                         close();

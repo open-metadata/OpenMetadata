@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
-import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import type { LastRunTimeProps } from './TestCaseLastRunBanner.interface';
 import { getNextRunLabel } from './TestCaseLastRunBanner.utils';
 
@@ -25,15 +26,22 @@ const LastRunTime = ({
   const { t } = useTranslation();
 
   return (
-    <div className="tw:flex tw:min-w-36 tw:flex-col tw:items-end tw:justify-center tw:text-right">
-      <span
-        className="tw:whitespace-nowrap tw:text-xs tw:font-normal tw:text-primary"
-        data-testid="test-case-last-run-time">
-        {customFormatDateTime(timestamp, 'MMM d, yyyy, h:mm a')}
-      </span>
-      <span
-        className="tw:mt-1 tw:whitespace-nowrap tw:text-xs tw:text-secondary"
-        data-testid="test-case-next-run">
+    <Box
+      align="end"
+      className="tw:min-w-36 tw:text-right"
+      direction="col"
+      justify="center">
+      <Typography
+        className="tw:whitespace-nowrap tw:text-primary"
+        data-testid="test-case-last-run-time"
+        size="text-xs"
+        weight="regular">
+        {formatDateTime(timestamp)}
+      </Typography>
+      <Typography
+        className="tw:mt-1 tw:whitespace-nowrap tw:text-secondary"
+        data-testid="test-case-next-run"
+        size="text-xs">
         {t('label.next')} ·{' '}
         {testCaseStatus === TestCaseStatus.Queued
           ? t('label.running-now')
@@ -42,8 +50,8 @@ const LastRunTime = ({
               t('label.in-lowercase'),
               t('label.not-scheduled')
             )}
-      </span>
-    </div>
+      </Typography>
+    </Box>
   );
 };
 

@@ -27,10 +27,15 @@ coverage, a retried one looks green.
 
 ## Entries
 
-No entries. The threshold for quarantining is **2 or more** failures, counted per
+The threshold for quarantining is **2 or more** failures, counted per
 generated variant rather than per source line. The 11 merge_group runs sampled
 on 2026-09-04 that seeded this list are all released now, as is the DataContracts
 entry that was tagged separately on 2026-09-11 (see *Released from quarantine*).
+
+| Spec | Test | Tagged | Status |
+|---|---|---|---|
+| `e2e/Features/AIMode/PersonaSettings.spec.ts` | all three describes (personal-space modal, management actions, customize saves) | 2026-10-14 | Re-quarantined. First tagged 2026-10-12 (#35244), released by #35234, and still failing afterwards: `Data Assets → Table: a new tab is saved` keeps ejecting PRs from the merge queue. Not yet diagnosed. The spec landed with #34916 (persona settings moved into the AI-mode profile modal). |
+| `e2e/Flow/Tour.spec.ts` | the whole describe (3 tests): Tour should work from help section; from welcome screen; from URL directly | 2026-10-09 | **Not a flake** — a known break, quarantined 2026-10-09 while the tour page is redesigned. The new landing page (`HomeLandingPage`) no longer mounts `FeedWidget`, so the tour's first step anchor `#feedWidgetData` never appears, and `TourPage.waitForTourFeedWidget` waits for its bounding rect *before* `updateIsTourOpen(true)` — so the whole tour hangs on a blank page instead of skipping one step. Steps 2 and 3 anchor on `#searchBox`, which came from `CustomiseSearchBar` in the old landing header; that header is gone and `NavBar` hides `GlobalSearchBar` on `/tour`, so there is no search box on the tour page at all. Known fix if the redesign does not supersede it: anchor step 1 on the activity card's grid cell (`[data-testid="KnowledgePanel.ActivityFeed"]`, present before the deferred widget mounts) and drop `!isTourPage` from NavBar's `GlobalSearchBar` guard (`GlobalSearchBar` already routes input through `useTourProvider` when the tour is open); keep the domain selector hidden on `/tour`. Release: Landing-page owner. Remove the tag when the redesigned tour page lands and all three tests pass with `PLAYWRIGHT_RUN_QUARANTINED=true`. |
 
 ### Triage, 2026-09-09
 
@@ -84,6 +89,13 @@ they were repaired rather than parked:
 Diagnosed and fixed, so the tag came off. If any of these flakes again the fix
 was wrong — re-quarantine it with the new evidence rather than restoring the old
 entry.
+
+Kafka AutoPilot was released on 2026-10-09 after the CI broker configuration
+fix was reported complete by @ShaileshParmar11. [#34951](https://github.com/open-metadata/OpenMetadata/pull/34951)
+had quarantined the Kafka serial group because the broker advertised
+`localhost:9092`, which Airflow could not reach. Both the service creation /
+AutoPilot status test and its dependent agent-deletion test now use the normal
+`@ingestion` tag.
 
 | Spec | Test | Root cause |
 |---|---|---|

@@ -328,7 +328,7 @@ export interface CollateAIAppConfig {
     /**
      * Force cache warmup even if another instance is detected (use with caution).
      *
-     * Materialize every enabled rule even when its durable dirty flag is clear.
+     * Recompute every rule even when no rule is dirty.
      */
     force?: boolean;
     /**
@@ -366,7 +366,8 @@ export interface CollateAIAppConfig {
      */
     relationshipIsolationMaxFailures?: number;
     /**
-     * Optional rule name for an on-demand single-rule run.
+     * Optional rule that must exist. The run still computes every rule, because rules read each
+     * other's conclusions.
      */
     ruleName?: string;
     /**
@@ -1474,6 +1475,12 @@ export enum AlertType {
  */
 export interface Destination {
     category: SubscriptionCategory;
+    /**
+     * Id of the registered channel that serves this destination, when it is not the one
+     * registered for its type. A save that names a channel not registered on the server is
+     * rejected.
+     */
+    channel?: string;
     config?:  Webhook;
     /**
      * Maximum depth for downstream stakeholder notification traversal. If null, traverses

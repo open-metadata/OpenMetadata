@@ -73,6 +73,7 @@ function AlertAiFormFields({
   isViewOnly,
   inlineAlert,
   onChange,
+  recipientCategories,
   showBasicFields = true,
   shouldShowActionsSection,
   shouldShowFiltersSection,
@@ -126,6 +127,7 @@ function AlertAiFormFields({
     shouldDisplayActionsSection,
   } = getAlertAiSectionInputs({
     value,
+    isViewOnly,
     selectedSource,
     selectedFilterResource,
     supportedFilters,
@@ -318,6 +320,7 @@ function AlertAiFormFields({
       <div {...destinationsDoc}>
         <AlertAiDestinationSection
           isViewOnly={isViewOnly}
+          recipientCategories={recipientCategories}
           selectedSource={selectedSource}
           validationErrors={validationErrors}
           value={value}

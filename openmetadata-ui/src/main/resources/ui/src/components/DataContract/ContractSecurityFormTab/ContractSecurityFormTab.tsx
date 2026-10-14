@@ -10,20 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Form, Input, Row, Select } from 'antd';
-import { FormProps } from 'antd/lib/form/Form';
+import {
+  Button,
+  Divider,
+  FieldProp,
+  FieldTypes,
+  FormSelectItem,
+  getField,
+  HookForm,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Plus as PlusIcon,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Control,
+  DeepPartial,
+  useFieldArray,
+  useForm,
+  UseFormReturn,
+  useWatch,
+} from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/ic-cross.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
-import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
-import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { SUPPORTED_ROW_FILTER_ENTITIES } from '../../../constants/DataContract.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
@@ -32,315 +45,278 @@ import {
   Policy,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
-import { filterSelectOptions } from '../../../utils/FilterQueryUtils';
-import { getPopupContainer } from '../../../utils/formPureUtils';
 import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
 import './contract-security-form-tab.less';
 
-/**
- * antd's FormListFieldData is derived from Form.List rather than imported, so the
- * Antd deprecation guard sees no new `antd` specifier in a file being migrated away.
- */
-type PolicyFormField = Parameters<
-  React.ComponentProps<typeof Form.List>['children']
->[0][number];
-
-interface ContractPolicyCardProps {
-  policyField: PolicyFormField;
-  policyIndex: number;
-  editingKey: number | null;
-  setEditingKey: React.Dispatch<React.SetStateAction<number | null>>;
-  entityType: EntityType;
-  columnOptions: ReturnType<typeof getColumnOptionsFromTableColumn>;
-  policiesFormData: Policy[];
-  onDeletePolicy: (key: number) => void;
+interface RowFilterFormValues {
+  columnName: FormSelectItem | null;
+  values: FormSelectItem[];
 }
 
-const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
-  policyField,
+interface PolicyFormValues {
+  accessPolicy: string;
+  identities: FormSelectItem[];
+  rowFilters: RowFilterFormValues[];
+}
+
+interface ContractSecurityFormValues {
+  dataClassification: string;
+  policies: PolicyFormValues[];
+}
+
+const EMPTY_ROW_FILTER: RowFilterFormValues = { columnName: null, values: [] };
+
+const EMPTY_POLICY: PolicyFormValues = {
+  accessPolicy: '',
+  identities: [],
+  rowFilters: [EMPTY_ROW_FILTER],
+};
+
+const toTags = (values?: string[]) =>
+  (values ?? []).map<FormSelectItem>((value) => ({ id: value, label: value }));
+
+const fromTags = (items?: Array<DeepPartial<FormSelectItem> | undefined>) =>
+  (items ?? []).map((item) => item?.id ?? '').filter(Boolean);
+
+const toFormValues = (
+  security: ContractSecurity | undefined,
+  columnItems: FormSelectItem[]
+): ContractSecurityFormValues => ({
+  dataClassification: security?.dataClassification ?? '',
+  policies: isEmpty(security)
+    ? [EMPTY_POLICY]
+    : (security?.policies ?? []).map((policy) => ({
+        accessPolicy: policy.accessPolicy ?? '',
+        identities: toTags(policy.identities),
+        rowFilters: (policy.rowFilters ?? []).map((filter) => ({
+          columnName:
+            columnItems.find((item) => item.id === filter.columnName) ??
+            (filter.columnName
+              ? { id: filter.columnName, label: filter.columnName }
+              : null),
+          values: toTags(filter.values),
+        })),
+      })),
+});
+
+const toContractSecurity = (
+  values: DeepPartial<ContractSecurityFormValues>
+): ContractSecurity => ({
+  dataClassification: values.dataClassification,
+  policies: (values.policies ?? []).map<Policy>((policy) => ({
+    accessPolicy: policy?.accessPolicy,
+    identities: fromTags(policy?.identities),
+    rowFilters: (policy?.rowFilters ?? []).map((filter) => ({
+      columnName: filter?.columnName?.id,
+      values: fromTags(filter?.values),
+    })),
+  })),
+});
+
+const tagField = (
+  name: string,
+  label: string,
+  placeholder: string,
+  testId: string,
+  isDisabled = false
+): FieldProp => ({
+  id: testId,
+  label,
+  name,
+  placeholder,
+  props: {
+    allowsCreation: true,
+    'data-testid': testId,
+    hideDropdown: true,
+    isDisabled,
+    multiple: true,
+    options: [],
+  },
+  type: FieldTypes.AUTOCOMPLETE,
+});
+
+interface ContractPolicyCardProps {
+  control: Control<ContractSecurityFormValues>;
+  policyIndex: number;
+  isEditing: boolean;
+  hasRowFilters: boolean;
+  columnItems: FormSelectItem[];
+  onEdit: (index: number | null) => void;
+  onDelete: (index: number) => void;
+}
+
+const ContractPolicyCard = ({
+  control,
   policyIndex,
-  editingKey,
-  setEditingKey,
-  entityType,
-  columnOptions,
-  policiesFormData,
-  onDeletePolicy,
-}) => {
+  isEditing,
+  hasRowFilters,
+  columnItems,
+  onEdit,
+  onDelete,
+}: ContractPolicyCardProps) => {
   const { t } = useTranslation();
+  const prefix = `policies.${policyIndex}` as const;
+  const accessPolicy = useWatch({ control, name: `${prefix}.accessPolicy` });
+  const {
+    fields: rowFilterFields,
+    append: addRowFilter,
+    remove: removeRowFilter,
+  } = useFieldArray({ control, name: `${prefix}.rowFilters` });
 
-  const rowFilterContent = SUPPORTED_ROW_FILTER_ENTITIES.includes(
-    entityType
-  ) ? (
-    <Form.List name={[policyField.name, 'rowFilters']}>
-      {(rowFilterFields) => {
+  const columnPlaceholder = t('label.please-enter-entity-name', {
+    entity: t('label.column'),
+  });
+  const valuesPlaceholder = t('label.please-enter-value', {
+    name: t('label.column-plural'),
+  });
+
+  const renderRowFilters = (isDisabled: boolean) => (
+    <div className="contract-consumer-security-card-rule-container">
+      {rowFilterFields.map((rowFilter, rowFilterIndex) => {
+        const name = `${prefix}.rowFilters.${rowFilterIndex}`;
+
         return (
-          <div className="contract-consumer-security-card-rule-container">
-            {rowFilterFields.map((rowFilterField, rowFilterIndex) => {
-              return (
-                <Row align="middle" gutter={[16, 16]} key={rowFilterField.key}>
-                  <Col span={11}>
-                    <Form.Item
-                      label={t('label.column-name')}
-                      name={[rowFilterField.name, 'columnName']}>
-                      <Input
-                        disabled
-                        data-testid={`columnName-input-${policyIndex}-${rowFilterIndex}`}
-                        placeholder={t('label.please-enter-entity-name', {
-                          entity: t('label.column'),
-                        })}
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  <Col span={11}>
-                    <Form.Item
-                      label={t('label.value-plural')}
-                      name={[rowFilterField.name, 'values']}>
-                      <Select
-                        disabled
-                        data-testid={`values-${policyIndex}-${rowFilterIndex}`}
-                        id={`values-${policyIndex}-${rowFilterIndex}`}
-                        mode="tags"
-                        open={false}
-                        placeholder={t('label.please-enter-value', {
-                          name: t('label.column-plural'),
-                        })}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              );
+          <div
+            className="tw:mb-4 tw:grid tw:grid-cols-[1fr_1fr_auto] tw:items-start tw:gap-4"
+            key={rowFilter.id}>
+            {getField({
+              id: `columnName-input-${policyIndex}-${rowFilterIndex}`,
+              label: t('label.column-name'),
+              name: `${name}.columnName`,
+              placeholder: columnPlaceholder,
+              props: {
+                'data-testid': `columnName-input-${policyIndex}-${rowFilterIndex}`,
+                isDisabled,
+                options: columnItems,
+              },
+              type: FieldTypes.AUTOCOMPLETE,
             })}
+            {getField(
+              tagField(
+                `${name}.values`,
+                t('label.value-plural'),
+                valuesPlaceholder,
+                `values-${policyIndex}-${rowFilterIndex}`,
+                isDisabled
+              )
+            )}
+            {isDisabled ? (
+              <span />
+            ) : (
+              <Button
+                aria-label={t('label.remove')}
+                className="contract-consumer-security-card-rule-delete-button tw:mt-6.5"
+                color="secondary"
+                iconLeading={XClose}
+                size="sm"
+                onPress={() => removeRowFilter(rowFilterIndex)}
+              />
+            )}
           </div>
         );
-      }}
-    </Form.List>
-  ) : null;
+      })}
+    </div>
+  );
+
+  const actions = (
+    <div className="contract-consumer-security-card-form-actions-items tw:gap-3">
+      <Button
+        color="secondary"
+        data-testid="cancel-policy-button"
+        onPress={() => onEdit(null)}>
+        {t('label.cancel')}
+      </Button>
+      <Button data-testid="save-policy-button" onPress={() => onEdit(null)}>
+        {t('label.save')}
+      </Button>
+    </div>
+  );
 
   return (
     <ExpandableCard
       cardProps={{
         className: classNames(
           'contract-consumer-security-card expandable-card',
-          {
-            'expanded-active-card': editingKey === policyField.name,
-          }
+          { 'expanded-active-card': isEditing }
         ),
-        title: (
-          <div className="w-full d-flex justify-between items-center">
-            {editingKey === policyField.key ? null : (
-              <div className="security-form-item-title-container">
-                <div className="d-flex items-center gap-6">
-                  <div className="d-flex flex-column">
-                    <Typography className="consumer-form-item-title">
-                      {policiesFormData?.[policyField.key]?.accessPolicy ||
-                        t('label.untitled')}
-                    </Typography>
-                  </div>
-                </div>
-                <div className="d-flex items-center gap-2">
-                  <EditIconButton
-                    newLook
-                    className="edit-expand-button"
-                    data-testid={`edit-policy-${policyField.key}`}
-                    size="middle"
-                    onClick={() => setEditingKey(policyField.key)}
-                  />
-
-                  <Button
-                    danger
-                    className="delete-expand-button"
-                    data-testid={`delete-policy-${policyField.key}`}
-                    icon={<DeleteIcon />}
-                    size="middle"
-                    onClick={() => {
-                      onDeletePolicy(policyField.key);
-                    }}
-                  />
-                </div>
-              </div>
-            )}
+        title: isEditing ? null : (
+          <div className="security-form-item-title-container">
+            <Typography className="consumer-form-item-title">
+              {accessPolicy || t('label.untitled')}
+            </Typography>
+            <div className="tw:flex tw:items-center tw:gap-2">
+              <EditIconButton
+                newLook
+                className="edit-expand-button"
+                data-testid={`edit-policy-${policyIndex}`}
+                size="middle"
+                onClick={() => onEdit(policyIndex)}
+              />
+              <Button
+                aria-label={t('label.delete')}
+                className="delete-expand-button"
+                color="secondary-destructive"
+                data-testid={`delete-policy-${policyIndex}`}
+                iconLeading={DeleteIcon}
+                size="sm"
+                onPress={() => onDelete(policyIndex)}
+              />
+            </div>
           </div>
         ),
       }}
-      dataTestId={`contract-policy-card-${policyField.key}`}
-      defaultExpanded={editingKey === policyField.name}>
-      {editingKey === policyField.name ? (
-        <Row className="security-form-item-content" key={policyField.key}>
-          <Col span={24}>
-            <Row
-              className="contract-consumer-security-card-row"
-              gutter={[0, 16]}>
-              <Col span={24}>
-                <Form.Item
-                  label={t('label.access-policy')}
-                  name={[policyField.name, 'accessPolicy']}>
-                  <Input
-                    data-testid={`access-policy-input-${policyIndex}`}
-                    placeholder={t('label.please-enter-entity-name', {
-                      entity: t('label.access-policy'),
-                    })}
-                  />
-                </Form.Item>
-              </Col>
+      dataTestId={`contract-policy-card-${policyIndex}`}
+      defaultExpanded={isEditing}>
+      {isEditing ? (
+        <div className="security-form-item-content">
+          <div className="contract-consumer-security-card-row tw:flex tw:flex-col tw:gap-4">
+            {getField({
+              id: `access-policy-input-${policyIndex}`,
+              label: t('label.access-policy'),
+              name: `${prefix}.accessPolicy`,
+              placeholder: t('label.please-enter-entity-name', {
+                entity: t('label.access-policy'),
+              }),
+              props: { 'data-testid': `access-policy-input-${policyIndex}` },
+              type: FieldTypes.TEXT,
+            })}
+            {getField(
+              tagField(
+                `${prefix}.identities`,
+                t('label.identities'),
+                t('label.please-enter-value', { name: t('label.identities') }),
+                `identities-input-${policyIndex}`
+              )
+            )}
+          </div>
 
-              <Col span={24}>
-                <Form.Item
-                  label={t('label.identities')}
-                  name={[policyField.name, 'identities']}>
-                  <Select
-                    data-testid={`identities-input-${policyIndex}`}
-                    id={`identities-input-${policyIndex}`}
-                    mode="tags"
-                    open={false}
-                    placeholder={t('label.please-enter-value', {
-                      name: t('label.identities'),
-                    })}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            {SUPPORTED_ROW_FILTER_ENTITIES.includes(entityType) ? (
-              <>
-                <Divider className="tw:my-6" />
-
-                <Form.List name={[policyField.name, 'rowFilters']}>
-                  {(
-                    rowFilterFields,
-                    { add: addRowFilter, remove: removeRowFilter }
-                  ) => {
-                    return (
-                      <>
-                        <div className="d-flex items-center justify-between">
-                          <Typography className="row-filter-title">
-                            {t('label.row-filter-plural')}
-                          </Typography>
-
-                          <Button
-                            className="add-row-filter-button"
-                            data-testid={`add-row-filter-button-${policyIndex}`}
-                            icon={<Icon component={PlusIcon} />}
-                            type="link"
-                            onClick={() => addRowFilter()}>
-                            {t('label.add-entity', {
-                              entity: t('label.row-filter'),
-                            })}
-                          </Button>
-                        </div>
-
-                        <div className="contract-consumer-security-card-rule-container">
-                          {rowFilterFields.map(
-                            (rowFilterField, rowFilterIndex) => {
-                              return (
-                                <Row
-                                  align="middle"
-                                  gutter={[16, 16]}
-                                  key={rowFilterField.key}>
-                                  <Col span={11}>
-                                    <Form.Item
-                                      label={t('label.column-name')}
-                                      name={[
-                                        rowFilterField.name,
-                                        'columnName',
-                                      ]}>
-                                      <Select
-                                        allowClear
-                                        showSearch
-                                        data-testid={`columnName-input-${policyIndex}-${rowFilterIndex}`}
-                                        filterOption={filterSelectOptions}
-                                        getPopupContainer={getPopupContainer}
-                                        id={`columnName-input-${policyIndex}-${rowFilterIndex}`}
-                                        options={columnOptions}
-                                        placeholder={t(
-                                          'label.please-enter-entity-name',
-                                          {
-                                            entity: t('label.column'),
-                                          }
-                                        )}
-                                      />
-                                    </Form.Item>
-                                  </Col>
-
-                                  <Col span={11}>
-                                    <Form.Item
-                                      label={t('label.value-plural')}
-                                      name={[rowFilterField.name, 'values']}>
-                                      <Select
-                                        data-testid={`values-${policyIndex}-${rowFilterIndex}`}
-                                        id={`values-${policyIndex}-${rowFilterIndex}`}
-                                        mode="tags"
-                                        open={false}
-                                        placeholder={t(
-                                          'label.please-enter-value',
-                                          {
-                                            name: t('label.column-plural'),
-                                          }
-                                        )}
-                                      />
-                                    </Form.Item>
-                                  </Col>
-
-                                  <Col span={2}>
-                                    <Button
-                                      className="contract-consumer-security-card-rule-delete-button"
-                                      icon={<Icon component={CloseIcon} />}
-                                      size="small"
-                                      type="text"
-                                      onClick={() => {
-                                        removeRowFilter(rowFilterField.name);
-                                      }}
-                                    />
-                                  </Col>
-                                </Row>
-                              );
-                            }
-                          )}
-                        </div>
-
-                        <div className="contract-consumer-security-card-form-actions-items">
-                          <Button
-                            data-testid="cancel-policy-button"
-                            onClick={() => setEditingKey(null)}>
-                            {t('label.cancel')}
-                          </Button>
-                          <Button
-                            className="m-l-md"
-                            data-testid="save-policy-button"
-                            type="primary"
-                            onClick={() => setEditingKey(null)}>
-                            {t('label.save')}
-                          </Button>
-                        </div>
-                      </>
-                    );
-                  }}
-                </Form.List>
-              </>
-            ) : (
-              <div className="contract-consumer-security-card-form-actions-items">
+          {hasRowFilters && (
+            <>
+              <Divider className="tw:my-6" />
+              <div className="tw:flex tw:items-center tw:justify-between tw:pr-5">
+                <Typography className="row-filter-title">
+                  {t('label.row-filter-plural')}
+                </Typography>
                 <Button
-                  data-testid="cancel-policy-button"
-                  onClick={() => setEditingKey(null)}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  className="m-l-md"
-                  data-testid="save-policy-button"
-                  type="primary"
-                  onClick={() => setEditingKey(null)}>
-                  {t('label.save')}
+                  color="link-color"
+                  data-testid={`add-row-filter-button-${policyIndex}`}
+                  iconLeading={PlusIcon}
+                  onPress={() => addRowFilter(EMPTY_ROW_FILTER)}>
+                  {t('label.add-entity', { entity: t('label.row-filter') })}
                 </Button>
               </div>
-            )}
-          </Col>
-        </Row>
+              {renderRowFilters(false)}
+            </>
+          )}
+          {actions}
+        </div>
       ) : (
-        rowFilterContent
+        hasRowFilters && renderRowFilters(true)
       )}
     </ExpandableCard>
   );
@@ -358,196 +334,121 @@ export const ContractSecurityFormTab: React.FC<{
   };
 }> = ({ onChange, onNext, onPrev, buttonProps, initialValues }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
   const { data: tableData } = useGenericContext();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
-  const addFunctionRef = useRef<
-    | ((
-        defaultValue?: ContractSecurity,
-        insertIndex?: number | undefined
-      ) => void)
-    | null
-  >(null);
   const [editingKey, setEditingKey] = useState<number | null>(null);
 
-  const policiesFormData: Policy[] = Form.useWatch('policies', form);
-  const dataClassificationFormItem: string = Form.useWatch(
-    'dataClassification',
-    form
-  );
-
-  const columnOptions = useMemo(() => {
+  const columnItems = useMemo<FormSelectItem[]>(() => {
     const { columns } = tableData as Table;
-    if (isEmpty(columns)) {
-      return [];
-    }
 
-    return getColumnOptionsFromTableColumn(columns, true);
+    return isEmpty(columns)
+      ? []
+      : getColumnOptionsFromTableColumn(columns, true).map(
+          ({ label, value }) => ({ id: value, label })
+        );
   }, [tableData]);
 
-  const handleAddPolicy = () => {
-    addFunctionRef.current?.({
-      accessPolicy: '',
-      identities: [],
-      rowFilters: [
-        {
-          columnName: undefined,
-          values: [],
-        },
-      ],
+  const form: UseFormReturn<ContractSecurityFormValues> =
+    useForm<ContractSecurityFormValues>({
+      defaultValues: toFormValues(initialValues?.security, columnItems),
+    });
+  const {
+    fields: policyFields,
+    append: addPolicy,
+    remove: removePolicy,
+  } = useFieldArray({ control: form.control, name: 'policies' });
+
+  useEffect(() => {
+    const security = initialValues?.security;
+    form.reset(toFormValues(security, columnItems));
+    setEditingKey(isEmpty(security) || !isEmpty(security?.policies) ? 0 : null);
+  }, [initialValues?.security]);
+
+  useEffect(() => {
+    const { unsubscribe } = form.watch((values, { type }) => {
+      if (type === 'change') {
+        onChange({ security: toContractSecurity(values) });
+      }
     });
 
-    setEditingKey(policiesFormData.length ?? 0);
+    return unsubscribe;
+  }, [form, onChange]);
+
+  const handleAddPolicy = () => {
+    addPolicy(EMPTY_POLICY);
+    setEditingKey(policyFields.length);
   };
 
   const handleDeletePolicy = useCallback(
-    (key: number) => {
-      const filteredValue =
-        policiesFormData
-          ?.filter((_item, idx) => idx !== key)
-          ?.filter(Boolean) ?? [];
-      form.setFieldsValue({
-        policies: filteredValue,
-      });
-      onChange({
-        security: {
-          dataClassification: dataClassificationFormItem,
-          policies: filteredValue,
-        },
-      });
+    (index: number) => {
+      removePolicy(index);
+      setEditingKey(null);
+      onChange({ security: toContractSecurity(form.getValues()) });
     },
-    [policiesFormData]
+    [form, onChange, removePolicy]
   );
 
-  const handleFormChange: FormProps['onValuesChange'] = (_, values) => {
-    onChange({
-      security: values,
-    });
-  };
-
-  useEffect(() => {
-    if (isEmpty(initialValues?.security)) {
-      form.setFieldsValue({
-        dataClassification: '',
-        policies: [
-          {
-            accessPolicy: '',
-            identities: [],
-            rowFilters: [
-              {
-                columnName: undefined,
-                values: [],
-              },
-            ],
-          },
-        ],
-      });
-
-      setEditingKey(0);
-    } else {
-      form.setFieldsValue(initialValues?.security);
-
-      if (!isEmpty(initialValues?.security?.policies)) {
-        setEditingKey(0);
-      }
-    }
-  }, [initialValues?.security]);
-
   return (
-    <>
-      <Card className="contract-security-form-container container bg-grey p-box">
-        <div>
-          <Typography className="contract-detail-form-tab-title">
-            {t('label.security')}
-          </Typography>
-          <Typography as="p" className="contract-detail-form-tab-description">
-            {t('message.data-contract-security-description')}
-          </Typography>
+    <ContractFormStep
+      className="contract-security-form-container"
+      description={t('message.data-contract-security-description')}
+      isNextVisible={buttonProps.isNextVisible}
+      nextLabel={buttonProps.nextLabel}
+      prevLabel={buttonProps.prevLabel}
+      title={t('label.security')}
+      onNext={onNext}
+      onPrev={onPrev}>
+      <HookForm
+        className="contract-security-form tw:flex tw:flex-col tw:gap-5"
+        form={form}>
+        <div className="contract-form-content-container">
+          {getField({
+            id: 'dataClassification',
+            label: t('label.data-classification'),
+            name: 'dataClassification',
+            placeholder: t('label.please-enter-entity-name', {
+              entity: t('label.data-classification'),
+            }),
+            props: { 'data-testid': 'data-classification-input' },
+            type: FieldTypes.TEXT,
+          })}
         </div>
 
-        <Form
-          className="new-form-style contract-security-form"
-          form={form}
-          layout="vertical"
-          name="security"
-          validateMessages={VALIDATION_MESSAGES}
-          onValuesChange={handleFormChange}>
-          <div className="contract-form-content-container">
-            <Form.Item
-              id="dataClassification"
-              label={t('label.data-classification')}
-              name="dataClassification">
-              <Input
-                data-testid="data-classification-input"
-                placeholder={t('label.please-enter-entity-name', {
-                  entity: t('label.data-classification'),
-                })}
-              />
-            </Form.Item>
-          </div>
-
-          <div className="contract-form-content-container">
-            <div className="d-flex justify-between items-center">
-              <div className="consumer-title-container">
-                <Typography className="consumer-title">
-                  {t('label.policy-plural')}
-                </Typography>
-                <Typography as="p" className="consumer-description">
-                  {t('message.contract-security-consume-description')}
-                </Typography>
-              </div>
-
-              <Button
-                className="add-policy-button"
-                data-testid="add-policy-button"
-                disabled={!isNull(editingKey) || !addFunctionRef.current}
-                icon={<Icon className="anticon" component={PlusIcon} />}
-                type="link"
-                onClick={handleAddPolicy}>
-                {t('label.add-entity', { entity: t('label.policy') })}
-              </Button>
+        <div className="contract-form-content-container">
+          <div className="tw:flex tw:items-center tw:justify-between">
+            <div className="consumer-title-container">
+              <Typography className="consumer-title">
+                {t('label.policy-plural')}
+              </Typography>
+              <Typography as="p" className="consumer-description">
+                {t('message.contract-security-consume-description')}
+              </Typography>
             </div>
 
-            <Form.List name="policies">
-              {(policyFields, { add: addPolicy }) => {
-                // Store the add function so it can be used outside
-                if (!addFunctionRef.current) {
-                  addFunctionRef.current = addPolicy;
-                }
-
-                return policyFields.map((policyField, policyIndex) => (
-                  <ContractPolicyCard
-                    columnOptions={columnOptions}
-                    editingKey={editingKey}
-                    entityType={entityType}
-                    key={policyField.name}
-                    policiesFormData={policiesFormData}
-                    policyField={policyField}
-                    policyIndex={policyIndex}
-                    setEditingKey={setEditingKey}
-                    onDeletePolicy={handleDeletePolicy}
-                  />
-                ));
-              }}
-            </Form.List>
+            <Button
+              color="link-color"
+              data-testid="add-policy-button"
+              iconLeading={PlusIcon}
+              isDisabled={!isNull(editingKey)}
+              onPress={handleAddPolicy}>
+              {t('label.add-entity', { entity: t('label.policy') })}
+            </Button>
           </div>
-        </Form>
-      </Card>
-      <div className="d-flex justify-between m-t-md">
-        <Button
-          className="contract-prev-button"
-          icon={<LeftOutlined height={22} width={20} />}
-          onClick={onPrev}>
-          {buttonProps.prevLabel ?? t('label.previous')}
-        </Button>
-        <Button
-          className="contract-next-button"
-          type="primary"
-          onClick={onNext}>
-          {buttonProps.nextLabel ?? t('label.next')}
-          <Icon component={RightIcon} />
-        </Button>
-      </div>
-    </>
+
+          {policyFields.map((policy, policyIndex) => (
+            <ContractPolicyCard
+              columnItems={columnItems}
+              control={form.control}
+              hasRowFilters={SUPPORTED_ROW_FILTER_ENTITIES.includes(entityType)}
+              isEditing={editingKey === policyIndex}
+              key={policy.id}
+              policyIndex={policyIndex}
+              onDelete={handleDeletePolicy}
+              onEdit={setEditingKey}
+            />
+          ))}
+        </div>
+      </HookForm>
+    </ContractFormStep>
   );
 };

@@ -30,78 +30,8 @@
 }
 
 .assignees-edit-input {
-  .ant-space-item:first-child {
+  > :first-child {
     width: 100%;
-  }
-}
-
-.task-action-button {
-  button {
-    height: 32px;
-    border-radius: var(--om-radius-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    span {
-      font-size: var(--om-font-size-sm);
-      font-style: normal;
-      font-weight: var(--om-font-weight-regular);
-      line-height: 20px;
-      color: @grey-700;
-    }
-    &:hover {
-      color: @primary-color !important;
-    }
-
-    svg {
-      width: 12px;
-      height: 12px;
-      font-weight: var(--om-font-weight-semibold);
-    }
-    &:first-child {
-      border-right: none;
-      padding-right: 0;
-    }
-    &:last-child {
-      border-left: none;
-    }
-    &.ant-btn.ant-btn-default:not(:hover):not(:disabled) {
-      border-color: @blue-12;
-    }
-  }
-}
-
-.task-action-dropdown {
-  .anticon svg {
-    fill: none;
-    width: 16px;
-    height: 16px;
-  }
-  ul {
-    padding: var(--om-space-4) 0;
-    border-radius: var(--om-radius-lg);
-
-    li {
-      font-size: var(--om-font-size-sm);
-      font-weight: var(--om-font-weight-medium);
-      line-height: 20px;
-      padding: var(--om-space-10) var(--om-space-16);
-      cursor: pointer;
-      border-bottom: none;
-      &:hover {
-        background: @primary-25;
-        color: @primary-color !important;
-      }
-
-      &.ant-dropdown-menu-item-selected {
-        background: @primary-25;
-        color: @primary-color !important;
-      }
-
-      &:last-child {
-        border-bottom: none;
-      }
-    }
   }
 }
 
@@ -117,7 +47,7 @@
   & a.ant-typography,
   & .ant-typography a,
   &.prose-typography {
-    color: @primary-heading-color;
+    color: var(--tw-color-text-link);
   }
 }
 .task-details-entity-link {
@@ -204,19 +134,19 @@
 .entity-type {
   font-size: var(--om-font-size-sm);
   font-weight: var(--om-font-weight-semibold);
-  color: @primary-heading-color;
+  color: var(--tw-color-text-link);
   line-height: 20px;
   &.ant-typography {
-    color: @primary-heading-color;
+    color: var(--tw-color-text-link);
   }
 }
 .entity-type.ant-typography {
-  color: @primary-heading-color;
+  color: var(--tw-color-text-link);
 }
 .entity-link {
   font-weight: var(--om-font-weight-semibold);
   line-height: 20px;
-  color: @primary-heading-color;
+  color: var(--tw-color-text-link);
 }
 .task-details {
   font-size: var(--om-font-size-sm);
@@ -227,15 +157,15 @@
 
 .diff-view-container-card {
   max-height: 200px;
-  border: 0.5px solid var(--om-color-gray-blue-100);
-  background: var(--om-color-bg-surface);
+  border: 0.5px solid var(--tw-color-border-secondary);
+  background: var(--tw-color-bg-surface);
   border-radius: var(--om-radius-lg);
 }
 .diff-view-container-card-right-panel {
   max-height: 400px;
-  background: @grey-9;
+  background: var(--tw-color-bg-surface);
   border-radius: var(--om-radius-xl);
-  border: 0.5px solid var(--om-color-gray-blue-100);
+  border: 0.5px solid var(--tw-color-border-secondary);
 }
 .task-tab-description-header {
   color: @text-color;

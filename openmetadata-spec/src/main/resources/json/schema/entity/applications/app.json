@@ -4,7 +4,7 @@
   "title": "App",
   "javaType": "org.openmetadata.schema.entity.app.App",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"
   ],
   "description": "This schema defines the applications for Open-Metadata.",
   "type": "object",

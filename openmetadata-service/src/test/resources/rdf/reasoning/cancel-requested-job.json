@@ -1,0 +1,18 @@
+{
+  "id": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e6f",
+  "requestId": "6d5c4b3a-2918-4f7e-8d6c-5b4a39281706",
+  "operation": "REFRESH",
+  "state": "RUNNING",
+  "cancelRequested": true,
+  "input": {
+    "sourceRevision": {
+      "datasetGeneration": "9d72cf3b-3657-4ee3-809c-5bc70b9308bd",
+      "liveWriteWatermark": 18502
+    },
+    "ontologySelection": "APPROVED",
+    "ruleBundleDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "progress": { "step": "classify", "completedSteps": 1, "totalSteps": 4 },
+  "submittedAt": 1791497100000,
+  "startedAt": 1791497100200
+}

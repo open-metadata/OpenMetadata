@@ -11,24 +11,23 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, Row } from 'antd';
+import { Button, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Form } from 'antd';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { AlertSelectionProvider } from '../../../hooks/useAlertSelection';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  ModifiedCreateEventSubscription,
-  ObservabilityAlertFormProps,
-} from '../AddObservabilityPage.interface';
+import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
+import { ObservabilityAlertFormProps } from '../hooks/useObservabilityAlertForm';
 import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
 
 function ObservabilityAlertForm({
   alert,
   breadcrumb,
-  containerEntities,
   extraFormButtons,
   extraFormWidgets,
   filterResources,
@@ -39,31 +38,33 @@ function ObservabilityAlertForm({
   isEditMode,
   isLoading,
   saving,
+  selection,
   shouldShowActionsSection,
   shouldShowFiltersSection,
-  supportedFilters,
-  supportedTriggers,
   templateResourcePermission,
   templates,
 }: Readonly<ObservabilityAlertFormProps>) {
   const { t } = useTranslation();
+  const values = Form.useWatch<ModifiedCreateEventSubscription>([], form);
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
-      </Col>
+      </Grid.Item>
 
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <Typography as="h5" size="text-md" weight="semibold">
           {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
             entity: t('label.alert'),
           })}
         </Typography>
         <Typography>{t('message.alerts-description')}</Typography>
-      </Col>
+      </Grid.Item>
 
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <Form<ModifiedCreateEventSubscription>
           form={form}
           initialValues={{
@@ -73,33 +74,34 @@ function ObservabilityAlertForm({
           }}
           validateMessages={VALIDATION_MESSAGES}
           onFinish={handleSave}>
-          <Row gutter={[20, 20]}>
-            <ObservabilityAlertFormFields
-              alert={alert}
-              containerEntities={containerEntities}
-              extraFormWidgets={extraFormWidgets}
-              filterResources={filterResources}
-              form={form}
-              isLoading={isLoading}
-              shouldShowActionsSection={shouldShowActionsSection}
-              shouldShowFiltersSection={shouldShowFiltersSection}
-              supportedFilters={supportedFilters}
-              supportedTriggers={supportedTriggers}
-              templateResourcePermission={templateResourcePermission}
-              templates={templates}
-            />
+          <Grid
+            className="layout-row layout-grid"
+            style={{ ...getLayoutGutter(20, 20) }}>
+            <AlertSelectionProvider value={selection}>
+              <ObservabilityAlertFormFields
+                alert={alert}
+                extraFormWidgets={extraFormWidgets}
+                filterResources={filterResources}
+                form={form}
+                isLoading={isLoading}
+                shouldShowActionsSection={shouldShowActionsSection}
+                shouldShowFiltersSection={shouldShowFiltersSection}
+                templateResourcePermission={templateResourcePermission}
+                templates={templates}
+              />
+            </AlertSelectionProvider>
 
             {!isUndefined(inlineAlertDetails) && (
-              <Col span={24}>
+              <Grid.Item className="layout-column" span={24}>
                 <InlineAlert {...inlineAlertDetails} />
-              </Col>
+              </Grid.Item>
             )}
 
-            <Col span={24}>
+            <Grid.Item className="layout-column" span={24}>
               <div className="flex justify-end gap-2">
                 <Button
+                  color="tertiary"
                   data-testid="cancel-button"
-                  type="text"
                   onClick={handleCancel}>
                   {t('label.cancel')}
                 </Button>
@@ -112,22 +114,23 @@ function ObservabilityAlertForm({
                       key={name}
                       templateResourcePermission={templateResourcePermission}
                       templates={templates}
+                      values={values}
                     />
                   )
                 )}
                 <Button
+                  color="primary"
                   data-testid="save-button"
-                  htmlType="submit"
-                  loading={saving}
-                  type="primary">
+                  isLoading={saving}
+                  type="submit">
                   {t('label.save')}
                 </Button>
               </div>
-            </Col>
-          </Row>
+            </Grid.Item>
+          </Grid>
         </Form>
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 }
 

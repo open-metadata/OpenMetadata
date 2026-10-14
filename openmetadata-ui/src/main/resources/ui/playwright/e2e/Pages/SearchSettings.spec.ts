@@ -147,11 +147,9 @@ test.describe('Search Settings', () => {
       // Add and remove field value boost
       await page.getByTestId('add-field-value-boost-btn').click();
 
-      await page
-        .locator('.field-value-boost-modal:visible')
-        .waitFor({ state: 'visible' });
+      const modal = page.getByTestId('field-value-boost-modal');
 
-      const modal = page.locator('.field-value-boost-modal:visible');
+      await modal.waitFor({ state: 'visible' });
 
       await modal.locator('#field').click();
 
@@ -166,7 +164,7 @@ test.describe('Search Settings', () => {
 
       await setSliderValue(page, 'field-boost-slider', 25.6);
 
-      await modal.locator('button').filter({ hasText: 'Save' }).click();
+      await modal.getByRole('button', { name: 'Save' }).click();
 
       await toastNotification(page, /Search Settings updated successfully/);
 
@@ -195,6 +193,38 @@ test.describe('Search Settings', () => {
       await expect(
         page.getByTestId(`global-setting-value-Max Aggregate Size`)
       ).toHaveText('2000');
+    });
+
+    // Confirming would delete the column index that later specs search, so this stops at Cancel.
+    test('Column indexing asks for confirmation before turning off', async ({
+      page,
+    }) => {
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+      const columnIndexingToggle = page.getByTestId(
+        'enable-column-indexing-switch'
+      );
+      const columnIndexingSwitch = columnIndexingToggle.getByRole('switch');
+
+      await expect(columnIndexingSwitch).toBeChecked();
+
+      await columnIndexingToggle.click();
+
+      await expect(
+        page.getByText(
+          'Turning off column indexing deletes the column search index'
+        )
+      ).toBeVisible();
+
+      await page.getByTestId('cancel').click();
+
+      await expect(page.getByTestId('save-button')).not.toBeVisible();
+      await expect(columnIndexingSwitch).toBeChecked();
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(columnIndexingSwitch).toBeChecked();
     });
 
     test('Update entity search settings', async ({ page }) => {
@@ -456,7 +486,10 @@ test.describe('Search Settings', () => {
         page.getByTestId('highlight-field-switch').getByRole('switch')
       ).not.toBeChecked();
 
-      const searchInput = page.getByTestId('searchbar');
+      // The shell also renders a searchbar; preview queries belong to this page.
+      const searchInput = page
+        .getByTestId('page-layout-v1')
+        .getByTestId('searchbar');
       const searchPreviewResponse = page.waitForResponse(
         (response) =>
           response.url().endsWith('/api/v1/search/preview') &&
@@ -687,7 +720,10 @@ test.describe('Search Settings', () => {
         );
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByTestId('searchbar').fill('test');
+        await page
+          .getByTestId('page-layout-v1')
+          .getByTestId('searchbar')
+          .fill('test');
 
         const freshCard = page.getByTestId(
           'table-data-card_pw_race_service.fresh_result'
@@ -830,7 +866,9 @@ test.describe('Search Settings', () => {
         );
         await columnCard.click();
 
-        const searchInput = page.getByTestId('searchbar');
+        const searchInput = page
+          .getByTestId('page-layout-v1')
+          .getByTestId('searchbar');
         const previewResponse = page.waitForResponse(
           (response) =>
             response.url().endsWith('/api/v1/search/preview') &&

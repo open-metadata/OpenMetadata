@@ -103,10 +103,6 @@ export interface Thread {
      */
     resolved?: boolean;
     /**
-     * Details about the task. This is only applicable if thread is of type task.
-     */
-    task?: TaskDetails;
-    /**
      * Timestamp of the first post created the thread in Unix epoch time milliseconds.
      */
     threadTs?: number;
@@ -255,8 +251,6 @@ export interface ChatbotDetails {
  * Test definition that this result is for.
  *
  * User who reacted.
- *
- * User who provided the feedback
  */
 export interface EntityReference {
     /**
@@ -439,6 +433,10 @@ export interface TestCaseResult {
      */
     errorDetails?: TestCaseErrorDetails;
     /**
+     * Which rows the run was measured on. Absent for a run that recorded no scope.
+     */
+    evaluationScope?: TestCaseEvaluationScope;
+    /**
      * Number of rows that failed.
      */
     failedRows?: number;
@@ -518,6 +516,16 @@ export interface TestCaseDimensionResult {
      */
     dimensionValues: DimensionValue[];
     /**
+     * Which rows the parent run was measured on. Every dimension of a run shares it.
+     */
+    evaluationScope?: TestCaseEvaluationScope;
+    /**
+     * Whether this dimension has fewer rows than the test case's `minRowsPerDimension`. Its
+     * status is still reported, but it does not fail the test case under the `ANY_DIMENSION`
+     * policy.
+     */
+    excludedFromRollUp?: boolean;
+    /**
      * Number of rows that failed for this dimension combination
      */
     failedRows?: number;
@@ -535,6 +543,16 @@ export interface TestCaseDimensionResult {
      * considering both failure rate and data volume.
      */
     impactScore?: number;
+    /**
+     * Upper bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    maxBound?: number;
+    /**
+     * Lower bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    minBound?: number;
     /**
      * Number of rows that passed for this dimension combination
      */
@@ -581,6 +599,51 @@ export interface DimensionValue {
      * Value for this dimension (e.g., 'address', 'US', 'gold')
      */
     value: string;
+}
+
+/**
+ * Which rows the parent run was measured on. Every dimension of a run shares it.
+ *
+ * Which rows a test case run was measured on. The verdict is the subset's: nothing
+ * extrapolates it back to the table.
+ *
+ * Which rows the run was measured on. Absent for a run that recorded no scope.
+ */
+export interface TestCaseEvaluationScope {
+    /**
+     * Column the partition filter was applied on.
+     */
+    partitionColumnName?: string;
+    /**
+     * Whether the rows read were restricted to a partition. False when the test runs its own
+     * SQL, which ignores the configured partition.
+     */
+    partitioned?: boolean;
+    /**
+     * Size of the sample read, in the unit `profileSampleType` names.
+     */
+    profileSample?: number;
+    /**
+     * Whether `profileSample` is a percentage of the table or a number of rows. Read only when
+     * `sampled` is true.
+     */
+    profileSampleType?: ProfileSampleType;
+    /**
+     * Whether the run read a sample of the table. False when the test runs its own SQL, which
+     * ignores the configured sample.
+     */
+    sampled?: boolean;
+}
+
+/**
+ * Whether `profileSample` is a percentage of the table or a number of rows. Read only when
+ * `sampled` is true.
+ *
+ * Type of Profile Sample (percentage or rows)
+ */
+export enum ProfileSampleType {
+    Percentage = "PERCENTAGE",
+    Rows = "ROWS",
 }
 
 /**
@@ -694,262 +757,10 @@ export enum ReactionType {
 }
 
 /**
- * Details about the task. This is only applicable if thread is of type task.
- */
-export interface TaskDetails {
-    /**
-     * List of users or teams the task is assigned to
-     */
-    assignees: EntityReference[];
-    /**
-     * Timestamp when the task was closed in Unix epoch time milliseconds.
-     */
-    closedAt?: number;
-    /**
-     * The user that closed the task.
-     */
-    closedBy?: string;
-    /**
-     * The recognizer feedback that we're reviewing for the Tag that's supposed to be pointed by
-     * this task
-     */
-    feedback?: RecognizerFeedback;
-    /**
-     * Unique identifier that identifies the task.
-     */
-    id: number;
-    /**
-     * The new value object that was accepted to complete the task.
-     */
-    newValue?: string;
-    /**
-     * The value of old object for which the task is created.
-     */
-    oldValue?: string;
-    /**
-     * Metadata about the recognizer that applied the tag being reviewed
-     */
-    recognizer?: TagLabelRecognizerMetadata;
-    status?:     ThreadTaskStatus;
-    /**
-     * The suggestion object to replace the old value for which the task is created.
-     */
-    suggestion?: string;
-    /**
-     * The test case resolution status id for which the task is created.
-     */
-    testCaseResolutionStatusId?: string;
-    type:                        TaskType;
-}
-
-/**
- * The recognizer feedback that we're reviewing for the Tag that's supposed to be pointed by
- * this task
- *
- * User feedback on auto-applied tags from recognizers
- */
-export interface RecognizerFeedback {
-    createdAt?: number;
-    /**
-     * User who provided the feedback
-     */
-    createdBy?: EntityReference;
-    /**
-     * Link to the specific field where the tag was incorrectly applied (e.g.,
-     * <#E::table::customers::columns::company_name>)
-     */
-    entityLink: string;
-    /**
-     * Type of feedback
-     */
-    feedbackType: FeedbackType;
-    /**
-     * Unique identifier of the feedback
-     */
-    id?: string;
-    /**
-     * Information about which recognizer triggered this
-     */
-    recognizerInfo?: RecognizerInfo;
-    /**
-     * How this feedback was resolved
-     */
-    resolution?: Resolution;
-    /**
-     * Example values from this field that triggered the false positive (anonymized)
-     */
-    sampleValues?: string[];
-    /**
-     * Processing status
-     */
-    status?: Status;
-    /**
-     * Tag the user thinks should be applied instead (optional)
-     */
-    suggestedTag?: string;
-    /**
-     * Fully qualified name of the incorrectly applied tag
-     */
-    tagFQN: string;
-    /**
-     * Additional context from the user
-     */
-    userComments?: string;
-    /**
-     * User-selected reason for reporting
-     */
-    userReason?: UserReason;
-}
-
-/**
- * Type of feedback
- */
-export enum FeedbackType {
-    ContextSpecific = "CONTEXT_SPECIFIC",
-    FalsePositive = "FALSE_POSITIVE",
-    IncorrectClassification = "INCORRECT_CLASSIFICATION",
-    OverlyBroad = "OVERLY_BROAD",
-}
-
-/**
- * Information about which recognizer triggered this
- */
-export interface RecognizerInfo {
-    confidenceScore?: number;
-    /**
-     * The pattern that matched (for debugging)
-     */
-    matchPattern?:   string;
-    recognizerId?:   string;
-    recognizerName?: string;
-    [property: string]: any;
-}
-
-/**
- * How this feedback was resolved
- */
-export interface Resolution {
-    action?:          Action;
-    resolutionNotes?: string;
-    resolvedAt?:      number;
-    resolvedBy?:      EntityReference;
-    [property: string]: any;
-}
-
-export enum Action {
-    AddedToExceptionList = "ADDED_TO_EXCEPTION_LIST",
-    NoActionNeeded = "NO_ACTION_NEEDED",
-    PatternAdjusted = "PATTERN_ADJUSTED",
-    RecognizerDisabledForEntity = "RECOGNIZER_DISABLED_FOR_ENTITY",
-    ThresholdIncreased = "THRESHOLD_INCREASED",
-}
-
-/**
- * Processing status
- */
-export enum Status {
-    Applied = "APPLIED",
-    Pending = "PENDING",
-    Rejected = "REJECTED",
-    Reviewed = "REVIEWED",
-}
-
-/**
- * User-selected reason for reporting
- */
-export enum UserReason {
-    EncryptedData = "ENCRYPTED_DATA",
-    InternalIdentifier = "INTERNAL_IDENTIFIER",
-    NotSensitiveData = "NOT_SENSITIVE_DATA",
-    Other = "OTHER",
-    PublicInformation = "PUBLIC_INFORMATION",
-    TestData = "TEST_DATA",
-    WrongDataType = "WRONG_DATA_TYPE",
-}
-
-/**
- * Metadata about the recognizer that applied the tag being reviewed
- *
- * Metadata about the recognizer that applied a tag, including scoring and pattern
- * information.
- */
-export interface TagLabelRecognizerMetadata {
-    /**
-     * Details of patterns that matched during recognition
-     */
-    patterns?: PatternMatch[];
-    /**
-     * Unique identifier of the recognizer that applied this tag
-     */
-    recognizerId: string;
-    /**
-     * Human-readable name of the recognizer
-     */
-    recognizerName: string;
-    /**
-     * Confidence score assigned by the recognizer (0.0 to 1.0)
-     */
-    score: number;
-    /**
-     * What the recognizer analyzed to apply this tag
-     */
-    target?: Target;
-}
-
-/**
- * Information about a pattern that matched during recognition
- */
-export interface PatternMatch {
-    /**
-     * Name of the pattern that matched
-     */
-    name: string;
-    /**
-     * Regular expression or pattern definition
-     */
-    regex?: string;
-    /**
-     * Confidence score for this specific pattern match
-     */
-    score: number;
-}
-
-/**
- * What the recognizer analyzed to apply this tag
- */
-export enum Target {
-    ColumnName = "column_name",
-    Content = "content",
-}
-
-/**
- * Status of a task.
- */
-export enum ThreadTaskStatus {
-    Closed = "Closed",
-    Open = "Open",
-}
-
-/**
- * Type of a task.
- */
-export enum TaskType {
-    Generic = "Generic",
-    RecognizerFeedbackApproval = "RecognizerFeedbackApproval",
-    RequestApproval = "RequestApproval",
-    RequestDescription = "RequestDescription",
-    RequestTag = "RequestTag",
-    RequestTestCaseFailureResolution = "RequestTestCaseFailureResolution",
-    UpdateDescription = "UpdateDescription",
-    UpdateTag = "UpdateTag",
-}
-
-/**
  * Type of thread.
  */
 export enum ThreadType {
     Announcement = "Announcement",
     Chatbot = "Chatbot",
     Conversation = "Conversation",
-    Task = "Task",
 }
