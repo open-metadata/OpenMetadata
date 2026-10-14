@@ -290,7 +290,7 @@ const ProfilerSettingsModal = ({
                     aria-label={`${t('label.clear')} ${accessibleLabel}`}
                     color="tertiary"
                     iconLeading={XClose}
-                    size="xxs"
+                    size="xs"
                     onPress={() => {
                       field.onChange(undefined);
                       onChange?.();

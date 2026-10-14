@@ -73,7 +73,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
                       color="tertiary"
                       iconLeading={Minus}
                       isDisabled={!state.canDecrement}
-                      size="xxs"
+                      size="xs"
                       slot="decrement"
                       type="button"
                     />
@@ -81,7 +81,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
                       color="tertiary"
                       iconLeading={Plus}
                       isDisabled={!state.canIncrement}
-                      size="xxs"
+                      size="xs"
                       slot="increment"
                       type="button"
                     />

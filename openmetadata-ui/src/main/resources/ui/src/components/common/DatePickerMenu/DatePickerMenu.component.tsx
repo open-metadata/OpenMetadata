@@ -338,7 +338,7 @@ const DatePickerMenu = ({
           color="tertiary"
           data-testid="clear-date-picker"
           iconLeading={XCircle}
-          size="xxs"
+          size="xs"
           onPress={handleClear}
         />
       )}

@@ -65,7 +65,7 @@ const SliderWithInput = ({
               color="tertiary"
               data-testid="clear-slider-input"
               iconLeading={XClose}
-              size="xxs"
+              size="xs"
               onPress={() => onChange(null)}
             />
           </Tooltip>
