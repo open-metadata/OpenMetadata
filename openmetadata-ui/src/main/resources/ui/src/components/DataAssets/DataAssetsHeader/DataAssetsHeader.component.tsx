@@ -755,10 +755,10 @@ export const DataAssetsHeader = ({
   }, [dataAsset, t]);
 
   useEffect(() => {
-    if (dataAsset.id) {
+    if (dataAsset.id && !isTourPage) {
       void fetchDataContract(dataAsset.id);
     }
-  }, [dataAsset.id, fetchDataContract]);
+  }, [dataAsset.id, isTourPage, fetchDataContract]);
 
   const hasDisplayName = !isEmpty(dataAsset.displayName);
 

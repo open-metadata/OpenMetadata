@@ -4978,6 +4978,7 @@
     "no-failing-tests": "Geen mislukte tests.",
     "no-features-data-available": "Geen data beschikbaar voor functies",
     "no-feed-available-for-selected-filter": "Geen feed gevonden. Probeer de filters te wijzigen.",
+    "no-fields-configured": "Nog geen velden geconfigureerd",
     "no-file-selected": "Geen bestand geselecteerd",
     "no-filter-patterns-available": "Er zijn geen filterpatronen beschikbaar voor deze connector.",
     "no-folders-yet-create-one": "Nog geen mappen, maak er een aan om documenten te organiseren per onderwerp of team.",

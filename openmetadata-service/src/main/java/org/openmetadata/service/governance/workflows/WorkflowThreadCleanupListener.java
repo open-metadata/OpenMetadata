@@ -27,9 +27,9 @@ import org.openmetadata.service.util.PerRequestContextCleaner;
  *
  * <p>Only the job-completion events are handled: both are dispatched on the async-executor thread
  * itself, after the job's delegates have finished, which mirrors the response filter's "clear once
- * the unit of work completes" semantics. Note the synchronous workflow path (a change event
- * signalling a process inline) does not produce these events — that thread is cleaned by {@code
- * AbstractEventConsumer}.
+ * the unit of work completes" semantics. Work Flowable runs inline on a caller's thread (a signal
+ * delivered by {@code AbstractEventConsumer}, a task resolved over the API) does not produce these
+ * events — that thread is cleaned by its caller.
  */
 public class WorkflowThreadCleanupListener implements FlowableEventListener {
 

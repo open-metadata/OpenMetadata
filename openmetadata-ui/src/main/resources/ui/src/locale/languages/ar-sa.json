@@ -4978,6 +4978,7 @@
     "no-failing-tests": "لا توجد اختبارات فاشلة.",
     "no-features-data-available": "لا تتوفر بيانات ميزات",
     "no-feed-available-for-selected-filter": "لم يتم العثور على موجز. حاول تغيير المرشحات.",
+    "no-fields-configured": "لم يتم تكوين أي حقول بعد",
     "no-file-selected": "لم يتم تحديد أي ملف",
     "no-filter-patterns-available": "لا تتوفر أنماط تصفية لهذا الموصل.",
     "no-folders-yet-create-one": "لا توجد مجلدات بعد، أنشئ واحداً لتنظيم المستندات حسب الموضوع أو الفريق.",

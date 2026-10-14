@@ -4978,6 +4978,7 @@
     "no-failing-tests": "沒有失敗的測試。",
     "no-features-data-available": "沒有可用的功能資料",
     "no-feed-available-for-selected-filter": "找不到摘要。請嘗試變更篩選器。",
+    "no-fields-configured": "尚未設定欄位",
     "no-file-selected": "未選擇檔案",
     "no-filter-patterns-available": "此連接器沒有可用的篩選模式。",
     "no-folders-yet-create-one": "尚無資料夾,建立一個以依主題或團隊整理文件。",

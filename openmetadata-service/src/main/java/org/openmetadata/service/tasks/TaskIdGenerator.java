@@ -24,6 +24,8 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
  */
 public final class TaskIdGenerator {
 
+  private static final String TASK_ID_PREFIX = "TASK-";
+
   private TaskIdGenerator() {}
 
   /**
@@ -32,7 +34,15 @@ public final class TaskIdGenerator {
    */
   public static String generateTaskId(CollectionDAO daoCollection) {
     long nextId = getNextSequenceId(daoCollection);
-    return String.format("TASK-%05d", nextId);
+    return String.format("%s%05d", TASK_ID_PREFIX, nextId);
+  }
+
+  /**
+   * The sequence number inside a task ID ({@code TASK-00042} is 42). The sequence is one database
+   * row shared by every node, so comparing these numbers orders tasks by creation.
+   */
+  public static long sequenceNumberOf(String taskId) {
+    return Long.parseLong(taskId.substring(TASK_ID_PREFIX.length()));
   }
 
   private static long getNextSequenceId(CollectionDAO daoCollection) {
