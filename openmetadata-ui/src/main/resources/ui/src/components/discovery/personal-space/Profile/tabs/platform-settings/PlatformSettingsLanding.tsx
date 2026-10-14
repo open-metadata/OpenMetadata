@@ -46,6 +46,7 @@ const PlatformSettingsLanding = ({
             role="button"
             size="md"
             tabIndex={0}
+            variant="muted"
             onClick={open}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -57,7 +58,7 @@ const PlatformSettingsLanding = ({
               <Box align="start" direction="row" gap={4}>
                 <Box
                   align="center"
-                  className="tw:size-10 tw:shrink-0 tw:rounded-lg tw:bg-secondary"
+                  className="tw:size-10 tw:shrink-0 tw:rounded-lg tw:bg-tertiary"
                   justify="center">
                   <Icon className="tw:size-5 tw:text-secondary" />
                 </Box>

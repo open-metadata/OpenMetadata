@@ -59,9 +59,11 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // `.om-block-editor` instead of `.ProseMirror...first()` removes four. The
     // landing page's FeedWidget, Data Assets and My Tasks suites went with the
     // widgets they drove, taking six more with them, and the Data Contract
-    // core-components migration removes three more. The Data Marketplace
+    // core-components migration removes three more. The Classic Observability
+    // migration's core-component selectors in the Data Quality, Profiler and
+    // Profiler Configuration specs remove five more. The Data Marketplace
     // announcements carousel spec dropped its `.first()` item lookup.
-    'om-playwright/no-positional-locator': 577,
+    'om-playwright/no-positional-locator': 572,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

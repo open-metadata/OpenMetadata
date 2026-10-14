@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const XClose: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,10 +29,10 @@ export const XClose: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" strokeWidth={1.3} />
+    <path d="M15 5 5 15M5 5l10 10" stroke="currentColor" strokeWidth={1.3} />
   </svg>
 );
 XClose.displayName = 'XClose';

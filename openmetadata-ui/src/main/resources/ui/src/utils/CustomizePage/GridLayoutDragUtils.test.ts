@@ -15,7 +15,9 @@ import {
   GRID_ROW_HEIGHT,
   GRID_VERTICAL_MARGIN,
 } from '../../constants/CustomizeWidgets.constants';
+import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
+import { EntityType, Page, PageType } from '../../generated/system/ui/page';
 import type { WidgetConfig } from '../../interface/customization.interface';
 import {
   FULL_PANEL_WIDTH,
@@ -24,6 +26,7 @@ import {
   getLeftPanelFlowLayout,
   getLeftPanelHeight,
   HALF_PANEL_WIDTH,
+  isSameDetailsPageLayout,
   placeWidgetBesideLeftPanel,
   placeWidgetInLeftPanel,
 } from './GridLayoutDragUtils';
@@ -341,5 +344,123 @@ describe('placeWidgetBesideLeftPanel', () => {
     const layout = buildTabLayout().slice(1);
 
     expect(placeWidgetBesideLeftPanel(layout, layout[0], 0, COLS)).toBe(layout);
+  });
+});
+
+describe('isSameDetailsPageLayout', () => {
+  // The default Table schema tab as saved: the panel's second widget sits on
+  // row 1 although the first one is two rows tall.
+  const buildPage = (layout: WidgetConfig[]): Page => ({
+    entityType: EntityType.Page,
+    knowledgePanels: [],
+    layout: {},
+    pageType: PageType.Table,
+    tabs: [{ id: 'schema', name: 'schema', layout }],
+  });
+
+  const saved = buildPage([
+    {
+      i: DetailPageWidgetKeys.LEFT_PANEL,
+      x: 0,
+      y: 0,
+      w: 6,
+      h: 11,
+      static: true,
+      children: [
+        { i: 'KnowledgePanel.Description', x: 0, y: 0, w: 1, h: 2 },
+        { i: 'KnowledgePanel.TableSchema', x: 0, y: 1, w: 1, h: 8.5 },
+      ],
+    },
+    { i: 'KnowledgePanel.Tags', x: 6, y: 0, w: 2, h: 2 },
+  ]);
+
+  it('treats the mount-time rewrite of an untouched page as unchanged', () => {
+    // What the left panel's grid writes back on mount: re-flowed children,
+    // react-grid-layout's flags, and the tab grid's empty-widget placeholder.
+    const remounted = buildPage([
+      {
+        i: DetailPageWidgetKeys.LEFT_PANEL,
+        x: 0,
+        y: 0,
+        w: 6,
+        h: 11,
+        static: true,
+        moved: false,
+        children: [
+          {
+            i: 'KnowledgePanel.Description',
+            x: 0,
+            y: 0,
+            w: 1,
+            h: 2,
+            moved: false,
+          },
+          {
+            i: 'KnowledgePanel.TableSchema',
+            x: 0,
+            y: 2,
+            w: 1,
+            h: 8.5,
+            moved: false,
+          },
+        ],
+      } as unknown as WidgetConfig,
+      { i: 'KnowledgePanel.Tags', x: 6, y: 0, w: 2, h: 2, static: false },
+      {
+        i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+        x: 0,
+        y: 1000,
+        w: 3,
+        h: 2,
+        isDraggable: false,
+      },
+    ]);
+
+    expect(isSameDetailsPageLayout(saved, remounted)).toBe(true);
+  });
+
+  it('reports a moved widget', () => {
+    const moved = buildPage([
+      saved.tabs?.[0].layout[0],
+      { i: 'KnowledgePanel.Tags', x: 6, y: 3, w: 2, h: 2 },
+    ]);
+
+    expect(isSameDetailsPageLayout(saved, moved)).toBe(false);
+  });
+
+  it('reports reordered left panel widgets', () => {
+    const reordered = buildPage([
+      {
+        ...(saved.tabs?.[0].layout[0] as WidgetConfig),
+        children: [
+          { i: 'KnowledgePanel.TableSchema', x: 0, y: 0, w: 1, h: 8.5 },
+          { i: 'KnowledgePanel.Description', x: 0, y: 1, w: 1, h: 2 },
+        ],
+      },
+      saved.tabs?.[0].layout[1],
+    ]);
+
+    expect(isSameDetailsPageLayout(saved, reordered)).toBe(false);
+  });
+
+  it('reports an added tab', () => {
+    const withTab: Page = {
+      ...saved,
+      tabs: [
+        ...(saved.tabs ?? []),
+        { id: 'custom1', name: 'pw-tab', layout: [], editable: true },
+      ],
+    };
+
+    expect(isSameDetailsPageLayout(saved, withTab)).toBe(false);
+  });
+
+  it('reports a widget config change', () => {
+    const configured = buildPage([
+      saved.tabs?.[0].layout[0],
+      { i: 'KnowledgePanel.Tags', x: 6, y: 0, w: 2, h: 2, config: { a: 1 } },
+    ]);
+
+    expect(isSameDetailsPageLayout(saved, configured)).toBe(false);
   });
 });

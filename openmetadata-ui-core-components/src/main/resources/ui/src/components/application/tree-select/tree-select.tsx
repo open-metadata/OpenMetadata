@@ -945,7 +945,13 @@ export const TreeSelect = <T = unknown,>({
         </div>
       )}
       <div
-        className="tw:max-h-64 tw:overflow-y-auto tw:pl-[14px] tw:pr-1.5"
+        className={cx(
+          // With the row's 2px indent, a row's hover fill spans the search
+          // field's 12px inset on both sides.
+          'tw:max-h-64 tw:overflow-y-auto tw:pl-2.5 tw:pr-3',
+          // The staged footer brings its own top margin.
+          !showFooter && 'tw:pb-2'
+        )}
         onMouseDown={(event) => event.preventDefault()}>
         {loading ? (
           <div className="tw:flex tw:items-center tw:justify-center tw:gap-2 tw:px-4 tw:py-2 tw:text-xs tw:text-tertiary">
