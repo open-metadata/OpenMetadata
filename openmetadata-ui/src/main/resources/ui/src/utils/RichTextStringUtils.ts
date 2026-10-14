@@ -23,7 +23,7 @@ import removeMarkdown from 'remove-markdown';
  * stripping <iframe>, <script>, event handler attributes, and
  * javascript:/data: URLs.
  */
-export const stringToHTML = function (
+export  const stringToHTML = function (
   strHTML: string
 ): string | JSX.Element | JSX.Element[] {
   return strHTML ? parse(DOMPurify.sanitize(strHTML)) : strHTML;

@@ -57,7 +57,7 @@ public final class CommonUtil {
   private static final List<String> JAR_NAME_FILTER = List.of("openmetadata", "collate");
   private static volatile List<ClasspathResource> classpathResourceIndex;
 
-  private CommonUtil() {}
+  private  CommonUtil() {}
 
   /** Get resources from jar file or directories in the class path matching pattern */
   public static List<String> getResources(Pattern pattern) throws IOException {
