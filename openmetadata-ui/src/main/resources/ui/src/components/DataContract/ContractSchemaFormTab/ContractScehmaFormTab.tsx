@@ -10,18 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import {
-  Badge,
-  Button,
-  Card,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty, pick, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
-import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   NO_DATA_PLACEHOLDER,
@@ -54,10 +46,11 @@ import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../common/Table/Table.interface';
-import AntTable from '../../common/Table/TableV2';
+import TableV2 from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
 import TableTags from '../../Database/TableTags/TableTags.component';
+import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
 
 export const ContractSchemaFormTab: React.FC<{
   selectedSchema: Column[];
@@ -540,51 +533,34 @@ export const ContractSchemaFormTab: React.FC<{
   }, []);
 
   return (
-    <>
-      <Card className="container bg-grey p-box">
-        <div className="m-b-sm">
-          <Typography className="contract-detail-form-tab-title">
-            {t('label.schema')}
-          </Typography>
-          <Typography as="p" className="contract-detail-form-tab-description">
-            {t('message.data-contract-schema-description')}
-          </Typography>
-        </div>
-        <AntTable
-          columns={columns}
-          customPaginationProps={paginationProps}
-          dataSource={columnsData}
-          expandable={{
-            ...getTableExpandableConfig<Field>(),
-            rowExpandable: (record) => !isEmpty(record.children),
-            onExpandedRowsChange: handleExpandedRowsChange,
-            expandedRowKeys: expandedRowKeys,
-          }}
-          loading={isLoading}
-          pagination={false}
-          rowKey="fullyQualifiedName"
-          rowSelection={{
-            selectedRowKeys: selectedKeys,
-            onChange: handleChangeTable,
-            preserveSelectedRowKeys: true, // Preserve selections across page changes
-            getCheckboxProps: tableCheckBoxProps,
-          }}
-        />
-      </Card>
-      <div className="d-flex justify-between m-t-md">
-        <Button
-          color="secondary"
-          iconLeading={<LeftOutlined height={22} width={20} />}
-          onClick={onPrev}>
-          {prevLabel ?? t('label.previous')}
-        </Button>
-        {isNextVisible && (
-          <Button color="primary" onClick={onNext}>
-            {nextLabel ?? t('label.next')}
-            <Icon component={RightIcon} />
-          </Button>
-        )}
-      </div>
-    </>
+    <ContractFormStep
+      description={t('message.data-contract-schema-description')}
+      isNextVisible={isNextVisible}
+      nextLabel={nextLabel}
+      prevLabel={prevLabel}
+      title={t('label.schema')}
+      onNext={onNext}
+      onPrev={onPrev}>
+      <TableV2
+        columns={columns}
+        customPaginationProps={paginationProps}
+        dataSource={columnsData}
+        expandable={{
+          ...getTableExpandableConfig<Field>(),
+          rowExpandable: (record) => !isEmpty(record.children),
+          onExpandedRowsChange: handleExpandedRowsChange,
+          expandedRowKeys: expandedRowKeys,
+        }}
+        loading={isLoading}
+        pagination={false}
+        rowKey="fullyQualifiedName"
+        rowSelection={{
+          selectedRowKeys: selectedKeys,
+          onChange: handleChangeTable,
+          preserveSelectedRowKeys: true, // Preserve selections across page changes
+          getCheckboxProps: tableCheckBoxProps,
+        }}
+      />
+    </ContractFormStep>
   );
 };

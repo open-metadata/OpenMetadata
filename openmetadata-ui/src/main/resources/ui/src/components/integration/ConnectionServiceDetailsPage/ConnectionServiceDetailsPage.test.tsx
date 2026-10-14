@@ -23,7 +23,11 @@ import React from 'react';
 import { getDatabases } from '../../../rest/databaseAPI';
 import { getServiceByFQN, patchService } from '../../../rest/serviceAPI';
 import { getTopics } from '../../../rest/topicsAPI';
-import { EXTENSION_POINTS } from '../../../utils/ExtensionPointTypes';
+import {
+  EXTENSION_POINTS,
+  TestConnectionActionProps,
+} from '../../../utils/ExtensionPointTypes';
+import { RenderTestConnectionFailureAction } from '../../common/TestConnection/TestConnectionModal/TestConnectionModal.interface';
 import ConnectionServiceDetailsPage from './ConnectionServiceDetailsPage';
 
 // ── Mock Data ─────────────────────────────────────────────────────────────
@@ -266,7 +270,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
       Menu: ({ children }: { children: React.ReactNode }) => (
         <div>{children}</div>
       ),
-      Item: ({ label }: { label: string }) => <div>{label}</div>,
+      Item: ({ label, onAction }: { label: string; onAction?: () => void }) => (
+        <button type="button" onClick={onAction}>
+          {label}
+        </button>
+      ),
     },
     Typography: ({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>
@@ -323,7 +331,11 @@ jest.mock('../../common/Loader/Loader', () => ({
 
 jest.mock('../../common/DeleteWidget/DeleteEntityModal', () => ({
   __esModule: true,
-  default: () => null,
+  default: ({ allowSoftDelete }: { allowSoftDelete?: boolean }) => (
+    <div data-testid="delete-modal">
+      {allowSoftDelete ? 'soft-and-hard-delete' : 'hard-delete-only'}
+    </div>
+  ),
 }));
 
 jest.mock(
@@ -331,9 +343,15 @@ jest.mock(
   () => ({ __esModule: true, default: () => null })
 );
 
+const mockTestConnection = jest.fn(
+  (_props: { renderFailureAction?: RenderTestConnectionFailureAction }) => null
+);
+
 jest.mock('../../common/TestConnection/TestConnection', () => ({
   __esModule: true,
-  default: () => null,
+  default: (props: {
+    renderFailureAction?: RenderTestConnectionFailureAction;
+  }) => mockTestConnection(props),
 }));
 
 jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => ({
@@ -949,6 +967,12 @@ describe('ConnectionServiceDetailsPage', () => {
 
     expect(screen.getByText('label.delete')).toBeInTheDocument();
     expect(screen.queryByText('label.restore')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.delete'));
+
+    expect(screen.getByTestId('delete-modal')).toHaveTextContent(
+      'soft-and-hard-delete'
+    );
   });
 
   describe('data assets fetch', () => {
@@ -1128,7 +1152,7 @@ describe('ConnectionServiceDetailsPage', () => {
       );
     });
 
-    it('offers restore instead of delete', async () => {
+    it('offers restore alongside delete', async () => {
       await renderDeleted();
 
       await waitFor(() =>
@@ -1137,7 +1161,21 @@ describe('ConnectionServiceDetailsPage', () => {
 
       // A soft delete is meant to be reversible; without restore the page is a dead end.
       expect(screen.getByText('label.restore')).toBeInTheDocument();
-      expect(screen.queryByText('label.delete')).not.toBeInTheDocument();
+      expect(screen.getByText('label.delete')).toBeInTheDocument();
+    });
+
+    it('offers only a permanent delete', async () => {
+      await renderDeleted();
+
+      await waitFor(() =>
+        expect(screen.getByTestId('deleted-badge')).toBeInTheDocument()
+      );
+
+      fireEvent.click(screen.getByText('label.delete'));
+
+      expect(screen.getByTestId('delete-modal')).toHaveTextContent(
+        'hard-delete-only'
+      );
     });
 
     it('has no deleted badge on a live service', async () => {
@@ -1332,6 +1370,62 @@ describe('ConnectionServiceDetailsPage', () => {
       expect(
         screen.queryByRole('button', { name: 'Trigger AutoPilot' })
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('SERVICE_DETAILS_TEST_CONNECTION_ACTIONS contributions', () => {
+    const getRenderFailureAction = () =>
+      mockTestConnection.mock.calls.at(-1)?.[0].renderFailureAction;
+
+    it('gives the test connection no failure action when no plugin contributes one', async () => {
+      mockTabParam = 'connection';
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() => {
+        expect(mockTestConnection).toHaveBeenCalled();
+      });
+
+      expect(getRenderFailureAction()).toBeUndefined();
+    });
+
+    it('renders the contributed action with the raw log, page context and close callback', async () => {
+      mockTabParam = 'connection';
+      const onClose = jest.fn();
+      contributionsByPoint[
+        EXTENSION_POINTS.SERVICE_DETAILS_TEST_CONNECTION_ACTIONS
+      ] = [
+        {
+          key: 'diagnose',
+          component: ({
+            failure,
+            onClose: close,
+            serviceDetails,
+          }: TestConnectionActionProps) => (
+            <button data-testid="diagnose-action" onClick={close}>
+              {`${serviceDetails?.name}: ${failure}`}
+            </button>
+          ),
+        },
+      ];
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() => {
+        expect(getRenderFailureAction()).toBeDefined();
+      });
+
+      render(<>{getRenderFailureAction()?.('Connection refused', onClose)}</>);
+      fireEvent.click(screen.getByTestId('diagnose-action'));
+
+      expect(screen.getByTestId('diagnose-action')).toHaveTextContent(
+        'test-service: Connection refused'
+      );
+      expect(onClose).toHaveBeenCalled();
     });
   });
 
