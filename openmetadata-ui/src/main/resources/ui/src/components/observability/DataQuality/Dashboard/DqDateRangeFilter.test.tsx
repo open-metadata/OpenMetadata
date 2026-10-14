@@ -19,18 +19,26 @@ type MockDateRangePickerProps = Pick<
   ComponentProps<
     typeof import('@openmetadata/ui-core-components').DateRangePicker
   >,
-  'value' | 'onApply' | 'onCancel' | 'onChange' | 'size' | 'fullWidth'
+  | 'value'
+  | 'onApply'
+  | 'onCancel'
+  | 'onChange'
+  | 'onOpenChange'
+  | 'size'
+  | 'fullWidth'
 >;
 
 // The core DateRangePicker speaks `@internationalized/date` values. We render a
 // minimal stand-in that exposes the staged `value` (as JSON) plus Apply/Cancel
-// triggers so we can assert the epoch-millis conversion done by the component.
+// and open/close triggers so we can assert the epoch-millis conversion and the
+// reset-on-close behaviour done by the component.
 jest.mock('@openmetadata/ui-core-components', () => ({
   DateRangePicker: ({
     value,
     onApply,
     onCancel,
     onChange,
+    onOpenChange,
     size,
     fullWidth,
   }: MockDateRangePickerProps) => (
@@ -49,6 +57,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
       <button data-testid="picker-clear" onClick={() => onChange?.(null)}>
         clear
+      </button>
+      <button data-testid="picker-open" onClick={() => onOpenChange?.(true)}>
+        open
+      </button>
+      <button data-testid="picker-close" onClick={() => onOpenChange?.(false)}>
+        close
       </button>
     </div>
   ),
@@ -166,6 +180,94 @@ describe('DqDateRangeFilter', () => {
     fireEvent.click(screen.getByTestId('picker-cancel'));
 
     expect(screen.getByTestId('picker-value')).not.toHaveTextContent('null');
+  });
+
+  it('should discard uncommitted selection on close (uncontrolled)', () => {
+    render(
+      <DqDateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
+    );
+
+    const committedValue = screen.getByTestId('picker-value').textContent ?? '';
+
+    expect(committedValue).not.toBe('null');
+
+    // Stage a departure from the committed range.
+    fireEvent.click(screen.getByTestId('picker-clear'));
+
+    expect(screen.getByTestId('picker-value')).toHaveTextContent('null');
+
+    // Close without Apply — abandoned selection should revert to committed.
+    fireEvent.click(screen.getByTestId('picker-close'));
+
+    expect(screen.getByTestId('picker-value')).toHaveTextContent(
+      committedValue
+    );
+  });
+
+  it('should forward onOpenChange and discard on close (controlled)', () => {
+    const onOpenChange = jest.fn();
+    render(
+      <DqDateRangeFilter
+        endTs={END_TS}
+        startTs={START_TS}
+        onApply={onApply}
+        onOpenChange={onOpenChange}
+      />
+    );
+
+    const committedValue = screen.getByTestId('picker-value').textContent ?? '';
+
+    // Opening is forwarded and does not reset the staged value.
+    fireEvent.click(screen.getByTestId('picker-open'));
+
+    expect(onOpenChange).toHaveBeenCalledWith(true);
+
+    // Stage a departure from the committed range.
+    fireEvent.click(screen.getByTestId('picker-clear'));
+
+    expect(screen.getByTestId('picker-value')).toHaveTextContent('null');
+
+    // Close is forwarded AND resets the abandoned selection.
+    fireEvent.click(screen.getByTestId('picker-close'));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(screen.getByTestId('picker-value')).toHaveTextContent(
+      committedValue
+    );
+  });
+
+  it('should keep the [isOpen] force-close reset for the controlled path', () => {
+    const { rerender } = render(
+      <DqDateRangeFilter
+        isOpen
+        endTs={END_TS}
+        startTs={START_TS}
+        onApply={onApply}
+      />
+    );
+
+    const committedValue = screen.getByTestId('picker-value').textContent ?? '';
+
+    // Stage a departure.
+    fireEvent.click(screen.getByTestId('picker-clear'));
+
+    expect(screen.getByTestId('picker-value')).toHaveTextContent('null');
+
+    // Single-open coordination force-closes by driving isOpen to false. react-aria
+    // would NOT emit onOpenChange for this externally-driven close, so the effect
+    // must still reset on its own.
+    rerender(
+      <DqDateRangeFilter
+        endTs={END_TS}
+        isOpen={false}
+        startTs={START_TS}
+        onApply={onApply}
+      />
+    );
+
+    expect(screen.getByTestId('picker-value')).toHaveTextContent(
+      committedValue
+    );
   });
 
   it('should leave the core trigger at its default size and width', () => {

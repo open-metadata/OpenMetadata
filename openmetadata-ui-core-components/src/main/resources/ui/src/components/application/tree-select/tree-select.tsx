@@ -60,8 +60,9 @@ import {
 const LOAD_MORE_SUFFIX = '__more';
 /** Row id of the root listing's load-more item. Null byte: no node can collide. */
 const ROOT_LOAD_MORE_ID = '\u0000root__more';
+
 /** `tw:w-80` on the chrome dropdown, needed before it renders to pick a side. */
-const DROPDOWN_CHROME_WIDTH = 320;
+export const DROPDOWN_CHROME_WIDTH = 320;
 /** Matches react-aria's default overlay `containerPadding`. */
 const VIEWPORT_PADDING = 12;
 
@@ -69,7 +70,7 @@ type DropdownPlacement = 'bottom left' | 'bottom right';
 
 // Left edge of the trigger, mirrored right when there is no room on screen.
 // Width is measured: `--trigger-width` is unset for a bare Popover + triggerRef.
-const useDropdownPlacement = (
+export const useDropdownPlacement = (
   triggerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
   width?: number
@@ -194,11 +195,18 @@ const collectSelectableNodes = <T,>(
 ): TreeSelectNode<T>[] => {
   const result: TreeSelectNode<T>[] = [];
   for (const node of nodes) {
-    if (node.allowSelection !== false) {
+    if (node.allowSelection !== false && !hasExclusiveChildren(node)) {
       result.push(node);
     }
     if (node.children) {
-      result.push(...collectSelectableNodes(node.children));
+      result.push(
+        ...collectSelectableNodes(
+          node.children.filter(
+            (child) =>
+              !child.isParentMutuallyExclusive && !hasExclusiveChildren(child)
+          )
+        )
+      );
     }
   }
 
@@ -243,6 +251,7 @@ export const TreeSelect = <T = unknown,>({
   showSelectAll = false,
   commitMode = 'immediate',
   offset,
+  placement,
   isOpen: controlledIsOpen,
   onOpenChange,
   renderTrigger,
@@ -286,7 +295,7 @@ export const TreeSelect = <T = unknown,>({
   // Button and custom triggers put search, width and footer in the dropdown.
   const usesDropdownChrome = isButtonVariant || isCustomTrigger;
   const isStaged = commitMode === 'staged';
-  const { placement, triggerWidth } = useDropdownPlacement(
+  const { placement: autoPlacement, triggerWidth } = useDropdownPlacement(
     triggerRef,
     isOpen,
     usesDropdownChrome ? DROPDOWN_CHROME_WIDTH : undefined
@@ -361,9 +370,12 @@ export const TreeSelect = <T = unknown,>({
     }
   }, [value, setSelection]);
 
-  // Resync the draft on open, including a programmatic one via `isOpen`.
+  // Resync on open, including a programmatic one via `isOpen`. Staged mode
+  // drops the draft; a controlled immediate picker drops an optimistic pick the
+  // parent never echoed back (its save failed), which `value` alone cannot
+  // signal because the rejected parent keeps passing the same reference.
   useEffect(() => {
-    if (isOpen && isStaged) {
+    if (isOpen && (isStaged || value !== undefined)) {
       setSelection(toArray(value));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -724,6 +736,7 @@ export const TreeSelect = <T = unknown,>({
       loadingNodes,
       disabled,
       multiple,
+      cascadeSelection,
       showCheckbox,
       showExpandIcon,
       showIcon,
@@ -932,7 +945,13 @@ export const TreeSelect = <T = unknown,>({
         </div>
       )}
       <div
-        className="tw:max-h-64 tw:overflow-y-auto tw:pl-[14px] tw:pr-1.5"
+        className={cx(
+          // With the row's 2px indent, a row's hover fill spans the search
+          // field's 12px inset on both sides.
+          'tw:max-h-64 tw:overflow-y-auto tw:pl-2.5 tw:pr-3',
+          // The staged footer brings its own top margin.
+          !showFooter && 'tw:pb-2'
+        )}
         onMouseDown={(event) => event.preventDefault()}>
         {loading ? (
           <div className="tw:flex tw:items-center tw:justify-center tw:gap-2 tw:px-4 tw:py-2 tw:text-xs tw:text-tertiary">
@@ -1012,7 +1031,7 @@ export const TreeSelect = <T = unknown,>({
       data-react-aria-top-layer="true"
       isOpen={isOpen}
       offset={offset}
-      placement={placement}
+      placement={placement ?? autoPlacement}
       // No DialogTrigger, so the pointerdown effect above owns dismissal.
       shouldCloseOnInteractOutside={() => false}
       // The input variant matches its trigger; measured, not `--trigger-width`.

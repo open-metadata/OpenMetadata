@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const ThumbsUp: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const ThumbsUp: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M7 22V11m-5 2v7a2 2 0 0 0 2 2h13.426a3 3 0 0 0 2.965-2.544l1.077-7A3 3 0 0 0 18.503 9H15a1 1 0 0 1-1-1V4.466A2.466 2.466 0 0 0 11.534 2a.82.82 0 0 0-.75.488l-3.52 7.918A1 1 0 0 1 6.35 11H4a2 2 0 0 0-2 2"
+      d="M5.833 18.333V9.167m-4.167 1.667v5.833a1.667 1.667 0 0 0 1.667 1.667h11.188a2.5 2.5 0 0 0 2.471-2.12l.898-5.833A2.5 2.5 0 0 0 15.419 7.5H12.5a.833.833 0 0 1-.833-.833V3.722a2.055 2.055 0 0 0-2.055-2.055.69.69 0 0 0-.625.407L6.054 8.672a.83.83 0 0 1-.762.495H3.333a1.667 1.667 0 0 0-1.667 1.667"
       stroke="currentColor"
       strokeWidth={1.3}
     />

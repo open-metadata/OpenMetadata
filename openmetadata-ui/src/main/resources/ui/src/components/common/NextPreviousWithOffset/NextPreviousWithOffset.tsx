@@ -16,7 +16,7 @@ import {
   ArrowRightOutlined,
   DownOutlined,
 } from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
+import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -70,46 +70,46 @@ const NextPreviousWithOffset = ({
   return (
     <div className="flex-center gap-3" data-testid="pagination">
       <Button
-        ghost
-        className="hover-button text-sm flex-center"
+        color="secondary-brand"
         data-testid="previous"
-        disabled={currentPage === 1 || isLoading}
-        icon={<ArrowLeftOutlined />}
-        type="primary"
+        iconLeading={<ArrowLeftOutlined />}
+        isDisabled={currentPage === 1 || isLoading}
         onClick={onPreviousHandler}>
-        <span>{t('label.previous')}</span>
+        <Typography>{t('label.previous')}</Typography>
       </Button>
-      <span data-testid="page-indicator">{`${currentPage}/${totalPages} ${t(
+      <Typography data-testid="page-indicator">{`${currentPage}/${totalPages} ${t(
         'label.page'
-      )}`}</span>
+      )}`}</Typography>
       <Button
-        ghost
-        className="hover-button text-sm flex-center"
+        color="secondary-brand"
         data-testid="next"
-        disabled={nextButtonDisabled || isLoading}
-        type="primary"
+        isDisabled={nextButtonDisabled || isLoading}
         onClick={onNextHandler}>
-        <span> {t('label.next')}</span>
+        <Typography> {t('label.next')}</Typography>
         <ArrowRightOutlined />
       </Button>
       {onShowSizeChange && (
-        <Dropdown
-          disabled={isLoading}
-          menu={{
-            items: pageSizeOptions.map((size) => ({
-              label: `${size} / ${t('label.page')}`,
-              value: size,
-              key: size,
-              onClick: () => onShowSizeChange(size),
-            })),
-          }}>
+        <Dropdown.Root>
           <Button
+            color="secondary"
             data-testid="page-size-change-button"
-            onClick={(e) => e.preventDefault()}>
+            iconTrailing={<DownOutlined />}
+            isDisabled={isLoading}>
             {`${pageSize} / ${t('label.page')}`}
-            <DownOutlined />
           </Button>
-        </Dropdown>
+          <Dropdown.Popover className="tw:w-auto">
+            <Dropdown.Menu
+              aria-label={t('label.size')}
+              selectionMode="none"
+              onAction={(key) => onShowSizeChange(Number(key))}>
+              {pageSizeOptions.map((size) => (
+                <Dropdown.Item id={String(size)} key={size}>
+                  {`${size} / ${t('label.page')}`}
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
       )}
     </div>
   );

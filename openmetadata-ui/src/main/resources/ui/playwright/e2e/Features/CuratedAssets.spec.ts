@@ -12,9 +12,8 @@
  */
 import { Page } from '@playwright/test';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { expect, test as base } from '../../support/fixtures/base';
+import { expect, test as base } from '../../support/fixtures/isolatedUser';
 import { PersonaClass } from '../../support/persona/PersonaClass';
-import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import { redirectToHomePage } from '../../utils/common';
@@ -39,7 +38,6 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 
-const adminUser = new UserClass();
 const persona = new PersonaClass();
 let knowledgePage: Awaited<ReturnType<typeof createArticleViaApi>>;
 
@@ -64,32 +62,36 @@ const entityTypeToTestEntity: Record<string, () => NameableEntityResponse> = {
   Topic: () => EntityDataClass.topic1.entityResponseData,
 };
 
+// The worker's isolated admin (created, signed in once and deleted by the
+// fixture) owns this file's persona, so no other test's account is touched.
 const test = base.extend<{ page: Page }>({
-  page: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await adminUser.signIn(page);
-    await use(page);
-    await page.close();
+  page: async ({ isolatedUserPage }, use) => {
+    // The fixture page starts blank; land on the app as signIn() used to, so
+    // helpers that read the session from the page find the token.
+    await redirectToHomePage(isolatedUserPage);
+    await use(isolatedUserPage);
   },
 });
 
-base.beforeAll('Setup pre-requests', async ({ browser }) => {
+test.use({ isolatedUserOptions: { isAdmin: true } });
+
+test.beforeAll(
+  'Setup pre-requests',
+  async ({ browser, isolatedUserSession }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    await persona.create(apiContext, [
+      isolatedUserSession.user.responseData.id,
+    ]);
+    knowledgePage = await createArticleViaApi(apiContext);
+
+    await afterAction();
+  }
+);
+
+test.afterAll('Cleanup', async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
 
-  // Create admin user and persona
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
-  await persona.create(apiContext, [adminUser.responseData.id]);
-  knowledgePage = await createArticleViaApi(apiContext);
-
-  await afterAction();
-});
-
-base.afterAll('Cleanup', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-
-  // Delete user and persona
-  await adminUser.delete(apiContext);
   await persona.delete(apiContext);
   await deleteArticleByFqn(apiContext, knowledgePage.fullyQualifiedName);
 
@@ -194,9 +196,7 @@ test.describe('Curated Assets Widget', () => {
       );
 
       await expect(
-        curatedAssetsWidget
-          .locator('.entity-list-item-title')
-          .filter({ hasText: entityDisplayName })
+        curatedAssetsWidget.getByTestId(`curated-asset-${entityDisplayName}`)
       ).toBeVisible();
 
       await redirectToHomePage(page);
@@ -222,9 +222,7 @@ test.describe('Curated Assets Widget', () => {
       );
 
       await expect(
-        curatedAssetsWidget
-          .locator('.entity-list-item-title')
-          .filter({ hasText: entityDisplayName })
+        curatedAssetsWidget.getByTestId(`curated-asset-${entityDisplayName}`)
       ).toBeVisible();
 
       await navigateToCustomizeLandingPage(page, {
@@ -255,7 +253,9 @@ test.describe('Curated Assets Widget', () => {
 
     await curatedAssetsWidget.getByText('Create').click();
 
-    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+    await expect(
+      page.getByTestId('curated-assets-modal-container')
+    ).toBeVisible();
 
     // Configure widget with ALL entity types
     // Fill widget name
@@ -292,7 +292,10 @@ test.describe('Curated Assets Widget', () => {
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.url().includes('index=all') &&
-        response.url().includes('true')
+        // The saved rule's clause, not an incidental `=true` parameter: the
+        // old widget always sent `fetch_source=true`, the card that replaced
+        // it sends no boolean parameter at all.
+        response.url().includes('%22deleted%22')
     );
 
     await page.locator('[data-testid="saveButton"]').click();
@@ -411,7 +414,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
@@ -520,7 +525,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Wait for auto-save to complete before navigating
@@ -536,7 +543,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
@@ -594,6 +603,10 @@ test.describe('Curated Assets Widget', () => {
       true
     );
 
+    // The owners MultiSelect keeps its popup open, and an open react-aria
+    // popup hides the rest of the dialog from the accessibility tree. Close it
+    // on the modal title (Escape would also dismiss the modal).
+    await page.getByTestId('curated-assets-modal-title').click();
     await page.getByRole('button', { name: 'Add New Field' }).click();
 
     // Switch first group to OR condition (AND is default)
@@ -664,7 +677,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Wait for auto-save to complete before navigating
@@ -680,7 +695,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
@@ -693,7 +710,13 @@ test.describe('Curated Assets Widget', () => {
     await saveCustomizeLayoutPage(page);
   });
 
-  test('Placeholder validation - widget not visible without configuration', async ({
+  // An unconfigured widget used to be dropped from the live page, because the
+  // old widget had nothing at all to render without a saved filter. The card
+  // that replaced it falls back to the built-in certified/Tier-1 rule, so an
+  // unconfigured widget is now a meaningful one -- it is in the default layout
+  // for exactly that reason. What must not leak to a reader is the editor-only
+  // "Create" prompt.
+  test('Unconfigured widget falls back to the built-in rule on the live page', async ({
     page,
   }) => {
     test.slow(true);
@@ -703,16 +726,35 @@ test.describe('Curated Assets Widget', () => {
       personaName: persona.responseData.name,
     });
 
-    // Save without creating any widget configuration
+    // Save without creating any widget configuration. Wait for the layout to
+    // persist before leaving: navigating away mid-request drops the save, and
+    // the live page then renders whatever layout the previous test left.
     await expect(page.locator('[data-testid="save-button"]')).toBeEnabled();
-
-    await page.locator('[data-testid="save-button"]').click();
+    await saveCustomizeLayoutPage(page);
 
     await redirectToHomePage(page);
 
-    // Verify placeholder is not visible when no widget is configured
+    const curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
+
     await expect(
-      page.locator('[data-testid="KnowledgePanel.CuratedAssets"]')
-    ).not.toBeVisible();
+      curatedAssetsWidget.getByTestId('widget-empty-state')
+    ).toBeHidden();
+    // Exact: the empty state below it reads "No assets match this rule yet".
+    await expect(
+      curatedAssetsWidget.getByText('Rule', { exact: true })
+    ).toBeVisible();
+
+    await navigateToCustomizeLandingPage(page, {
+      personaName: persona.responseData.name,
+    });
+
+    await removeAndCheckWidget(page, {
+      widgetKey: CURATED_ASSETS_WIDGET_KEY,
+    });
+
+    await saveCustomizeLayoutPage(page);
   });
 });

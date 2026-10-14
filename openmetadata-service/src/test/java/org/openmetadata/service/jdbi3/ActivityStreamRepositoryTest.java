@@ -16,17 +16,24 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import jakarta.ws.rs.core.SecurityContext;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -50,6 +57,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class ActivityStreamRepositoryTest {
 
@@ -73,7 +82,7 @@ class ActivityStreamRepositoryTest {
     ActivityStreamRepository repository = new ActivityStreamRepository(dao);
 
     ChangeEvent changeEvent = changeEventWith(/* userName */ null);
-    EntityInterface entity = tableEntity();
+    EntityInterface<?> entity = tableEntity();
 
     repository.createFromChangeEvent(changeEvent, entity);
 
@@ -91,7 +100,7 @@ class ActivityStreamRepositoryTest {
     ActivityStreamRepository repository = new ActivityStreamRepository(dao);
 
     ChangeEvent changeEvent = changeEventWith("ghost-user");
-    EntityInterface entity = tableEntity();
+    EntityInterface<?> entity = tableEntity();
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock
@@ -159,6 +168,55 @@ class ActivityStreamRepositoryTest {
     }
   }
 
+  // startTs, not now - days, is the DAO lower bound when supplied, so a window
+  // starting at the start of the day 30 days ago is fetched in full.
+  @Test
+  void listActivityEventsUsesStartTsAsLowerBoundWhenProvided() {
+    long startTs =
+        Instant.now().minus(30, ChronoUnit.DAYS).minus(2, ChronoUnit.HOURS).toEpochMilli();
+
+    assertEquals(startTs, listActivityLowerBound(startTs));
+  }
+
+  @Test
+  void listActivityEventsFallsBackToDaysWhenStartTsAbsent() {
+    assertNear(daysAgo(30), listActivityLowerBound(null));
+  }
+
+  @Test
+  void listActivityEventsFloorsStartTsAtThirtyOneDays() {
+    assertNear(daysAgo(31), listActivityLowerBound(0L));
+  }
+
+  private static long listActivityLowerBound(Long startTs) {
+    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
+    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(dao.list(anyLong(), eq(200))).thenReturn(List.of());
+
+    try (MockedStatic<DefaultAuthorizer> authMock = mockStatic(DefaultAuthorizer.class)) {
+      SubjectContext subject = mock(SubjectContext.class);
+      when(subject.isAdmin()).thenReturn(true);
+      authMock.when(() -> getSubjectContext(securityContext)).thenReturn(subject);
+
+      repository.listActivityEvents(
+          securityContext, null, null, null, null, null, 30, startTs, 200);
+    }
+
+    ArgumentCaptor<Long> after = ArgumentCaptor.forClass(Long.class);
+    verify(dao).list(after.capture(), eq(200));
+    return after.getValue();
+  }
+
+  private static long daysAgo(int days) {
+    return Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
+  }
+
+  // Bounds computed from Instant.now() drift by test runtime; a few seconds is plenty.
+  private static void assertNear(long expected, long actual) {
+    assertTrue(Math.abs(actual - expected) < 5_000, "expected ~" + expected + ", got " + actual);
+  }
+
   private static ChangeEvent changeEventWith(String userName) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
@@ -169,7 +227,7 @@ class ActivityStreamRepositoryTest {
         .withUserName(userName);
   }
 
-  private static EntityInterface tableEntity() {
+  private static EntityInterface<?> tableEntity() {
     return new Table().withId(UUID.randomUUID()).withFullyQualifiedName("svc.db.schema.table");
   }
 

@@ -113,7 +113,6 @@ from metadata.utils.helpers import (
     get_standard_chart_type,
 )
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -271,12 +270,11 @@ class TableauSource(DashboardServiceSource):
 
             _all_tags = tags.union(_data_models_tags)
 
-            yield from get_ometa_tag_and_classification(
+            yield from self.yield_tag_definitions(
                 tags=list(_all_tags),
                 classification_name=TABLEAU_TAG_CATEGORY,
                 tag_description="Tableau Tag",
                 classification_description="Tags associated with tableau entities",
-                include_tags=self.source_config.includeTags,
             )
 
     def _get_datamodel_sql_query(self, data_model: DataSource) -> str | None:
@@ -320,11 +318,10 @@ class TableauSource(DashboardServiceSource):
                 dataModelType=data_model_type.value,
                 serviceType=DashboardServiceType.Tableau.value,
                 columns=self.get_column_info(data_model),
-                tags=get_tag_labels(
-                    metadata=self.metadata,
+                tags=self.get_tag_labels(
+                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], "model", data_model.id),
                     tags=[tag.name for tag in data_model_tags],
                     classification_name=TABLEAU_TAG_CATEGORY,
-                    include_tags=self.source_config.includeTags,
                 ),
                 sql=self._get_datamodel_sql_query(data_model=data_model),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
@@ -400,11 +397,10 @@ class TableauSource(DashboardServiceSource):
                     )
                     for data_model in self.context.get().dataModels or []
                 ],
-                tags=get_tag_labels(
-                    metadata=self.metadata,
+                tags=self.get_tag_labels(
+                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.id),
                     tags=list(dashboard_details.tags),
                     classification_name=TABLEAU_TAG_CATEGORY,
-                    include_tags=self.source_config.includeTags,
                 ),
                 sourceUrl=SourceUrl(dashboard_url),
                 service=self.context.get().dashboard_service,
@@ -959,11 +955,10 @@ class TableauSource(DashboardServiceSource):
                     displayName=chart.name,
                     chartType=get_standard_chart_type(chart.sheetType),
                     sourceUrl=SourceUrl(chart_url),
-                    tags=get_tag_labels(
-                        metadata=self.metadata,
+                    tags=self.get_tag_labels(
+                        entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], chart.id),
                         tags=list(chart.tags),
                         classification_name=TABLEAU_TAG_CATEGORY,
-                        include_tags=self.source_config.includeTags,
                     ),
                     service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 )

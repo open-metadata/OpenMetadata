@@ -5,7 +5,7 @@
   "description": "This schema defines the EventSubscription entity. An Event Subscription has trigger, filters and Subscription",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.events.EventSubscription",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "argumentsInput": {
       "description": "Observability Filters for Event Subscription.",
@@ -122,6 +122,10 @@
         },
         "type": {
           "$ref": "#/definitions/subscriptionType"
+        },
+        "channel": {
+          "description": "Id of the registered channel that serves this destination, when it is not the one registered for its type. A save that names a channel not registered on the server is rejected.",
+          "type": "string"
         },
         "statusDetails": {
           "oneOf": [

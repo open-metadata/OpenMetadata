@@ -184,7 +184,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Close the dropdown', async () => {
-      await page.getByTestId('sample-data').click();
+      await page.keyboard.press('Escape');
       await expect(page.getByTestId('export-button')).not.toBeVisible();
     });
   });

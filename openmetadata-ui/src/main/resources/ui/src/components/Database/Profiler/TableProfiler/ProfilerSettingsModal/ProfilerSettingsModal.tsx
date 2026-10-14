@@ -13,19 +13,19 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import {
+  Box,
   Button,
-  Drawer,
-  Input,
-  InputNumber,
-  Select,
-  Space,
-  TreeSelect,
-} from 'antd';
+  Grid,
+  SlideoutMenu,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Input, InputNumber, Select, TreeSelect } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
-import { Col, Row } from 'antd/lib/grid';
+import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
@@ -36,10 +36,10 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../../../assets/svg/close.svg';
 import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
 import {
   DEFAULT_INCLUDE_PROFILE,
@@ -82,6 +82,10 @@ const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../SchemaEditor/SchemaEditor'))
 );
 
+// Legacy dropdowns must stay inside the modal's focus and accessibility boundary.
+const getPopupContainer = (triggerNode: HTMLElement) =>
+  triggerNode.parentElement ?? document.body;
+
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,
   columns,
@@ -90,6 +94,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm<ProfilerForm>();
+  // The include rows sit in a `h-max-40 overflow-y-auto` box once there are two
+  // or more, and a popup mounted inside it is clipped to 160px. Mount the row
+  // pickers on the include section instead: it is outside the clip box but
+  // still inside the drawer's scroll body, so the popup scrolls with its field.
+  const includeSectionRef = useRef<HTMLDivElement>(null);
+  const getIncludeRowPopupContainer = useCallback(
+    () => includeSectionRef.current ?? document.body,
+    []
+  );
 
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -475,18 +488,22 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const drawerFooter = (
     <div className="drawer-footer-actions">
-      <Space size={16}>
-        <Button type="link" onClick={handleCancel}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={4}
+        itemClassName="layout-space-item">
+        <Button color="secondary" onPress={handleCancel}>
           {t('label.cancel')}
         </Button>
         <Button
           form="profiler-setting-form"
-          htmlType="submit"
-          loading={isLoading}
-          type="primary">
+          isLoading={isLoading}
+          type="submit">
           {t('label.save')}
         </Button>
-      </Space>
+      </Box>
     </div>
   );
 
@@ -496,8 +513,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     </div>
   ) : (
     <div className="profiler-settings-drawer-content new-form-style">
-      <Row gutter={[16, 16]}>
-        <Col data-testid="profile-sample-container" span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(16, 16) }}>
+        <Grid.Item
+          className="layout-column"
+          data-testid="profile-sample-container"
+          span={24}>
           <Form<ProfilerForm>
             className="profiler-settings-form new-form-style"
             data-testid="configure-ingestion-container"
@@ -519,6 +541,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 autoFocus
                 className="w-full"
                 data-testid="profile-sample"
+                getPopupContainer={getPopupContainer}
                 options={PROFILE_SAMPLE_OPTIONS}
                 placeholder={t('label.please-select-entity', {
                   entity: t('label.profile-sample-type', {
@@ -575,8 +598,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               />
             </Form.Item>
           </Form>
-        </Col>
-        <Col data-testid="sql-editor-container" span={24}>
+        </Grid.Item>
+        <Grid.Item
+          className="layout-column"
+          data-testid="sql-editor-container"
+          span={24}>
           <p className="m-b-xs">
             {t('label.profile-sample-type', {
               type: t('label.query'),
@@ -591,8 +617,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             value={state?.sqlQuery ?? ''}
             onChange={handleCodeMirrorChange}
           />
-        </Col>
-        <Col data-testid="exclude-column-container" span={24}>
+        </Grid.Item>
+        <Grid.Item
+          className="layout-column"
+          data-testid="exclude-column-container"
+          span={24}>
           <Typography as="p">{t('message.enable-column-profile')}</Typography>
           <p className="text-xs m-b-xss">{t('label.exclude')}:</p>
           <Select
@@ -600,6 +629,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             className="w-full"
             data-testid="exclude-column-select"
             dropdownStyle={{ maxHeight: 200, overflowY: 'auto' }}
+            getPopupContainer={getPopupContainer}
             mode="multiple"
             options={columnOptions}
             placeholder={t('label.select-column-plural-to-exclude')}
@@ -607,9 +637,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             value={state?.excludeCol}
             onChange={handleExcludeCol}
           />
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <Form<ProfilerForm>
             autoComplete="off"
             className="new-form-style"
@@ -626,16 +656,20 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             onValuesChange={handleIncludeColumnsProfiler}>
             <List name="includeColumns">
               {(fields, { add, remove }) => (
-                <>
+                <Box
+                  className="tw:relative"
+                  data-testid="include-column-section"
+                  direction="col"
+                  ref={includeSectionRef}>
                   <div className="d-flex items-center m-b-xss">
                     <p className="w-form-label text-xs m-r-xs">
                       {`${t('label.include')}:`}
                     </p>
                     <Button
-                      className="include-columns-add-button flex-center"
-                      icon={<PlusOutlined />}
-                      size="small"
-                      type="primary"
+                      aria-label={t('label.add')}
+                      color="primary"
+                      iconLeading={<PlusOutlined />}
+                      size="xs"
                       onClick={() => add({ metrics: ['all'] })}
                     />
                   </div>
@@ -645,8 +679,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     })}
                     data-testid="include-column-container">
                     {fields.map(({ key, name, ...restField }) => (
-                      <Row gutter={16} key={key}>
-                        <Col span={12}>
+                      <Grid
+                        className="layout-row layout-grid"
+                        key={key}
+                        style={{ ...getLayoutGutter(16) }}>
+                        <Grid.Item className="layout-column" span={12}>
                           <Form.Item
                             className="w-full m-b-md"
                             {...restField}
@@ -656,6 +693,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               showSearch
                               className="w-full"
                               data-testid="include-column-select"
+                              getPopupContainer={getIncludeRowPopupContainer}
                               options={columnWithAllOption}
                               placeholder={t(
                                 'label.select-column-plural-to-include'
@@ -663,8 +701,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               size="middle"
                             />
                           </Form.Item>
-                        </Col>
-                        <Col className="flex" span={12}>
+                        </Grid.Item>
+                        <Grid.Item className="layout-column flex" span={12}>
                           <Form.Item
                             className="w-full m-b-md"
                             {...restField}
@@ -672,6 +710,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             <TreeSelect
                               treeCheckable
                               className="w-full"
+                              getPopupContainer={getIncludeRowPopupContainer}
                               maxTagCount={2}
                               placeholder={t('label.please-select')}
                               showCheckedStrategy="SHOW_PARENT"
@@ -679,27 +718,33 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             />
                           </Form.Item>
                           <Button
-                            className="delete-btn"
-                            icon={
+                            aria-label={t('label.remove')}
+                            color="tertiary"
+                            iconLeading={
                               <Icon
-                                className="align-middle"
                                 component={IconDelete}
                                 style={{ fontSize: '16px' }}
                               />
                             }
-                            type="text"
                             onClick={() => remove(name)}
                           />
-                        </Col>
-                      </Row>
+                        </Grid.Item>
+                      </Grid>
                     ))}
                   </div>
-                </>
+                </Box>
               )}
             </List>
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
-                <Space align="center" size={12}>
+            <Grid
+              className="layout-row layout-grid"
+              style={{ ...getLayoutGutter(16, 16) }}>
+              <Grid.Item className="layout-column" span={24}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={3}
+                  itemClassName="layout-space-item">
                   <p>{t('label.enable-partition')}</p>
                   <Form.Item className="m-b-0" name="enablePartitioning">
                     <Toggle
@@ -709,13 +754,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       onChange={handleEnablePartition}
                     />
                   </Form.Item>
-                </Space>
-              </Col>
-              <Col span={12}>
+                </Box>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={12}>
                 <Form.Item
                   className="m-b-0"
                   label={
-                    <span className="text-xs">{t('label.interval-type')}</span>
+                    <Typography size="text-xs">
+                      {t('label.interval-type')}
+                    </Typography>
                   }
                   labelCol={PROFILER_MODAL_LABEL_STYLE}
                   name="partitionIntervalType"
@@ -732,21 +779,22 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     className="w-full"
                     data-testid="interval-type"
                     disabled={!state?.enablePartition}
+                    getPopupContainer={getPopupContainer}
                     options={INTERVAL_TYPE_OPTIONS}
                     placeholder={t('message.select-interval-type')}
                     size="middle"
                   />
                 </Form.Item>
-              </Col>
-              <Col span={12}>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={12}>
                 <Form.Item
                   className="m-b-0"
                   label={
-                    <span className="text-xs">
+                    <Typography size="text-xs">
                       {t('label.column-entity', {
                         entity: t('label.name'),
                       })}
-                    </span>
+                    </Typography>
                   }
                   labelCol={PROFILER_MODAL_LABEL_STYLE}
                   name="partitionColumnName"
@@ -766,20 +814,23 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     className="w-full"
                     data-testid="column-name"
                     disabled={!state?.enablePartition}
+                    getPopupContainer={getPopupContainer}
                     options={partitionColumnOptions}
                     placeholder={t('message.select-column-name')}
                     size="middle"
                   />
                 </Form.Item>
-              </Col>
+              </Grid.Item>
               {partitionIntervalType &&
               TIME_BASED_PARTITION.includes(partitionIntervalType) ? (
                 <>
-                  <Col span={12}>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       className="m-b-0"
                       label={
-                        <span className="text-xs">{t('label.interval')}</span>
+                        <Typography size="text-xs">
+                          {t('label.interval')}
+                        </Typography>
                       }
                       labelCol={PROFILER_MODAL_LABEL_STYLE}
                       name="partitionInterval"
@@ -799,14 +850,14 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         size="middle"
                       />
                     </Form.Item>
-                  </Col>
-                  <Col span={12}>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       className="m-b-0"
                       label={
-                        <span className="text-xs">
+                        <Typography size="text-xs">
                           {t('label.interval-unit')}
-                        </span>
+                        </Typography>
                       }
                       labelCol={PROFILER_MODAL_LABEL_STYLE}
                       name="partitionIntervalUnit"
@@ -823,25 +874,26 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         className="w-full"
                         data-testid="select-interval-unit"
                         disabled={!state?.enablePartition}
+                        getPopupContainer={getPopupContainer}
                         options={INTERVAL_UNIT_OPTIONS}
                         placeholder={t('message.select-interval-unit')}
                         size="middle"
                       />
                     </Form.Item>
-                  </Col>
+                  </Grid.Item>
                 </>
               ) : null}
               {PartitionIntervalTypes.IntegerRange === partitionIntervalType ? (
                 <>
-                  <Col span={12}>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       className="m-b-0"
                       label={
-                        <span className="text-xs">
+                        <Typography size="text-xs">
                           {t('label.start-entity', {
                             entity: t('label.range'),
                           })}
-                        </span>
+                        </Typography>
                       }
                       labelCol={PROFILER_MODAL_LABEL_STYLE}
                       name="partitionIntegerRangeStart"
@@ -867,16 +919,16 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         size="middle"
                       />
                     </Form.Item>
-                  </Col>
-                  <Col span={12}>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       className="m-b-0"
                       label={
-                        <span className="text-xs">
+                        <Typography size="text-xs">
                           {t('label.end-entity', {
                             entity: t('label.range'),
                           })}
-                        </span>
+                        </Typography>
                       }
                       labelCol={PROFILER_MODAL_LABEL_STYLE}
                       name="partitionIntegerRangeEnd"
@@ -902,12 +954,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         size="middle"
                       />
                     </Form.Item>
-                  </Col>
+                  </Grid.Item>
                 </>
               ) : null}
 
               {PartitionIntervalTypes.ColumnValue === partitionIntervalType ? (
-                <Col span={24}>
+                <Grid.Item className="layout-column" span={24}>
                   <List name="partitionValues">
                     {(fields, { add, remove }) => (
                       <>
@@ -916,17 +968,20 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             {`${t('label.value')}:`}
                           </p>
                           <Button
-                            className="include-columns-add-button flex-center"
-                            icon={<PlusOutlined />}
-                            size="small"
-                            type="primary"
+                            aria-label={t('label.add')}
+                            color="primary"
+                            iconLeading={<PlusOutlined />}
+                            size="xs"
                             onClick={() => add()}
                           />
                         </div>
 
                         {fields.map(({ key, name, ...restField }) => (
-                          <Row gutter={16} key={key}>
-                            <Col className="flex" span={24}>
+                          <Grid
+                            className="layout-row layout-grid"
+                            key={key}
+                            style={{ ...getLayoutGutter(16) }}>
+                            <Grid.Item className="layout-column flex" span={24}>
                               <Form.Item
                                 className="w-full m-b-md"
                                 {...restField}
@@ -952,55 +1007,52 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 />
                               </Form.Item>
                               <Button
-                                className="delete-btn"
-                                icon={
+                                aria-label={t('label.remove')}
+                                color="tertiary"
+                                iconLeading={
                                   <Icon
-                                    className="align-middle"
                                     component={IconDelete}
                                     style={{ fontSize: '16px' }}
                                   />
                                 }
-                                type="text"
                                 onClick={() => remove(name)}
                               />
-                            </Col>
-                          </Row>
+                            </Grid.Item>
+                          </Grid>
                         ))}
                       </>
                     )}
                   </List>
-                </Col>
+                </Grid.Item>
               ) : null}
-            </Row>
+            </Grid>
           </Form>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </div>
   );
 
   return (
-    <Drawer
-      destroyOnClose
-      className="custom-drawer-style profiler-settings-drawer"
-      closable={false}
+    <SlideoutMenu
+      aria-label={t('label.setting-plural')}
+      // Keep the overlay above positioned chart labels without covering form popovers.
+      className="profiler-settings-drawer tw:min-w-96 tw:z-50"
       data-testid="profiler-settings-modal"
-      extra={
-        <Button
-          className="drawer-close-icon flex-center"
-          icon={<CloseIcon />}
-          type="link"
-          onClick={handleCancel}
-        />
-      }
-      footer={drawerFooter}
-      maskClosable={false}
-      open={visible}
-      placement="right"
-      title={t('label.setting-plural')}
+      dialogClassName="tw:gap-0"
+      isDismissable={false}
+      isOpen={visible}
       width="40%"
-      onClose={handleCancel}>
-      {renderContent}
-    </Drawer>
+      onOpenChange={(isOpen) => !isOpen && handleCancel()}>
+      <SlideoutMenu.Header onClose={handleCancel}>
+        <Typography size="text-md" weight="semibold">
+          {t('label.setting-plural')}
+        </Typography>
+      </SlideoutMenu.Header>
+      <SlideoutMenu.Content className="tw:py-6">
+        {renderContent}
+      </SlideoutMenu.Content>
+      <SlideoutMenu.Footer>{drawerFooter}</SlideoutMenu.Footer>
+    </SlideoutMenu>
   );
 };
 

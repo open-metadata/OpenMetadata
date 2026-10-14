@@ -235,71 +235,84 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     );
   });
 
-  it('filters by selected statuses while retaining author and sort controls', async () => {
-    mockGetResourcePermission.mockResolvedValue({ EditAll: true });
-    renderPage();
+  it.each([
+    ['label.rejected', 'Rejected'],
+    ['label.superseded', 'Superseded'],
+    ['label.invalidated', 'Invalidated'],
+  ])(
+    'filters by %s while retaining author and sort controls',
+    async (label, status) => {
+      mockGetResourcePermission.mockResolvedValue({ EditAll: true });
+      renderPage();
 
-    await waitFor(() => {
-      expect(getListContextMemories).toHaveBeenCalledWith(
-        expect.objectContaining({ statuses: 'Approved', offset: 0 })
-      );
-    });
+      await waitFor(() => {
+        expect(getListContextMemories).toHaveBeenCalledWith(
+          expect.objectContaining({
+            statuses: 'Approved,Unprocessed',
+            offset: 0,
+          })
+        );
+      });
 
-    fireEvent.click(screen.getByTestId('memory-status-filter'));
-    fireEvent.click(await screen.findByText('label.rejected'));
+      fireEvent.click(screen.getByTestId('memory-status-filter'));
+      fireEvent.click(await screen.findByText(label));
 
-    await waitFor(() => {
-      expect(getListContextMemories).toHaveBeenCalledWith(
-        expect.objectContaining({ statuses: 'Approved,Rejected', offset: 0 })
-      );
-      expect(getListContextMemories).toHaveBeenCalledWith(
-        expect.objectContaining({
-          statuses: 'Approved,Rejected',
-          limit: 0,
-          offset: 0,
-        })
-      );
-    });
+      await waitFor(() => {
+        expect(getListContextMemories).toHaveBeenCalledWith(
+          expect.objectContaining({
+            statuses: `Approved,Unprocessed,${status}`,
+            offset: 0,
+          })
+        );
+        expect(getListContextMemories).toHaveBeenCalledWith(
+          expect.objectContaining({
+            statuses: `Approved,Unprocessed,${status}`,
+            limit: 0,
+            offset: 0,
+          })
+        );
+      });
 
-    fireEvent.click(screen.getByTestId('memory-count-card-created-by-me'));
-    await waitFor(() => {
-      expect(getListContextMemories).toHaveBeenCalledWith(
-        expect.objectContaining({
-          statuses: 'Approved,Rejected',
-          author: 'user-1',
-        })
-      );
-    });
+      fireEvent.click(screen.getByTestId('memory-count-card-created-by-me'));
+      await waitFor(() => {
+        expect(getListContextMemories).toHaveBeenCalledWith(
+          expect.objectContaining({
+            statuses: `Approved,Unprocessed,${status}`,
+            author: 'user-1',
+          })
+        );
+      });
 
-    fireEvent.change(screen.getByTestId('memory-search'), {
-      target: { value: 'missing glossary fact' },
-    });
-    fireEvent.click(screen.getByTestId('mock-asset-select'));
-    await waitFor(() => {
-      expect(getListContextMemories).toHaveBeenCalledWith(
-        expect.objectContaining({
-          statuses: 'Approved,Rejected',
-          q: 'missing glossary fact',
-          assets: 'asset-1',
-          author: 'user-1',
-        })
-      );
-    });
+      fireEvent.change(screen.getByTestId('memory-search'), {
+        target: { value: 'missing glossary fact' },
+      });
+      fireEvent.click(screen.getByTestId('mock-asset-select'));
+      await waitFor(() => {
+        expect(getListContextMemories).toHaveBeenCalledWith(
+          expect.objectContaining({
+            statuses: `Approved,Unprocessed,${status}`,
+            q: 'missing glossary fact',
+            assets: 'asset-1',
+            author: 'user-1',
+          })
+        );
+      });
 
-    fireEvent.click(screen.getByText(/label.sort/));
-    fireEvent.click(await screen.findByText('label.most-used'));
-    await waitFor(() => {
-      expect(getListContextMemories).toHaveBeenCalledWith(
-        expect.objectContaining({
-          statuses: 'Approved,Rejected',
-          q: 'missing glossary fact',
-          assets: 'asset-1',
-          author: 'user-1',
-          sortBy: 'usageCount',
-        })
-      );
-    });
-  });
+      fireEvent.click(screen.getByText(/label.sort/));
+      fireEvent.click(await screen.findByText('label.most-used'));
+      await waitFor(() => {
+        expect(getListContextMemories).toHaveBeenCalledWith(
+          expect.objectContaining({
+            statuses: `Approved,Unprocessed,${status}`,
+            q: 'missing glossary fact',
+            assets: 'asset-1',
+            author: 'user-1',
+            sortBy: 'usageCount',
+          })
+        );
+      });
+    }
+  );
 
   it('combines the author dropdown with selected statuses', async () => {
     mockGetResourcePermission.mockResolvedValue({ EditAll: true });
@@ -326,11 +339,49 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Rejected',
+          statuses: 'Approved,Unprocessed,Rejected',
           author: 'other-user',
         })
       );
     });
+  });
+
+  it('keeps the typed author results when the menu-open search resolves after them', async () => {
+    mockGetResourcePermission.mockResolvedValue({ EditAll: true });
+    const authorHits = (name: string, displayName: string) =>
+      ({
+        data: {
+          hits: { hits: [{ _id: name, _source: { name, displayName } }] },
+        },
+      } as Awaited<ReturnType<typeof getUserAndTeamSearch>>);
+    const menuOpenSearches: Array<(value: unknown) => void> = [];
+    (getUserAndTeamSearch as jest.Mock).mockImplementation((query: string) =>
+      query
+        ? Promise.resolve(authorHits('typed-user', 'Typed User'))
+        : new Promise((resolve) => {
+            menuOpenSearches.push(resolve);
+          })
+    );
+    renderPage();
+
+    fireEvent.click(screen.getByTestId('author-filter-button'));
+    fireEvent.change(
+      await screen.findByPlaceholderText('label.search-entity'),
+      {
+        target: { value: 'typed' },
+      }
+    );
+
+    expect(await screen.findByText('Typed User')).toBeInTheDocument();
+
+    await act(async () => {
+      menuOpenSearches.forEach((resolve) =>
+        resolve(authorHits('other-user', 'Other User'))
+      );
+    });
+
+    expect(screen.getByText('Typed User')).toBeInTheDocument();
+    expect(screen.queryByText('Other User')).not.toBeInTheDocument();
   });
 });
 

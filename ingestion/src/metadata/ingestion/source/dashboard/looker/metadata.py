@@ -120,6 +120,7 @@ from metadata.ingestion.source.dashboard.looker.measures import (
     build_metric_request,
     candidates_from_explore,
     candidates_from_view,
+    looker_metric_name,
     merge_candidates,
     order_parents_first,
     related_metric_names,
@@ -147,7 +148,6 @@ from metadata.utils.filters import (
 )
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -654,11 +654,12 @@ class LookerSource(DashboardServiceSource):
                     displayName=view.name,
                     description=(Markdown(view.description) if view.description else None),
                     service=self.context.get().dashboard_service,
-                    tags=get_tag_labels(
-                        metadata=self.metadata,
+                    tags=self.get_tag_labels(
+                        entity_fqn=fqn._build(
+                            vars(self.context.get())["dashboard_service"], "model", datamodel_view_name
+                        ),
                         tags=view.tags or [],
                         classification_name=LOOKER_TAG_CATEGORY,
-                        include_tags=self.source_config.includeTags,
                     ),
                     dataModelType=DataModelType.LookMlView.value,
                     serviceType=DashboardServiceType.Looker.value,
@@ -719,12 +720,11 @@ class LookerSource(DashboardServiceSource):
         Method to yield tags related to specific dashboards
         """
         if tags and self.source_config.includeTags:
-            yield from get_ometa_tag_and_classification(
+            yield from self.yield_tag_definitions(
                 tags=tags or [],
                 classification_name=LOOKER_TAG_CATEGORY,
                 tag_description="Looker Tag",
                 classification_description="Tags associated with looker entities",
-                include_tags=self.source_config.includeTags,
             )
 
     def yield_bulk_datamodel(self, model: LookmlModelExplore) -> Iterable[Either[CreateDashboardDataModelRequest]]:
@@ -751,11 +751,10 @@ class LookerSource(DashboardServiceSource):
                     displayName=model.name,
                     description=(Markdown(model.description) if model.description else None),
                     service=self.context.get().dashboard_service,
-                    tags=get_tag_labels(
-                        metadata=self.metadata,
+                    tags=self.get_tag_labels(
+                        entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], "model", datamodel_name),
                         tags=model.tags or [],
                         classification_name=LOOKER_TAG_CATEGORY,
-                        include_tags=self.source_config.includeTags,
                     ),
                     dataModelType=DataModelType.LookMlExplore.value,
                     serviceType=DashboardServiceType.Looker.value,
@@ -970,11 +969,12 @@ class LookerSource(DashboardServiceSource):
                     candidate,
                     assets=self._metric_assets(candidate),
                     related_metrics=related,
-                    tag_labels=get_tag_labels(
-                        metadata=self.metadata,
+                    tag_labels=self.get_tag_labels(
+                        entity_fqn=fqn.quote_name(
+                            looker_metric_name(service, candidate.project, candidate.view, candidate.name)
+                        ),
                         tags=candidate.tags,
                         classification_name=LOOKER_TAG_CATEGORY,
-                        include_tags=self.source_config.includeTags,  # pyright: ignore[reportArgumentType]
                     ),
                 )
                 yield Either(right=metric_request)  # pyright: ignore[reportCallIssue]
@@ -1095,11 +1095,12 @@ class LookerSource(DashboardServiceSource):
                     displayName=view.name,
                     description=(Markdown(view.description) if view.description else None),
                     service=self.context.get().dashboard_service,
-                    tags=get_tag_labels(
-                        metadata=self.metadata,
+                    tags=self.get_tag_labels(
+                        entity_fqn=fqn._build(
+                            vars(self.context.get())["dashboard_service"], "model", datamodel_view_name
+                        ),
                         tags=view.tags or [],
                         classification_name=LOOKER_TAG_CATEGORY,
-                        include_tags=self.source_config.includeTags,
                     ),
                     dataModelType=DataModelType.LookMlView.value,
                     serviceType=DashboardServiceType.Looker.value,
