@@ -62,10 +62,10 @@ export interface Neo4JConnection {
 }
 
 /**
- * Regex to only fetch entities that matches the pattern.
- *
  * Regex to only include/exclude node and relationship properties (columns) that match the
  * pattern, e.g. properties written back by graph algorithms.
+ *
+ * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern.
  *

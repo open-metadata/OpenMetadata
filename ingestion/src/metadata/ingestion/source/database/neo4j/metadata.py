@@ -150,7 +150,7 @@ class Neo4jSource(CommonNoSQLSource):
         columns = []
         for prop in element.properties:
             if filter_by_column(self.service_connection.propertyFilterPattern, prop.name):
-                logger.debug(f"Property [{schema_name}.{table_name}.{prop.name}] filtered out")
+                logger.debug("Property [%s.%s.%s] filtered out", schema_name, table_name, prop.name)
                 continue
             columns.append(property_to_column(prop))
         return columns
