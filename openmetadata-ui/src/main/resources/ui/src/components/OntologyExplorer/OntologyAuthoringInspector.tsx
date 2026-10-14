@@ -274,6 +274,10 @@ const OntologyAuthoringInspector = ({
     setMappingIri('');
   }, [node.id]);
 
+  useEffect(() => {
+    setAssetTotal(node.assetCount ?? 0);
+  }, [node.id, node.assetCount]);
+
   const relationTypeMap = useMemo(
     () =>
       new Map(
