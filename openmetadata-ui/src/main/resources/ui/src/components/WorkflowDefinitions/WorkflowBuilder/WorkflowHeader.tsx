@@ -29,9 +29,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { WorkflowHeaderProps } from '../../../interface/workflow-builder-components.interface';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { WorkflowControls } from './WorkflowControls';
 
 const getInitialDisplayName = (title?: string) => title ?? '';
