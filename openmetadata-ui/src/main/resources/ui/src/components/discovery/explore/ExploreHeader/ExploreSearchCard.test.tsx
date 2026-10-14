@@ -315,7 +315,7 @@ describe('ExploreSearchCard', () => {
     );
   });
 
-  it('centers the search and filters in a constrained column beside the Explore information', () => {
+  it('lets the search and filters fill the space beside the Explore information', () => {
     render(<ExploreSearchCard />);
 
     const headerLayout = screen.getByTestId('explore-header-layout');
@@ -339,10 +339,9 @@ describe('ExploreSearchCard', () => {
       'tw:w-full',
       'tw:min-w-0',
       'tw:flex-1',
-      'tw:max-w-4xl',
-      'tw:mx-auto',
       'tw:px-12'
     );
+    expect(searchActions).not.toHaveClass('tw:max-w-4xl');
     expect(screen.getByTestId('explore-search-form')).toHaveClass('tw:w-full');
   });
 
