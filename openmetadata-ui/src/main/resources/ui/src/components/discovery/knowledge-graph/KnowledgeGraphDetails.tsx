@@ -12,11 +12,11 @@
  */
 
 import {
-  Box,
-  Button,
-  Input,
-  Tabs,
-  Typography,
+    Box,
+    Button,
+    Input,
+    Tabs,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -32,16 +32,16 @@ import Fqn from '../../../utils/Fqn';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import {
-  GraphData,
-  GraphNode,
-  KnowledgeGraphDrawer,
-  KnowledgeGraphMode,
-  MappingCoverage,
+    GraphData,
+    GraphNode,
+    KnowledgeGraphDrawer,
+    KnowledgeGraphMode,
+    MappingCoverage
 } from './KnowledgeGraph.interface';
 import {
-  getRelationStyle,
-  RelationCategory,
-  RELATION_CATEGORIES,
+    getRelationStyle,
+    RelationCategory,
+    RELATION_CATEGORIES
 } from './KnowledgeGraph.relations';
 
 interface DetailsProps {
@@ -351,11 +351,13 @@ const KnowledgeGraphDetails = ({
           t('label.kg-suggested-fix'),
         ],
         hint: t('message.kg-coverage-scope'),
-        // Gaps surfaces actionable rows only — mapped assets are already fine
-        // and don't belong here. The Columns tab still shows the full set.
+        // Gaps surfaces actionable rows only (unmapped) so the row count
+        // matches the Gaps badge in the footer (also unmapped-only). "Not
+        // explored" items aren't missing data — they sit outside the current
+        // traversal depth and are seen by bumping the level, not from here.
         rows: data.nodes
           .filter(isCoverageNode)
-          .filter((node) => coverage.get(node.id) !== 'mapped')
+          .filter((node) => coverage.get(node.id) === 'unmapped')
           .map((node) => {
             const status = coverage.get(node.id) ?? UNKNOWN;
 
@@ -641,10 +643,13 @@ const KnowledgeGraphDetails = ({
           {view.showFilters && drawer !== 'coverage' && (
             <Box
               align="center"
-              className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-3.5 tw:py-1.5"
+              className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-3.5 tw:py-1"
               wrap="wrap">
               <Tabs
-                className="tw:w-fit"
+                // Tabs core doesn't ship an `xs` size, so trim the sm padding
+                // and text size via class override to match the designer's
+                // compact chip row (two-line drawer).
+                className="tw:w-fit tw:[&_[role=tab]]:px-2 tw:[&_[role=tab]]:py-1 tw:[&_[role=tab]]:text-xs"
                 selectedKey={filter}
                 onSelectionChange={(key) => {
                   setFilter(String(key));
