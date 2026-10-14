@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { TestCaseStatus } from '../../../../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { useDataQualitySummary } from '../../../../hooks/useDataQualitySummary';
 import { FilterButtonOption } from '../Common/TopicWidget/FilterButton';
@@ -91,13 +91,15 @@ jest.mock('../Common/TopicWidget/FilterButton', () => ({
   ),
 }));
 
-const failingTest = (index: number) => ({
-  entityLink: `<#E::table::svc.db.schema.orders_${index}>`,
-  fullyQualifiedName: `svc.db.schema.orders_${index}.null_check #${index}`,
-  id: `test-${index}`,
-  name: `null_check_${index}`,
-  testCaseResult: { testCaseStatus: TestCaseStatus.Failed },
-});
+// Only the fields the card reads; the rest of a TestCase is irrelevant here.
+const failingTest = (index: number): TestCase =>
+  ({
+    entityLink: `<#E::table::svc.db.schema.orders_${index}>`,
+    fullyQualifiedName: `svc.db.schema.orders_${index}.null_check #${index}`,
+    id: `test-${index}`,
+    name: `null_check_${index}`,
+    testCaseResult: { testCaseStatus: TestCaseStatus.Failed, timestamp: 1 },
+  } as TestCase);
 
 const SUMMARY = {
   aborted: 1,
@@ -139,7 +141,10 @@ describe('DataQualityWidget', () => {
         {
           ...failingTest(1),
           entityLink: '<#E::table::svc.db.schema.orders_0::columns::id>',
-          testCaseResult: { testCaseStatus: TestCaseStatus.Success },
+          testCaseResult: {
+            testCaseStatus: TestCaseStatus.Success,
+            timestamp: 1,
+          },
         },
       ],
     });
@@ -192,7 +197,10 @@ describe('DataQualityWidget', () => {
       tests: [
         {
           ...failingTest(0),
-          testCaseResult: { testCaseStatus: TestCaseStatus.Aborted },
+          testCaseResult: {
+            testCaseStatus: TestCaseStatus.Aborted,
+            timestamp: 1,
+          },
         },
       ],
     });
