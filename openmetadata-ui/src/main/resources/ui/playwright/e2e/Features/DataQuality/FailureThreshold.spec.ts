@@ -13,7 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
-import { expect, test } from '../../../support/fixtures/base';
+import { fillCodeEditor } from '../../../utils/codeEditor';
 import {
   createNewPage,
   getApiContext,
@@ -22,23 +22,24 @@ import {
   uuid,
 } from '../../../utils/common';
 import {
+  clickEditTestCaseButton,
   selectTestType,
   visitCreateTestCasePanelFromEntityPage,
 } from '../../../utils/dataQuality';
 import {
   openTestCaseDetailsPage,
   submitTestCaseForm,
+  visitDataQualityTab,
 } from '../../../utils/testCases';
+import { expect, test } from '../../fixtures/pages';
 import { enableAiAppMode } from '../../Utils/appMode';
-
-test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const NULL_ROWS = 3;
 const EVALUATED_ROWS = 100;
 const RELATIVE_THRESHOLD = 5;
 
-// What ingestion reports for a column with 3 nulls in 100 rows. Both test cases
-// see the same rows; only the threshold they are judged by differs.
+// Seed verdicts to exercise persistence and presentation; this does not run
+// ingestion or verify the threshold evaluation algorithm.
 const seedNotNullResult = async (
   apiContext: APIRequestContext,
   table: TableClass,
@@ -82,8 +83,8 @@ const expectRunDetails = async (
 /**
  * Data Quality failure thresholds
  * @description Covers the `threshold` / `thresholdUnit` parameters end to end in the UI: enum
- * parameters read as sentences in the test case form, and a relative threshold turns the same
- * failing rows into a passing run.
+ * parameters read as sentences and round-trip through the test case form, and seeded strict
+ * and relative results display their configured thresholds alongside the reported verdicts.
  */
 test.describe(
   'Data Quality failure thresholds',
@@ -94,14 +95,20 @@ test.describe(
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
       table = new TableClass();
-      await table.create(apiContext);
-      await afterAction();
+      try {
+        await table.create(apiContext);
+      } finally {
+        await afterAction();
+      }
     });
 
     test.afterAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
-      await table.delete(apiContext);
-      await afterAction();
+      try {
+        await table.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
     });
 
     test.beforeEach(async ({ page }) => {
@@ -116,12 +123,23 @@ test.describe(
      * 1. Open the table-level form and pick Custom SQL Query.
      * 2. Open Operator: every option is a sentence and no comparison symbol is shown.
      * 3. Pick "at least", a percentage unit and a threshold; the preview reads as a sentence.
+     * 4. Save and reopen the test; the stored enums and restored sentence labels match.
      */
     test('Enum parameters render as sentences, not raw values', async ({
       page,
     }) => {
+      const testCaseName = `pw_threshold_sql_${uuid()}`;
       await visitCreateTestCasePanelFromEntityPage(page, table);
+      await page
+        .getByTestId('test-case-name')
+        .locator('input')
+        .fill(testCaseName);
       await selectTestType(page, 'Custom SQL Query');
+      await fillCodeEditor(
+        page,
+        page.getByTestId('code-mirror-container'),
+        `SELECT * FROM ${table.entity.name}`
+      );
 
       const operator = page.locator('#testCaseFormV1_params_operator');
 
@@ -143,9 +161,10 @@ test.describe(
         }
         await expect(listbox).not.toContainText(/[<>]|==|!=/);
 
-        await listbox
-          .getByRole('option', { name: 'at least', exact: true })
-          .click();
+        await selectOptionWithRetry(
+          operator,
+          listbox.getByRole('option', { name: 'at least', exact: true })
+        );
 
         await expect(listbox).toBeHidden();
         await expect(operator).toContainText('at least');
@@ -162,9 +181,10 @@ test.describe(
         ).toBeVisible();
         await expect(listbox).not.toContainText(/ABSOLUTE|PERCENTAGE/);
 
-        await listbox
-          .getByRole('option', { name: '% of table rows', exact: true })
-          .click();
+        await selectOptionWithRetry(
+          unit,
+          listbox.getByRole('option', { name: '% of table rows', exact: true })
+        );
 
         await expect(unit).toContainText('% of table rows');
         await expect(unit).not.toContainText('PERCENTAGE');
@@ -177,21 +197,52 @@ test.describe(
           'Pass when the query returns at least 10% of table rows.'
         );
       });
+
+      await test.step('Saved enums restore their sentence labels', async () => {
+        const response = await submitTestCaseForm(page);
+        const created = await response.json();
+
+        expect(created.parameterValues).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ name: 'operator', value: '>=' }),
+            expect.objectContaining({
+              name: 'thresholdUnit',
+              value: 'PERCENTAGE',
+            }),
+            expect.objectContaining({ name: 'threshold', value: '10' }),
+          ])
+        );
+
+        await visitDataQualityTab(page, table);
+        await clickEditTestCaseButton(page, testCaseName);
+
+        await expect(operator).toContainText('at least');
+        await expect(operator).not.toContainText('>=');
+        const unit = page.locator('#testCaseFormV1_params_thresholdUnit');
+        await expect(unit).toContainText('% of table rows');
+        await expect(unit).not.toContainText('PERCENTAGE');
+        await expect(
+          page.locator('#testCaseFormV1_params_threshold')
+        ).toHaveValue('10');
+        await expect(page.getByTestId('threshold-preview-sentence')).toHaveText(
+          'Pass when the query returns at least 10% of table rows.'
+        );
+      });
     });
 
     /**
-     * Relative threshold passes where the strict test fails
+     * Seeded strict and relative results display their thresholds
      * @description A `columnValuesToBeNotNull` test with a 5% threshold is created through the form
-     * next to a strict one on the same column. Both are given the run ingestion reports for 3 nulls
-     * in 100 rows: the strict test fails, the relative one passes, and each run shows the threshold
-     * it was judged by beside the failing share and the evaluated rows.
+     * next to a strict one on the same column. Both are given seeded results reporting 3 nulls
+     * in 100 rows with precomputed Failed/Success verdicts. Each run shows its saved threshold
+     * beside the failing share and the evaluated rows; ingestion evaluation is covered separately.
      * Steps
      * 1. Create the relative test in the form; the preview and the saved parameters carry 5% of rows.
      * 2. Create the strict test through the API.
      * 3. Seed the same 3-in-100 run on both.
      * 4. The strict run reads Failed with no tolerance; the relative run reads Success at 5% of rows.
      */
-    test('Relative threshold passes where the strict test fails', async ({
+    test('Seeded strict and relative results display their thresholds', async ({
       page,
     }) => {
       const column = table.entity.columns[0].name;
@@ -207,8 +258,10 @@ test.describe(
           .getByText('Column Level')
           .click();
 
-        await page.click('[id="root/column"]');
-        await page.getByRole('option').filter({ hasText: column }).click();
+        await selectOptionWithRetry(
+          page.locator('[id="root/column"]'),
+          page.getByRole('option', { name: column, exact: true })
+        );
         await expect(page.getByRole('listbox')).toBeHidden();
 
         await page
@@ -251,20 +304,22 @@ test.describe(
 
       const { apiContext, afterAction } = await getApiContext(page);
 
-      await test.step('Create the strict test and seed both runs', async () => {
-        const strict = await table.createTestCase(apiContext, {
-          name: strictName,
-          entityLink: `<#E::table::${table.entityResponseData.fullyQualifiedName}::columns::${column}>`,
-          testDefinition: 'columnValuesToBeNotNull',
-          parameterValues: [],
+      try {
+        await test.step('Create the strict test and seed both runs', async () => {
+          const strict = await table.createTestCase(apiContext, {
+            name: strictName,
+            entityLink: `<#E::table::${table.entityResponseData.fullyQualifiedName}::columns::${column}>`,
+            testDefinition: 'columnValuesToBeNotNull',
+            parameterValues: [],
+          });
+          strictFqn = strict.fullyQualifiedName as string;
+
+          await seedNotNullResult(apiContext, table, strictFqn, 'Failed');
+          await seedNotNullResult(apiContext, table, relativeFqn, 'Success');
         });
-        strictFqn = strict.fullyQualifiedName as string;
-
-        await seedNotNullResult(apiContext, table, strictFqn, 'Failed');
-        await seedNotNullResult(apiContext, table, relativeFqn, 'Success');
-      });
-
-      await afterAction();
+      } finally {
+        await afterAction();
+      }
       await enableAiAppMode(page);
 
       await test.step('The strict test fails with no tolerance', async () => {
