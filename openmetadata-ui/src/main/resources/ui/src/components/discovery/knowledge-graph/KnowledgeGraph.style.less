@@ -260,10 +260,15 @@
     height: var(--om-space-32);
   }
 
+  // Row-sized tile is just the raw entity icon — no border, no fill — so a
+  // listing of related items reads as a plain list, not a stack of mini
+  // cards. The md tile still owns the bordered-box look in drawer headers.
   .kg-inspector-tile-sm {
-    width: var(--om-space-26);
-    height: var(--om-space-26);
-    border-radius: var(--om-radius-sm);
+    width: var(--om-space-20);
+    height: var(--om-space-20);
+    border: 0;
+    background: transparent !important;
+    border-radius: 0;
   }
 
   .kg-inspector-statement {
