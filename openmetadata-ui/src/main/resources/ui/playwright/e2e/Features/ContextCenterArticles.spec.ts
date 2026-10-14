@@ -94,6 +94,9 @@ let DRAFT_ARTICLE_A_DISPLAY_NAME: string;
 let DRAFT_ARTICLE_B_DISPLAY_NAME: string;
 
 let articleEntity: KnowledgeCenterClass;
+// Unique part of the article's title: searching the whole title also matches
+// every newer "CC Article" from other workers (see verifyArticleSearch).
+let articleSearchTerm: string;
 let articleTagClassification: ClassificationClass;
 let articleTags: TagClass[] = [];
 let quickLinkTitle = '';
@@ -119,8 +122,9 @@ test.describe('Context Center Articles', () => {
     DRAFT_ARTICLE_A_DISPLAY_NAME = `Draft Persist A ${uuid()}`;
     DRAFT_ARTICLE_B_DISPLAY_NAME = `Draft Persist B ${uuid()}`;
 
+    articleSearchTerm = uuid();
     articleEntity = new KnowledgeCenterClass({
-      displayName: `CC Article ${uuid()}`,
+      displayName: `CC Article ${articleSearchTerm}`,
       name: `cc_article_${uuid()}`,
       description: ARTICLE_DESCRIPTION,
     });
@@ -323,7 +327,8 @@ test.describe('Context Center Articles', () => {
 
     const searchInput = await verifyArticleSearch(
       page,
-      articleEntity.responseData.displayName
+      articleEntity.responseData.displayName,
+      articleSearchTerm
     );
     await scrollListingToCard(page, articleEntity.responseData.displayName);
 
@@ -808,7 +813,11 @@ test.describe('Context Center Articles', () => {
     await navigateToArticles(page);
     await page.waitForLoadState('domcontentloaded');
 
-    await verifyArticleSearch(page, articleEntity.responseData.displayName);
+    await verifyArticleSearch(
+      page,
+      articleEntity.responseData.displayName,
+      articleSearchTerm
+    );
     const viewedCard = page
       .getByTestId('knowledge-page-listing')
       .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);

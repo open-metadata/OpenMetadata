@@ -24,10 +24,12 @@ import AlertRecentEventsTab from './AlertRecentEventsTab';
 // Only useCurrentUserPreferences is stubbed: the real usePaging hook, its
 // useTableFilters URL-write path, and the real NextPreviousWithOffset
 // component are all exercised under MemoryRouter.
+const mockSetPreference = jest.fn();
+
 jest.mock('../../../../hooks/currentUserStore/useCurrentUserStore', () => ({
   useCurrentUserPreferences: () => ({
     preferences: { globalPageSize: 5 },
-    setPreference: jest.fn(),
+    setPreference: mockSetPreference,
   }),
 }));
 
@@ -156,13 +158,11 @@ describe('AlertRecentEventsTab pagination/filter reset (real usePaging + real Ne
     );
   });
 
-  it('self-heals a URL-restored currentPage on the next filter interaction', async () => {
-    // usePaging restores currentPage=3 from the URL; the mount effect still
-    // fetches offset 0 (the documented mount desync, out of scope here).
+  it('loads a URL-restored currentPage and resets it on the next filter interaction', async () => {
     await renderWithRouter('/alert?currentPage=3');
 
     expect(indicator()).toHaveTextContent('3/20');
-    expect(lastCallParams().paginationOffset).toBe(0);
+    expect(lastCallParams().paginationOffset).toBe(10);
 
     // Changing the filter resets the page to 1 and rewrites the URL.
     await selectFilter('label.successful');

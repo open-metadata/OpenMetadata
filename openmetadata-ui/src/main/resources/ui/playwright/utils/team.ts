@@ -18,9 +18,9 @@ import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  descriptionBox,
   fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   uuid,
 } from './common';
@@ -427,7 +427,15 @@ export const addTeamHierarchy = async (
     await page.click(`.ant-select-dropdown [title="${teamDetails.teamType}"]`);
   }
 
-  await page.locator(descriptionBox).fill(teamDetails.description);
+  // Under load ProseMirror can drop a fill, and the team is then created with
+  // "No description". Re-fill until the editor holds the text.
+  const descriptionEditor = getDescriptionBox(addTeamModal);
+  await expect(async () => {
+    await descriptionEditor.fill(teamDetails.description, { timeout: 5_000 });
+    await expect(descriptionEditor).toHaveText(teamDetails.description, {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 20_000 });
 
   // Saving the created team
   const saveTeamResponse = waitForResponseWithStatus(
@@ -447,7 +455,10 @@ export const addTeamHierarchy = async (
     .getByTestId('add-team-modal')
     .getByRole('button', { name: 'Save' })
     .click();
-  await saveTeamResponse;
+  const savedTeam = await saveTeamResponse;
+  expect(savedTeam.request().postDataJSON().description).toContain(
+    teamDetails.description
+  );
   const teamsListResponseResult = await teamsListResponse;
 
   expect(teamsListResponseResult.status()).toBe(200);
