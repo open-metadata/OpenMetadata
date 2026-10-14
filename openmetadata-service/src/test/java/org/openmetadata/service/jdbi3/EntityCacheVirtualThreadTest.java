@@ -13,9 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,18 +22,17 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordingFile;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
@@ -49,8 +46,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.VirtualThreadPinning;
-import org.openmetadata.service.util.VirtualThreadPinning.Outcome;
 
 /**
  * An entity-cache miss reads Redis and the database. Read from a virtual thread, that read must not
@@ -59,9 +54,9 @@ import org.openmetadata.service.util.VirtualThreadPinning.Outcome;
  */
 class EntityCacheVirtualThreadTest {
 
-  private static final Duration WAIT = Duration.ofSeconds(10);
+  private static final String PINNED_EVENT = "jdk.VirtualThreadPinned";
+  private static final String PROBE_THREAD = "entity-cache-miss";
   private static final Duration DATABASE_LATENCY = Duration.ofMillis(50);
-  private static final int CALLERS = 8;
 
   private final Pipeline pipeline =
       new Pipeline()
@@ -94,17 +89,10 @@ class EntityCacheVirtualThreadTest {
   void aMissReadOnAVirtualThreadDoesNotPinIt(@TempDir Path recordingDir) throws Exception {
     databaseAnswersSlowly();
 
-    Outcome<String> outcome =
-        VirtualThreadPinning.runRecordingPins(
-            recordingDir, "entity-cache-miss", () -> EntityRepository.loadById(idKey));
+    long pins = countPinsWhileRunning(recordingDir, this::loadById);
 
-    assertNull(outcome.failure(), "the miss should load the entity");
-    assertEquals(pipeline.getId(), JsonUtils.readValue(outcome.result(), Pipeline.class).getId());
-    assertTrue(
-        outcome.pinnedStacks().isEmpty(),
-        "the cache miss pinned the virtual thread:%n%s"
-            .formatted(String.join("\n\n", outcome.pinnedStacks())));
-    assertEquals(outcome.result(), EntityRepository.CACHE_WITH_ID.getIfPresent(idKey));
+    assertEquals(0, pins, "the cache miss pinned the virtual thread to its carrier");
+    assertEquals(committedJson(), EntityRepository.CACHE_WITH_ID.getIfPresent(idKey));
   }
 
   // Guards the test above against passing vacuously: the Guava load it replaced does pin.
@@ -113,38 +101,10 @@ class EntityCacheVirtualThreadTest {
       throws Exception {
     databaseAnswersSlowly();
 
-    Outcome<String> outcome =
-        VirtualThreadPinning.runRecordingPins(
-            recordingDir, "guava-cache-miss", () -> EntityRepository.CACHE_WITH_ID.get(idKey));
+    long pins =
+        countPinsWhileRunning(recordingDir, () -> EntityRepository.CACHE_WITH_ID.get(idKey));
 
-    assertNull(outcome.failure());
-    assertFalse(outcome.pinnedStacks().isEmpty(), "JFR should report the Guava load pinning");
-  }
-
-  @Test
-  void concurrentMissesReadTheDatabaseOnce() throws Exception {
-    CountDownLatch release = new CountDownLatch(1);
-    when(pipelineDAO.findById(any(), eq(pipeline.getId()), any()))
-        .thenAnswer(
-            invocation -> {
-              release.await();
-              return committedJson();
-            });
-
-    List<Thread> callers = new ArrayList<>();
-    for (int i = 0; i < CALLERS; i++) {
-      callers.add(Thread.ofVirtual().start(this::loadQuietly));
-    }
-    await()
-        .atMost(WAIT)
-        .until(
-            () -> callers.stream().allMatch(caller -> caller.getState() == Thread.State.WAITING));
-    release.countDown();
-    for (Thread caller : callers) {
-      caller.join(WAIT);
-    }
-
-    verify(pipelineDAO, times(1)).findById(any(), eq(pipeline.getId()), any());
+    assertTrue(pins > 0, "JFR should report the Guava load pinning");
   }
 
   @Test
@@ -157,34 +117,29 @@ class EntityCacheVirtualThreadTest {
               return committedJson();
             });
 
-    ExecutionException thrown =
-        assertThrows(ExecutionException.class, () -> EntityRepository.loadById(idKey));
+    ExecutionException thrown = assertThrows(ExecutionException.class, this::loadById);
 
     assertInstanceOf(EntityRepository.LoaderRaceException.class, thrown.getCause());
     assertNull(EntityRepository.CACHE_WITH_ID.getIfPresent(idKey));
   }
 
   @Test
-  void aWriteBetweenTheLoadAndTheStoreEvictsWhatWasStored() {
-    assertThrows(
-        EntityRepository.LoaderRaceException.class,
-        () ->
-            EntityRepository.storeUnlessWritten(
-                EntityRepository.CACHE_WITH_ID, idKey, committedJson(), () -> true));
+  void aWriteBetweenTheLoadAndThePutEvictsWhatWasCached() {
+    when(pipelineDAO.findById(any(), eq(pipeline.getId()), any())).thenReturn(committedJson());
+    AtomicLong epochReads = new AtomicLong();
 
+    ExecutionException thrown =
+        assertThrows(
+            ExecutionException.class,
+            () ->
+                EntityRepository.loadOutsideCacheLock(
+                    EntityRepository.CACHE_WITH_ID,
+                    idKey,
+                    new EntityRepository.EntityLoaderWithId(),
+                    key -> epochReads.getAndIncrement()));
+
+    assertInstanceOf(EntityRepository.LoaderRaceException.class, thrown.getCause());
     assertNull(EntityRepository.CACHE_WITH_ID.getIfPresent(idKey));
-  }
-
-  @Test
-  void withNoWriteTheStoreKeepsTheLoadedEntity() {
-    String json = committedJson();
-
-    String stored =
-        EntityRepository.storeUnlessWritten(
-            EntityRepository.CACHE_WITH_ID, idKey, json, () -> false);
-
-    assertEquals(json, stored);
-    assertEquals(json, EntityRepository.CACHE_WITH_ID.getIfPresent(idKey));
   }
 
   @Test
@@ -193,9 +148,17 @@ class EntityCacheVirtualThreadTest {
         .thenThrow(new IllegalStateException("db down"))
         .thenReturn(committedJson());
 
-    assertThrows(ExecutionException.class, () -> EntityRepository.loadById(idKey));
+    assertThrows(ExecutionException.class, this::loadById);
 
-    assertEquals(committedJson(), EntityRepository.loadById(idKey));
+    assertEquals(committedJson(), loadById());
+  }
+
+  private String loadById() throws ExecutionException {
+    return EntityRepository.loadOutsideCacheLock(
+        EntityRepository.CACHE_WITH_ID,
+        idKey,
+        new EntityRepository.EntityLoaderWithId(),
+        key -> EntityRepository.readEpochById(key.getLeft(), key.getRight()));
   }
 
   private void databaseAnswersSlowly() {
@@ -207,10 +170,27 @@ class EntityCacheVirtualThreadTest {
             });
   }
 
-  private void loadQuietly() {
+  private static long countPinsWhileRunning(Path recordingDir, Callable<String> load)
+      throws Exception {
+    Path dump = recordingDir.resolve("pins.jfr");
+    try (Recording recording = new Recording()) {
+      recording.enable(PINNED_EVENT).withThreshold(Duration.ZERO);
+      recording.start();
+      Thread.ofVirtual().name(PROBE_THREAD).start(() -> callQuietly(load)).join();
+      recording.stop();
+      recording.dump(dump);
+    }
+    return RecordingFile.readAllEvents(dump).stream()
+        .filter(event -> PINNED_EVENT.equals(event.getEventType().getName()))
+        .filter(event -> event.getThread() != null)
+        .filter(event -> PROBE_THREAD.equals(event.getThread().getJavaName()))
+        .count();
+  }
+
+  private static void callQuietly(Callable<String> load) {
     try {
-      EntityRepository.loadById(idKey);
-    } catch (ExecutionException e) {
+      load.call();
+    } catch (Exception e) {
       throw new IllegalStateException(e);
     }
   }

@@ -633,14 +633,7 @@ public class RdfPropertyMapper {
     if (nullOrEmpty(fqn)) {
       return Optional.empty();
     }
-    // Not identifierCache.get(key, loader): Caffeine runs the loader inside a ConcurrentHashMap
-    // bin lock, and the database lookup would pin the RDF updater's virtual thread.
-    Optional<UUID> entityId = identifierCache.getIfPresent(fqn);
-    if (entityId == null) {
-      entityId = findTagEntityId(fqn, tagLabel, entityType);
-      identifierCache.put(fqn, entityId);
-    }
-    return entityId;
+    return identifierCache.get(fqn, key -> findTagEntityId(key, tagLabel, entityType));
   }
 
   private static Cache<String, Optional<UUID>> identifierCache() {

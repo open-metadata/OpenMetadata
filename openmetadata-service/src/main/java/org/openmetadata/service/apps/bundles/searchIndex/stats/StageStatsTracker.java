@@ -2,7 +2,6 @@ package org.openmetadata.service.apps.bundles.searchIndex.stats;
 
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantLock;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
@@ -36,7 +35,6 @@ public class StageStatsTracker {
 
   private final CollectionDAO.SearchIndexServerStatsDAO statsDAO;
   private final AtomicLong operationCount = new AtomicLong(0);
-  private final ReentrantLock flushLock = new ReentrantLock();
   private volatile long lastFlushTime = System.currentTimeMillis();
 
   /** Tracks pending sink operations that have been submitted but not yet completed */
@@ -231,18 +229,7 @@ public class StageStatsTracker {
   }
 
   /** Flushes current statistics to the database using increment (delta approach). */
-  public void flush() {
-    // A lock rather than synchronized: the flush writes to the database, and flushes run on
-    // virtual threads that a monitor would pin to their carrier for the whole write.
-    flushLock.lock();
-    try {
-      flushDeltas();
-    } finally {
-      flushLock.unlock();
-    }
-  }
-
-  private void flushDeltas() {
+  public synchronized void flush() {
     if (statsDAO == null) {
       LOG.debug("Stats DAO is null, skipping flush for job {} on server {}", jobId, serverId);
       return;

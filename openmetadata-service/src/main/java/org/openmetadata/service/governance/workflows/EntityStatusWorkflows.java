@@ -4,16 +4,14 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
-import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -26,7 +24,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.TriggerEntityFilter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
-import org.openmetadata.service.util.SingleFlight;
 
 /**
  * The active governance workflows that own an entity type's lifecycle stage. A workflow owns the
@@ -50,20 +47,17 @@ public final class EntityStatusWorkflows implements StageOwnership {
 
   // Holds one entry: the active workflows that own a stage. A workflow change on this server
   // invalidates it at once; the expiry bounds how long another server acts on a stale copy.
-  private static final Cache<Boolean, List<WorkflowDefinition>> ACTIVE_STAGE_WORKFLOWS =
-      Caffeine.newBuilder().maximumSize(1).expireAfterWrite(Duration.ofSeconds(30)).build();
-  // Not a LoadingCache: its loader would read the database and Flowable inside a
-  // ConcurrentHashMap bin lock, pinning the virtual thread that is writing the entity.
-  private static final SingleFlight<Boolean, List<WorkflowDefinition>> ACTIVE_STAGE_WORKFLOW_LOADS =
-      new SingleFlight<>();
-  // Bumped by invalidate() so a load that started before a workflow change is not kept after it.
-  private static final AtomicLong INVALIDATIONS = new AtomicLong();
+  private static final LoadingCache<Boolean, List<WorkflowDefinition>> ACTIVE_STAGE_WORKFLOWS =
+      Caffeine.newBuilder()
+          .maximumSize(1)
+          .expireAfterWrite(Duration.ofSeconds(30))
+          .build(ignored -> loadActiveStageWorkflows());
 
   private EntityStatusWorkflows() {}
 
   @Override
   public List<String> owningStageOf(String entityType) {
-    return activeStageWorkflows().stream()
+    return ACTIVE_STAGE_WORKFLOWS.get(ACTIVE_STAGE_WORKFLOWS_KEY).stream()
         .filter(workflow -> startsOn(workflow, entityType))
         .map(WorkflowDefinition::getName)
         .sorted()
@@ -72,7 +66,7 @@ public final class EntityStatusWorkflows implements StageOwnership {
 
   @Override
   public Optional<String> owningStageOf(String entityType, EntityInterface<?> entity) {
-    return activeStageWorkflows().stream()
+    return ACTIVE_STAGE_WORKFLOWS.get(ACTIVE_STAGE_WORKFLOWS_KEY).stream()
         .filter(workflow -> appliesTo(workflow, entityType, entity))
         .map(WorkflowDefinition::getName)
         .sorted()
@@ -86,40 +80,7 @@ public final class EntityStatusWorkflows implements StageOwnership {
   }
 
   public static void invalidate() {
-    INVALIDATIONS.incrementAndGet();
     ACTIVE_STAGE_WORKFLOWS.invalidateAll();
-  }
-
-  private static List<WorkflowDefinition> activeStageWorkflows() {
-    List<WorkflowDefinition> workflows =
-        ACTIVE_STAGE_WORKFLOWS.getIfPresent(ACTIVE_STAGE_WORKFLOWS_KEY);
-    if (workflows == null) {
-      workflows = loadActiveStageWorkflowsOnce();
-    }
-    return workflows;
-  }
-
-  private static List<WorkflowDefinition> loadActiveStageWorkflowsOnce() {
-    try {
-      return ACTIVE_STAGE_WORKFLOW_LOADS.run(
-          ACTIVE_STAGE_WORKFLOWS_KEY, EntityStatusWorkflows::loadAndStoreActiveStageWorkflows);
-    } catch (ExecutionException e) {
-      throw e.getCause() instanceof RuntimeException runtimeFailure
-          ? runtimeFailure
-          : new IllegalStateException("Could not load the active stage workflows", e.getCause());
-    }
-  }
-
-  // invalidate() bumps the counter before evicting, so checking it after the put catches an
-  // invalidation that raced the load whichever way the two interleave.
-  private static List<WorkflowDefinition> loadAndStoreActiveStageWorkflows() {
-    long invalidationsBefore = INVALIDATIONS.get();
-    List<WorkflowDefinition> workflows = loadActiveStageWorkflows();
-    ACTIVE_STAGE_WORKFLOWS.put(ACTIVE_STAGE_WORKFLOWS_KEY, workflows);
-    if (INVALIDATIONS.get() != invalidationsBefore) {
-      ACTIVE_STAGE_WORKFLOWS.invalidate(ACTIVE_STAGE_WORKFLOWS_KEY);
-    }
-    return workflows;
   }
 
   /** Whether the workflow, once deployed, owns a stage: it is not suspended and sets the stage. */
