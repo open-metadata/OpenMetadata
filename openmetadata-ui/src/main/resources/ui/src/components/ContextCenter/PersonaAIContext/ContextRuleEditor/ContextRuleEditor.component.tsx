@@ -104,7 +104,7 @@ const Field = ({
 );
 
 const SECTION_CARD_CLASS = [
-  'tw:flex tw:cursor-pointer tw:select-none tw:items-center tw:justify-between tw:gap-2',
+  'tw:relative tw:flex tw:cursor-pointer tw:select-none tw:items-center tw:justify-between tw:gap-2',
   'tw:rounded-lg tw:border tw:px-3 tw:py-[11px] tw:transition',
 ].join(' ');
 
