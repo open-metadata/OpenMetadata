@@ -27,7 +27,10 @@ import {
   DataProductSummary,
   useDataProducts,
 } from '../../../../hooks/useDataProducts';
-import { OverviewFilter } from '../../../../hooks/useDomainOverview';
+import {
+  OverviewFilter,
+  OverviewOrder,
+} from '../../../../hooks/useDomainOverview';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
@@ -102,7 +105,12 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
     isFetching,
     isLoading,
     refetch,
-  } = useDataProducts(filter);
+  } = useDataProducts(
+    filter,
+    sort === PRODUCT_SORTS.RECENTLY_UPDATED
+      ? OverviewOrder.RECENTLY_UPDATED
+      : OverviewOrder.NAME
+  );
   const { permissions } = usePermissionProvider();
   const { canCreate } = getDerivedPermissionFlags(
     permissions?.[ResourceEntity.DATA_PRODUCT] ?? DEFAULT_ENTITY_PERMISSION
