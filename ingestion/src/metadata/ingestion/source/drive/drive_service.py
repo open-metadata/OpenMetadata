@@ -14,11 +14,13 @@ Base class for ingesting drive services
 
 import traceback
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
-from typing import Annotated, Any
+from collections.abc import Callable, Iterable
+from contextlib import closing
+from typing import Annotated, Any, TypeVar
 
 from pydantic import Field
 
+from metadata.domain.tags import TagDefinition, TagRegistry
 from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
 from metadata.generated.schema.api.data.createFile import CreateFileRequest
 from metadata.generated.schema.api.data.createSpreadsheet import (
@@ -44,16 +46,18 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.delete import delete_entity_from_source
-from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
     TopologyContextManager,
     TopologyNode,
 )
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     run_test_connection,
     test_connection_common,
@@ -63,6 +67,10 @@ from metadata.utils.filters import filter_by_directory, filter_by_spreadsheet
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+DriveRequest = TypeVar(
+    "DriveRequest", bound=CreateDirectoryRequest | CreateFileRequest | CreateSpreadsheetRequest | CreateWorksheetRequest
+)
 
 
 class DriveServiceTopology(ServiceTopology):
@@ -102,13 +110,13 @@ class DriveServiceTopology(ServiceTopology):
             NodeStage(
                 type_=Directory,
                 context="directory",
-                processor="yield_directory",
+                processor="yield_directory_details",
                 consumer=["drive_service"],
             ),
             NodeStage(
                 type_=File,
                 context="file",
-                processor="yield_file",
+                processor="yield_file_details",
                 consumer=["drive_service", "directory"],
             ),
         ],
@@ -121,13 +129,13 @@ class DriveServiceTopology(ServiceTopology):
             NodeStage(
                 type_=Spreadsheet,
                 context="spreadsheet",
-                processor="yield_spreadsheet",
+                processor="yield_spreadsheet_details",
                 consumer=["drive_service"],
             ),
             NodeStage(
                 type_=Worksheet,
                 context="worksheet",
-                processor="yield_worksheet",
+                processor="yield_worksheet_details",
                 consumer=["drive_service", "spreadsheet"],
             ),
         ],
@@ -146,6 +154,9 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
     - Box
     - Dropbox
     etc.
+
+    Tag hooks return TagDefinition values for each create request.
+    Detail processors publish definitions, attach existing labels, and release scopes.
     """
 
     source_config: DriveServiceMetadataPipeline
@@ -155,6 +166,15 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
     file_source_state: set = set()  # noqa: RUF012
     spreadsheet_source_state: set = set()  # noqa: RUF012
     worksheet_source_state: set = set()  # noqa: RUF012
+
+    @property
+    def tags_registry(self) -> TagRegistry:
+        """Per-source registry for Drive tag definitions and labels."""
+        instance_dict = vars(self)
+        cached = instance_dict.get("tags_registry")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
 
     # Big union of types we want to fetch dynamically
     service_connection: DriveConnection.model_fields["config"].annotation  # noqa: F821
@@ -221,6 +241,117 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         Prepare a worksheet request and pass it to the sink.
         Link to parent spreadsheet.
         """
+
+    def yield_directory_tags(self, request: CreateDirectoryRequest) -> Iterable[TagDefinition]:
+        """Return native tags for a directory request."""
+        return ()
+
+    def yield_file_tags(self, request: CreateFileRequest) -> Iterable[TagDefinition]:
+        """Return native tags for a file request."""
+        return ()
+
+    def yield_spreadsheet_tags(self, request: CreateSpreadsheetRequest) -> Iterable[TagDefinition]:
+        """Return native tags for a spreadsheet request."""
+        return ()
+
+    def yield_worksheet_tags(self, request: CreateWorksheetRequest) -> Iterable[TagDefinition]:
+        """Return native tags for a worksheet request."""
+        return ()
+
+    def _drive_request_fqn(
+        self, request: CreateDirectoryRequest | CreateFileRequest | CreateSpreadsheetRequest | CreateWorksheetRequest
+    ) -> str:
+        if isinstance(request, CreateWorksheetRequest):
+            parent = model_str(request.spreadsheet)
+        elif isinstance(request, CreateFileRequest):
+            parent = model_str(request.directory or request.service)
+        elif isinstance(request, CreateSpreadsheetRequest) and request.parent:
+            directory_fqn = request.parent.fullyQualifiedName
+            if not directory_fqn:
+                directory = self.metadata.get_by_id(entity=Directory, entity_id=model_str(request.parent.id))
+                if not directory or not directory.fullyQualifiedName:
+                    raise ValueError("Parent directory FQN is required for spreadsheet tags")
+                directory_fqn = directory.fullyQualifiedName
+            parent = model_str(directory_fqn)
+        elif isinstance(request, CreateDirectoryRequest):
+            parent = model_str(request.parent or request.service)
+        else:
+            parent = model_str(request.service)
+        return parent + fqn.FQN_SEPARATOR + fqn.quote_name(model_str(request.name))
+
+    def _yield_tagged_requests(
+        self,
+        requests: Iterable[Either[DriveRequest]],
+        tag_producer: Callable[[DriveRequest], Iterable[TagDefinition]],
+    ) -> Iterable[Either[DriveRequest] | Either[OMetaTagAndClassification]]:
+        """Publish definitions, attach existing labels, and release each asset's scope."""
+        try:
+            for record in requests:
+                if record.right is None or not self.source_config.includeTags:
+                    yield record
+                    continue
+                request = record.right
+                entity_fqn = None
+                try:
+                    try:
+                        for definition in tag_producer(request):
+                            if not definition.tag_name or not definition.tag_name.strip():
+                                continue
+                            if not (
+                                fqn.is_valid_entity_name(definition.classification_name)
+                                and fqn.is_valid_entity_name(definition.tag_name)
+                            ):
+                                logger.warning(
+                                    "Skipped invalid tag %r in classification %r",
+                                    definition.tag_name,
+                                    definition.classification_name,
+                                )
+                                continue
+                            if entity_fqn is None:
+                                entity_fqn = self._drive_request_fqn(request)
+                            self.tags_registry.define(definition)
+                            self.tags_registry.attach(entity_fqn=entity_fqn, tag=definition)
+                    except Exception as exc:
+                        yield Either(
+                            right=None,
+                            left=StackTraceError(
+                                name=model_str(request.name),
+                                error=f"Failed to ingest Drive tags: {exc}",
+                                stackTrace=traceback.format_exc(),
+                            ),
+                        )
+                    if entity_fqn is not None:
+                        with closing(self.tags_registry.drain()) as definitions:
+                            for definition_record in definitions:
+                                yield Either(right=definition_record, left=None)
+                        request.tags = (request.tags or []) + self.tags_registry.labels_for(entity_fqn)
+                    yield record
+                finally:
+                    if entity_fqn is not None:
+                        self.tags_registry.clear_scope(entity_fqn)
+        finally:
+            if close := getattr(requests, "close", None):
+                close()
+
+    def yield_directory_details(
+        self, directory_name: Any
+    ) -> Iterable[Either[CreateDirectoryRequest] | Either[OMetaTagAndClassification]]:
+        yield from self._yield_tagged_requests(self.yield_directory(directory_name), self.yield_directory_tags)
+
+    def yield_file_details(
+        self, file_name: Any
+    ) -> Iterable[Either[CreateFileRequest] | Either[OMetaTagAndClassification]]:
+        yield from self._yield_tagged_requests(self.yield_file(file_name), self.yield_file_tags)
+
+    def yield_spreadsheet_details(
+        self, spreadsheet_name: Any
+    ) -> Iterable[Either[CreateSpreadsheetRequest] | Either[OMetaTagAndClassification]]:
+        yield from self._yield_tagged_requests(self.yield_spreadsheet(spreadsheet_name), self.yield_spreadsheet_tags)
+
+    def yield_worksheet_details(
+        self, worksheet_name: Any
+    ) -> Iterable[Either[CreateWorksheetRequest] | Either[OMetaTagAndClassification]]:
+        yield from self._yield_tagged_requests(self.yield_worksheet(worksheet_name), self.yield_worksheet_tags)
 
     @abstractmethod
     def get_spreadsheets_list(self) -> Any:
