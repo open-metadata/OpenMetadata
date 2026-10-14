@@ -188,7 +188,6 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
         total: paging.total,
         pageSize,
         current: currentPage,
-        hideOnSinglePage: true,
         showSizeChanger: true,
         pageSizeOptions: LIST_PAGE_SIZE_OPTIONS,
         onChange: (page) => handlePageChangeHandler({ currentPage: page }),
