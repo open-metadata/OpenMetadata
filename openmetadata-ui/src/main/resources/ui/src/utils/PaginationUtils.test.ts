@@ -7,7 +7,6 @@ import {
   computeTotalPages,
   getViewPageSize,
   getViewPageSizeOptions,
-  resolveViewPageSize,
 } from './PaginationUtils';
 
 /*
@@ -76,16 +75,5 @@ describe('view page sizes', () => {
   it('starts each view on the first step of its scale', () => {
     expect(getViewPageSize(PageViewMode.Card)).toBe(12);
     expect(getViewPageSize(PageViewMode.Table)).toBe(15);
-  });
-
-  it('keeps a picked size that the view offers', () => {
-    expect(resolveViewPageSize(PageViewMode.Table, 50)).toBe(50);
-    expect(resolveViewPageSize(PageViewMode.Card, 24)).toBe(24);
-  });
-
-  it('falls back to the first step when the picked size belongs to the other scale', () => {
-    expect(resolveViewPageSize(PageViewMode.Card, 25)).toBe(12);
-    expect(resolveViewPageSize(PageViewMode.Table, 24)).toBe(15);
-    expect(resolveViewPageSize(PageViewMode.Table)).toBe(15);
   });
 });

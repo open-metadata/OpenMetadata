@@ -16,7 +16,7 @@ import { RecentlySearchedData, RecentlyViewedData } from 'Models';
 import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { PAGE_SIZE_BASE } from '../../constants/constants';
+import { GRID_PAGE_SIZE_BASE, PAGE_SIZE_BASE } from '../../constants/constants';
 import { deleteUserPreference, putUserPreference } from '../../rest/userAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useApplicationStore } from '../useApplicationStore';
@@ -30,6 +30,8 @@ export interface UserPreferences {
   isSidebarCollapsed: boolean;
   selectedEntityTableColumns: Record<string, string[]>;
   globalPageSize: number;
+  /** The card-grid counterpart of `globalPageSize`, on the 12/24/48 scale. */
+  globalGridPageSize: number;
   recentlyViewed: RecentlyViewedData[];
   recentlySearched: RecentlySearchedData[];
   recentlyViewedQuickLinks: RecentlyViewedData[];
@@ -64,6 +66,7 @@ const defaultPreferences: UserPreferences = {
   isSidebarCollapsed: false,
   selectedEntityTableColumns: {},
   globalPageSize: PAGE_SIZE_BASE,
+  globalGridPageSize: GRID_PAGE_SIZE_BASE,
   recentlyViewed: [],
   recentlySearched: [],
   recentlyViewedQuickLinks: [],

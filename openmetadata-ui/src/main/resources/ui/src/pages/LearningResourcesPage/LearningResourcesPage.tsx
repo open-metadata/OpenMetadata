@@ -49,12 +49,10 @@ import {
 } from '../../constants/Learning.constants';
 import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { PageViewMode } from '../../generated/type/personaPreferences';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { LearningResource } from '../../rest/learningResourceAPI';
-import {
-  getViewPageSizeOptions,
-  resolveViewPageSize,
-} from '../../utils/PaginationUtils';
+import { getViewPageSizeOptions } from '../../utils/PaginationUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { useLearningResourceActions } from './hooks/useLearningResourceActions';
 import {
@@ -84,13 +82,13 @@ export const LearningResourcesPage: React.FC = () => {
     {}
   );
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedPageSize, setSelectedPageSize] = useState<number>();
 
   const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
   const [selectedView, setView] = useState<PageViewMode>();
   const view = selectedView ?? personaView;
   const pageSizeOptions = getViewPageSizeOptions(view);
-  const pageSize = resolveViewPageSize(view, selectedPageSize);
+  const { savedPageSize: pageSize, savePageSize } =
+    useSavedPageSize(pageSizeOptions);
 
   const { resources, paging, isLoading, refetch } = useLearningResources({
     searchText,
@@ -139,10 +137,13 @@ export const LearningResourcesPage: React.FC = () => {
     setCurrentPage(1);
   }, [searchText, filterState]);
 
-  const handlePageSizeChange = useCallback((size: number) => {
-    setSelectedPageSize(size);
-    setCurrentPage(1);
-  }, []);
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      savePageSize(size);
+      setCurrentPage(1);
+    },
+    [savePageSize]
+  );
 
   const handleViewChange = useCallback((nextView: PageViewMode) => {
     setView(nextView);

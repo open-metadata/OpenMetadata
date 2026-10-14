@@ -50,7 +50,9 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
       .usePaging(defaultPageSize, pageSizeOptions);
     const { useCallback, useState } = jest.requireActual('react');
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(defaultPageSize ?? 10);
+    const [pageSize, setPageSize] = useState(
+      defaultPageSize ?? pageSizeOptions?.[0] ?? 15
+    );
     const handlePageChange = useCallback(
       (page: number | ((page: number) => number)) => {
         setCurrentPage((current: number) =>

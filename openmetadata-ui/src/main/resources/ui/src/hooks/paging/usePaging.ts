@@ -21,13 +21,12 @@ import {
 import {
   INITIAL_PAGING_VALUE,
   LIST_PAGE_SIZE_OPTIONS,
-  PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
-import { useCurrentUserPreferences } from '../currentUserStore/useCurrentUserStore';
 import { useTableFilters } from '../useTableFilters';
+import { useSavedPageSize } from './useSavedPageSize';
 
 type FilterState = Record<
   string,
@@ -62,15 +61,8 @@ export interface UsePagingInterface {
 }
 
 /**
- * The sizes every page on the app-wide scale offers, and therefore the only ones `globalPageSize`
- * may hold: it is read by pages that declare no options of their own, so a size from some page's
- * bespoke scale would land in a picker with no matching entry.
- */
-const GLOBAL_PAGE_SIZES = new Set(LIST_PAGE_SIZE_OPTIONS);
-
-/**
- * @param defaultPageSize where to start when the URL carries no size; falls back to the app-wide
- *   `globalPageSize` preference.
+ * @param defaultPageSize where to start when the URL carries no size; falls back to the size the
+ *   user last picked on this page's scale (`useSavedPageSize`).
  * @param pageSizeOptions the sizes this page's picker offers; defaults to the app-wide list scale.
  *   A size from the shared URL param or preference is reconciled to this set, so a grid's 48 left
  *   in the URL, or an off-scale size an older build stored in the preference, cannot reach a
@@ -82,12 +74,9 @@ export const usePaging = (
   defaultPageSize?: number,
   pageSizeOptions: number[] = LIST_PAGE_SIZE_OPTIONS
 ): UsePagingInterface => {
-  const {
-    preferences: { globalPageSize },
-    setPreference,
-  } = useCurrentUserPreferences();
+  const { savedPageSize, savePageSize } = useSavedPageSize(pageSizeOptions);
 
-  const fallbackPageSize = defaultPageSize ?? globalPageSize;
+  const fallbackPageSize = defaultPageSize ?? savedPageSize;
   const processedPageSize = !pageSizeOptions.includes(fallbackPageSize)
     ? pageSizeOptions[0]
     : fallbackPageSize;
@@ -148,22 +137,10 @@ export const usePaging = (
     ]
   );
 
-  // A page on its own scale keeps its size to itself. Persisting a 24 here would hand it to every
-  // page that reads the preference instead of declaring options, where it has no matching entry —
-  // and would overwrite whatever size the user had chosen on those pages.
-  const persistGlobalPageSize = useCallback(
-    (size: number) => {
-      if (GLOBAL_PAGE_SIZES.has(size)) {
-        setPreference({ globalPageSize: size });
-      }
-    },
-    [setPreference]
-  );
-
   const handlePageSize = useCallback(
     (page: number) => {
       setPageSize(page);
-      persistGlobalPageSize(page);
+      savePageSize(page);
       setCurrentPage(INITIAL_PAGING_VALUE);
 
       // Update URL params, removing cursor data since they're invalid with new page size
@@ -174,7 +151,7 @@ export const usePaging = (
         cursorValue: null,
       });
     },
-    [setPageSize, persistGlobalPageSize, setCurrentPage, updateUrlParams]
+    [setPageSize, savePageSize, setCurrentPage, updateUrlParams]
   );
 
   const paginationVisible = useMemo(() => {
@@ -183,9 +160,16 @@ export const usePaging = (
     return (
       hasCursorPagination ||
       paging.total > pageSize ||
-      pageSize !== (defaultPageSize ?? PAGE_SIZE_BASE)
+      pageSize !== (defaultPageSize ?? pageSizeOptions[0])
     );
-  }, [defaultPageSize, paging.after, paging.before, paging.total, pageSize]);
+  }, [
+    defaultPageSize,
+    pageSizeOptions,
+    paging.after,
+    paging.before,
+    paging.total,
+    pageSize,
+  ]);
 
   const handlePageChange = useCallback(
     (
@@ -208,12 +192,12 @@ export const usePaging = (
 
       if (pageSize) {
         urlUpdate.pageSize = pageSize;
-        persistGlobalPageSize(pageSize);
+        savePageSize(pageSize);
       }
 
       updateUrlParams(urlUpdate as FilterState);
     },
-    [currentPage, setCurrentPage, persistGlobalPageSize, updateUrlParams]
+    [currentPage, setCurrentPage, savePageSize, updateUrlParams]
   );
 
   return {

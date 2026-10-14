@@ -14,7 +14,6 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import {
   DISABLED,
-  GRID_PAGE_SIZE_BASE,
   GRID_PAGE_SIZE_OPTIONS,
   LIST_PAGE_SIZE_OPTIONS,
 } from '../../../constants/constants';
@@ -113,6 +112,15 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
       EditDisplayName: true,
       EditCustomFields: true,
     }),
+  }),
+}));
+
+const mockSetPagingUrlParams = jest.fn();
+
+jest.mock('../../../hooks/useTableFilters', () => ({
+  useTableFilters: () => ({
+    filters: {},
+    setFilters: mockSetPagingUrlParams,
   }),
 }));
 
@@ -321,8 +329,6 @@ jest.mock('../../../hoc/LimitWrapper', () => {
 
 describe('Services', () => {
   it('pages the card view on the grid scale and returns to page 1 when the view changes', async () => {
-    const { handlePageChange } = (usePaging as jest.Mock)();
-
     await act(async () => {
       render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
     });
@@ -336,15 +342,46 @@ describe('Services', () => {
       fireEvent.click(screen.getByTestId('trigger-card-view'));
     });
 
+    // No explicit default: each scale starts from the size last picked on it.
     expect(usePaging).toHaveBeenLastCalledWith(
-      GRID_PAGE_SIZE_BASE,
+      undefined,
       GRID_PAGE_SIZE_OPTIONS
     );
-    expect(handlePageChange).toHaveBeenCalledWith(1, { cursorType: null });
+    // Dropping the size as well as the page and cursor lets the new view start at its own
+    // default, and keeps the URL from showing the other view's size.
+    expect(mockSetPagingUrlParams).toHaveBeenCalledWith({
+      currentPage: null,
+      cursorType: null,
+      cursorValue: null,
+      pageSize: null,
+    });
     expect(ListView).toHaveBeenLastCalledWith(
       expect.objectContaining({ currentView: ListViewOptions.CARD }),
       expect.anything()
     );
+  });
+
+  it('shows the pager even when every service fits on one page', async () => {
+    const pagingState = (usePaging as jest.Mock)();
+    (usePaging as jest.Mock).mockReturnValue({
+      ...pagingState,
+      showPagination: false,
+    });
+
+    await act(async () => {
+      render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
+    });
+
+    expect(ListView).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        customPaginationProps: expect.objectContaining({
+          showPagination: true,
+        }),
+      }),
+      expect.anything()
+    );
+
+    (usePaging as jest.Mock).mockReturnValue(pagingState);
   });
 
   it('should render Services', async () => {

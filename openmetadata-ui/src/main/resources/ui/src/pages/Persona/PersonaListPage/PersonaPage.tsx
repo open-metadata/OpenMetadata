@@ -28,10 +28,7 @@ import { AddEditPersonaForm } from '../../../components/MyData/Persona/AddEditPe
 import { PersonaDetailsCard } from '../../../components/MyData/Persona/PersonaDetailsCard/PersonaDetailsCard';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import {
-  GRID_PAGE_SIZE_BASE,
-  GRID_PAGE_SIZE_OPTIONS,
-} from '../../../constants/constants';
+import { GRID_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -62,7 +59,7 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
     paging,
     pagingCursor,
     showPagination,
-  } = usePaging(GRID_PAGE_SIZE_BASE, GRID_PAGE_SIZE_OPTIONS);
+  } = usePaging(undefined, GRID_PAGE_SIZE_OPTIONS);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.PERSONA),

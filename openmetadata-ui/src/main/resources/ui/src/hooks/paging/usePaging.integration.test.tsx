@@ -58,18 +58,33 @@ describe('usePaging (integration)', () => {
     expect(result.current.handlePageSizeChange).toBe(firstHandlePageSizeChange);
   });
 
-  it('keeps a size off the app-wide scale out of the shared preference', () => {
-    const { result } = renderHook(() => usePaging(12, GRID_SIZES), {
+  it('saves a grid size to the grid preference, leaving the list one alone', () => {
+    const { result } = renderHook(() => usePaging(undefined, GRID_SIZES), {
       wrapper: wrapperAt('/connections'),
     });
 
     act(() => result.current.handlePageSizeChange(24));
 
-    // Persisting 24 would hand it to every page that reads the preference rather than declaring
-    // options — landing in a picker with no entry for it, and discarding the size chosen there.
-    expect(
-      usePersistentStorage.getState().preferences['paging-user']
-    ).toBeUndefined();
+    // Saving 24 as the list size would hand it to list pages, whose pickers have no 24.
+    const saved = usePersistentStorage.getState().preferences['paging-user'];
+
+    expect(saved.globalGridPageSize).toBe(24);
+    expect(saved.globalPageSize).toBe(15);
+  });
+
+  it('remembers the size last picked on each scale', () => {
+    usePersistentStorage.getState().setUserPreference('paging-user', {
+      globalGridPageSize: 24,
+      globalPageSize: 25,
+    });
+
+    const grid = renderHook(() => usePaging(undefined, GRID_SIZES), {
+      wrapper,
+    });
+    const list = renderHook(() => usePaging(), { wrapper });
+
+    expect(grid.result.current.pageSize).toBe(24);
+    expect(list.result.current.pageSize).toBe(25);
   });
 
   it('starts from the size the caller asked for, whatever the preference holds', () => {

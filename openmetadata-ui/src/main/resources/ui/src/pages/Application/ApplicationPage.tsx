@@ -32,11 +32,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ApplicationCard from '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component';
-import {
-  GRID_PAGE_SIZE_BASE,
-  GRID_PAGE_SIZE_OPTIONS,
-  ROUTES,
-} from '../../constants/constants';
+import { GRID_PAGE_SIZE_OPTIONS, ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -66,7 +62,7 @@ const ApplicationPage = () => {
     handlePageSizeChange,
     showPagination,
     pagingCursor,
-  } = usePaging(GRID_PAGE_SIZE_BASE, GRID_PAGE_SIZE_OPTIONS);
+  } = usePaging(undefined, GRID_PAGE_SIZE_OPTIONS);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [applicationData, setApplicationData] = useState<App[]>();

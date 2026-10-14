@@ -27,7 +27,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  GRID_PAGE_SIZE_BASE,
   GRID_PAGE_SIZE_OPTIONS,
   INITIAL_PAGING_VALUE,
   LIST_PAGE_SIZE_OPTIONS,
@@ -50,6 +49,7 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Include } from '../../../generated/type/include';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useTableFilters } from '../../../hooks/useTableFilters';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
@@ -115,17 +115,24 @@ const Services = ({ serviceName }: ServicesProps) => {
     handlePageChange,
     pageSize,
     handlePageSizeChange,
-    showPagination,
     pagingCursor,
-  } = usePaging(isCardView ? GRID_PAGE_SIZE_BASE : undefined, pageSizeOptions);
+  } = usePaging(undefined, pageSizeOptions);
 
-  // Cards and table page at different sizes, so the current page and cursor do not carry over.
+  const { setFilters: setPagingUrlParams } = useTableFilters({});
+
+  // Cards and table page at different sizes, so the page, cursor and size the other view left in
+  // the URL do not carry over: each view starts on page 1 at its own default size.
   const handleViewChange = useCallback(
     (view: ListViewOptions) => {
       setCurrentView(view);
-      handlePageChange(INITIAL_PAGING_VALUE, { cursorType: null });
+      setPagingUrlParams({
+        currentPage: null,
+        cursorType: null,
+        cursorValue: null,
+        pageSize: null,
+      });
     },
-    [handlePageChange]
+    [setPagingUrlParams]
   );
   const [deleted, setDeleted] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
@@ -368,9 +375,10 @@ const Services = ({ serviceName }: ServicesProps) => {
     }));
   }, [serviceName]);
 
+  // The pager stays visible even when every service fits on one page, so the page size can be changed.
   const customPaginationTableProps = useMemo(
     () => ({
-      showPagination,
+      showPagination: true,
       currentPage,
       isLoading,
       isNumberBased: !isEmpty(searchTerm) || !isEmpty(serviceTypeFilter),
@@ -381,7 +389,6 @@ const Services = ({ serviceName }: ServicesProps) => {
       onShowSizeChange: handlePageSizeChange,
     }),
     [
-      showPagination,
       currentPage,
       isLoading,
       searchTerm,

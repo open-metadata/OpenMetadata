@@ -28,12 +28,3 @@ export const getViewPageSizeOptions = (view?: ViewMode) =>
 
 export const getViewPageSize = (view?: ViewMode) =>
   getViewPageSizeOptions(view)[0];
-
-// The two scales share no size, so a size picked in one view falls back to the other's first step.
-export const resolveViewPageSize = (view?: ViewMode, selectedSize?: number) => {
-  const options = getViewPageSizeOptions(view);
-
-  return selectedSize && options.includes(selectedSize)
-    ? selectedSize
-    : options[0];
-};

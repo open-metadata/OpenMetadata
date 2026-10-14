@@ -43,15 +43,14 @@ import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import WorkflowCard from '../../../components/WorkflowDefinitions/WorkflowCard/WorkflowCard.component';
 import {
+  GRID_PAGE_SIZE_OPTIONS,
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { CursorType } from '../../../enums/pagination.enum';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { Paging } from '../../../generated/type/paging';
+import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import {
   createWorkflowDefinition,
@@ -80,7 +79,10 @@ const WorkflowsPage = () => {
     total: 0,
   });
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_MEDIUM);
+  // Workflows render as a card grid, so they page on the grid scale.
+  const { savedPageSize: pageSize, savePageSize } = useSavedPageSize(
+    GRID_PAGE_SIZE_OPTIONS
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [workflowName, setWorkflowName] = useState('');
   const [description, setDescription] = useState('');
@@ -380,14 +382,10 @@ const WorkflowsPage = () => {
                 currentPage={currentPage}
                 isLoading={loading}
                 pageSize={pageSize}
-                pageSizeOptions={[
-                  PAGE_SIZE_BASE,
-                  PAGE_SIZE_MEDIUM,
-                  PAGE_SIZE_LARGE,
-                ]}
+                pageSizeOptions={GRID_PAGE_SIZE_OPTIONS}
                 paging={paging}
                 pagingHandler={handlePageChange}
-                onShowSizeChange={setPageSize}
+                onShowSizeChange={savePageSize}
               />
             </div>
           </div>

@@ -38,8 +38,10 @@ describe('useCursorPagedList', () => {
     expect(result.current.showPagination).toBe(true);
   });
 
-  it('starts at the page size its caller passes', async () => {
-    const { result } = renderHook(() => useCursorPagedList(fetchPage, 12));
+  it('starts at the first step of the scale its caller passes', async () => {
+    const { result } = renderHook(() =>
+      useCursorPagedList(fetchPage, [12, 24, 48])
+    );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 

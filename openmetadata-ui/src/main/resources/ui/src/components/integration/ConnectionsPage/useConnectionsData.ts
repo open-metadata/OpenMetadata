@@ -180,7 +180,7 @@ export const useConnectionsData = ({
     pageSize,
     handlePageChange,
     handlePageSizeChange,
-  } = usePaging(pageSizeOptions[0], pageSizeOptions);
+  } = usePaging(undefined, pageSizeOptions);
   const [sortOrder, setSortOrder] = useState<ConnectionsSortOrder>('asc');
 
   // Any change to what is being queried invalidates the current page number. usePaging restores

@@ -24,10 +24,7 @@ import {
 import { GridView } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  GRID_PAGE_SIZE_BASE,
-  GRID_PAGE_SIZE_OPTIONS,
-} from '../../../../../../constants/constants';
+import { GRID_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { Include } from '../../../../../../generated/type/include';
 import LimitWrapper from '../../../../../../hoc/LimitWrapper';
 import { useAuth } from '../../../../../../hooks/authHooks';
@@ -98,7 +95,7 @@ const ApplicationsList: FC<ApplicationsViewProps> = ({
     isLoading,
     showPagination,
     ...pagination
-  } = useCursorPagedList(fetchPage, GRID_PAGE_SIZE_BASE);
+  } = useCursorPagedList(fetchPage, GRID_PAGE_SIZE_OPTIONS);
 
   useEffect(() => {
     onHeaderChange({

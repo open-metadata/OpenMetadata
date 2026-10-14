@@ -31,13 +31,14 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
-import { CSSProperties, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+  CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   MAX_VISIBLE_CONTEXTS,
   MAX_VISIBLE_TAGS,
@@ -45,6 +46,7 @@ import {
 } from '../../../../../../constants/Learning.constants';
 import { VIEW_MODE_PAGE } from '../../../../../../constants/platform/personaAppLayout.constants';
 import { PageViewMode } from '../../../../../../generated/type/personaPreferences';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../../../../../hooks/platform/usePersonaViewMode';
 import { useLearningResourceActions } from '../../../../../../pages/LearningResourcesPage/hooks/useLearningResourceActions';
 import {
@@ -53,6 +55,7 @@ import {
 } from '../../../../../../pages/LearningResourcesPage/hooks/useLearningResourceFilters';
 import { useLearningResources } from '../../../../../../pages/LearningResourcesPage/hooks/useLearningResources';
 import { LearningResource } from '../../../../../../rest/learningResourceAPI';
+import { getViewPageSizeOptions } from '../../../../../../utils/PaginationUtils';
 import { DeleteModal } from '../../../../../common/DeleteModal/DeleteModal';
 import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
 import ViewToggle from '../../../../../common/ViewToggle/ViewToggle';
@@ -116,7 +119,18 @@ const LearningResourcesSettings = ({
     {}
   );
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
+  const [selectedView, setSelectedView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
+  // Table and cards page on their own scales, each starting from the size last picked on it.
+  const pageSizeOptions = getViewPageSizeOptions(view);
+  const { savedPageSize: pageSize, savePageSize } =
+    useSavedPageSize(pageSizeOptions);
+  const handleViewChange = useCallback((nextView: PageViewMode) => {
+    setSelectedView(nextView);
+    setCurrentPage(1);
+  }, []);
 
   const { resources, paging, isLoading, refetch } = useLearningResources({
     searchText,
@@ -140,10 +154,6 @@ const LearningResourcesSettings = ({
     filterState,
     onFilterChange: setFilterState,
   });
-
-  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
-  const [selectedView, setSelectedView] = useState<PageViewMode>();
-  const view = selectedView ?? personaView;
 
   const debouncedSearch = useMemo(
     () => debounce(setSearchText, SEARCH_DEBOUNCE_MS),
@@ -279,11 +289,11 @@ const LearningResourcesSettings = ({
         currentPage={currentPage}
         isLoading={isLoading}
         pageSize={pageSize}
-        pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+        pageSizeOptions={pageSizeOptions}
         paging={{ total: paging.total }}
         pagingHandler={({ currentPage: page }) => setCurrentPage(page)}
         onShowSizeChange={(size) => {
-          setPageSize(size);
+          savePageSize(size);
           setCurrentPage(1);
         }}
       />
@@ -310,7 +320,7 @@ const LearningResourcesSettings = ({
             />
             {quickFilters}
             <Box className="tw:flex-1" />
-            <ViewToggle value={view} onChange={setSelectedView} />
+            <ViewToggle value={view} onChange={handleViewChange} />
           </Box>
           {filterSelectionDisplay}
         </Box>

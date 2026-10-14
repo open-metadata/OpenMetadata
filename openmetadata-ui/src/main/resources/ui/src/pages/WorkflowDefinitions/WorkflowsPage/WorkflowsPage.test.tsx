@@ -14,6 +14,8 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
+import { GRID_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import { getWorkflowDefinitions } from '../../../rest/workflowDefinitionsAPI';
 import WorkflowsPage from './WorkflowsPage';
 
@@ -88,5 +90,32 @@ describe('WorkflowsPage on OSS', () => {
     expect(
       screen.queryByTestId('create-workflow-button')
     ).not.toBeInTheDocument();
+  });
+
+  it('pages the workflow cards on the grid scale', async () => {
+    mockGetWorkflowDefinitions.mockResolvedValue({
+      data: [
+        {
+          id: 'w1',
+          name: 'pw-grid-workflow',
+          fullyQualifiedName: 'pw-grid-workflow',
+        },
+      ],
+      paging: { total: 1 },
+    });
+
+    renderPage();
+
+    expect(await screen.findByTestId('pw-grid-workflow')).toBeInTheDocument();
+    expect(mockGetWorkflowDefinitions).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 12 })
+    );
+    expect(NextPrevious).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pageSize: 12,
+        pageSizeOptions: GRID_PAGE_SIZE_OPTIONS,
+      }),
+      expect.anything()
+    );
   });
 });

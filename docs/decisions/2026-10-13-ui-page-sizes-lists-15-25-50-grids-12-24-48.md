@@ -20,11 +20,13 @@ matching entry.
 - A paged **card grid** defaults to 12 and offers 12/24/48 (`GRID_PAGE_SIZE_OPTIONS`,
   `GRID_PAGE_SIZE_BASE`), so rows of 2, 3 or 4 cards fill evenly.
 - A page with a table/card toggle takes its scale from the view it is in
-  (`getViewPageSizeOptions` / `getViewPageSize` / `resolveViewPageSize` in `utils/PaginationUtils.ts`)
+  (`getViewPageSizeOptions` / `getViewPageSize` in `utils/PaginationUtils.ts`)
   and returns to page 1 when the view changes.
 - A grid page passes `GRID_PAGE_SIZE_OPTIONS` to `usePaging` so a list-scale size from the shared
-  URL or preference is reconciled to its own scale, and the global preference only ever stores a
-  list-scale size.
+  URL is reconciled to its own scale.
+- The size the user picks is remembered per scale (`useSavedPageSize`): list sizes in
+  `globalPageSize`, grid sizes in `globalGridPageSize`. A page that switches views comes back to
+  the size last picked in each, and a grid size never lands in a list picker.
 - `usePaging` treats a caller that declares no options as on the list scale, so a grid size left
   in the shared URL param, or an off-scale size an older build stored in the preference, never
   reaches a 15/25/50 picker.
@@ -35,6 +37,6 @@ matching entry.
 
 ## Consequences
 A new paged view picks one of the two scales instead of inventing a size. The two scales share no
-value, so switching a page between list and grid always resets its size to the new scale's first
-step. Playwright specs that wait on a list request's `limit`/`size` must use the scale of the page
+value, so switching a page between list and grid changes its size to the one last picked on the
+new scale (its first step until the user picks one). Playwright specs that wait on a list request's `limit`/`size` must use the scale of the page
 they open. Adding a third scale, or a page size outside these, means amending this record.
