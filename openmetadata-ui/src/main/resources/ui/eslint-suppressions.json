@@ -1078,16 +1078,6 @@
       "count": 3
     }
   },
-  "src/components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/MyData/GithubStarCard/GithubStarCard.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/MyData/LeftSidebar/LeftSidebar.component.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 3
@@ -1135,7 +1125,7 @@
   },
   "src/components/Pipeline/Execution/TreeView/TreeViewTab.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/ProfileCard/ProfileSectionUserDetailsCard.component.tsx": {
@@ -1280,7 +1270,7 @@
   },
   "src/components/Settings/Users/AdminPermissionDebugger/AdminPermissionDebugger.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 5
+      "count": 4
     }
   },
   "src/components/Settings/Users/ChangePasswordForm.tsx": {
@@ -1299,11 +1289,6 @@
     }
   },
   "src/components/Settings/Users/UsersProfile/UserPermissions/UserPermissions.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
-  "src/components/Settings/Users/UsersProfile/UserProfileImage/UserProfileImage.component.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
     }
@@ -1384,16 +1369,6 @@
     }
   },
   "src/components/common/DrawerPopupContainerProvider/DrawerPopupContainerProvider.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/common/EntityImport/EntityImport.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/common/ErrorBoundary/ErrorFallback.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
     }
@@ -1655,17 +1630,17 @@
   },
   "src/pages/TableDetailsPageV1/TableConstraints/TableConstraintsModal/TableConstraintsModal.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 3
+      "count": 2
     }
   },
   "src/pages/TaskFormSettingsPage/TaskFormSettingsPage.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 5
+      "count": 4
     }
   },
   "src/pages/TaskFormSettingsPage/components/TaskFormBuilderSection.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 5
+      "count": 4
     }
   },
   "src/pages/TeamsPage/AddTeamForm.tsx": {

@@ -18,8 +18,8 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Affix } from 'antd';
 
+import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -123,71 +123,63 @@ const GithubStarCard = () => {
   }, [usernameExistsInCookie, updateGithubPopup]);
 
   return showGithubStarPopup && isHomePage ? (
-    <Affix
-      className={`github-star-popup-card 
-      ${
+    <Box
+      className={classNames(
+        'tw:fixed tw:right-7.5 tw:-bottom-full tw:z-1 tw:w-full tw:max-w-90 tw:border-none',
         isWhatNewAlertVisible
           ? 'github-star-popup-card-with-alert'
           : 'github-star-popup-card-without-alert'
-      }
-      `}>
+      )}>
       <Card data-testid="github-star-popup-card">
         <Card.Content>
-          <Box
-            align="center"
-            className="layout-space layout-space-horizontal d-flex justify-between"
-            gap={2}
-            itemClassName="layout-space-item">
-            <Box
-              inline
-              align="center"
-              className="layout-space layout-space-horizontal"
-              gap={2}
-              itemClassName="layout-space-item">
-              <StarIcon className="github-star-icon" />
+          <Box direction="col" gap={3}>
+            <Box align="center" gap={2} justify="between">
+              <Box inline align="center" gap={2}>
+                <StarIcon className="github-star-icon" />
 
-              <Typography className="github-star-popup-header">
-                {t('label.star-us-on-github')}
-              </Typography>
+                <Typography className="github-star-popup-header">
+                  {t('label.star-us-on-github')}
+                </Typography>
+              </Box>
+              <CloseButton
+                className="tw:-mt-1"
+                data-testid="close-github-star-popup-card"
+                size="sm"
+                onPress={handleClosePopup}
+              />
             </Box>
-            <CloseButton
-              className="tw:-mt-1"
-              data-testid="close-github-star-popup-card"
-              size="xs"
-              onPress={handleClosePopup}
-            />
+
+            <Typography as="p" size="text-xs">
+              {t('message.star-on-github-description')}
+            </Typography>
+
+            <Box gap={2}>
+              <Button
+                color="secondary"
+                href={OMD_REPOSITORY_LINK}
+                iconLeading={<StarGithubIcon className="tw:size-3 tw:shrink-0" />}
+                rel="noopener noreferrer"
+                target="_blank">
+                {t('label.star')}
+              </Button>
+              <Button
+                color="secondary"
+                href={OMD_REPOSITORY_LINK}
+                rel="noopener noreferrer"
+                target="_blank">
+                {isLoading ? (
+                  <div data-testid="skeleton-loader">
+                    <Skeleton height={36} variant="rounded" width={72} />
+                  </div>
+                ) : (
+                  starredCount
+                )}
+              </Button>
+            </Box>
           </Box>
-
-          <Typography as="p" className="github-star-popup-description">
-            {t('message.star-on-github-description')}
-          </Typography>
-
-          <div className="tw:flex tw:gap-2">
-            <Button
-              color="secondary"
-              href={OMD_REPOSITORY_LINK}
-              iconLeading={<StarGithubIcon className="tw:size-3 tw:shrink-0" />}
-              rel="noopener noreferrer"
-              target="_blank">
-              {t('label.star')}
-            </Button>
-            <Button
-              color="secondary"
-              href={OMD_REPOSITORY_LINK}
-              rel="noopener noreferrer"
-              target="_blank">
-              {isLoading ? (
-                <div data-testid="skeleton-loader">
-                  <Skeleton height={36} variant="rounded" width={72} />
-                </div>
-              ) : (
-                starredCount
-              )}
-            </Button>
-          </div>
         </Card.Content>
       </Card>
-    </Affix>
+    </Box>
   ) : null;
 };
 
