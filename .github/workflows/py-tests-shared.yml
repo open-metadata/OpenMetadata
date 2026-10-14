@@ -55,12 +55,11 @@ env:
     -Dsonar.pullrequest.provider=github
 
 jobs:
-  # Authorize pull request code once before the matrix fans out, then detect
-  # whether relevant paths changed.
+  # Detect whether relevant paths changed before the matrix fans out.
   changes:
-    name: Authorize & Detect Changes
+    name: Detect Changes
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ !github.event.pull_request.draft }}
     outputs:
       python: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.python }}
       e2e: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.e2e }}
@@ -76,7 +75,7 @@ jobs:
           persist-credentials: false
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
-        if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
         with:
           base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
@@ -104,24 +103,6 @@ jobs:
               - '.github/workflows/py-cli-e2e-tests.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
 
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
-        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.python == 'true' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@657d111bbbe13e22bbd55870f1813c699bde1401 # v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.python == 'true' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true
-
   # Produces the one artifact docker/development/Dockerfile needs, so shards can skip Maven.
   build-distribution:
     name: Build Backend Distribution
@@ -134,7 +115,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - name: Setup JDK 21
@@ -143,7 +123,7 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      # Restore-only: pull_request_target / merge_group writes are scoped to refs no
+      # Restore-only: pull_request / merge_group writes are scoped to refs no
       # other run can read, so saving would only consume the repo's cache quota.
       - name: Restore Maven dependencies
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -221,7 +201,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
@@ -235,8 +214,8 @@ jobs:
           name: spacy-en-model
           path: /tmp/spacy-model
 
-      # pull_request_target runs main's workflow against release-branch heads (2.0, 1.13)
-      # that predate the cli_e2e_v2 framework, so skip when the suite isn't checked out.
+      # The job checks out the PR head, which can predate the cli_e2e_v2 framework,
+      # so skip when the suite isn't checked out.
       - name: Run offline E2E framework tests
         if: ${{ matrix.py-version == '3.10' && needs.changes.outputs.e2e == 'true' && hashFiles('ingestion/tests/cli_e2e_v2/meta/**') != '' }}
         run: |
@@ -388,7 +367,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Use runner data disk for Docker
         if: matrix.shard.needs-disk
@@ -535,7 +513,7 @@ jobs:
   verify:
     name: Verify Expected Jobs
     needs: [changes, build-distribution, py-unit-tests, py-integration-tests]
-    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify all expected Python jobs completed
@@ -592,7 +570,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
@@ -643,10 +620,10 @@ jobs:
         run: rm pom.xml
         shell: bash
 
-        # we have to pass these args values since we are working with the 'pull_request_target' trigger
+      # Fork and Dependabot PRs get no secrets, so the PR analysis skips them.
       - name: Push Results in PR to Sonar
         id: push-to-sonar
-        if: ${{ github.event_name == 'pull_request_target'}}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
         continue-on-error: true
         uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7
         env:

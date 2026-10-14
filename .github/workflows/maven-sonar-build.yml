@@ -13,8 +13,8 @@ name: Maven SonarCloud CI
 
 on:
   workflow_dispatch:
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "openmetadata-service/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
@@ -29,43 +29,23 @@ on:
 
 permissions:
   contents: read
-  checks: write
 
 concurrency:
   group: maven-sonar-build-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  cancel-in-progress: true
 jobs:
   maven-sonarcloud-ci:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ !github.event.pull_request.draft }}
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.9.1
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true # To not auto approve changes
-
       - name: Checkout
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
-      - name: Cache Maven dependencies
-        id: cache-output
-        uses: actions/cache@v6
+      - name: Restore Maven dependencies
+        id: maven-cache
+        uses: actions/cache/restore@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -86,18 +66,17 @@ jobs:
           sudo make install_antlr_cli
 
       - name: Restore openmetadata-ui dist cache
-        # Skip cache on fork-PR-via-pull_request_target: that combination
-        # runs base-branch privileged with untrusted checked-out code, so a
-        # cache save would poison the default-branch cache scope (CodeQL
-        # `actions/actions/cache-poisoning`). The same guard lives inside
-        # the composite action as defence in depth, but CodeQL is a static
-        # analyser and needs to see it here at the workflow level.
-        if: >-
-          !(github.event_name == 'pull_request_target' &&
-            github.event.pull_request.head.repo.full_name != github.repository)
         uses: ./.github/actions/cache-ui-dist
 
       - name: Build with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn -Pstatic-code-analysis clean verify -DskipTests -am
+
+      - name: Save Maven dependencies
+        if: steps.maven-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.m2
+          key: ${{ steps.maven-cache.outputs.cache-primary-key }}

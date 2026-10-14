@@ -2,8 +2,8 @@ name: TypeScript Type Generation
 
 on:
   merge_group:
-  pull_request_target:
-    types: [opened, synchronize, reopened, labeled, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'openmetadata-spec/src/main/resources/json/schema/**'
       - 'openmetadata-ui/src/main/resources/ui/src/generated/**'
@@ -18,20 +18,22 @@ on:
         default: 'main'
         type: string
       pr_number:
-        description: 'PR number to run the workflow for (works for both forked and non-forked PRs)'
+        description: 'PR number to run the workflow for (same-repo PRs only; fork PRs regenerate locally)'
         required: false
         type: string
 
 concurrency:
   group: typescript-generation-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  cancel-in-progress: true
 
 jobs:
   generate-types:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ !github.event.pull_request.draft }}
     permissions:
-      contents: write
+      # The auto-commit pushes with COLLATE_PAT, so GITHUB_TOKEN only needs to read
+      # the repo and comment on the PR.
+      contents: read
       pull-requests: write
     steps:
       - name: Get PR details for workflow_dispatch
@@ -49,24 +51,6 @@ jobs:
           echo "head_sha=$(echo "$PR_DATA" | jq -r '.headRefOid')" >> $GITHUB_OUTPUT
           echo "full_repo=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login + "/" + .headRepository.name')" >> $GITHUB_OUTPUT
 
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.9.1
-        if: ${{ github.event_name == 'pull_request_target' && github.actor != 'github-actions[bot]' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' && github.actor != 'github-actions[bot]' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true
-
       - name: Check if repository is a fork
         id: check-fork
         env:
@@ -74,6 +58,7 @@ jobs:
           FULL_REPO: ${{ steps.pr-details.outputs.full_repo }}
           HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
         run: |
           if [ "$EVENT_NAME" == "workflow_dispatch" ] && [ -n "$FULL_REPO" ]; then
             # For workflow_dispatch with PR number
@@ -82,9 +67,9 @@ jobs:
             else
               echo "is_fork=false" >> $GITHUB_OUTPUT
             fi
-          elif [ "$EVENT_NAME" == "pull_request_target" ]; then
-            # For pull_request_target events
-            if [ "$HEAD_REPO_FULL_NAME" != "$BASE_REPO" ]; then
+          elif [ "$EVENT_NAME" == "pull_request" ]; then
+            # Dependabot runs get no secrets either, so they are handled like a fork.
+            if [ "$HEAD_REPO_FULL_NAME" != "$BASE_REPO" ] || [ "$ACTOR" == "dependabot[bot]" ]; then
               echo "is_fork=true" >> $GITHUB_OUTPUT
             else
               echo "is_fork=false" >> $GITHUB_OUTPUT
@@ -93,6 +78,13 @@ jobs:
             # Default to non-fork for direct branch runs
             echo "is_fork=false" >> $GITHUB_OUTPUT
           fi
+
+      # A dispatch runs with this repository's secrets, so it must never execute a fork's code.
+      - name: Refuse to run a fork PR's code on dispatch
+        if: github.event_name == 'workflow_dispatch' && steps.check-fork.outputs.is_fork == 'true'
+        run: |
+          echo "::error title=Fork PR::A dispatch cannot run a fork's code. Ask the author to run ./json2ts-generate-all.sh -l true and yarn parse-schema in openmetadata-ui/src/main/resources/ui and commit the result."
+          exit 1
 
       - name: Determine checkout ref
         id: checkout-ref
@@ -109,9 +101,9 @@ jobs:
         run: |
           if [ "$EVENT_NAME" == "merge_group" ]; then
             echo "ref=$GITHUB_SHA_VAL" >> $GITHUB_OUTPUT
-          elif [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request_target" ]; then
+          elif [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request" ]; then
             echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
-          elif [ "$EVENT_NAME" == "pull_request_target" ]; then
+          elif [ "$EVENT_NAME" == "pull_request" ]; then
             echo "ref=$PR_HEAD_REF" >> $GITHUB_OUTPUT
           elif [ "$IS_FORK" == "true" ] && [ -n "$PR_DETAILS_HEAD_SHA" ]; then
             echo "ref=$PR_DETAILS_HEAD_SHA" >> $GITHUB_OUTPUT
@@ -129,7 +121,6 @@ jobs:
           repository: ${{ steps.pr-details.outputs.full_repo || github.repository }}
           ref: ${{ steps.checkout-ref.outputs.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - name: Set up Node.js
@@ -196,7 +187,7 @@ jobs:
           git push --force-with-lease origin "HEAD:${HEAD_REF}"
 
       - name: Create PR comment about auto-update
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (github.event_name == 'pull_request' || github.event.inputs.pr_number != '')
         uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
@@ -207,30 +198,29 @@ jobs:
             schemas (`src/jsons/`, `public/jsons/`) have been automatically updated
             based on JSON schema changes in this PR.
 
-      - name: Create PR comment for fork repository
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
-        uses: peter-evans/create-or-update-comment@v5
-        with:
-          issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
-          body: |
-            ## ⚠️ Generated Sources Need Update
-
-            **The generated TypeScript types and/or dereferenced JSON schemas are out of sync with the JSON schema changes.**
-
-            Since this is a pull request from a forked repository, they cannot be automatically committed.
-            Please generate and commit them manually:
-
-            ```bash
-            cd openmetadata-ui/src/main/resources/ui
-            ./json2ts-generate-all.sh -l true
-            yarn parse-schema
-            git add src/generated/ src/jsons/ public/jsons/
-            git commit -m "Update generated TypeScript types and dereferenced schemas"
-            git push
-            ```
-
-            After pushing the changes, this check will pass automatically.
-
+      # Fork PRs can't be pushed to and get a read-only token, so the instructions go to the
+      # job summary and an error annotation instead of a commit and a comment.
       - name: Fail workflow for fork PRs with type changes
         if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true'
-        run: exit 1
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ## ⚠️ Generated Sources Need Update
+
+          **The generated TypeScript types and/or dereferenced JSON schemas are out of sync with the JSON schema changes.**
+
+          Since this pull request comes from a fork or from Dependabot, they cannot be committed automatically.
+          Please generate and commit them manually:
+
+          ```bash
+          cd openmetadata-ui/src/main/resources/ui
+          ./json2ts-generate-all.sh -l true
+          yarn parse-schema
+          git add src/generated/ src/jsons/ public/jsons/
+          git commit -m "Update generated TypeScript types and dereferenced schemas"
+          git push
+          ```
+
+          After pushing the changes, this check will pass automatically.
+          EOF
+          echo "::error title=Generated sources need update::Regenerate the TypeScript types and dereferenced schemas and commit them; the job summary has the commands."
+          exit 1

@@ -10,8 +10,8 @@ on:
   # is handled inside the workflow via dorny/paths-filter, which lets PRs
   # without UI changes skip the expensive jobs while still reporting a
   # passing status.
-  pull_request_target:
-    types: [opened, synchronize, reopened, labeled, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -22,7 +22,7 @@ env:
   UI_COVERAGE_DIRECTORY: openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
 concurrency:
   group: yarn-coverage-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  cancel-in-progress: true
 jobs:
   check-changes:
     runs-on: ubuntu-latest
@@ -67,39 +67,19 @@ jobs:
       sonar_scanner_install: ${{ steps.npm_install_sonar_scanner.outcome }}
     if: |
       !github.event.pull_request.draft &&
-      (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.ui-changed == 'true') &&
-      (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+      (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.ui-changed == 'true')
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.9.1
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true # To not auto approve changes
-
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
           fetch-depth: 0
-          # Sonar git blame runs only on the pull_request_target scan below, and blame
+          # Sonar git blame runs only on the same-repo PR scan below, and blame
           # needs blob contents to drive PR New Code detection. A partial clone
           # (blob:none) left blobs missing, which forced sonar.scm.disabled=true and made
-          # SonarCloud report the whole tree as "new code". So do a full clone only on PR
-          # runs; keep the blob:none optimization for merge_group / workflow_dispatch,
-          # which never run the Sonar scan.
-          filter: ${{ github.event_name != 'pull_request_target' && 'blob:none' || '' }}
+          # SonarCloud report the whole tree as "new code". So do a full clone only for
+          # same-repo PRs; keep the blob:none optimization for fork PRs, merge_group and
+          # workflow_dispatch, which never run the Sonar scan.
+          filter: ${{ (github.event.pull_request.head.repo.full_name != github.repository || github.actor == 'dependabot[bot]') && 'blob:none' || '' }}
           persist-credentials: false
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -142,13 +122,22 @@ jobs:
         run: yarn test:cov-summary
         id: yarn_coverage
       - name: Jest coverage comment
+        id: coverage_comment
         uses: MishaKav/jest-coverage-comment@v1.0.34
         with:
           coverage-summary-path: ${{env.UI_COVERAGE_DIRECTORY}}/coverage-summary.json
           title: Jest test Coverage
           summary-title: UI tests summary
           badge-title: Coverage
+          # Fork and Dependabot PRs get a read-only token, so only other same-repo PRs get the comment.
+          hide-comment: ${{ github.event.pull_request.head.repo.full_name != github.repository || github.actor == 'dependabot[bot]' }}
+      - name: Coverage summary
+        env:
+          SUMMARY_HTML: ${{ steps.coverage_comment.outputs.summaryHtml }}
+        run: echo "$SUMMARY_HTML" >> "$GITHUB_STEP_SUMMARY"
+      # Fork and Dependabot PRs get no Sonar token, so the scanner and the PR scan skip them.
       - name: yarn add sonarqube-scanner
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: npm install -g sonarqube-scanner@^4.3.0
         id: npm_install_sonar_scanner
@@ -161,7 +150,7 @@ jobs:
         # told apart from an upload error / rate limit / timeout, which never returns a
         # "QUALITY GATE STATUS" line and must not block the required check.
         continue-on-error: true
-        if: github.event_name == 'pull_request_target' && steps.npm_install_sonar_scanner.outcome == 'success'
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.npm_install_sonar_scanner.outcome == 'success'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
           set +e
@@ -224,9 +213,9 @@ jobs:
   # Sonar "Clean as You Code" gate, reported through a job that ALWAYS runs.
   #
   # Do not make SonarCloud's own check required instead: the scan is gated
-  # behind dorny/paths-filter and the "safe to test" label, so a PR with no UI
-  # changes never produces that check and would block forever waiting on it —
-  # the exact failure mode the ui-coverage shim above exists to avoid.
+  # behind dorny/paths-filter and runs for same-repo PRs only, so a PR with no UI
+  # changes or from a fork never produces that check and would block forever
+  # waiting on it — the exact failure mode the ui-coverage shim above exists to avoid.
   #
   # The gate itself is configured in SonarCloud (conditions on New Code only),
   # so legacy debt can never fail a PR. See docs/ui-code-quality-gate.md.
@@ -239,7 +228,7 @@ jobs:
         run: |
           job="${{ needs.ui-coverage-tests.result }}"
           status="${{ needs.ui-coverage-tests.outputs.sonar_gate_status }}"
-          event="${{ github.event_name }}"
+          same_repo_pr="${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}"
 
           # Skipped means no UI paths changed. Pass, exactly like ui-coverage —
           # a required check that never completes blocks the PR forever.
@@ -252,9 +241,10 @@ jobs:
             exit 1
           fi
 
-          # push / merge_group never run the PR scan, so there is no verdict to gate.
-          if [[ "$event" != "pull_request_target" ]]; then
-            echo "Sonar PR scan does not apply to '$event' — nothing to gate."
+          # Only same-repo PRs run the PR scan: merge_group / dispatch have no PR and
+          # fork and Dependabot PRs get no Sonar token, so there is no verdict to gate.
+          if [[ "$same_repo_pr" != "true" ]]; then
+            echo "Sonar PR scan does not apply to this run — nothing to gate."
             exit 0
           fi
 
