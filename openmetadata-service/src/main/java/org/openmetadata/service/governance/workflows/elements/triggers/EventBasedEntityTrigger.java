@@ -156,6 +156,12 @@ public class EventBasedEntityTrigger implements TriggerInterface {
                 workflowTriggerId, String.format("%s-%s-%s", entityType, eventId, "start"));
 
         StartEvent startEvent = new StartEventBuilder().id(startEventId).build();
+        // One consumer thread delivers every change event's signal. Leaving the start event
+        // asynchronously commits the instance and its job, then hands the filter and the whole
+        // workflow body to the Flowable async executor, so one slow workflow (an approval that
+        // reads and patches its entity) can't hold back every other entity's event behind it.
+        // ADR:2026-10-14-event-triggered-workflows-run-on-the-async-executor
+        startEvent.setAsynchronousLeave(true);
 
         startEvent.getEventDefinitions().add(signalEventDefinition);
 

@@ -77,6 +77,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.tasks.TaskIdGenerator;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.AsyncService;
@@ -687,18 +688,10 @@ public class CreateTask implements TaskListener {
     WebsocketNotificationHandler.handleTaskNotification(task);
 
     // Supersede any approval task still open from an earlier run of the same workflow, AFTER the
-    // new
-    // task has been created, so a rollback of the new-task transaction can't leave the prior run's
-    // Flowable process terminated behind a still-open OM task. One live approval per (entity,
+    // new task has been created, so a rollback of the new-task transaction can't leave the prior
+    // run's Flowable process terminated behind a still-open OM task. One live approval per (entity,
     // workflow) is the invariant.
-    supersedePriorApprovalTask(
-        delegateTask,
-        taskRepository,
-        entity,
-        taskCategory,
-        resolvedWorkflowDefinitionId,
-        workflowInstanceId,
-        updatedBy);
+    supersedePriorApprovalTask(delegateTask, taskRepository, entity, taskCategory, task, updatedBy);
 
     return task;
   }
@@ -708,8 +701,7 @@ public class CreateTask implements TaskListener {
       TaskRepository taskRepository,
       EntityInterface<?> entity,
       TaskCategory taskCategory,
-      UUID currentWorkflowDefinitionId,
-      UUID currentWorkflowInstanceId,
+      Task currentTask,
       String updatedBy) {
     // Best-effort cleanup: failing to supersede a prior task must never abort creation of the new
     // approval task, so all exceptions are contained here instead of bubbling up as a BpmnError.
@@ -718,10 +710,7 @@ public class CreateTask implements TaskListener {
         taskRepository
             .listNonTerminalTasksByEntityAndCategory(entity.getFullyQualifiedName(), taskCategory)
             .stream()
-            .filter(
-                prior ->
-                    isSupersedablePriorApprovalTask(
-                        prior, currentWorkflowDefinitionId, currentWorkflowInstanceId))
+            .filter(prior -> isSupersededBy(prior, currentTask))
             .forEach(
                 prior ->
                     cancelAndTerminatePriorApproval(
@@ -772,6 +761,21 @@ public class CreateTask implements TaskListener {
       }
     }
     return priorPayload;
+  }
+
+  /**
+   * Whether {@code current} replaces {@code prior}. Event-triggered runs execute on the async
+   * executor, so two runs for the same entity can create their approval tasks at the same time. If
+   * either could supersede the other, both would close each other's task and leave the entity with
+   * no live approval. So a task only replaces tasks created before it: the newest one survives. A
+   * prior task without a task ID predates the sequence and counts as older.
+   */
+  static boolean isSupersededBy(Task prior, Task current) {
+    return isSupersedablePriorApprovalTask(
+            prior, current.getWorkflowDefinitionId(), current.getWorkflowInstanceId())
+        && (prior.getTaskId() == null
+            || TaskIdGenerator.sequenceNumberOf(prior.getTaskId())
+                < TaskIdGenerator.sequenceNumberOf(current.getTaskId()));
   }
 
   static boolean isSupersedablePriorApprovalTask(

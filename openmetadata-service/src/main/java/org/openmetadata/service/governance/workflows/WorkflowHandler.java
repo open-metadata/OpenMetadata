@@ -340,6 +340,8 @@ public class WorkflowHandler {
         workflowSettings.getExecutorConfiguration().getAsyncJobAcquisitionInterval());
     processEngineConfiguration.setAsyncExecutorDefaultTimerJobAcquireWaitTime(
         workflowSettings.getExecutorConfiguration().getTimerJobAcquisitionInterval());
+    processEngineConfiguration.setAsyncExecutorExecuteAsyncRunnableFactory(
+        new FreshReadJobRunnableFactory());
     processEngineConfiguration.setAsyncHistoryEnabled(true);
     processEngineConfiguration.setEnableHistoryCleaning(!isMigrationContext);
     processEngineConfiguration.setCleanInstancesEndedAfter(
@@ -794,9 +796,12 @@ public class WorkflowHandler {
   }
 
   /**
-   * Signals are delivered synchronously, so the whole workflow — filters, attribute gates, status
-   * transitions — runs inline on the caller's thread. Those gates decide whether an entity gets an
-   * approval task at all, so they read fresh rather than trusting an in-process cache that a write on
+   * Starts every workflow listening for {@code signal}. Event-based triggers leave their start event
+   * asynchronously, so this only commits the new instances and their first jobs; the filter and the
+   * workflow body run on the async executor, under the fresh-read scope {@link
+   * FreshReadJobRunnableFactory} opens for every job. A workflow whose start event is synchronous
+   * still runs inline here, so the scope is entered on this thread too: workflow gates decide whether
+   * an entity gets an approval task at all, and must not trust an in-process cache that a write on
    * another node may not have invalidated.
    */
   public void triggerWithSignal(String signal, Map<String, Object> variables) {

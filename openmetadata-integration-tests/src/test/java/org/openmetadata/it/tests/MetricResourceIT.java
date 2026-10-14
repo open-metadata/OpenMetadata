@@ -2077,6 +2077,38 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     assertHistoryContains(metricHistory, "description", approvedDescription);
   }
 
+  /**
+   * A create and an update that land back to back start two runs of the approval workflow for the
+   * same Metric, which the async executor can run at the same time. Each run creates an approval
+   * task and supersedes the others; the Metric must end with exactly one open approval, never two
+   * and never none.
+   */
+  @Test
+  void rapidCreateThenUpdateLeavesExactlyOneOpenApprovalTask(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Metric metric =
+        createEntity(
+            new CreateMetric()
+                .withName(ns.prefix("approval_race"))
+                .withDescription("Initial definition")
+                .withReviewers(List.of(shared.USER1_REF)));
+    Metric update = getEntityWithFields(metric.getId().toString(), "reviewers");
+    update.setDescription("Definition edited right after creation");
+    patchEntity(update.getId().toString(), update);
+
+    Awaitility.await("Back-to-back runs should settle on exactly one open approval task")
+        .atMost(Duration.ofMinutes(5))
+        .during(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              assertEquals(
+                  EntityStatus.IN_REVIEW, getEntity(metric.getId().toString()).getEntityStatus());
+              assertEquals(
+                  1, listOpenApprovalTasks(metric.getFullyQualifiedName()).getData().size());
+            });
+  }
+
   private Task awaitApprovalTask(Metric metric) {
     Awaitility.await("Metric approval workflow should create an open task")
         .atMost(Duration.ofMinutes(5))

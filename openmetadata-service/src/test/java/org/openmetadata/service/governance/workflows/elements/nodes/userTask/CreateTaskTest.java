@@ -937,6 +937,54 @@ class CreateTaskTest {
         CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
   }
 
+  // ---- isSupersededBy ----
+
+  @Test
+  void testConcurrentRunsSupersedeOnlyTheOlderTask() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task older = openApprovalTask(workflowDefinitionId, "TASK-00041");
+    Task newer = openApprovalTask(workflowDefinitionId, "TASK-00042");
+
+    assertTrue(CreateTask.isSupersededBy(older, newer));
+    assertFalse(CreateTask.isSupersededBy(newer, older));
+  }
+
+  @Test
+  void testSupersedeOrdersByTaskNumberNotByIdLength() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task older = openApprovalTask(workflowDefinitionId, "TASK-99999");
+    Task newer = openApprovalTask(workflowDefinitionId, "TASK-100000");
+
+    assertTrue(CreateTask.isSupersededBy(older, newer));
+    assertFalse(CreateTask.isSupersededBy(newer, older));
+  }
+
+  @Test
+  void testPriorTaskWithoutTaskIdCountsAsOlder() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task legacy = openApprovalTask(workflowDefinitionId, null);
+    Task current = openApprovalTask(workflowDefinitionId, "TASK-00007");
+
+    assertTrue(CreateTask.isSupersededBy(legacy, current));
+  }
+
+  @Test
+  void testOlderTaskOfAnotherWorkflowIsNotSuperseded() {
+    Task older = openApprovalTask(UUID.randomUUID(), "TASK-00001");
+    Task current = openApprovalTask(UUID.randomUUID(), "TASK-00002");
+
+    assertFalse(CreateTask.isSupersededBy(older, current));
+  }
+
+  private static Task openApprovalTask(UUID workflowDefinitionId, String taskId) {
+    return new Task()
+        .withId(UUID.randomUUID())
+        .withTaskId(taskId)
+        .withStatus(TaskEntityStatus.Open)
+        .withWorkflowDefinitionId(workflowDefinitionId)
+        .withWorkflowInstanceId(UUID.randomUUID());
+  }
+
   // ---- mergeManualGrantReason ----
 
   @Test
