@@ -108,7 +108,7 @@ jobs:
         # minutes of apt/rm for space this job never needs (measured 308s in the old
         # build-image job, 72-99s here). Re-enable a target only with a "no space left"
         # failure to point at.
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6 # v2.0.0
         with:
           tool-cache: false
           android: true
@@ -348,7 +348,7 @@ jobs:
     steps:
       - name: Free Disk Space (Ubuntu)
         # See the ui-it job: android is the only target worth its runtime here.
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6 # v2.0.0
         with:
           tool-cache: false
           android: true

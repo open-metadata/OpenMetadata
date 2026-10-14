@@ -568,7 +568,9 @@ def test_ci_run_stands_in_only_for_a_passed_it_workflow_run_on_head(
             for name in names
         ]
 
-    every_lane = lanes("parallel", "global-state", "multi-node", "retry-queue", "rdf")
+    every_lane = lanes(
+        "parallel-1", "parallel-2", "global-state", "multi-node+retry-queue", "rdf"
+    )
     # A workflow whose change detection skipped its lanes still concludes success.
     skipped = [
         {
@@ -586,9 +588,20 @@ def test_ci_run_stands_in_only_for_a_passed_it_workflow_run_on_head(
             "abc",
             "success",
             redis,
-            lanes("parallel", "global-state", "multi-node", "retry-queue"),
+            lanes("parallel-1", "parallel-2", "global-state", "multi-node+retry-queue"),
         ),
-        "7": ("abc", "success", mysql, lanes("parallel", "global-state", "rdf")),
+        "7": (
+            "abc",
+            "success",
+            mysql,
+            lanes("parallel-1", "parallel-2", "global-state", "rdf"),
+        ),
+        "8": (
+            "abc",
+            "success",
+            mysql,
+            lanes("parallel-1", "global-state", "multi-node+retry-queue", "rdf"),
+        ),
     }
 
     def gh_run_view(argv, **_):
@@ -609,10 +622,14 @@ def test_ci_run_stands_in_only_for_a_passed_it_workflow_run_on_head(
     assert PLANNER.ci_evidence(REPO_ROOT, ["6"], "abc", workflows)["cache-tests"][
         "lanes"
     ] == {"parallel", "isolated"}
-    # The isolated lane is three CI jobs; one missing leaves it to the local run.
+    # The isolated lane is two CI jobs; one missing leaves it to the local run.
     assert PLANNER.ci_evidence(REPO_ROOT, ["7"], "abc", workflows)[
         "mysql-elasticsearch"
     ]["lanes"] == {"parallel", "rdf"}
+    # So is the parallel lane: one half of it is not the lane.
+    assert PLANNER.ci_evidence(REPO_ROOT, ["8"], "abc", workflows)[
+        "mysql-elasticsearch"
+    ]["lanes"] == {"isolated", "rdf"}
     for unusable in ("2", "3", "4", "5"):
         with pytest.raises(SystemExit):
             PLANNER.ci_evidence(REPO_ROOT, [unusable], "abc", workflows)
