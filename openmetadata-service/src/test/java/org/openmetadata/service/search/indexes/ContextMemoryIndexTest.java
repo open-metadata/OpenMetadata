@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
+import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -135,6 +136,45 @@ class ContextMemoryIndexTest {
         new ContextMemoryIndex(memory).buildSearchIndexDocInternal(new HashMap<>());
 
     assertEquals(0, doc.get("usageCount"));
+  }
+
+  @Test
+  void buildSearchIndexDoc_aMemoryNeverCountedIndexesZeroOutcomes() {
+    Map<String, Object> doc =
+        new ContextMemoryIndex(baseMemory()).buildSearchIndexDocInternal(new HashMap<>());
+
+    Map<?, ?> outcomes = (Map<?, ?>) doc.get("outcomes");
+    assertEquals(0, outcomes.get("appliedCount"));
+    assertEquals(0, outcomes.get("positiveCount"));
+    assertEquals(0, outcomes.get("negativeCount"));
+    assertEquals(0, outcomes.get("correctedCount"));
+    assertNull(outcomes.get("lastAppliedAt"));
+  }
+
+  @Test
+  void buildSearchIndexDoc_indexesTheStoredOutcomes() {
+    ContextMemory memory =
+        baseMemory()
+            .withOutcomes(
+                new MemoryOutcomes()
+                    .withAppliedCount(12)
+                    .withPositiveCount(3)
+                    .withNegativeCount(1)
+                    .withCorrectedCount(2)
+                    .withLastAppliedAt(1_700_000_000_000L)
+                    .withLastCorrectedAt(1_690_000_000_000L)
+                    .withCountedAt(1_700_000_500_000L));
+    Map<String, Object> doc =
+        new ContextMemoryIndex(memory).buildSearchIndexDocInternal(new HashMap<>());
+
+    Map<?, ?> outcomes = (Map<?, ?>) doc.get("outcomes");
+    assertEquals(12, outcomes.get("appliedCount"));
+    assertEquals(3, outcomes.get("positiveCount"));
+    assertEquals(1, outcomes.get("negativeCount"));
+    assertEquals(2, outcomes.get("correctedCount"));
+    assertEquals(1_700_000_000_000L, outcomes.get("lastAppliedAt"));
+    assertEquals(1_690_000_000_000L, outcomes.get("lastCorrectedAt"));
+    assertEquals(1_700_000_500_000L, outcomes.get("countedAt"));
   }
 
   @Test

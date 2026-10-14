@@ -38,6 +38,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -55,6 +56,7 @@ import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -62,6 +64,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.outcome.MemoryOutcomeWriter;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -85,6 +88,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   public static final String COLLECTION_PATH = "v1/contextCenter/memories/";
   public static final String FIELDS =
       "owners,tags,domains,primaryEntity,relatedEntities,derivedEntities";
+  static final String STALE_RECOUNT = "A later recount of this memory's outcomes is already stored";
   private static final String PIN_UPDATE_FIELDS =
       FIELDS + ",rootMemory,parentMemory,sourceEntity,sourceFile";
 
@@ -164,7 +168,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Memory author as user name or user UUID") @QueryParam("author")
           String author,
       @Parameter(description = "Filter by pinned state") @QueryParam("pinned") Boolean pinned,
-      @Parameter(description = "Sort field: updatedAt, usageCount, updatedBy") @QueryParam("sortBy")
+      @Parameter(description = "Sort field: updatedAt, appliedCount, usageCount, updatedBy")
+          @QueryParam("sortBy")
           String sortBy,
       @Parameter(description = "Sort order: asc or desc") @QueryParam("sortOrder") String sortOrder,
       @Parameter(description = "Offset for search-backed pagination") @Min(0) @QueryParam("offset")
@@ -397,10 +402,13 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     }
     return switch (sortBy) {
       case "updatedAt" -> "updatedAt";
+      case "appliedCount" -> "outcomes.appliedCount";
       case "usageCount" -> "usageCount";
       case "updatedBy" -> "updatedBy.keyword";
       default -> throw new BadRequestException(
-          "Unsupported sortBy value '" + sortBy + "'. Allowed: updatedAt, usageCount, updatedBy.");
+          "Unsupported sortBy value '"
+              + sortBy
+              + "'. Allowed: updatedAt, appliedCount, usageCount, updatedBy.");
     };
   }
 
@@ -690,6 +698,44 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @PathParam("id")
           UUID id) {
     return setPinned(uriInfo, securityContext, id, false);
+  }
+
+  @PUT
+  @Path("/{id}/outcomes")
+  @Operation(
+      operationId = "recordContextMemoryOutcomes",
+      summary = "Record a memory's outcome counters",
+      description =
+          "Set the outcome counters of a context memory to the values of one recount. Only admins"
+              + " and bots may write them; the version and timestamps are unchanged, and a recount"
+              + " older than the stored one is rejected with 409.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The memory with its new counters",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContextMemory.class))),
+        @ApiResponse(responseCode = "404", description = "Memory not found"),
+        @ApiResponse(responseCode = "409", description = "A later recount is already stored")
+      })
+  public ContextMemory recordOutcomes(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid MemoryOutcomes outcomes) {
+    authorizer.authorizeAdminOrBot(securityContext);
+    repository.get(uriInfo, id, getFields(""), Include.NON_DELETED, false);
+    if (outcomes.getCountedAt() == null) {
+      outcomes.setCountedAt(System.currentTimeMillis());
+    }
+    if (!MemoryOutcomeWriter.write(id, outcomes)) {
+      throw new WebApplicationException(STALE_RECOUNT, Response.Status.CONFLICT);
+    }
+    return addHref(uriInfo, repository.get(uriInfo, id, getFields(""), Include.NON_DELETED, false));
   }
 
   private Response setPinned(

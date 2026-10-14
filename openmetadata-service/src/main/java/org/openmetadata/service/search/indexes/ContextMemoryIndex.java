@@ -22,10 +22,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
@@ -36,6 +38,7 @@ public class ContextMemoryIndex implements TaggableIndex {
   public static final String FIELD_MEMORY_SCOPE = "memoryScope";
   public static final String FIELD_MEMORY_TYPE = "memoryType";
   public static final String FIELD_PINNED = "pinned";
+  public static final String FIELD_OUTCOMES = "outcomes";
   public static final String UNANCHORED = "unanchored";
 
   private static final Set<String> REINDEX_RELATIONSHIP_FIELDS =
@@ -90,10 +93,18 @@ public class ContextMemoryIndex implements TaggableIndex {
             : null);
     doc.put("usageCount", memory.getUsageCount() != null ? memory.getUsageCount() : 0);
     doc.put("lastUsedAt", memory.getLastUsedAt());
+    doc.put(FIELD_OUTCOMES, outcomesDoc(memory));
 
     applyShareConfig(doc);
     applyEntityReferences(doc);
     return doc;
+  }
+
+  /** A memory never counted indexes zero counts, so sorting by a count ranks it last. */
+  static Map<String, Object> outcomesDoc(ContextMemory memory) {
+    MemoryOutcomes outcomes =
+        memory.getOutcomes() != null ? memory.getOutcomes() : new MemoryOutcomes();
+    return JsonUtils.getMap(outcomes);
   }
 
   public static String memoryTypeValue(ContextMemory memory) {

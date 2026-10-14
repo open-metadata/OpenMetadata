@@ -87,9 +87,20 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
-  Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <span>{children}</span>
-  )),
+  Typography: jest.fn(
+    ({
+      children,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode;
+      'data-testid'?: string;
+    }) => <span data-testid={testId}>{children}</span>
+  ),
+}));
+
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ThumbsDown: jest.fn(() => <svg />),
+  ThumbsUp: jest.fn(() => <svg />),
 }));
 
 const mockMemories: ContextMemory[] = [
@@ -186,5 +197,72 @@ describe('MemoriesView', () => {
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
     expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+  });
+
+  it('shows the votes and corrections of a memory whose outcomes are counted', () => {
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            outcomes: {
+              appliedCount: 12,
+              positiveCount: 3,
+              negativeCount: 1,
+              correctedCount: 2,
+            },
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
+      'label.cited-n-times'
+    );
+    expect(screen.getByTestId('memory-helpful-count')).toHaveTextContent('3');
+    expect(screen.getByTestId('memory-unhelpful-count')).toHaveTextContent('1');
+    expect(screen.getByTestId('memory-corrected-count')).toHaveTextContent(
+      'label.corrected-n-times'
+    );
+  });
+
+  it('shows no vote or correction count that is zero', () => {
+    render(
+      <MemoriesView
+        data={[{ ...mockMemories[0], outcomes: { appliedCount: 4 } }]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('memory-helpful-count')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('memory-unhelpful-count')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('memory-corrected-count')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the legacy usage of a memory whose outcomes are not counted yet', () => {
+    render(
+      <MemoriesView
+        data={[{ ...mockMemories[0], usageCount: 5 }]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
+      'label.cited-n-times'
+    );
+  });
+
+  it('shows no usage for a memory never cited', () => {
+    render(<MemoriesView data={[mockMemories[1]]} isLoading={false} />);
+
+    expect(screen.queryByTestId('memory-usage-info')).not.toBeInTheDocument();
   });
 });
