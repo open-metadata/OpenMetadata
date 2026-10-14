@@ -342,3 +342,71 @@ test('documents every approved go-forward utility', () => {
     assert.match(reference, new RegExp(`\\b${utility}\\b`));
   }
 });
+
+// ADR:2026-10-13-om-tokens-have-one-source-file
+const SRC_DIR = path.resolve(__dirname, '../../src');
+// Layout height re-declared per shell so calc() re-resolves against that
+// shell's navbar height; not a themed token.
+const OM_DECLARATION_ALLOWLIST = new Set(['--om-page-height']);
+
+function styleFiles(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      return entry.name === 'node_modules' ? [] : styleFiles(full);
+    }
+
+    return /\.(less|css)$/.test(entry.name) ? [full] : [];
+  });
+}
+
+test('declares --om-* tokens only in tokens.css', () => {
+  const offenders = styleFiles(SRC_DIR)
+    .filter((file) => file !== TOKENS_FILE)
+    .flatMap((file) =>
+      [...fs.readFileSync(file, 'utf8').matchAll(/(--om-[\w-]+)\s*:/g)]
+        .map((match) => match[1])
+        .filter((token) => !OM_DECLARATION_ALLOWLIST.has(token))
+        .map((token) => `${path.relative(SRC_DIR, file)}: ${token}`)
+    );
+
+  // A second file declaring --om-* splits light and dark across stylesheets,
+  // so the winner depends on import order (light won and dark mode broke).
+  assert.deepEqual(offenders, []);
+});
+
+test('gives every dark --om-* override a light value in tokens.css', () => {
+  const css = fs.readFileSync(TOKENS_FILE, 'utf8');
+  const dark = declarations(extractBlock(css, ':root.dark-mode'));
+  const light = declarations(extractBlock(css, ':root {'));
+
+  assert.ok(dark.size > 0);
+  for (const token of dark.keys()) {
+    assert.ok(light.has(token), `${token} has a dark value but no light one`);
+  }
+});
+
+test('keeps variables.less fallbacks equal to the tokens.css light values', () => {
+  const css = fs.readFileSync(TOKENS_FILE, 'utf8');
+  const light = declarations(extractBlock(css, ':root {'));
+  const less = fs.readFileSync(
+    path.resolve(SRC_DIR, 'styles/variables.less'),
+    'utf8'
+  );
+  const bridged = [
+    ...less.matchAll(/^(@[\w-]+):\s*var\((--om-[\w-]+),\s*(.+)\);$/gm),
+  ];
+  const names = bridged.map((match) => match[1]);
+
+  // LESS keeps the last of two definitions, so an earlier one is dead code
+  // whose fallback silently disagrees with tokens.css.
+  assert.deepEqual(
+    names.filter((name, index) => names.indexOf(name) !== index),
+    []
+  );
+  for (const [, , token, fallback] of bridged) {
+    if (light.has(token)) {
+      assert.equal(fallback, light.get(token), `${token} fallback drifted`);
+    }
+  }
+});

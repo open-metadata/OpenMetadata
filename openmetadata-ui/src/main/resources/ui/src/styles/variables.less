@@ -43,7 +43,9 @@
 // DARK-MODE BRIDGE: palette vars written as `var(--om-*, #hex)` below (e.g.
 // @green-9/10/12/100, @red-9/10/22, @yellow-10, @blue-13/22/29/30/500,
 // @grey-1/2/5/6/7/9/15/25/26/38/50, @green-500, @warning-100/400, @alert-*) resolve
-// through an --om-* custom property so they adapt in dark. LESS color functions
+// through an --om-* custom property so they adapt in dark. Both the light and
+// dark value of each --om-* live in tokens.css; the fallback here must equal
+// the light one (ADR:2026-10-13-om-tokens-have-one-source-file). LESS color functions
 // (darken/lighten/fade/mix/tint/shade/…) CANNOT evaluate a var() — passing a
 // bridged var to one fails the build at compile time (this broke Collate's
 // `darken(@grey-9)` in code-widget). Never wrap a bridged var in a LESS color
@@ -187,7 +189,6 @@
 @grey-22: #d9d9d9;
 @grey-23: #f7f7f7;
 @grey-24: #979797;
-@grey-25: var(--om-grey-25, #dbe0e7);
 @grey-26: var(--om-grey-26, #fcfcfd);
 @grey-27: #0a0d120d;
 @grey-28: #00000040;
@@ -491,7 +492,7 @@
 @body-background: var(--tw-color-utility-gray-blue-50);
 // antd defaults compile to static near-black text / light-gray edges. Bridged
 // like the palette vars above: the fallback is antd's exact light value, and
-// .dark-mode (app.less) re-points the --om-* var. @heading-color feeds
+// tokens.css re-points the --om-* var in dark. @heading-color feeds
 // @label-color, @modal-heading-color, @card-head-color, @table-header-color and
 // every antd title; @border-color-base feeds input/select/picker/button/radio
 // borders. antd runs no colour functions on either, so a var() is safe.
