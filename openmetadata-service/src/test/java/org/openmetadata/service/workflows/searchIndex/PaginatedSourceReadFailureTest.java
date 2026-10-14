@@ -9,6 +9,7 @@ package org.openmetadata.service.workflows.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -25,6 +26,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.search.SearchRepository;
@@ -61,6 +63,7 @@ class PaginatedSourceReadFailureTest {
   @Test
   void entitiesCursorReadFailureReportsTheLostBatch() {
     EntityRepository<?> repository = mock(EntityRepository.class);
+    when(repository.getDao()).thenReturn(mock(EntityDAO.class));
     when(repository.listWithOffset(any(), any(), any(), any(), any(), anyBoolean(), any(), any()))
         .thenThrow(DB_DOWN);
 
@@ -122,6 +125,7 @@ class PaginatedSourceReadFailureTest {
   }
 
   private static void assertLostBatch(IndexingError error) {
+    assertTrue(error.getStackTrace().contains(DB_DOWN.toString()), error.getStackTrace());
     assertEquals(IndexingError.ErrorSource.READER, error.getErrorSource());
     assertEquals(BATCH_SIZE, error.getSubmittedCount());
     assertEquals(0, error.getSuccessCount());

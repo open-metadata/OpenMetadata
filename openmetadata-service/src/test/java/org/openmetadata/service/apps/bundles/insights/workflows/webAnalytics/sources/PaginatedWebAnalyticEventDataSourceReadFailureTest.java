@@ -9,6 +9,7 @@ package org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.so
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -94,6 +95,7 @@ class PaginatedWebAnalyticEventDataSourceReadFailureTest {
   }
 
   private static void assertLostBatch(IndexingError error) {
+    assertTrue(error.getStackTrace().contains(DB_DOWN.toString()), error.getStackTrace());
     assertEquals(IndexingError.ErrorSource.READER, error.getErrorSource());
     assertEquals(BATCH_SIZE, error.getSubmittedCount());
     assertEquals(0, error.getSuccessCount());
