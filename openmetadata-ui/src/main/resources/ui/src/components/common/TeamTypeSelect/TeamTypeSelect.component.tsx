@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space } from 'antd';
+import { Box, Button } from '@openmetadata/ui-core-components';
+import { Select } from 'antd';
 import { useMemo, useState } from 'react';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { getTeamOptionsFromType } from '../../../utils/TeamUtils';
@@ -50,13 +51,15 @@ function TeamTypeSelect({
       : options.filter((opt) => opt.value !== TeamType.Group);
   }, [parentTeamType, showGroupOption]);
 
+  // Editing the team type must not toggle its parent collapsible panel.
   return (
-    <Space
+    <Box
+      inline
       align="center"
-      className="team-type-select"
+      className="layout-space layout-space-horizontal team-type-select"
       data-testid="team-type-select"
-      size={4}
-      // Used to stop click propagation event anywhere in the form to parent TeamDetailsV1 collapsible panel
+      gap={1}
+      itemClassName="layout-space-item"
       onClick={(e) => e.stopPropagation()}>
       <Select
         defaultActiveFirstOption
@@ -64,25 +67,28 @@ function TeamTypeSelect({
         value={value}
         onSelect={handleSelect}
       />
-      <Space className="m-l-xs" size={4}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal m-l-xs"
+        gap={1}
+        itemClassName="layout-space-item">
         <Button
-          className="h-8 p-x-xss"
+          color="primary"
           data-testid="cancel-btn"
-          size="small"
-          type="primary"
+          size="xs"
           onClick={handleCancel}>
           <CloseOutlined />
         </Button>
         <Button
-          className="h-8 p-x-xss"
+          color="primary"
           data-testid="save-btn"
-          size="small"
-          type="primary"
+          size="xs"
           onClick={handleSubmit}>
           <CheckOutlined />
         </Button>
-      </Space>
-    </Space>
+      </Box>
+    </Box>
   );
 }
 

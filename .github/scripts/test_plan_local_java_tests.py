@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import copy
 import fnmatch
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -51,6 +53,190 @@ def lane_its() -> set[str]:
 
 def test_impact_map_owns_every_test_and_production_file() -> None:
     assert PLANNER.audit_impact_map(REPO, IMPACT_MAP) == []
+
+
+def test_the_committed_map_owns_every_committed_test_and_production_file() -> None:
+    head_map = json.loads(
+        subprocess.run(
+            ["git", "show", f"HEAD:{PLANNER.IMPACT_MAP}"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    )
+    committed = PLANNER.Repo(REPO_ROOT, head_map, ref="HEAD")
+
+    assert committed.it_classes and committed.it_sources
+    assert PLANNER.audit_impact_map(committed, head_map) == []
+
+
+def test_a_push_is_checked_at_the_commit_it_sends_not_the_working_tree(
+    tmp_path: Path,
+) -> None:
+    def git(*args: str) -> str:
+        isolated = ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false"]
+        author = ["-c", "user.name=t", "-c", "user.email=t@t"]
+        return subprocess.run(
+            ["git", *isolated, *author, *args],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    git("init", "-q")
+    (tmp_path / "map.json").write_text('{"v": 1}')
+    git("add", ".")
+    git("commit", "-qm", "base")
+    base = git("rev-parse", "HEAD")
+    (tmp_path / "svc").mkdir()
+    (tmp_path / "svc/New.java").write_text("class New {}")
+    git("add", ".")
+    git("commit", "-qm", "adds code")
+    # Neither of these is pushed: an unstaged map fix and an untracked scratch file.
+    (tmp_path / "map.json").write_text('{"v": 2}')
+    (tmp_path / "scratch").mkdir()
+    (tmp_path / "scratch/Scratch.java").write_text("class Scratch {}")
+
+    assert PLANNER.branch_changes(tmp_path, base, "HEAD") == (["svc/New.java"], [])
+    assert PLANNER.read_blobs(tmp_path, "HEAD", ["map.json", "gone.txt"]) == {
+        "map.json": '{"v": 1}'
+    }
+    assert PLANNER.committed_files(tmp_path, "HEAD") == ["map.json", "svc/New.java"]
+    changed, _ = PLANNER.branch_changes(tmp_path, base, None)
+    assert {"map.json", "scratch/Scratch.java", "svc/New.java"} <= set(changed)
+
+
+def test_the_pre_pr_hook_checks_the_ref_the_command_sends(tmp_path: Path) -> None:
+    def git(*args: str) -> None:
+        isolated = ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false"]
+        author = ["-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run(
+            ["git", *isolated, *author, *args],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+        )
+
+    # A planner that fails the check it is asked for, so the hook prints which one.
+    planner = tmp_path / ".github/scripts/plan_local_java_tests.py"
+    planner.parent.mkdir(parents=True)
+    planner.write_text('import sys  # "--head"\nprint(*sys.argv[1:])\nsys.exit(1)\n')
+    git("init", "-q", "-b", "work")
+    git("add", ".")
+    git("commit", "-qm", "base")
+    git("branch", "feature")
+    git("update-ref", "refs/remotes/origin/main", "HEAD")
+    git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(tmp_path)}
+    env.pop("CLAUDE_TOOL_INPUT", None)
+
+    def checked(command: str) -> str:
+        hook = subprocess.run(
+            ["bash", str(SCRIPT_PATH.with_name("java_impact_map_hook.sh")), "pre-pr"],
+            input=json.dumps({"tool_input": {"command": command}}),
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert hook.returncode == 2, command
+        return hook.stderr.strip()
+
+    sends = {
+        "git push -o ci.skip origin feature": "feature",
+        "git push --push-option ci.skip origin +feature:other": "feature",
+        "git push origin feature -o ci.skip": "feature",
+        # A bundled option's value is taken for the remote, and the remote's name for the
+        # source; a remote's name is never checked.
+        "git push -fo ci.skip origin feature": "HEAD",
+        "git push": "HEAD",
+        "gh pr create --head someone:feature --title t": "feature",
+    }
+    for command, ref in sends.items():
+        expected = f"--check-branch --base origin/main --head {ref}"
+        assert checked(command) == expected, command
+
+
+def unowning(*paths: str) -> dict:
+    """The impact map with every area source that owns one of `paths` removed."""
+    impact_map = copy.deepcopy(IMPACT_MAP)
+    for area in impact_map["areas"]:
+        area["sources"] = [
+            source
+            for source in area["sources"]
+            if not any(fnmatch.fnmatchcase(path, source) for path in paths)
+        ]
+    return impact_map
+
+
+def test_the_branch_check_blames_the_branch_only_for_what_it_touched() -> None:
+    touched = f"{SERVICE}/apps/bundles/insights/DataInsightsApp.java"
+    untouched = f"{SERVICE}/util/AsciiTable.java"
+    impact_map = unowning(touched, untouched)
+
+    problems = PLANNER.branch_map_problems(REPO, impact_map, impact_map, [touched], [])
+
+    assert len(problems) == 1
+    assert f'add "{SERVICE}/apps/bundles/insights/**"' in problems[0]
+    assert "the code it imports belongs to" in problems[0]
+    assert PLANNER.branch_map_problems(REPO, impact_map, impact_map, [], []) == []
+
+
+def test_the_branch_check_flags_patterns_the_branch_empties_or_adds_dead() -> None:
+    impact_map = copy.deepcopy(IMPACT_MAP)
+    area = impact_map["areas"][0]
+    area["tests"].append("org/openmetadata/it/tests/gone/**")
+    deleted = [f"{IT_TESTS}/gone/GoneIT.java"]
+
+    emptied = PLANNER.branch_map_problems(REPO, impact_map, impact_map, [], deleted)
+    already_dead = PLANNER.branch_map_problems(REPO, impact_map, impact_map, [], [])
+    added = PLANNER.branch_map_problems(REPO, impact_map, IMPACT_MAP, [], [])
+
+    assert len(emptied) == 1 and "this branch deleted what it matched" in emptied[0]
+    assert already_dead == []
+    assert len(added) == 1 and "this branch added it" in added[0]
+
+
+def test_a_map_edit_that_breaks_a_rule_is_the_branch_problem() -> None:
+    impact_map = copy.deepcopy(IMPACT_MAP)
+    area = impact_map["areas"][0]
+    area["tests"].append("TableResourceIT")
+    changed = [PLANNER.IMPACT_MAP]
+    single = "'TableResourceIT' names a single test; match tests by pattern"
+
+    assert PLANNER.branch_map_problems(REPO, impact_map, IMPACT_MAP, changed, []) == [
+        f"area '{area['name']}': {single}"
+    ]
+    assert PLANNER.branch_map_problems(REPO, impact_map, impact_map, changed, []) == []
+
+
+def test_a_written_file_no_area_owns_is_reported_with_where_it_belongs() -> None:
+    stems = {PLANNER.convention_stem(path) for path in REPO.files} - {None}
+    relative, name = next(
+        (relative, name)
+        for relative, name in sorted(REPO.it_classes.items())
+        if relative not in REPO.never_run
+        and relative not in REPO.conditional
+        and not any(PLANNER.stem_matches(stem, name) for stem in stems)
+    )
+    it = f"{REPO.it_root}/{relative}"
+    production = f"{SERVICE}/apps/bundles/insights/DataInsightsApp.java"
+    impact_map = unowning(production)
+    for area in impact_map["areas"]:
+        area["tests"] = [
+            pattern
+            for pattern in area["tests"]
+            if not PLANNER.Planner._it_pattern_matches(relative, name, pattern)
+        ]
+
+    problems = PLANNER.owner_problems(REPO, impact_map, [production, it])
+
+    assert len(problems) == 2
+    assert problems[0].startswith("no area owns 1 file in ")
+    assert problems[1].startswith(f"{name} ({it}): no area owns it")
+    assert PLANNER.owner_problems(REPO, IMPACT_MAP, [production, it]) == []
 
 
 def test_audit_reports_single_tests_unowned_code_and_dead_patterns() -> None:
@@ -440,11 +626,11 @@ def test_steps_a_ci_run_covers_are_not_run_locally(
     )
     ran: list[list[str]] = []
 
-    def run(argv, **_):
+    def run(argv, _repo_root):
         ran.append(argv)
-        return subprocess.CompletedProcess(argv, 0)
+        return 0, None
 
-    monkeypatch.setattr(PLANNER.subprocess, "run", run)
+    monkeypatch.setattr(PLANNER, "run_step", run)
     ci = {
         "mysql-elasticsearch": {
             "url": "https://ci/6",
@@ -462,6 +648,13 @@ def test_steps_a_ci_run_covers_are_not_run_locally(
     assert by_lane["rdf"].ci_url == ""
     assert any("-DintegrationTests.lane=rdf" in argv for argv in ran)
     assert not any("-DintegrationTests.lane=parallel" in argv for argv in ran)
+    # The covered lane's classes ran in CI, so none of them lacks a local report.
+    assert by_lane["parallel"].missing_classes == []
+    assert by_lane["rdf"].missing_classes
+    block = PLANNER.render_block(
+        plan, results, "0123456789abcdef", "origin/main", False
+    )
+    assert "(mysql-elasticsearch · parallel)" not in block
 
 
 def test_commands_in_the_pr_abbreviate_long_class_lists() -> None:
@@ -709,11 +902,170 @@ def test_class_lists_past_the_budget_are_cut_to_counts() -> None:
     )
 
     assert len(text) < PLANNER.CLASS_LIST_BUDGET + 2_000
-    assert (
-        "400 classes, 8000 tests executed (too many to list in the PR description)"
-        in text
-    )
+    assert "400 classes, 8000 tests executed (too many to list)" in text
     assert "SomeLongEntityNameResource399IT" in text
+
+
+def test_the_pr_description_gets_a_summary_and_a_comment_gets_the_details() -> None:
+    names = [f"C{i}IT" for i in range(15)]
+    command = PLANNER.Command(
+        "integration", "mysql-elasticsearch · parallel", ["mvn", "verify"], [], names
+    )
+    result = PLANNER.StepResult(
+        command,
+        exit_code=1,
+        minutes=2.0,
+        tests=30,
+        failures=15,
+        classes_run=set(names),
+        failed_tests=[f"{name}#test" for name in names],
+        class_counts={name: [2, 0, 1] for name in names},
+    )
+    plan = PLANNER.Plan(
+        [],
+        commands=[command],
+        triggers={"area tables": {TABLE_REPOSITORY}},
+        not_run_locally={"it/SimpleReindexTriggerUIIT.java": "nightly"},
+    )
+    url = "https://github.com/o/r/pull/7#issuecomment-2"
+
+    summary = PLANNER.render_block(
+        plan, [result], "0123456789abcdef", "origin/main", False, url
+    )
+    details = PLANNER.render_details(
+        plan, [result], "0123456789abcdef", "origin/main", False
+    )
+
+    assert f"[Details]({url})" in summary
+    assert "`C9IT#test` and 5 more in the details" in summary
+    assert "C10IT#test" not in summary
+    assert "- Impacted, not run locally: 1 class (listed in the details)" in summary
+    for section in ("Tests run locally", "Why these tests", "Commands", "<details>"):
+        assert section not in summary
+    assert details.startswith(PLANNER.DETAILS_MARKER)
+    assert "`C14IT#test`" in details
+    for section in (
+        "Tests run locally",
+        "Why these tests",
+        "Impacted, not run locally (1)",
+        "Commands",
+    ):
+        assert section in details
+
+
+def test_the_details_comment_is_posted_once_then_edited_in_place(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    marker = PLANNER.DETAILS_MARKER
+    comments = [{"id": 1, "login": "teammate", "body": f"{marker}\ntheirs"}]
+
+    def gh(argv, **kwargs):
+        args = argv[1:]
+        if args == ["api", "user", "--jq", ".login"]:
+            out = "me\n"
+        elif args[:2] == ["api", "--paginate"]:
+            assert args[2] == "repos/o/r/issues/7/comments"
+            jq = args[args.index("--jq") + 1]
+            assert '.user.login == "me"' in jq and marker in jq
+            out = "".join(
+                f"{c['id']}\n"
+                for c in comments
+                if c["login"] == "me" and marker in c["body"]
+            )
+        else:
+            method, endpoint = args[2], args[3]
+            body = json.loads(kwargs["input"])["body"]
+            if method == "POST":
+                assert endpoint == "repos/o/r/issues/7/comments"
+                comments.append({"id": len(comments) + 1, "login": "me", "body": body})
+                comment_id = len(comments)
+            else:
+                comment_id = int(endpoint.rsplit("/", 1)[1])
+                assert endpoint == f"repos/o/r/issues/comments/{comment_id}"
+                next(c for c in comments if c["id"] == comment_id)["body"] = body
+            out = f"https://github.com/o/r/pull/7#issuecomment-{comment_id}\n"
+        return subprocess.CompletedProcess(argv, 0, stdout=out, stderr="")
+
+    monkeypatch.setattr(PLANNER.subprocess, "run", gh)
+    pr = {"number": 7, "url": "https://github.com/o/r/pull/7", "body": ""}
+
+    first = PLANNER.upsert_details_comment(REPO_ROOT, pr, f"{marker}\nrun 1\n")
+    second = PLANNER.upsert_details_comment(REPO_ROOT, pr, f"{marker}\nrun 2\n")
+
+    assert first == second == "https://github.com/o/r/pull/7#issuecomment-2"
+    assert [c["body"] for c in comments] == [
+        f"{marker}\ntheirs",
+        f"{marker}\nrun 2\n",
+    ]
+    # GitHub rejects a comment over its limit; the summary then goes without a link.
+    too_long = "x" * (PLANNER.GITHUB_BODY_LIMIT + 1)
+    assert PLANNER.upsert_details_comment(REPO_ROOT, pr, too_long) == ""
+    assert len(comments) == 2
+
+
+def test_update_pr_posts_the_details_and_links_them_from_the_summary(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    changed = tmp_path / "changed.txt"
+    changed.write_text(f"{IT_TESTS}/TableResourceIT.java\n")
+    head = PLANNER.git(REPO_ROOT, "rev-parse", "HEAD")
+    workflow = IMPACT_MAP["maven"]["ciWorkflows"]["mysql-elasticsearch"]
+    run = {
+        "headSha": head,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://ci/1",
+        "workflowName": workflow["workflow"],
+        "jobs": [
+            {"name": job, "conclusion": "success"}
+            for jobs in workflow["laneJobs"].values()
+            for job in jobs
+        ],
+    }
+    pr = {"number": 7, "url": "https://github.com/o/r/pull/7"}
+    pr["body"] = "#### Backend integration tests\n"
+    posted: list[str] = []
+    edited: list[str] = []
+    real_run = subprocess.run
+
+    def gh(argv, **kwargs):
+        if argv[0] != "gh":
+            return real_run(argv, **kwargs)
+        args = argv[1:]
+        out = ""
+        if args[:2] == ["run", "view"]:
+            out = json.dumps(run)
+        elif args[:2] == ["pr", "view"]:
+            out = json.dumps(pr)
+        elif args == ["api", "user", "--jq", ".login"]:
+            out = "me\n"
+        elif args[:2] == ["api", "--method"]:
+            posted.append(json.loads(kwargs["input"])["body"])
+            out = "https://github.com/o/r/pull/7#issuecomment-1\n"
+        elif args[:2] == ["pr", "edit"]:
+            edited.append(Path(args[args.index("--body-file") + 1]).read_text())
+        return subprocess.CompletedProcess(argv, 0, stdout=out, stderr="")
+
+    monkeypatch.setattr(PLANNER.subprocess, "run", gh)
+    monkeypatch.setattr(PLANNER, "RESULTS_MARKDOWN", str(tmp_path / "summary.md"))
+    monkeypatch.setattr(PLANNER, "DETAILS_MARKDOWN", str(tmp_path / "details.md"))
+
+    exit_code = PLANNER.main(
+        ["--changed-files", str(changed), "--run", "--update-pr", "--ci-run", "1"]
+    )
+
+    summary = (tmp_path / "summary.md").read_text()
+    details = (tmp_path / "details.md").read_text()
+    assert exit_code == 0
+    assert posted == [details]
+    assert "every lane class, in [this CI run](https://ci/1)" in details
+    assert "[Details](https://github.com/o/r/pull/7#issuecomment-1)" in summary
+    assert "passed in [CI](https://ci/1)" in summary
+    assert "Tests run locally" not in summary
+    assert "Selected but produced no report" not in summary
+    [body] = edited
+    assert body.startswith("#### Backend integration tests")
+    assert summary.strip() in body
 
 
 def test_a_step_that_ran_no_tests_is_not_a_pass() -> None:
@@ -737,6 +1089,113 @@ def test_a_step_whose_tests_all_skipped_is_not_a_pass(tmp_path: Path) -> None:
 
     assert result.all_skipped_classes == ["PatchTableEmbeddingIT"]
     assert not result.passed
+
+
+def test_step_totals_add_up_the_summary_each_execution_prints(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    per_class = (
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 66.4 s "
+        "-- in org.openmetadata.it.tests.TableResourceIT"
+    )
+    lane = "[WARNING] Tests run: 1898, Failures: 0, Errors: 0, Skipped: 159"
+    flaky = "[ERROR] Tests run: 9, Failures: 1, Errors: 1, Skipped: 0, Flakes: 2"
+    script = (
+        f"print({per_class!r}); print({lane!r}); print({flaky!r}); raise SystemExit(3)"
+    )
+
+    exit_code, totals = PLANNER.run_step([sys.executable, "-c", script], tmp_path)
+
+    assert (exit_code, totals) == (3, [1907, 1, 1, 159])
+    assert "-- in org.openmetadata.it.tests.TableResourceIT" in capsys.readouterr().out
+    assert PLANNER.run_step(
+        [sys.executable, "-c", "print('BUILD FAILURE')"], tmp_path
+    ) == (0, None)
+
+
+def test_a_nested_class_several_its_inherit_does_not_shrink_the_step_totals(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    command = PLANNER.Command(
+        "integration",
+        "mysql-elasticsearch · parallel",
+        ["mvn", "verify"],
+        ["failsafe-reports"],
+        ["TableResourceIT", "UserResourceIT"],
+    )
+
+    def run(_argv, repo_root):
+        # Both ITs inherit BaseEntityIT's nested class; its report keeps the second run only.
+        reports = repo_root / "failsafe-reports"
+        reports.mkdir()
+        for name, tests in (
+            ("TableResourceIT", 10),
+            ("UserResourceIT", 5),
+            ("BaseEntityIT$HistoryTest", 4),
+        ):
+            (reports / f"TEST-org.openmetadata.it.tests.{name}.xml").write_text(
+                f'<testsuite name="org.openmetadata.it.tests.{name}" tests="{tests}" '
+                'failures="0" errors="0" skipped="0"/>'
+            )
+        return 0, [23, 0, 0, 0]
+
+    monkeypatch.setattr(PLANNER, "run_step", run)
+
+    [result] = PLANNER.run_commands(
+        tmp_path, PLANNER.Plan([], commands=[command]), False
+    )
+
+    assert (result.tests, result.class_total) == (23, 2)
+    assert result.passed
+    assert (
+        PLANNER.count_classes(result, sorted(result.class_counts))
+        == "2 classes, 23 tests executed"
+    )
+    note = "\n".join(PLANNER.render_tests_run([result]))
+    assert "keep only the last run of a nested class" in note
+    assert "The summary's step totals are Maven's own counts._" in note
+
+
+def test_generated_code_older_than_a_change_to_its_inputs_is_stale(
+    tmp_path: Path,
+) -> None:
+    schema = tmp_path / "spec/schema/table.json"
+    output = tmp_path / "spec/target/generated"
+    schema.parent.mkdir(parents=True)
+    output.mkdir(parents=True)
+    schema.write_text("{}")
+    for name, generated_at in (("TableType.java", 100), ("Table.java", 300)):
+        (output / name).write_text("")
+        os.utime(output / name, (generated_at, generated_at))
+    sources = [
+        {
+            "module": "spec",
+            "inputs": ["spec/schema", "spec/pom.xml"],
+            "output": "spec/target/generated",
+        }
+    ]
+
+    # TableType.java is as old as the last clean generation; the schema changed after it.
+    os.utime(schema, (200, 200))
+    assert PLANNER.stale_generated_modules(tmp_path, sources) == {
+        "spec": "spec/schema/table.json"
+    }
+
+    os.utime(schema, (50, 50))
+    assert PLANNER.stale_generated_modules(tmp_path, sources) == {}
+
+    for generated in output.iterdir():
+        generated.unlink()
+    os.utime(schema, (200, 200))
+    assert PLANNER.stale_generated_modules(tmp_path, sources) == {}
+    assert PLANNER.clean_command(["spec"]) == [
+        "mvn",
+        "-B",
+        "-q",
+        "clean",
+        "-pl",
+        "spec",
+    ]
 
 
 def test_results_block_is_replaced_in_place_or_inserted_under_the_heading() -> None:

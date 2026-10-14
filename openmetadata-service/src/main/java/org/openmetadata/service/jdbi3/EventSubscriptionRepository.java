@@ -25,6 +25,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.Argument;
@@ -32,6 +33,7 @@ import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
@@ -55,6 +57,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       "trigger,enabled,batchSize,notificationTemplate,destinations";
   static final String ALERT_UPDATE_FIELDS =
       "trigger,enabled,batchSize,input,filteringRules,notificationTemplate,destinations";
+  private static final String FIELD_ENABLED = "enabled";
 
   public EventSubscriptionRepository() {
     super(
@@ -96,7 +99,29 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   @Override
   protected void postUpdate(EventSubscription original, EventSubscription updated) {
     super.postUpdate(original, updated);
+    // Before the job is back, so its first tick already starts from now.
+    if (switchedOn(updated)) {
+      AlertRecord.skipBacklog(updated.getId());
+    }
     AlertJobs.convergeAfterCommit(updated.getId());
+  }
+
+  /**
+   * An alert switched back on sends what happens from then on, not what happened while it was off.
+   * Read from this save's own change: when the save is merged into the user's session, {@code
+   * original} is the version from before that session.
+   */
+  private static boolean switchedOn(EventSubscription updated) {
+    ChangeDescription change = updated.getIncrementalChangeDescription();
+    return !Boolean.FALSE.equals(updated.getEnabled())
+        && change != null
+        && Stream.concat(
+                listOrEmpty(change.getFieldsUpdated()).stream(),
+                listOrEmpty(change.getFieldsDeleted()).stream())
+            .anyMatch(
+                field ->
+                    FIELD_ENABLED.equals(field.getName())
+                        && Boolean.FALSE.equals(field.getOldValue()));
   }
 
   // Every hard delete reaches this, inside the delete's own transaction, including deleteInternal,
@@ -287,7 +312,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
                     updated.getFilteringRules(),
                     true));
         compareAndUpdate(
-            "enabled", () -> recordChange("enabled", original.getEnabled(), updated.getEnabled()));
+            FIELD_ENABLED,
+            () -> recordChange(FIELD_ENABLED, original.getEnabled(), updated.getEnabled()));
         compareAndUpdate(
             "destinations",
             () ->

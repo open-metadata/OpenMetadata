@@ -474,6 +474,39 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
     assertEquals(AnnouncementStatus.Expired, listed.getStatus());
   }
 
+  /**
+   * The schema requires both times, but only on the create/PUT body: PATCH binds the patched JSON
+   * with no bean validation, so a remove op could leave an announcement with no window at all.
+   */
+  @Test
+  void testPatchCannotRemoveTheTimeWindow(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    Announcement created =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("window-required"))
+                .withDescription("Keeps its window")
+                .withStartTime(now)
+                .withEndTime(now + 86400000L));
+    String id = created.getId().toString();
+
+    for (String field : List.of("startTime", "endTime")) {
+      assertThrows(
+          InvalidRequestException.class,
+          () ->
+              SdkClients.adminClient()
+                  .announcements()
+                  .patch(
+                      id, JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/" + field + "\"}]")),
+          field);
+    }
+
+    Announcement unchanged = getEntity(id);
+    assertEquals(created.getStartTime(), unchanged.getStartTime());
+    assertEquals(created.getEndTime(), unchanged.getEndTime());
+    assertEquals(AnnouncementStatus.Active, unchanged.getStatus());
+  }
+
   @Test
   void testCustomAnnouncementRequiresItsName(TestNamespace ns) {
     long now = System.currentTimeMillis();

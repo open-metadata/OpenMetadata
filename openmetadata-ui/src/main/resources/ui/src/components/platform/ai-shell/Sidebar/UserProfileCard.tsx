@@ -11,65 +11,72 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
+import { Box, Card, Divider } from '@openmetadata/ui-core-components';
 import React, { useRef } from 'react';
 import AppModeSwitcher from '../../../AppModeSwitcher/AppModeSwitcher';
 import AIUserMenu from '../../../discovery/personal-space/AIUserMenu/AIUserMenu';
 import InboxIconButton from '../../../discovery/personal-space/InboxIconButton/InboxIconButton';
 
 export interface UserProfileCardProps {
-  /**
-   * `true` in the collapsed 32px rail: show only the avatar and drop the
-   * full-width mode switcher (its label can't fit the rail — the switcher is
-   * reachable once the panel is expanded).
-   */
+  /** `true` in the collapsed rail: inbox, avatar and the compact mode switcher stacked. */
   compact?: boolean;
 }
 
 /**
- * User chrome for the AI sidebar footer — the AI user menu (avatar,
- * name, profile dropdown), the inbox launcher, and the Classic/AI
- * `AppModeSwitcher`. `cardRef` lets the switcher popover treat clicks inside
- * the card as "inside" and not self-close. In the collapsed rail the card
- * mirrors the compact profile: inbox, user menu, mode switcher — no full-width
- * wrapper.
+ * User chrome for the AI sidebar footer — the profile card (AI user menu with
+ * avatar, name, domain scope and profile dropdown, plus the inbox launcher)
+ * and, in its own card below, the Classic/AI `AppModeSwitcher`. The switcher
+ * gets its card as `cardRef`, so its popover treats clicks inside that card as
+ * "inside" and does not self-close.
  */
 const UserProfileCard: React.FC<UserProfileCardProps> = ({
   compact = false,
 }) => {
-  const cardRef = useRef<HTMLDivElement>(null);
+  const switcherCardRef = useRef<HTMLDivElement>(null);
 
+  if (compact) {
+    // The compact switcher is wider than the rail card, so it sits below it.
+    return (
+      <>
+        <Card
+          className="tw:mx-auto tw:w-14 tw:bg-primary tw:p-1.5 tw:shadow-xs"
+          data-testid="ask-user-card">
+          <Box align="center" direction="col" gap={1}>
+            <Box align="center" className="tw:size-11" justify="center">
+              <InboxIconButton />
+            </Box>
+            <Divider className="tw:w-7" />
+            <AIUserMenu collapsed />
+          </Box>
+        </Card>
+        <AppModeSwitcher compact />
+      </>
+    );
+  }
+
+  // Own wrapper so the two cards sit 6px apart instead of the footer's 12px gap.
   return (
-    <div
-      className={classNames('ask-user-card', {
-        'tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:py-2 tw:bg-surface tw:rounded-md':
-          !compact,
-        // Collapsed rail: no card box — `.ask-rail__profile` already stacks and
-        // centers inbox / avatar / switcher. `display: contents` lets them be
-        // its direct flex children (matching the old SidebarRailProfile).
-        'ask-user-card--compact': compact,
-      })}
-      data-testid="ask-user-card"
-      ref={cardRef}>
-      {compact ? (
-        <>
-          <InboxIconButton />
-          <AIUserMenu collapsed />
-          <AppModeSwitcher compact />
-        </>
-      ) : (
-        <>
-          <Box>
-            <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1.5">
-              <AIUserMenu />
-            </div>
+    <Box className="tw:w-full tw:gap-1.5" direction="col">
+      <Card
+        className="tw:w-full tw:bg-primary tw:py-2.5 tw:pr-2.5 tw:pl-3 tw:shadow-xs"
+        data-testid="ask-user-card">
+        <Box align="center" gap={2}>
+          <AIUserMenu />
+          <Box
+            align="center"
+            className="tw:size-10 tw:shrink-0 tw:rounded-xl tw:border tw:border-secondary tw:bg-surface"
+            justify="center">
             <InboxIconButton />
           </Box>
-          <AppModeSwitcher cardRef={cardRef} />
-        </>
-      )}
-    </div>
+        </Box>
+      </Card>
+      <Card
+        className="tw:w-full tw:bg-primary tw:px-3 tw:py-2 tw:shadow-xs"
+        data-testid="ask-app-mode-card"
+        ref={switcherCardRef}>
+        <AppModeSwitcher cardRef={switcherCardRef} />
+      </Card>
+    </Box>
   );
 };
 

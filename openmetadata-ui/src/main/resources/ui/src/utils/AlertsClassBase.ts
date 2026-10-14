@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { FormInstance } from 'antd';
 import type { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, trim } from 'lodash';
@@ -45,11 +44,12 @@ import { t } from './i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from './ToastUtils';
 
 export interface AddAlertFormWidgetProps {
-  formRef: FormInstance<ModifiedCreateEventSubscription>;
   /**
-   * Current form values from a caller that keeps them in state (the AI alert modal).
-   * When set, read these instead of watching formRef.
+   * The classic antd form instance, for widgets that write into it. Typed `unknown` so this
+   * file stays antd-free; the AI alert modal does not pass it.
    */
+  formRef?: unknown;
+  /** The current form values, passed by every caller. */
   values?: ModifiedCreateEventSubscription;
   alertDetails?: ModifiedEventSubscription;
   templates?: NotificationTemplate[];

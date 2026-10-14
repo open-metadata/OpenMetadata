@@ -375,7 +375,7 @@ public class ScimResource {
     }
 
     @Override
-    public EntityInterface getEntity() {
+    public EntityInterface<?> getEntity() {
       return null;
     }
 

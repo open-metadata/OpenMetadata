@@ -48,6 +48,12 @@ import {
   useGraphDataBuilder,
 } from './useGraphData';
 
+// Dark mode applies only in AI mode; classic is light-only.
+jest.mock('../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../hooks/useAppMode'),
+  useIsAiMode: () => true,
+}));
+
 jest.mock('../utils/textMeasure', () => ({
   getCanvasContext: jest.fn(() => null),
   measureTextWidth: jest.fn(

@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/type/status.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EntityStatus",
-  "description": "Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus` property. Entity types without that property have no lifecycle. When a create request omits the stage, the server assigns the entity type's initial stage.",
+  "description": "General lifecycle stage for entities that reference this vocabulary. Specialized entities can declare their own status schema and lifecycle policy. Entity types without an entityStatus property have no lifecycle. When a create request omits the stage, the server assigns the entity type's initial stage.",
   "type": "string",
   "javaType": "org.openmetadata.schema.type.EntityStatus",
   "enum": [

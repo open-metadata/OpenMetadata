@@ -67,6 +67,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
@@ -107,25 +108,33 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private static final int HASHING_COST = 12;
   private UserRepository userRepository;
   private TokenRepository tokenRepository;
-  private AuthorizerConfiguration authorizerConfiguration;
-  private boolean isSelfSignUpAvailable;
 
   @Override
   public void init(OpenMetadataApplicationConfig config) {
     this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     this.tokenRepository = Entity.getTokenRepository();
-    this.authorizerConfiguration = config.getAuthorizerConfiguration();
-    this.isSelfSignUpAvailable =
-        SecurityConfigurationManager.getCurrentAuthConfig().getEnableSelfSignup();
+  }
+
+  /** Read per request: a change saved in the UI applies without reinitializing authentication. */
+  private static boolean isSelfSignUpAvailable() {
+    AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+    return authConfig != null && Boolean.TRUE.equals(authConfig.getEnableSelfSignup());
+  }
+
+  private static Set<String> allowedRegistrationDomains() {
+    AuthorizerConfiguration authorizer = SecurityConfigurationManager.getCurrentAuthzConfig();
+    return authorizer == null || authorizer.getAllowedEmailRegistrationDomains() == null
+        ? Set.of()
+        : authorizer.getAllowedEmailRegistrationDomains();
   }
 
   @Override
   public User registerUser(RegistrationRequest newRegistrationRequest) {
-    if (isSelfSignUpAvailable) {
+    if (isSelfSignUpAvailable()) {
       String newRegistrationRequestEmail = newRegistrationRequest.getEmail();
       String[] tokens = newRegistrationRequest.getEmail().split("@");
       String emailDomain = tokens[1];
-      Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
+      Set<String> allowedDomains = allowedRegistrationDomains();
       if (!allowedDomains.contains("all")
           && allowedDomains.stream().noneMatch(emailDomain::equalsIgnoreCase)) {
         LOG.error("Email with this Domain not allowed: {}", newRegistrationRequestEmail);
@@ -378,7 +387,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public JwtResponse getNewAccessToken(TokenRefreshRequest request) {
     if (CommonUtil.nullOrEmpty(request.getRefreshToken())) {
-      throw new BadRequestException("Token Cannot be Null or Empty String");
+      throw new AuthenticationException("Refresh token is required. Please login again.");
     }
     TokenInterface tokenInterface = tokenRepository.findByToken(request.getRefreshToken());
     User storedUser =
@@ -430,10 +439,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     RefreshToken storedRefreshToken =
         (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
-      throw new CustomExceptionMessage(
-          BAD_REQUEST,
-          PASSWORD_RESET_TOKEN_EXPIRED,
-          "Expired token. Please login again : " + storedRefreshToken.getToken().toString());
+      throw new AuthenticationException("Refresh token expired. Please login again.");
     }
     // TODO: currently allow single login from a place, later multiple login can be added
     // just delete the existing token

@@ -197,11 +197,11 @@
 
   .ant-select-selection-item,
   .ant-select-item-option-content {
-    .ant-space {
+    :is(.ant-space, .layout-space) {
       display: flex;
       align-items: center;
 
-      .ant-space-item {
+      :is(.ant-space-item, .layout-space-item) {
         display: flex;
         align-items: center;
       }

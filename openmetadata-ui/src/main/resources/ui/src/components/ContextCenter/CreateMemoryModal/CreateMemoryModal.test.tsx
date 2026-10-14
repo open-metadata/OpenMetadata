@@ -29,7 +29,7 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import {
   ContextMemory,
-  EntityStatus,
+  ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import {
   getMemoryOntologyProposalStatus,
@@ -444,7 +444,7 @@ describe('CreateMemoryModal', () => {
     const memory = {
       id: 'memory-id',
       name: 'inactive-customer',
-      entityStatus: EntityStatus.Approved,
+      entityStatus: ContextMemoryStatus.Approved,
       owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
       shareConfig: { visibility: 'Shared' },
       derivedEntities: [],
@@ -566,10 +566,12 @@ describe('CreateMemoryModal', () => {
   });
 
   it.each([
-    EntityStatus.Draft,
-    EntityStatus.Archived,
-    EntityStatus.Deprecated,
-    EntityStatus.Rejected,
+    ContextMemoryStatus.Draft,
+    ContextMemoryStatus.Archived,
+    ContextMemoryStatus.Deprecated,
+    ContextMemoryStatus.Rejected,
+    ContextMemoryStatus.Superseded,
+    ContextMemoryStatus.Invalidated,
   ])('hides proposal action for status %s', async (status) => {
     const memory = {
       id: 'memory-id',
@@ -741,36 +743,42 @@ describe('CreateMemoryModal', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows why a memory was superseded and links to its successor', () => {
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal
-          {...defaultProps}
-          viewOnly
-          memoryToEdit={{
-            id: 'old-memory',
-            name: 'old-memory',
-            entityStatus: EntityStatus.Deprecated,
-            statusReason: 'The replacement has the corrected definition.',
-            supersededBy: {
-              id: 'new-memory',
-              type: 'contextMemory',
-              name: 'new-memory',
-            },
-          }}
-        />
-      </MemoryRouter>
-    );
+  it.each<[ContextMemoryStatus, string]>([
+    [ContextMemoryStatus.Deprecated, 'label.deprecated'],
+    [ContextMemoryStatus.Superseded, 'label.superseded'],
+  ])(
+    'shows why a %s memory was replaced and links to its successor',
+    (status, label) => {
+      render(
+        <MemoryRouter>
+          <CreateMemoryModal
+            {...defaultProps}
+            viewOnly
+            memoryToEdit={{
+              id: 'old-memory',
+              name: 'old-memory',
+              entityStatus: status,
+              statusReason: 'The replacement has the corrected definition.',
+              supersededBy: {
+                id: 'new-memory',
+                type: 'contextMemory',
+                name: 'new-memory',
+              },
+            }}
+          />
+        </MemoryRouter>
+      );
 
-    expect(screen.getByText('label.deprecated')).toBeInTheDocument();
-    expect(
-      screen.getByText('The replacement has the corrected definition.')
-    ).toBeInTheDocument();
-    expect(screen.getByText('new-memory')).toHaveAttribute(
-      'href',
-      '/context-center/memories?memory=new-memory'
-    );
-  });
+      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(
+        screen.getByText('The replacement has the corrected definition.')
+      ).toBeInTheDocument();
+      expect(screen.getByText('new-memory')).toHaveAttribute(
+        'href',
+        '/context-center/memories?memory=new-memory'
+      );
+    }
+  );
 
   it('keeps the other Context Center parameters when opening the successor', () => {
     render(
@@ -782,7 +790,7 @@ describe('CreateMemoryModal', () => {
           memoryToEdit={{
             id: 'old-memory',
             name: 'old-memory',
-            entityStatus: EntityStatus.Deprecated,
+            entityStatus: ContextMemoryStatus.Deprecated,
             supersededBy: {
               id: 'new-memory',
               type: 'contextMemory',
@@ -808,7 +816,7 @@ describe('CreateMemoryModal', () => {
           memoryToEdit={{
             id: 'old-memory',
             name: 'old-memory',
-            entityStatus: EntityStatus.Deprecated,
+            entityStatus: ContextMemoryStatus.Deprecated,
             supersededBy: {
               id: 'new-memory',
               type: 'contextMemory',

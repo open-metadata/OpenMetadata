@@ -289,6 +289,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
       if (!term) {
         latestSearchRequest.current += 1;
         setSearchedData(bots);
+        setIsLoading(false);
 
         return;
       }

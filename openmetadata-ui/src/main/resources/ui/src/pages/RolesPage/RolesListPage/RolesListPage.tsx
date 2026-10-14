@@ -13,10 +13,14 @@
 
 import {
   Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Grid,
   Popover,
   PopoverTrigger,
+  Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -50,6 +54,7 @@ import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getRoles } from '../../../rest/rolesAPIV1';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
@@ -142,7 +147,14 @@ const RolesListPage = () => {
           const hasMore = listLength > LIST_CAP;
 
           return record.policies?.length ? (
-            <Space wrap data-testid="policy-link" size={4}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              data-testid="policy-link"
+              gap={1}
+              itemClassName="layout-space-item"
+              wrap="wrap">
               {record.policies.slice(0, LIST_CAP).map((policy) =>
                 viewPolicyPermission ? (
                   <Link
@@ -151,7 +163,12 @@ const RolesListPage = () => {
                     {getEntityName(policy)}
                   </Link>
                 ) : (
-                  <Tooltip key={uniqueId()} title={t(NO_PERMISSION_TO_VIEW)}>
+                  <Tooltip
+                    arrow
+                    excludeTriggerFromTabOrder
+                    key={uniqueId()}
+                    title={t(NO_PERMISSION_TO_VIEW)}
+                    triggerClassName="tw:inline-flex">
                     {getEntityName(policy)}
                   </Tooltip>
                 )
@@ -171,7 +188,13 @@ const RolesListPage = () => {
                     arrow
                     containerClassName="tw:w-40 tw:px-4 tw:py-3 tw:text-center"
                     placement="bottom">
-                    <Space wrap size={4}>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={1}
+                      itemClassName="layout-space-item"
+                      wrap="wrap">
                       {record.policies.slice(LIST_CAP).map((policy) =>
                         viewPolicyPermission ? (
                           <Link
@@ -183,17 +206,20 @@ const RolesListPage = () => {
                           </Link>
                         ) : (
                           <Tooltip
+                            arrow
+                            excludeTriggerFromTabOrder
                             key={uniqueId()}
-                            title={t(NO_PERMISSION_TO_VIEW)}>
+                            title={t(NO_PERMISSION_TO_VIEW)}
+                            triggerClassName="tw:inline-flex">
                             {getEntityName(policy)}
                           </Tooltip>
                         )
                       )}
-                    </Space>
+                    </Box>
                   </Popover>
                 </PopoverTrigger>
               )}
-            </Space>
+            </Box>
           ) : (
             '-- '
           );
@@ -208,6 +234,7 @@ const RolesListPage = () => {
         render: (_, record) => {
           return (
             <Tooltip
+              arrow
               placement="left"
               title={
                 deleteRolePermission
@@ -216,11 +243,12 @@ const RolesListPage = () => {
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
-              <Button
+              <ButtonUtility
+                color="tertiary"
                 data-testid={`delete-action-${getEntityName(record)}`}
-                disabled={!deleteRolePermission}
-                icon={<IconDelete name={t('label.delete')} width="16px" />}
-                type="text"
+                icon={IconDelete}
+                isDisabled={!deleteRolePermission}
+                size="sm"
                 onClick={() => setSelectedRole(record)}
               />
             </Tooltip>
@@ -298,15 +326,20 @@ const RolesListPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.role-plural').toString()}>
-      <Row
-        className="roles-list-container"
+      <Grid
+        className="layout-row layout-grid roles-list-container"
         data-testid="roles-list-container"
-        gutter={[0, 16]}>
-        <Col span={24}>
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Space className="w-full justify-between">
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full justify-between"
+            gap={2}
+            itemClassName="layout-space-item">
             <PageHeader
               data={{
                 header: t(PAGE_HEADERS.ROLES.header),
@@ -318,15 +351,15 @@ const RolesListPage = () => {
 
             {addRolePermission && (
               <Button
+                color="primary"
                 data-testid="add-role"
-                type="primary"
                 onClick={handleAddRole}>
                 {t('label.add-entity', { entity: t('label.role').toString() })}
               </Button>
             )}
-          </Space>
-        </Col>
-        <Col span={24}>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Table
             columns={columns}
             containerClassName="roles-list-table"
@@ -372,8 +405,8 @@ const RolesListPage = () => {
               onDelete={handleRoleDelete}
             />
           )}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

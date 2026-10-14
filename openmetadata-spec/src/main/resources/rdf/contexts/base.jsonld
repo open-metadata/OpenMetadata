@@ -74,6 +74,11 @@
       "@id": "om:belongsToDomain",
       "@type": "@id"
     },
+    "domains": {
+      "@id": "om:belongsToDomain",
+      "@type": "@id",
+      "@container": "@set"
+    },
     "dataProducts": {
       "@id": "om:hasDataProduct",
       "@type": "@id",
