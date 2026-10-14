@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Badge,
   Button,
@@ -19,6 +18,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
@@ -165,7 +165,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                             className="tw:mr-1"
                             color="primary"
                             data-testid="cancel-displayName"
-                            iconLeading={<CloseOutlined />}
+                            iconLeading={XClose}
                             size="xs"
                             onMouseDown={() => setIsDisplayNameEdit(false)}
                           />
@@ -175,7 +175,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                             className="tw:mr-1"
                             color="primary"
                             data-testid="save-displayName"
-                            iconLeading={<CheckOutlined />}
+                            iconLeading={Check}
                             size="xs"
                             onClick={handleDisplayNameChange}
                           />

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Box, Grid, Owner, Typography } from '@openmetadata/ui-core-components';
 import { Drawer } from 'antd';
 import { useMemo } from 'react';
@@ -231,7 +230,7 @@ const TableQueryRightPanel = ({
                       gap={1}
                       itemClassName="layout-space-item"
                       key={user}>
-                      <Icon component={IconUser} />
+                      <IconUser className="tw:size-3.5 tw:shrink-0" />
                       {user}
                     </Box>
                   ))}

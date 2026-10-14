@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
   SimpleModal,
@@ -80,7 +79,7 @@ const LeftSidebar = () => {
     () =>
       [SETTING_ITEM, LOGOUT_ITEM].map((item) => ({
         key: item.key,
-        icon: <Icon component={item.icon} />,
+        icon: <item.icon className="tw:size-7 tw:shrink-0" />,
         onClick: item.key === SidebarItem.LOGOUT ? handleLogoutClick : noop,
         label: <LeftSidebarItem data={item} />,
       })),
@@ -90,12 +89,12 @@ const LeftSidebar = () => {
   const menuItems = useMemo(() => {
     return sideBarItems.map((item) => ({
       key: item.key,
-      icon: <Icon component={item.icon} />,
+      icon: <item.icon className="tw:size-7 tw:shrink-0" />,
       label: <LeftSidebarItem data={item} />,
       'data-testid': `side-bar-${item.dataTestId}`,
       children: item.children?.map((child) => ({
         key: child.key,
-        icon: <Icon component={child.icon} />,
+        icon: <child.icon className="tw:size-7 tw:shrink-0" />,
         label: <LeftSidebarItem data={child} />,
         'data-testid': `side-bar-${item.dataTestId}`,
       })),

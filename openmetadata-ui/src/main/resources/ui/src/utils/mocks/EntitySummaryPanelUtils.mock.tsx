@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Link } from 'react-router-dom';
 import { BasicEntityInfo } from '../../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
-import { ICON_DIMENSION } from '../../constants/constants';
 import { Task } from '../../generated/entity/data/pipeline';
 import {
   StoredProcedure,
@@ -52,7 +50,7 @@ export const mockLinkBasedSummaryTitleResponse = (
         ellipsis={{ tooltip: true }}>
         dim_address Task
       </Typography>
-      <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+      <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
     </div>
   </Link>
 );
@@ -179,7 +177,7 @@ export const mockEntityDataWithoutNestingResponse: BasicEntityInfo[] = [
             ellipsis={{ tooltip: true }}>
             Assert Table Exists
           </Typography>
-          <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+          <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
         </div>
       </Link>
     ),

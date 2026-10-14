@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
   Button,
@@ -26,6 +24,7 @@ import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
 
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
@@ -654,7 +653,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     <Button
                       aria-label={t('label.add')}
                       color="primary"
-                      iconLeading={<PlusOutlined />}
+                      iconLeading={Plus}
                       size="xs"
                       onClick={() => add({ metrics: ['all'] })}
                     />
@@ -707,10 +706,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             aria-label={t('label.remove')}
                             color="tertiary"
                             iconLeading={
-                              <Icon
-                                component={IconDelete}
-                                style={{ fontSize: '16px' }}
-                              />
+                              <IconDelete className="tw:size-3.5 tw:shrink-0" />
                             }
                             onClick={() => remove(name)}
                           />
@@ -956,7 +952,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                           <Button
                             aria-label={t('label.add')}
                             color="primary"
-                            iconLeading={<PlusOutlined />}
+                            iconLeading={Plus}
                             size="xs"
                             onClick={() => add()}
                           />
@@ -996,10 +992,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 aria-label={t('label.remove')}
                                 color="tertiary"
                                 iconLeading={
-                                  <Icon
-                                    component={IconDelete}
-                                    style={{ fontSize: '16px' }}
-                                  />
+                                  <IconDelete className="tw:size-3.5 tw:shrink-0" />
                                 }
                                 onClick={() => remove(name)}
                               />

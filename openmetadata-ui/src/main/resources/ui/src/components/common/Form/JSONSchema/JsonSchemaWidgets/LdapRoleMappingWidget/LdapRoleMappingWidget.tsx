@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -19,6 +18,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { WidgetProps } from '@rjsf/utils';
 import { Input, Select } from 'antd';
 import { AxiosError } from 'axios';
@@ -374,7 +374,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
             className="tw:w-full"
             color="secondary"
             data-testid="add-mapping-btn"
-            iconLeading={<PlusOutlined />}
+            iconLeading={Plus}
             isDisabled={disabled}
             onClick={handleAddMapping}>
             {t('label.add-entity', {

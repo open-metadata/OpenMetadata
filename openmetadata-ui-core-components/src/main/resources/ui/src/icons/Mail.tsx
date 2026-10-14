@@ -17,7 +17,7 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const X: FC<Props> = ({
+export const Mail: FC<Props> = ({
   size = 20,
   color = 'currentColor',
   ...props
@@ -33,10 +33,15 @@ export const X: FC<Props> = ({
     width={size}
     {...props}>
     <path
-      d="m14.167 5.833-8.334 8.334m0-8.334 8.333 8.333"
+      d="M2.625 5.512 7.723 8.4c1.88 1.065 2.674 1.065 4.554 0l5.098-2.888"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M2.013 11.18c.052 2.452.078 3.678.983 4.587s2.164.94 4.683 1.003a92 92 0 0 0 4.642 0c2.519-.063 3.778-.095 4.683-1.003.905-.909.931-2.135.983-4.587.017-.789.017-1.573 0-2.361-.052-2.453-.078-3.679-.983-4.587-.905-.909-2.164-.94-4.683-1.004a92 92 0 0 0-4.642 0c-2.519.064-3.778.095-4.683 1.004-.905.908-.931 2.134-.983 4.587a55 55 0 0 0 0 2.36"
       stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>
 );
-X.displayName = 'X';
+Mail.displayName = 'Mail';

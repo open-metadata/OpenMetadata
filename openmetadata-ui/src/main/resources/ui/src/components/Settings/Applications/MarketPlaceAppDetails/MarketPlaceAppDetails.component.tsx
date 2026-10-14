@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { LeftOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -19,6 +18,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
 import { Alert, Carousel } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
@@ -162,7 +162,7 @@ const MarketPlaceAppDetails = () => {
       <div className="p-x-md p-t-md">
         <Button
           color="tertiary"
-          iconLeading={<LeftOutlined />}
+          iconLeading={ChevronLeft}
           size="xs"
           onClick={onBrowseAppsClick}>
           <Typography className="font-medium">
@@ -225,7 +225,7 @@ const MarketPlaceAppDetails = () => {
           />
         )}
         <div className="m-t-md">
-          <CheckMarkIcon className="v-middle m-r-xss" />
+          <CheckMarkIcon className="tw:align-middle tw:mr-1" />
           <Typography className="text-xs font-medium" color="secondary">
             {t('message.marketplace-verify-msg')}
           </Typography>

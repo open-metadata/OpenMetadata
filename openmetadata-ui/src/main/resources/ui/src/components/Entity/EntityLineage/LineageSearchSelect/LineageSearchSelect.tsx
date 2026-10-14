@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RightOutlined } from '@ant-design/icons';
 import { Box, Typography } from '@openmetadata/ui-core-components';
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import { Select } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { debounce } from 'lodash';
@@ -113,7 +113,10 @@ const LineageSearchSelect = () => {
                 <Typography className="text-xs" color="secondary">
                   {getEntityName(node)}
                 </Typography>
-                <RightOutlined className="text-grey-muted text-xss" />
+                <ChevronRight
+                  className="tw:text-quaternary tw:shrink-0"
+                  size={14}
+                />
               </div>
               <div className="d-flex items-center gap-1 ">
                 {searchClassBase.getEntityIconWithBg(

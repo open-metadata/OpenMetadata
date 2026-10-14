@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
   Toggle,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { HelpCircle, Plus } from '@openmetadata/ui-core-components/icons';
 import { Form, FormItemProps, Input, InputNumber, Select } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import { debounce, isUndefined } from 'lodash';
@@ -322,7 +321,10 @@ const buildStringField = ({
                 excludeTriggerFromTabOrder
                 title={data.description}
                 triggerClassName="tw:inline-flex">
-                <QuestionCircleOutlined className="ant-form-item-tooltip" />
+                <HelpCircle
+                  className="ant-form-item-tooltip tw:shrink-0"
+                  size={14}
+                />
               </Tooltip>
             </label>
           </div>
@@ -379,7 +381,7 @@ const buildArraySetField = ({
               aria-label={t('label.add')}
               className="tw:mx-3"
               color="primary"
-              iconLeading={<PlusOutlined />}
+              iconLeading={Plus}
               size="xs"
               onClick={() => add()}
             />
@@ -413,7 +415,7 @@ const buildArraySetField = ({
               aria-label={t('label.remove')}
               color="tertiary"
               iconLeading={
-                <Icon component={IconDelete} style={{ fontSize: '16px' }} />
+                <IconDelete className="tw:align-middle tw:size-4 tw:shrink-0" />
               }
               onClick={() => remove(name)}
             />

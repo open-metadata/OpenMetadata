@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { SyncOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -22,6 +21,7 @@ import {
   Tabs,
   Tooltip,
 } from '@openmetadata/ui-core-components';
+import { RefreshCcw02 } from '@openmetadata/ui-core-components/icons';
 
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -150,7 +150,7 @@ function AlertDetailsContent({
                     <Button
                       color="secondary"
                       data-testid="sync-button"
-                      iconLeading={<SyncOutlined height={16} width={16} />}
+                      iconLeading={<RefreshCcw02 height={16} width={16} />}
                       isLoading={isSyncing}
                       size="sm"
                       onPress={handleAlertSync}

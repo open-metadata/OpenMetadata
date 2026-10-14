@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -18,6 +17,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import { Collapse, Form, Select, TreeSelect } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
@@ -296,7 +296,7 @@ const ProfilerConfigurationPage = () => {
                                   aria-label={t('label.remove')}
                                   color="secondary"
                                   data-testid={`remove-filter-${name}`}
-                                  iconLeading={<CloseOutlined />}
+                                  iconLeading={XClose}
                                   size="xs"
                                   onClick={() => remove(name)}
                                 />
@@ -310,7 +310,7 @@ const ProfilerConfigurationPage = () => {
                             <Button
                               color="tertiary"
                               data-testid="add-fields"
-                              iconLeading={<PlusOutlined />}
+                              iconLeading={Plus}
                               onClick={() => add()}>
                               {t('label.add-new-field')}
                             </Button>

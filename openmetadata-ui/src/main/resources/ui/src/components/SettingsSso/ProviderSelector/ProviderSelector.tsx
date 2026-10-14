@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { ArrowUpOutlined } from '@ant-design/icons';
 import { Button, Typography } from '@openmetadata/ui-core-components';
+import { ArrowUp } from '@openmetadata/ui-core-components/icons';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
@@ -50,7 +50,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
           isDisabled={!selectedProvider}
           onClick={handleConfigureClick}>
           {t('label.configure')}
-          <ArrowUpOutlined className="configure-arrow" height={12} width={12} />
+          <ArrowUp className="configure-arrow tw:ml-2" height={12} width={12} />
         </Button>
       </div>
 

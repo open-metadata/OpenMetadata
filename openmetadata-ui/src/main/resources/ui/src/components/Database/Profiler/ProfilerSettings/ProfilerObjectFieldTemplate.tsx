@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -46,9 +46,7 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
             aria-label={t('label.add')}
             color="primary"
             data-testid={`add-item-${title}`}
-            iconLeading={
-              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-            }
+            iconLeading={Plus}
             id={`${idSchema.$id}`}
             size="xs"
             onClick={() => {

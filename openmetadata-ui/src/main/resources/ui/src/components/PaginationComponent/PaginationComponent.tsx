@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Pagination, PaginationProps } from 'antd';
 import { ReactNode } from 'react';
@@ -53,10 +52,7 @@ const PaginationComponent = (props: PaginationProps) => {
     if (type === 'prev') {
       return (
         <PageNavLabel data-testid="previous">
-          <Icon
-            className="pagination-prev-icon"
-            component={ArrowRightOutlined}
-          />
+          <ArrowRightOutlined className="tw:-mt-[3px] tw:rotate-180 tw:size-3.5 tw:shrink-0" />
           {t('label.previous')}
         </PageNavLabel>
       );
@@ -65,10 +61,7 @@ const PaginationComponent = (props: PaginationProps) => {
       return (
         <PageNavLabel data-testid="next">
           {t('label.next')}
-          <Icon
-            className="pagination-next-icon"
-            component={ArrowRightOutlined}
-          />
+          <ArrowRightOutlined className="tw:size-3.5 tw:shrink-0" />
         </PageNavLabel>
       );
     }

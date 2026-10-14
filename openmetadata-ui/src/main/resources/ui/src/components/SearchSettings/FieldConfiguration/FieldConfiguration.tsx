@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Button,
   Divider,
@@ -128,7 +127,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
                 aria-label={t('label.delete')}
                 color="secondary"
                 data-testid="delete-search-field"
-                iconLeading={<Icon component={Delete} />}
+                iconLeading={<Delete className="tw:size-3.5 tw:shrink-0" />}
                 onClick={(e: MouseEvent) => {
                   e.stopPropagation();
                   onDeleteSearchField(field.fieldName);
@@ -143,7 +142,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               <span
                 className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
                 data-testid="field-weight">
-                <Icon className="text-md" component={FilterIcon} />
+                <FilterIcon className="tw:size-3.5 tw:shrink-0" />
                 {fieldWeight < 10 ? `0${fieldWeight}` : fieldWeight}
               </span>
             </div>

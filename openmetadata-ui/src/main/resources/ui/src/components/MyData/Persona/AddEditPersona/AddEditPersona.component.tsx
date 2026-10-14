@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import { Box, Button, SimpleModal } from '@openmetadata/ui-core-components';
 import { Form } from 'antd';
 import { useForm } from 'antd/es/form/Form';
 
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -168,9 +168,7 @@ export const AddEditPersonaForm = ({
             })}
             color="primary"
             data-testid="add-users"
-            iconLeading={
-              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-            }
+            iconLeading={Plus}
             size="xs"
           />
         ),

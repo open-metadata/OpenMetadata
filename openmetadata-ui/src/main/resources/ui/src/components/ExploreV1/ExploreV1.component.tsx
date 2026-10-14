@@ -1288,9 +1288,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
               data-testid="sort-order-button"
               iconLeading={
                 isAscSortOrder ? (
-                  <IconAscending style={{ fontSize: '14px' }} {...sortProps} />
+                  <IconAscending {...sortProps} />
                 ) : (
-                  <IconDescending style={{ fontSize: '14px' }} {...sortProps} />
+                  <IconDescending {...sortProps} />
                 )
               }
               size="sm"
@@ -1316,7 +1316,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
               <Button
                 hideFocusOutline
                 color="tertiary"
-                iconTrailing={<ChevronDown size={14} />}
+                iconTrailing={ChevronDown}
                 size="sm">
                 {t('label.tool-plural')}
               </Button>

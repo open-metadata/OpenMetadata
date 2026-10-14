@@ -40,10 +40,7 @@ const CollapseHeader = ({
       <Typography className="text-md font-semibold">{title}</Typography>
       {menuItems ? (
         <Dropdown.Root>
-          <Button
-            data-testid={dataTestId}
-            iconLeading={<Plus size={14} />}
-            size="sm">
+          <Button data-testid={dataTestId} iconLeading={Plus} size="sm">
             {t('label.add')}
           </Button>
           <Dropdown.Popover placement="bottom start">
@@ -65,7 +62,7 @@ const CollapseHeader = ({
       ) : (
         <Button
           data-testid={dataTestId}
-          iconLeading={<Plus size={14} />}
+          iconLeading={Plus}
           size="sm"
           onPress={handleAddNewBoost}>
           {t('label.add')}

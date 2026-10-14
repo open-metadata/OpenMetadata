@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Badge,
   Box,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -142,7 +142,9 @@ export const getDeleteIcon = (arg: {
   const { deleteTagId, id, status } = arg;
   if (deleteTagId === id) {
     if (status === 'success') {
-      return <CheckOutlined data-testid="check-outline" />;
+      return (
+        <Check className="tw:shrink-0" data-testid="check-outline" size={14} />
+      );
     }
 
     return <Loader size="small" type="default" />;
@@ -186,7 +188,7 @@ export const tagRender = (customTagProps: CustomTagProps) => {
         className="tw:flex tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-quaternary"
         type="button"
         onClick={onClose}>
-        <CloseOutlined data-testid="remove-tags" height={8} width={8} />
+        <XClose data-testid="remove-tags" height={8} width={8} />
       </button>
     </Badge>
   );
@@ -233,7 +235,7 @@ export const TagListItemRenderer = (props: EntityReference) => {
       className="layout-space layout-space-horizontal"
       gap={2}
       itemClassName="layout-space-item">
-      <ClassificationIcon className="d-block'" height={22} width={16} />
+      <ClassificationIcon className="tw:block" height={22} width={16} />
       <Typography>{getEntityName(props)}</Typography>
     </Box>
   );

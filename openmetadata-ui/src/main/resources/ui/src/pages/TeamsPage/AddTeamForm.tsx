@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import { Button, SimpleModal } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Form, Input, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -99,9 +99,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           aria-label={t('label.add-entity', { entity: t('label.domain') })}
           color="primary"
           data-testid="add-domain"
-          iconLeading={
-            <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-          }
+          iconLeading={Plus}
           size="xs"
         />
       ),

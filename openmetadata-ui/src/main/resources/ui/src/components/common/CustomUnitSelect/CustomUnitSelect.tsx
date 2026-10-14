@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import { Button, Divider } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
@@ -70,10 +70,7 @@ const renderCustomUnitDropdown = (
           }
         }}
       />
-      <Button
-        color="tertiary"
-        iconLeading={<PlusOutlined />}
-        onClick={onAddCustomUnit}>
+      <Button color="tertiary" iconLeading={Plus} onClick={onAddCustomUnit}>
         {t('label.add')}
       </Button>
     </div>

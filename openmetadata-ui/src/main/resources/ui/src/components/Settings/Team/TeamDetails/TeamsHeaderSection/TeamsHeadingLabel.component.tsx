@@ -11,11 +11,6 @@
  *  limitations under the License.
  */
 
-import {
-  CheckOutlined,
-  CloseOutlined,
-  ExclamationCircleFilled,
-} from '@ant-design/icons';
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { Input } from 'antd';
 import { isEmpty } from 'lodash';
@@ -23,6 +18,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 
+import {
+  Check,
+  ExclamationCircleFilled,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { Team } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
@@ -164,14 +164,14 @@ const TeamsHeadingLabel = ({
             data-testid="cancelAssociatedTag"
             isDisabled={isLoading}
             onMouseDown={handleClose}>
-            <CloseOutlined />
+            <XClose className="tw:shrink-0" size={14} />
           </Button>
           <Button
             color="primary"
             data-testid="saveAssociatedTag"
             isLoading={isLoading}
             onMouseDown={onHeadingSave}>
-            <CheckOutlined />
+            <Check className="tw:shrink-0" size={14} />
           </Button>
         </Box>
       </div>
@@ -185,7 +185,10 @@ const TeamsHeadingLabel = ({
           <div
             className="deleted-badge-button text-xs flex-center"
             data-testid="deleted-badge">
-            <ExclamationCircleFilled className="m-r-xss" />
+            <ExclamationCircleFilled
+              className="tw:mr-1 tw:shrink-0"
+              size={12}
+            />
             {t('label.deleted')}
           </div>
         )}

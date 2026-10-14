@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -569,7 +568,7 @@ const AppearanceConfigSettingsPage = () => {
                                       borderColor: currentColor,
                                       color: currentColor,
                                     }}>
-                                    <Icon component={ShareIcon} />
+                                    <ShareIcon className="tw:size-3.5 tw:shrink-0" />
                                   </span>
                                   <span
                                     className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
 import {
   Card,
   Grid,
@@ -19,10 +18,10 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { GRAYED_OUT_COLOR } from '../../../../constants/constants';
 import { EventSubscriptionDiagnosticInfo } from '../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getDiagnosticInfo } from '../../../../rest/observabilityAPI';
@@ -90,9 +89,9 @@ function AlertDiagnosticInfoTab() {
                         placement="bottom"
                         title={item.description}
                         triggerClassName="tw:inline-flex">
-                        <InfoCircleOutlined
-                          className="info-icon"
-                          style={{ color: GRAYED_OUT_COLOR }}
+                        <InfoCircle
+                          className="info-icon tw:shrink-0 tw:text-quaternary"
+                          size={14}
                         />
                       </Tooltip>
                     </Typography>

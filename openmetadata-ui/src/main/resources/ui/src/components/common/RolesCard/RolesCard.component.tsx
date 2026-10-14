@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Box, Button, Card } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Select } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
 import { useState } from 'react';
@@ -131,7 +131,7 @@ const RolesCard = ({
                     className="tw:mr-1"
                     color="primary"
                     data-testid="cancel-roles"
-                    iconLeading={<CloseOutlined />}
+                    iconLeading={XClose}
                     size="xs"
                     onMouseDown={() => setIsRolesEdit(false)}
                   />
@@ -139,7 +139,7 @@ const RolesCard = ({
                     aria-label={t('label.save')}
                     color="primary"
                     data-testid="save-roles"
-                    iconLeading={<CheckOutlined />}
+                    iconLeading={Check}
                     size="xs"
                     onClick={handleRolesChange}
                   />

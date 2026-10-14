@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
   Button,
@@ -569,11 +568,7 @@ const TableConstraintsModal = ({
                         color="tertiary"
                         data-testid={`${key}-delete-constraint-button`}
                         iconLeading={
-                          <Icon
-                            className="align-middle text-grey-muted"
-                            component={IconDelete}
-                            style={{ fontSize: '16px' }}
-                          />
+                          <IconDelete className="align-middle text-grey-muted tw:size-3.5 tw:shrink-0" />
                         }
                         size="xs"
                         onClick={() => remove(name)}

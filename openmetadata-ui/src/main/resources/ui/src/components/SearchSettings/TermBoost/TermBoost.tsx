@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { DownOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { Slider } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -150,7 +150,12 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             filterOption={getFilterOptions}
             optionLabelProp="value"
             placeholder={t('label.select-tag')}
-            suffixIcon={<DownOutlined className="text-grey-muted" />}
+            suffixIcon={
+              <ChevronDown
+                className="tw:text-quaternary tw:shrink-0"
+                size={14}
+              />
+            }
             value={termBoostData.value || undefined}
             onChange={handleTagChange}
           />
@@ -185,7 +190,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             })}
             color="secondary"
             data-testid="delete-term-boost"
-            iconLeading={<Icon component={Delete} />}
+            iconLeading={<Delete className="tw:size-3.5 tw:shrink-0" />}
             onClick={() => onDeleteBoost(termBoost.value)}
           />
         </Box>

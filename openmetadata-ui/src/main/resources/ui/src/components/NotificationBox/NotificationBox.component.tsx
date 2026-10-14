@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { Badge, List } from 'antd';
 import { AxiosError } from 'axios';
@@ -239,6 +238,9 @@ const NotificationBox = ({
   }, []);
 
   const getTabTitle = (name: string, key: string) => {
+    const NotificationIcon =
+      key === NotificationTabsKey.TASK ? IconTask : IconMentions;
+
     return (
       <Badge
         dot={
@@ -247,11 +249,10 @@ const NotificationBox = ({
             : hasMentionNotification
         }
         offset={[5, 0]}>
-        <Icon
-          alt="notification-icon"
-          className="align-middle m-r-xs"
-          component={key === NotificationTabsKey.TASK ? IconTask : IconMentions}
-          style={{ fontSize: '16px' }}
+        <NotificationIcon
+          aria-label="notification-icon"
+          className="tw:align-middle tw:mr-2 tw:size-4 tw:shrink-0"
+          role="img"
         />
         {name}
       </Badge>

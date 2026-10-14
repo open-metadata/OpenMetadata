@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -252,9 +251,7 @@ const SearchPreview = ({
         className="search-box"
         data-testid="searchbar"
         placeholder={t('message.search-for-data-assets-placeholder')}
-        suffix={
-          <Icon className="text-md font-bold m-r-xs" component={IconSearchV1} />
-        }
+        suffix={<IconSearchV1 className="tw:mr-2 tw:size-3.5 tw:shrink-0" />}
         type="text"
         value={searchValue}
         onChange={(e) => handleSearch(e.target.value)}

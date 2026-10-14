@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
 import {
   Button,
   Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Form, Select } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -131,7 +131,7 @@ function ObservabilityFormTriggerItem({
                           })}
                           color="secondary"
                           data-testid={`remove-trigger-${name}`}
-                          iconLeading={<CloseOutlined />}
+                          iconLeading={XClose}
                           onClick={() => remove(name)}
                         />
                       )}

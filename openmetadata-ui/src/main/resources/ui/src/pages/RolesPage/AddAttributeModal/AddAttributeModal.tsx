@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { Grid, SimpleModal } from '@openmetadata/ui-core-components';
+import { Check, Search } from '@openmetadata/ui-core-components/icons';
 import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -153,7 +153,9 @@ const AddAttributeModal: FC<Props> = ({
             placeholder={t('label.search-entity', {
               entity: type,
             })}
-            prefix={<SearchOutlined style={{ color: '#37352F4D' }} />}
+            prefix={
+              <Search className="tw:shrink-0 tw:text-placeholder" size={14} />
+            }
             onChange={(e) => handleSearch(e.target.value)}
           />
           {isEmpty(searchedData) ? (
@@ -192,7 +194,7 @@ const AddAttributeModal: FC<Props> = ({
                   </Grid.Item>
                   <Grid.Item className="layout-column" span={2}>
                     {selectedValues.includes(option.id) && (
-                      <CheckOutlined className="text-primary" />
+                      <Check className="text-primary" />
                     )}
                   </Grid.Item>
                 </Grid>

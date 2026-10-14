@@ -14,7 +14,6 @@
 @selected-color: @primary-color;
 @hover-color: @primary-1;
 @active-color: @primary-7;
-@left-sidebar-icon-size: 28px;
 
 .logo-container {
   height: 40px;
@@ -71,12 +70,6 @@
         }
       }
 
-      .anticon {
-        svg {
-          fill: transparent;
-        }
-      }
-
       .ant-menu-submenu-title {
         .ant-menu-title-content {
           line-height: 16px;
@@ -103,7 +96,7 @@
             font-weight: var(--om-font-weight-medium);
           }
 
-          .anticon {
+          .ant-menu-item-icon {
             color: inherit;
           }
         }
@@ -136,7 +129,7 @@
       &.ant-menu-item-active:not(.ant-menu-item-selected) {
         background: @hover-color;
 
-        .anticon {
+        .ant-menu-item-icon {
           color: @active-color;
         }
 
@@ -191,13 +184,13 @@
     }
   }
 
-  .anticon {
+  // antd's `Menu` clones the `icon` node and appends `ant-menu-item-icon` to
+  // its className (it does not wrap it in `.anticon`), so this one selector
+  // reaches the <svg> at every nesting level. Size comes from the `tw:size-*`
+  // class on the element itself.
+  .ant-menu-item-icon {
     line-height: 0 !important;
-    font-size: @left-sidebar-icon-size !important;
-
-    svg {
-      fill: transparent;
-    }
+    fill: transparent;
   }
 
   .ant-menu-submenu.ant-menu-submenu-open {
@@ -253,10 +246,6 @@
         border-radius: 0;
         width: calc(100% - 0.01px);
 
-        .anticon {
-          font-size: @left-sidebar-icon-size !important;
-        }
-
         &:last-child {
           border-radius: 0 0 var(--om-radius-xl) var(--om-radius-xl);
         }
@@ -295,11 +284,6 @@
     margin-top: 0;
     border-radius: var(--om-radius-xl);
 
-    .ant-menu-title-content {
-      .anticon {
-        font-size: @left-sidebar-icon-size !important;
-      }
-    }
   }
 
   .ant-menu-sub {
