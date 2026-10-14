@@ -36,7 +36,7 @@ function catalogStart {
        # Export CONSOLE_LOG_LEVEL=TRACE before starting to get the old behaviour back.
        export CONSOLE_LOG_LEVEL="${CONSOLE_LOG_LEVEL:-OFF}"
        cd ${CATALOG_HOME}
-       nohup ${JAVA} ${CATALOG_HEAP_OPTS} ${CATALOG_JVM_PERF_OPTS} ${CATALOG_DEBUG_OPTS} ${CATALOG_GC_LOG_OPTS} ${CATALOG_JMX_OPTS} -cp ${CLASSPATH} "${APP_CLASS}" "server" "$@" 2>>"${ERR_FILE}" 1>>"${OUT_FILE}" &
+       nohup ${JAVA} ${JAVA_TOOL_ARGS} ${CATALOG_HEAP_OPTS} ${CATALOG_JVM_PERF_OPTS} ${CATALOG_DEBUG_OPTS} ${CATALOG_GC_LOG_OPTS} ${CATALOG_JMX_OPTS} -cp ${CLASSPATH} "${APP_CLASS}" "server" "$@" 2>>"${ERR_FILE}" 1>>"${OUT_FILE}" &
        cd - &> /dev/null
        echo $! > ${PID_FILE}
        echo $(catalogStatus)
@@ -150,6 +150,17 @@ if [[ -z "${JAVA_HOME}" ]]; then
 else
   JAVA="${JAVA_HOME}/bin/java"
 fi
+
+# As in bin/openmetadata-server-start.sh: the JVM would echo JAVA_TOOL_OPTIONS, and any secret in
+# it, to stderr, so pass the options as arguments instead (a value with quotes stays in the env).
+JAVA_TOOL_ARGS=""
+case "$JAVA_TOOL_OPTIONS" in
+  *\"* | *\'*) ;;
+  ?*)
+    JAVA_TOOL_ARGS="$JAVA_TOOL_OPTIONS"
+    unset JAVA_TOOL_OPTIONS
+    ;;
+esac
 
 if [[ "x${CATALOG_HEAP_OPTS}" = "x" ]]; then
     export CATALOG_HEAP_OPTS="-Xmx2G -Xms2G"

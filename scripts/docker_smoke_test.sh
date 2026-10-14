@@ -207,6 +207,29 @@ case "$pid1" in
 esac
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
+# The JVM echoes JAVA_TOOL_OPTIONS to stderr before any logging starts ("Picked up
+# JAVA_TOOL_OPTIONS: ..."), so a truststore password set there landed in the pod
+# log. bin/openmetadata-server-start.sh passes the options to java as arguments
+# instead. -XX:+PrintCommandLineFlags shows they still reach the JVM: it
+# prints the flags once the arguments are parsed, after the echo would have been.
+docker run -d --name "$CONTAINER" \
+  -e JAVA_TOOL_OPTIONS="-XX:+PrintCommandLineFlags -Dsmoke.secret=not-for-the-log" \
+  "$IMAGE" >/dev/null
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  case "$(docker logs "$CONTAINER" 2>&1 || true)" in *PrintCommandLineFlags*) break ;; esac
+  sleep 1
+done
+sleep 1
+startup="$(docker logs "$CONTAINER" 2>&1 || true)"
+if echo "$startup" | grep -q "not-for-the-log"; then
+  fail "JAVA_TOOL_OPTIONS reached the container log: $(echo "$startup" | grep -m1 "not-for-the-log")"
+elif ! echo "$startup" | grep -q -- "-XX:+PrintCommandLineFlags"; then
+  fail "JAVA_TOOL_OPTIONS never reached the JVM: $(echo "$startup" | tail -3 | tr '\n' ' ')"
+else
+  pass "JAVA_TOOL_OPTIONS reaches the JVM without being echoed to the log"
+fi
+docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+
 echo
 if [ "$failures" -ne 0 ]; then
   echo "==> $failures assertion(s) failed for $IMAGE"

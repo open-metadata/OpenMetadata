@@ -76,6 +76,19 @@ else
   JAVA="$JAVA_HOME/bin/java"
 fi
 
+# The JVM echoes JAVA_TOOL_OPTIONS to stderr at startup ("Picked up JAVA_TOOL_OPTIONS: ..."), which
+# puts any secret set there, such as a truststore password, into the container log. Pass the options
+# to java as arguments instead, ahead of ours so ours still take precedence. A value with quotes stays
+# in the environment: the JVM strips the quotes, but word splitting would keep them.
+JAVA_TOOL_ARGS=""
+case "$JAVA_TOOL_OPTIONS" in
+  *\"* | *\'*) ;;
+  ?*)
+    JAVA_TOOL_ARGS="$JAVA_TOOL_OPTIONS"
+    unset JAVA_TOOL_OPTIONS
+    ;;
+esac
+
 # Set Debug options if enabled
 if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
 
@@ -126,7 +139,7 @@ if [ "x$DAEMON_MODE" = "xtrue" ]; then
     # emits what logback already writes to the rotated logs/openmetadata.log. Silence the console
     # so this file only collects JVM and pre-logback output. CONSOLE_LOG_LEVEL=TRACE restores it.
     export CONSOLE_LOG_LEVEL="${CONSOLE_LOG_LEVEL:-OFF}"
-    nohup $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
+    nohup $JAVA $JAVA_TOOL_ARGS $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
 else
-    exec $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@"
+    exec $JAVA $JAVA_TOOL_ARGS $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@"
 fi
