@@ -15,8 +15,8 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
+import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 
 interface HeaderVersionButtonProps {
   version: string;
@@ -37,7 +37,7 @@ export const HeaderVersionButton = ({
           className="tw:p-1.5"
           color="secondary"
           data-testid="version-btn"
-          iconLeading={<VersionIcon height={16} width={16} />}
+          iconLeading={RefreshCcw01}
           size="sm"
           onClick={onClick}>
           {version}
