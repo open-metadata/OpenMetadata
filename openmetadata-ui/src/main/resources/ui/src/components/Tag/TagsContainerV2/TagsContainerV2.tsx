@@ -281,7 +281,7 @@ const TagsContainerV2 = ({
       isEmpty(tags?.[tagType]) && !showNoDataPlaceholder ? null : (
         <TagsViewer
           displayType={displayType}
-          entityFqn={columnData?.fqn ?? ''}
+          entityFqn={columnData?.fqn ?? entityFqn ?? ''}
           showNoDataPlaceholder={showNoDataPlaceholder}
           sizeCap={sizeCap}
           tagType={tagType}
@@ -294,6 +294,7 @@ const TagsContainerV2 = ({
       tags?.[tagType],
       layoutType,
       columnData?.fqn,
+      entityFqn,
     ]
   );
 
@@ -405,7 +406,7 @@ const TagsContainerV2 = ({
         {withSelectorPopover(addTagButton, 'body')}
         <TagsViewer
           displayType={displayType}
-          entityFqn={columnData?.fqn ?? ''}
+          entityFqn={columnData?.fqn ?? entityFqn ?? ''}
           showNoDataPlaceholder={showNoDataPlaceholder}
           sizeCap={sizeCap}
           tags={tags?.[tagType] ?? []}
@@ -425,6 +426,7 @@ const TagsContainerV2 = ({
     tags?.[tagType],
     showInlineEditButton,
     columnData?.fqn,
+    entityFqn,
   ]);
 
   const tagBody = useMemo(() => {
