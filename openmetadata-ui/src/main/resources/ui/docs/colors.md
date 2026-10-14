@@ -85,7 +85,7 @@ Use background tokens for surfaces, containers, cards, modals, and page-level ba
 
 | Tailwind Class | CSS Variable | Light | Dark | When to Use |
 |---|---|---|---|---|
-| `tw:bg-brand-primary` | `--color-bg-brand-primary` | `#eff8ff` | Brand 500 at 14% | Light brand tint surface |
+| `tw:bg-brand-primary` | `--color-bg-brand-primary` | `#eff8ff` | Brand 600 at 20% | Light brand tint surface |
 | `tw:bg-brand-primary_alt` | `--color-bg-brand-primary_alt` | `#eff8ff` | `#191919` | Alternate brand tint |
 | `tw:bg-brand-secondary` | `--color-bg-brand-secondary` | `#d1e9ff` | `#1570ef` | Stronger brand tint |
 | `tw:bg-brand-solid` | `--color-bg-brand-solid` | `#1570ef` | `#1570ef` | Primary CTA button fill |
@@ -195,7 +195,7 @@ Use border tokens for input outlines, card dividers, separators, and table borde
 | `tw:border-secondary` | `--color-border-secondary` | `#e9eaeb` (gray-200) | `#222222` (gray-800) | Existing subtle border |
 | `tw:border-secondary_alt` | `--color-border-secondary_alt` | `rgba(0,0,0,0.08)` | White at 8% | Existing alpha-transparent border |
 | `tw:border-tertiary` | `--color-border-tertiary` | `#f5f5f5` (gray-100) | `#222222` | Very subtle dividers |
-| `tw:border-brand` | `--color-border-brand` | `#2e90fa` (brand-500) | `#53b1fd` (brand-400) | Focused inputs, selected states |
+| `tw:border-brand` | `--color-border-brand` | `#2e90fa` (brand-500) | `#1570ef` (brand-600) | Focused inputs, selected states |
 | `tw:border-brand_alt` | `--color-border-brand_alt` | `#1570ef` (brand-600) | `#2e2e2e` | Alternate brand border |
 | `tw:border-brand-subtle` | `--color-border-brand-subtle` | `#84caff` | Brand 400 at 35% | Selected-state and info borders |
 | `tw:border-error` | `--color-border-error` | `#f04438` (error-500) | `#f97066` (error-400) | Error state input/container border |
@@ -429,14 +429,14 @@ Brand tokens are for CTAs, highlighted navigation, brand-accented UI, and sectio
 |---|---|---|---|
 | `tw:bg-brand-solid` | `#1570ef` | `#1570ef` | Primary action button fill |
 | `tw:bg-brand-solid_hover` | `#175cd3` | `#2e90fa` | CTA button hover state |
-| `tw:bg-brand-primary` | `#eff8ff` | `#2e90fa` | Brand-tinted content area |
+| `tw:bg-brand-primary` | `#eff8ff` | `#1570ef` | Brand-tinted content area |
 | `tw:bg-brand-secondary` | `#d1e9ff` | `#1570ef` | Stronger brand-tinted area |
 | `tw:bg-brand-section` | `#1849a9` | `#191919` | Full-width brand promo section |
 | `tw:bg-brand-section_subtle` | `#175cd3` | `#141414` | Subtle brand promo section |
 | `tw:text-brand-primary` | `#194185` | `#f0f0f0` | Strong brand text |
 | `tw:text-brand-secondary` | `#175cd3` | `#bfbfbf` | Brand links |
 | `tw:text-brand-tertiary` | `#1570ef` | `#a0a0a0` | Lighter brand text |
-| `tw:border-brand` | `#2e90fa` | `#53b1fd` | Focused/selected border |
+| `tw:border-brand` | `#2e90fa` | `#1570ef` | Focused/selected border |
 | `tw:text-fg-brand-primary` | `#1570ef` | `#2e90fa` | Brand icons |
 
 ---
