@@ -258,13 +258,15 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   /**
-   * A metric with no reviewers has nothing to approve, so it starts life Approved. With reviewers
+   * A metric with no reviewers has nothing to approve, so it starts life Approved, unless a lifecycle
+   * playbook owns its stage and onboards it from Draft. With reviewers
    * it starts as Draft and MetricApprovalWorkflow drives it through review. Unlike glossary terms
    * there is no reviewer inheritance — a metric's parent does not lend it reviewers.
    */
   @Override
   protected EntityStatus initialEntityStatus(Metric entity) {
-    return nullOrEmpty(entity.getReviewers()) ? EntityStatus.APPROVED : EntityStatus.DRAFT;
+    final boolean awaitsReview = !nullOrEmpty(entity.getReviewers()) || playbookOwnsStage(entity);
+    return awaitsReview ? EntityStatus.DRAFT : EntityStatus.APPROVED;
   }
 
   private void validateCustomUnitOfMeasurement(Metric metric) {

@@ -9,9 +9,11 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.governance.workflows.LifecycleConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -104,6 +106,68 @@ class EntityStatusWorkflowsTest {
         EntityStatusWorkflows.ACTIVE
             .owningStageOf(Entity.METRIC, new Metric().withName("weekly"))
             .isEmpty());
+  }
+
+  @Test
+  void aLifecyclePlaybookOwnsTheStageOnlyWhenItIsTheApplicableOwner() throws IOException {
+    WorkflowDefinition approval = workflow(metricApprovalWorkflow()).withName("B_MetricApproval");
+    WorkflowDefinition playbook = playbook("C_MetricLifecycle");
+    Metric metric = new Metric().withName("weekly_active_users");
+
+    assertTrue(EntityStatusWorkflows.playbookOwnsStage(List.of(playbook), Entity.METRIC, metric));
+    assertFalse(EntityStatusWorkflows.playbookOwnsStage(List.of(approval), Entity.METRIC, metric));
+    assertFalse(
+        EntityStatusWorkflows.playbookOwnsStage(
+            List.of(playbook, approval), Entity.METRIC, metric));
+    assertTrue(
+        EntityStatusWorkflows.playbookOwnsStage(
+            List.of(approval, playbook("A_MetricLifecycle")), Entity.METRIC, metric));
+    assertFalse(
+        EntityStatusWorkflows.playbookOwnsStage(List.of(playbook), Entity.GLOSSARY_TERM, metric));
+  }
+
+  @Test
+  void aPlaybookOwnsNoStageForEntitiesItsTriggerFilterExcludes() throws IOException {
+    ObjectNode json = metricApprovalWorkflow();
+    ((ObjectNode) json.get("trigger").get("config"))
+        .putObject("filter")
+        .put(Entity.METRIC, "{\"==\":[{\"var\":\"name\"},\"" + EXCLUDED_METRIC + "\"]}");
+    WorkflowDefinition playbook = asPlaybook(workflow(json).withName("MetricLifecycle"));
+
+    assertFalse(
+        EntityStatusWorkflows.playbookOwnsStage(
+            List.of(playbook), Entity.METRIC, new Metric().withName(EXCLUDED_METRIC)));
+  }
+
+  @Test
+  void onlyWorkflowsThatSetTheStageInANodeWriteItThemselves() throws IOException {
+    ObjectNode approvalOnly = metricApprovalWorkflow();
+    ArrayNode nodes = (ArrayNode) approvalOnly.get("nodes");
+    ArrayNode withoutSetSteps = nodes.arrayNode();
+    for (JsonNode node : nodes) {
+      if (!"setEntityAttributeTask".equals(node.path("subType").asText())) {
+        withoutSetSteps.add(node);
+      }
+    }
+    approvalOnly.set("nodes", withoutSetSteps);
+
+    assertTrue(EntityStatusWorkflows.writesStageInANode(workflow(metricApprovalWorkflow())));
+    assertFalse(EntityStatusWorkflows.writesStageInANode(workflow(approvalOnly)));
+  }
+
+  private static WorkflowDefinition playbook(String name) throws IOException {
+    return asPlaybook(workflow(metricApprovalWorkflow()).withName(name));
+  }
+
+  private static WorkflowDefinition asPlaybook(WorkflowDefinition workflow) {
+    return workflow.withConfig(
+        workflow
+            .getConfig()
+            .withLifecycle(
+                new LifecycleConfiguration()
+                    .withVersion(LifecycleConfiguration.Version._1)
+                    .withEntityType(LifecycleConfiguration.EntityType.METRIC)
+                    .withGates(List.of())));
   }
 
   private static ObjectNode metricApprovalWorkflow() throws IOException {

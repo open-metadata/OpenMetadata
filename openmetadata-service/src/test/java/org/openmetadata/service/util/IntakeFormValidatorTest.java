@@ -39,6 +39,7 @@ import org.openmetadata.schema.entity.governance.IntakeFormField;
 import org.openmetadata.schema.entity.governance.IntakeFormRequiredField;
 import org.openmetadata.schema.entity.governance.IntakeFormRequiredField.FieldKind;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.jdbi3.IntakeFormRepository;
 
 class IntakeFormValidatorTest {
@@ -137,6 +138,25 @@ class IntakeFormValidatorTest {
             () -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
     assertTrue(ex.getMessage().contains("intake form"));
     assertTrue(ex.getMessage().contains("Data Product Type"));
+  }
+
+  @Test
+  void validate_letsAWorkflowMoveAnAssetThatPredatesARequiredField() {
+    IntakeForm form = intakeFormRequiring("dataProductType", FieldKind.NATIVE);
+    when(mockRepo.findEnabledForEntityType(Entity.DATA_PRODUCT)).thenReturn(form);
+
+    DataProduct stageWrite = validDataProduct().withUpdatedBy(WorkflowEventConsumer.GOVERNANCE_BOT);
+    DataProduct impersonated =
+        validDataProduct()
+            .withUpdatedBy("alice")
+            .withImpersonatedBy(WorkflowEventConsumer.GOVERNANCE_BOT);
+    DataProduct userEdit = validDataProduct().withUpdatedBy("alice");
+
+    assertDoesNotThrow(() -> IntakeFormValidator.validate(stageWrite, Entity.DATA_PRODUCT));
+    assertDoesNotThrow(() -> IntakeFormValidator.validate(impersonated, Entity.DATA_PRODUCT));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> IntakeFormValidator.validate(userEdit, Entity.DATA_PRODUCT));
   }
 
   @Test

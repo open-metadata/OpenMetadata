@@ -16,7 +16,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { isEmpty, maxBy, uniq } from 'lodash';
 import {
   memo,
   ReactNode,
@@ -44,6 +44,7 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../../../../rest/workflowAPI';
+import { WorkflowInstanceFromApplicationParams } from '../../../../../rest/workflowAPI.interface';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -55,14 +56,48 @@ import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import './workflow-history.less';
 
-// A published lifecycle playbook replaces the default approval workflow as the stage owner.
-const getStageWorkflowName = async () => {
-  const { entityTypes } = await getEntityLifecycleStages();
+// Lifecycle playbooks can own the glossary term stage, each for the terms its filter selects,
+// and the default approval workflow keeps the runs from before they were published.
+const getStageWorkflowNames = async () => {
+  const owners = await getEntityLifecycleStages()
+    .then(
+      ({ entityTypes }) =>
+        entityTypes.find(
+          ({ entityType }) => entityType === EntityType.GLOSSARY_TERM
+        )?.stageWorkflows ?? []
+    )
+    .catch(() => []);
 
-  return (
-    entityTypes.find(
-      ({ entityType }) => entityType === EntityType.GLOSSARY_TERM
-    )?.stageWorkflows?.[0] ?? GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME
+  return uniq([...owners, GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME]);
+};
+
+const getLatestStageWorkflowRun = async (
+  params: Omit<WorkflowInstanceFromApplicationParams, 'workflowDefinitionName'>
+) => {
+  const names = await getStageWorkflowNames();
+  const responses = await Promise.allSettled(
+    names.map((workflowDefinitionName) =>
+      getWorkflowInstancesForApplication({
+        ...params,
+        workflowDefinitionName,
+      }).then(({ data }) =>
+        (data ?? []).map((instance) => ({ instance, workflowDefinitionName }))
+      )
+    )
+  );
+  const [firstResponse] = responses;
+  if (
+    firstResponse?.status === 'rejected' &&
+    responses.every(({ status }) => status === 'rejected')
+  ) {
+    throw firstResponse.reason;
+  }
+
+  return maxBy(
+    responses.flatMap((response) =>
+      response.status === 'fulfilled' ? response.value : []
+    ),
+    ({ instance }) => instance.startedAt ?? instance.timestamp ?? 0
   );
 };
 
@@ -137,26 +172,21 @@ const WorkflowHistory = memo(
           glossaryTerm.fullyQualifiedName
         );
 
-        const workflowDefinitionName = await getStageWorkflowName();
-        const instancesResponse = await getWorkflowInstancesForApplication({
+        const latestRun = await getLatestStageWorkflowRun({
           startTs,
           endTs,
           entityLink,
-          workflowDefinitionName,
         });
 
-        const instances = instancesResponse.data || [];
-
-        if (instances.length === 0) {
+        if (!latestRun) {
           setWorkflowHistory([]);
 
           return;
         }
 
-        // Then fetch detailed states for each instance
         const statesPromises = await getWorkflowInstanceStateById(
-          workflowDefinitionName,
-          instances[0]?.id ?? '',
+          latestRun.workflowDefinitionName,
+          latestRun.instance.id ?? '',
           {
             startTs,
             endTs,

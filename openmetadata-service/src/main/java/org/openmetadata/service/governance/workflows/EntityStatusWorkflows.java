@@ -8,6 +8,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -38,8 +39,9 @@ public final class EntityStatusWorkflows implements StageOwnership {
   public static final EntityStatusWorkflows ACTIVE = new EntityStatusWorkflows();
 
   private static final String SET_ENTITY_ATTRIBUTE_NODE = "setEntityAttributeTask";
+  private static final String SET_GLOSSARY_TERM_STATUS_NODE = "setGlossaryTermStatusTask";
   private static final Set<String> STAGE_SETTING_NODES =
-      Set.of("userApprovalTask", "rollbackEntityTask", "setGlossaryTermStatusTask");
+      Set.of("userApprovalTask", "rollbackEntityTask", SET_GLOSSARY_TERM_STATUS_NODE);
   // The field names a Set Action resolves to the entity's lifecycle stage.
   private static final Set<String> STAGE_FIELD_NAMES = Set.of("status", Entity.FIELD_ENTITY_STATUS);
   private static final String FIELD_NAME_CONFIG = "fieldName";
@@ -71,6 +73,26 @@ public final class EntityStatusWorkflows implements StageOwnership {
         .map(WorkflowDefinition::getName)
         .sorted()
         .findFirst();
+  }
+
+  @Override
+  public boolean playbookOwnsStageOf(String entityType, EntityInterface<?> entity) {
+    return playbookOwnsStage(
+        ACTIVE_STAGE_WORKFLOWS.get(ACTIVE_STAGE_WORKFLOWS_KEY), entityType, entity);
+  }
+
+  /** The owner is the first applicable workflow by name, as in {@link #owningStageOf}. */
+  static boolean playbookOwnsStage(
+      List<WorkflowDefinition> stageWorkflows, String entityType, EntityInterface<?> entity) {
+    return stageWorkflows.stream()
+        .filter(workflow -> appliesTo(workflow, entityType, entity))
+        .min(Comparator.comparing(WorkflowDefinition::getName))
+        .map(EntityStatusWorkflows::isLifecyclePlaybook)
+        .orElse(false);
+  }
+
+  private static boolean isLifecyclePlaybook(WorkflowDefinition workflow) {
+    return workflow.getConfig() != null && workflow.getConfig().getLifecycle() != null;
   }
 
   /** Workflows change entities as, or impersonating, the governance bot. */
@@ -106,6 +128,14 @@ public final class EntityStatusWorkflows implements StageOwnership {
         ((EventBasedEntityTriggerDefinition) workflow.getTrigger()).getConfig().getFilter();
     return TriggerEntityFilter.excludes(
         TriggerEntityFilter.forEntityType(filter, entityType), entity);
+  }
+
+  /** Whether one of the workflow's own nodes writes the stage, rather than its approval tasks. */
+  public static boolean writesStageInANode(WorkflowDefinition workflow) {
+    return listOrEmpty(workflow.getNodes()).stream()
+        .anyMatch(
+            node ->
+                setsStageField(node) || SET_GLOSSARY_TERM_STATUS_NODE.equals(node.getSubType()));
   }
 
   private static boolean setsStage(WorkflowNodeDefinitionInterface node) {

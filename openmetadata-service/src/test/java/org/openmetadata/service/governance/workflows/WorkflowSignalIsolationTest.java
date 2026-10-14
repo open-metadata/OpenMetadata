@@ -12,8 +12,11 @@
  */
 package org.openmetadata.service.governance.workflows;
 
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -81,6 +84,50 @@ class WorkflowSignalIsolationTest {
         .start();
     verify(runtime).signalEventReceived("metadata-created", "running", variables);
     verify(runtime, never()).signalEventReceived("metadata-created", "paused-instance", variables);
+  }
+
+  @Test
+  void aFailingSubscriberDoesNotWithholdTheSignalFromTheOthers() throws Exception {
+    ProcessEngine engine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+    WorkflowHandler handler = mock(WorkflowHandler.class, CALLS_REAL_METHODS);
+    Field field = WorkflowHandler.class.getDeclaredField("processEngine");
+    field.setAccessible(true);
+    field.set(handler, engine);
+    EventSubscription broken = subscription("active", "broken");
+    EventSubscription healthy = subscription("active", "healthy");
+    var runtime = engine.getRuntimeService();
+    when(runtime
+            .createEventSubscriptionQuery()
+            .eventType("signal")
+            .eventName("metadata-updated")
+            .list())
+        .thenReturn(List.of(broken, healthy));
+    ProcessDefinition definition = mock(ProcessDefinition.class);
+    when(engine
+            .getRepositoryService()
+            .createProcessDefinitionQuery()
+            .processDefinitionId("active")
+            .active()
+            .singleResult())
+        .thenReturn(definition);
+    when(runtime.createExecutionQuery().executionId("broken").singleResult().getId())
+        .thenReturn("broken");
+    when(runtime.createExecutionQuery().executionId("healthy").singleResult().getId())
+        .thenReturn("healthy");
+    Map<String, Object> variables = Map.of("relatedEntity", "a-test-entity");
+    IllegalStateException brokenWorkflow =
+        new IllegalStateException("Invalid workflow configuration");
+    doThrow(brokenWorkflow)
+        .when(runtime)
+        .signalEventReceived("metadata-updated", "broken", variables);
+
+    IllegalStateException thrown =
+        assertThrows(
+            IllegalStateException.class,
+            () -> handler.triggerWithSignal("metadata-updated", variables));
+
+    assertSame(brokenWorkflow, thrown);
+    verify(runtime).signalEventReceived("metadata-updated", "healthy", variables);
   }
 
   private static EventSubscription subscription(String definition, String execution) {

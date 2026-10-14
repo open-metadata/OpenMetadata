@@ -233,7 +233,41 @@ describe('WorkflowHistory Component', () => {
       });
     });
 
-    it('should read history from the lifecycle playbook that owns the stage', async () => {
+    it('should read the newest run across every workflow that owns the stage', async () => {
+      const runs: Record<string, { id: string; startedAt: number }[]> = {
+        FinanceTermLifecycle: [{ id: 'finance-run', startedAt: 100 }],
+        SalesTermLifecycle: [{ id: 'sales-run', startedAt: 300 }],
+        GlossaryTermApprovalWorkflow: [{ id: 'legacy-run', startedAt: 200 }],
+      };
+      (getEntityLifecycleStages as jest.Mock).mockResolvedValueOnce({
+        entityTypes: [
+          {
+            entityType: 'glossaryTerm',
+            stages: [],
+            stageWorkflows: ['FinanceTermLifecycle', 'SalesTermLifecycle'],
+            transitions: [],
+          },
+        ],
+      });
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(
+        ({ workflowDefinitionName }) =>
+          Promise.resolve({ data: runs[workflowDefinitionName] })
+      );
+
+      await act(async () => {
+        render(<WorkflowHistory glossaryTerm={mockGlossaryTerm} />);
+      });
+
+      await waitFor(() => {
+        expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
+          'SalesTermLifecycle',
+          'sales-run',
+          expect.any(Object)
+        );
+      });
+    });
+
+    it('should keep the history when one stage workflow cannot be read', async () => {
       (getEntityLifecycleStages as jest.Mock).mockResolvedValueOnce({
         entityTypes: [
           {
@@ -244,23 +278,42 @@ describe('WorkflowHistory Component', () => {
           },
         ],
       });
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(
+        ({ workflowDefinitionName }) =>
+          workflowDefinitionName === 'GlossaryTermLifecycle'
+            ? Promise.reject(new Error('Unavailable'))
+            : Promise.resolve(mockWorkflowInstances)
+      );
 
       await act(async () => {
         render(<WorkflowHistory glossaryTerm={mockGlossaryTerm} />);
       });
 
       await waitFor(() => {
-        expect(getWorkflowInstancesForApplication).toHaveBeenCalledWith(
-          expect.objectContaining({
-            workflowDefinitionName: 'GlossaryTermLifecycle',
-          })
-        );
+        expect(screen.getByText('1/3')).toBeInTheDocument();
+      });
+
+      expect(showErrorToast).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to the default approval workflow when lifecycle stages cannot be read', async () => {
+      (getEntityLifecycleStages as jest.Mock).mockRejectedValueOnce(
+        new Error('Unavailable')
+      );
+
+      await act(async () => {
+        render(<WorkflowHistory glossaryTerm={mockGlossaryTerm} />);
+      });
+
+      await waitFor(() => {
         expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
-          'GlossaryTermLifecycle',
-          expect.any(String),
+          'GlossaryTermApprovalWorkflow',
+          'instance-1',
           expect.any(Object)
         );
       });
+
+      expect(showErrorToast).not.toHaveBeenCalled();
     });
 
     it('should fall back to the default approval workflow without a stage owner', async () => {

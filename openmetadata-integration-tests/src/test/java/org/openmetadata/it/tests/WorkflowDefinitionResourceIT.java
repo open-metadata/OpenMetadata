@@ -13931,6 +13931,223 @@ public class WorkflowDefinitionResourceIT {
                     admin.domains().get(domain.getId().toString()).getEntityStatus()));
   }
 
+  /** A lifecycle playbook whose only gate never opens, so whatever it enrols stays put. */
+  private static final String HOLDING_PLAYBOOK =
+      """
+      {
+        "name": "%1$s",
+        "description": "Lifecycle playbook that holds its assets in the first stage",
+        "trigger": {
+          "type": "eventBasedEntity",
+          "config": {
+            "entityTypes": ["%2$s"],
+            "events": ["Created", "Updated"],
+            "exclude": ["entityStatus"],
+            "filter": {"%2$s": %3$s}
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "type": "startEvent", "subType": "startEvent"},
+          {"name": "Gate", "type": "automatedTask", "subType": "checkEntityAttributesTask",
+           "config": {"rules": "{\\"==\\":[{\\"var\\":\\"name\\"},\\"never\\"]}"},
+           "inputNamespaceMap": {"relatedEntity": "global"}},
+          {"name": "SetInReview", "type": "automatedTask", "subType": "setEntityAttributeTask",
+           "config": {"fieldName": "entityStatus", "fieldValue": "In Review"},
+           "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"}},
+          {"name": "end", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [
+          {"from": "start", "to": "Gate"},
+          {"from": "Gate", "to": "SetInReview", "condition": "true"},
+          {"from": "Gate", "to": "end", "condition": "false"},
+          {"from": "SetInReview", "to": "end"}
+        ],
+        "config": {
+          "storeStageStatus": true,
+          "lifecycle": {"version": 1, "entityType": "%2$s", "gates": []}
+        }
+      }""";
+
+  /** Approves through the owners and leaves the stage to the approval itself. */
+  private static final String APPROVAL_ONLY_WORKFLOW =
+      """
+      {
+        "name": "%s",
+        "description": "Single owner approval with no stage writes of its own",
+        "trigger": {
+          "type": "eventBasedEntity",
+          "config": {
+            "entityTypes": ["domain"],
+            "events": ["Updated"],
+            "exclude": ["entityStatus"],
+            "filter": {"domain": %s}
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "type": "startEvent", "subType": "startEvent"},
+          {"name": "Approve", "type": "userTask", "subType": "userApprovalTask",
+           "config": {"assignees": {"addOwners": true, "emptyAssigneeStrategy": "wait"},
+                      "approvalThreshold": 1, "rejectionThreshold": 1},
+           "inputNamespaceMap": {"relatedEntity": "global"}, "output": ["updatedBy"]},
+          {"name": "end", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [
+          {"from": "start", "to": "Approve"},
+          {"from": "Approve", "to": "end", "condition": "approve"},
+          {"from": "Approve", "to": "end", "condition": "reject"}
+        ],
+        "config": {"storeStageStatus": false}
+      }""";
+
+  @Test
+  @Order(222)
+  void test_lifecyclePlaybookEnrolsAssetsWithoutReviewersInDraft(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Glossary glossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("playbookGlossary"))
+                    .withDescription("Glossary without reviewers"));
+    String termName = ns.shortPrefix("playbookTerm");
+    String metricName = ns.shortPrefix("playbookMetric");
+    // Names sort before the default approval workflows, so these playbooks own the stage.
+    deployHoldingPlaybook(
+        admin, "AGlossaryLifecycle_" + ns.shortPrefix(), "glossaryTerm", termName);
+    deployHoldingPlaybook(admin, "AMetricLifecycle_" + ns.shortPrefix(), "metric", metricName);
+
+    GlossaryTerm term =
+        admin
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(termName)
+                    .withDescription("Term the playbook enrols")
+                    .withGlossary(glossary.getFullyQualifiedName()));
+    Metric metric =
+        admin
+            .metrics()
+            .create(
+                new CreateMetric()
+                    .withName(metricName)
+                    .withDescription("Metric the playbook enrols")
+                    .withMetricType(MetricType.COUNT)
+                    .withUnitOfMeasurement(MetricUnitOfMeasurement.SIZE));
+    GlossaryTerm outsideThePlaybook =
+        admin
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix("otherTerm"))
+                    .withDescription("Term no playbook applies to")
+                    .withGlossary(glossary.getFullyQualifiedName()));
+
+    assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
+    assertEquals(EntityStatus.DRAFT, metric.getEntityStatus());
+    assertEquals(EntityStatus.APPROVED, outsideThePlaybook.getEntityStatus());
+  }
+
+  @Test
+  @Order(223)
+  void test_approvalOnlyWorkflowApprovesTheEntity(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient ownerClient = SdkClients.user1Client();
+    EntityReference owner = admin.users().getByName("shared_user1").getEntityReference();
+    // Domains have no default stage workflow, so this workflow's task is the only one opened.
+    Domain domain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.shortPrefix("approvalOnly"))
+                    .withDescription("Domain approved by its owner")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withOwners(List.of(owner)));
+    String onlyThisDomain =
+        MAPPER.writeValueAsString(
+            MAPPER.writeValueAsString(
+                Map.of(
+                    "!=",
+                    List.of(Map.of("var", "fullyQualifiedName"), domain.getFullyQualifiedName()))));
+    String workflowName = "approvalOnlyFlow_" + ns.shortPrefix();
+    WorkflowDefinition created =
+        admin
+            .workflowDefinitions()
+            .create(
+                MAPPER.readValue(
+                    APPROVAL_ONLY_WORKFLOW.formatted(workflowName, onlyThisDomain),
+                    CreateWorkflowDefinition.class));
+    trackWorkflow(created.getName(), created.getId().toString());
+    waitForWorkflowDeployment(admin, workflowName);
+
+    admin
+        .domains()
+        .patch(
+            domain.getId(),
+            MAPPER.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Ready for review\"}]"));
+    Task approval =
+        awaitOpenApprovalTaskOf(ownerClient, domain.getFullyQualifiedName(), created.getId());
+    ownerClient
+        .tasks()
+        .resolve(
+            approval.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+
+    await("the approval to approve the domain")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    EntityStatus.APPROVED,
+                    admin.domains().get(domain.getId().toString()).getEntityStatus()));
+  }
+
+  private void deployHoldingPlaybook(
+      OpenMetadataClient admin, String workflowName, String entityType, String entityName)
+      throws Exception {
+    WorkflowDefinition created =
+        admin
+            .workflowDefinitions()
+            .create(
+                MAPPER.readValue(
+                    HOLDING_PLAYBOOK.formatted(
+                        workflowName, entityType, onlyEntityNamed(entityName)),
+                    CreateWorkflowDefinition.class));
+    trackWorkflow(created.getName(), created.getId().toString());
+    waitForWorkflowDeployment(admin, workflowName);
+  }
+
+  /** The trigger filter excludes what it matches, so only the named entity starts the workflow. */
+  private static String onlyEntityNamed(String name) throws JsonProcessingException {
+    return MAPPER.writeValueAsString(
+        MAPPER.writeValueAsString(Map.of("!=", List.of(Map.of("var", "name"), name))));
+  }
+
+  private Task awaitOpenApprovalTaskOf(
+      OpenMetadataClient client, String entityFqn, UUID workflowDefinitionId) {
+    List<Task> found = new ArrayList<>();
+    await("an open approval task for " + entityFqn + " from its workflow")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              found.clear();
+              listOpenApprovalTasks(client, entityFqn).getData().stream()
+                  .filter(task -> workflowDefinitionId.equals(task.getWorkflowDefinitionId()))
+                  .findFirst()
+                  .ifPresent(found::add);
+              return !found.isEmpty();
+            });
+    return found.getFirst();
+  }
+
   private Task awaitOpenApprovalTask(OpenMetadataClient client, String entityFqn, UUID previous) {
     List<Task> found = new ArrayList<>();
     await("an open approval task for " + entityFqn)

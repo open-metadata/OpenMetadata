@@ -50,10 +50,33 @@ final class WorkflowSignalDispatcher {
                     .eventType("signal")
                     .eventName(signal)
                     .list());
-    // Earlier subscribers have already committed; retry only the subscriber that failed.
-    for (EventSubscription subscription : subscriptions) {
-      RETRY.executeRunnable(() -> deliver(subscription, signal, variables));
+    final RuntimeException failure = deliverToEach(subscriptions, signal, variables);
+    if (failure != null) {
+      throw failure;
     }
+  }
+
+  /** Returns the first delivery failure, with any later ones suppressed onto it. */
+  private RuntimeException deliverToEach(
+      final List<EventSubscription> subscriptions,
+      final String signal,
+      final Map<String, Object> variables) {
+    RuntimeException failure = null;
+    for (EventSubscription subscription : subscriptions) {
+      try {
+        // Earlier subscribers have already committed; retry only the subscriber that failed.
+        RETRY.executeRunnable(() -> deliver(subscription, signal, variables));
+      } catch (RuntimeException deliveryFailure) {
+        // Each subscriber is an independent workflow, so one failing must not withhold the
+        // signal from the others.
+        if (failure == null) {
+          failure = deliveryFailure;
+        } else {
+          failure.addSuppressed(deliveryFailure);
+        }
+      }
+    }
+    return failure;
   }
 
   static boolean isTransientDatabaseError(final Throwable failure) {

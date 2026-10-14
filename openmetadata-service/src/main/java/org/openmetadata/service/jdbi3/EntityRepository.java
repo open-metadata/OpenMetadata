@@ -1495,6 +1495,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return entity.getEntityStatus() == null ? defaultEntityStatus : entity.getEntityStatus();
   }
 
+  /** A published lifecycle playbook enrols every new entity it applies to at its first stage. */
+  protected boolean playbookOwnsStage(T entity) {
+    return workflowsOwnEntityStatus && stageOwnership.playbookOwnsStageOf(entityType, entity);
+  }
+
   /** Puts a new entity in the stage it starts in; every create path calls it before storing. */
   void assignInitialEntityStatus(T entity) {
     if (supportsEntityStatus) {
@@ -4833,6 +4838,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
+    // The patched copy carries the stored impersonatedBy. Replace it (null for a regular user)
+    // before prepare, so validation sees who makes this change rather than who made the last one.
+    updated.setImpersonatedBy(impersonatedBy);
 
     try (var ignored = phase("patchPrepareInternal")) {
       prepareInternal(updated, true);
@@ -4857,11 +4865,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try (var ignored = phase("patchRestoreAttributes")) {
       restorePatchAttributes(original, updated);
     }
-
-    // Always set impersonatedBy to the passed value (which can be null)
-    // This ensures that when regular users make changes (impersonatedBy=null),
-    // any existing impersonatedBy value is cleared, preventing it from persisting
-    updated.setImpersonatedBy(impersonatedBy);
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater;

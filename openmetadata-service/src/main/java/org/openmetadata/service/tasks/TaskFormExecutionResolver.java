@@ -228,9 +228,9 @@ public final class TaskFormExecutionResolver {
 
     TaskExecutionBinding binding = defaultBinding(task);
     if (binding.handlerType() == HandlerType.APPROVAL
-        && TaskWorkflowLifecycleResolver.isEntityEventWorkflow(task.getWorkflowDefinitionId())) {
-      // Entity workflows own their status changes. Standalone approvals use noOp task workflows
-      // and still need the default action. Explicit schema actions are merged by the caller.
+        && TaskWorkflowLifecycleResolver.writesItsOwnEntityStage(task.getWorkflowDefinitionId())) {
+      // The workflow's own nodes set the stage after an approval; the default write would race
+      // them. Approval-only workflows keep the default, as do noOp task workflows.
       return new TaskExecutionPlan(List.of(), List.of());
     }
 

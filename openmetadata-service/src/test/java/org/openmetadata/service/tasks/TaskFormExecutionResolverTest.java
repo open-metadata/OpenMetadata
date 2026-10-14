@@ -34,12 +34,12 @@ import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.entity.feed.UiSchema;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
-import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.governance.workflows.elements.triggers.NoOpTriggerDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TaskFormSchemaRepository;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.HandlerType;
@@ -67,14 +67,64 @@ class TaskFormExecutionResolverTest {
                       task.getWorkflowDefinitionId(),
                       "nodes",
                       Include.NON_DELETED))
-          .thenReturn(
-              new WorkflowDefinition().withTrigger(new EventBasedEntityTriggerDefinition()));
+          .thenReturn(entityWorkflow(SETS_STAGE_AFTER_APPROVAL));
 
       final TaskExecutionPlan plan = TaskFormExecutionResolver.resolveExecutionPlan(task);
 
       assertTrue(plan.approveActions().isEmpty());
       assertTrue(plan.rejectActions().isEmpty());
     }
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = TaskEntityType.class,
+      names = {"RequestApproval", "GlossaryApproval"})
+  void approvalOnlyEntityWorkflowsKeepTheDefaultAction(final TaskEntityType type) {
+    final Task task =
+        new Task()
+            .withType(type)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withWorkflowDefinitionId(UUID.randomUUID());
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntity(
+                      Entity.WORKFLOW_DEFINITION,
+                      task.getWorkflowDefinitionId(),
+                      "nodes",
+                      Include.NON_DELETED))
+          .thenReturn(entityWorkflow(APPROVAL_ONLY));
+
+      final TaskExecutionPlan plan = TaskFormExecutionResolver.resolveExecutionPlan(task);
+
+      assertEquals("entityStatus", plan.approveActions().getFirst().entityField());
+      assertEquals("Approved", plan.approveActions().getFirst().staticValue());
+    }
+  }
+
+  private static final String APPROVAL_ONLY =
+      """
+      [{"name":"start","type":"startEvent","subType":"startEvent"},
+       {"name":"approve","type":"userTask","subType":"userApprovalTask","config":{}},
+       {"name":"end","type":"endEvent","subType":"endEvent"}]""";
+
+  private static final String SETS_STAGE_AFTER_APPROVAL =
+      """
+      [{"name":"start","type":"startEvent","subType":"startEvent"},
+       {"name":"approve","type":"userTask","subType":"userApprovalTask","config":{}},
+       {"name":"setApproved","type":"automatedTask","subType":"setEntityAttributeTask",
+        "config":{"fieldName":"entityStatus","fieldValue":"Approved"}},
+       {"name":"end","type":"endEvent","subType":"endEvent"}]""";
+
+  private static WorkflowDefinition entityWorkflow(final String nodes) {
+    return JsonUtils.readValue(
+        """
+        {"name":"entityWorkflow","trigger":{"type":"eventBasedEntity","config":{}},
+         "nodes":%s,"edges":[]}"""
+            .formatted(nodes),
+        WorkflowDefinition.class);
   }
 
   @ParameterizedTest
@@ -272,8 +322,7 @@ class TaskFormExecutionResolverTest {
                       task.getWorkflowDefinitionId(),
                       "nodes",
                       Include.NON_DELETED))
-          .thenReturn(
-              new WorkflowDefinition().withTrigger(new EventBasedEntityTriggerDefinition()));
+          .thenReturn(entityWorkflow(SETS_STAGE_AFTER_APPROVAL));
 
       TaskExecutionPlan executionPlan = TaskFormExecutionResolver.resolveExecutionPlan(task);
 

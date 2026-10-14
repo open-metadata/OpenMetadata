@@ -1074,12 +1074,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   /**
    * A term whose parent term or glossary has reviewers starts in Draft until they approve it;
-   * without reviewers there is nothing to approve and it starts Approved. Applied to every new term
+   * without reviewers there is nothing to approve and it starts Approved, unless a lifecycle playbook
+   * owns its stage and onboards it from Draft. Applied to every new term
    * whatever stage its request asked for, so creating a term cannot skip the review.
    */
   @Override
   protected EntityStatus initialEntityStatus(GlossaryTerm entity) {
-    return nullOrEmpty(inheritedReviewers(entity)) ? EntityStatus.APPROVED : EntityStatus.DRAFT;
+    final boolean awaitsReview =
+        !nullOrEmpty(inheritedReviewers(entity)) || playbookOwnsStage(entity);
+    return awaitsReview ? EntityStatus.DRAFT : EntityStatus.APPROVED;
   }
 
   private List<EntityReference> inheritedReviewers(GlossaryTerm term) {
