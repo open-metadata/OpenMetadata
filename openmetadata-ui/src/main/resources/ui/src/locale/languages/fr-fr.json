@@ -4930,6 +4930,7 @@
     "no-failing-tests": "Aucun test en échec.",
     "no-features-data-available": "Aucune donnée disponible pour les fonctionnalités",
     "no-feed-available-for-selected-filter": "Aucun flux trouvé. Essayez de modifier les filtres.",
+    "no-fields-configured": "Aucun champ configuré pour le moment",
     "no-file-selected": "Aucun fichier sélectionné",
     "no-filter-patterns-available": "Aucun modèle de filtre disponible pour ce connecteur.",
     "no-folders-yet-create-one": "Aucun dossier pour le moment, créez-en un pour organiser les documents par sujet ou équipe.",

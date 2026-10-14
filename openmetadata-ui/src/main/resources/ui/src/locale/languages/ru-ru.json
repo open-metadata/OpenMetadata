@@ -4930,6 +4930,7 @@
     "no-failing-tests": "Нет непройденных тестов.",
     "no-features-data-available": "Данные о характеристиках недоступны",
     "no-feed-available-for-selected-filter": "Фид не найден. Попробуйте поменять фильтры.",
+    "no-fields-configured": "Поля еще не настроены",
     "no-file-selected": "Файл не выбран",
     "no-filter-patterns-available": "Для этого коннектора нет доступных шаблонов фильтров.",
     "no-folders-yet-create-one": "Пока нет папок — создайте одну, чтобы организовать документы по темам или командам.",

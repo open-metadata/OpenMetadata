@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const ChevronDown: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,10 +29,10 @@ export const ChevronDown: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth={1.3} />
+    <path d="m5 7.5 5 5 5-5" stroke="currentColor" strokeWidth={1.3} />
   </svg>
 );
 ChevronDown.displayName = 'ChevronDown';

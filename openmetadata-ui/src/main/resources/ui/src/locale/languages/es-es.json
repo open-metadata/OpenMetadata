@@ -4930,6 +4930,7 @@
     "no-failing-tests": "No hay pruebas con fallos.",
     "no-features-data-available": "No hay datos de características disponibles",
     "no-feed-available-for-selected-filter": "No se encontró nada en el feed. Intenta cambiar los filtros.",
+    "no-fields-configured": "Aún no se han configurado campos",
     "no-file-selected": "Ningún fichero seleccionado",
     "no-filter-patterns-available": "No hay patrones de filtro disponibles para este conector.",
     "no-folders-yet-create-one": "Aún no hay carpetas; crea una para organizar los documentos por tema o equipo.",

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, type Locator, type Page } from '@playwright/test';
+import { selectOptionWithRetry } from './common';
 import { waitForLandingPageWidget } from './customizeLandingPage';
 
 /**
@@ -27,12 +28,13 @@ export const selectTopicCardFilterOption = async (
   filterTestId: string,
   optionValue: string
 ) => {
-  await widget.getByTestId(filterTestId).click();
-
+  const trigger = widget.getByTestId(filterTestId);
   const option = page.getByTestId('drop-down-menu').getByTestId(optionValue);
 
-  await expect(option).toBeVisible();
-  await option.click();
+  // The popover is non-modal: the scroll a click performs to reach the option
+  // closes it and the option detaches mid-click. This settles the trigger in
+  // view before opening, and reopens if it closed anyway.
+  await selectOptionWithRetry(trigger, option);
   await page.keyboard.press('Escape');
 };
 

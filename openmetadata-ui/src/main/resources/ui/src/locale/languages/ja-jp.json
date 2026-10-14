@@ -4930,6 +4930,7 @@
     "no-failing-tests": "失敗したテストはありません。",
     "no-features-data-available": "特徴量データが利用できません",
     "no-feed-available-for-selected-filter": "フィードが見つかりませんでした。フィルターを変更してみてください。",
+    "no-fields-configured": "フィールドはまだ設定されていません",
     "no-file-selected": "ファイルが選択されていません",
     "no-filter-patterns-available": "このコネクタにはフィルターパターンがありません。",
     "no-folders-yet-create-one": "フォルダはまだありません。作成してトピックやチームごとにドキュメントを整理しましょう。",
