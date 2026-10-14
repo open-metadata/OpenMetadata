@@ -24,7 +24,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import TaskFormSettingsPage from './TaskFormSettingsPage';
 
 const mockListTaskFormSchemas = jest.fn();
@@ -192,6 +198,24 @@ describe('TaskFormSettingsPage', () => {
     expect(mockShowSuccessToast).toHaveBeenCalledWith(
       'Task form saved successfully'
     );
+  });
+
+  it('clears the optional task category through the None option', async () => {
+    render(<TaskFormSettingsPage />);
+
+    const categorySelect = await screen.findByTestId(
+      'task-form-category-input'
+    );
+
+    fireEvent.click(within(categorySelect).getByRole('button'));
+    fireEvent.click(await screen.findByRole('option', { name: 'label.none' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
+    await waitFor(() => expect(mockUpdateTaskFormSchema).toHaveBeenCalled());
+
+    expect(
+      mockUpdateTaskFormSchema.mock.calls[0][0].taskCategory
+    ).toBeUndefined();
   });
 
   it('creates a new schema when add is selected', async () => {

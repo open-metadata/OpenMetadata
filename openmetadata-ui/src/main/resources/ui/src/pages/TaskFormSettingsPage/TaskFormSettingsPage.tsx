@@ -344,6 +344,9 @@ const TASK_STATUS_ITEMS = Object.values(TaskEntityStatus).map((status) => ({
   label: status,
 }));
 
+// Task Category is optional; this item maps back to an unset category.
+const NO_TASK_CATEGORY_KEY = 'none';
+
 const TASK_CATEGORY_ITEMS = Object.values(TaskCategory).map((category) => ({
   id: category,
   label: category,
@@ -524,6 +527,14 @@ const TaskFormSettingsPage = () => {
     taskType: watchedTaskType,
     taskCategory: watchedTaskCategory,
   } = form.watch();
+
+  const taskCategoryItems = useMemo(
+    () => [
+      { id: NO_TASK_CATEGORY_KEY, label: t('label.none') },
+      ...TASK_CATEGORY_ITEMS,
+    ],
+    [t]
+  );
 
   const breadcrumbs = useMemo(
     () =>
@@ -1175,12 +1186,15 @@ const TaskFormSettingsPage = () => {
                         {({ field }) => (
                           <Select
                             data-testid="task-form-category-input"
-                            items={TASK_CATEGORY_ITEMS}
+                            items={taskCategoryItems}
                             label="Task Category"
-                            selectedKey={field.value ?? null}
+                            selectedKey={field.value || NO_TASK_CATEGORY_KEY}
                             onSelectionChange={(key) =>
-                              key !== null &&
-                              field.onChange(key as TaskCategory)
+                              field.onChange(
+                                key === null || key === NO_TASK_CATEGORY_KEY
+                                  ? undefined
+                                  : (key as TaskCategory)
+                              )
                             }>
                             {(item) => (
                               <Select.Item id={item.id} label={item.label} />
