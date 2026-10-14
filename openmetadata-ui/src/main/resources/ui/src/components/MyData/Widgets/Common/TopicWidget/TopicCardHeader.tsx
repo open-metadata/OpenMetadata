@@ -82,7 +82,7 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
           </Typography>
           {status && !isLoading && (
             <Badge
-              className="tw:shrink-0"
+              className="tw:shrink-0 tw:font-medium"
               color={status.color}
               data-testid={`topic-status-${topicKey}`}
               size="sm"

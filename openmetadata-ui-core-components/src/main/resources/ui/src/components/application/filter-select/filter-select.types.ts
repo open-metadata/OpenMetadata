@@ -63,6 +63,11 @@ export interface FilterSelectProps {
    */
   bordered?: boolean;
   /**
+   * Size of the bordered button-variant trigger, on the core Button scale.
+   * Defaults to `md`; `xs` and `sm` suit dense surfaces such as card toolbars.
+   */
+  buttonSize?: 'xs' | 'sm' | 'md';
+  /**
    * Size of the input-variant trigger, on the core Select scale: `sm` (default)
    * or `md`, as tall as a Select, Input or Button of that size.
    */

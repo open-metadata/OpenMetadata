@@ -106,6 +106,7 @@ export const FilterButton: React.FC<FilterButtonProps> = (props) => {
     <FilterSelect
       bordered
       hideCounts
+      buttonSize="xs"
       commitMode="immediate"
       data-testid={testId}
       emptyState={
