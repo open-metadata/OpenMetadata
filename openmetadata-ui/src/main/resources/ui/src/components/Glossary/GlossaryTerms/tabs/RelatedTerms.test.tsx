@@ -300,8 +300,8 @@ describe('RelatedTerms overflow', () => {
     const chips = getAllByTestId('Target 0');
 
     expect(chips).toHaveLength(2);
-    expect(chips.filter((c) => c.classList.contains('diff-added'))).toHaveLength(
-      1
-    );
+    expect(
+      chips.filter((c) => c.classList.contains('diff-added'))
+    ).toHaveLength(1);
   });
 });
