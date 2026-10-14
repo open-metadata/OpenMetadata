@@ -140,7 +140,13 @@ describe('LearningResourceForm', () => {
       fireEvent.click(submitBtn);
     });
 
-    // Form validation should prevent API call
+    const nameFormItem = screen
+      .getByTestId('name-input')
+      .closest('.ant-form-item') as HTMLElement;
+
+    expect(
+      await within(nameFormItem).findByText('label.field-required')
+    ).toBeInTheDocument();
     expect(mockCreateLearningResource).not.toHaveBeenCalled();
   });
 

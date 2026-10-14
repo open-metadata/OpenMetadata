@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
@@ -124,7 +124,13 @@ jest.mock('../../../ExploreV1/ExploreSearchCard/ExploreSearchCard', () => ({
   __esModule: true,
   default: jest
     .fn()
-    .mockImplementation(() => <div>ExploreSearchCard.component</div>),
+    .mockImplementation(({ source, handleSummaryPanelDisplay }) => (
+      <button
+        data-testid={`table-data-card_${source.fullyQualifiedName}`}
+        onClick={() => handleSummaryPanelDisplay?.(source)}>
+        ExploreSearchCard.component
+      </button>
+    )),
 }));
 
 jest.mock('../../../Modals/ConfirmationModal/ConfirmationModal', () => ({
@@ -553,5 +559,57 @@ describe('AssetsTabs queryParam logic', () => {
         });
       });
     });
+  });
+});
+
+describe('AssetsTabs asset preview', () => {
+  const ordersTable = {
+    id: 'orders-id',
+    name: 'orders',
+    fullyQualifiedName: 'svc.db.schema.orders',
+    entityType: 'table',
+  };
+  const customersTable = {
+    id: 'customers-id',
+    name: 'customers',
+    fullyQualifiedName: 'svc.db.schema.customers',
+    entityType: 'table',
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (searchQuery as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: [
+          { _id: ordersTable.id, _source: ordersTable },
+          { _id: customersTable.id, _source: customersTable },
+        ],
+        total: { value: 2 },
+      },
+      aggregations: {},
+    });
+  });
+
+  it('opens the summary panel for the asset card that is clicked', async () => {
+    renderWithRouter(
+      <AssetsTabs
+        {...defaultProps}
+        isSummaryPanelOpen
+        entityFqn="glossary.term"
+        type={AssetsOfEntity.GLOSSARY}
+      />
+    );
+
+    fireEvent.click(
+      await screen.findByTestId(
+        `table-data-card_${customersTable.fullyQualifiedName}`
+      )
+    );
+
+    await waitFor(() =>
+      expect(mockOnAssetClick).toHaveBeenLastCalledWith({
+        details: customersTable,
+      })
+    );
   });
 });

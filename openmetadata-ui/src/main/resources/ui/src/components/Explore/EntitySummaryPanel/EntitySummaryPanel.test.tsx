@@ -246,6 +246,11 @@ jest.mock('../../common/EntityTitleSection/EntityTitleSection', () => ({
           props.entityDetails?.displayName ??
           props.entityDetails?.name}
       </span>
+      {props.entityLink && (
+        <a data-testid="entity-link" href={props.entityLink}>
+          {props.entityDetails?.name}
+        </a>
+      )}
       {props.hasEditPermission &&
         props.entityType &&
         props.entityDetails?.id && (
@@ -1600,6 +1605,34 @@ describe('EntitySummaryPanel component tests', () => {
           )
         );
       }
+    });
+
+    it('opens a table from the glossary term assets tab on the overview with its link and description', async () => {
+      const { container } = render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+          panelPath="glossary-term-assets-tab"
+        />
+      );
+
+      expect(await screen.findByTestId('TableSummary')).toBeInTheDocument();
+      expect(screen.getByTestId('overview-tab')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(screen.getByTestId('entity-link')).toHaveAttribute(
+        'href',
+        '/entity/link'
+      );
+      expect(
+        container.querySelector('.overview-tab-content .description-section')
+      ).toBeInTheDocument();
     });
   });
 });

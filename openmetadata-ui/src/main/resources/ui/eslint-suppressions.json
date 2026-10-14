@@ -282,11 +282,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/SampleDataTableOperations.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
   "playwright/e2e/Features/SearchExport.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1

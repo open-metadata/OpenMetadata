@@ -111,6 +111,27 @@ describe('LearningDrawer', () => {
     });
   });
 
+  it('should fetch resources for the given pageId and render them', async () => {
+    (getLearningResourcesByContext as jest.Mock).mockResolvedValue({
+      data: [{ ...mockResources[0], name: 'Lineage Resource' }],
+    });
+
+    render(
+      <LearningDrawer
+        open
+        pageId="lineage"
+        title="Lineage"
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(await screen.findByText('Lineage Resource')).toBeInTheDocument();
+    expect(getLearningResourcesByContext).toHaveBeenCalledWith(
+      'lineage',
+      expect.any(Object)
+    );
+  });
+
   it('should render empty state when no resources found', async () => {
     (getLearningResourcesByContext as jest.Mock).mockResolvedValue({
       data: [],
