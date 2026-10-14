@@ -1089,7 +1089,7 @@ export const TreeSelect = <T = unknown,>({
           <Button
             className={cx(
               'tw:whitespace-nowrap',
-              !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
+              !bordered && 'tw:p-1',
               hasSelection && selectedTriggerClassName(bordered),
               triggerClassName
             )}

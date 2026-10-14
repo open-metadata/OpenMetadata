@@ -111,9 +111,9 @@ export const TriggerButton = ({
         className={cx(
           'tw:whitespace-nowrap',
           // The borderless trigger hugs its label like the legacy quick
-          // filters (4px padding, 14px chevron), so a full toolbar of them
-          // fits on one row beside same-sized toolbar controls.
-          !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
+          // filters (4px padding), so a full toolbar of them fits on one row
+          // beside same-sized toolbar controls.
+          !bordered && 'tw:p-1',
           hasSelection && selectedTriggerClassName(bordered),
           className
         )}

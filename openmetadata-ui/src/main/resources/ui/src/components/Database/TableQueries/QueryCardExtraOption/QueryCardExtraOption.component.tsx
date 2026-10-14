@@ -170,6 +170,7 @@ const QueryCardExtraOption = ({
       <Tooltip arrow title={t('label.up-vote')}>
         <Button
           className={classNames(
+            'tw:gap-1',
             voteStatus === QueryVoteType.votedUp &&
               'tw:*:data-icon:text-fg-success-primary'
           )}
@@ -190,6 +191,7 @@ const QueryCardExtraOption = ({
       <Tooltip arrow title={t('label.down-vote')}>
         <Button
           className={classNames(
+            'tw:gap-1',
             voteStatus === QueryVoteType.votedDown &&
               'tw:*:data-icon:text-fg-warning-primary'
           )}

@@ -641,7 +641,10 @@ const NavBar = () => {
                   <Badge
                     dot={hasTaskNotification || hasMentionNotification}
                     offset={[-3, 3]}>
-                    <IconBell data-testid="task-notifications" width={20} />
+                    <IconBell
+                      className="tw:size-5"
+                      data-testid="task-notifications"
+                    />
                   </Badge>
                 }
                 size="sm"

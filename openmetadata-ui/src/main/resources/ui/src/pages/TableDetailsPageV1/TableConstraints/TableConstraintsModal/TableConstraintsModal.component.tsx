@@ -18,7 +18,11 @@ import {
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Columns03, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Columns03,
+  Plus,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { Form, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
