@@ -11,10 +11,22 @@
  *  limitations under the License.
  */
 
-import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Edit01,
+  MessageChatSquare,
+  MessagePlusSquare,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as ListConversationIcon } from '../../../assets/svg/action-icons/list-conversation.svg';
+import { ReactComponent as RequestUpdateIcon } from '../../../assets/svg/action-icons/request-update.svg';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useFqn } from '../../../hooks/useFqn';
@@ -31,17 +43,7 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
-import {
-  CommentIconButton,
-  EditIconButton,
-  RequestIconButton,
-} from '../IconButtons/EditIconButton';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
-import {
-  WidgetCommentButton,
-  WidgetEditButton,
-  WidgetRequestButton,
-} from '../WidgetActionButton/WidgetActionButton';
 import { DescriptionProps } from './Description.interface';
 import { EntityAttachmentProvider } from './EntityAttachmentProvider/EntityAttachmentProvider';
 
@@ -151,17 +153,17 @@ const Description = ({
         : handleRequestDescription;
 
       button = isWidgetHeader ? (
-        <WidgetRequestButton
+        <ButtonUtility
           data-testid="request-description"
-          title={requestLabel}
+          icon={RequestUpdateIcon}
+          tooltip={requestLabel}
           onClick={handleRequest}
         />
       ) : (
-        <RequestIconButton
-          newLook
+        <ButtonUtility
           data-testid="request-description"
-          size="small"
-          title={requestLabel}
+          icon={MessagePlusSquare}
+          tooltip={requestLabel}
           onClick={handleRequest}
         />
       );
@@ -186,33 +188,19 @@ const Description = ({
       entity: t('label.conversation'),
     });
     const openThread = () => onThreadLinkSelect?.(entityLink);
-    const editButton = isWidgetHeader ? (
-      <WidgetEditButton
+    const editButton = (
+      <ButtonUtility
         data-testid="edit-description"
-        title={editDescriptionLabel}
-        onClick={handleEditDescription}
-      />
-    ) : (
-      <EditIconButton
-        newLook
-        data-testid="edit-description"
-        size="small"
-        title={editDescriptionLabel}
+        icon={Edit01}
+        tooltip={editDescriptionLabel}
         onClick={handleEditDescription}
       />
     );
-    const commentButton = isWidgetHeader ? (
-      <WidgetCommentButton
+    const commentButton = (
+      <ButtonUtility
         data-testid="description-thread"
-        title={threadLabel}
-        onClick={openThread}
-      />
-    ) : (
-      <CommentIconButton
-        newLook
-        data-testid="description-thread"
-        size="small"
-        title={threadLabel}
+        icon={isWidgetHeader ? ListConversationIcon : MessageChatSquare}
+        tooltip={threadLabel}
         onClick={openThread}
       />
     );

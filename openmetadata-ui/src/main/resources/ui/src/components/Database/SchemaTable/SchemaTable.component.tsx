@@ -20,6 +20,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -28,7 +29,6 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
 import {
@@ -712,10 +712,9 @@ const SchemaTable = () => {
                 <Tooltip arrow placement="top" title={t('label.edit')}>
                   <ButtonUtility
                     className="hover-cell-icon"
-                    color="tertiary"
                     data-testid="edit-displayName-button"
-                    icon={IconEdit}
-                    size="xs"
+                    icon={Edit01}
+                    size="sm"
                     onClick={() => handleEditDisplayNameClick(record)}
                   />
                 </Tooltip>

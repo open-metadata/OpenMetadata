@@ -16,12 +16,12 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-primery.svg';
@@ -228,7 +228,7 @@ const ManageButton: FC<ManageButtonProps> = ({
                   description={t('message.update-displayName-entity', {
                     entity: entityName,
                   })}
-                  icon={EditIcon}
+                  icon={Edit01}
                   id="rename-button"
                   name={t('label.rename')}
                 />

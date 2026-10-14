@@ -18,7 +18,7 @@ import {
   FilterSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit05, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -131,7 +131,7 @@ const CustomPropertyActions: FC<CustomPropertyActionsProps> = ({
           {canEdit && (
             <Dropdown.Item
               data-testid="edit-button"
-              icon={Edit05}
+              icon={Edit01}
               id={OPERATION.UPDATE}
               label={t('label.edit')}
             />

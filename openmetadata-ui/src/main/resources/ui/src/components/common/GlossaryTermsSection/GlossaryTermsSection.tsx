@@ -12,9 +12,11 @@
  */
 import {
   Button,
+  ButtonUtility,
   GlossaryTag,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +27,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import GlossaryTermPicker from '../GlossaryTermPicker/GlossaryTermPicker';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { GlossaryTermsSectionProps } from './GlossaryTermsSection.interface';
 import './GlossaryTermsSection.less';
@@ -137,12 +138,10 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           isOpen={isEditing}
           multiple={entityRules.canAddMultipleGlossaryTerm}
           renderTrigger={({ toggle }) => (
-            <EditIconButton
-              newLook
+            <ButtonUtility
               data-testid="edit-glossary-terms"
-              disabled={false}
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.glossary-term-plural'),
               })}
               onClick={toggle}

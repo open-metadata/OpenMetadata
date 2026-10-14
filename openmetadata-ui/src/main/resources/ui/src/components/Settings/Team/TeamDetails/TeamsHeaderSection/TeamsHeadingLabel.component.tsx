@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Input } from 'antd';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 
 import {
   Check,
+  Edit01,
   ExclamationCircleFilled,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
@@ -115,19 +120,18 @@ const TeamsHeadingLabel = ({
 
     const canEditHeading = hasAccess || isCurrentTeamOwner;
     const editHeadingButton = canEditHeading && !currentTeam.deleted && (
-      <EditIconButton
-        newLook
+      <ButtonUtility
         data-testid="edit-team-name"
-        disabled={!hasEditDisplayNamePermission}
-        size="small"
-        title={
+        icon={Edit01}
+        isDisabled={!hasEditDisplayNamePermission}
+        tooltip={
           hasEditDisplayNamePermission
             ? t('label.edit-entity', {
                 entity: t('label.display-name'),
               })
             : t('message.no-permission-for-action')
         }
-        onClick={(e) => {
+        onClick={(e: MouseEvent) => {
           // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
           e.stopPropagation();
           setIsHeadingEditing(true);

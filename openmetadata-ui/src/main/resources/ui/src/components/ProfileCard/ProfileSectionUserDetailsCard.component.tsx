@@ -18,15 +18,14 @@ import {
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { Badge } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
-import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   ChangePasswordRequest,
@@ -84,7 +83,7 @@ const ProfileManageOptions = ({
         className="tw:w-full tw:justify-start"
         color="tertiary"
         data-testid="edit-displayname"
-        iconLeading={<EditProfileIcon {...ICON_DIMENSION_USER_PAGE} />}
+        iconLeading={Edit01}
         onClick={onEditDisplayName}>
         {t('label.edit-entity', {
           entity: t('label.display-name'),
@@ -96,7 +95,7 @@ const ProfileManageOptions = ({
         className="tw:w-full tw:justify-start"
         color="tertiary"
         data-testid="change-password-button"
-        iconLeading={<ChangePassword {...ICON_DIMENSION_USER_PAGE} />}
+        iconLeading={ChangePassword}
         onClick={onChangePassword}>
         {t('label.change-entity', {
           entity: t('label.password-lowercase'),
@@ -107,7 +106,7 @@ const ProfileManageOptions = ({
       <Button
         className="tw:w-full tw:justify-start"
         color="tertiary"
-        iconLeading={<DeleteIcon {...ICON_DIMENSION_USER_PAGE} />}
+        iconLeading={DeleteIcon}
         onClick={onRestore}>
         {t('label.restore')}
       </Button>
@@ -116,7 +115,7 @@ const ProfileManageOptions = ({
         <Button
           className="tw:w-full tw:justify-start"
           color="tertiary"
-          iconLeading={<DeleteIcon {...ICON_DIMENSION_USER_PAGE} />}
+          iconLeading={DeleteIcon}
           onClick={onDelete}>
           {t('label.delete-profile')}
         </Button>

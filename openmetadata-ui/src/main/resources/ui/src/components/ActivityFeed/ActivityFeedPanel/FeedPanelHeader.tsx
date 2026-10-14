@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import CloseIcon from '../../../components/Modals/CloseIcon.component';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityFieldDisplay } from '../../../utils/FeedUtils';
@@ -89,7 +88,13 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
           />
         ) : null}
         {hideCloseIcon ? null : (
-          <CloseIcon dataTestId="closeDrawer" handleCancel={onCancel} />
+          <ButtonUtility
+            data-testid="closeDrawer"
+            icon={XClose}
+            size="lg"
+            tooltip={t('label.close')}
+            onClick={onCancel}
+          />
         )}
       </div>
     </header>

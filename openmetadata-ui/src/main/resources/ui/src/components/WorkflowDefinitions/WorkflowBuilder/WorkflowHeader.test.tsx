@@ -45,6 +45,17 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+  ButtonUtility: ({
+    onClick,
+    tooltip,
+    'data-testid': dataTestId,
+  }: {
+    onClick?: () => void;
+    tooltip?: string;
+    'data-testid'?: string;
+  }) => (
+    <button aria-label={tooltip} data-testid={dataTestId} onClick={onClick} />
+  ),
   Card: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="workflow-header">{children}</div>
   ),
@@ -113,10 +124,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     [key: string]: unknown;
   }) => <span {...rest}>{children}</span>,
-}));
-
-jest.mock('../../../assets/svg/edit-new.svg', () => ({
-  ReactComponent: () => null,
 }));
 
 jest.mock('../../../assets/svg/workflow.svg', () => ({

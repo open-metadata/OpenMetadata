@@ -16,12 +16,12 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -162,11 +162,10 @@ const KPIList = () => {
                     : t('message.no-permission-for-action')
                 }>
                 <ButtonUtility
-                  color="tertiary"
                   data-testid={`edit-action-${getEntityName(record)}`}
-                  icon={EditIcon}
+                  icon={Edit01}
                   isDisabled={!isAdminUser}
-                  size="sm"
+                  size="md"
                   onClick={() => navigate(getKpiPath(record.name))}
                 />
               </Tooltip>
@@ -179,11 +178,10 @@ const KPIList = () => {
                     : t('message.no-permission-for-action')
                 }>
                 <ButtonUtility
-                  color="tertiary"
                   data-testid={`delete-action-${getEntityName(record)}`}
                   icon={IconDelete}
                   isDisabled={!isAdminUser}
-                  size="sm"
+                  size="md"
                   onClick={() => setSelectedKpi(record)}
                 />
               </Tooltip>

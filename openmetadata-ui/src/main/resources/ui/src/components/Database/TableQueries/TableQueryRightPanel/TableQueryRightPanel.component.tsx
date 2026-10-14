@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Owner, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Grid,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { Drawer } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +34,6 @@ import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivatio
 import { getUserPath } from '../../../../utils/RouterUtils';
 import Description from '../../../common/EntityDescription/Description';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import Loader from '../../../common/Loader/Loader';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -116,10 +122,10 @@ const TableQueryRightPanel = ({
                         onUpdate={(updatedUsers) =>
                           handleUpdateOwner(updatedUsers)
                         }>
-                        <EditIconButton
+                        <ButtonUtility
                           data-testid="edit-owner"
-                          size="small"
-                          title={t('label.edit-entity', {
+                          icon={Edit01}
+                          tooltip={t('label.edit-entity', {
                             entity: t('label.owner-lowercase-plural'),
                           })}
                         />

@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
 import { EntityAttachmentProvider } from '../EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { DescriptionSectionProps } from './DescriptionSection.interface';
 import './DescriptionSection.less';
@@ -216,12 +216,10 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
         {headerBadge}
       </div>
       {canShowEditButton && (
-        <EditIconButton
-          newLook
+        <ButtonUtility
           data-testid="edit-description"
-          disabled={false}
-          size="small"
-          title={t('label.edit-entity', {
+          icon={Edit01}
+          tooltip={t('label.edit-entity', {
             entity: t('label.description'),
           })}
           onClick={handleEditDescription}

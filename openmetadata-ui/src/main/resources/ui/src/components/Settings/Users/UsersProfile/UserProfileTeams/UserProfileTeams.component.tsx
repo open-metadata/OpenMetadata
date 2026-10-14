@@ -19,9 +19,9 @@ import {
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
@@ -132,10 +132,9 @@ const UserProfileTeams = ({
           {isAdminUser && !isDeletedUser && (
             <PopoverTrigger isOpen={isTeamsEdit} onOpenChange={setIsTeamsEdit}>
               <ButtonUtility
-                color="tertiary"
                 data-testid="edit-teams-button"
-                icon={<EditIcon height={16} width={16} />}
-                size="xs"
+                icon={Edit01}
+                size="sm"
                 tooltip={t('label.edit-entity', {
                   entity: t('label.team-plural'),
                 })}

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
@@ -23,7 +24,6 @@ import { Operation } from '../../../../generated/entity/policies/policy';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import '../incident-manager.style.less';
 import InlineSeverity from './InlineSeverity.component';
 import { SeverityProps } from './Severity.interface';
@@ -33,7 +33,6 @@ const Severity = ({
   severity,
   onSubmit,
   hasPermission,
-  newLook = false,
   headerName,
   isInline = false,
 }: SeverityProps) => {
@@ -89,11 +88,10 @@ const Severity = ({
             {headerName}
           </Typography>
           {canEditSeverity && (
-            <EditIconButton
+            <ButtonUtility
               data-testid="edit-severity-icon"
-              newLook={newLook}
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.severity'),
               })}
               onClick={onEditSeverity}
@@ -128,13 +126,11 @@ const Severity = ({
           NO_DATA_PLACEHOLDER
         )}
         {canEditSeverity && (
-          <EditIconButton
-            newLook
-            className="flex-center"
+          <ButtonUtility
             data-testid="edit-severity-icon"
-            disabled={!hasEditPermission}
-            size="small"
-            title={t('label.edit-entity', {
+            icon={Edit01}
+            isDisabled={!hasEditPermission}
+            tooltip={t('label.edit-entity', {
               entity: t('label.severity'),
             })}
             onClick={onEditSeverity}

@@ -22,14 +22,13 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { DotsVertical } from '@openmetadata/ui-core-components/icons';
+import { DotsVertical, Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PolicyIcon } from '../../../assets/svg/policies-colored.svg';
 import Description from '../../../components/common/EntityDescription/Description';
@@ -300,7 +299,7 @@ const PoliciesDetailPage = () => {
                 }
               }}>
               <Dropdown.Item
-                icon={EditIcon}
+                icon={Edit01}
                 id="edit-button"
                 textValue={t('label.edit')}>
                 <Typography data-testid="edit-rule">

@@ -18,12 +18,12 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -305,23 +305,21 @@ const NotificationListPage = () => {
               {alertPermission.edit && (
                 <Tooltip arrow placement="bottom" title={t('label.edit')}>
                   <ButtonUtility
-                    color="tertiary"
                     data-testid={`alert-edit-${record.name}`}
                     href={getNotificationAlertsEditPath(fullyQualifiedName)}
-                    icon={EditIcon}
+                    icon={Edit01}
                     isDisabled={record.provider === ProviderType.System}
-                    size="sm"
+                    size="md"
                   />
                 </Tooltip>
               )}
               {alertPermission.delete && (
                 <Tooltip arrow placement="bottom" title={t('label.delete')}>
                   <ButtonUtility
-                    color="tertiary"
                     data-testid={`alert-delete-${record.name}`}
                     icon={DeleteIcon}
                     isDisabled={record.provider === ProviderType.System}
-                    size="sm"
+                    size="md"
                     onClick={() => setSelectedAlert(record)}
                   />
                 </Tooltip>

@@ -16,14 +16,13 @@ import {
   ButtonUtility,
   TextArea,
 } from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
+import { Check, Edit01, XClose } from '@openmetadata/ui-core-components/icons';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import classNames from 'classnames';
 import 'katex/dist/katex.min.css';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Latex from 'react-latex-next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import './math-equation.less';
 
 export const MathEquationComponent: FC<NodeViewProps> = ({
@@ -95,9 +94,8 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
         {!isEditing && editor.isEditable && (
           <ButtonUtility
             className="edit-button"
-            color="tertiary"
-            icon={<EditIcon width={16} />}
-            size="xs"
+            icon={Edit01}
+            size="md"
             tooltip={t('label.edit-entity', { entity: t('label.equation') })}
             onClick={() => setIsEditing(true)}
           />

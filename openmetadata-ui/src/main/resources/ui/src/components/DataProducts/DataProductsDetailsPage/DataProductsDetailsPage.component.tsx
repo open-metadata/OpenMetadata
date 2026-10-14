@@ -10,9 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Avatar, Box, Button, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Box,
+  Button,
+  ButtonUtility,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import {
   Announcement02 as IconAnnouncementsBlack,
+  Edit01,
   RefreshCcw01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -21,8 +28,8 @@ import { toLower, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
@@ -107,7 +114,6 @@ import {
   ManageMenuItem,
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import { DEFAULT_DATA_PRODUCT_ICON } from '../../common/IconPicker/IconPicker.constants';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -209,7 +215,7 @@ const getManageButtonContent = ({
               description={t('message.rename-entity', {
                 entity: t('label.data-product'),
               })}
-              icon={EditIcon}
+              icon={Edit01}
               id="rename-button"
               name={t('label.rename')}
             />
@@ -247,7 +253,7 @@ const getManageButtonContent = ({
           label: (
             <ManageButtonItemLabel
               description={t('message.edit-metadata-description')}
-              icon={EditIcon}
+              icon={Edit01}
               id="edit-metadata-button"
               name={t('label.edit-metadata')}
             />
@@ -1080,9 +1086,12 @@ const DataProductsDetailsPage = ({
                 <Tabs.List
                   actions={
                     isExpandViewSupported && (
-                      <AlignRightIconButton
+                      <ButtonUtility
                         className={isTabExpanded ? 'rotate-180' : ''}
-                        title={
+                        data-testid="tab-expand-button"
+                        icon={ExpandIcon}
+                        size="lg"
+                        tooltip={
                           isTabExpanded
                             ? t('label.collapse')
                             : t('label.expand')

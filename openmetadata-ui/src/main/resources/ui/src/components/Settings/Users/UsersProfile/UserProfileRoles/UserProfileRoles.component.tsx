@@ -19,6 +19,7 @@ import {
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
@@ -31,7 +32,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { ReactComponent as RoleIcon } from '../../../../../assets/svg/ic-roles.svg';
@@ -272,10 +272,9 @@ const UserProfileRoles = ({
           {isAdminUser && (
             <PopoverTrigger isOpen={isRolesEdit} onOpenChange={setIsRolesEdit}>
               <ButtonUtility
-                color="tertiary"
                 data-testid="edit-roles-button"
-                icon={<EditIcon height={16} width={16} />}
-                size="xs"
+                icon={Edit01}
+                size="sm"
                 tooltip={t('label.edit-entity', {
                   entity: t('label.role-plural'),
                 })}

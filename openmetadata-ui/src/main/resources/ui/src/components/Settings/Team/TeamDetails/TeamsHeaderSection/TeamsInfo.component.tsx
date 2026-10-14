@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Divider,
   Owner,
   Tooltip,
@@ -20,6 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Check,
+  Edit01,
   InfoCircle,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
@@ -44,7 +46,6 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
-import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
 import { UserTeamSelectableList } from '../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
@@ -188,14 +189,13 @@ const TeamsInfo = ({
             'label.email'
           )}`}</Typography>
           {hasEditPermission && (
-            <EditIconButton
-              newLook
+            <ButtonUtility
               data-testid="edit-email"
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.email'),
               })}
-              onClick={(e) => {
+              onClick={(e: MouseEvent) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();
                 setIsEmailEdit(true);
@@ -299,11 +299,10 @@ const TeamsInfo = ({
               {`${t('label.type')}`}
             </Typography>
             {hasEditPermission && !showTypeSelector && !isGroupType && (
-              <EditIconButton
-                newLook
+              <ButtonUtility
                 data-testid="edit-team-type-icon"
-                size="small"
-                title={t('label.edit-entity', {
+                icon={Edit01}
+                tooltip={t('label.edit-entity', {
                   entity: t('label.team-type'),
                 })}
                 onClick={(e: MouseEvent) => {

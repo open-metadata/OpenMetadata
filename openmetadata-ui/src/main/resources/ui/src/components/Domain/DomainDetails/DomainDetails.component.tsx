@@ -14,6 +14,7 @@ import {
   Avatar,
   Box,
   Button,
+  ButtonUtility,
   Dropdown,
   Tabs,
 } from '@openmetadata/ui-core-components';
@@ -31,6 +32,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
@@ -122,7 +124,6 @@ import {
   ManageMenuItem,
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import { DEFAULT_DOMAIN_ICON } from '../../common/IconPicker/IconPicker.constants';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -1144,9 +1145,12 @@ const DomainDetails = ({
                 <Tabs.List
                   actions={
                     isExpandViewSupported && (
-                      <AlignRightIconButton
+                      <ButtonUtility
                         className={isTabExpanded ? 'rotate-180' : ''}
-                        title={
+                        data-testid="tab-expand-button"
+                        icon={ExpandIcon}
+                        size="lg"
+                        tooltip={
                           isTabExpanded
                             ? t('label.collapse')
                             : t('label.expand')

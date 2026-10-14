@@ -17,11 +17,11 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 
 import { isUndefined } from 'lodash';
 import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { ProviderType } from '../../../generated/events/eventSubscription';
@@ -58,10 +58,9 @@ function ObservabilityAlertActions({
         <Tooltip arrow placement="bottom" title={t('label.edit')}>
           {onEditAlert ? (
             <ButtonUtility
-              color="tertiary"
               data-testid={`alert-edit-${record.name}`}
-              icon={EditIcon}
-              size="sm"
+              icon={Edit01}
+              size="md"
               onClick={(event: MouseEvent) => {
                 event.stopPropagation();
                 onEditAlert(record);
@@ -69,13 +68,12 @@ function ObservabilityAlertActions({
             />
           ) : (
             <ButtonUtility
-              color="tertiary"
               data-testid={`alert-edit-${record.name}`}
               href={observabilityRouterClassBase.getObservabilityAlertsEditPath(
                 record.fullyQualifiedName ?? ''
               )}
-              icon={EditIcon}
-              size="sm"
+              icon={Edit01}
+              size="md"
             />
           )}
         </Tooltip>
@@ -83,11 +81,10 @@ function ObservabilityAlertActions({
       {alertPermission.delete && (
         <Tooltip arrow placement="bottom" title={t('label.delete')}>
           <ButtonUtility
-            color="tertiary"
             data-testid={`alert-delete-${record.name}`}
             icon={DeleteIcon}
             isDisabled={record.provider === ProviderType.System}
-            size="sm"
+            size="md"
             onClick={() => onSelectAlert(record)}
           />
         </Tooltip>

@@ -10,7 +10,7 @@ import type {
   FC,
   ReactNode,
 } from 'react';
-import { isValidElement } from 'react';
+import { forwardRef, isValidElement } from 'react';
 import type { Placement } from 'react-aria';
 import type {
   ButtonProps as AriaButtonProps,
@@ -100,18 +100,27 @@ interface LinkProps
 /** Union type of button and link props */
 export type Props = ButtonProps | LinkProps;
 
-export const ButtonUtility = ({
-  tooltip,
-  className,
-  isDisabled,
-  icon: Icon,
-  size = 'sm',
-  color = 'secondary',
-  tooltipPlacement = 'top',
-  ...otherProps
-}: Props) => {
+export const ButtonUtility = forwardRef<
+  HTMLButtonElement | HTMLAnchorElement,
+  Props
+>(function ButtonUtility(
+  {
+    tooltip,
+    className,
+    isDisabled,
+    icon: Icon,
+    size = 'sm',
+    color = 'tertiary',
+    tooltipPlacement = 'top',
+    ...otherProps
+  },
+  ref
+) {
   const href = 'href' in otherProps ? otherProps.href : undefined;
   const Component = href ? AriaLink : AriaButton;
+  // A disabled button with a tooltip stays focusable and keeps its tooltip,
+  // which usually says why it is disabled; only the press is dropped.
+  const softDisabled = Boolean(isDisabled && tooltip && !href);
 
   let props = {};
 
@@ -131,7 +140,10 @@ export const ButtonUtility = ({
       ...otherProps,
 
       type: otherProps.type || 'button',
-      isDisabled,
+      isDisabled: isDisabled && !softDisabled,
+      ...(softDisabled
+        ? { 'aria-disabled': true, onClick: undefined, onPress: undefined }
+        : {}),
     };
   }
 
@@ -141,6 +153,7 @@ export const ButtonUtility = ({
       {...props}
       className={cx(
         'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled_subtle tw:disabled:*:data-icon:text-fg-disabled_subtle',
+        'tw:aria-disabled:cursor-not-allowed tw:aria-disabled:*:data-icon:text-fg-disabled_subtle',
         sizes[size],
         styles[(size === 'xs' && borderless[color]) || color],
 
@@ -148,7 +161,9 @@ export const ButtonUtility = ({
         'tw:*:data-icon:pointer-events-none tw:*:data-icon:shrink-0 tw:*:data-icon:transition-inherit-all',
 
         className
-      )}>
+      )}
+      // See the matching cast in button.tsx: `Component` is chosen at runtime.
+      ref={ref as never}>
       {isReactComponent(Icon) && <Icon data-icon />}
       {isValidElement(Icon) && Icon}
     </Component>
@@ -157,7 +172,6 @@ export const ButtonUtility = ({
   if (tooltip) {
     return (
       <Tooltip
-        isDisabled={isDisabled}
         offset={size === 'xs' || size === 'sm' ? 4 : 6}
         placement={tooltipPlacement}
         title={tooltip}>
@@ -167,4 +181,4 @@ export const ButtonUtility = ({
   }
 
   return content;
-};
+});

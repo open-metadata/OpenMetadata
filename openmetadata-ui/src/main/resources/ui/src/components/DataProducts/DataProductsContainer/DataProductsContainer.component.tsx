@@ -14,8 +14,10 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 
 import { isEmpty } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
@@ -31,10 +33,6 @@ import { EntityReference } from '../../../generated/entity/type';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDataProductDetailsPath } from '../../../utils/RouterUtils';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import DataProductsSelectList from '../DataProductsSelectList/DataProductsSelectList';
 interface DataProductsContainerProps {
@@ -191,16 +189,18 @@ const DataProductsContainer = ({
 
     // The picker owns the toggle; a button onClick would reopen it after a close.
     const actionButton = isEmpty(dataProducts) ? (
-      <WidgetPlusButton
+      <ButtonUtility
         data-testid="add-data-product"
-        title={t('label.add-entity', {
+        icon={Plus}
+        tooltip={t('label.add-entity', {
           entity: t('label.data-product-plural'),
         })}
       />
     ) : (
-      <WidgetEditButton
+      <ButtonUtility
         data-testid="edit-button"
-        title={t('label.edit-entity', {
+        icon={Edit01}
+        tooltip={t('label.edit-entity', {
           entity: t('label.data-product-plural'),
         })}
       />
@@ -216,10 +216,11 @@ const DataProductsContainer = ({
         {hasPermission &&
           (domainMissing
             ? isEmpty(dataProducts) && (
-                <WidgetPlusButton
-                  disabled
+                <ButtonUtility
+                  isDisabled
                   data-testid="add-data-product"
-                  title={t('message.select-domain-to-add-data-product')}
+                  icon={Plus}
+                  tooltip={t('message.select-domain-to-add-data-product')}
                 />
               )
             : withPicker(actionButton))}

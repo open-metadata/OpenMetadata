@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  ButtonUtility,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { XCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
   memo,
@@ -33,7 +38,6 @@ import {
 } from '../../../generated/api/lineage/lineageScene';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext';
-import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
 import {
   getCollapseHandle,
@@ -199,6 +203,7 @@ const SceneDrillButton = ({
 
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
+  const { t } = useTranslation();
 
   const { onNodeCollapse, removeNodeHandler, loadChildNodesHandler } =
     useLineageHandlers();
@@ -362,7 +367,14 @@ const CustomNodeV1 = (props: NodeProps) => {
           }
         />
         {showRemoveButton && (
-          <LineageNodeRemoveButton onRemove={handleNodeRemove} />
+          <ButtonUtility
+            className="lineage-node-remove-btn"
+            data-testid="lineage-node-remove-btn"
+            icon={XCircle}
+            size="xs"
+            tooltip={t('label.remove')}
+            onClick={handleNodeRemove}
+          />
         )}
       </>
     );
@@ -379,6 +391,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     toggleColumnsExpanded,
     isEditMode,
     showRemoveButton,
+    t,
   ]);
 
   const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(

@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { XCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined, uniqueId, uniqWith } from 'lodash';
@@ -140,7 +142,6 @@ import EntityLineageSidebar from '../../Entity/EntityLineage/EntityLineageSideba
 import NodeSuggestions from '../../Entity/EntityLineage/NodeSuggestions.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { getRealEntityRef } from '../LineageMap/LineageMapEdit.utils';
-import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import {
   LineageOverlays,
   LineageOverlaysHandlers,
@@ -1562,8 +1563,13 @@ export const Lineage = ({
           data: {
             label: (
               <>
-                <LineageNodeRemoveButton
-                  onRemove={() => removeNodeHandler(newNode as Node)}
+                <ButtonUtility
+                  className="lineage-node-remove-btn"
+                  data-testid="lineage-node-remove-btn"
+                  icon={XCircle}
+                  size="xs"
+                  tooltip={t('label.remove')}
+                  onClick={() => removeNodeHandler(newNode as Node)}
                 />
 
                 <NodeSuggestions

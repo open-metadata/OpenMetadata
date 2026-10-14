@@ -13,18 +13,18 @@
 import {
   Alert,
   Button,
+  ButtonUtility,
   Dialog,
   Input,
   Modal,
   ModalOverlay,
-  Tooltip,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Duration } from 'luxon';
 import { FormEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './retention-period.less';
@@ -114,16 +114,13 @@ const RetentionPeriod = ({
               {t('label.retention-period')}
             </span>
             {hasPermission && (
-              <Tooltip title={editTitle}>
-                <Button
-                  aria-label={editTitle}
-                  className="tw:size-5 tw:rounded-sm tw:p-0 tw:text-quaternary tw:shadow-none tw:after:outline-secondary tw:data-icon-only:p-0"
-                  color="secondary"
-                  data-testid="edit-retention-period-button"
-                  iconLeading={<EditIcon aria-hidden width="12px" />}
-                  onPress={onEdit}
-                />
-              </Tooltip>
+              <ButtonUtility
+                data-testid="edit-retention-period-button"
+                icon={Edit01}
+                size="sm"
+                tooltip={editTitle}
+                onClick={onEdit}
+              />
             )}
           </div>
 

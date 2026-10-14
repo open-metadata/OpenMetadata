@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import QueryString from 'qs';
 import {
@@ -38,7 +39,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DownloadIcon } from '../../../assets/svg/ic-download.svg';
 import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exit-fullscreen.svg';
 import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
@@ -457,7 +457,7 @@ const CustomControls: FC<{
         aria-label={editLabel}
         color={isEditMode ? 'primary' : 'secondary'}
         data-testid="edit-lineage"
-        iconLeading={EditIcon}
+        iconLeading={Edit01}
         isDisabled={isLayerBand}
         onClick={toggleEditMode}
       />

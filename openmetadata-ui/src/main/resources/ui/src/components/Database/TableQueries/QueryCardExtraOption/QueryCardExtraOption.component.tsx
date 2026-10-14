@@ -18,6 +18,7 @@ import {
   Dropdown,
   Tooltip,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import { isUndefined, split } from 'lodash';
@@ -25,7 +26,6 @@ import Qs from 'qs';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ReactComponent as ThumbsUpFilled } from '../../../../assets/svg/thumbs-up-filled.svg';
@@ -98,7 +98,7 @@ const QueryCardExtraOption = ({
       {
         key: 'edit-query',
         label: t('label.edit'),
-        icon: EditIcon,
+        icon: Edit01,
         disabled: !canEditQuery,
         onAction: () => onEditClick(true),
       },

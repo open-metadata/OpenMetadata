@@ -27,7 +27,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { UploadCloud01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, UploadCloud01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { cloneDeep, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -35,7 +35,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
 import { ReactComponent as FollowActiveIcon } from '../../../assets/svg/action-icons/follow-active.svg';
 import { ReactComponent as FollowIcon } from '../../../assets/svg/action-icons/follow.svg';
 import { ReactComponent as ChatIcon } from '../../../assets/svg/action-icons/message-chat.svg';
@@ -359,10 +358,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             selectedDomain={knowledgePage?.domains ?? []}
             onUpdate={handleDomainSave}>
             <ButtonUtility
-              className="tw:p-1"
-              color="tertiary"
               data-testid="edit-domain-btn"
-              icon={<EditIcon height={14} width={14} />}
+              icon={Edit01}
+              size="sm"
               tooltip={t('label.edit-entity', {
                 entity: t('label.domain'),
               })}
@@ -423,10 +421,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               owner={knowledgePage?.owners}
               onUpdate={handleOwnerSave}>
               <ButtonUtility
-                className="tw:p-1"
-                color="tertiary"
                 data-testid="edit-owner-btn"
-                icon={<EditIcon height={14} width={14} />}
+                icon={Edit01}
+                size="sm"
                 tooltip={t('label.edit-entity', {
                   entity: t('label.owner-plural'),
                 })}

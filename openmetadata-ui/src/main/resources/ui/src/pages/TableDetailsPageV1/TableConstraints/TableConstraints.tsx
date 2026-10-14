@@ -10,15 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, map } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -70,17 +72,23 @@ const TableConstraints = ({
   let headerExtra: ReactNode = null;
   if (showAddConstraint) {
     headerExtra = (
-      <WidgetPlusButton
+      <ButtonUtility
         data-testid="table-constraints-add-button"
-        title={t('label.add-entity', { entity: t('label.table-constraints') })}
+        icon={Plus}
+        tooltip={t('label.add-entity', {
+          entity: t('label.table-constraints'),
+        })}
         onClick={handleOpenEditConstraintModal}
       />
     );
   } else if (showEditConstraint) {
     headerExtra = (
-      <WidgetEditButton
+      <ButtonUtility
         data-testid="edit-table-constraint-button"
-        title={t('label.edit-entity', { entity: t('label.table-constraints') })}
+        icon={Edit01}
+        tooltip={t('label.edit-entity', {
+          entity: t('label.table-constraints'),
+        })}
         onClick={handleOpenEditConstraintModal}
       />
     );

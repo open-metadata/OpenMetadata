@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Card } from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+} from '@openmetadata/ui-core-components';
+import { Check, Edit01, XClose } from '@openmetadata/ui-core-components/icons';
 import { Select } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
 import { useState } from 'react';
@@ -20,7 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import RolesElement from '../RolesElement/RolesElement.component';
 import { RolesComponentProps } from './RolesCard.interfaces';
 
@@ -88,11 +92,10 @@ const RolesCard = ({
         <Card.Header
           extra={
             !isRolesEdit && (
-              <EditIconButton
-                newLook
+              <ButtonUtility
                 data-testid="edit-roles"
-                size="small"
-                title={t('label.edit-entity', {
+                icon={Edit01}
+                tooltip={t('label.edit-entity', {
                   entity: t('label.role-plural'),
                 })}
                 onClick={() => setIsRolesEdit(true)}

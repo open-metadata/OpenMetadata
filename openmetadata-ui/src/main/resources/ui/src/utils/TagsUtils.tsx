@@ -142,15 +142,13 @@ export const getDeleteIcon = (arg: {
   const { deleteTagId, id, status } = arg;
   if (deleteTagId === id) {
     if (status === 'success') {
-      return (
-        <Check className="tw:shrink-0" data-testid="check-outline" size={14} />
-      );
+      return <Check data-icon data-testid="check-outline" />;
     }
 
     return <Loader size="small" type="default" />;
   }
 
-  return <DeleteIcon data-testid="delete-icon" name="Delete" width={14} />;
+  return <DeleteIcon data-icon data-testid="delete-icon" name="Delete" />;
 };
 
 export const tagRender = (customTagProps: CustomTagProps) => {

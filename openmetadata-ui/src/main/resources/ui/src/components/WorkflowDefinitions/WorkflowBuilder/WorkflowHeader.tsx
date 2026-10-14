@@ -14,6 +14,7 @@
 import {
   Badge,
   Button,
+  ButtonUtility,
   Card,
   Dialog,
   Input,
@@ -24,10 +25,10 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
 import { WorkflowHeaderProps } from '../../../interface/workflow-builder-components.interface';
@@ -160,15 +161,15 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     () =>
       !isViewMode &&
       !isNoOp && (
-        <Button
-          color="tertiary"
+        <ButtonUtility
           data-testid="edit-workflow-title-button"
-          iconLeading={EditIcon}
+          icon={Edit01}
           size="sm"
-          onPress={handleOpenEditModal}
+          tooltip={t('label.edit')}
+          onClick={handleOpenEditModal}
         />
       ),
-    [isViewMode, isNoOp, handleOpenEditModal]
+    [isViewMode, isNoOp, handleOpenEditModal, t]
   );
 
   const workflowIcon = (

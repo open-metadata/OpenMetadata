@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import React, { useMemo } from 'react';
 import { Edge, useReactFlow, useViewport } from 'reactflow';
-import { ReactComponent as IconEditCircle } from '../../../assets/svg/ic-edit-circle.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { computePathDataForEdge } from '../../../utils/CanvasUtils';
@@ -68,11 +68,12 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
 
     return (
       <div key={`edit-${edge.id}`} style={buttonPosition}>
-        <Button
+        <ButtonUtility
           aria-label={t('label.add-entity', { entity: t('label.pipeline') })}
-          color="link-color"
+          className="tw:bg-primary"
           data-testid="add-pipeline"
-          iconLeading={<IconEditCircle className="tw:size-3.5 tw:shrink-0" />}
+          icon={Edit01}
+          size="sm"
           onClick={() => onPipelineClick?.()}
         />
       </div>
@@ -88,11 +89,12 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
 
     return (
       <div key={`delete-${edge.id}`} style={buttonPosition}>
-        <Button
+        <ButtonUtility
           aria-label={t('label.delete-entity', { entity: t('label.edge') })}
-          color="link-color"
+          className="tw:bg-primary"
           data-testid="delete-button"
-          iconLeading={<IconTimesCircle className="tw:size-3.5 tw:shrink-0" />}
+          icon={IconTimesCircle}
+          size="sm"
           onClick={() => onEdgeRemove?.()}
         />
       </div>

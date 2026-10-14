@@ -18,15 +18,13 @@ import {
   Dropdown,
   EmptyPlaceholder,
   Skeleton,
-  Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
 import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.svg';
 import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/common/no-filter-results.svg';
@@ -249,17 +247,13 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
         <CopyIcon aria-hidden="true" height={20} width={20} />
       </CopyLinkButton>
       {canActOnMemory && canEdit && onEditMemory && (
-        <Tooltip title={t('label.edit')}>
-          <TooltipTrigger>
-            <ButtonUtility
-              color="tertiary"
-              data-testid="edit-memory-btn"
-              icon={<EditIcon height={20} width={20} />}
-              size="sm"
-              onClick={() => onEditMemory(memory)}
-            />
-          </TooltipTrigger>
-        </Tooltip>
+        <ButtonUtility
+          data-testid="edit-memory-btn"
+          icon={Edit01}
+          size="md"
+          tooltip={t('label.edit')}
+          onClick={() => onEditMemory(memory)}
+        />
       )}
       {canActOnMemory && canDelete && (
         <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />

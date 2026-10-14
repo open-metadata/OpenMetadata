@@ -12,6 +12,7 @@
  */
 import {
   Button,
+  ButtonUtility,
   ClassificationTag,
   Owner,
   Tooltip,
@@ -21,6 +22,7 @@ import {
 import {
   Activity,
   Copy01,
+  Edit01,
   File02,
   RefreshCcw01,
   ThumbsDown,
@@ -106,7 +108,6 @@ import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
@@ -876,12 +877,10 @@ export const DataAssetsHeader = ({
           )}
         </div>
         {editStylePermission && (
-          <EditIconButton
-            newLook
-            className="tw:size-6 tw:p-0"
+          <ButtonUtility
             data-testid="edit-service-style"
-            size="small"
-            title={t('label.edit-entity', {
+            icon={Edit01}
+            tooltip={t('label.edit-entity', {
               entity: t('label.style'),
             })}
             onClick={() => setIsStyleEditing(true)}
@@ -1053,11 +1052,10 @@ export const DataAssetsHeader = ({
             {editTierPermission && (
               <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                 <Pressable>
-                  <EditIconButton
-                    newLook
+                  <ButtonUtility
                     data-testid="edit-tier"
-                    size="small"
-                    title={t('label.edit-entity', {
+                    icon={Edit01}
+                    tooltip={t('label.edit-entity', {
                       entity: t('label.tier'),
                     })}
                   />
@@ -1142,11 +1140,10 @@ export const DataAssetsHeader = ({
                 }
                 permission={editCertificationPermission}
                 onCertificationUpdate={onCertificationUpdate}>
-                <EditIconButton
-                  newLook
+                <ButtonUtility
                   data-testid="edit-certification"
-                  size="small"
-                  title={t('label.edit-entity', {
+                  icon={Edit01}
+                  tooltip={t('label.edit-entity', {
                     entity: t('label.certification'),
                   })}
                 />

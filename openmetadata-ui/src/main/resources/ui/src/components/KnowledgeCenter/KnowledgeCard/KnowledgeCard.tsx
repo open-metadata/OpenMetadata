@@ -20,7 +20,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { OwnerType } from '../../../enums/user.enum';
@@ -52,7 +51,7 @@ import {
   QuickLinkFormModalFormData,
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
-import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
@@ -278,9 +277,10 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
       <Box align="center" gap={1}>
         {editPermission && (
           <ButtonUtility
-            color="tertiary"
             data-testid="edit-quick-link-btn"
-            icon={<EditIcon height={16} width={16} />}
+            icon={Edit01}
+            size="md"
+            tooltip={t('label.edit')}
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               e.preventDefault();
@@ -290,9 +290,10 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         )}
         {canDelete && (
           <ButtonUtility
-            color="tertiary"
             data-testid="delete-quick-link-btn"
-            icon={<Trash01 height={16} width={16} />}
+            icon={Trash01}
+            size="md"
+            tooltip={t('label.delete')}
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               e.preventDefault();

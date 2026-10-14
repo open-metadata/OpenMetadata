@@ -13,19 +13,16 @@
 
 import {
   Box,
-  Button,
   ButtonUtility,
   Card,
   Owner,
   Skeleton,
   Tabs,
-  Tooltip,
 } from '@openmetadata/ui-core-components';
-import { RefreshCcw02 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, RefreshCcw02 } from '@openmetadata/ui-core-components/icons';
 
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Description from '../../../components/common/EntityDescription/Description';
@@ -142,51 +139,39 @@ function AlertDetailsContent({
                   className="layout-space layout-space-horizontal"
                   gap={2}
                   itemClassName="layout-space-item">
-                  <Tooltip
-                    arrow
-                    title={t('label.sync-alert-offset', {
+                  <ButtonUtility
+                    data-testid="sync-button"
+                    icon={RefreshCcw02}
+                    isDisabled={isSyncing}
+                    size="xl"
+                    tooltip={t('label.sync-alert-offset', {
                       entity: t('label.alert'),
-                    })}>
-                    <Button
-                      color="secondary"
-                      data-testid="sync-button"
-                      iconLeading={<RefreshCcw02 height={16} width={16} />}
-                      isLoading={isSyncing}
-                      size="sm"
-                      onPress={handleAlertSync}
-                    />
-                  </Tooltip>
+                    })}
+                    onClick={handleAlertSync}
+                  />
                   {editPermission &&
                     alertDetails?.provider !== ProviderType.System && (
-                      <Tooltip
-                        arrow
-                        title={t('label.edit-entity', {
+                      <ButtonUtility
+                        data-testid="edit-button"
+                        icon={Edit01}
+                        size="xl"
+                        tooltip={t('label.edit-entity', {
                           entity: t('label.alert'),
-                        })}>
-                        <ButtonUtility
-                          color="secondary"
-                          data-testid="edit-button"
-                          icon={EditIcon}
-                          size="sm"
-                          onClick={handleAlertEdit}
-                        />
-                      </Tooltip>
+                        })}
+                        onClick={handleAlertEdit}
+                      />
                     )}
                   {deletePermission &&
                     alertDetails?.provider !== ProviderType.System && (
-                      <Tooltip
-                        arrow
-                        title={t('label.delete-entity', {
+                      <ButtonUtility
+                        data-testid="delete-button"
+                        icon={DeleteIcon}
+                        size="xl"
+                        tooltip={t('label.delete-entity', {
                           entity: t('label.alert'),
-                        })}>
-                        <ButtonUtility
-                          color="secondary"
-                          data-testid="delete-button"
-                          icon={DeleteIcon}
-                          size="sm"
-                          onClick={() => setShowDeleteModal(true)}
-                        />
-                      </Tooltip>
+                        })}
+                        onClick={() => setShowDeleteModal(true)}
+                      />
                     )}
                 </Box>
               </div>

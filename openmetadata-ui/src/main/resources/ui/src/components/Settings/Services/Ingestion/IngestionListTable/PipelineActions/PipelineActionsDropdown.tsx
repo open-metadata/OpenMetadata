@@ -12,13 +12,13 @@
  */
 
 import { ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as KillIcon } from '../../../../../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as DeployIcon } from '../../../../../../assets/svg/deploy.svg';
-import { ReactComponent as EditIcon } from '../../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as MoreIcon } from '../../../../../../assets/svg/menu.svg';
 import { ReactComponent as ReloadIcon } from '../../../../../../assets/svg/reload.svg';
@@ -217,7 +217,7 @@ function PipelineActionsDropdown({
       {
         label: t('label.edit'),
         hidden: !editPermission,
-        icon: <EditIcon height={12} width={12} />,
+        icon: <Edit01 className="tw:size-4" />,
         onClick: () => {
           handleUpdate(ingestion);
           setIsOpen(false);

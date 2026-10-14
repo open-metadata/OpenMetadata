@@ -20,7 +20,7 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { Edit03, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -140,21 +140,17 @@ const OntologyQuerySidebar = ({
               {isAdminUser ? (
                 <>
                   <ButtonUtility
-                    className="tw:size-7 tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-quaternary hover:tw:bg-tertiary hover:tw:text-secondary"
                     data-testid={`ontology-query-template-edit-${queryTemplate.id}`}
-                    icon={Edit03}
-                    size="xs"
+                    icon={Edit01}
+                    size="md"
                     tooltip={`${t('label.edit')} ${queryTemplate.name}`}
                     onClick={() => onTemplateEdit(queryTemplate)}
                   />
                   <ButtonUtility
-                    className={classNames(
-                      'tw:size-7 tw:shrink-0 tw:border-0 tw:p-0',
-                      'tw:bg-transparent tw:text-quaternary hover:tw:bg-error-primary hover:tw:text-error-primary'
-                    )}
+                    color="tertiary-destructive"
                     data-testid={`ontology-query-template-delete-${queryTemplate.id}`}
                     icon={Trash01}
-                    size="xs"
+                    size="md"
                     tooltip={`${t('label.delete')} ${queryTemplate.name}`}
                     onClick={() => void onDeleteTemplate(queryTemplate.id)}
                   />

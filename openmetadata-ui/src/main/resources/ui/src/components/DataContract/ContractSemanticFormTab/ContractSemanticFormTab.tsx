@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   FieldTypes,
   FormField,
   FormItemLabel,
@@ -23,7 +24,10 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus as PlusIcon } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  Plus as PlusIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
@@ -42,7 +46,6 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import QueryBuilder from '../../common/QueryBuilder/QueryBuilder';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
@@ -163,11 +166,10 @@ export const ContractSemanticFormTab: React.FC<{
         </div>
       </div>
       <div className="tw:flex tw:items-center tw:gap-2">
-        <EditIconButton
-          newLook
-          className="edit-expand-button"
+        <ButtonUtility
           data-testid={`edit-semantic-${index}`}
-          size="middle"
+          icon={Edit01}
+          size="md"
           onClick={() => setEditingKey(index)}
         />
         <Button

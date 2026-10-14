@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Dialog,
   Divider,
   FormItemLabel,
@@ -24,6 +25,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -151,7 +153,6 @@ import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.c
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -1527,11 +1528,10 @@ export const TaskTabNew = ({
   };
 
   const editAssigneeButton = shouldEditAssignee ? (
-    <EditIconButton
-      className="p-0"
+    <ButtonUtility
       data-testid="edit-assignees"
-      size="small"
-      title={t('label.edit-entity', {
+      icon={Edit01}
+      tooltip={t('label.edit-entity', {
         entity: t('label.assignee-plural'),
       })}
       onClick={handleEditClick}

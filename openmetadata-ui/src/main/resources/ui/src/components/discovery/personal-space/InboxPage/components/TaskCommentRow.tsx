@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Edit01 as EditIcon,
+  Edit01,
   Trash01 as DeleteIcon,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -82,20 +82,18 @@ const TaskCommentActions = ({
       role="group">
       {canEdit && (
         <ButtonUtility
-          color="tertiary"
           data-testid="edit-task-comment"
-          icon={EditIcon}
-          size="xs"
+          icon={Edit01}
+          size="md"
           tooltip={t('label.edit')}
           onClick={onEditRequest}
         />
       )}
       {canDelete && (
         <ButtonUtility
-          color="tertiary"
           data-testid="delete-task-comment"
           icon={DeleteIcon}
-          size="xs"
+          size="md"
           tooltip={t('label.delete')}
           onClick={onDeleteRequest}
         />

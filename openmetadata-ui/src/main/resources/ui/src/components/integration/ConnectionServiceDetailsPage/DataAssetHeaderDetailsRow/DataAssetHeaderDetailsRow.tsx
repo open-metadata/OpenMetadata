@@ -23,12 +23,12 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Database01,
+  Edit01,
   Globe01,
   User03,
 } from '@openmetadata/ui-core-components/icons';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { getTierTags } from '../../../../utils/TablePureUtils';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
 import TierCard from '../../../common/TierCard/TierCard';
@@ -129,10 +129,8 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
             selectedDomain={domains}
             onUpdate={onUpdateDomain}>
             <ButtonUtility
-              className="tw:h-5.5 tw:w-5.5 tw:p-1"
-              color="tertiary"
               data-testid="edit-domain-button"
-              icon={<EditIcon className="tw:h-4.5 tw:w-4.5 tw:text-primary" />}
+              icon={Edit01}
               size="sm"
               type="button"
             />
@@ -170,10 +168,8 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
             owner={owners}
             onUpdate={onUpdateOwners}>
             <ButtonUtility
-              className="tw:h-5.5 tw:w-5.5 tw:p-1"
-              color="tertiary"
               data-testid="edit-owner-button"
-              icon={<EditIcon className="tw:h-4.5 tw:w-4.5 tw:text-primary" />}
+              icon={Edit01}
               size="sm"
               type="button"
             />
@@ -207,10 +203,8 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
             <ButtonUtility
               aria-expanded={tierPopoverOpen}
               aria-haspopup="dialog"
-              className="tw:h-5.5 tw:w-5.5 tw:p-1"
-              color="tertiary"
               data-testid="edit-tier-button"
-              icon={<EditIcon className=" tw:h-4.5 tw:w-4.5 tw:text-primary" />}
+              icon={Edit01}
               size="sm"
               type="button"
               onClick={() => setTierPopoverOpen(true)}

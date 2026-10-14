@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import { AlignRightIconButton } from '../../../components/common/IconButtons/EditIconButton';
+import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import type { UseTestCaseDetailPageResult } from './useTestCaseDetailPage';
 
 interface TestCaseTabBarExtraContentProps {
@@ -33,9 +34,12 @@ const TestCaseTabBarExtraContent = ({
   }
 
   return (
-    <AlignRightIconButton
+    <ButtonUtility
       className={isTabExpanded ? 'rotate-180' : ''}
-      title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+      data-testid="tab-expand-button"
+      icon={ExpandIcon}
+      size="lg"
+      tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
       onClick={toggleTabExpanded}
     />
   );

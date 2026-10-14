@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Box } from '@openmetadata/ui-core-components';
+import { Badge, Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { WidgetEditButton } from '../../WidgetActionButton/WidgetActionButton';
 import { TYPE_ICON_TILE_CLASS } from '../CustomPropertyCard/CustomPropertyCard.constants';
 import {
   getPropertyTypeMeta,
@@ -69,19 +69,17 @@ export const CustomPropertyListItem = ({
     }
 
     // Empty rows keep the icon visible: it is their only edit affordance.
-    // Wrapped because WidgetEditButton's className replaces its own padding.
     return (
-      <span
-        className={classNames('tw:flex', {
-          'tw:opacity-0 tw:group-hover:opacity-100 tw:group-focus-within:opacity-100':
+      <ButtonUtility
+        className={classNames({
+          'tw:opacity-0 tw:group-hover:opacity-100 tw:focus-visible:opacity-100':
             !isEmptyValue,
-        })}>
-        <WidgetEditButton
-          data-testid="edit-icon"
-          title={t('label.edit-entity', { entity: propertyLabel })}
-          onClick={() => setIsEditing(true)}
-        />
-      </span>
+        })}
+        data-testid="edit-icon"
+        icon={Edit01}
+        tooltip={t('label.edit-entity', { entity: propertyLabel })}
+        onClick={() => setIsEditing(true)}
+      />
     );
   };
 

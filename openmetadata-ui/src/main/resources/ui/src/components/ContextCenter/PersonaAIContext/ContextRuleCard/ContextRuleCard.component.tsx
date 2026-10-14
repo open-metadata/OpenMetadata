@@ -15,13 +15,14 @@ import {
   BadgeWithDot,
   BadgeWithIcon,
   Box,
-  Button,
+  ButtonUtility,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
   BarChartSquare02,
   Check,
+  Edit01,
   File02,
   FilterLines,
   Hexagon01,
@@ -31,7 +32,6 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import {
   DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
   HEAVY_PERSONA_CONTEXT_SECTIONS,
@@ -248,20 +248,19 @@ const RuleCardActions = ({
       )}
       {canEdit && (
         <Box align="center" className="tw:mt-auto tw:gap-1.5">
-          <Button
-            aria-label={t('label.edit')}
-            color="secondary"
+          <ButtonUtility
             data-testid="edit-context-rule"
-            iconLeading={EditIcon}
-            size="xs"
+            icon={Edit01}
+            size="md"
+            tooltip={t('label.edit')}
             onClick={onEdit}
           />
-          <Button
-            aria-label={t('label.delete')}
-            color="secondary-destructive"
+          <ButtonUtility
+            color="tertiary-destructive"
             data-testid="delete-context-rule"
-            iconLeading={Trash01}
-            size="xs"
+            icon={Trash01}
+            size="md"
+            tooltip={t('label.delete')}
             onClick={onDeleteClick}
           />
         </Box>

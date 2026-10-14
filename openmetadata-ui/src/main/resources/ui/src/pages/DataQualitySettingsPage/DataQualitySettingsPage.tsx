@@ -14,21 +14,19 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { PlusCircle } from '@openmetadata/ui-core-components/icons';
+import { Edit01, PlusCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { useFormDrawerWithHook } from '../../components/common/atoms/drawer/useFormDrawer';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import {
-  DeleteIconButton,
-  EditIconButton,
-} from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
 import Table from '../../components/common/Table/TableV2';
@@ -307,21 +305,23 @@ const DataQualitySettingsPage = () => {
 
           return (
             <Box gap={1}>
-              <EditIconButton
+              <ButtonUtility
                 data-testid={`edit-${record.name}`}
-                disabled={isSystem}
-                size="small"
-                title={
+                icon={Edit01}
+                isDisabled={isSystem}
+                size="md"
+                tooltip={
                   disabledTitle ??
                   t('label.edit-entity', { entity: t('label.dimension') })
                 }
                 onClick={() => setDrawer({ mode: 'edit', dimension: record })}
               />
-              <DeleteIconButton
+              <ButtonUtility
                 data-testid={`delete-${record.name}`}
-                disabled={isSystem}
-                size="small"
-                title={
+                icon={IconDelete}
+                isDisabled={isSystem}
+                size="md"
+                tooltip={
                   disabledTitle ??
                   t('label.delete-entity', { entity: t('label.dimension') })
                 }

@@ -21,12 +21,16 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Search, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  Plus,
+  Search,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { DeleteModal } from '../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
@@ -224,20 +228,16 @@ export const LearningResourcesPage: React.FC = () => {
   const renderActionsCell = (record: LearningResource) => (
     <Box gap={2}>
       <ButtonUtility
-        aria-label={t('label.edit')}
-        color="secondary"
         data-testid={`edit-${record.name}`}
-        icon={<IconEdit height={14} width={14} />}
-        size="xs"
+        icon={Edit01}
+        size="md"
         tooltip={t('label.edit')}
         onClick={() => handleEdit(record)}
       />
       <ButtonUtility
-        aria-label={t('label.delete')}
-        color="secondary"
         data-testid={`delete-${record.name}`}
-        icon={<Trash01 size={14} />}
-        size="xs"
+        icon={Trash01}
+        size="md"
         tooltip={t('label.delete')}
         onClick={() => handleDelete(record)}
       />

@@ -12,6 +12,7 @@
  */
 import {
   Button,
+  ButtonUtility,
   Divider,
   FieldProp,
   FieldTypes,
@@ -21,6 +22,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Edit01,
   Plus as PlusIcon,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
@@ -48,7 +50,6 @@ import { Table } from '../../../generated/entity/data/table';
 import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
 import './contract-security-form-tab.less';
@@ -250,11 +251,10 @@ const ContractPolicyCard = ({
               {accessPolicy || t('label.untitled')}
             </Typography>
             <div className="tw:flex tw:items-center tw:gap-2">
-              <EditIconButton
-                newLook
-                className="edit-expand-button"
+              <ButtonUtility
                 data-testid={`edit-policy-${policyIndex}`}
-                size="middle"
+                icon={Edit01}
+                size="md"
                 onClick={() => onEdit(policyIndex)}
               />
               <Button

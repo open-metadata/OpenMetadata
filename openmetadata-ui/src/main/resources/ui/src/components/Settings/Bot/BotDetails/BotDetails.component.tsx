@@ -14,11 +14,12 @@
 import {
   Badge,
   Button,
+  ButtonUtility,
   Card,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
+import { Check, Edit01, XClose } from '@openmetadata/ui-core-components/icons';
 import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
@@ -37,7 +38,6 @@ import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivatio
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Description from '../../../common/EntityDescription/Description';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InheritedRolesCard from '../../../common/InheritedRolesCard/InheritedRolesCard.component';
 import RolesCard from '../../../common/RolesCard/RolesCard.component';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -201,11 +201,10 @@ const BotDetails: FC<BotsDetailProps> = ({
                         )}
                         {canEditDisplayName && (
                           <div>
-                            <EditIconButton
-                              newLook
+                            <ButtonUtility
                               data-testid="edit-displayName"
-                              size="small"
-                              title={t('label.edit-entity', {
+                              icon={Edit01}
+                              tooltip={t('label.edit-entity', {
                                 entity: t('label.display-name'),
                               })}
                               onClick={() => setIsDisplayNameEdit(true)}

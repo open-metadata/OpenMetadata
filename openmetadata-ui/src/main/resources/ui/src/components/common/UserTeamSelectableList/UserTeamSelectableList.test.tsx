@@ -52,10 +52,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('../IconButtons/EditIconButton', () => ({
-  EditIconButton: jest.fn().mockImplementation(() => <div>EditIconButton</div>),
-}));
-
 jest.mock('../../../utils/APIUtils', () => ({
   formatTeamsResponse: jest.fn(),
   formatUsersResponse: jest.fn(),

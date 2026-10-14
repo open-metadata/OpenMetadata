@@ -14,8 +14,10 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,7 +26,6 @@ import { Metric } from '../../../generated/entity/data/metric';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import RichTextEditorPreviewNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
-import { WidgetEditButton } from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -163,10 +164,11 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
                 </Box>
               )}
               {hasEditPermission && (
-                <WidgetEditButton
-                  className="tw:shrink-0 tw:p-1"
+                <ButtonUtility
+                  className="tw:shrink-0"
                   data-testid={`edit-description-${item.name}`}
-                  title={t('label.edit-entity', {
+                  icon={Edit01}
+                  tooltip={t('label.edit-entity', {
                     entity: t('label.description'),
                   })}
                   onClick={() => setSelectedIndex(index)}

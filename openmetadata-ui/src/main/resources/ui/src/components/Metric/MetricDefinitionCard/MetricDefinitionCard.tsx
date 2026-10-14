@@ -25,7 +25,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Calendar,
-  Edit03,
+  Edit01,
   Percent01,
   Tag01,
   Variable01 as Variable,
@@ -428,7 +428,7 @@ const MetricDefinitionCard = ({
               className="tw:shadow-none tw:after:outline-dashed"
               color="secondary"
               data-testid="metric-definition-edit"
-              iconLeading={Edit03}
+              iconLeading={Edit01}
               size="xs"
               onPress={() => setIsEditing(true)}>
               {t('label.edit')}

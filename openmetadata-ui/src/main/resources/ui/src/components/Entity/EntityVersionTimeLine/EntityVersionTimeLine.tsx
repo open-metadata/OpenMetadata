@@ -13,16 +13,17 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Divider,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { renderVersionButton } from '../../../utils/EntityVersionUtils';
-import CloseIcon from '../../Modals/CloseIcon.component';
 import './entity-version-timeline.less';
 import { EntityVersionTimelineProps } from './EntityVersionTimeline.interface';
 
@@ -112,7 +113,12 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
           <Typography className="font-medium tw:text-primary">
             {t('label.version-plural-history')}
           </Typography>
-          <CloseIcon handleCancel={onBack} />
+          <ButtonUtility
+            icon={XClose}
+            size="lg"
+            tooltip={t('label.close')}
+            onClick={onBack}
+          />
         </Box>
         <Divider className="m-0" />
       </div>

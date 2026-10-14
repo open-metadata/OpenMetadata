@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Tooltip,
   Typography,
@@ -22,6 +23,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Edit01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { Drawer } from 'antd';
@@ -62,7 +64,6 @@ import DataQualitySection from '../../common/DataQualitySection/DataQualitySecti
 import { DataQualityTest } from '../../common/DataQualitySection/DataQualitySection.interface';
 import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import TagsSection from '../../common/TagsSection/TagsSection';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -836,13 +837,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <EditIconButton
-        newLook
+      <ButtonUtility
         className="tw:ml-2"
         data-testid="edit-displayName-button"
-        disabled={false}
-        size="small"
-        title={t('label.edit-entity', {
+        icon={Edit01}
+        tooltip={t('label.edit-entity', {
           entity: t('label.display-name'),
         })}
         onClick={() => setIsDisplayNameEditing(true)}

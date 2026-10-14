@@ -429,7 +429,7 @@ describe('LineageNodeLabelV1', () => {
 
       const filterButton = screen.getByTestId('lineage-filter-button');
 
-      expect(filterButton).toBeDisabled();
+      expect(filterButton).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('should expose the filter button tooltip as an accessible label', () => {

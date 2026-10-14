@@ -308,4 +308,49 @@ describe('ButtonUtility — icon size and color', () => {
       'tw:*:data-icon:text-fg-error-secondary'
     );
   });
+
+  it('defaults to the borderless tertiary color', () => {
+    render(<ButtonUtility icon={Edit01} tooltip="Edit" />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).not.toHaveClass(
+      'tw:after:outline-primary'
+    );
+  });
+
+  it('forwards its ref to the button', () => {
+    const ref = createRef<HTMLButtonElement>();
+    render(<ButtonUtility icon={Edit01} ref={ref} tooltip="Edit" />);
+
+    expect(ref.current).toBe(screen.getByRole('button', { name: 'Edit' }));
+  });
+
+  it('keeps a disabled button with a tooltip focusable but inert', async () => {
+    const onClick = vi.fn();
+    render(
+      <ButtonUtility
+        isDisabled
+        icon={Edit01}
+        tooltip="Edit"
+        onClick={onClick}
+      />
+    );
+    const button = screen.getByRole('button', { name: 'Edit' });
+
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).not.toBeDisabled();
+
+    await userEvent.tab();
+
+    expect(button).toHaveFocus();
+
+    await userEvent.click(button);
+
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('disables a button without a tooltip natively', () => {
+    render(<ButtonUtility isDisabled aria-label="Edit" icon={Edit01} />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+  });
 });

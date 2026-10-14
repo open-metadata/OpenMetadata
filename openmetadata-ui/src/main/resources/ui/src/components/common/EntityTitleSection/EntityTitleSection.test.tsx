@@ -17,11 +17,11 @@ import { EntityType } from '../../../enums/entity.enum';
 import { EntityTitleSection } from './EntityTitleSection';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Button: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
-    <button onClick={onClick} {...props}>
-      {children}
-    </button>
-  )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(({ onClick, 'data-testid': testId, tooltip }) => (
+      <button aria-label={tooltip} data-testid={testId} onClick={onClick} />
+    )),
   Tooltip: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),

@@ -26,6 +26,7 @@ import {
   ArrowsUp,
   Home02,
   LayersThree01,
+  XCircle,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -121,7 +122,6 @@ import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { CanvasLayerWrapper } from '../Edges/CanvasLayerWrapper/CanvasLayerWrapper';
 import { LineageProps } from '../Lineage.interface';
 import { useLineageHandlers } from '../Lineage/LineageHandlersContext';
-import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import LineageSkeleton from '../LineageSkeleton.component';
 import type { LineageSceneRequest } from './LineageMap.utils';
 import {
@@ -2122,8 +2122,13 @@ const LineageMapCanvas = ({
           isUpstreamNode: false,
           label: (
             <>
-              <LineageNodeRemoveButton
-                onRemove={() => removeSceneNode({ id: nodeId })}
+              <ButtonUtility
+                className="lineage-node-remove-btn"
+                data-testid="lineage-node-remove-btn"
+                icon={XCircle}
+                size="xs"
+                tooltip={t('label.remove')}
+                onClick={() => removeSceneNode({ id: nodeId })}
               />
               <NodeSuggestions
                 entityType={droppedEntityType}

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +22,6 @@ import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.compon
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import DescriptionSourceBadge from '../../common/DescriptionSourceBadge/DescriptionSourceBadge';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
@@ -113,11 +113,12 @@ const TableDescription = ({
       {!suggestionData && !isReadOnly ? (
         <div className="d-flex items-baseline gap-4">
           {hasEditPermission && (
-            <EditIconButton
+            <ButtonUtility
               className="hover-cell-icon"
               data-testid="edit-button"
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              size="md"
+              tooltip={t('label.edit-entity', {
                 entity: t('label.description'),
               })}
               onClick={onClick}
