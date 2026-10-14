@@ -41,6 +41,7 @@ const PersonaCustomizeGrid = ({
             role="button"
             size="md"
             tabIndex={0}
+            variant="muted"
             onClick={() => handler(category.key)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -52,7 +53,7 @@ const PersonaCustomizeGrid = ({
               <Box align="start" direction="row" gap={4}>
                 <Box
                   align="center"
-                  className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
+                  className="tw:shrink-0 tw:rounded-lg tw:bg-tertiary tw:h-10 tw:w-10"
                   justify="center">
                   {Icon && <Icon className="tw:size-6" />}
                 </Box>

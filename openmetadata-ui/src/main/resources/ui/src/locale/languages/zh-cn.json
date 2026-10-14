@@ -4935,6 +4935,7 @@
     "no-failing-tests": "没有失败的测试。",
     "no-features-data-available": "没有可用的特征数据",
     "no-feed-available-for-selected-filter": "未找到任何内容, 请尝试更改筛选条件",
+    "no-fields-configured": "尚未配置字段",
     "no-file-selected": "未选择文件",
     "no-filter-patterns-available": "此连接器没有可用的过滤模式。",
     "no-folders-yet-create-one": "暂无文件夹,创建一个以按主题或团队整理文档。",

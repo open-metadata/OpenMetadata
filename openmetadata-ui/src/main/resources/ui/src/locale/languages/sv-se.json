@@ -4935,6 +4935,7 @@
     "no-failing-tests": "Inga misslyckade tester.",
     "no-features-data-available": "Inga funktionsdata tillgängliga",
     "no-feed-available-for-selected-filter": "Inget flöde hittades. Försök att ändra filtren.",
+    "no-fields-configured": "Inga fält konfigurerade ännu",
     "no-file-selected": "Ingen fil vald",
     "no-filter-patterns-available": "Inga filtermönster är tillgängliga för denna anslutning.",
     "no-folders-yet-create-one": "Inga mappar än, skapa en för att organisera dokument efter ämne eller team.",

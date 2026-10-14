@@ -4935,6 +4935,7 @@
     "no-failing-tests": "Keine fehlgeschlagenen Tests.",
     "no-features-data-available": "Keine Feature-Daten verfügbar.",
     "no-feed-available-for-selected-filter": "Keine Feeds gefunden. Versuchen Sie, die Filter zu ändern.",
+    "no-fields-configured": "Noch keine Felder konfiguriert",
     "no-file-selected": "Keine Datei ausgewählt",
     "no-filter-patterns-available": "Für diesen Konnektor sind keine Filtermuster verfügbar.",
     "no-folders-yet-create-one": "Noch keine Ordner vorhanden. Erstellen Sie einen, um Dokumente nach Thema oder Team zu organisieren.",

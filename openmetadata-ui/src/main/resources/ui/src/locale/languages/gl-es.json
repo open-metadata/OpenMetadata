@@ -4935,6 +4935,7 @@
     "no-failing-tests": "Non hai probas con fallos.",
     "no-features-data-available": "Non hai datos de funcións dispoñibles",
     "no-feed-available-for-selected-filter": "Non se atoparon feeds. Tenta cambiar os filtros.",
+    "no-fields-configured": "Aínda non se configuraron campos",
     "no-file-selected": "Ningún ficheiro seleccionado",
     "no-filter-patterns-available": "Non hai patróns de filtro dispoñibles para este conector.",
     "no-folders-yet-create-one": "Aínda non hai cartafoles; crea un para organizar os documentos por tema ou equipo.",
