@@ -12,7 +12,7 @@
  */
 
 import { QueryClient } from '@tanstack/react-query';
-import { TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { getMlModelByFQN } from '../mlModelAPI';
 
@@ -32,7 +32,7 @@ const MLMODEL_DEFAULT_FIELDS = [
 ].join(',');
 
 export const mlModelQueryKey = (fqn: string, fields: string) =>
-  ['mlmodel', fqn, fields] as const;
+  [EntityType.MLMODEL, fqn, fields] as const;
 
 export const mlModelQueryFn = (fqn: string, fields: string) => () =>
   getMlModelByFQN(fqn, { fields });

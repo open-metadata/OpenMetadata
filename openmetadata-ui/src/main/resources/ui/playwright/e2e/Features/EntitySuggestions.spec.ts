@@ -33,11 +33,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import {
-  getApiContext,
-  redirectToHomePage,
-  uuid,
-} from '../../utils/common';
+import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { expect, test } from '../fixtures/pages';

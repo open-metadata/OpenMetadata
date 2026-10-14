@@ -412,7 +412,9 @@ const GlossaryPage = () => {
       return true;
     }
     if (isTermView) {
-      return glossaryTermFetching;
+      // Background refetches (e.g. after accepting a suggestion) keep the term
+      // mounted so its tab, scroll and suggestion state survive.
+      return glossaryTermFetching && !glossaryTermDetails;
     }
     if (isGlossaryView) {
       return glossaryFetching;
@@ -425,6 +427,7 @@ const GlossaryPage = () => {
     glossaries.length,
     isTermView,
     glossaryTermFetching,
+    glossaryTermDetails,
     isGlossaryView,
     glossaryFetching,
   ]);

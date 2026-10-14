@@ -89,6 +89,7 @@ const SuggestionsProvider = ({
 
   // Entity detail queries are keyed `[entityType, fqn, fields]`; prefix-invalidating refreshes
   // the page with the accepted change. Pages not on React Query listen to `updateDetails`.
+  // ADR:2026-10-14-entity-detail-query-keys-start-with-entity-type-and-fqn
   const refreshEntityDetails = useCallback(
     () => queryClient.invalidateQueries({ queryKey: [entityType, entityFqn] }),
     [queryClient, entityType, entityFqn]
