@@ -247,7 +247,14 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         return ()
 
     def yield_file_tags(self, request: CreateFileRequest) -> Iterable[TagDefinition]:
-        """Return native tags for a file request."""
+        """Return native tags for a file request.
+
+        Connector overrides can yield definitions such as::
+
+            yield TagDefinition("DriveTags", "Shared", "Native tags", "Native file tag")
+
+        Definition publication, label attachment, and scope cleanup are handled by the base source.
+        """
         return ()
 
     def yield_spreadsheet_tags(self, request: CreateSpreadsheetRequest) -> Iterable[TagDefinition]:
