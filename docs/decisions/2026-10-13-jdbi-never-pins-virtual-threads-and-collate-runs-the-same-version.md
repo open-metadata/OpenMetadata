@@ -1,7 +1,7 @@
 # Jdbi stays on a release that does not pin virtual threads, and Collate runs the same Jdbi version
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-14 (eager handler cost of Jdbi 3.38+ and its mitigation)
 - **Deciders:** Mohit Yadav
 - **Guard:** `JdbiVirtualThreadPinningTest`; reviewer for Collate's `jdbi3.version`
 - **Related:** #35373; `pom.xml` `jdbi3.version`; `jdbi3/locator/ConnectionAwareSql*`
@@ -38,3 +38,10 @@ Opening a handle no longer pins a virtual thread, so a slow or exhausted pool de
 of stopping the scheduler. A Jdbi bump is now a two-repository change. A Collate build left on an
 older Jdbi cannot see the handler annotation and cannot run OpenMetadata's DAOs. Revisit the floor if
 the server moves to a JDK where monitors no longer pin virtual threads (JEP 491, JDK 24).
+
+## Amendment
+v2, 2026-10-14. Jdbi 3.38 and later build every method's handler, with its own configuration copy,
+each time a SQL object is attached, which made each on-demand DAO call allocate about ten times more
+than on 3.37.1 and slowed the workflow-event consumer enough to time out approval ITs. The version
+floor stands; OpenMetadata builds handlers lazily instead
+(ADR:2026-10-14-sql-objects-build-method-handlers-on-first-call).
