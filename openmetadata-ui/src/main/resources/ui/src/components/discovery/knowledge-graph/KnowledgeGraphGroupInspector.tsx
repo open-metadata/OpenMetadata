@@ -27,6 +27,7 @@ import { GraphNode, KnowledgeGraphG6Edge } from './KnowledgeGraph.interface';
 import { getRelationStyle } from './KnowledgeGraph.relations';
 import {
   entityTile,
+  InspectorKeyValue,
   InspectorRelationshipRow,
   InspectorSection,
   InspectorStatement,
@@ -131,13 +132,21 @@ const KnowledgeGraphGroupInspector = ({
   return (
     <>
       <Box className="kg-inspector-body" direction="col">
-        {/* Family moved to the drawer header subtitle so the statement card
-            stays as the statement + its system name only (mock 2f). */}
-        <InspectorStatement
-          code={code}
-          codeTestId="relationship-predicate"
-          statement={statement}
-        />
+        {/* Family moved to the drawer header subtitle; the system name sits
+            BELOW the statement card as a plain `System name: xxx` row so the
+            gray card holds only the triple (mock 2f). */}
+        <InspectorStatement statement={statement} />
+        {code && (
+          <InspectorKeyValue
+            label={t('label.kg-system-name')}
+            value={
+              <span className="tw:font-mono tw:text-utility-purple-700">
+                {code}
+              </span>
+            }
+            valueTestId="relationship-predicate"
+          />
+        )}
         <InspectorSection
           meta={t('label.kg-showing-of', {
             shown: preview.length,
