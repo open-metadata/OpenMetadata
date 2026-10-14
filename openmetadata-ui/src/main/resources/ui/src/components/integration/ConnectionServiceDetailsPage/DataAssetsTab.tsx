@@ -37,6 +37,10 @@ import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTerm
 import TagsSectionV1 from '../../common/TagsSection/TagsSection';
 import './data-assets-tab.less';
 
+const METADATA_DETAILS_KEY = 'metadata-details';
+// Opens on the service's description, terms, tags and data products rather than behind a click.
+const DEFAULT_EXPANDED_SECTIONS = [METADATA_DETAILS_KEY];
+
 interface DataAssetsTabProps {
   serviceCategory: ServiceCategory;
   servicePermission: OperationPermission;
@@ -123,8 +127,8 @@ const DataAssetsTab = ({
 
   return (
     <div className="data-assets-tab tw:flex tw:flex-col tw:gap-4">
-      <Accordion>
-        <AccordionItem id="metadata-details">
+      <Accordion defaultExpandedKeys={DEFAULT_EXPANDED_SECTIONS}>
+        <AccordionItem id={METADATA_DETAILS_KEY}>
           <AccordionHeader>{t('label.metadata-detail-plural')}</AccordionHeader>
           <AccordionPanel className="tw:!overflow-visible tw:!text-inherit">
             <div className="tw:flex tw:flex-col tw:gap-4">
@@ -181,6 +185,7 @@ const DataAssetsTab = ({
           serviceDetails={serviceDetails}
           serviceName={serviceDetails.name ?? ''}
           servicePermission={servicePermission}
+          wrapInCard={false}
           onDataProductUpdate={onDataProductUpdate}
           onDescriptionUpdate={onDescriptionUpdate}
         />
