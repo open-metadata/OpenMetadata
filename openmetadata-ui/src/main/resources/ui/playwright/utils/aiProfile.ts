@@ -117,17 +117,6 @@ export const openAdminsPanel = async (page: Page): Promise<void> => {
   await expect(page.getByTestId('users-list-container')).toBeVisible();
 };
 
-/** Open the Online Users panel from the Members landing. */
-export const openOnlineUsersPanel = async (page: Page): Promise<void> => {
-  const onlineResponse = page.waitForResponse((response) =>
-    response.url().includes('/api/v1/users/online')
-  );
-  await page.getByTestId('members-card-online-users').click();
-  await onlineResponse;
-
-  await expect(page.getByTestId('online-users-panel')).toBeVisible();
-};
-
 /**
  * Search the Users/Admins list (TableV2 search box) for a user and return the
  * username cell locator. The list is ES-backed, so a freshly-created user can lag
@@ -227,17 +216,6 @@ export const openUserProfile = async (
   await profileResponse;
 
   await expect(page.getByTestId('profile-details-panel')).toBeVisible();
-};
-
-/** Click the "Members" breadcrumb in the profile content header. */
-export const clickMembersBreadcrumb = async (page: Page): Promise<void> => {
-  // The header breadcrumb is a react-aria link; scope to the header so it cannot
-  // collide with the "Members" sidebar nav button.
-  await page
-    .getByTestId('profile-content-header')
-    .getByRole('link', { name: 'Members' })
-    .click();
-  await expect(page.getByTestId('members-landing')).toBeVisible();
 };
 
 /** Create a team via the API and track it in the caller's cleanup array. */

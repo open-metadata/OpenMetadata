@@ -92,15 +92,6 @@ test.describe('AI Profile Team Detail', () => {
     await afterAction();
   });
 
-  test('Should render the Organization team detail', async ({ page }) => {
-    await navigateToMembersPanel(page);
-    await openOrganizationTeams(page);
-
-    await expect(page.getByTestId('team-info-widgets')).toBeVisible();
-    await expect(page.getByTestId('team-user-count')).toBeVisible();
-    await expect(page.getByTestId('sub-teams-table')).toBeVisible();
-  });
-
   test('Should create a public team from the add-team form', async ({
     page,
   }) => {
@@ -135,30 +126,6 @@ test.describe('AI Profile Team Detail', () => {
     const createdTeam = new TeamClass();
     createdTeam.responseData = body;
     createdTeams.push(createdTeam);
-  });
-
-  test('Should search teams in the Organization sub-teams table', async ({
-    browser,
-    page,
-  }) => {
-    const { apiContext } = await performAdminLogin(browser);
-    const team = await makeTeam(apiContext);
-
-    await navigateToMembersPanel(page);
-    await openOrganizationTeams(page);
-
-    const searchInput = page
-      .getByTestId('team-detail')
-      .getByTestId('searchbar');
-    await searchInput.fill(team.responseData.displayName);
-    await expect(
-      page.getByTestId(`team-link-${team.responseData.name}`)
-    ).toBeVisible();
-
-    await searchInput.fill('non-existent-team-xyz');
-    await expect(
-      page.getByTestId(`team-link-${team.responseData.name}`)
-    ).toBeHidden();
   });
 
   test('Should rename a team inline', async ({ browser, page }) => {
@@ -249,32 +216,6 @@ test.describe('AI Profile Team Detail', () => {
     ).toBeHidden();
   });
 
-  test('Should render and update the team user count', async ({
-    browser,
-    page,
-  }) => {
-    const { apiContext } = await performAdminLogin(browser);
-    const team = await makeTeam(apiContext, {
-      users: [member.responseData.id].filter(Boolean) as string[],
-    });
-    await openCreatedTeam(page, team);
-
-    await expect(page.getByTestId('team-user-count')).toContainText('1');
-  });
-
-  test('Should toggle show-deleted child teams', async ({ page }) => {
-    await navigateToMembersPanel(page);
-    await openOrganizationTeams(page);
-
-    const deletedFetch = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/teams?') &&
-        response.url().includes('include=deleted')
-    );
-    await page.getByTestId('show-deleted-teams').click();
-    await deletedFetch;
-  });
-
   // Role and policy add/remove differ only by tab, testids, list endpoint and the
   // entity name — parameterize so the flow lives once.
   const addRemoveCases = [
@@ -361,24 +302,6 @@ test.describe('AI Profile Team Detail', () => {
     });
   }
 
-  test('Should navigate to a child team and back via breadcrumb', async ({
-    browser,
-    page,
-  }) => {
-    const { apiContext } = await performAdminLogin(browser);
-    const team = await makeTeam(apiContext);
-
-    await navigateToMembersPanel(page);
-    await openOrganizationTeams(page);
-    await openTeamByLink(page, team.responseData.name);
-
-    await page
-      .getByTestId('profile-content-header')
-      .getByRole('link', { name: 'Organization' })
-      .click();
-    await expect(page.getByTestId('team-detail')).toBeVisible();
-  });
-
   test('Should join and leave a public team', async ({ browser, page }) => {
     const { apiContext } = await performAdminLogin(browser);
     // Public group team the admin is not a member of.
@@ -464,26 +387,6 @@ test.describe('AI Profile Team Detail', () => {
     await expect(page.getByTestId('team-detail')).toBeVisible();
   });
 
-  test('Should export the Organization team to CSV', async ({ page }) => {
-    await navigateToMembersPanel(page);
-    await openOrganizationTeams(page);
-
-    await page
-      .getByTestId('profile-content-header')
-      .getByRole('button', { name: 'Open menu' })
-      .click();
-
-    // A CSV-only export skips the type-picker modal and triggers the async job
-    // directly (see EntityExportModalProvider `isCsvOnly`).
-    const exportResponse = page.waitForResponse((response) =>
-      response.url().includes('exportAsync')
-    );
-    await page.getByTestId('export-team').click();
-    const exported = await exportResponse;
-
-    expect(exported.ok()).toBeTruthy();
-  });
-
   test('Should open the team import form and preview an uploaded CSV', async ({
     browser,
     page,
@@ -518,73 +421,5 @@ test.describe('AI Profile Team Detail', () => {
     await previewResponse;
 
     await expect(page.getByTestId('confirm-import')).toBeVisible();
-  });
-
-  // The Custom Properties tab is native to MembersTeamDetail (it renders the
-  // shared CustomPropertyTable): one pass covers that the tab is reachable and
-  // that a property defined for the `team` entity actually shows up in it.
-  test('Should show the Custom Properties tab and render a team property', async ({
-    browser,
-    page,
-  }) => {
-    const { apiContext } = await performAdminLogin(browser);
-    const propertyName = `pwTeamCp${uuid().replace(/-/g, '')}`;
-
-    // Defined through the metadata type API rather than the settings UI: this
-    // test is about the tab rendering the property, not about creating one.
-    const teamType = await (
-      await apiContext.get('/api/v1/metadata/types/name/team')
-    ).json();
-    const stringType = (
-      await (
-        await apiContext.get('/api/v1/metadata/types?category=field&limit=50')
-      ).json()
-    ).data.find((item: { name: string }) => item.name === 'string');
-
-    await apiContext.put(`/api/v1/metadata/types/${teamType.id}`, {
-      data: {
-        name: propertyName,
-        description: propertyName,
-        propertyType: { id: stringType.id, type: 'type' },
-      },
-    });
-
-    try {
-      const team = await makeTeam(apiContext);
-      await openCreatedTeam(page, team);
-
-      const tab = page.getByRole('tab', { name: /Custom Properties/ });
-
-      await expect(tab).toBeVisible();
-
-      await openTeamTab(page, /Custom Properties/);
-
-      await expect(tab).toHaveAttribute('aria-selected', 'true');
-      await expect(page.getByTestId('custom-properties-card')).toBeVisible();
-      await expect(
-        page.getByTestId(`custom-property-${propertyName}-card`)
-      ).toBeVisible();
-    } finally {
-      // Leaving the property behind would alter every later team's tab. There
-      // is no REST delete for a single custom property, so remove it from the
-      // type's array by index.
-      const current = await (
-        await apiContext.get(
-          '/api/v1/metadata/types/name/team?fields=customProperties'
-        )
-      ).json();
-      const index = (current.customProperties as { name: string }[]).findIndex(
-        (property) => property.name === propertyName
-      );
-
-      if (index >= 0) {
-        await apiContext
-          .patch(`/api/v1/metadata/types/${teamType.id}`, {
-            headers: { 'Content-Type': 'application/json-patch+json' },
-            data: [{ op: 'remove', path: `/customProperties/${index}` }],
-          })
-          .catch(() => undefined);
-      }
-    }
   });
 });

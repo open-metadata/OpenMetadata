@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 const mockGetUsers = jest.fn().mockResolvedValue({
@@ -117,4 +117,34 @@ describe('MembersUsersPanel', () => {
 
     expect(onSetHeader).toHaveBeenLastCalledWith({ actions: undefined });
   });
+
+  it.each([false, true])(
+    'opens the create-user form (isAdmin=%s) from the add-user action',
+    async (isAdmin) => {
+      const onNavigate = jest.fn();
+      const onSetHeader = jest.fn();
+      render(
+        <MemoryRouter>
+          <MembersUsersPanel
+            isAdmin={isAdmin}
+            onNavigate={onNavigate}
+            onSetHeader={onSetHeader}
+          />
+        </MemoryRouter>
+      );
+
+      await waitFor(() =>
+        expect(
+          onSetHeader.mock.calls.some(([patch]) => Boolean(patch?.actions))
+        ).toBe(true)
+      );
+      const { actions } = onSetHeader.mock.calls.findLast(([patch]) =>
+        Boolean(patch?.actions)
+      )[0];
+      render(<>{actions}</>);
+      fireEvent.click(screen.getByTestId('add-user'));
+
+      expect(onNavigate).toHaveBeenCalledWith({ type: 'user-create', isAdmin });
+    }
+  );
 });

@@ -15,7 +15,6 @@ import { expect, Page } from '@playwright/test';
 import { DataProduct } from '../support/domain/DataProduct';
 import { Domain } from '../support/domain/Domain';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
-import { TagClass } from '../support/tag/TagClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import { redirectToHomePage } from './common';
@@ -49,44 +48,6 @@ export async function navigateToGlossaryTermAssetsAndOpenPanel(
   // dispatchEvent fires the click on the outer card div directly, so the entity-link
   // child is never the event target and React Router never triggers navigation.
   await card.dispatchEvent('click');
-  await page.locator(PANEL_SELECTOR).waitFor({ state: 'visible' });
-}
-
-/**
- * Navigate to a classification tag's assets page, click the entity row to open the right panel.
- */
-export async function navigateToTagAssetsAndOpenPanel(
-  page: Page,
-  tag: TagClass,
-  entityFqn: string
-): Promise<void> {
-  const url = `/tag/${encodeURIComponent(
-    tag.responseData.fullyQualifiedName
-  )}/assets`;
-  const assetsResponse = waitForResponseWithStatus(
-    page,
-    (response) => {
-      const requestUrl = new URL(response.url());
-
-      return (
-        response.request().method() === 'GET' &&
-        requestUrl.pathname === '/api/v1/search/query' &&
-        requestUrl.searchParams.get('index') === 'all' &&
-        requestUrl.searchParams.get('size') === '15' &&
-        (requestUrl.searchParams
-          .get('query_filter')
-          ?.includes(tag.responseData.fullyQualifiedName) ??
-          false)
-      );
-    },
-    200
-  );
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await assetsResponse;
-
-  const tagCard = page.getByTestId(`table-data-card_${entityFqn}`);
-  await expect(tagCard).toBeVisible();
-  await tagCard.dispatchEvent('click');
   await page.locator(PANEL_SELECTOR).waitFor({ state: 'visible' });
 }
 

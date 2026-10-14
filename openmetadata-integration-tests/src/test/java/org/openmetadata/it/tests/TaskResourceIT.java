@@ -5064,6 +5064,94 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testApplySuggestionEndpointRejectsNonSuggestionTask(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    Task task = createTaskAboutTable(ns, "apply-non-suggestion", table);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PUT,
+                    "/v1/tasks/" + task.getId() + "/suggestion/apply",
+                    null,
+                    Task.class));
+  }
+
+  @Test
+  void testBulkAssignReplacesAssignees(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                createTaskRequestAboutTable(ns, "bulk-assign", table)
+                    .withAssignees(List.of(shared.USER1.getFullyQualifiedName())));
+
+    BulkTaskOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/tasks/bulk",
+                new BulkTaskOperation()
+                    .withTaskIds(List.of(task.getId().toString()))
+                    .withOperation(BulkTaskOperationType.Assign)
+                    .withParams(
+                        new BulkTaskOperationParams()
+                            .withAssignees(List.of(shared.USER2.getFullyQualifiedName()))),
+                BulkTaskOperationResult.class);
+
+    assertEquals(1, result.getSuccessful());
+
+    Task fetched = SdkClients.adminClient().tasks().get(task.getId().toString(), "assignees");
+    assertEquals(
+        List.of(shared.USER2.getId()),
+        fetched.getAssignees().stream().map(EntityReference::getId).toList());
+  }
+
+  @Test
+  void testBulkOperationReportsUnknownTaskWithoutFailingOthers(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    Task task = createTaskAboutTable(ns, "bulk-partial", table);
+    String unknownTaskId = UUID.randomUUID().toString();
+
+    BulkTaskOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/tasks/bulk",
+                new BulkTaskOperation()
+                    .withTaskIds(List.of(task.getId().toString(), unknownTaskId))
+                    .withOperation(BulkTaskOperationType.Cancel),
+                BulkTaskOperationResult.class);
+
+    assertEquals(2, result.getTotalRequested());
+    assertEquals(1, result.getSuccessful());
+    assertEquals(1, result.getFailed());
+    assertTrue(
+        result.getResults().stream()
+            .anyMatch(
+                item ->
+                    item.getTaskId().equals(unknownTaskId)
+                        && "failed".equals(item.getStatus().value())
+                        && item.getError() != null));
+    assertEquals(
+        TaskEntityStatus.Cancelled,
+        SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus());
+  }
+
+  @Test
   void testDeletingBotCreatorCleansUpOpenSuggestionTasks(TestNamespace ns) {
     BotWithUser botWithUser = createBotWithJwtUser(ns, "suggestion_cleanup");
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);

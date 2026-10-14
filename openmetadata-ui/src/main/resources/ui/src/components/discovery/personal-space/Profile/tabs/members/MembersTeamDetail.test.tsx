@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import React, { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
@@ -35,6 +35,10 @@ const mockGetTeamByName = jest.fn().mockResolvedValue({
   domains: [],
   owners: [],
 });
+
+const mockGetTeams = jest
+  .fn()
+  .mockResolvedValue({ data: [], paging: { total: 0 } });
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -69,7 +73,7 @@ jest.mock(
 jest.mock('../../../../../../rest/teamsAPI', () => ({
   getTeamByName: (...args: unknown[]) => mockGetTeamByName(...args),
   patchTeamDetail: jest.fn().mockResolvedValue({}),
-  getTeams: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
+  getTeams: (...args: unknown[]) => mockGetTeams(...args),
   restoreTeam: jest.fn().mockResolvedValue({}),
   deleteUserFromTeam: jest.fn().mockResolvedValue({}),
   exportTeam: jest.fn().mockResolvedValue(''),
@@ -135,9 +139,33 @@ jest.mock('../../../../../common/DeleteModal/DeleteModal', () => () => (
 ));
 
 jest.mock('../../../../../common/Table/TableV2', () =>
-  jest.fn(({ 'data-testid': testId }: { 'data-testid'?: string }) => (
-    <div data-testid={testId ?? 'table'} />
-  ))
+  jest.fn(
+    ({
+      'data-testid': testId,
+      dataSource,
+      extraTableFilters,
+      searchProps,
+    }: {
+      'data-testid'?: string;
+      dataSource?: { name: string }[];
+      extraTableFilters?: React.ReactNode;
+      searchProps?: { onSearch?: (value: string) => void };
+    }) => (
+      <div data-testid={testId ?? 'table'}>
+        {searchProps && (
+          <input
+            aria-label="search"
+            data-testid="table-search"
+            onChange={(e) => searchProps.onSearch?.(e.target.value)}
+          />
+        )}
+        {extraTableFilters}
+        {dataSource?.map((row) => (
+          <span key={row.name}>{row.name}</span>
+        ))}
+      </div>
+    )
+  )
 );
 
 import MembersTeamDetail from './MembersTeamDetail';
@@ -265,5 +293,67 @@ describe('MembersTeamDetail', () => {
 
     expect(await screen.findByTestId('plugin-tab-label')).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'sql-studio' })).toBeNull();
+  });
+
+  describe('Organization sub-teams', () => {
+    beforeEach(() => {
+      mockGetTeamByName.mockResolvedValueOnce({
+        id: 'org',
+        name: 'Organization',
+        fullyQualifiedName: 'Organization',
+        teamType: 'Organization',
+        users: [],
+        defaultRoles: [],
+        policies: [],
+      });
+      mockGetTeams.mockResolvedValue({
+        data: [
+          { name: 'finance', displayName: 'Finance' },
+          { name: 'marketing', displayName: 'Marketing' },
+        ],
+        paging: { total: 2 },
+      });
+    });
+
+    it('filters the sub-teams table by the search term', async () => {
+      renderWithRouter(
+        <MembersTeamDetail fqn="Organization" onNavigate={jest.fn()} />
+      );
+
+      const table = await screen.findByTestId('sub-teams-table');
+
+      expect(await within(table).findByText('finance')).toBeInTheDocument();
+
+      fireEvent.change(within(table).getByTestId('table-search'), {
+        target: { value: 'fin' },
+      });
+
+      expect(within(table).getByText('finance')).toBeInTheDocument();
+      expect(within(table).queryByText('marketing')).not.toBeInTheDocument();
+
+      fireEvent.change(within(table).getByTestId('table-search'), {
+        target: { value: 'non-existent-team-xyz' },
+      });
+
+      expect(within(table).queryByText('finance')).not.toBeInTheDocument();
+    });
+
+    it('refetches child teams including deleted ones when show-deleted is toggled', async () => {
+      renderWithRouter(
+        <MembersTeamDetail fqn="Organization" onNavigate={jest.fn()} />
+      );
+
+      const table = await screen.findByTestId('sub-teams-table');
+      fireEvent.click(within(table).getByRole('switch'));
+
+      await waitFor(() =>
+        expect(mockGetTeams).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            parentTeam: 'Organization',
+            include: 'deleted',
+          })
+        )
+      );
+    });
   });
 });

@@ -342,61 +342,6 @@ export const validateBucketsForIndexAndSort = async (
   expect(totalCount).toEqual(docCount);
 };
 
-export const selectSortOrder = async (page: Page, sortOrder: string) => {
-  await waitForAllLoadersToDisappear(page);
-  await page.getByTestId('sorting-dropdown-label').click();
-  await page.getByRole('menuitemradio', { name: sortOrder }).waitFor({
-    state: 'visible',
-  });
-  const nameFilter = page.waitForResponse(
-    `/api/v1/search/query?q=&index=dataAsset&*sort_field=displayName.keyword&sort_order=desc*`
-  );
-  await page.getByRole('menuitemradio', { name: sortOrder }).click();
-  await nameFilter;
-
-  await expect(page.getByTestId('sorting-dropdown-label')).toHaveText(
-    sortOrder
-  );
-
-  const ascSortOrder = page.waitForResponse(
-    `/api/v1/search/query?q=&index=dataAsset&*sort_field=displayName.keyword&sort_order=asc*`
-  );
-  await page.getByTestId('sort-order-button').click();
-  await ascSortOrder;
-  await waitForAllLoadersToDisappear(page);
-};
-
-export const verifyEntitiesAreSorted = async (page: Page) => {
-  // Wait for search results to be stable after sort
-  await page.getByTestId('search-results').waitFor({
-    state: 'visible',
-  });
-
-  const entityNames = (
-    await page
-      .locator(
-        '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]'
-      )
-      .allTextContents()
-  ).map((name) => name.trim());
-
-  // Elasticsearch keyword field with case-insensitive sorting
-  const sortedEntityNames = [...entityNames].sort((a, b) => {
-    const aLower = a.toLowerCase();
-    const bLower = b.toLowerCase();
-
-    if (aLower < bLower) {
-      return -1;
-    }
-    if (aLower > bLower) {
-      return 1;
-    }
-    return 0;
-  });
-
-  expect(entityNames).toEqual(sortedEntityNames);
-};
-
 export const navigateToExploreAndSelectEntity = async ({
   page,
   entityName,

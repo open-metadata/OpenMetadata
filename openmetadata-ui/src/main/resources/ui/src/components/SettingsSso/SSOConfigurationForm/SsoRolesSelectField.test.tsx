@@ -12,7 +12,7 @@
  */
 
 import { FieldProps } from '@rjsf/utils';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { searchRoles } from '../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import SsoRolesSelectField from './SsoRolesSelectField';
@@ -208,5 +208,57 @@ describe('SsoRolesSelectField', () => {
       expect(mockSearchRoles).toHaveBeenCalled();
       expect(mockShowErrorToast).not.toHaveBeenCalled();
     });
+  });
+
+  it('searches roles with the typed text and offers the matching roles', async () => {
+    mockSearchRoles.mockImplementation((text: string) =>
+      Promise.resolve(
+        text === 'Data'
+          ? [{ name: 'DataSteward', displayName: 'Data Steward' }]
+          : mockRolesResponse
+      )
+    );
+
+    render(<SsoRolesSelectField {...rolesSelectProps} />);
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'Data' },
+    });
+
+    await waitFor(() => expect(mockSearchRoles).toHaveBeenCalledWith('Data'));
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Data Steward')).toBeInTheDocument();
+      expect(screen.queryByTitle('Administrator')).not.toBeInTheDocument();
+    });
+  });
+
+  it('adds a picked role to the selection', async () => {
+    render(<SsoRolesSelectField {...rolesSelectProps} />);
+
+    fireEvent.mouseDown(screen.getByRole('combobox'));
+    fireEvent.click(await screen.findByTitle('Administrator'));
+
+    expect(mockOnChange).toHaveBeenCalledWith(['Admin']);
+  });
+
+  it('removes a role from the selection', async () => {
+    const { container } = render(
+      <SsoRolesSelectField {...rolesSelectProps} formData={['Admin']} />
+    );
+
+    await waitFor(() =>
+      expect(
+        container.querySelector('.ant-select-selection-item')
+      ).toHaveTextContent('Administrator')
+    );
+
+    fireEvent.click(
+      container.querySelector(
+        '.ant-select-selection-item-remove'
+      ) as HTMLElement
+    );
+
+    expect(mockOnChange).toHaveBeenCalledWith([]);
   });
 });

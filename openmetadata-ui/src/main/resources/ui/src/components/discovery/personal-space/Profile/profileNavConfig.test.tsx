@@ -119,6 +119,15 @@ describe('profileNavConfig', () => {
     expect(sso.isVisible?.(permissions, false)).toBe(false);
   });
 
+  it('shows Members to admins only', () => {
+    const members = getProfileNavItem('members');
+    const permissions = {} as UIPermission;
+
+    expect(members.id).toBe('members');
+    expect(members.isVisible?.(permissions, true)).toBe(true);
+    expect(members.isVisible?.(permissions, false)).toBe(false);
+  });
+
   it('includes administration in the group label map', () => {
     expect(PROFILE_NAV_GROUP_LABEL.administration).toBe('label.administration');
   });

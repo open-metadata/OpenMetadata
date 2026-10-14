@@ -176,6 +176,14 @@ describe('ProfileDetailsPanel', () => {
     expect(screen.queryByTestId('enter-edit')).not.toBeInTheDocument();
   });
 
+  it('lets a non-admin edit their own preferred name', () => {
+    renderPanel();
+
+    expect(
+      within(screen.getByTestId('preferred-name')).getByTestId('enter-edit')
+    ).toBeInTheDocument();
+  });
+
   it('lets an admin edit another user’s preferred name and saves the trimmed draft', () => {
     mockUseAuth.mockReturnValue({ isAdminUser: true });
     mockUseApplicationStore.mockReturnValue({
