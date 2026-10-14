@@ -121,7 +121,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
 
   const columns: BotColumn[] = useMemo(
     () => [
-      { id: 'name', label: t('label.name') },
+      { id: 'name', label: t('label.name'), className: 'tw:w-70' },
       { id: 'description', label: t('label.description') },
       { id: 'actions', label: t('label.action-plural'), className: 'tw:w-20' },
     ],
@@ -396,9 +396,12 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
 
         return (
           <Button
+            className="tw:max-w-full tw:truncate tw:block tw:text-left"
             color="link-color"
             data-testid={`bot-link-${name}`}
             size="sm"
+            tooltip={name}
+            tooltipPlacement="top"
             onPress={() =>
               onNavigate({
                 type: 'detail',
