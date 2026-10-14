@@ -84,8 +84,8 @@ public record CatalogSecurityContext(
   }
 
   /**
-   * Never use this to decide a role sync - it flattens null (the token carried no roles claim) into
-   * an empty set (the provider revoked every role). Read the {@code userRoles} component directly.
+   * Never use this to decide a role sync - it flattens null (nothing to sync from) into an empty set
+   * (the provider revoked every role). Read the {@code userRoles} component directly.
    */
   public Set<String> getUserRoles() {
     if (nullOrEmpty(userRoles)) {

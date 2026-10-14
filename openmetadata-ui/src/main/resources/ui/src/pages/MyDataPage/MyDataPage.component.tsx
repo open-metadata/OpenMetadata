@@ -18,6 +18,7 @@ import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import HomeLandingPage from '../../components/MyData/HomeLandingPage/HomeLandingPage';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useWelcomeStore } from '../../hooks/useWelcomeStore';
@@ -41,6 +42,7 @@ const MyDataPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
+  const { isTourPage } = useTourProvider();
 
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
 
@@ -67,7 +69,10 @@ const MyDataPage = () => {
   };
 
   useEffect(() => {
-    updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
+    // The welcome screen replaces the landing page, so on the tour it would hide the step targets.
+    updateWelcomeScreen(
+      !usernameExistsInCookie && isWelcomeVisible && !isTourPage
+    );
 
     return () => updateWelcomeScreen(false);
   }, []);
