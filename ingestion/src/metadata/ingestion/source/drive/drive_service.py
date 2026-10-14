@@ -43,13 +43,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -63,7 +61,6 @@ from metadata.ingestion.source.connections import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_directory, filter_by_spreadsheet
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_tag_label
 
 logger = ingestion_logger()
 
@@ -103,13 +100,6 @@ class DriveServiceTopology(ServiceTopology):
         producer="get_directory_names",
         stages=[
             NodeStage(
-                type_=OMetaTagAndClassification,
-                context="tags",
-                processor="yield_directory_tag_details",
-                nullable=True,
-                store_all_in_context=True,
-            ),
-            NodeStage(
                 type_=Directory,
                 context="directory",
                 processor="yield_directory",
@@ -128,13 +118,6 @@ class DriveServiceTopology(ServiceTopology):
     spreadsheet: Annotated[TopologyNode, Field(description="Spreadsheet Node")] = TopologyNode(
         producer="get_spreadsheet",
         stages=[
-            NodeStage(
-                type_=OMetaTagAndClassification,
-                context="tags",
-                processor="yield_spreadsheet_tag_details",
-                nullable=True,
-                store_all_in_context=True,
-            ),
             NodeStage(
                 type_=Spreadsheet,
                 context="spreadsheet",
@@ -239,36 +222,6 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         Link to parent spreadsheet.
         """
 
-    # Tag handling methods
-
-    def yield_directory_tag_details(self, directory_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        From topology. To be run for each directory
-        """
-        if self.source_config.includeTags:
-            yield from self.yield_directory_tags(directory_name) or []
-
-    def yield_file_tag_details(self, file_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        From topology. To be run for each file
-        """
-        if self.source_config.includeTags:
-            yield from self.yield_file_tags(file_name) or []
-
-    def yield_spreadsheet_tag_details(self, spreadsheet_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        From topology. To be run for each spreadsheet
-        """
-        if self.source_config.includeTags:
-            yield from self.yield_spreadsheet_tags(spreadsheet_name) or []
-
-    def yield_worksheet_tag_details(self, worksheet_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        From topology. To be run for each worksheet
-        """
-        if self.source_config.includeTags:
-            yield from self.yield_worksheet_tags(worksheet_name) or []
-
     @abstractmethod
     def get_spreadsheets_list(self) -> Any:
         """
@@ -307,105 +260,6 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
                 continue
             spreadsheet_details = self.get_spreadsheet_details(spreadsheet)
             yield spreadsheet_details
-
-    # Optional tag methods - can be overridden by specific implementations
-
-    def yield_directory_tags(self, directory_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        From topology. To be run for each directory
-        """
-
-    def yield_file_tags(self, file_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        From topology. To be run for each file
-        """
-
-    def yield_spreadsheet_tags(self, spreadsheet_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        From topology. To be run for each spreadsheet
-        """
-
-    def yield_worksheet_tags(self, worksheet_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        From topology. To be run for each worksheet
-        """
-
-    # Utility methods for tags and FQN handling
-
-    def get_tag_by_fqn(self, entity_fqn: str) -> list[TagLabel] | None:
-        """
-        Pick up the tags registered in the context
-        searching by entity FQN
-        """
-        tag_labels = []
-        for tag_and_category in self.context.get().tags or []:
-            if tag_and_category.fqn and tag_and_category.fqn.root == entity_fqn:
-                tag_label = get_tag_label(
-                    metadata=self.metadata,
-                    tag_name=tag_and_category.tag_request.name.root,
-                    classification_name=tag_and_category.classification_request.name.root,
-                )
-                if tag_label:
-                    tag_labels.append(tag_label)
-        return tag_labels or None
-
-    def get_directory_tag_labels(self, directory_name: str) -> list[TagLabel] | None:
-        """
-        Method to get directory tags
-        This will only get executed if the tags context
-        is properly informed
-        """
-        directory_fqn = fqn.build(
-            self.metadata,
-            entity_type=Directory,
-            service_name=self.context.get().drive_service,
-            directory_path=[directory_name],
-        )
-        return self.get_tag_by_fqn(entity_fqn=directory_fqn)
-
-    def get_file_tag_labels(self, file_name: str) -> list[TagLabel] | None:
-        """
-        Method to get file tags
-        This will only get executed if the tags context
-        is properly informed
-        """
-        file_fqn = fqn.build(
-            self.metadata,
-            entity_type=File,
-            service_name=self.context.get().drive_service,
-            directory_path=[self.context.get().directory],
-            file_name=file_name,
-        )
-        return self.get_tag_by_fqn(entity_fqn=file_fqn)
-
-    def get_spreadsheet_tag_labels(self, spreadsheet_name: str) -> list[TagLabel] | None:
-        """
-        Method to get spreadsheet tags
-        This will only get executed if the tags context
-        is properly informed
-        """
-        spreadsheet_fqn = fqn.build(
-            self.metadata,
-            entity_type=Spreadsheet,
-            service_name=self.context.get().drive_service,
-            spreadsheet_name=spreadsheet_name,
-        )
-        return self.get_tag_by_fqn(entity_fqn=spreadsheet_fqn)
-
-    def get_worksheet_tag_labels(self, worksheet_name: str) -> list[TagLabel] | None:
-        """
-        Method to get worksheet tags
-        This will only get executed if the tags context
-        is properly informed
-        """
-        worksheet_fqn = fqn.build(
-            self.metadata,
-            entity_type=Worksheet,
-            service_name=self.context.get().drive_service,
-            spreadsheet_name=self.context.get().spreadsheet,
-            worksheet_name=worksheet_name,
-        )
-        return self.get_tag_by_fqn(entity_fqn=worksheet_fqn)
 
     # Record registration methods for tracking processed entities
 
