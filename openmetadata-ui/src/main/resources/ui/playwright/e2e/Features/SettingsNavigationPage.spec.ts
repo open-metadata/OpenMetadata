@@ -387,9 +387,10 @@ test.describe.serial('Settings Navigation Page Tests', () => {
           x: (dataQualityBox?.width ?? 0) / 2,
           y: (dataQualityBox?.height ?? 0) / 2,
         },
+        // The middle of a row is a drop "on" it; its bottom edge drops after it.
         targetPosition: {
           x: (incidentManagerBox?.width ?? 0) / 2,
-          y: (incidentManagerBox?.height ?? 0) / 2 + 10,
+          y: (incidentManagerBox?.height ?? 0) - 2,
         },
       });
 

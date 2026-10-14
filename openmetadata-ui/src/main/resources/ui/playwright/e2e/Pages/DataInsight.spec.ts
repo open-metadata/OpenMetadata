@@ -224,7 +224,9 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await page.getByTestId('date-picker-menu').click();
     await page.getByRole('menuitem', { name: 'Last 60 days' }).click();
 
-    await page.getByRole('menuitem', { name: 'App Analytics' }).click();
+    await page
+      .getByRole('link', { name: 'App Analytics', exact: true })
+      .click();
 
     await expect(page.getByTestId('summary-card-content')).toBeVisible();
     await expect(
