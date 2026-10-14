@@ -74,7 +74,7 @@ const MessageCard = ({ message }: { message: string }) => {
         <AccordionHeader className="tw:flex-row-reverse">
           {header}
         </AccordionHeader>
-        <AccordionPanel>
+        <AccordionPanel unmountOnCollapse>
           <SchemaEditor
             className="m-t-xs"
             copyButtonClassName="tw:![top:-4px] tw:!right-1"

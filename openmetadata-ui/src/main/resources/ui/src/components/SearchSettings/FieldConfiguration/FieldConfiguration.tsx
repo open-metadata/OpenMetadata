@@ -81,9 +81,6 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
     }));
   };
 
-  const expandedKeys = activeFieldKeys[index] ?? [];
-  const isExpanded = expandedKeys.includes(String(index));
-
   const handleWeightChange = (value: number) => {
     setFieldWeight(value);
     onFieldWeightChange(field.fieldName, value);
@@ -105,7 +102,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
     <Accordion
       allowsMultipleExpanded
       data-field-name={field.fieldName}
-      expandedKeys={new Set(expandedKeys)}
+      expandedKeys={new Set(activeFieldKeys[index] ?? [])}
       key={index}
       onExpandedChange={(keys) =>
         ((key) => handleCollapseChange(key, index))([...keys].map(String))
@@ -169,86 +166,80 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             />
           </Box>
         </Box>
-        <AccordionPanel>
-          {/* Mount the field controls only while expanded: an entity lists a
-              dozen or more fields, each with a slider and three selects. */}
-          {isExpanded && (
-            <>
-              <Divider className="m-0" />
-              <div className="m-y-sm" style={{ padding: '10px' }}>
-                {/* Highlight Fields Section */}
-                <div className="m-y-md m-b-lg d-flex items-center justify-between">
-                  <Typography>{t('label.highlight-field-plural')}</Typography>
-                  {isHighlightAllowed ? (
+        {/* An entity lists a dozen or more fields, each with a slider and three
+            selects; mount them only while the panel is open, as antd did. */}
+        <AccordionPanel unmountOnCollapse>
+          <Divider className="m-0" />
+          <div className="m-y-sm" style={{ padding: '10px' }}>
+            {/* Highlight Fields Section */}
+            <div className="m-y-md m-b-lg d-flex items-center justify-between">
+              <Typography>{t('label.highlight-field-plural')}</Typography>
+              {isHighlightAllowed ? (
+                <Toggle
+                  className="m-l-xlg"
+                  data-testid="highlight-field-switch"
+                  isSelected={
+                    searchSettings?.highlightFields?.includes(
+                      field.fieldName
+                    ) ?? false
+                  }
+                  size="sm"
+                  onChange={() => onHighlightFieldsChange(field.fieldName)}
+                />
+              ) : (
+                <Tooltip
+                  placement="top"
+                  title={t('message.field-cannot-be-highlighted')}>
+                  <TooltipTrigger>
                     <Toggle
+                      isDisabled
                       className="m-l-xlg"
                       data-testid="highlight-field-switch"
-                      isSelected={
-                        searchSettings?.highlightFields?.includes(
-                          field.fieldName
-                        ) ?? false
-                      }
+                      isSelected={false}
                       size="sm"
-                      onChange={() => onHighlightFieldsChange(field.fieldName)}
                     />
-                  ) : (
-                    <Tooltip
-                      placement="top"
-                      title={t('message.field-cannot-be-highlighted')}>
-                      <TooltipTrigger>
-                        <Toggle
-                          isDisabled
-                          className="m-l-xlg"
-                          data-testid="highlight-field-switch"
-                          isSelected={false}
-                          size="sm"
-                        />
-                      </TooltipTrigger>
-                    </Tooltip>
-                  )}
-                </div>
-                <Divider className="tw:my-6" />
+                  </TooltipTrigger>
+                </Tooltip>
+              )}
+            </div>
+            <Divider className="tw:my-6" />
 
-                {/* Weight Section */}
-                <div className="m-y-md m-b-lg d-flex items-center justify-between">
-                  <Typography>{t('label.weight')}</Typography>
-                  <Typography
-                    className="font-semibold field-weightage-text"
-                    data-testid="field-weight-value">
-                    {fieldWeight}
-                  </Typography>
-                </div>
-                <div data-testid="field-weight-slider">
-                  <Slider
-                    aria-label={t('label.value')}
-                    maxValue={100}
-                    minValue={0}
-                    step={0.1}
-                    value={fieldWeight}
-                    onChange={(value) =>
-                      handleWeightChange(
-                        Array.isArray(value) ? value[0] : value
-                      )
-                    }
-                  />
-                </div>
-                <Divider className="tw:my-6" />
+            {/* Weight Section */}
+            <div className="m-y-md m-b-lg d-flex items-center justify-between">
+              <Typography>{t('label.weight')}</Typography>
+              <Typography
+                className="font-semibold field-weightage-text"
+                data-testid="field-weight-value">
+                {fieldWeight}
+              </Typography>
+            </div>
+            <div data-testid="field-weight-slider">
+              <Slider
+                aria-label={t('label.value')}
+                maxValue={100}
+                minValue={0}
+                step={0.1}
+                value={fieldWeight}
+                onChange={(value) =>
+                  handleWeightChange(Array.isArray(value) ? value[0] : value)
+                }
+              />
+            </div>
+            <Divider className="tw:my-6" />
 
-                {/* Match Type Section */}
-                <div className="m-y-md m-b-lg d-flex items-center justify-between">
-                  <Typography>{t('label.match-type')}</Typography>
-                  <Select
-                    className="m-l-xlg"
-                    data-testid="match-type-select"
-                    options={matchTypeOptions}
-                    style={{ width: 150 }}
-                    value={fieldMatchType}
-                    onChange={handleMatchTypeChange}
-                  />
-                </div>
-              </div>
-            </>
-          )}
+            {/* Match Type Section */}
+            <div className="m-y-md m-b-lg d-flex items-center justify-between">
+              <Typography>{t('label.match-type')}</Typography>
+              <Select
+                className="m-l-xlg"
+                data-testid="match-type-select"
+                options={matchTypeOptions}
+                style={{ width: 150 }}
+                value={fieldMatchType}
+                onChange={handleMatchTypeChange}
+              />
+            </div>
+          </div>
         </AccordionPanel>
       </AccordionItem>
     </Accordion>

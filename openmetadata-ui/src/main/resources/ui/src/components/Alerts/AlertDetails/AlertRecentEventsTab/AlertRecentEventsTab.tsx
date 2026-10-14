@@ -282,7 +282,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                       </Box>
                     }
                   </AccordionHeader>
-                  <AccordionPanel>
+                  <AccordionPanel unmountOnCollapse>
                     <Box
                       className="layout-row"
                       data-testid={`event-details-${changeEventData.id}`}
