@@ -89,6 +89,9 @@ interface ServicesProps {
   serviceName: ServiceCategory;
 }
 
+// Only the setter is used, to clear paging params; a stable reference keeps the parsed filters memoized.
+const NO_URL_FILTERS = {};
+
 const Services = ({ serviceName }: ServicesProps) => {
   const { t } = useTranslation();
   const { isFetchingStatus } = useAirflowStatus();
@@ -118,7 +121,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     pagingCursor,
   } = usePaging(undefined, pageSizeOptions);
 
-  const { setFilters: setPagingUrlParams } = useTableFilters({});
+  const { setFilters: setPagingUrlParams } = useTableFilters(NO_URL_FILTERS);
 
   // Cards and table page at different sizes, so the page, cursor and size the other view left in
   // the URL do not carry over: each view starts on page 1 at its own default size.

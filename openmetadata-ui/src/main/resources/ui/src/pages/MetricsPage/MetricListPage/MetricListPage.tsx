@@ -1521,9 +1521,13 @@ const MetricListPage = () => {
 
   const renderListCard = () => (
     <Card
-      className={classNames({
-        'tw:flex tw:flex-col tw:flex-1 tw:min-h-0': isPlaceholderState,
-      })}
+      // The card clips (overflow-hidden), so with rows it must not shrink to
+      // the viewport or the content region has nothing to scroll.
+      className={
+        isPlaceholderState
+          ? 'tw:flex tw:flex-col tw:flex-1 tw:min-h-0'
+          : 'tw:shrink-0'
+      }
       size="sm">
       {viewMode === 'card' && renderToolbar()}
       <span aria-live="polite" className="tw:sr-only">
