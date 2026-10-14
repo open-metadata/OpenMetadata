@@ -33,6 +33,7 @@ import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsB
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -76,8 +77,12 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
    * {@code OpenSearchRequestBuilder#build} apply its org-wide-only default instead.
    */
   private void applyContextMemoryVisibility(
-      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) {
-    OMQueryBuilder visibilityBuilder = MEMORY_VISIBILITY.buildVisibilityFilter(subjectContext);
+      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder, String queryFilter) {
+    OMQueryBuilder visibilityBuilder =
+        MEMORY_VISIBILITY.buildVisibilityFilter(
+            subjectContext,
+            ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+            ContextMemoryAnchorPins.ofQueryFilters(queryFilter));
     if (visibilityBuilder != null) {
       requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -102,6 +107,26 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
     return query == null
         ? memoryFilter
         : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
+  }
+
+  /**
+   * ANDs the caller's RBAC policy and per-subject ContextMemory visibility into the aggregation
+   * query, mirroring {@code OpenSearchSearchManager#applyRbacCondition}. A {@code null} or exempt
+   * subject (admin, or access control disabled) is left unfiltered by RBAC. An identifiable subject
+   * gets its own memory visibility filter (admins are limited to searchable statuses only); a
+   * {@code null} or unidentifiable subject falls back to the org-wide-only memory filter so the
+   * aggregation never leaks private memories.
+   */
+  private Query applySubjectFilters(Query query, SubjectContext subjectContext) {
+    Query rbacFiltered = applyRbacQuery(query, subjectContext);
+    OMQueryBuilder visibilityBuilder = MEMORY_VISIBILITY.buildVisibilityFilter(subjectContext);
+    if (visibilityBuilder != null) {
+      Query memoryFilter = ((OpenSearchQueryBuilder) visibilityBuilder).buildV2();
+      return rbacFiltered == null
+          ? memoryFilter
+          : Query.of(q -> q.bool(b -> b.must(rbacFiltered).filter(memoryFilter)));
+    }
+    return restrictToOrgWideMemories(rbacFiltered);
   }
 
   /**
@@ -136,6 +161,11 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       LOG.debug("Query does not contain outer 'query' wrapper, using as-is");
     }
     return Base64.getEncoder().encodeToString(queryToProcess.getBytes());
+  }
+
+  @Override
+  public Response aggregate(AggregationRequest request) throws IOException {
+    return aggregate(request, null);
   }
 
   @Override
@@ -193,7 +223,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         }
       }
 
-      searchRequestBuilder.query(restrictToOrgWideMemories(applyRbacQuery(query, subjectContext)));
+      searchRequestBuilder.query(applySubjectFilters(query, subjectContext));
 
       String aggregationField =
           SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getFieldName());
@@ -582,7 +612,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       String resolvedIndex =
           Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
 
-      applyContextMemoryVisibility(subjectContext, requestBuilder);
+      applyContextMemoryVisibility(subjectContext, requestBuilder, request.getQueryFilter());
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);

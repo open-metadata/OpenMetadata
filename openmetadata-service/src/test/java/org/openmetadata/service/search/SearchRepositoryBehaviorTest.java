@@ -1144,6 +1144,22 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void disabledGlossaryTagPropagationDoesNotWriteToSearch() {
+    ChangeDescription changes =
+        changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_TAGS).withNewValue("[]")),
+            List.of(),
+            List.of(new FieldChange().withName(Entity.FIELD_TAGS).withOldValue("[]")));
+    try (MockedStatic<SettingsCache> settings = mockStatic(SettingsCache.class)) {
+      settings.when(SettingsCache::isGlossaryTagPropagationEnabled).thenReturn(false);
+
+      repository.propagateGlossaryTags(Entity.GLOSSARY_TERM, "Glossary.Term", changes);
+
+      verify(searchClient, never()).updateChildren(anyString(), any(Pair.class), any(Pair.class));
+    }
+  }
+
+  @Test
   void propagateGlossaryTagsMarksPropagatedTagsAsDerived() {
     TagLabel tagLabel =
         new TagLabel()
@@ -3391,7 +3407,8 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.getDocByID("idx", "00000000-0000-0000-0000-000000000123"))
         .thenReturn(response);
     when(searchClient.searchBySourceUrl("https://src", null)).thenReturn(response);
-    when(searchClient.aggregate(aggregationRequest, null)).thenReturn(response);
+    when(searchClient.aggregate(aggregationRequest)).thenReturn(response);
+    when(searchClient.aggregate(aggregationRequest, subjectContext)).thenReturn(response);
     when(searchClient.getEntityTypeCounts(request, "global")).thenReturn(response);
     when(searchClient.getEntityTypeCounts(request, "global", subjectContext)).thenReturn(response);
     when(searchClient.getQueryCostRecords("service")).thenReturn(queryCostResult);
@@ -3403,7 +3420,10 @@ class SearchRepositoryBehaviorTest {
         response,
         repository.getDocument("idx", UUID.fromString("00000000-0000-0000-0000-000000000123")));
     assertSame(response, repository.searchBySourceUrl("https://src", null));
-    assertSame(response, repository.aggregate(aggregationRequest, null));
+    assertSame(response, repository.aggregate(aggregationRequest));
+    // The subject-aware overload is what SearchResource.aggregate calls, so the aggregation
+    // buckets are computed only over documents the caller is permitted to see.
+    assertSame(response, repository.aggregate(aggregationRequest, subjectContext));
     assertSame(response, repository.getEntityTypeCounts(request, "global"));
     // The subject-aware overload is what SearchResource calls, so a ContextMemory count matches
     // what the same caller sees in the listing instead of being capped at org-wide memories.

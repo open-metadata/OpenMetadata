@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Grid } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import { Box, Card, Grid } from '@openmetadata/ui-core-components';
+
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router-dom';
@@ -171,19 +171,23 @@ const DataInsightPage = () => {
         children: (
           <DataInsightProvider>
             <Card className="h-full overflow-y-auto">
-              <Grid
-                className="layout-row layout-grid"
-                data-testid="data-insight-container"
-                style={getLayoutGutter(16, 16)}>
-                {isHeaderVisible && (
+              <Card.Content>
+                <Grid
+                  className="layout-row layout-grid"
+                  data-testid="data-insight-container"
+                  style={getLayoutGutter(16, 16)}>
+                  {isHeaderVisible && (
+                    <Grid.Item className="layout-column" span={24}>
+                      <DataInsightHeader
+                        onScrollToChart={handleScrollToChart}
+                      />
+                    </Grid.Item>
+                  )}
                   <Grid.Item className="layout-column" span={24}>
-                    <DataInsightHeader onScrollToChart={handleScrollToChart} />
+                    {renderTabComponent}
                   </Grid.Item>
-                )}
-                <Grid.Item className="layout-column" span={24}>
-                  {renderTabComponent}
-                </Grid.Item>
-              </Grid>
+                </Grid>
+              </Card.Content>
             </Card>
           </DataInsightProvider>
         ),

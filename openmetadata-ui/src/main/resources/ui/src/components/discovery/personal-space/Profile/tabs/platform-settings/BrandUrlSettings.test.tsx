@@ -20,12 +20,16 @@ import {
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { SettingType } from '../../../../../../generated/settings/settings';
+import { SettingType as SourceSettingType } from '../../../../../../generated/system/settingsSourceResponse';
 import {
   getSettingsConfigFromConfigType,
+  getSettingsSource,
   updateSettingsConfig,
 } from '../../../../../../rest/settingConfigAPI';
+import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import BrandUrlSettings from './BrandUrlSettings';
 import BrandUrlSettingsForm from './BrandUrlSettingsForm';
+import { deploymentOwnedSource } from './PlatformSettings.mock';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -41,6 +45,8 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../../../../rest/settingConfigAPI', () => ({
+  getSettingsSource: jest.fn().mockResolvedValue({ settings: [] }),
+  adoptDeploymentConfig: jest.fn(),
   getSettingsConfigFromConfigType: jest.fn(),
   updateSettingsConfig: jest.fn(),
 }));
@@ -59,6 +65,8 @@ const urlInput = () =>
 describe('Brand URL settings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    headerActions = undefined;
+    (getSettingsSource as jest.Mock).mockResolvedValue({ settings: [] });
     (getSettingsConfigFromConfigType as jest.Mock).mockResolvedValue({
       data: { config_value: { openMetadataUrl: 'http://localhost:8585' } },
     });
@@ -66,7 +74,7 @@ describe('Brand URL settings', () => {
   });
 
   it('shows the stored URL and opens the edit view', async () => {
-    render(
+    renderWithQueryClient(
       <BrandUrlSettings
         onNavigate={onNavigate}
         onSetHeaderActions={onSetHeaderActions}
@@ -88,7 +96,9 @@ describe('Brand URL settings', () => {
   });
 
   it('rejects an invalid URL', async () => {
-    render(<BrandUrlSettingsForm showHint={false} onNavigate={onNavigate} />);
+    renderWithQueryClient(
+      <BrandUrlSettingsForm showHint={false} onNavigate={onNavigate} />
+    );
     await waitFor(() =>
       expect(urlInput()).toHaveValue('http://localhost:8585')
     );
@@ -103,7 +113,9 @@ describe('Brand URL settings', () => {
   });
 
   it('saves a valid URL and returns to the view', async () => {
-    render(<BrandUrlSettingsForm showHint={false} onNavigate={onNavigate} />);
+    renderWithQueryClient(
+      <BrandUrlSettingsForm showHint={false} onNavigate={onNavigate} />
+    );
     await waitFor(() =>
       expect(urlInput()).toHaveValue('http://localhost:8585')
     );
@@ -124,5 +136,51 @@ describe('Brand URL settings', () => {
       page: 'brand-url',
       isEditing: false,
     });
+  });
+});
+
+describe('Brand URL settings set by the deployment', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    headerActions = undefined;
+    (getSettingsConfigFromConfigType as jest.Mock).mockResolvedValue({
+      data: { config_value: { openMetadataUrl: 'https://om.example.com' } },
+    });
+    (getSettingsSource as jest.Mock).mockResolvedValue({
+      settings: [
+        deploymentOwnedSource(
+          SourceSettingType.OpenMetadataBaseURLConfiguration,
+          ['/openMetadataUrl']
+        ),
+      ],
+    });
+  });
+
+  it('says so and offers no edit', async () => {
+    renderWithQueryClient(
+      <BrandUrlSettings
+        onNavigate={onNavigate}
+        onSetHeaderActions={onSetHeaderActions}
+      />
+    );
+
+    expect(
+      await screen.findByTestId('settings-source-env-alert')
+    ).toBeInTheDocument();
+
+    render(<>{headerActions}</>);
+
+    expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument();
+  });
+
+  it('locks the URL and Save in the form', async () => {
+    renderWithQueryClient(
+      <BrandUrlSettingsForm showHint={false} onNavigate={onNavigate} />
+    );
+    await screen.findByTestId('settings-source-env-alert');
+
+    await waitFor(() => expect(urlInput()).toBeDisabled());
+
+    expect(screen.getByTestId('save-button')).toBeDisabled();
   });
 });

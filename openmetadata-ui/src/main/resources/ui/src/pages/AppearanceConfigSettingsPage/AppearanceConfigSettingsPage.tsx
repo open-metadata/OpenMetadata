@@ -12,8 +12,14 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Form, FormProps } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Form, FormProps } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, toString } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -447,9 +453,9 @@ const AppearanceConfigSettingsPage = () => {
                   }}
                 />
                 <Button
+                  color="primary"
                   data-testid="reset-button"
-                  loading={resetting}
-                  type="primary"
+                  isLoading={resetting}
                   onClick={handleReset}>
                   {t('label.reset')}
                 </Button>
@@ -468,127 +474,133 @@ const AppearanceConfigSettingsPage = () => {
             onFinish={handleSave}
             onValuesChange={handleValuesChange}>
             <div className="white-label-card-wrapper m-b-md">
-              <Card
-                className="white-label-config-card"
-                title={t('label.custom-logo')}>
-                <Grid
-                  className="layout-row layout-grid w-full"
-                  style={{ ...getLayoutGutter(16, 16) }}>
-                  {customLogoFormFields.map((field) => {
-                    return (
-                      <Grid.Item
-                        className="layout-column w-full"
-                        key={field.id}
-                        span={24}>
-                        <Box
-                          className="layout-row"
-                          style={{ ...getLayoutGutter(48, 16) }}
-                          wrap="wrap">
+              <Card className="white-label-config-card">
+                <Card.Header title={t('label.custom-logo')} />
+                <Card.Content>
+                  <Grid
+                    className="layout-row layout-grid w-full"
+                    style={{ ...getLayoutGutter(16, 16) }}>
+                    {customLogoFormFields.map((field) => {
+                      return (
+                        <Grid.Item
+                          className="layout-column w-full"
+                          key={field.id}
+                          span={24}>
                           <Box
-                            className="layout-column tw:block"
-                            style={{ maxWidth: '50%', flex: '0 0 50%' }}>
-                            {getField(field)}
+                            className="layout-row"
+                            style={{ ...getLayoutGutter(48, 16) }}
+                            wrap="wrap">
+                            <Box
+                              className="layout-column tw:block"
+                              style={{ maxWidth: '50%', flex: '0 0 50%' }}>
+                              {getField(field)}
+                            </Box>
+                            <Box className="layout-column tw:block">
+                              <BrandImage
+                                className="preview-image"
+                                height={70}
+                                isMonoGram={field.name !== 'customLogoUrlPath'}
+                                src={
+                                  formState[
+                                    field.name as keyof LogoConfiguration
+                                  ]
+                                }
+                                width={
+                                  field.name !== 'customLogoUrlPath' ? 75 : 120
+                                }
+                              />
+                            </Box>
                           </Box>
-                          <Box className="layout-column tw:block">
-                            <BrandImage
-                              className="preview-image"
-                              height={70}
-                              isMonoGram={field.name !== 'customLogoUrlPath'}
-                              src={
-                                formState[field.name as keyof LogoConfiguration]
-                              }
-                              width={
-                                field.name !== 'customLogoUrlPath' ? 75 : 120
-                              }
-                            />
-                          </Box>
-                        </Box>
-                      </Grid.Item>
-                    );
-                  })}
-                </Grid>
+                        </Grid.Item>
+                      );
+                    })}
+                  </Grid>
+                </Card.Content>
               </Card>
-              <Card
-                className="white-label-config-card"
-                title={<Typography>{t('label.custom-theme')}</Typography>}>
-                <Grid
-                  className="layout-row layout-grid w-full"
-                  style={{ ...getLayoutGutter(16, 16) }}>
-                  {themeFormFields.map((field) => {
-                    const currentColor =
-                      formState[
-                        field.name as keyof UIThemePreference['customTheme']
-                      ];
+              <Card className="white-label-config-card">
+                <Card.Header
+                  title={<Typography>{t('label.custom-theme')}</Typography>}
+                />
+                <Card.Content>
+                  <Grid
+                    className="layout-row layout-grid w-full"
+                    style={{ ...getLayoutGutter(16, 16) }}>
+                    {themeFormFields.map((field) => {
+                      const currentColor =
+                        formState[
+                          field.name as keyof UIThemePreference['customTheme']
+                        ];
 
-                    return (
-                      <Grid.Item
-                        className="layout-column w-full"
-                        key={field.id}
-                        span={24}>
-                        <Box
-                          className="layout-row"
-                          style={{ ...getLayoutGutter(48, 16) }}
-                          wrap="wrap">
+                      return (
+                        <Grid.Item
+                          className="layout-column w-full"
+                          key={field.id}
+                          span={24}>
                           <Box
-                            className="layout-column tw:block"
-                            style={{ maxWidth: '50%', flex: '0 0 50%' }}>
-                            {getField(field)}
+                            className="layout-row"
+                            style={{ ...getLayoutGutter(48, 16) }}
+                            wrap="wrap">
+                            <Box
+                              className="layout-column tw:block"
+                              style={{ maxWidth: '50%', flex: '0 0 50%' }}>
+                              {getField(field)}
+                            </Box>
+                            <Box
+                              className="layout-column tw:block"
+                              style={{ placeSelf: 'center' }}>
+                              <Card className="theme-preview">
+                                <Card.Content className="tw:flex tw:flex-row tw:gap-4">
+                                  {/* Colour swatches, not buttons: they preview an arbitrary
+                                      brand colour that core Button colours can't express. */}
+                                  <span
+                                    className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"
+                                    style={{
+                                      background: currentColor,
+                                      borderColor: currentColor,
+                                      color: 'white',
+                                    }}>
+                                    {startCase(
+                                      toString(field.name).replace('Color', '')
+                                    )}
+                                  </span>
+                                  <span
+                                    className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"
+                                    style={{
+                                      borderColor: currentColor,
+                                      color: currentColor,
+                                    }}>
+                                    <Icon component={ShareIcon} />
+                                  </span>
+                                  <span
+                                    className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"
+                                    style={{
+                                      borderColor: currentColor,
+                                      color: currentColor,
+                                    }}>
+                                    {startCase(
+                                      toString(field.name).replace('Color', '')
+                                    )}
+                                  </span>
+                                  <DomainIcon
+                                    style={{
+                                      color: currentColor,
+                                    }}
+                                    width={32}
+                                  />
+                                  <span
+                                    className="tw:inline-flex tw:items-center tw:text-sm tw:font-semibold"
+                                    style={{ color: currentColor }}>
+                                    {t('label.link')}
+                                  </span>
+                                </Card.Content>
+                              </Card>
+                            </Box>
                           </Box>
-                          <Box
-                            className="layout-column tw:block"
-                            style={{ placeSelf: 'center' }}>
-                            <Card className="theme-preview">
-                              <Button
-                                style={{
-                                  background: currentColor,
-                                  color: 'white',
-                                  width: '86px',
-                                }}>
-                                {startCase(
-                                  toString(field.name).replace('Color', '')
-                                )}
-                              </Button>
-
-                              <Button
-                                icon={<Icon component={ShareIcon} />}
-                                style={{
-                                  width: '56px',
-                                  color: currentColor,
-                                  borderColor: currentColor,
-                                }}
-                              />
-                              <Button
-                                style={{
-                                  color: currentColor,
-                                  borderColor: currentColor,
-                                  width: '86px',
-                                }}
-                                type="default">
-                                {startCase(
-                                  toString(field.name).replace('Color', '')
-                                )}
-                              </Button>
-                              <DomainIcon
-                                style={{
-                                  color: currentColor,
-                                }}
-                                width={32}
-                              />
-                              <Button
-                                style={{
-                                  color: currentColor,
-                                  padding: 0,
-                                }}
-                                type="link">
-                                {t('label.link')}
-                              </Button>
-                            </Card>
-                          </Box>
-                        </Box>
-                      </Grid.Item>
-                    );
-                  })}
-                </Grid>
+                        </Grid.Item>
+                      );
+                    })}
+                  </Grid>
+                </Card.Content>
               </Card>
             </div>
 
@@ -600,16 +612,16 @@ const AppearanceConfigSettingsPage = () => {
               gap={4}
               itemClassName="layout-space-item">
               <Button
+                color="link-color"
                 data-testid="cancel-btn"
-                type="link"
                 onClick={() => navigate(-1)}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="save-btn"
-                htmlType="submit"
-                loading={loading}
-                type="primary">
+                isLoading={loading}
+                type="submit">
                 {t('label.save')}
               </Button>
             </Box>

@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.activity;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -85,6 +87,11 @@ import org.openmetadata.service.util.RestUtil;
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "activity")
 public class ActivityResource {
+  private static final String START_TS_DESCRIPTION =
+      "Absolute lower bound in epoch millis, used instead of `days` when set. "
+          + "Floored at "
+          + ActivityStreamRepository.MAX_START_TS_DAYS
+          + " days ago.";
 
   private final ActivityStreamRepository activityStreamRepository;
   private final ConversationRepository conversationRepository;
@@ -212,6 +219,7 @@ public class ActivityResource {
           @Max(30)
           @QueryParam("days")
           int days,
+      @Parameter(description = START_TS_DESCRIPTION) @QueryParam("startTs") Long startTs,
       @Parameter(description = "Maximum number of events to return")
           @DefaultValue("50")
           @Min(1)
@@ -231,12 +239,28 @@ public class ActivityResource {
         return new ResultList<>(List.of(), null, null, 0);
       }
       return activityStreamRepository.listActivityEvents(
-          securityContext, entityType, entityId, actorId, domainsParam, domain, days, limit);
+          securityContext,
+          entityType,
+          entityId,
+          actorId,
+          domainsParam,
+          domain,
+          days,
+          startTs,
+          limit);
     }
     return viewableOnly(
         securityContext,
         activityStreamRepository.listActivityEvents(
-            securityContext, entityType, entityId, actorId, domainsParam, domain, days, limit));
+            securityContext,
+            entityType,
+            entityId,
+            actorId,
+            domainsParam,
+            domain,
+            days,
+            startTs,
+            limit));
   }
 
   @GET
@@ -349,6 +373,7 @@ public class ActivityResource {
           @Max(30)
           @QueryParam("days")
           int days,
+      @Parameter(description = START_TS_DESCRIPTION) @QueryParam("startTs") Long startTs,
       @Parameter(description = "Maximum number of events to return")
           @DefaultValue("50")
           @Min(1)
@@ -356,7 +381,8 @@ public class ActivityResource {
           @QueryParam("limit")
           int limit) {
     return viewableOnly(
-        securityContext, activityStreamRepository.getMyFeed(securityContext, domain, days, limit));
+        securityContext,
+        activityStreamRepository.getMyFeed(securityContext, domain, days, startTs, limit));
   }
 
   @GET
@@ -383,6 +409,7 @@ public class ActivityResource {
           @Max(30)
           @QueryParam("days")
           int days,
+      @Parameter(description = START_TS_DESCRIPTION) @QueryParam("startTs") Long startTs,
       @Parameter(description = "Maximum number of events to return")
           @DefaultValue("50")
           @Min(1)
@@ -391,7 +418,7 @@ public class ActivityResource {
           int limit) {
     return viewableOnly(
         securityContext,
-        activityStreamRepository.getFollowingFeed(securityContext, domain, days, limit));
+        activityStreamRepository.getFollowingFeed(securityContext, domain, days, startTs, limit));
   }
 
   @GET
@@ -400,7 +427,8 @@ public class ActivityResource {
       operationId = "getMentionsActivityFeed",
       summary = "Get activity whose replies mention the current user",
       description =
-          "Get activity events with a reply that mentions the current user or one of their teams.",
+          "Get activity events with a reply that mentions the current user or one of their teams, "
+              + "optionally only those about one entity.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -413,21 +441,32 @@ public class ActivityResource {
   public ResultList<ActivityEvent> getMentionsFeed(
       @Context SecurityContext securityContext,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
+      @Parameter(description = "Only activity about this entity (EntityLink string)")
+          @QueryParam("entityLink")
+          String entityLink,
       @Parameter(description = "Number of days to look back")
           @DefaultValue("7")
           @Min(1)
           @Max(30)
           @QueryParam("days")
           int days,
+      @Parameter(
+              description = START_TS_DESCRIPTION + " Compared against when the mention was made.")
+          @QueryParam("startTs")
+          Long startTs,
       @Parameter(description = "Maximum number of events to return")
           @DefaultValue("50")
           @Min(1)
           @Max(200)
           @QueryParam("limit")
           int limit) {
+    if (!nullOrEmpty(entityLink)) {
+      authorizeEntityLinkView(securityContext, entityLink);
+    }
     return viewableOnly(
         securityContext,
-        activityStreamRepository.getMentionsFeed(securityContext, domain, days, limit));
+        activityStreamRepository.getMentionsFeed(
+            securityContext, domain, entityLink, days, startTs, limit));
   }
 
   @GET

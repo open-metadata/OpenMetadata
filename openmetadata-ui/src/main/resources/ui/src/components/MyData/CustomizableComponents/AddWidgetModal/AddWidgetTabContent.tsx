@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Image, Radio, RadioChangeEvent, Tooltip } from 'antd';
+import {
+  Box,
+  Button,
+  RadioButton,
+  RadioGroup,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageType } from '../../../../generated/system/ui/page';
@@ -59,69 +65,61 @@ function AddWidgetTabContent({
     }
   }, [widget, selectedWidgetSize, currentPageType]);
 
-  const handleSizeChange = useCallback((e: RadioChangeEvent) => {
-    setSelectedWidgetSize(e.target.value);
+  const handleSizeChange = useCallback((value: string) => {
+    setSelectedWidgetSize(Number(value));
   }, []);
 
   return (
-    <Grid className="layout-row layout-grid" data-testid={widget.id}>
-      <Grid.Item className="layout-column" span={24}>
-        <Box
-          inline
-          align="center"
-          className="layout-space layout-space-horizontal"
-          gap={2}
-          itemClassName="layout-space-item">
-          <Typography>{`${t('label.size')}:`}</Typography>
-          <Radio.Group
-            data-testid="size-selector-button"
-            defaultValue={selectedWidgetSize}
-            optionType="button"
-            options={widgetSizeOptions}
-            onChange={handleSizeChange}
-          />
-        </Box>
-      </Grid.Item>
-      <Grid.Item className="layout-column" span={24}>
-        <Box className="layout-row h-min-480" justify="center" wrap="wrap">
-          <Box className="layout-column tw:block">
-            <Box
-              inline
-              align="center"
-              className="layout-space"
-              direction="col"
-              gap={2}
-              itemClassName="layout-space-item">
-              <Image
-                className="p-y-md"
-                data-testid="widget-image"
-                preview={false}
-                src={widgetImage}
-              />
-              <Typography
-                as="p"
-                className="d-block text-center"
-                data-testid="widget-description">
-                {widget.description}
-              </Typography>
-              <Tooltip
-                placement="bottom"
-                title={widgetAddable ? '' : t('message.can-not-add-widget')}>
-                <Button
-                  className="p-x-lg m-t-md"
-                  data-testid="add-widget-button"
-                  disabled={!widgetAddable}
-                  icon={<PlusOutlined />}
-                  type="primary"
-                  onClick={getAddWidgetHandler(widget, selectedWidgetSize)}>
-                  {t('label.add')}
-                </Button>
-              </Tooltip>
-            </Box>
-          </Box>
-        </Box>
-      </Grid.Item>
-    </Grid>
+    <Box data-testid={widget.id} direction="col" gap={4}>
+      <Box align="center" direction="row" gap={2}>
+        <Typography>{`${t('label.size')}:`}</Typography>
+        <RadioGroup
+          data-testid="size-selector-button"
+          orientation="horizontal"
+          value={String(selectedWidgetSize)}
+          onChange={handleSizeChange}>
+          {widgetSizeOptions.map((opt) => (
+            <RadioButton
+              key={opt.value}
+              label={opt.label}
+              value={String(opt.value)}
+            />
+          ))}
+        </RadioGroup>
+      </Box>
+      <Box
+        align="center"
+        className="tw:min-h-[480px]"
+        direction="col"
+        gap={4}
+        justify="center">
+        <img
+          alt={widget.name}
+          className="tw:py-4"
+          data-testid="widget-image"
+          src={widgetImage}
+        />
+        <Typography
+          as="p"
+          className="tw:block tw:text-center"
+          data-testid="widget-description">
+          {widget.description}
+        </Typography>
+        <Tooltip
+          placement="bottom"
+          title={widgetAddable ? '' : t('message.can-not-add-widget')}>
+          <Button
+            className="tw:px-8 tw:mt-4"
+            color="primary"
+            data-testid="add-widget-button"
+            iconLeading={<Plus />}
+            isDisabled={!widgetAddable}
+            onPress={getAddWidgetHandler(widget, selectedWidgetSize)}>
+            {t('label.add')}
+          </Button>
+        </Tooltip>
+      </Box>
+    </Box>
   );
 }
 

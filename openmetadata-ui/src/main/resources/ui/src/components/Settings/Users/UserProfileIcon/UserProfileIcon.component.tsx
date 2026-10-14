@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Badge, Dropdown, Typography } from '@openmetadata/ui-core-components';
-import { Radio, Tooltip } from 'antd';
+import {
+  Badge,
+  Dropdown,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Radio } from 'antd';
 import { isEmpty, orderBy } from 'lodash';
 import {
   FC,
@@ -48,7 +53,6 @@ import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtil
 import InterfaceModeMenuItem from '../../../AppModeSwitcher/InterfaceModeMenuItem';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
-import ThemeModeSwitcher from '../../../ThemeModeSwitcher/ThemeModeSwitcher';
 import './user-profile-icon.less';
 
 const LIST_ITEM_CLASS = 'tw:pl-6';
@@ -270,7 +274,11 @@ export const UserProfileIcon = () => {
           />
         )}
         <div className="name-persona-container">
-          <Tooltip title={getEntityName(currentUser)}>
+          <Tooltip
+            arrow
+            excludeTriggerFromTabOrder
+            title={getEntityName(currentUser)}
+            triggerClassName="tw:inline-flex">
             <Typography
               className="name-persona-text font-semibold"
               data-testid="nav-user-name">
@@ -359,7 +367,6 @@ export const UserProfileIcon = () => {
         <div className="tw:flex tw:flex-col tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-3">
           <InterfaceModeMenuItem />
           {navbarUtilClassBase.getUserProfileExtraItems()}
-          <ThemeModeSwitcher className="tw:w-full" />
         </div>
       </Dropdown.Popover>
     </Dropdown.Root>

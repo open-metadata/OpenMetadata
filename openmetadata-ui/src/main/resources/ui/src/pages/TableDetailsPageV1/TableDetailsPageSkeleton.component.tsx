@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Grid, Skeleton } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import { Box, Card, Grid, Skeleton } from '@openmetadata/ui-core-components';
+
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 
 const CONTENT_ROW_WIDTHS = ['90%', '85%', '80%', '88%', '75%', '70%'];
@@ -43,58 +43,60 @@ export const TableDetailsPageSkeleton = () => {
       </Grid.Item>
       <Grid.Item className="layout-column p-x-lg" span={24}>
         <Card className="data-asset-header-skeleton">
-          <Box
-            align="center"
-            className="layout-row"
-            justify="between"
-            style={{ ...getLayoutGutter(16) }}
-            wrap="wrap">
-            <Box className="layout-column tw:block" style={{ flex: 'auto' }}>
-              <Box
-                inline
-                align="stretch"
-                className="layout-space"
-                direction="col"
-                gap={2}
-                itemClassName="layout-space-item"
-                style={{ width: '100%' }}>
-                <Skeleton height={40} variant="rounded" width={40} />
-                <div className="tw:flex tw:flex-col tw:gap-6">
-                  <Skeleton height={16} width="40%" />
-                  <Skeleton height={16} width="60%" />
-                </div>
-              </Box>
-            </Box>
+          <Card.Content>
             <Box
-              className="layout-column tw:block"
-              style={{ flex: '0 0 240px' }}>
+              align="center"
+              className="layout-row"
+              justify="between"
+              style={{ ...getLayoutGutter(16) }}
+              wrap="wrap">
+              <Box className="layout-column tw:block" style={{ flex: 'auto' }}>
+                <Box
+                  inline
+                  align="stretch"
+                  className="layout-space"
+                  direction="col"
+                  gap={2}
+                  itemClassName="layout-space-item"
+                  style={{ width: '100%' }}>
+                  <Skeleton height={40} variant="rounded" width={40} />
+                  <div className="tw:flex tw:flex-col tw:gap-6">
+                    <Skeleton height={16} width="40%" />
+                    <Skeleton height={16} width="60%" />
+                  </div>
+                </Box>
+              </Box>
               <Box
-                inline
-                align="center"
-                className="layout-space layout-space-horizontal"
-                gap={2}
-                itemClassName="layout-space-item">
-                <Skeleton
-                  className="tw:rounded-full"
-                  height={36}
-                  variant="rounded"
-                  width={72}
-                />
-                <Skeleton
-                  className="tw:rounded-full"
-                  height={36}
-                  variant="rounded"
-                  width={72}
-                />
-                <Skeleton
-                  className="tw:rounded-full"
-                  height={36}
-                  variant="rounded"
-                  width={72}
-                />
+                className="layout-column tw:block"
+                style={{ flex: '0 0 240px' }}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
+                  <Skeleton
+                    className="tw:rounded-full"
+                    height={36}
+                    variant="rounded"
+                    width={72}
+                  />
+                  <Skeleton
+                    className="tw:rounded-full"
+                    height={36}
+                    variant="rounded"
+                    width={72}
+                  />
+                  <Skeleton
+                    className="tw:rounded-full"
+                    height={36}
+                    variant="rounded"
+                    width={72}
+                  />
+                </Box>
               </Box>
             </Box>
-          </Box>
+          </Card.Content>
         </Card>
       </Grid.Item>
       <Grid.Item className="layout-column p-x-lg" span={24}>
@@ -111,12 +113,14 @@ export const TableDetailsPageSkeleton = () => {
       </Grid.Item>
       <Grid.Item className="layout-column p-x-lg" span={24}>
         <Card>
-          <div className="tw:flex tw:flex-col tw:gap-4">
-            <Skeleton className="tw:mb-2" height={16} width="20%" />
-            {CONTENT_ROW_WIDTHS.map((width) => (
-              <Skeleton height={16} key={width} width={width} />
-            ))}
-          </div>
+          <Card.Content>
+            <div className="tw:flex tw:flex-col tw:gap-4">
+              <Skeleton className="tw:mb-2" height={16} width="20%" />
+              {CONTENT_ROW_WIDTHS.map((width) => (
+                <Skeleton height={16} key={width} width={width} />
+              ))}
+            </div>
+          </Card.Content>
         </Card>
       </Grid.Item>
     </Grid>

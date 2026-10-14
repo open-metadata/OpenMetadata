@@ -11,22 +11,25 @@
  *  limitations under the License.
  */
 import {
-  CheckCircleOutlined,
-  ExclamationCircleOutlined,
-} from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Alert, Button } from 'antd';
+  Alert,
+  AlertVariant,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AlertIcon } from '../../../assets/svg/alert.svg';
-import { ReactComponent as ErrorExclamationIcon } from '../../../assets/svg/error-exclamation.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import './inline-alert.less';
-import { InlineAlertProps } from './InlineAlert.interface';
+import { InlineAlertProps, InlineAlertType } from './InlineAlert.interface';
 
-const ALERT_ICON_CLASS = 'alert-icon';
+const ALERT_VARIANT: Record<InlineAlertType, AlertVariant> = {
+  error: 'error',
+  warning: 'warning',
+  info: 'brand',
+  success: 'success',
+};
 
 function InlineAlert({
   alertClassName = '',
@@ -43,49 +46,19 @@ function InlineAlert({
   // Latest alert this form showed; a later failed submit replaces the first one.
   const ownedAlert = useRef(inlineAlertDetails);
   ownedAlert.current = inlineAlertDetails ?? ownedAlert.current;
-
-  const { alertContainerClass, alertIconClass } = useMemo(
-    () => ({
-      alertContainerClass: `${type ?? 'default'}-alert`,
-      alertIconClass: `${type ?? 'default'}-icon tw:flex-shrink-0`,
-    }),
-    [type]
-  );
+  // The antd Alert this replaces hid itself on close even when the caller kept rendering it.
+  const [isClosed, setIsClosed] = useState(false);
 
   const handleToggleShowMore = useCallback(() => {
     setShowMore((prev) => !prev);
   }, []);
 
+  const handleClose = useCallback(() => {
+    setIsClosed(true);
+    onClose?.();
+  }, [onClose]);
+
   const combinedText = `${description} ${subDescription}`.trim();
-
-  const alertIcon = useMemo(() => {
-    switch (type) {
-      case 'error':
-        return (
-          <ErrorExclamationIcon
-            className={classNames(ALERT_ICON_CLASS, alertIconClass)}
-          />
-        );
-      case 'warning':
-        return (
-          <AlertIcon className={classNames(ALERT_ICON_CLASS, alertIconClass)} />
-        );
-
-      case 'success':
-        return (
-          <CheckCircleOutlined
-            className={classNames(ALERT_ICON_CLASS, alertIconClass)}
-          />
-        );
-      case 'info':
-      default:
-        return (
-          <ExclamationCircleOutlined
-            className={classNames(ALERT_ICON_CLASS, alertIconClass)}
-          />
-        );
-    }
-  }, [type, alertIconClass]);
 
   useEffect(() => {
     mounted.current = true;
@@ -107,49 +80,44 @@ function InlineAlert({
     };
   }, [setInlineAlertDetails]);
 
+  if (isClosed) {
+    return null;
+  }
+
   return (
     <Alert
       closable
-      className={classNames(
-        'inline-error-container',
-        alertContainerClass,
-        alertClassName
-      )}
-      description={
-        <div className="d-flex items-start gap-3">
-          {alertIcon}
-          <div className="d-flex flex-col gap-2">
-            <Typography className="font-semibold text-sm">{heading}</Typography>
-            <Typography
-              as="p"
-              className={classNames('m-b-0 text-sm', {
-                'truncated-text': !showMore,
-                'expanded-text': showMore,
-              })}
-              data-testid="inline-alert-description">
-              {description}
-              {subDescription && (
-                <>
-                  <br />
-                  {subDescription}
-                </>
-              )}
-            </Typography>
-            {combinedText.length >= 200 && (
-              <Button
-                className="text-xs p-0 m-0 w-fit-content h-auto"
-                data-testid={`read-${showMore ? 'less' : 'more'}-button`}
-                type="link"
-                onClick={handleToggleShowMore}>
-                {t(`label.show-${showMore ? 'less' : 'more'}-lowercase`)}
-              </Button>
-            )}
-          </div>
-        </div>
-      }
-      type={type}
-      onClose={onClose}
-    />
+      className={classNames('inline-error-container', alertClassName)}
+      title={heading}
+      variant={type ? ALERT_VARIANT[type] : 'gray'}
+      onClose={handleClose}>
+      <Box direction="col" gap={2}>
+        <Typography
+          as="p"
+          className={classNames('tw:m-0 tw:text-sm', {
+            'tw:line-clamp-2 tw:break-words': !showMore,
+          })}
+          data-testid="inline-alert-description">
+          {description}
+          {subDescription && (
+            <>
+              <br />
+              {subDescription}
+            </>
+          )}
+        </Typography>
+        {combinedText.length >= 200 && (
+          <Button
+            className="tw:w-fit"
+            color="link-color"
+            data-testid={`read-${showMore ? 'less' : 'more'}-button`}
+            size="sm"
+            onPress={handleToggleShowMore}>
+            {t(`label.show-${showMore ? 'less' : 'more'}-lowercase`)}
+          </Button>
+        )}
+      </Box>
+    </Alert>
   );
 }
 

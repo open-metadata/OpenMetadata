@@ -274,6 +274,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   });
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Owner: () => <div data-testid="owners-section">Owners Section</div>,
     Button: ({ children, onPress, onClick, ...rest }: any) => (
       <button onClick={onPress ?? onClick} {...rest}>
@@ -707,6 +708,13 @@ describe('DataAssetSummaryPanelV1', () => {
       await waitFor(() => {
         expect(mockGetEntityPermission).not.toHaveBeenCalled();
       });
+
+      // An empty entity id keeps useChangeSummary from requesting the mock entity's history.
+      expect(useChangeSummary).toHaveBeenLastCalledWith(
+        expect.anything(),
+        '',
+        expect.anything()
+      );
     });
   });
 

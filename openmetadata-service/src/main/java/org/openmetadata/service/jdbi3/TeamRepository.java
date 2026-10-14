@@ -1689,6 +1689,10 @@ public class TeamRepository extends EntityRepository<Team> {
           added,
           deleted,
           EntityUtil.entityReferenceMatch);
+      // Members inherit team domains into their cached user context, which hasDomain() reads
+      if (!added.isEmpty() || !deleted.isEmpty()) {
+        SubjectCache.invalidateAllUserContexts();
+      }
     }
 
     private void updateParents(Team original, Team updated) {

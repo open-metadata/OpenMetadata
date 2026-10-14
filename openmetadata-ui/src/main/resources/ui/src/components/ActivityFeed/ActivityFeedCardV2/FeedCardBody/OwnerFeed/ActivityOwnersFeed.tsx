@@ -13,13 +13,10 @@
 
 import {
   Box,
-  Grid,
   Owner,
   OwnerChip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
-
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -103,7 +100,7 @@ function ActivityOwnersFeed({
   const getOwnerItems = useCallback(
     (ownerList: EntityReference[]) => {
       return ownerList.length <= maxVisibleOwners ? (
-        <Box align="center" className="layout-row" wrap="wrap">
+        <Box align="center" className="tw:min-w-0" wrap="wrap">
           {ownerList.map((owner: EntityReference) =>
             owner.type === EntityType.USER ? (
               <UserPopOverCard key={owner.id} userName={owner.name ?? ''}>
@@ -161,39 +158,33 @@ function ActivityOwnersFeed({
   );
 
   return (
-    <Grid
-      className="layout-row layout-grid"
-      style={{ ...getLayoutGutter(8, 8) }}>
+    <Box direction="col" gap={2}>
       {!isEmpty(updatedOwner) && (
-        <Grid.Item className="layout-column" span={24}>
-          <Box align="center" className="layout-row" wrap="wrap">
-            <Box align="center" className="layout-row" wrap="wrap">
-              <AddIcon className="text-success-hover" height={16} width={16} />
+        <Box align="center" wrap="wrap">
+          <Box align="center" className="tw:min-w-0" wrap="wrap">
+            <AddIcon className="text-success-hover" height={16} width={16} />
+            <Typography className="owners-label">
+              {t('label.owner-plural-with-colon')}
+            </Typography>
+          </Box>
+
+          <div className="tw:max-w-full">{renderUpdatedOwner}</div>
+        </Box>
+      )}
+      {!isEmpty(previousOwner) && (
+        <Box align="center" wrap="wrap">
+          <div className="tw:max-w-full">
+            <Box align="center" className="tw:min-w-0" wrap="wrap">
+              <DeletedIcon className="text-error" height={14} width={14} />
               <Typography className="owners-label">
                 {t('label.owner-plural-with-colon')}
               </Typography>
             </Box>
-
-            <Box className="layout-column tw:block">{renderUpdatedOwner}</Box>
-          </Box>
-        </Grid.Item>
+          </div>
+          <div className="tw:max-w-full">{renderPreviousOwner}</div>
+        </Box>
       )}
-      {!isEmpty(previousOwner) && (
-        <Grid.Item className="layout-column" span={24}>
-          <Box align="center" className="layout-row" wrap="wrap">
-            <Box className="layout-column tw:block">
-              <Box align="center" className="layout-row" wrap="wrap">
-                <DeletedIcon className="text-error" height={14} width={14} />
-                <Typography className="owners-label">
-                  {t('label.owner-plural-with-colon')}
-                </Typography>
-              </Box>
-            </Box>
-            <Box className="layout-column tw:block">{renderPreviousOwner}</Box>
-          </Box>
-        </Grid.Item>
-      )}
-    </Grid>
+    </Box>
   );
 }
 

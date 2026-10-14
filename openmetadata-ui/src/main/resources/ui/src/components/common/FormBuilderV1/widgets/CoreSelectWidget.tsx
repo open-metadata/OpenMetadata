@@ -58,6 +58,7 @@ const CoreSelectWidget = ({
       data-testid={id ? `select-widget-${id}` : undefined}
       fontSize="sm"
       hint={getWidgetHint({ rawErrors, schema, options })}
+      id={id}
       isDisabled={disabled || readonly}
       isInvalid={!!rawErrors?.length}
       isRequired={required}
@@ -79,7 +80,11 @@ const CoreSelectWidget = ({
         onChange(optionValueMap.get(String(key)));
       }}>
       {(item) => (
-        <Select.Item id={item.id} key={item.id} textValue={item.label}>
+        <Select.Item
+          data-testid={`select-option-${item.id}`}
+          id={item.id}
+          key={item.id}
+          textValue={item.label}>
           {item.label}
         </Select.Item>
       )}

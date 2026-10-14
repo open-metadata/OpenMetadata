@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
-import { Button, Tooltip } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -194,11 +201,19 @@ const QueryCard: FC<QueryCardProp> = ({
 
   const renderExpandIcon = () =>
     isExpanded ? (
-      <Tooltip title={t('label.exit-fit-to-screen')}>
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={t('label.exit-fit-to-screen')}
+        triggerClassName="tw:inline-flex">
         <ExitFullScreen height={16} width={16} />
       </Tooltip>
     ) : (
-      <Tooltip title={t('label.fit-to-screen')}>
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={t('label.fit-to-screen')}
+        triggerClassName="tw:inline-flex">
         <FullScreen height={16} width={16} />
       </Tooltip>
     );
@@ -212,19 +227,20 @@ const QueryCard: FC<QueryCardProp> = ({
         gap={4}
         itemClassName="layout-space-item">
         <Button
+          color="secondary"
           data-testid="cancel-query-btn"
           key="cancel"
-          size="small"
+          size="xs"
           onClick={() => setIsEditMode(false)}>
           {t('label.cancel')}
         </Button>
 
         <Button
+          color="primary"
           data-testid="save-query-btn"
+          isLoading={sqlQuery.isLoading}
           key="save"
-          loading={sqlQuery.isLoading}
-          size="small"
-          type="primary"
+          size="xs"
           onClick={updateSqlQuery}>
           {t('label.save')}
         </Button>
@@ -274,16 +290,18 @@ const QueryCard: FC<QueryCardProp> = ({
               gap={2}
               itemClassName="layout-space-item">
               <Button
-                className="flex-center"
+                aria-label={t('label.expand')}
+                color="secondary"
                 data-testid="query-entity-expand-button"
-                icon={renderExpandIcon()}
+                iconLeading={renderExpandIcon()}
                 onClick={handleExpandClick}
               />
-              <Tooltip title={t('message.copy-to-clipboard')}>
-                <Button
-                  className="flex-center"
+              <Tooltip arrow title={t('message.copy-to-clipboard')}>
+                <ButtonUtility
+                  color="secondary"
                   data-testid="query-entity-copy-button"
-                  icon={<Copy01 size={16} />}
+                  icon={Copy01}
+                  size="sm"
                   onClick={onCopyToClipBoard}
                 />
               </Tooltip>

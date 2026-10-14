@@ -12,11 +12,13 @@
  */
 import {
   Box,
+  Button,
+  Card,
   Grid,
   SkeletonParagraph,
   Toggle,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -187,12 +189,12 @@ const ApplicationPage = () => {
                 isSelected={showDisabled}
                 onChange={onShowDisabledAppsChange}
               />
-              <span>{t('label.disabled')}</span>
+              <Typography>{t('label.disabled')}</Typography>
             </div>
             <LimitWrapper resource="app">
               <Button
+                color="primary"
                 data-testid="add-application"
-                type="primary"
                 onClick={handleAddApplication}>
                 {t('label.add-entity', {
                   entity: t('label.app-plural'),
@@ -211,7 +213,9 @@ const ApplicationPage = () => {
               className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 tw:min-[992px]:col-span-8 tw:min-[1200px]:col-span-6"
               key={key}>
               <Card>
-                <SkeletonParagraph />
+                <Card.Content>
+                  <SkeletonParagraph />
+                </Card.Content>
               </Card>
             </Grid.Item>
           ))}

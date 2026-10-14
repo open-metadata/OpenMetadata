@@ -14,20 +14,9 @@
 @import (reference) '../../../../styles/variables.less';
 
 .admin-permission-debugger {
-  .ant-card {
-    margin-bottom: var(--om-space-16);
-  }
-
   .ant-typography-h5,
   h5 {
     margin-bottom: var(--om-space-8);
-  }
-
-  .loading-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 300px;
   }
 
   .w-full {
@@ -75,23 +64,6 @@
 
     .evaluation-step {
       margin-bottom: var(--om-space-12);
-      border-left: 4px solid transparent;
-
-      &.matched {
-        border-left-color: var(--om-legacy-color-52c41a);
-        background-color: var(--om-legacy-color-82-196-26-0-05);
-      }
-
-      &.not-matched {
-        border-left-color: @grey-4;
-        background-color: @grey-1;
-      }
-
-      .ant-card-head {
-        background-color: transparent;
-        border-bottom: 1px solid @grey-3;
-        padding: var(--om-space-12) var(--om-space-16);
-      }
 
       .condition-eval {
         margin-left: var(--om-space-16);

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Form, FormProps, Input, Modal } from 'antd';
+import { SimpleModal } from '@openmetadata/ui-core-components';
+import { Form, FormProps, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { FunctionComponent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,25 +53,19 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
   }, [userData.displayName]);
 
   return (
-    <Modal
-      centered
-      open
+    <SimpleModal
+      isOpen
       cancelText={t('label.cancel')}
-      closable={false}
-      confirmLoading={isLoading}
       data-testid="profile-edit-modal"
-      maskClosable={false}
-      okButtonProps={{
-        form: 'profile-edit-form',
-        type: 'primary',
-        htmlType: 'submit',
-      }}
+      isDismissable={false}
+      isOkLoading={isLoading}
       okText={t('label.save')}
       title={t('label.edit-entity', {
         entity: t('label.display-name'),
       })}
       width={500}
-      onCancel={onCancel}>
+      onCancel={onCancel}
+      onOk={form.submit}>
       <Form
         form={form}
         id="profile-edit-form"
@@ -83,6 +78,6 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
           />
         </Form.Item>
       </Form>
-    </Modal>
+    </SimpleModal>
   );
 };

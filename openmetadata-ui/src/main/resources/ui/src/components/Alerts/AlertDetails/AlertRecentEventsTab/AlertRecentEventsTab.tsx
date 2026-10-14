@@ -18,16 +18,18 @@ import {
   EmptyPlaceholder,
   Grid,
   Skeleton,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Bell01 } from '@openmetadata/ui-core-components/icons';
-import { Collapse, Tooltip } from 'antd';
+import { Collapse } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
+import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import {
@@ -96,43 +98,60 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   );
 
   const handleFilterSelect = useCallback(
-    (key: Key) => setFilter(key as AlertRecentEventFilters),
-    [filter]
+    (key: Key) => {
+      setFilter(key as AlertRecentEventFilters);
+      handlePageChange(INITIAL_PAGING_VALUE);
+    },
+    [handlePageChange]
   );
 
   const getAlertRecentEvents = useCallback(
-    async (paginationOffset = 0) => {
-      try {
-        setLoading(true);
-        const { data, paging } = await getAlertEventsFromId({
-          id,
-          params: {
-            ...(filter === AlertRecentEventFilters.ALL
-              ? { limit: pageSize, paginationOffset }
-              : {
-                  status: filter as Status,
-                  limit: pageSize,
-                  paginationOffset,
-                }),
-          },
-        });
+    (paginationOffset: number, isStale: () => boolean) => {
+      setLoading(true);
+      getAlertEventsFromId({
+        id,
+        params: {
+          ...(filter === AlertRecentEventFilters.ALL
+            ? { limit: pageSize, paginationOffset }
+            : {
+                status: filter as Status,
+                limit: pageSize,
+                paginationOffset,
+              }),
+        },
+      })
+        .then(({ data, paging }) => {
+          if (isStale()) {
+            return;
+          }
+          // A page restored from the URL can lie past the end, where the empty state hides the paginator.
+          if (isEmpty(data) && paginationOffset > 0) {
+            handlePageChange(INITIAL_PAGING_VALUE);
 
-        setAlertRecentEvents(data);
-        handlePagingChange(paging);
-      } catch (e) {
-        showErrorToast(e as AxiosError);
-      } finally {
-        setLoading(false);
-      }
+            return;
+          }
+
+          setAlertRecentEvents(data);
+          handlePagingChange(paging);
+        })
+        .catch((e: AxiosError) => {
+          if (!isStale()) {
+            showErrorToast(e);
+          }
+        })
+        .finally(() => {
+          if (!isStale()) {
+            setLoading(false);
+          }
+        });
     },
-    [id, filter, pageSize, handlePagingChange]
+    [id, filter, pageSize, handlePagingChange, handlePageChange]
   );
 
-  const pagingHandler = ({ offset, page }: PagingHandlerParams) => {
-    handlePageChange(page);
-    handlePagingChange({ ...paging, offset });
-    getAlertRecentEvents(offset);
-  };
+  const pagingHandler = useCallback(
+    ({ page }: PagingHandlerParams) => handlePageChange(page),
+    [handlePageChange]
+  );
 
   const recentEventsList = useMemo(() => {
     if (loading) {
@@ -215,16 +234,20 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                           <Box className="layout-column tw:block">
                             {/* Display icon for the status of the alert event */}
                             <Tooltip
-                              className="flex-center"
-                              title={startCase(typedEvent.status)}>
+                              arrow
+                              excludeTriggerFromTabOrder
+                              title={startCase(typedEvent.status)}
+                              triggerClassName="tw:inline-flex flex-center">
                               {getAlertStatusIcon(typedEvent.status)}{' '}
                             </Tooltip>
                           </Box>
                           <Box className="layout-column tw:block">
                             {/* Display icon for the asset the change event is related to */}
                             <Tooltip
-                              className="flex-center"
-                              title={startCase(changeEventData.entityType)}>
+                              arrow
+                              excludeTriggerFromTabOrder
+                              title={startCase(changeEventData.entityType)}
+                              triggerClassName="tw:inline-flex flex-center">
                               {searchClassBase.getEntityIcon(
                                 changeEventData.entityType ?? '',
                                 'h-4 w-4'
@@ -233,7 +256,11 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                           </Box>
                           <Box className="layout-column tw:block">
                             {/* Display the change event id */}
-                            <Typography>{changeEventData.id}</Typography>
+                            <Typography>
+                              {isEmpty(typedEvent.data)
+                                ? t('label.unreadable-event')
+                                : changeEventData.id}
+                            </Typography>
                           </Box>
                         </Box>
                       </Box>
@@ -344,14 +371,21 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     alertRecentEvents,
     pageSize,
     currentPage,
+    paging,
     pagingHandler,
     handlePageSizeChange,
     showPagination,
+    t,
   ]);
 
   useEffect(() => {
-    getAlertRecentEvents();
-  }, [filter, pageSize]);
+    let ignore = false;
+    getAlertRecentEvents((currentPage - 1) * pageSize, () => ignore);
+
+    return () => {
+      ignore = true;
+    };
+  }, [currentPage, getAlertRecentEvents, pageSize]);
 
   return (
     <Grid

@@ -730,10 +730,12 @@ export const addAssetToGlossaryTerm = async (
   await expect(assetSelectionModal).toBeVisible();
   await expect(assetSelectionModal).toContainText('Add Assets');
 
-  await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
+  await expect(page.getByTestId('asset-filters')).toBeVisible();
 
   await expect(
-    page.locator('.asset-filters-wrapper .explore-quick-filters-container')
+    page
+      .getByTestId('asset-filters')
+      .locator('.explore-quick-filters-container')
   ).toBeVisible();
 
   const filterButton = page.locator(
@@ -759,7 +761,7 @@ export const addAssetToGlossaryTerm = async (
     await page
       .locator(`[data-testid="table-data-card_${entityFqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
     await waitForAllLoadersToDisappear(page);
     await expect(
       page.locator(
@@ -868,10 +870,12 @@ export const verifyAssetModalFilters = async (
   await expect(assetSelectionModal).toBeVisible();
   await expect(assetSelectionModal).toContainText('Add Assets');
 
-  await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
+  await expect(page.getByTestId('asset-filters')).toBeVisible();
 
   await expect(
-    page.locator('.asset-filters-wrapper .explore-quick-filters-container')
+    page
+      .getByTestId('asset-filters')
+      .locator('.explore-quick-filters-container')
   ).toBeVisible();
 
   const filterButton = page.locator(
@@ -886,7 +890,7 @@ export const verifyAssetModalFilters = async (
     ).toBeVisible();
   }
 
-  const filterWrapper = page.locator('.asset-filters-wrapper');
+  const filterWrapper = page.getByTestId('asset-filters');
   await waitForAllLoadersToDisappear(page);
 
   await testFilterWithSpecificOption(
@@ -1292,10 +1296,12 @@ export const createDescriptionTaskForGlossary = async (
     );
 
     await expect(
-      page.locator('[data-testid="select-assignee"] input')
+      page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
-    const assigneeField = page.locator('[data-testid="select-assignee"] input');
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
@@ -1342,11 +1348,13 @@ export const createTagTaskForGlossary = async (
     );
 
     await expect(
-      page.locator('[data-testid="select-assignee"] input')
+      page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
     // select assignee
-    const assigneeField = page.locator('[data-testid="select-assignee"] input');
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${value.assignee}**&index=user%2Cteam*`
@@ -1363,9 +1371,7 @@ export const createTagTaskForGlossary = async (
 
   if (addTag) {
     // select tags
-    const suggestTags = page.locator(
-      '[data-testid="tag-selector"] > .ant-select-selector .ant-select-selection-search-input'
-    );
+    const suggestTags = page.locator('[data-testid="tag-selector"] input');
     await suggestTags.click();
 
     const querySearchResponse = page.waitForResponse(

@@ -706,8 +706,6 @@ before awaiting a response. A `waitForResponse` whose predicate can never match 
 it hangs until the test timeout and then reports `Target page, context or browser has been
 closed`, which points nowhere near the real cause.
 
-`playwright/utils/widgetFilters.ts` (`selectWidgetSortOption`) is the reference implementation.
-
 ### Modal and Scrollable Container Patterns
 
 ```typescript
@@ -974,8 +972,6 @@ When the budget expires, Playwright reports whichever action happened to be runn
    ```
    Join the two by test `id`. If the shard-wide median slowdown is **> 1.3x**, the runner was degraded
    and the failure is a budget cliff, not a code regression.
-3. Trace trap: the long red `Wait for selector #email` in login is the losing branch of the
-   `Promise.any` in `authenticateAdminPage` (`playwright/utils/admin.ts`) — not a login stall.
 
 ---
 
