@@ -21,7 +21,7 @@
   },
   "playwright/e2e/Features/ActivityFeed.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 11
+      "count": 9
     }
   },
   "playwright/e2e/Features/ActivityStream.spec.ts": {
@@ -275,11 +275,6 @@
   "playwright/e2e/Features/PersonaAIContextRules.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 5
-    }
-  },
-  "playwright/e2e/Features/RTL.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
     }
   },
   "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts": {
@@ -684,7 +679,7 @@
   },
   "playwright/utils/customizeLandingPage.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 2
     }
   },
   "playwright/utils/customizeNavigation.ts": {
@@ -709,7 +704,7 @@
   },
   "playwright/utils/entity.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 15
+      "count": 14
     }
   },
   "playwright/utils/entityPanel.ts": {
@@ -1353,11 +1348,6 @@
       "count": 2
     }
   },
-  "src/components/common/DomainSelectableTree/DomainSelectableTree.interface.ts": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/common/DraggableTabs/DraggableTabs.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 4
@@ -1409,26 +1399,6 @@
     }
   },
   "src/components/common/Form/JSONSchema/JsonSchemaWidgets/ManifestJsonWidget/ManifestJsonWidget.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/common/Form/JSONSchema/JsonSchemaWidgets/PasswordWidget.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/common/Form/JSONSchema/JsonSchemaWidgets/TreeSelectWidget.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
-  "src/components/common/FormBuilder/FormBuilder.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
     }

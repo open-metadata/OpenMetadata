@@ -78,11 +78,12 @@ integration tests run **only in the merge queue**, and JavaUIIT/search-it run ni
 tests the diff impacts locally with the `java-affected-tests` skill:
 ```bash
 make java_affected                          # impacted unit tests + ITs, by bucket, with the commands
-make java_affected_run                      # run them; writes target/java-tests/local-pr-results.md
-make java_affected_run ARGS="--update-pr"   # once the PR exists: upsert the block in the PR body
+make java_affected_run                      # run them; writes the summary and details to target/java-tests/
+make java_affected_run ARGS="--update-pr"   # once the PR exists: summary in the PR body, details in a comment
 ```
 Before the PR exists, paste `target/java-tests/local-pr-results.md` between the
-`local-java-test-results` markers under "Backend integration tests". Resolve every impact-map gap
+`local-java-test-results` markers under "Backend integration tests"; once it exists, post the
+details with `gh pr comment --body-file target/java-tests/local-pr-results-details.md`. Resolve every impact-map gap
 and every "no unit test references" class the planner lists (the skill says how). Code and ITs
 the branch adds must be owned in the impact map before the PR: `git push` and `gh pr create` are
 blocked until `python3 .github/scripts/plan_local_java_tests.py --check-branch` passes. Coverage on
@@ -182,8 +183,9 @@ For a verified local recording, include its evidence and a reference on its own 
 ```
 
 - **List every test run locally.** CI on the PR no longer runs the integration tests or Playwright,
-  so the description is the only record of what ran before review. The Java block names each class
-  it ran with its counts, and gives a module run in full as counts. Under the other Tests sections, list everything else you ran — pytest
+  so the PR is the only record of what ran before review. The Java block in the description is a
+  summary; its details comment names each class it ran with its counts, and gives a module run in
+  full as counts. Under the other Tests sections, list everything else you ran — pytest
   files, Jest specs, Playwright specs, manual checks — with pass/fail counts, and say what you did
   not run and why.
 - **Link the counterpart PR.** When the change needs an openmetadata-collate (or
@@ -245,8 +247,8 @@ the gate explicitly allows a draft with its remaining work stated:
 - [ ] At least one "Type of change" box is checked
 - [ ] Large PR has a high-level design section filled in (not `N/A`)
 - [ ] Tests section lists actual files and coverage numbers (not placeholders)
-- [ ] The description lists every test run locally (the Java block's classes plus every other suite
-      run), and links the counterpart Collate PR when there is one
+- [ ] The PR records every test run locally (the Java details comment's classes, and every other
+      suite run in the description), and links the counterpart Collate PR when there is one
 - [ ] When creating a PR for a UI feature or feature task: Docker build/health evidence, sample-data setup and a verified local recording are ready for Step 7; verify the GitHub-hosted video after upload and before marking ready. Incomplete evidence means draft. Other changes may explain N/A.
 - [ ] Java / schema / migration / pom changes: the `local-java-test-results` block reads PASSED (or
       NOT NEEDED) for the current commit — a FAILED block or no block means draft, not ready

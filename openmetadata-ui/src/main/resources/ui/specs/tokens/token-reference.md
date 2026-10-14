@@ -4,9 +4,9 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **821**.
+Total project tokens: **816**.
 
-## Spacing (56)
+## Spacing (53)
 
 padding / margin / gap. See foundations/spacing.md.
 
@@ -31,7 +31,6 @@ padding / margin / gap. See foundations/spacing.md.
 | `--om-space-14` | `14px` |
 | `--om-space-15` | `15px` |
 | `--om-space-16` | `16px` |
-| `--om-space-17` | `17px` |
 | `--om-space-18` | `18px` |
 | `--om-space-19` | `19px` |
 | `--om-space-20` | `20px` |
@@ -54,7 +53,6 @@ padding / margin / gap. See foundations/spacing.md.
 | `--om-space-56` | `56px` |
 | `--om-space-60` | `60px` |
 | `--om-space-64` | `64px` |
-| `--om-space-70` | `70px` |
 | `--om-space-75` | `75px` |
 | `--om-space-80` | `80px` |
 | `--om-space-84` | `84px` |
@@ -66,7 +64,6 @@ padding / margin / gap. See foundations/spacing.md.
 | `--om-space-176` | `176px` |
 | `--om-space-192` | `192px` |
 | `--om-space-208` | `208px` |
-| `--om-space-220` | `220px` |
 | `--om-space-290` | `290px` |
 
 ## Layout (1)
@@ -260,7 +257,7 @@ transition / animation. See foundations/motion.md.
 | `--om-ease-out` | `cubic-bezier(0, 0, 0.2, 1)` |
 | `--om-ease-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` |
 
-## Semantic colors (72)
+## Semantic colors (70)
 
 Prefer these — they adapt to dark mode.
 
@@ -306,8 +303,6 @@ Prefer these — they adapt to dark mode.
 | `--om-color-interactive-active` | `#f5f5f5` |
 | `--om-color-interactive-hover` | `#fafafa` |
 | `--om-color-interactive-selected` | `#eff8ff` |
-| `--om-color-link` | `#1570ef` |
-| `--om-color-link-hover` | `#175cd3` |
 | `--om-color-text` | `#181d27` |
 | `--om-color-text-brand` | `#194185` |
 | `--om-color-text-disabled` | `#717680` |

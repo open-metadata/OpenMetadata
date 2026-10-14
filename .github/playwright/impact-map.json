@@ -333,8 +333,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/DomainsWidget/**",
-        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/DataProductsWidget/**",
         "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/AssetsSelectionModal/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/domainAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/queries/domainQuery.ts",
@@ -659,7 +657,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/customizeLandingPage.ts",
         "openmetadata-ui/src/main/resources/ui/playwright/utils/widgetFilters.ts"
       ],
-      "projects": ["chromium", "Data Insight"],
+      "projects": ["chromium", "Data Insight", "Basic"],
       "specs": [
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
@@ -670,6 +668,29 @@
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The persona-driven home page: its shell, the topic-card widgets and the hooks that feed them. Every card has its behaviour spec under Features/LandingPageWidgets; CustomizeWidgets and CustomizeLandingPage drive the same cards through the persona layout editor. The landing-page fixture is listed because every spec in that folder signs in through it.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataEstate.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useKpiProgress.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataQualitySummary.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useCuratedAssets.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataProducts.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDomainOverview.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useOwnedAndFollowed.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeMyDataPage*",
+        "openmetadata-ui/src/main/resources/ui/src/constants/CustomizeMyDataPage.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/landingPageUser.ts"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Features/LandingPageWidgets/**/*.spec.ts",
+        "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Flow/CustomizeLandingPage.spec.ts"
       ]
     },
     {
@@ -845,6 +866,80 @@
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Pages/AIProfile/**/*.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts"
+      ]
+    },
+    {
+      "_comment": "FormBuilderV1 renders every app-config, SSO, ingestion and service-connection form, so it runs the specs those forms map to.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/FormBuilderV1/**"
+      ],
+      "projects": ["chromium", "Basic", "GlobalSettings", "Ingestion"],
+      "specs": [
+        "playwright/e2e/Auth/LoginConfiguration.spec.ts",
+        "playwright/e2e/Features/AutoPilot.spec.ts",
+        "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
+        "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/SSOConfiguration.spec.ts",
+        "playwright/e2e/Features/ServiceAgentsDeploymentSummary.spec.ts",
+        "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
+        "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
+        "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
+        "playwright/e2e/Features/TestSuite*.spec.ts",
+        "playwright/e2e/Flow/LineageSettings.spec.ts",
+        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
+        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
+        "playwright/e2e/Pages/AppStopRunModal.spec.ts",
+        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
+        "playwright/e2e/Pages/HealthCheck.spec.ts",
+        "playwright/e2e/Pages/LogsViewer.spec.ts",
+        "playwright/e2e/Pages/OmdURLConfiguration.spec.ts",
+        "playwright/e2e/Pages/Policies.spec.ts",
+        "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts",
+        "playwright/e2e/Pages/Roles.spec.ts",
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts",
+        "playwright/e2e/Pages/TaskFormSettings.spec.ts",
+        "playwright/e2e/Pages/TestSuite*.spec.ts"
+      ]
+    },
+    {
+      "_comment": "SSO configuration form and its tests; the form itself is also mapped by the generated map.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/SettingsSso/SSOConfigurationForm/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/SSOConfiguration.spec.ts"]
+    },
+    {
+      "_comment": "Shared data-asset picker (shell, rows, footer, count bar, async options hook) behind both DataAssetSelectList and DataAssetAsyncSelectList.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/DataAssetSelectList/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/DataAssetAsyncSelectList/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Legacy RJSF FormBuilder and its JSONSchema widgets, used only by the application config, app run history and SSO configuration forms.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/FormBuilder/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/**"
+      ],
+      "projects": ["chromium", "Basic", "GlobalSettings"],
+      "specs": [
+        "playwright/e2e/Features/SSOConfiguration.spec.ts",
+        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
+        "playwright/e2e/Pages/AppStopRunModal.spec.ts",
+        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts"
       ]
     },
     {
