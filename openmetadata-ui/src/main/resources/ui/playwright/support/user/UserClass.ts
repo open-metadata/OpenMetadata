@@ -345,7 +345,7 @@ export class UserClass {
       .catch(() => false);
 
     if (hasOpenClass) {
-      await page.getByTestId('sidebar-toggle').click();
+      await page.getByTestId('sidebar-toggle').dispatchEvent('click');
     }
   }
 
