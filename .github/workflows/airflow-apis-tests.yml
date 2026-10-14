@@ -105,10 +105,10 @@ jobs:
         # The scanner runs in the module directory; coverage runs from the repository root.
         sed -i 's|filename="openmetadata-airflow-apis/|filename="|g' openmetadata-airflow-apis/ci-coverage.xml
 
-    # Fork PRs get no secrets, so the PR analysis runs for same-repo PRs only.
+    # Fork and Dependabot PRs get no secrets, so the PR analysis skips them.
     - name: Push Results in PR to Sonar
       id: push-to-sonar
-      if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+      if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
       continue-on-error: true
       uses: SonarSource/sonarqube-scan-action@v7
       env:
@@ -120,13 +120,13 @@ jobs:
 
     # next two steps are for retrying "Push Results in PR to Sonar" step in case it fails
     - name: Wait to retry 'Push Results in PR to Sonar'
-      if: ${{ github.event.pull_request.head.repo.full_name == github.repository && steps.push-to-sonar.outcome != 'success' }}
+      if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.push-to-sonar.outcome != 'success' }}
       run: sleep 20s
       shell: bash
 
     - name: Retry 'Push Results in PR to Sonar'
       uses: SonarSource/sonarqube-scan-action@v7
-      if: ${{ github.event.pull_request.head.repo.full_name == github.repository && steps.push-to-sonar.outcome != 'success' }}
+      if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.push-to-sonar.outcome != 'success' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.AIRFLOW_APIS_SONAR_TOKEN }}

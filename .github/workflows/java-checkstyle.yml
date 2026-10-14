@@ -76,10 +76,10 @@ jobs:
         run: |
           git diff-files --quiet
 
-      # Fork PRs get a read-only token, so only same-repo PRs get the comment; everyone gets the
-      # job summary and the error annotation from the next step.
+      # Fork and Dependabot PRs get a read-only token, so only other same-repo PRs get the comment;
+      # everyone gets the job summary and the error annotation from the next step.
       - name: Create a comment in the PR with the instructions
-        if: ${{ steps.git.outcome != 'success' && github.event.pull_request.head.repo.full_name == github.repository }}
+        if: ${{ steps.git.outcome != 'success' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
         uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}

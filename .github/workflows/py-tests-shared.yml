@@ -620,10 +620,10 @@ jobs:
         run: rm pom.xml
         shell: bash
 
-      # Fork PRs get no secrets, so the PR analysis runs for same-repo PRs only.
+      # Fork and Dependabot PRs get no secrets, so the PR analysis skips them.
       - name: Push Results in PR to Sonar
         id: push-to-sonar
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
         continue-on-error: true
         uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7
         env:

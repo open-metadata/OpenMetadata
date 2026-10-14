@@ -590,7 +590,7 @@ jobs:
       - name: Find existing summary comment
         uses: peter-evans/find-comment@v4
         id: fc
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
         continue-on-error: true
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -602,8 +602,8 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && steps.fc.outcome != 'failure' }}
         continue-on-error: true
         env:
-          # Fork PRs get a read-only token: they get the job summary but no comment.
-          POST_COMMENT: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+          # Fork and Dependabot PRs get a read-only token: they get the job summary but no comment.
+          POST_COMMENT: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
         with:
           script: |
             const checks = [

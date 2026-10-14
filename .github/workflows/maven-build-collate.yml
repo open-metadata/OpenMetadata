@@ -59,14 +59,19 @@ concurrency:
   cancel-in-progress: true
 jobs:
   # Merge queue only. The Collate integration tests exercise its backend, so a queue entry that
-  # changes no backend path skips them; the PR run already built Collate against any UI change.
+  # changes no backend path skips them; a same-repo PR run already built Collate against any UI
+  # change. A fork or Dependabot PR had no PR-time run, so its UI changes are built here instead.
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: ${{ github.event_name == 'merge_group' }}
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
+      skipped_pr_ui: ${{ steps.filter.outputs.ui == 'true' && steps.queued-pr.outputs.skipped == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -88,14 +93,35 @@ jobs:
               - 'common/**'
               - 'pom.xml'
               - 'bootstrap/**'
+            ui:
+              - 'openmetadata-ui/src/main/resources/ui/src/**'
+      # The merge group's ref names the PR at its tip: gh-readonly-queue/<base>/pr-<number>-<sha>.
+      # Fork and Dependabot PRs got no COLLATE_PAT at PR time, so their Collate run happens here.
+      - name: Check whether the queued PR skipped its PR-time Collate run
+        id: queued-pr
+        if: ${{ github.event_name == 'merge_group' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          REPO: ${{ github.repository }}
+        run: |
+          pr=$(sed -nE 's#.*/pr-([0-9]+)-[0-9a-f]+$#\1#p' <<<"$HEAD_REF")
+          if [ -z "$pr" ]; then
+            echo "::warning::No PR number in merge group ref $HEAD_REF"
+            echo "skipped=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          skipped=$(gh api "repos/$REPO/pulls/$pr" \
+            --jq '.head.repo.full_name != .base.repo.full_name or .user.login == "dependabot[bot]"')
+          echo "skipped=$skipped" >> "$GITHUB_OUTPUT"
 
   maven-collate-ci:
     needs: changes
     runs-on: ubuntu-latest
     # `changes` runs only for merge_group; on every other event it is skipped, which would skip this
     # job too without the explicit status function. Fork and Dependabot PRs get no COLLATE_PAT, so
-    # they skip the PR-time build; the merge queue still builds Collate against backend changes.
-    if: ${{ !cancelled() && (github.event_name != 'merge_group' || needs.changes.outputs.backend == 'true') && !github.event.pull_request.draft && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) }}
+    # they skip the PR-time build and the merge queue builds Collate for them (see `changes`).
+    if: ${{ !cancelled() && (github.event_name != 'merge_group' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.skipped_pr_ui == 'true') && !github.event.pull_request.draft && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) }}
     steps:
       # Collate mirrors each OpenMetadata release line on an identically named branch, so build the
       # Collate branch matching the PR or merge-queue base: dispatching main for a 1.13 PR builds
@@ -120,9 +146,10 @@ jobs:
           COLLATE_REF: ${{ steps.collate-ref.outputs.ref }}
           SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha || github.sha }}
           # Collate's openmetadata-dispatch.yml recognises a PR run by the event name
-          # 'pull_request_target' (it skips the Collate integration tests for it), so a
-          # pull_request run keeps reporting itself under that name.
-          EVENT: ${{ github.event_name == 'pull_request' && 'pull_request_target' || github.event_name }}
+          # 'pull_request_target' (it skips the Collate integration tests for it). A pull_request
+          # run, and a queue run that only stands in for a fork's skipped PR-time build, report
+          # themselves under that name.
+          EVENT: ${{ (github.event_name == 'pull_request' || (github.event_name == 'merge_group' && needs.changes.outputs.backend != 'true')) && 'pull_request_target' || github.event_name }}
           # The Collate job caps itself at timeout-minutes: 90, so waiting past that point is
           # what guarantees we report its real conclusion instead of giving up first. Successful
           # main builds run 58-68 min, which the previous 61-min budget sat inside: the wait

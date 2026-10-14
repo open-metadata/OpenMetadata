@@ -87,10 +87,10 @@ jobs:
           source env/bin/activate
           make py_format_check
 
-      # Fork PRs get a read-only token, so only same-repo PRs get the comment; everyone gets the
-      # job summary and the error annotation from the next step.
+      # Fork and Dependabot PRs get a read-only token, so only other same-repo PRs get the comment;
+      # everyone gets the job summary and the error annotation from the next step.
       - name: Create a comment in the PR with the instructions
-        if: ${{ steps.scope.outputs.python == 'true' && steps.style.outcome != 'success' && github.event.pull_request.head.repo.full_name == github.repository }}
+        if: ${{ steps.scope.outputs.python == 'true' && steps.style.outcome != 'success' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
         uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5
         with:
           issue-number: ${{ github.event.pull_request.number }}

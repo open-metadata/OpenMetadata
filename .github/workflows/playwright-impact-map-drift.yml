@@ -102,6 +102,7 @@ jobs:
           FULL_REPO: ${{ steps.pr-details.outputs.full_repo }}
           HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
         run: |
           if [ "$EVENT_NAME" == "workflow_dispatch" ] && [ -n "$FULL_REPO" ]; then
             if [ "$FULL_REPO" != "$BASE_REPO" ]; then
@@ -110,7 +111,8 @@ jobs:
               echo "is_fork=false" >> $GITHUB_OUTPUT
             fi
           elif [ "$EVENT_NAME" == "pull_request" ]; then
-            if [ "$HEAD_REPO_FULL_NAME" != "$BASE_REPO" ]; then
+            # Dependabot runs get no secrets either, so they are handled like a fork.
+            if [ "$HEAD_REPO_FULL_NAME" != "$BASE_REPO" ] || [ "$ACTOR" == "dependabot[bot]" ]; then
               echo "is_fork=true" >> $GITHUB_OUTPUT
             else
               echo "is_fork=false" >> $GITHUB_OUTPUT

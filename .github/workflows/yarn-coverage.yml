@@ -79,7 +79,7 @@ jobs:
           # SonarCloud report the whole tree as "new code". So do a full clone only for
           # same-repo PRs; keep the blob:none optimization for fork PRs, merge_group and
           # workflow_dispatch, which never run the Sonar scan.
-          filter: ${{ github.event.pull_request.head.repo.full_name != github.repository && 'blob:none' || '' }}
+          filter: ${{ (github.event.pull_request.head.repo.full_name != github.repository || github.actor == 'dependabot[bot]') && 'blob:none' || '' }}
           persist-credentials: false
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -129,15 +129,15 @@ jobs:
           title: Jest test Coverage
           summary-title: UI tests summary
           badge-title: Coverage
-          # Fork PRs get a read-only token, so only same-repo PRs get the comment.
-          hide-comment: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+          # Fork and Dependabot PRs get a read-only token, so only other same-repo PRs get the comment.
+          hide-comment: ${{ github.event.pull_request.head.repo.full_name != github.repository || github.actor == 'dependabot[bot]' }}
       - name: Coverage summary
         env:
           SUMMARY_HTML: ${{ steps.coverage_comment.outputs.summaryHtml }}
         run: echo "$SUMMARY_HTML" >> "$GITHUB_STEP_SUMMARY"
-      # Fork PRs get no Sonar token, so the scanner and the PR scan run for same-repo PRs only.
+      # Fork and Dependabot PRs get no Sonar token, so the scanner and the PR scan skip them.
       - name: yarn add sonarqube-scanner
-        if: github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: npm install -g sonarqube-scanner@^4.3.0
         id: npm_install_sonar_scanner
@@ -150,7 +150,7 @@ jobs:
         # told apart from an upload error / rate limit / timeout, which never returns a
         # "QUALITY GATE STATUS" line and must not block the required check.
         continue-on-error: true
-        if: github.event.pull_request.head.repo.full_name == github.repository && steps.npm_install_sonar_scanner.outcome == 'success'
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.npm_install_sonar_scanner.outcome == 'success'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
           set +e
@@ -228,7 +228,7 @@ jobs:
         run: |
           job="${{ needs.ui-coverage-tests.result }}"
           status="${{ needs.ui-coverage-tests.outputs.sonar_gate_status }}"
-          same_repo_pr="${{ github.event.pull_request.head.repo.full_name == github.repository }}"
+          same_repo_pr="${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}"
 
           # Skipped means no UI paths changed. Pass, exactly like ui-coverage —
           # a required check that never completes blocks the PR forever.
@@ -242,7 +242,7 @@ jobs:
           fi
 
           # Only same-repo PRs run the PR scan: merge_group / dispatch have no PR and
-          # fork PRs get no Sonar token, so there is no verdict to gate.
+          # fork and Dependabot PRs get no Sonar token, so there is no verdict to gate.
           if [[ "$same_repo_pr" != "true" ]]; then
             echo "Sonar PR scan does not apply to this run — nothing to gate."
             exit 0
