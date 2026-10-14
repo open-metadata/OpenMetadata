@@ -88,6 +88,25 @@ export interface PersonaContextDocument {
   truncatedCount: number;
 }
 
+export interface PersonaContextStatus {
+  cacheState: CacheState;
+  tokensEst: number;
+  entitiesIncluded: number;
+  lastError?: string;
+  lastGeneratedAt?: number;
+  personaId: string;
+}
+
+export const getPersonaAIContextStatus = async (
+  params: Pick<GetPersonasParams, 'after' | 'before' | 'limit'>
+) => {
+  const response = await axiosClient.get<
+    PagingResponse<PersonaContextStatus[]>
+  >(`${BASE_URL}/aiContext/status`, { params });
+
+  return response.data;
+};
+
 export const getPersonaAIContext = async (id: string) => {
   const response = await axiosClient.get<PersonaContextDefinition>(
     `${BASE_URL}/${id}/aiContext`

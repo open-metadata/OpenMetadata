@@ -10,15 +10,42 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Persona } from '../../../generated/entity/teams/persona';
-import { getAllPersonas } from '../../../rest/PersonaAPI';
+import { CacheState } from '../../../generated/type/personaContextDefinition';
+import {
+  getAllPersonas,
+  getPersonaAIContextStatus,
+  updatePersonaAIContext,
+} from '../../../rest/PersonaAPI';
 import ContextCenterAIContextPage from './ContextCenterAIContextPage';
 
 const mockNavigate = jest.fn();
 
 jest.mock('../../../rest/PersonaAPI', () => ({
   getAllPersonas: jest.fn(),
+  getPersonaAIContextStatus: jest.fn(),
+  updatePersonaAIContext: jest.fn(),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+const mockAuth = { isAdminUser: true };
+const mockHandlePageChange = jest.fn();
+const mockPaging = {
+  currentPage: 1,
+  handlePageChange: mockHandlePageChange,
+  handlePageSizeChange: jest.fn(),
+  handlePagingChange: jest.fn(),
+  pageSize: 15,
+  paging: { total: 0 } as { after?: string; total: number },
+  showPagination: false,
+};
+
+jest.mock('../../../hooks/paging/usePaging', () => ({
+  usePaging: () => mockPaging,
 }));
 
 jest.mock('react-i18next', () => ({
@@ -30,7 +57,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../../hooks/authHooks', () => ({
-  useAuth: () => ({ isAdminUser: true }),
+  useAuth: () => mockAuth,
 }));
 
 jest.mock('../../../components/common/Loader/Loader', () => () => (
@@ -62,25 +89,51 @@ const personas: Persona[] = [
   } as Persona,
 ];
 
-const disabledDefinitionPersonas: Persona[] = [
-  {
-    contextDefinition: {
-      enabled: false,
-      rules: [{ entityType: 'table', filteredInSearch: true, name: 'Finance' }],
-    },
-    description: 'Disabled persona',
-    fullyQualifiedName: 'Disabled',
-    id: '22222222-2222-4222-8222-222222222222',
-    name: 'Disabled',
-  } as Persona,
-];
-
 describe('ContextCenterAIContextPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuth.isAdminUser = true;
+    mockPaging.paging = { total: 0 };
+    mockPaging.showPagination = false;
+    (getPersonaAIContextStatus as jest.Mock).mockResolvedValue({ data: [] });
   });
 
-  it('lists personas with their rule and scoped-rule counts', async () => {
+  it('renders users, rules, entities, budget and freshness from the persona and its cache status', async () => {
+    (getAllPersonas as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          ...personas[0],
+          users: [
+            { id: 'u1', type: 'user' },
+            { id: 'u2', type: 'user' },
+          ],
+        },
+      ],
+    });
+    (getPersonaAIContextStatus as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          cacheState: CacheState.Fresh,
+          entitiesIncluded: 64,
+          lastGeneratedAt: Date.now(),
+          personaId: personas[0].id,
+          tokensEst: 21700,
+        },
+      ],
+    });
+
+    render(<ContextCenterAIContextPage />);
+
+    const row = await screen.findByTestId('ai-context-persona-DataEngineer');
+
+    expect(row).toHaveTextContent('2');
+    expect(row).toHaveTextContent('64');
+    expect(row).toHaveTextContent('message.persona-context-budget-usage');
+    expect(row).toHaveTextContent('label.freshness-with-time');
+  });
+
+  it('does not request cache status for non-admins', async () => {
+    mockAuth.isAdminUser = false;
     (getAllPersonas as jest.Mock).mockResolvedValue({ data: personas });
 
     render(<ContextCenterAIContextPage />);
@@ -88,28 +141,36 @@ describe('ContextCenterAIContextPage', () => {
     expect(
       await screen.findByTestId('ai-context-persona-DataEngineer')
     ).toBeInTheDocument();
-    expect(screen.getByText('label.entity-count-rule-plural')).toBeVisible();
+    expect(getPersonaAIContextStatus).not.toHaveBeenCalled();
     expect(
-      screen.getByText('label.entity-count-filtered-in-search')
-    ).toBeVisible();
+      screen.getByTestId('ai-context-persona-enabled-DataEngineer')
+    ).toHaveAttribute('data-disabled', 'true');
   });
 
-  it('does not render the scoped-rule badge when the definition is disabled', async () => {
-    // The served scope is empty for a switched-off definition, so the badge would report search as
-    // narrowed by rules the backend never applies.
-    (getAllPersonas as jest.Mock).mockResolvedValue({
-      data: disabledDefinitionPersonas,
-    });
+  it('persists the enabled toggle and reverts it when the update fails', async () => {
+    (getAllPersonas as jest.Mock).mockResolvedValue({ data: personas });
+    (updatePersonaAIContext as jest.Mock).mockRejectedValue(new Error('nope'));
 
     render(<ContextCenterAIContextPage />);
 
-    expect(
-      await screen.findByTestId('ai-context-persona-Disabled')
-    ).toBeInTheDocument();
-    expect(screen.getByText('label.entity-count-rule-plural')).toBeVisible();
-    expect(
-      screen.queryByText('label.entity-count-filtered-in-search')
-    ).not.toBeInTheDocument();
+    const toggle = await screen.findByTestId(
+      'ai-context-persona-enabled-DataEngineer'
+    );
+    const input = toggle.querySelector('input') as HTMLInputElement;
+
+    expect(input.checked).toBe(true);
+
+    fireEvent.click(input);
+
+    expect(updatePersonaAIContext).toHaveBeenCalledWith(personas[0].id, {
+      cacheTtlMinutes: 30,
+      characterBudget: 400000,
+      enabled: false,
+    });
+
+    await waitFor(() => expect(input.checked).toBe(true));
+
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('navigates to the persona AI context on click', async () => {
@@ -133,5 +194,25 @@ describe('ContextCenterAIContextPage', () => {
     expect(
       await screen.findByText('message.no-persona-available')
     ).toBeVisible();
+  });
+
+  it('fetches the next page of personas and their status with the same cursor', async () => {
+    mockPaging.paging = { after: 'cursor-2', total: 30 };
+    mockPaging.showPagination = true;
+    (getAllPersonas as jest.Mock).mockResolvedValue({ data: personas });
+
+    render(<ContextCenterAIContextPage />);
+    fireEvent.click(await screen.findByTestId('next'));
+
+    expect(mockHandlePageChange).toHaveBeenCalledWith(2);
+    expect(getAllPersonas).toHaveBeenLastCalledWith({
+      after: 'cursor-2',
+      fields: 'users,contextDefinition',
+      limit: 15,
+    });
+    expect(getPersonaAIContextStatus).toHaveBeenLastCalledWith({
+      after: 'cursor-2',
+      limit: 15,
+    });
   });
 });

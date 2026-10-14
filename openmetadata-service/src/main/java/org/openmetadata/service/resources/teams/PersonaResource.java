@@ -472,6 +472,51 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     return documentResponse(PersonaContextCache.getInstance().refresh(persona));
   }
 
+  @GET
+  @Path("/aiContext/status")
+  @Operation(
+      operationId = "listPersonaAiContextStatus",
+      summary = "List the compiled AI context state of personas",
+      description =
+          "Pages exactly like `GET /personas`, so the same cursor returns the status of the same "
+              + "personas. Reads the context cache only; a persona whose document is not cached "
+              + "reports `STALE` with zero counts rather than being compiled.")
+  public ResultList<PersonaContextStatus> listAiContextStatus(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Limit the number of statuses returned. (1 to 1000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000, message = "must be less than or equal to 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(
+              description = "Returns statuses before this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(
+              description = "Returns statuses after this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after) {
+    authorizer.authorizeAdmin(securityContext);
+    ResultList<Persona> personas =
+        listInternal(
+            uriInfo,
+            securityContext,
+            "contextDefinition",
+            new ListFilter(null),
+            limitParam,
+            before,
+            after);
+    return new ResultList<>(
+        personas.getData().stream().map(PersonaResource::contextStatus).toList(),
+        personas.getPaging().getBefore(),
+        personas.getPaging().getAfter(),
+        personas.getPaging().getTotal());
+  }
+
   @Override
   @GET
   @Path("/{id}/context")
@@ -646,17 +691,12 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     PersonaContextBuilder.MaterializedPersonaContext materialized = cached.value();
     PersonaContext context = materialized.context();
     String markdown = materialized.markdown();
-    int entitiesIncluded =
-        listOrEmpty(context.getRules()).stream()
-            .mapToInt(
-                result -> value(result.getRenderedFull()) + value(result.getRenderedCompact()))
-            .sum();
     PersonaContextDocument document =
         new PersonaContextDocument(
             markdown,
-            entitiesIncluded,
+            entitiesIncluded(context),
             listOrEmpty(context.getManifest()).size(),
-            Math.max(1, (int) Math.ceil(markdown.length() / 4.0)),
+            tokensEstimate(markdown),
             markdown.getBytes(StandardCharsets.UTF_8).length,
             context.getGeneratedAt(),
             Boolean.TRUE.equals(context.getTruncated()),
@@ -664,6 +704,33 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     return Response.ok(document)
         .header(PersonaContextCache.CACHE_HEADER, cached.status().name())
         .build();
+  }
+
+  private static PersonaContextStatus contextStatus(Persona persona) {
+    PersonaContextCache.CacheSnapshot snapshot =
+        PersonaContextCache.getInstance().snapshot(persona);
+    if (snapshot.value() == null) {
+      return new PersonaContextStatus(
+          persona.getId(), snapshot.state(), null, 0, 0, snapshot.error());
+    }
+    PersonaContext context = snapshot.value().context();
+    return new PersonaContextStatus(
+        persona.getId(),
+        snapshot.state(),
+        context.getGeneratedAt(),
+        entitiesIncluded(context),
+        tokensEstimate(snapshot.value().markdown()),
+        snapshot.error());
+  }
+
+  private static int tokensEstimate(String markdown) {
+    return Math.max(1, (int) Math.ceil(markdown.length() / 4.0));
+  }
+
+  private static int entitiesIncluded(PersonaContext context) {
+    return listOrEmpty(context.getRules()).stream()
+        .mapToInt(result -> value(result.getRenderedFull()) + value(result.getRenderedCompact()))
+        .sum();
   }
 
   private static int value(Integer number) {
@@ -679,6 +746,14 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       long generatedAt,
       boolean truncated,
       PersonaContextCacheState cacheState) {}
+
+  public record PersonaContextStatus(
+      UUID personaId,
+      PersonaContextCacheState cacheState,
+      Long lastGeneratedAt,
+      int entitiesIncluded,
+      int tokensEst,
+      String lastError) {}
 
   @GET
   @Path("/{id}/versions/{version}")

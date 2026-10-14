@@ -12,10 +12,14 @@
  */
 import { PERSONA_CONTEXT_ASSET_TYPES } from '../constants/PersonaAIContext.constants';
 import { EntityType } from '../enums/entity.enum';
-import { ContextSection } from '../generated/type/personaContextDefinition';
+import {
+  CacheState,
+  ContextSection,
+} from '../generated/type/personaContextDefinition';
 import {
   buildPersonaContextVersionHistory,
   getDefaultPersonaContextSections,
+  getPersonaContextFreshness,
   getPersonaContextSections,
   getRuleConditionCount,
   getRuleExplorePath,
@@ -397,4 +401,34 @@ describe('getRuleExplorePath', () => {
       '"field":"extension.table.testCp.keyword"'
     );
   });
+});
+
+describe('getPersonaContextFreshness', () => {
+  const status = (cacheState: CacheState, lastGeneratedAt?: number) => ({
+    cacheState,
+    tokensEst: 0,
+    entitiesIncluded: 0,
+    lastGeneratedAt,
+    personaId: 'p',
+  });
+
+  it.each([
+    [false, status(CacheState.Fresh, 1), 'message.not-configured', 'error'],
+    [true, undefined, undefined, undefined],
+    [true, status(CacheState.Fresh, 1), 'label.fresh', 'success'],
+    [true, status(CacheState.Stale, 1), 'label.stale', 'warning'],
+    [true, status(CacheState.Stale), 'label.not-generated', 'gray'],
+    [true, status(CacheState.Generating), 'label.generating', 'warning'],
+    [true, status(CacheState.Failed), 'label.failed', 'error'],
+  ])(
+    'hasRules=%s status=%o -> %s',
+    (hasRules, cacheStatus, labelKey, color) => {
+      expect(getPersonaContextFreshness(hasRules, cacheStatus)?.labelKey).toBe(
+        labelKey
+      );
+      expect(getPersonaContextFreshness(hasRules, cacheStatus)?.color).toBe(
+        color
+      );
+    }
+  );
 });
