@@ -30,8 +30,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.junit.jupiter.api.parallel.ResourceAccessMode;
-import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -456,31 +454,36 @@ public class ContextMemoryConflictReviewIT {
     assertTrue(refused.getMessage().contains("record the conflict as disputes on the memory"));
   }
 
-  /** Creates a custom task, whose form schema TaskResourceIT overrides while it holds this lock. */
+  /**
+   * Not a custom task: TaskResourceIT creates and deletes a CustomTask form schema, and deleting one
+   * leaves it cached, so a custom task created after that is validated against the deleted schema.
+   */
   @Test
-  @ResourceLock(value = "task-form-schema-custom-task-custom", mode = ResourceAccessMode.READ)
   void anotherTaskCannotBePatchedIntoAConflictReview(TestNamespace ns) {
     ContextMemory memory = pending(ns, "patched", shared().USER2_REF);
-    Task custom =
+    Task other =
         SdkClients.adminClient()
             .tasks()
             .create(
                 new CreateTask()
-                    .withName(ns.prefix("custom-review"))
-                    .withCategory(TaskCategory.Custom)
-                    .withType(TaskEntityType.CustomTask)
+                    .withName(ns.prefix("other-review"))
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
                     .withAbout("<#E::contextMemory::" + memory.getFullyQualifiedName() + ">"));
 
-    assertThrows(
-        InvalidRequestException.class,
-        () ->
-            SdkClients.adminClient()
-                .tasks()
-                .patch(
-                    custom.getId(),
-                    JsonUtils.readTree(
-                        """
-                        [{"op":"replace","path":"/type","value":"MemoryConflictReview"}]""")));
+    InvalidRequestException refused =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .tasks()
+                    .patch(
+                        other.getId(),
+                        JsonUtils.readTree(
+                            """
+                            [{"op":"replace","path":"/type","value":"MemoryConflictReview"}]""")));
+
+    assertTrue(refused.getMessage().contains("opened and kept by the server"));
   }
 
   private record Conflict(ContextMemory reviewed, ContextMemory disputed) {}
