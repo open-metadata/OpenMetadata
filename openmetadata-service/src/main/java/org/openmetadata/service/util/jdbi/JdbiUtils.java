@@ -52,7 +52,10 @@ public class JdbiUtils {
     jdbiInstance
         .getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
-    configureStatements(jdbiInstance, dbFactory);
+    // No query timeout here: it bounds API requests, while ops commands such as migrate run
+    // statements that legitimately take longer on large databases
+    // (ADR:2026-10-14-ops-commands-run-without-the-request-query-timeout).
+    jdbiInstance.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
 
     return jdbiInstance;
   }
