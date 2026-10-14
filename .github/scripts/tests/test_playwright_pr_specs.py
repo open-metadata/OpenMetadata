@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -231,7 +232,7 @@ def test_required_pr_gate_cannot_pass_an_unexecuted_lane(tmp_path, lane, outcome
     )
     gate = next(
         step
-        for step in workflow["jobs"]["playwright-summary"]["steps"]
+        for step in workflow["jobs"]["playwright-pr-summary"]["steps"]
         if step["name"] == "Gate changed-spec PR environments"
     )
     env = {
@@ -272,6 +273,80 @@ def test_every_delegated_pr_call_exposes_verified_execution():
             for job in definition["jobs"].values()
             for step in job.get("steps", [])
         ), name
+
+
+def load_workflow(name):
+    return yaml.safe_load((SCRIPTS.parent / "workflows" / name).read_text())
+
+
+def test_pr_callers_pass_no_secrets_and_only_read_permissions():
+    jobs = load_workflow("playwright-postgresql-e2e.yml")["jobs"]
+    for name in (
+        "playwright-pr",
+        "changed-auth-specs",
+        "changed-rdf-specs",
+        "changed-visual-specs",
+        "changed-special-specs",
+    ):
+        job = jobs[name]
+        assert "secrets" not in job, name
+        assert "github.event_name == 'pull_request'" in job["if"], name
+        assert all(value == "read" for value in job.get("permissions", {}).values())
+    summary = jobs["playwright-pr-summary"]
+    assert "pull_request" in summary["if"]
+    assert all(value == "read" for value in summary["permissions"].values())
+    assert jobs["playwright"]["secrets"] == "inherit"
+    assert "github.event_name != 'pull_request'" in jobs["playwright"]["if"]
+    assert "github.event_name != 'pull_request'" in jobs["playwright-summary"]["if"]
+
+
+@pytest.mark.parametrize(
+    "workflow_name,pr_job,trusted_job",
+    [
+        ("playwright-e2e-reusable.yml", "playwright-pr-ci", "playwright-ci"),
+        ("playwright-sso-login-nightly.yml", "sso-login-pr", "sso-login"),
+    ],
+)
+def test_pr_execution_has_no_secret_environment(workflow_name, pr_job, trusted_job):
+    jobs = load_workflow(workflow_name)["jobs"]
+    assert "environment" not in jobs[pr_job]
+    assert "github.event_name == 'pull_request'" in jobs[pr_job]["if"]
+    assert jobs[trusted_job]["environment"] == "test"
+    assert "github.event_name != 'pull_request'" in jobs[trusted_job]["if"]
+    assert jobs[pr_job]["steps"] == jobs[trusted_job]["steps"]
+    assert all(value == "read" for value in jobs[pr_job]["permissions"].values())
+    for step in jobs[pr_job]["steps"]:
+        for binding in step.get("env", {}).values():
+            if re.search(r"secrets\.(?!GITHUB_TOKEN\b)|secrets\[|vars\[", str(binding)):
+                assert "github.event_name != 'pull_request'" in binding
+
+
+def test_pr_sso_uses_fixture_providers_and_no_account_variables():
+    jobs = load_workflow("playwright-sso-login-nightly.yml")["jobs"]
+    pr = jobs["sso-login-pr"]
+    providers = pr["strategy"]["matrix"]["provider"]
+    assert "okta" not in {provider["name"] for provider in providers}
+    assert len(providers) == 8
+    assert not any("vars[" in value for value in pr.get("env", {}).values())
+    runner = next(
+        step for step in pr["steps"] if step.get("name") == "Run SSO Scenarios"
+    )
+    assert "github.event_name != 'pull_request'" in runner["env"]["SSO_USERNAME"]
+    assert "github.event_name != 'pull_request'" in runner["env"]["SSO_PASSWORD"]
+    assert runner["env"]["SSO_USERNAME"].endswith("|| env.SSO_USERNAME }}")
+    assert runner["env"]["SSO_PASSWORD"].endswith("|| env.SSO_PASSWORD }}")
+    assert "notify-pr" not in jobs
+
+
+def test_rdf_visual_and_helpers_need_no_private_credentials():
+    for name in (
+        "playwright-knowledge-graph-postgresql-e2e.yml",
+        "playwright-visual.yml",
+        "playwright-changed-specs.yml",
+    ):
+        jobs = load_workflow(name)["jobs"]
+        assert all("environment" not in job for job in jobs.values()), name
+        assert not re.findall(r"secrets\.(?!GITHUB_TOKEN\b)\w+", json.dumps(jobs)), name
 
 
 @pytest.mark.parametrize(

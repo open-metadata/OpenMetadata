@@ -32,6 +32,8 @@ Generation or collection failures are failures to obtain a valid plan. Fix the c
 
 New and modified specs also run automatically in PR CI, including dedicated environments. Check `playwright-summary`: a skipped spec or a selection without execution cannot satisfy it. Source changes still need the affected local run above.
 
+PR runs have no repository/environment secrets and no `safe to test` requirement. Use public local fixture accounts and mock providers when adding coverage. Keep real vendor qualification in trusted queue/nightly/manual lanes. A changed spec that requires only private credentials must gain a local/mock fixture; do not add secret inheritance, bind the `test` environment, or accept an entirely skipped run to make its PR pass.
+
 ## Record evidence
 
 The run writes `playwright/output/local-pr-results.md` under the UI directory. Check the executed specs, failures, retry passes and skipped tests. A selection alone is not a passing test run.

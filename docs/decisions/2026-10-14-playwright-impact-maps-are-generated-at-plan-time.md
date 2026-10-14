@@ -1,7 +1,7 @@
 # Generate Playwright impact maps from the checkout being planned
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial); v2 2026-10-14 (changed specs gate PRs)
+- **Revisions:** v1 2026-10-14 (initial); v2 2026-10-14 (changed specs gate PRs); v3 2026-10-14 (PR execution without private credentials)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `.github/scripts/tests/test_playwright_impact_map.py` and the Playwright impact-map drift check
 - **Related:** `.github/playwright/README.md`
@@ -19,6 +19,8 @@ The selector generates a temporary map by default and ignores legacy sibling sna
 The generated and handwritten mappings continue to add coverage. Merge groups run smoke, directly changed specs and affected coverage from their whole base-to-head diff. The planner must check out that exact head and fail when the diff is unavailable. Shared test infrastructure and unknown production paths widen queue coverage to full.
 
 New or modified Playwright specs must pass on the PR before queue entry, including draft PRs. Run entire changed files with the full entity matrix, route dedicated environments explicitly, and require passing execution for every changed spec. Empty or skipped test runs cannot satisfy the required check. Scheduled, cache-warming push and explicit full manual events retain full coverage. Queue plans use the existing fallback duration estimates for new specs without nightly history and still enforce shard budgets. The drift check becomes read-only generation and routing validation under its existing name.
+
+PR execution receives no repository secrets or secret-bearing environment and uses a read-only built-in token. Dedicated authentication coverage uses local LDAP, Keycloak and mock providers with committed fixture accounts. Keep live-provider qualification in trusted lanes; a changed external-only spec needs a local/mock fixture and cannot satisfy the PR gate through skipped tests. Trusted and PR shard jobs share steps via YAML aliases so their environment boundaries can differ without duplicating execution logic.
 
 ## Consequences
 

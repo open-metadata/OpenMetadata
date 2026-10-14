@@ -64,6 +64,12 @@ def main() -> None:
         raise SystemExit(
             "Changed Playwright specs did not pass execution: "
             + ", ".join(sorted(missing | failures))
+            + (
+                ". Entirely skipped specs do not count. PR jobs have no private "
+                "credentials; provide local or mock fixtures."
+                if missing
+                else ""
+            )
         )
     print(f"Verified passing execution of all {len(expected)} changed specs")
 

@@ -4,6 +4,8 @@
 
 The manual HTTP/2 benchmark applies to browser/server lanes. Dedicated Airflow shards stay on HTTP/1.1 because the fixture's self-signed browser certificate is not part of generated ingestion workflow configuration.
 
+PR jobs pass no repository secrets, never bind the secret-bearing `test` environment, and use read-only `GITHUB_TOKEN` permissions for checkout and artifact retrieval. Local PostgreSQL, Fuseki, LDAP, Keycloak and mock identity providers use disposable, committed fixture accounts. The PR gate does not require `safe to test`. Queue, scheduled and manual trusted runs retain their connector and live-Okta credentials. Live-vendor-only specs need a local/mock fixture to pass the PR gate: an entirely skipped or uncollected changed spec fails with its filename. A local fixture verifies application behavior; the trusted vendor lane still verifies compatibility with the real provider.
+
 SSO stays in its dedicated workflow, while knowledge graph and ontology share one RDF workflow and environment. HTTP/2-specific, data-insight application, and nightly specs are explicitly recorded as delegated rather than being silently misclassified as common Chromium coverage. Add semantic production-to-test relationships to `impact-map.json`. Unknown production paths trigger full CI coverage; local planning reports these gaps and adds canaries.
 
 ## Generated impact maps

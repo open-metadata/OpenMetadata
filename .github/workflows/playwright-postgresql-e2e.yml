@@ -116,11 +116,9 @@ jobs:
 
   playwright:
     needs: plan-pr-specs
-    if: ${{ always() && !cancelled() && (github.event_name != 'pull_request' || needs.plan-pr-specs.outputs.normal_count > 0) }}
+    if: ${{ always() && !cancelled() && github.event_name != 'pull_request' }}
     uses: ./.github/workflows/playwright-e2e-reusable.yml
-    # secrets: inherit passes the full TEST_* / GITHUB_TOKEN set into the
-    # reusable without re-listing each one; the reusable only reads what it
-    # needs.
+    # Live connector credentials are available only to trusted runs.
     secrets: inherit
     permissions:
       actions: read
@@ -131,27 +129,43 @@ jobs:
       database: postgresql
       profile: postgresql-pr
       workflow_filename: playwright-postgresql-e2e.yml
-      changed_specs_only: ${{ github.event_name == 'pull_request' }}
       # Defaults inline what workflow_dispatch collects; non-dispatch events
       # fall back to the reusable's own defaults (full_suite=true, http,
       # coarse_bundle=true).
       full_suite: ${{ github.event_name == 'workflow_dispatch' && inputs.full_suite || true }}
-      protocol: ${{ github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.http2_count > 0 && 'h2' || (github.event_name == 'workflow_dispatch' && inputs.protocol || 'http') }}
+      protocol: ${{ github.event_name == 'workflow_dispatch' && inputs.protocol || 'http' }}
       coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
       # One retry everywhere while the first-attempt signal is collected: the
       # main-health job alerts Slack on every failure and flaky pass so each can
       # be fixed.
       retries: 1
 
+  playwright-pr:
+    needs: plan-pr-specs
+    if: ${{ github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.normal_count > 0 }}
+    uses: ./.github/workflows/playwright-e2e-reusable.yml
+    # No secret inheritance: fork and same-repository PRs use identical local fixtures.
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      checks: read
+    with:
+      database: postgresql
+      profile: postgresql-pr
+      workflow_filename: playwright-postgresql-e2e.yml
+      changed_specs_only: true
+      protocol: ${{ needs.plan-pr-specs.outputs.http2_count > 0 && 'h2' || 'http' }}
+      retries: 1
+
   changed-auth-specs:
     needs: plan-pr-specs
     if: ${{ github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.auth_count > 0 }}
     uses: ./.github/workflows/playwright-sso-login-nightly.yml
-    secrets: inherit
     permissions:
       contents: read
       actions: read
-      pull-requests: write
+      pull-requests: read
     with:
       changed_specs: ${{ needs.plan-pr-specs.outputs.auth }}
 
@@ -159,7 +173,6 @@ jobs:
     needs: plan-pr-specs
     if: ${{ github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.rdf_count > 0 }}
     uses: ./.github/workflows/playwright-knowledge-graph-postgresql-e2e.yml
-    secrets: inherit
     permissions:
       contents: read
       actions: read
@@ -172,7 +185,6 @@ jobs:
     needs: plan-pr-specs
     if: ${{ github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.visual_count > 0 }}
     uses: ./.github/workflows/playwright-visual.yml
-    secrets: inherit
     with:
       changed_specs: ${{ needs.plan-pr-specs.outputs.visual }}
 
@@ -180,31 +192,25 @@ jobs:
     needs: plan-pr-specs
     if: ${{ github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.special_count > 0 }}
     uses: ./.github/workflows/playwright-changed-specs.yml
-    secrets: inherit
     with:
       matrix: ${{ needs.plan-pr-specs.outputs.special_matrix }}
 
-  playwright-summary:
-    name: playwright-summary
-    if: ${{ always() && !cancelled() }}
-    needs: [plan-pr-specs, playwright, changed-auth-specs, changed-rdf-specs, changed-visual-specs, changed-special-specs]
+  playwright-pr-summary:
+    name: ${{ github.event_name == 'pull_request' && 'playwright-summary' || 'Playwright PR summary (inactive)' }}
+    if: ${{ always() && !cancelled() && github.event_name == 'pull_request' }}
+    needs: [plan-pr-specs, playwright-pr, changed-auth-specs, changed-rdf-specs, changed-visual-specs, changed-special-specs]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     permissions:
       actions: read
-      # Reads shard annotations for the merge-queue flaky alert.
-      checks: read
       contents: read
-      # For the budget-breach tracked issue (Signal Playwright budget
-      # breaches step below).
-      issues: write
     steps:
       - name: Gate changed-spec PR environments
         if: ${{ always() && github.event_name == 'pull_request' }}
         env:
           PLAN_RESULT: ${{ needs.plan-pr-specs.result }}
           NORMAL_COUNT: ${{ needs.plan-pr-specs.outputs.normal_count }}
-          NORMAL_RESULT: ${{ needs.playwright.result == 'success' && needs.playwright.outputs.playwright_ci_result || needs.playwright.result }}
+          NORMAL_RESULT: ${{ needs.playwright-pr.result == 'success' && needs.playwright-pr.outputs.playwright_ci_result || needs.playwright-pr.result }}
           AUTH_COUNT: ${{ needs.plan-pr-specs.outputs.auth_count }}
           AUTH_RESULT: ${{ needs.changed-auth-specs.result == 'success' && needs.changed-auth-specs.outputs.execution_result || needs.changed-auth-specs.result }}
           RDF_COUNT: ${{ needs.plan-pr-specs.outputs.rdf_count }}
@@ -228,6 +234,38 @@ jobs:
             specs.length ? `Changed Playwright specs validated by their PR environments:\n${specs.map(s => `- ${s}`).join('\n')}\n` : 'No new or modified Playwright specs in this PR.\n');
           NODE
 
+      - name: Checkout execution verifier
+        if: ${{ always() && needs.plan-pr-specs.outputs.normal_count > 0 }}
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Download changed-spec execution evidence
+        if: ${{ always() && needs.plan-pr-specs.outputs.normal_count > 0 }}
+        uses: actions/download-artifact@v7
+        with:
+          pattern: playwright-results-json-*-a${{ github.run_attempt }}*
+          path: pr-results
+      - name: Verify every changed normal spec executed
+        if: ${{ always() && needs.plan-pr-specs.outputs.normal_count > 0 }}
+        env:
+          CHANGED_SPECS: ${{ needs.plan-pr-specs.outputs.normal }}
+        run: |
+          python3 .github/scripts/verify_playwright_changed_specs.py \
+            --specs-json "$CHANGED_SPECS" \
+            --report-glob 'pr-results/**/results.json'
+
+  playwright-summary:
+    name: ${{ github.event_name != 'pull_request' && 'playwright-summary' || 'Playwright trusted summary (inactive)' }}
+    if: ${{ always() && !cancelled() && github.event_name != 'pull_request' }}
+    needs: playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+      issues: write
+    steps:
       - name: Gate verified merge-group shards
         if: ${{ github.event_name == 'merge_group' }}
         env:
@@ -731,17 +769,8 @@ jobs:
       # negative match) would treat an unset gate output the same as an
       # explicit skip decision — hiding the gate failure and letting a
       # required check pass on an invalid pipeline state.
-      - name: Verify execution of every changed PostgreSQL spec
-        if: ${{ always() && github.event_name == 'pull_request' && needs.plan-pr-specs.outputs.normal_count > 0 }}
-        env:
-          CHANGED_SPECS: ${{ needs.plan-pr-specs.outputs.normal }}
-        run: |
-          python3 .github/scripts/verify_playwright_changed_specs.py \
-            --specs-json "$CHANGED_SPECS" \
-            --report-glob 'results/playwright-results-json-*/results.json'
-
       - name: Guard against missing gate decision
-        if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || needs.plan-pr-specs.outputs.normal_count > 0) && needs.playwright.outputs.gate_result != 'success' }}
+        if: ${{ github.event_name != 'merge_group' && needs.playwright.outputs.gate_result != 'success' }}
         run: |
           echo "::error::gate did not succeed (result=${{ needs.playwright.outputs.gate_result }}, should_run=${{ needs.playwright.outputs.gate_should_run }}). Refusing synthetic green — this playwright-summary must not report success without a valid gate decision."
           exit 1
