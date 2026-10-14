@@ -87,6 +87,7 @@ import {
   getCustomPropertyEditButton,
   openCustomPropertiesTab,
   openCustomPropertyEditModal,
+  removeCustomPropertyViaApi,
   setValueForProperty,
   updateCustomPropertyInRightPanel,
   validateValueForProperty,
@@ -120,8 +121,83 @@ import {
 } from '../../utils/sidebar';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
+import { disableAiAppMode, stubUserPreferencesAppMode } from '../Utils/appMode';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+for (const { type, label, suffixes } of [
+  {
+    type: CustomPropertyTypeByName.TIME_INTERVAL,
+    label: 'Time Interval',
+    suffixes: [' (Start)', ' (End)'],
+  },
+  {
+    type: CustomPropertyTypeByName.HYPERLINK_CP,
+    label: 'Hyperlink',
+    suffixes: [' URL', ' Display Text'],
+  },
+  {
+    type: CustomPropertyTypeByName.TABLE_CP,
+    label: 'Table',
+    suffixes: [' - pw-column1', ' - pw-column2'],
+  },
+]) {
+  test(`Advanced search selects successive long ${label} custom-property fields`, async ({
+    page,
+  }) => {
+    await disableAiAppMode(page);
+    await stubUserPreferencesAppMode(page, 'classic');
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    let propertyName: string | undefined;
+
+    try {
+      const { customProperties } = await createCustomPropertyForEntity(
+        apiContext,
+        EntityTypeEndpoint.Table,
+        [type]
+      );
+      propertyName = customProperties[type].property.name;
+      await page.goto('/explore');
+      await waitForAllLoadersToDisappear(page);
+      await showAdvancedSearchDialog(page);
+
+      const rule = page.getByTestId('query-builder-rule-0');
+      await selectOption(
+        page,
+        rule.getByTestId('advanced-search-field-select'),
+        'Custom Properties',
+        true
+      );
+      await selectOption(
+        page,
+        rule.getByTestId('advanced-search-field-select-1'),
+        'Table',
+        true
+      );
+
+      for (const suffix of suffixes) {
+        await test.step(`Select ${label}${suffix}`, async () => {
+          const field = rule.getByTestId('advanced-search-field-select-2');
+          const optionLabel = `${propertyName}${suffix}`;
+          await selectOption(page, field, optionLabel, true);
+          await expect(field.getByRole('combobox')).toHaveValue(optionLabel);
+        });
+      }
+
+      await page.getByTestId('cancel-btn').click();
+      await expect(rule).toBeHidden();
+    } finally {
+      try {
+        if (propertyName) {
+          await removeCustomPropertyViaApi(apiContext, 'table', propertyName);
+        }
+      } finally {
+        await afterAction();
+      }
+    }
+  });
+}
 
 type CustomPropertyEntity =
   (typeof CUSTOM_PROPERTIES_ENTITIES)[keyof typeof CUSTOM_PROPERTIES_ENTITIES];

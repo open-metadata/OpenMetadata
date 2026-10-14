@@ -19,7 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Hint, Settings02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import type { Key } from 'react';
+import type { Key, ReactNode } from 'react';
 import React, {
   useCallback,
   useEffect,
@@ -83,6 +83,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
     type: 'landing',
   });
   const [showHint, setShowHint] = useState(false);
+  const [detailActions, setDetailActions] = useState<ReactNode>();
   const resolvedFqnRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -278,16 +279,18 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
         )
       );
 
-    const actions =
-      subView.type === 'add' || subView.type === 'edit' ? (
-        <Box align="center" direction="row" gap={2}>
-          <Hint className="tw:size-4.5 tw:text-secondary" />
-          <Typography size="text-sm" weight="medium">
-            {t('label.show-hint')}
-          </Typography>
-          <Toggle isSelected={showHint} onChange={setShowHint} />
-        </Box>
-      ) : undefined;
+    const isFormView = subView.type === 'add' || subView.type === 'edit';
+    const actions = isFormView ? (
+      <Box align="center" direction="row" gap={2}>
+        <Hint className="tw:size-4.5 tw:text-secondary" />
+        <Typography size="text-sm" weight="medium">
+          {t('label.show-hint')}
+        </Typography>
+        <Toggle isSelected={showHint} onChange={setShowHint} />
+      </Box>
+    ) : (
+      detailActions
+    );
 
     onHeaderChange?.({
       title: pageTitle,
@@ -304,6 +307,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
     pageTitle,
     pageDescription,
     showHint,
+    detailActions,
     t,
     onHeaderChange,
   ]);
@@ -328,6 +332,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
             entityType={subView.entityType}
             onAddProperty={handleAddProperty}
             onEditProperty={handleEditProperty}
+            onSetHeaderActions={setDetailActions}
           />
         )}
         {subView.type === 'add' && (

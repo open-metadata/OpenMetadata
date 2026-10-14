@@ -29,7 +29,7 @@ export const millisToDateValue = (ms?: number): DateValue | null =>
     ? null
     : toCalendarDate(fromDate(new Date(ms), getLocalTimeZone()));
 
-export const dateValueToMillis = (value: DateValue): number =>
+export const dateValueToMillis = (value: Pick<DateValue, 'toDate'>): number =>
   value.toDate(getLocalTimeZone()).getTime();
 
 /**

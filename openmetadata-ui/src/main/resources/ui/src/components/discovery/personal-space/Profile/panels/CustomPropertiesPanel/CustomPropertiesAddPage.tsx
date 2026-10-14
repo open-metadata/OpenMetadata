@@ -130,7 +130,7 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
       </div>
 
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-background-base tw:px-8 tw:py-4 tw:shadow-sm"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-8 tw:py-4 tw:shadow-sm"
         direction="row"
         gap={3}
         justify="end">

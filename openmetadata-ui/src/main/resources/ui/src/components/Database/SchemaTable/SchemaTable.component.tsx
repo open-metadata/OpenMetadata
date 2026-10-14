@@ -244,7 +244,11 @@ const SchemaTable = () => {
       columnSortBy?: 'name' | 'ordinalPosition',
       columnSortOrder?: 'asc' | 'desc'
     ) => {
+      // The customize page previews this table without a route FQN, so there
+      // is nothing to fetch and the loader would otherwise never clear.
       if (!tableFqn) {
+        setColumnsLoading(false);
+
         return;
       }
 
@@ -295,7 +299,11 @@ const SchemaTable = () => {
       columnSortBy?: 'name' | 'ordinalPosition',
       columnSortOrder?: 'asc' | 'desc'
     ) => {
+      // The customize page previews this table without a route FQN, so there
+      // is nothing to fetch and the loader would otherwise never clear.
       if (!tableFqn) {
+        setColumnsLoading(false);
+
         return;
       }
 

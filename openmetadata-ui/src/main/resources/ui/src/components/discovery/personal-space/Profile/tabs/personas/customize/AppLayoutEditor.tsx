@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   Divider,
   Dropdown,
   Grid,
@@ -216,182 +217,184 @@ const AppLayoutEditor = ({
   }, [handleSave, handleReset, canSave, isSaving, onActionsChange]);
 
   return (
-    <Box
-      className="tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-5 tw:divide-y-0.5 tw:divide-secondary"
+    <Card
+      className="tw:w-full"
       data-testid="app-layout-editor"
-      direction="col"
-      tabIndex={-1}>
-      <PreferenceRow
-        description={t('message.app-mode-description')}
-        title={t('label.app-mode')}>
-        <RadioGroup
-          aria-label={t('label.app-mode')}
-          className="tw:flex-row tw:gap-3"
-          data-testid="app-mode-radio-group"
-          size="md"
-          value={selectedMode}
-          onChange={setSelectedMode}>
-          {APP_MODE_OPTIONS.map((option) => (
-            <RadioButton
-              className={({ isSelected }) =>
-                classNames(
-                  'tw:flex-1 tw:cursor-pointer tw:rounded-xl tw:border tw:p-4 tw:transition-colors',
-                  isSelected
-                    ? 'tw:border-brand tw:bg-brand-primary'
-                    : 'tw:border-secondary'
-                )
-              }
-              data-testid={`app-mode-option-${option.value}`}
-              hint={
-                <Typography
-                  as="span"
-                  className="tw:text-tertiary"
-                  size="text-xs">
-                  {t(option.hintKey)}
-                </Typography>
-              }
-              key={option.value}
-              label={
+      tabIndex={-1}
+      variant="muted">
+      <Card.Content className="tw:flex tw:flex-col tw:divide-y-0.5 tw:divide-secondary">
+        <PreferenceRow
+          description={t('message.app-mode-description')}
+          title={t('label.app-mode')}>
+          <RadioGroup
+            aria-label={t('label.app-mode')}
+            className="tw:flex-row tw:gap-3"
+            data-testid="app-mode-radio-group"
+            size="md"
+            value={selectedMode}
+            onChange={setSelectedMode}>
+            {APP_MODE_OPTIONS.map((option) => (
+              <RadioButton
+                className={({ isSelected }) =>
+                  classNames(
+                    'tw:flex-1 tw:cursor-pointer tw:rounded-xl tw:border tw:p-4 tw:transition-colors',
+                    isSelected
+                      ? 'tw:border-brand tw:bg-brand-primary'
+                      : 'tw:border-secondary tw:bg-primary_alt'
+                  )
+                }
+                data-testid={`app-mode-option-${option.value}`}
+                hint={
+                  <Typography
+                    as="span"
+                    className="tw:text-tertiary"
+                    size="text-xs">
+                    {t(option.hintKey)}
+                  </Typography>
+                }
+                key={option.value}
+                label={
+                  <Typography
+                    as="span"
+                    className="tw:text-primary"
+                    size="text-sm"
+                    weight="medium">
+                    {t(option.labelKey)}
+                  </Typography>
+                }
+                value={option.value}
+              />
+            ))}
+          </RadioGroup>
+        </PreferenceRow>
+
+        <Divider />
+
+        <PreferenceRow
+          description={t('message.default-landing-page-description')}
+          title={t('label.default-landing-page')}>
+          <Select
+            aria-label={t('label.default-landing-page')}
+            data-testid="default-landing-page-select"
+            fontSize="sm"
+            size="md"
+            value={landingPage}
+            onChange={(key) => key && setLandingPage(String(key))}>
+            {LANDING_PAGE_SECTIONS.map((section) => (
+              <ListBoxSection id={section.titleKey} key={section.titleKey}>
+                <Header className="tw:px-3.5 tw:pt-3 tw:pb-1 tw:text-sm tw:font-semibold tw:text-tertiary">
+                  {t(section.titleKey)}
+                </Header>
+                {section.options.map((option) => (
+                  <Select.Item
+                    id={option.path}
+                    key={option.path}
+                    label={t(option.labelKey)}
+                    supportingText={option.path}
+                  />
+                ))}
+              </ListBoxSection>
+            ))}
+          </Select>
+        </PreferenceRow>
+
+        <Divider />
+
+        <PreferenceRow
+          description={t('message.view-mode-description')}
+          title={t('label.view-mode')}>
+          <Card
+            className="tw:flex tw:flex-col"
+            data-testid="view-mode-pages"
+            variant="muted">
+            {configuredPages.map(({ page, labelKey, views }) => (
+              <Box
+                align="center"
+                className="tw:border-b tw:border-secondary tw:px-5 tw:py-3"
+                data-testid={`view-mode-row-${page}`}
+                gap={4}
+                justify="between"
+                key={page}>
                 <Typography
                   as="span"
                   className="tw:text-primary"
                   size="text-sm"
                   weight="medium">
-                  {t(option.labelKey)}
+                  {t(labelKey)}
                 </Typography>
-              }
-              value={option.value}
-            />
-          ))}
-        </RadioGroup>
-      </PreferenceRow>
-
-      <Divider />
-
-      <PreferenceRow
-        description={t('message.default-landing-page-description')}
-        title={t('label.default-landing-page')}>
-        <Select
-          aria-label={t('label.default-landing-page')}
-          data-testid="default-landing-page-select"
-          fontSize="sm"
-          size="md"
-          value={landingPage}
-          onChange={(key) => key && setLandingPage(String(key))}>
-          {LANDING_PAGE_SECTIONS.map((section) => (
-            <ListBoxSection id={section.titleKey} key={section.titleKey}>
-              <Header className="tw:px-3.5 tw:pt-3 tw:pb-1 tw:text-sm tw:font-semibold tw:text-tertiary">
-                {t(section.titleKey)}
-              </Header>
-              {section.options.map((option) => (
-                <Select.Item
-                  id={option.path}
-                  key={option.path}
-                  label={t(option.labelKey)}
-                  supportingText={option.path}
-                />
-              ))}
-            </ListBoxSection>
-          ))}
-        </Select>
-      </PreferenceRow>
-
-      <Divider />
-
-      <PreferenceRow
-        description={t('message.view-mode-description')}
-        title={t('label.view-mode')}>
-        <Box
-          className="tw:rounded-xl tw:border tw:border-secondary"
-          data-testid="view-mode-pages"
-          direction="col">
-          {configuredPages.map(({ page, labelKey, views }) => (
-            <Box
-              align="center"
-              className="tw:border-b tw:border-secondary tw:px-5 tw:py-3"
-              data-testid={`view-mode-row-${page}`}
-              gap={4}
-              justify="between"
-              key={page}>
-              <Typography
-                as="span"
-                className="tw:text-primary"
-                size="text-sm"
-                weight="medium">
-                {t(labelKey)}
-              </Typography>
-              <Box align="center" gap={3}>
-                <Tabs
-                  className="tw:w-auto"
-                  selectedKey={viewModes[page]}
-                  onSelectionChange={(key) =>
-                    setPageViewMode(page, key as PageViewMode)
-                  }>
-                  <Tabs.List
-                    aria-label={t(labelKey)}
-                    size="sm"
-                    type="button-border">
-                    {views.map((view) => (
-                      <Tabs.Item
-                        data-testid={`view-mode-${page}-${view}`}
-                        id={view}
-                        key={view}>
-                        {t(PAGE_VIEW_MODE_LABEL_KEYS[view])}
-                      </Tabs.Item>
-                    ))}
-                  </Tabs.List>
-                </Tabs>
-                <ButtonUtility
-                  color="tertiary"
-                  data-testid={`remove-view-mode-${page}`}
-                  icon={Trash01}
-                  tooltip={t('label.remove-entity', { entity: t(labelKey) })}
-                  onClick={() => removePageViewMode(page)}
-                />
+                <Box align="center" gap={3}>
+                  <Tabs
+                    className="tw:w-auto"
+                    selectedKey={viewModes[page]}
+                    onSelectionChange={(key) =>
+                      setPageViewMode(page, key as PageViewMode)
+                    }>
+                    <Tabs.List
+                      aria-label={t(labelKey)}
+                      size="sm"
+                      type="button-border">
+                      {views.map((view) => (
+                        <Tabs.Item
+                          data-testid={`view-mode-${page}-${view}`}
+                          id={view}
+                          key={view}>
+                          {t(PAGE_VIEW_MODE_LABEL_KEYS[view])}
+                        </Tabs.Item>
+                      ))}
+                    </Tabs.List>
+                  </Tabs>
+                  <ButtonUtility
+                    color="tertiary"
+                    data-testid={`remove-view-mode-${page}`}
+                    icon={Trash01}
+                    tooltip={t('label.remove-entity', { entity: t(labelKey) })}
+                    onClick={() => removePageViewMode(page)}
+                  />
+                </Box>
               </Box>
+            ))}
+            <Box className="tw:px-5 tw:py-3">
+              <Dropdown.Root>
+                <Button
+                  className="tw:text-[13px] tw:leading-5"
+                  color="link-color"
+                  data-testid="add-view-mode-page"
+                  iconLeading={Plus}
+                  isDisabled={isEmpty(addablePages)}
+                  size="md">
+                  {t('label.add-entity', { entity: t('label.page') })}
+                </Button>
+                <Dropdown.Popover className="tw:w-80" placement="bottom left">
+                  <Dropdown.Menu
+                    selectionMode="none"
+                    onAction={(page) =>
+                      setPageViewMode(
+                        page as ViewModePage,
+                        DEFAULT_PAGE_VIEW_MODE
+                      )
+                    }>
+                    <Dropdown.Section>
+                      <Dropdown.SectionHeader className="tw:px-4 tw:pt-2 tw:pb-1 tw:text-sm tw:font-semibold tw:text-tertiary">
+                        {t('label.select-entity', { entity: t('label.page') })}
+                      </Dropdown.SectionHeader>
+                      {addablePages.map(({ page, labelKey }) => (
+                        <Dropdown.Item
+                          data-testid={`add-view-mode-page-${page}`}
+                          id={page}
+                          key={page}
+                          label={t(labelKey)}
+                          textValue={t(labelKey)}
+                        />
+                      ))}
+                    </Dropdown.Section>
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
             </Box>
-          ))}
-          <Box className="tw:px-5 tw:py-3">
-            <Dropdown.Root>
-              <Button
-                className="tw:text-[13px] tw:leading-5"
-                color="link-color"
-                data-testid="add-view-mode-page"
-                iconLeading={Plus}
-                isDisabled={isEmpty(addablePages)}
-                size="md">
-                {t('label.add-entity', { entity: t('label.page') })}
-              </Button>
-              <Dropdown.Popover className="tw:w-80" placement="bottom left">
-                <Dropdown.Menu
-                  selectionMode="none"
-                  onAction={(page) =>
-                    setPageViewMode(
-                      page as ViewModePage,
-                      DEFAULT_PAGE_VIEW_MODE
-                    )
-                  }>
-                  <Dropdown.Section>
-                    <Dropdown.SectionHeader className="tw:px-4 tw:pt-2 tw:pb-1 tw:text-sm tw:font-semibold tw:text-tertiary">
-                      {t('label.select-entity', { entity: t('label.page') })}
-                    </Dropdown.SectionHeader>
-                    {addablePages.map(({ page, labelKey }) => (
-                      <Dropdown.Item
-                        data-testid={`add-view-mode-page-${page}`}
-                        id={page}
-                        key={page}
-                        label={t(labelKey)}
-                        textValue={t(labelKey)}
-                      />
-                    ))}
-                  </Dropdown.Section>
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-          </Box>
-        </Box>
-      </PreferenceRow>
-    </Box>
+          </Card>
+        </PreferenceRow>
+      </Card.Content>
+    </Card>
   );
 };
 

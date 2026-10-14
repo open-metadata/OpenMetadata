@@ -50,6 +50,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
   entityType,
   onAddProperty,
   onEditProperty,
+  onSetHeaderActions,
 }) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
@@ -129,17 +130,23 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
     }
   }, [entityType.fullyQualifiedName, propertyToDelete, t]);
 
-  const addButton = canCreate ? (
-    <Button
-      color="primary"
-      data-testid="add-custom-property-btn"
-      iconLeading={Expand}
-      isDisabled={isLoading}
-      size="sm"
-      onPress={onAddProperty}>
-      {t('label.add-entity', { entity: t('label.custom-property') })}
-    </Button>
-  ) : undefined;
+  useEffect(() => {
+    onSetHeaderActions(
+      canCreate ? (
+        <Button
+          color="primary"
+          data-testid="add-custom-property-btn"
+          iconLeading={Expand}
+          isDisabled={isLoading}
+          size="xs"
+          onPress={onAddProperty}>
+          {t('label.add-entity', { entity: t('label.custom-property') })}
+        </Button>
+      ) : undefined
+    );
+
+    return () => onSetHeaderActions(undefined);
+  }, [canCreate, isLoading, onAddProperty, onSetHeaderActions, t]);
 
   return (
     <>
@@ -147,17 +154,14 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(k) => setActiveTab(k as string)}>
-          <div className="tw:flex tw:items-end tw:justify-between tw:border-b tw:border-secondary tw:px-4 tw:pt-3">
-            <Tabs.List size="sm" type="underline">
-              <Tabs.Item
-                badge={customProperties.length || undefined}
-                id="custom-properties"
-                label={t('label.custom-property-plural')}
-              />
-              <Tabs.Item id="schema" label={t('label.schema')} />
-            </Tabs.List>
-            <div className="tw:pb-3">{addButton}</div>
-          </div>
+          <Tabs.List className="tw:px-4 tw:pt-3" size="sm" type="underline">
+            <Tabs.Item
+              badge={customProperties.length || undefined}
+              id="custom-properties"
+              label={t('label.custom-property-plural')}
+            />
+            <Tabs.Item id="schema" label={t('label.schema')} />
+          </Tabs.List>
 
           <Tabs.Panel id="custom-properties">
             <CustomPropertiesListTable
