@@ -19,16 +19,19 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Database01 } from '@openmetadata/ui-core-components/icons';
 import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
+import { TestCasePageTabs } from '../../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
+import { TableStatusCounts } from '../../../../utils/dataQualityFilters';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import {
   COUNT_TEXT,
   GROUP_COUNTS,
+  INCIDENT_STATUS,
   TEST_STATUS,
 } from './DataQualityTestRows.constants';
 import {
@@ -39,6 +42,76 @@ import {
 
 const lastFqnPart = (fqn: string) => fqn.split('.').pop() ?? fqn;
 
+const incidentOf = (test: TestCase) => {
+  const type = test.incidentStatus?.testCaseResolutionStatusType;
+
+  return type ? INCIDENT_STATUS[type] : undefined;
+};
+
+/** "Incident: Assigned", the stage in its own colour; nothing without one. */
+const IncidentLine: React.FC<{ test: TestCase }> = ({ test }) => {
+  const { t } = useTranslation();
+  const incident = incidentOf(test);
+
+  if (!incident) {
+    return null;
+  }
+
+  return (
+    <Typography
+      className="tw:min-w-0 tw:text-quaternary!"
+      data-testid={`dq-incident-${test.id}`}
+      size="text-xs">
+      <Trans
+        components={[
+          <span className={`tw:font-medium ${incident.text}`} key="status" />,
+        ]}
+        i18nKey="message.incident-with-status"
+        values={{ status: t(incident.labelKey) }}
+      />
+    </Typography>
+  );
+};
+
+/**
+ * The test's own page, where its results and incident live — the Data Quality
+ * list has no `testCase` parameter to land on. An aborted run with nobody on it
+ * is the one row whose next step is to open an incident, from the Issues tab
+ * as everywhere else.
+ */
+const RowAction: React.FC<{ test: TestCase }> = ({ test }) => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const canRaiseIncident =
+    test.testCaseResult?.testCaseStatus === TestCaseStatus.Aborted &&
+    !incidentOf(test);
+  const testPath = (tab?: TestCasePageTabs) =>
+    observabilityRouterClassBase.getTestCaseDetailPagePath(
+      test.fullyQualifiedName ?? '',
+      tab
+    );
+
+  return canRaiseIncident ? (
+    <Button
+      className="tw:shrink-0"
+      color="link-color"
+      data-testid={`dq-raise-incident-${test.id}`}
+      size="xs"
+      onPress={() => navigate(testPath(TestCasePageTabs.ISSUES))}>
+      {t('label.raise-incident')}
+    </Button>
+  ) : (
+    <Button
+      className="tw:shrink-0"
+      color="link-color"
+      data-testid={`dq-view-test-${test.id}`}
+      size="xs"
+      onPress={() => navigate(testPath())}>
+      {t('label.view-entity', { entity: t('label.test') })}
+    </Button>
+  );
+};
+
 interface TestRowProps {
   test: TestCase;
   /** Under a table header the table is already named; the row names its column. */
@@ -47,7 +120,6 @@ interface TestRowProps {
 
 const TestRow: React.FC<TestRowProps> = ({ test, isGrouped }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const status =
     TEST_STATUS[test.testCaseResult?.testCaseStatus as TestCaseStatus];
   const column = getTestColumnName(test.entityLink);
@@ -94,23 +166,9 @@ const TestRow: React.FC<TestRowProps> = ({ test, isGrouped }) => {
             {meta}
           </Typography>
         )}
+        <IncidentLine test={test} />
       </div>
-      {/* The test's own page, where its results and incident live — the
-        Data Quality list has no `testCase` parameter to land on. */}
-      <Button
-        className="tw:shrink-0"
-        color="link-color"
-        data-testid={`dq-view-test-${test.id}`}
-        size="xs"
-        onPress={() =>
-          navigate(
-            observabilityRouterClassBase.getTestCaseDetailPagePath(
-              test.fullyQualifiedName ?? ''
-            )
-          )
-        }>
-        {t('label.view-entity', { entity: t('label.test') })}
-      </Button>
+      <RowAction test={test} />
     </li>
   );
 };
@@ -118,6 +176,8 @@ const TestRow: React.FC<TestRowProps> = ({ test, isGrouped }) => {
 export interface DataQualityTestRowsProps {
   tests: TestCase[];
   groupBy: DataQualityGroupBy;
+  /** Every result per table, when known; otherwise a header counts its rows. */
+  tableCounts?: Record<string, TableStatusCounts>;
 }
 
 /**
@@ -127,6 +187,7 @@ export interface DataQualityTestRowsProps {
 const DataQualityTestRows: React.FC<DataQualityTestRowsProps> = ({
   tests,
   groupBy,
+  tableCounts,
 }) => {
   const { t } = useTranslation();
   const groups = useMemo(() => groupTestsByTable(tests), [tests]);
@@ -172,17 +233,19 @@ const DataQualityTestRows: React.FC<DataQualityTestRowsProps> = ({
               size="text-xs">
               {group.tableFqn}
             </Typography>
-            {GROUP_COUNTS.filter(({ key }) => group[key] > 0).map(
-              ({ key, color, messageKey }) => (
-                <Typography
-                  className={`tw:shrink-0 ${COUNT_TEXT[color]}`}
-                  key={key}
-                  size="text-xs"
-                  weight="medium">
-                  {t(messageKey, { count: group[key] })}
-                </Typography>
-              )
-            )}
+            {GROUP_COUNTS.filter(
+              ({ key }) => (tableCounts?.[group.tableFqn] ?? group)[key] > 0
+            ).map(({ key, color, messageKey }) => (
+              <Typography
+                className={`tw:shrink-0 ${COUNT_TEXT[color]}`}
+                key={key}
+                size="text-xs"
+                weight="medium">
+                {t(messageKey, {
+                  count: (tableCounts?.[group.tableFqn] ?? group)[key],
+                })}
+              </Typography>
+            ))}
           </div>
           <ul className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary tw:px-3">
             {group.tests.map((test) => (

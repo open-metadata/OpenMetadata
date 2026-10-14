@@ -16,7 +16,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { queryClient } from '../queryClient';
-import { getListTestCaseBySearch } from '../rest/testAPI';
+import { getDataQualityReport, getListTestCaseBySearch } from '../rest/testAPI';
 import {
   DataQualityRange,
   DEFAULT_DATA_QUALITY_FILTERS,
@@ -27,6 +27,7 @@ import {
 } from './useDataQualitySummary';
 
 jest.mock('../rest/testAPI', () => ({
+  getDataQualityReport: jest.fn(),
   getListTestCaseBySearch: jest.fn(),
 }));
 
@@ -164,6 +165,60 @@ describe('useDataQualitySummary', () => {
       'abort',
       'pass',
     ]);
+  });
+
+  it('counts every result on the tables the rows show, and asks for the incident', async () => {
+    mockSearch.mockImplementation((params) =>
+      Promise.resolve({
+        data:
+          params?.testCaseStatus === undefined
+            ? [
+                {
+                  id: 't',
+                  name: 't',
+                  entityLink: '<#E::table::svc.db.s.orders::columns::id>',
+                },
+              ]
+            : [],
+        paging: { total: 1 },
+      } as never)
+    );
+    (getDataQualityReport as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          originEntityFQN: 'svc.db.s.orders',
+          'testCaseResult.testCaseStatus': 'failed',
+          document_count: '3',
+        },
+      ],
+    });
+
+    const { result } = renderHook(
+      () => useDataQualitySummary(DEFAULT_DATA_QUALITY_FILTERS),
+      { wrapper }
+    );
+
+    await waitFor(() =>
+      expect(result.current.tableCounts['svc.db.s.orders']).toEqual({
+        passed: 0,
+        failed: 3,
+        aborted: 0,
+      })
+    );
+
+    const query = JSON.parse(
+      (getDataQualityReport as jest.Mock).mock.calls[0][0].q
+    );
+
+    // Column tests count toward their table, so the rows' tables are asked for.
+    expect(query.query.bool.must).toContainEqual({
+      terms: { originEntityFQN: ['svc.db.s.orders'] },
+    });
+    expect(
+      mockSearch.mock.calls.find(
+        ([params]) => params?.limit === DATA_QUALITY_ROWS
+      )?.[0]?.fields
+    ).toBe('testCaseResult,incidentStatus');
   });
 
   it('surfaces a failed lookup instead of reporting a clean estate', async () => {

@@ -18,6 +18,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import type { FC } from 'react';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
+import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 
 export type StatusColor = 'success' | 'error' | 'warning';
 
@@ -65,3 +66,26 @@ export const GROUP_COUNTS: {
     messageKey: 'message.count-aborted-test',
   },
 ];
+
+/** An incident's stage, coloured by how far along it is. */
+export const INCIDENT_STATUS: Record<
+  TestCaseResolutionStatusTypes,
+  { labelKey: string; text: string }
+> = {
+  [TestCaseResolutionStatusTypes.New]: {
+    labelKey: 'label.new',
+    text: 'tw:text-utility-error-700',
+  },
+  [TestCaseResolutionStatusTypes.ACK]: {
+    labelKey: 'label.ack',
+    text: 'tw:text-utility-blue-700',
+  },
+  [TestCaseResolutionStatusTypes.Assigned]: {
+    labelKey: 'label.assigned',
+    text: 'tw:text-utility-warning-700',
+  },
+  [TestCaseResolutionStatusTypes.Resolved]: {
+    labelKey: 'label.resolved',
+    text: 'tw:text-utility-success-700',
+  },
+};

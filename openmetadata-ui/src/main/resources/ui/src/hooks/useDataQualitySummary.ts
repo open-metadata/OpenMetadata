@@ -14,10 +14,16 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCase, TestCaseStatus } from '../generated/tests/testCase';
-import { getListTestCaseBySearch } from '../rest/testAPI';
+import { getDataQualityReport, getListTestCaseBySearch } from '../rest/testAPI';
+import { getEntityFQN } from '../utils/FeedUtilsPure';
 import {
   DataQualityFilters,
+  DataQualityViewer,
+  TableStatusCounts,
+  TABLE_STATUS_AGGREGATION,
   toSearchParams,
+  toTableCountsQuery,
+  toTableStatusCounts,
 } from '../utils/dataQualityFilters';
 
 export const DATA_QUALITY_QUERY_KEY = ['landingPage', 'widgets', 'dataQuality'];
@@ -43,6 +49,12 @@ export interface DataQualitySummary {
    */
   tests: TestCase[];
   /**
+   * Every result in scope per table the rows show, not just the rows: a table
+   * header reads "3 failed" even when only one of them made the list. Empty
+   * until the rows are in, since they decide which tables to count.
+   */
+  tableCounts: Record<string, TableStatusCounts>;
+  /**
    * No test case exists at all, whatever the filters. A zero `total` only says
    * nothing *ran* in the selected scope and window; this is what tells "not
    * set up" apart from "quiet this week".
@@ -59,10 +71,11 @@ const fetchByStatus = async (
   status: TestCaseStatus | undefined,
   limit: number,
   filters: DataQualityFilters,
-  userName?: string
+  userName?: string,
+  fields = 'testCaseResult'
 ) => {
   const response = await getListTestCaseBySearch({
-    fields: 'testCaseResult',
+    fields,
     includeAllTests: true,
     limit,
     q: '*',
@@ -114,7 +127,8 @@ const sortByStatus = (tests: TestCase[]) =>
 
 export const useDataQualitySummary = (
   filters: DataQualityFilters,
-  userName?: string
+  userName?: string,
+  viewer?: DataQualityViewer
 ): DataQualitySummary => {
   // The filters are part of every key, so changing one refetches rather than
   // serving the previous filter's counts from cache.
@@ -157,11 +171,51 @@ export const useDataQualitySummary = (
   });
   const testsQuery = useQuery({
     placeholderData: keepPreviousData,
+    // The incident rides along on the row, so a failing test can say whether
+    // anyone has picked it up without a lookup per test.
     queryFn: () =>
-      fetchByStatus(undefined, DATA_QUALITY_ROWS, filters, userName),
+      fetchByStatus(
+        undefined,
+        DATA_QUALITY_ROWS,
+        filters,
+        userName,
+        'testCaseResult,incidentStatus'
+      ),
     queryKey: [...DATA_QUALITY_QUERY_KEY, 'latest', filters, userName],
     staleTime: TTL_MS,
   });
+  const tableFqns = Array.from(
+    new Set(
+      (testsQuery.data?.tests ?? []).map((test) =>
+        getEntityFQN(test.entityLink ?? '')
+      )
+    )
+  ).sort();
+  // Waits on the rows by necessity: they decide which tables to count.
+  const tableCountsQuery = useQuery({
+    enabled: tableFqns.length > 0,
+    placeholderData: keepPreviousData,
+    queryFn: async () =>
+      toTableStatusCounts(
+        (
+          await getDataQualityReport({
+            aggregationQuery: TABLE_STATUS_AGGREGATION,
+            index: 'testCase',
+            q: toTableCountsQuery(filters, tableFqns, viewer),
+          })
+        ).data ?? []
+      ),
+    queryKey: [
+      ...DATA_QUALITY_QUERY_KEY,
+      'tableCounts',
+      filters,
+      tableFqns,
+      viewer?.id,
+    ],
+    staleTime: TTL_MS,
+  });
+  // The counts only enrich the headers, so they stay out of the loading and
+  // error state: a failed lookup leaves the headers counting the rows.
   const queries = [
     failedQuery,
     passedQuery,
@@ -178,6 +232,7 @@ export const useDataQualitySummary = (
     aborted,
     failed,
     tests: sortByStatus(testsQuery.data?.tests ?? []),
+    tableCounts: tableCountsQuery.data ?? {},
     hasNoTests: anyTestQuery.data === 0,
     isError: queries.some((query) => query.isError),
     isFetching: queries.some((query) => query.isFetching),

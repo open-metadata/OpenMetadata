@@ -12,11 +12,19 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
+import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { useDataQualitySummary } from '../../../../hooks/useDataQualitySummary';
 import { FilterButtonOption } from '../Common/TopicWidget/FilterButton';
 import DataQualityWidget from './DataQualityWidget';
 
 jest.mock('react-i18next', () => ({
+  Trans: ({
+    i18nKey,
+    values,
+  }: {
+    i18nKey: string;
+    values?: Record<string, unknown>;
+  }) => <>{`${i18nKey} ${JSON.stringify(values)}`}</>,
   useTranslation: () => ({
     // Echoes the options, so a test can tell which figures a label carries.
     t: (key: string, options?: Record<string, unknown>) =>
@@ -35,7 +43,9 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: (selector: (state: unknown) => unknown) =>
-    selector({ currentUser: { name: 'dale' } }),
+    selector({
+      currentUser: { id: 'user-1', name: 'dale', teams: [{ id: 'team-1' }] },
+    }),
 }));
 
 // Spread the real module: the widget also reads its exported row count.
@@ -48,8 +58,8 @@ jest.mock('../../../../utils/ObservabilityRouterClassBase', () => ({
   __esModule: true,
   default: {
     getDataQualityPagePath: () => '/data-quality',
-    getTestCaseDetailPagePath: (fqn: string) =>
-      `/test-case/${encodeURIComponent(fqn)}`,
+    getTestCaseDetailPagePath: (fqn: string, tab?: string) =>
+      `/test-case/${encodeURIComponent(fqn)}${tab ? `?tab=${tab}` : ''}`,
   },
 }));
 
@@ -93,6 +103,7 @@ const SUMMARY = {
   aborted: 1,
   failed: 25,
   tests: [0, 1, 2, 3].map(failingTest),
+  tableCounts: {},
   hasNoTests: false,
   isError: false,
   isFetching: false,
@@ -141,6 +152,59 @@ describe('DataQualityWidget', () => {
     expect(group).toHaveTextContent('message.count-failed-test {"count":1}');
     // Under its table, a column test names its column, not the table again.
     expect(screen.getByTestId('dq-test-test-1')).toHaveTextContent('id');
+  });
+
+  it('heads each table with all of its results, not just the rows shown', () => {
+    renderWidget({
+      tableCounts: {
+        'svc.db.schema.orders_0': { passed: 4, failed: 3, aborted: 0 },
+      },
+      tests: [failingTest(0)],
+    });
+
+    const group = screen.getByTestId('dq-table-group-svc.db.schema.orders_0');
+
+    expect(group).toHaveTextContent('message.count-passed-test {"count":4}');
+    expect(group).toHaveTextContent('message.count-failed-test {"count":3}');
+    expect(group).not.toHaveTextContent('message.count-aborted-test');
+  });
+
+  it("names a failing test's incident stage", () => {
+    renderWidget({
+      tests: [
+        {
+          ...failingTest(0),
+          incidentStatus: {
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Assigned,
+          } as never,
+        },
+      ],
+    });
+
+    expect(screen.getByTestId('dq-incident-test-0')).toHaveTextContent(
+      'message.incident-with-status {"status":"label.assigned"}'
+    );
+  });
+
+  it('offers to raise an incident on an aborted run nobody has picked up', () => {
+    renderWidget({
+      tests: [
+        {
+          ...failingTest(0),
+          testCaseResult: { testCaseStatus: TestCaseStatus.Aborted },
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByTestId('dq-raise-incident-test-0'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      `/test-case/${encodeURIComponent(
+        'svc.db.schema.orders_0.null_check #0'
+      )}?tab=issues`
+    );
+    expect(screen.queryByTestId('dq-view-test-test-0')).toBeNull();
   });
 
   it('lists the tests flat, each naming its table, when grouped by test case', () => {
@@ -224,7 +288,9 @@ describe('DataQualityWidget', () => {
 
     expect(useDataQualitySummary).toHaveBeenLastCalledWith(
       expect.objectContaining({ range: '30' }),
-      'dale'
+      'dale',
+      // "Mine" covers the viewer's teams, as the test search resolves it.
+      { id: 'user-1', teamIds: ['team-1'] }
     );
     // Still mounted, so the filter just used keeps its place and focus.
     expect(screen.getByTestId('dq-range-filter')).toBeInTheDocument();

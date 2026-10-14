@@ -65,12 +65,22 @@ const DataQualityWidget: React.FC<DataQualityWidgetProps> = ({
     aborted,
     total,
     tests,
+    tableCounts,
     hasNoTests,
     isError,
     isFetching,
     isLoading,
     refetch,
-  } = useDataQualitySummary(filters, currentUser?.name);
+  } = useDataQualitySummary(
+    filters,
+    currentUser?.name,
+    currentUser
+      ? {
+          id: currentUser.id,
+          teamIds: (currentUser.teams ?? []).map((team) => team.id),
+        }
+      : undefined
+  );
 
   const scopeOptions = useMemo(
     () => [
@@ -211,7 +221,11 @@ const DataQualityWidget: React.FC<DataQualityWidgetProps> = ({
                 : t('message.no-failing-tests')}
             </Typography>
           ) : (
-            <DataQualityTestRows groupBy={groupBy} tests={tests} />
+            <DataQualityTestRows
+              groupBy={groupBy}
+              tableCounts={tableCounts}
+              tests={tests}
+            />
           )}
         </>
       )}
