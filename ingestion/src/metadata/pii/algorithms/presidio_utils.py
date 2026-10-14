@@ -654,7 +654,7 @@ class ValidatedPlPeselRecognizer(PlPeselRecognizer):
             return False
         digits = [int(c) for c in text]
         weights = [1, 3, 7, 9, 1, 3, 7, 9, 1, 3]
-        total = sum(d * w for d, w in zip(digits[:10], weights))
+        total = sum(d * w for d, w in zip(digits[:10], weights, strict=False))
         return (10 - total % 10) % 10 == digits[10]
 
 
@@ -706,7 +706,7 @@ class ValidatedAuAcnRecognizer(AuAcnRecognizer):
             return False
         digits = [int(c) for c in text]
         weights = [8, 7, 6, 5, 4, 3, 2, 1]
-        total = sum(d * w for d, w in zip(digits[:8], weights))
+        total = sum(d * w for d, w in zip(digits[:8], weights, strict=False))
         return (10 - total % 10) % 10 == digits[8]
 
 
@@ -726,14 +726,23 @@ def au_acn_recognizer(
 
 # Finnish HETU century separator → base year.
 # Traditional: + → 1800, - → 1900.
-# Finland's 2023 HETU reform added new separators: A–F mean 2000s; U/V/W/X/Y mean 1900s.
+# Finland's 2023 HETU reform added new separators: A-F mean 2000s; U/V/W/X/Y mean 1900s.
 _FI_HETU_CENTURY: dict[str, int] = {
-    '+': 1800,
-    '-': 1900,
-    'U': 1900, 'V': 1900, 'W': 1900, 'X': 1900, 'Y': 1900,
-    'A': 2000, 'B': 2000, 'C': 2000, 'D': 2000, 'E': 2000, 'F': 2000,
+    "+": 1800,
+    "-": 1900,
+    "U": 1900,
+    "V": 1900,
+    "W": 1900,
+    "X": 1900,
+    "Y": 1900,
+    "A": 2000,
+    "B": 2000,
+    "C": 2000,
+    "D": 2000,
+    "E": 2000,
+    "F": 2000,
 }
-# 31-entry check-character table (indices 0–30).
+# 31-entry check-character table (indices 0-30).
 _FI_HETU_CHECK_CHARS = "0123456789ABCDEFHJKLMNPRSTUVWXY"
 
 
