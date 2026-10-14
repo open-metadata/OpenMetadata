@@ -301,46 +301,52 @@ export const InspectorRelationshipRow = ({
   isDisabled,
   onPress,
 }: RelationshipRowProps) => (
-  <Button
-    noTextPadding
-    className="kg-inspector-row kg-inspector-rel-row tw:w-full tw:justify-start tw:*:data-text:flex-1"
-    color="tertiary"
-    iconTrailing={ChevronRight}
-    isDisabled={isDisabled}
-    size="sm"
-    onPress={onPress}>
-    <Box align="center" className="tw:min-w-0 tw:flex-1 tw:text-left" gap={2}>
-      {tile}
-      <Box
-        align="center"
-        className="tw:min-w-0 tw:flex-1 tw:flex-wrap tw:gap-x-2 tw:gap-y-1"
-        wrap="wrap">
-        <Typography
-          className="tw:text-brand-secondary"
-          size="text-sm"
-          weight="medium">
-          {subject}
-        </Typography>
-        <ArrowRight
-          aria-hidden="true"
-          className="tw:shrink-0 tw:text-tertiary"
-          size={12}
-        />
-        <Badge color="gray" size="sm" type="pill-color">
-          {predicate}
-        </Badge>
-        <ArrowRight
-          aria-hidden="true"
-          className="tw:shrink-0 tw:text-tertiary"
-          size={12}
-        />
-        <Typography
-          className="tw:text-brand-secondary"
-          size="text-sm"
-          weight="medium">
-          {object}
-        </Typography>
-      </Box>
+  <button
+    className={classNames(
+      'kg-inspector-row kg-inspector-rel-row',
+      'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-md',
+      'tw:border-0 tw:bg-transparent tw:text-left tw:transition-colors',
+      'hover:tw:bg-secondary_hover',
+      'disabled:tw:cursor-not-allowed disabled:tw:opacity-60'
+    )}
+    disabled={isDisabled}
+    type="button"
+    onClick={onPress}>
+    {tile}
+    <Box
+      align="center"
+      className="tw:min-w-0 tw:flex-1 tw:flex-wrap tw:gap-x-2 tw:gap-y-1"
+      wrap="wrap">
+      <Typography
+        className="tw:text-brand-secondary"
+        size="text-sm"
+        weight="medium">
+        {subject}
+      </Typography>
+      <ArrowRight
+        aria-hidden="true"
+        className="tw:shrink-0 tw:text-tertiary"
+        size={12}
+      />
+      <Badge color="gray" size="sm" type="pill-color">
+        {predicate}
+      </Badge>
+      <ArrowRight
+        aria-hidden="true"
+        className="tw:shrink-0 tw:text-tertiary"
+        size={12}
+      />
+      <Typography
+        className="tw:text-brand-secondary"
+        size="text-sm"
+        weight="medium">
+        {object}
+      </Typography>
     </Box>
-  </Button>
+    <ChevronRight
+      aria-hidden="true"
+      className="tw:shrink-0 tw:text-tertiary"
+      size={16}
+    />
+  </button>
 );
