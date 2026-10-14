@@ -103,7 +103,7 @@ const APP_ICONS: Record<string, AppIcon> = {
 
 // The sentinel the backend expands to every registered index. It is not an index itself, so the
 // endpoint does not return it, but it has to be in the enum for the `["all"]` default to validate.
-// TreeSelectWidget filters it out of the child nodes and renders it as the synthetic "All" parent.
+// CoreEnumMultiSelectField filters it out of the options and renders it as the synthetic "All" option.
 const ALL_ENTITY_TYPES = 'all';
 
 /**

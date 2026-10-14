@@ -338,6 +338,7 @@ export const GlobalSearchBar = () => {
       />
       <SelectPopover
         className="global-search-overlay"
+        data-testid="global-search-popover"
         isOpen={isSearchBoxOpen && Boolean(shouldShowSearchContent)}
         size="md"
         style={{ width: searchContainerRef.current?.offsetWidth }}
