@@ -315,6 +315,23 @@ const TagField = () => {
   );
 };
 
+const DropdownField = () => (
+  <>
+    <Autocomplete
+      aria-label="Column"
+      items={OPTIONS}
+      placeholder="Select"
+      selectedItems={[]}>
+      {(item) => (
+        <Autocomplete.Item id={item.id} key={item.id}>
+          {item.label}
+        </Autocomplete.Item>
+      )}
+    </Autocomplete>
+    <input aria-label="Next field" />
+  </>
+);
+
 /** Lets React flush sync-lane work without running a macrotask. */
 const flushMicrotasks = async () => {
   for (let i = 0; i < 10; i++) {
@@ -322,7 +339,9 @@ const flushMicrotasks = async () => {
   }
 };
 
-const typeNative = (input: HTMLInputElement, value: string) => {
+const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
+
+const typeNative = (input: HTMLElement, value: string) => {
   Object.getOwnPropertyDescriptor(
     HTMLInputElement.prototype,
     'value'
@@ -330,52 +349,115 @@ const typeNative = (input: HTMLInputElement, value: string) => {
   input.dispatchEvent(new Event('input', { bubbles: true }));
 };
 
-const pressEnterNative = (input: HTMLInputElement) => {
+const pressKeyNative = (input: HTMLElement, key: string) => {
   input.dispatchEvent(
-    new KeyboardEvent('keydown', {
-      bubbles: true,
-      cancelable: true,
-      key: 'Enter',
-    })
+    new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key })
   );
 };
 
-describe('Autocomplete – focus leaves before a deferred open lands', () => {
-  // react-stately reopens the menu from a passive effect when the input value
-  // changes, and that update renders in a later task. Fast input (typing, Enter,
-  // then moving to the next field) can blur the input first, so the open lands
-  // on an unfocused combobox and nothing closes it again. While open, react-aria
-  // aria-hides everything outside the combobox, including nodes added later.
-  it('does not leave the combobox open after focus moves on', async () => {
-    const actEnvironment = (
-      globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
-    ).IS_REACT_ACT_ENVIRONMENT;
+/**
+ * Runs `steps` outside act() so React schedules work as it does in a browser:
+ * sync-lane renders flush in microtasks, everything else waits for a later
+ * task. That is what lets a step land before a deferred update renders.
+ */
+const runOutsideAct = async (steps: () => Promise<void>) => {
+  const scope = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+  const actEnvironment = scope.IS_REACT_ACT_ENVIRONMENT;
+  scope.IS_REACT_ACT_ENVIRONMENT = false;
+  try {
+    await steps();
+  } finally {
+    scope.IS_REACT_ACT_ENVIRONMENT = actEnvironment;
+  }
+};
+
+// While a react-aria combobox is open, everything outside it is aria-hidden —
+// including nodes added later — so screen readers and role queries lose the
+// rest of the page.
+describe('Autocomplete – a tag field without a dropdown', () => {
+  it('never expands, so the rest of the page stays accessible while typing', async () => {
+    render(<TagField />);
+    const input = screen.getByRole('combobox', { name: 'Identities' });
+
+    await userEvent.click(input);
+    await userEvent.keyboard('identity');
+
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.getByRole('textbox', { name: 'Next field' })
+    ).toBeInTheDocument();
+
+    await userEvent.keyboard('{ArrowDown}');
+
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('adds a tag on Enter without submitting the surrounding form', async () => {
+    const onSubmit = vi.fn((event: Event) => event.preventDefault());
+    render(
+      <form onSubmit={(event) => onSubmit(event.nativeEvent)}>
+        <TagField />
+      </form>
+    );
+    const input = screen.getByRole('combobox', { name: 'Identities' });
+
+    await userEvent.click(input);
+    await userEvent.keyboard('identity{Enter}{Enter}');
+
+    expect(screen.getByText('identity')).toBeVisible();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  // Same type → Enter → move-on sequence as the Data Contract security form.
+  it('stays collapsed when focus moves on right after Enter', async () => {
     render(<TagField />);
     const input = screen.getByRole('combobox', { name: 'Identities' });
     const nextField = screen.getByRole('textbox', { name: 'Next field' });
 
-    (
-      globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
-    ).IS_REACT_ACT_ENVIRONMENT = false;
-    try {
+    await runOutsideAct(async () => {
       input.focus();
-      typeNative(input as HTMLInputElement, 'identity_1');
-      pressEnterNative(input as HTMLInputElement);
+      typeNative(input, 'identity_1');
+      pressKeyNative(input, 'Enter');
       await waitFor(() => expect(screen.getByText('identity_1')).toBeVisible());
 
-      typeNative(input as HTMLInputElement, 'identity_2');
+      typeNative(input, 'identity_2');
       await flushMicrotasks();
-      pressEnterNative(input as HTMLInputElement);
+      pressKeyNative(input, 'Enter');
       await flushMicrotasks();
       nextField.focus();
 
       await waitFor(() => expect(screen.getByText('identity_2')).toBeVisible());
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    } finally {
-      (
-        globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
-      ).IS_REACT_ACT_ENVIRONMENT = actEnvironment;
-    }
+      await settle();
+    });
+
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.getByRole('textbox', { name: 'Next field' })
+    ).toBeInTheDocument();
+  });
+});
+
+describe('Autocomplete – focus leaves before a deferred open lands', () => {
+  // react-stately reopens the menu from a passive effect when the input value
+  // changes, and that update renders in a later task. Typing and moving on
+  // before it renders lands the open on an unfocused combobox, which no later
+  // blur would close.
+  it('does not leave the dropdown open once its input has lost focus', async () => {
+    render(<DropdownField />);
+    const input = screen.getByRole('combobox', { name: 'Column' });
+    const nextField = screen.getByRole('textbox', { name: 'Next field' });
+
+    await runOutsideAct(async () => {
+      input.focus();
+      await flushMicrotasks();
+      pressKeyNative(input, 'Escape');
+      await settle();
+
+      typeNative(input, 'T');
+      await flushMicrotasks();
+      nextField.focus();
+      await settle();
+    });
 
     expect(input).toHaveAttribute('aria-expanded', 'false');
     expect(

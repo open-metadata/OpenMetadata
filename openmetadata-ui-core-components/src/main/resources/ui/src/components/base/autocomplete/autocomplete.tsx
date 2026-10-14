@@ -163,22 +163,33 @@ const InnerAutocomplete = ({
     context.allowsCreation &&
     (context.hideDropdown || context.visibleItemCount === 0);
 
-  // react-stately reopens the menu from a passive effect when the input value
-  // changes, and that update renders in a later task. Fast input (type, Enter,
-  // move to the next field) can blur first, so the open lands on an unfocused
-  // combobox that no later blur will close — and while open, react-aria
-  // aria-hides the rest of the page, including nodes added afterwards.
+  // While a react-aria combobox is open it aria-hides the rest of the page,
+  // including nodes added afterwards, so it may only stay open when it has a
+  // list to show and its input has focus. react-stately reopens the menu from a
+  // passive effect that renders in a later task, so fast input (type, then move
+  // to the next field) can land an open after the blur that would have closed
+  // it; a field without a dropdown can still be opened by react-aria's own
+  // arrow-key and touch handlers.
   useEffect(() => {
-    if (comboBoxStateContext?.isOpen && !comboBoxStateContext.isFocused) {
+    if (
+      comboBoxStateContext?.isOpen &&
+      (context.hideDropdown || !comboBoxStateContext.isFocused)
+    ) {
       comboBoxStateContext.close();
     }
-  }, [comboBoxStateContext]);
+  }, [comboBoxStateContext, context.hideDropdown]);
 
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     const inputValue = event.currentTarget.value;
     const isCaretAtStart =
       event.currentTarget.selectionStart === 0 &&
       event.currentTarget.selectionEnd === 0;
+
+    // Enter in a tag field adds a tag. With no menu open react-aria no longer
+    // swallows it, so stop it from submitting the surrounding form.
+    if (event.key === 'Enter' && context.hideDropdown) {
+      event.preventDefault();
+    }
 
     if (event.key === 'Enter' && canCreateItem && inputValue.trim() !== '') {
       event.preventDefault();
@@ -202,7 +213,11 @@ const InnerAutocomplete = ({
 
         break;
       case 'ArrowDown':
-        if (comboBoxStateContext && !comboBoxStateContext.isOpen) {
+        if (
+          comboBoxStateContext &&
+          !context.hideDropdown &&
+          !comboBoxStateContext.isOpen
+        ) {
           comboBoxStateContext.open();
         }
 
@@ -215,6 +230,7 @@ const InnerAutocomplete = ({
   const handleInputMouseDown = (_event: React.MouseEvent<HTMLInputElement>) => {
     if (
       comboBoxStateContext &&
+      !context.hideDropdown &&
       comboBoxStateContext.isFocused &&
       !comboBoxStateContext.isOpen
     ) {
@@ -673,7 +689,8 @@ export const AutocompleteBase = ({
           allowsEmptyCollection
           inputValue={filterText}
           items={visibleItems}
-          menuTrigger="focus"
+          // A field without a dropdown has no list to open on focus or input.
+          menuTrigger={hideDropdown ? 'manual' : 'focus'}
           selectedKey={null}
           onInputChange={onInputChange}
           onSelectionChange={onSelectionChange}

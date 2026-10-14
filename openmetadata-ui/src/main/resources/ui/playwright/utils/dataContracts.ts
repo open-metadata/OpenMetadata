@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { escapeRegExp } from 'lodash';
 import { ACTION_TIMEOUT } from '../constant/common';
 import {
   DataContractSecuritySlaData,
@@ -591,11 +590,6 @@ export const selectContractOwners = async (page: Page, names: string[]) => {
  * A core Autocomplete filters as you type but does not select on Enter; the
  * picked value shows as a chip that replaces the input, so a previous pick is
  * removed before typing a new one.
- *
- * Located by test id and attributes, not by role: a creatable tag field
- * (Identities, Values) can be left open after a fast type-Enter-move, and an
- * open react-aria combobox aria-hides the rest of the page, which role queries
- * skip. The component fix is #35419.
  */
 export const pickContractAutocompleteOption = async (
   page: Page,
@@ -603,13 +597,9 @@ export const pickContractAutocompleteOption = async (
   value: string
 ) => {
   const field = page.getByTestId(testId);
-  const input = field.locator('input[role="combobox"]');
-  const option = page
-    .locator('[role="option"]')
-    .filter({ hasText: new RegExp(`^${escapeRegExp(value)}$`) });
-  const removeSelection = field
-    .getByTestId('autocomplete-selected-item')
-    .locator('button');
+  const input = field.getByRole('combobox');
+  const option = page.getByRole('option', { name: value, exact: true });
+  const removeSelection = field.getByRole('button');
 
   if (await removeSelection.isVisible()) {
     await removeSelection.click();
