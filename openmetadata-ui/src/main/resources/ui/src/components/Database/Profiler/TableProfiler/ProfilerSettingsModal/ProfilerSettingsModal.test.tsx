@@ -18,6 +18,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Column } from '../../../../../generated/entity/data/dashboardDataModel';
@@ -480,5 +481,42 @@ describe('ProfilerSettingsModal profile-sample round-trip', () => {
     });
 
     expect(payload.profileSampleConfig).toBeUndefined();
+  });
+});
+
+describe('ProfilerSettingsModal include-column dropdowns', () => {
+  // Two include rows turn the include-column container into a 160px scroll
+  // box (tw:max-h-40 tw:overflow-y-auto). A dropdown rendered inside it would
+  // be clipped, so the row pickers must open outside it (#35369).
+  it('opens the include-column list outside the scroll clip box', async () => {
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('include-column-select')).toBeInTheDocument()
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.add-entity' }));
+    });
+
+    const container = screen.getByTestId('include-column-container');
+
+    await waitFor(() => {
+      expect(container).toHaveClass('tw:max-h-40', 'tw:overflow-y-auto');
+      expect(screen.getAllByTestId('include-column-select')).toHaveLength(2);
+    });
+
+    const [firstRow] = screen.getAllByTestId('include-column-select');
+    const [trigger] = within(firstRow).getAllByRole('button');
+
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+
+    const listbox = await screen.findByRole('listbox');
+
+    expect(container).not.toContainElement(listbox);
   });
 });
