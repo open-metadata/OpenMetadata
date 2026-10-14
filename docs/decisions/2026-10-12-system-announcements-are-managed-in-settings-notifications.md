@@ -1,11 +1,12 @@
 # System announcements are managed by admins in Settings › Notifications › Announcements
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-12 (initial)
+- **Revisions:** v1 2026-10-12 (initial) · v2 2026-10-14 (users see only critical ones, as the Home banner)
 - **Deciders:** Shrabanti Paul
 - **Guard:** `GlobalSettingsClassBase.test.ts` (Announcements card admin-only),
   `NotificationLanding.test.tsx` (native Announcements card), `useSystemAnnouncements.test.tsx`
-  (title search and paging)
+  (title search and paging), `CriticalAnnouncements.test.tsx` and `AnnouncementsRail.test.tsx`
+  (what reaches users on Home)
 - **Related:** #34581, #34162
 
 ## Context
@@ -37,3 +38,14 @@ list filter) and this record be amended. Renaming the menu
 key, the section key or the routes breaks deep links and downstream tests. Letting non-admins
 manage system announcements needs a server change first (`authorizeSystemAnnouncementWrite`), then
 a permission-based `isProtected` here and an amendment to this record.
+
+## Amendment (v2, 2026-10-14)
+- Users see a system announcement only when it is **Critical and Active**, and only on Home, as
+  the top banner (`CriticalAnnouncements`). Other types stay admin-only bookkeeping in Settings.
+  Several live criticals share the banner slot as a carousel moved only by the user; it wraps at
+  either end rather than disabling a button and dropping its focus.
+- The Home announcements rail and its dialog list asset announcements only (`system=false`), so a
+  system announcement never appears twice.
+- Dismissal stays per user and browser-local, as the rail's already was, but each Home surface
+  keeps its own list (`DismissedAnnouncementsScope`): each prunes against what it shows, and a
+  shared list would let the rail prune the banner's dismissals away.
