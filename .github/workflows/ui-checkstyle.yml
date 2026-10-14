@@ -831,7 +831,8 @@ jobs:
              [ "${{ needs.checkstyle.outputs.tw_audit_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.tw_guard_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.bundle_build_result }}" = 'failure' ] || \
-             [ "${{ needs.checkstyle.outputs.bundle_budget_result }}" = 'failure' ]; then
+             [ "${{ needs.checkstyle.outputs.bundle_budget_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.bundle_runtime_result }}" = 'failure' ]; then
             echo "One or more checks failed."
             exit 1
           fi
