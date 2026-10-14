@@ -40,6 +40,7 @@ import {
   ModifiedGlossary,
   useGlossaryStore,
 } from '../../../components/Glossary/useGlossary.store';
+import SuggestionsProvider from '../../../components/Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   PAGE_SIZE_LARGE,
@@ -682,7 +683,7 @@ const GlossaryPage = () => {
       );
     }
 
-    return (
+    const glossaryV1 = (
       <GlossaryV1
         isGlossaryActive={isGlossaryActive}
         isSummaryPanelOpen={Boolean(previewAsset)}
@@ -697,6 +698,14 @@ const GlossaryPage = () => {
         onGlossaryTermDelete={handleGlossaryTermDelete}
         onGlossaryTermUpdate={handleGlossaryTermUpdate}
       />
+    );
+
+    return isTermView ? (
+      <SuggestionsProvider entityType={EntityType.GLOSSARY_TERM}>
+        {glossaryV1}
+      </SuggestionsProvider>
+    ) : (
+      glossaryV1
     );
   };
 

@@ -32,7 +32,7 @@ const MLMODEL_DEFAULT_FIELDS = [
 ].join(',');
 
 export const mlModelQueryKey = (fqn: string, fields: string) =>
-  ['mlModel', fqn, fields] as const;
+  ['mlmodel', fqn, fields] as const;
 
 export const mlModelQueryFn = (fqn: string, fields: string) => () =>
   getMlModelByFQN(fqn, { fields });
