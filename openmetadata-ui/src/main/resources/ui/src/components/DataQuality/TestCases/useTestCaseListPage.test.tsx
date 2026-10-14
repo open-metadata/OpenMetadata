@@ -22,13 +22,17 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
-import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import {
+  exportTestCasesInCSV,
+  getListTestCaseBySearch,
+} from '../../../rest/testAPI';
 import { getTestCaseExportFiltersFromSearch } from '../../../utils/DataQuality/DataQualityPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import { useTestCaseListPage } from './useTestCaseListPage';
 
 const mockNavigate = jest.fn();
+const mockShowModal = jest.fn();
 
 const mockLocation = { search: '' };
 
@@ -73,7 +77,7 @@ jest.mock('../../../pages/DataQuality/DataQualityProvider', () => ({
 jest.mock(
   '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component',
   () => ({
-    useEntityExportModalProvider: jest.fn(() => ({ showModal: jest.fn() })),
+    useEntityExportModalProvider: jest.fn(() => ({ showModal: mockShowModal })),
   })
 );
 
@@ -94,6 +98,7 @@ jest.mock('../../../rest/testAPI', () => ({
   getListTestCaseBySearch: jest
     .fn()
     .mockResolvedValue({ data: [], paging: { total: 0 } }),
+  exportTestCasesInCSV: jest.fn(),
 }));
 
 jest.mock('../../../rest/searchAPI', () => ({
@@ -123,6 +128,7 @@ const buildTestCase = (
 describe('useTestCaseListPage', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
+    mockShowModal.mockClear();
     mockLocation.search = '';
     mockPermissions.testCase = { ViewAll: true, ViewBasic: true };
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
@@ -455,6 +461,41 @@ describe('useTestCaseListPage', () => {
       q: listParams.q,
     });
     expect(listParams.q).toBe('orders');
+  });
+
+  it('should export only the test cases the filtered list shows', async () => {
+    mockLocation.search = QueryString.stringify(
+      {
+        testCaseType: 'all',
+        currentPage: 1,
+        testCaseStatus: [TestCaseStatus.Aborted],
+      },
+      { arrayFormat: 'brackets' }
+    );
+    const { result } = renderHook(() => useTestCaseListPage());
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ testCaseStatus: [TestCaseStatus.Aborted] })
+      )
+    );
+    const listParams = (getListTestCaseBySearch as jest.Mock).mock.calls.at(
+      -1
+    )?.[0];
+
+    act(() => {
+      result.current.extraDropdownContent
+        .find((item) => item.key === 'export-button')
+        ?.onClick?.();
+    });
+    const [{ name, onExport }] = mockShowModal.mock.calls[0];
+    onExport(name, { recursive: true });
+
+    expect(exportTestCasesInCSV).toHaveBeenLastCalledWith('*', {
+      recursive: true,
+      testCaseStatus: listParams.testCaseStatus,
+      testCaseType: listParams.testCaseType,
+    });
   });
 
   it('should prefetch the default table and tag filter options on mount', async () => {

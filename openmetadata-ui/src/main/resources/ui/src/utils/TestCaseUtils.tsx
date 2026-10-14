@@ -51,6 +51,10 @@ interface TestCasePermission {
   EditAll: boolean;
 }
 
+/**
+ * `listFilters` are the filters of the test case list the menu belongs to, so
+ * Export and Bulk Edit both select the test cases the list shows.
+ */
 export const getTestCaseManageMenuItems = (
   fqn: string,
   permission: TestCasePermission,
@@ -58,7 +62,7 @@ export const getTestCaseManageMenuItems = (
   navigate: NavigateFunction,
   showModal: (data: ExportData) => void,
   sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE,
-  bulkEditFilters?: TestCaseExportFilters
+  listFilters?: TestCaseExportFilters
 ): ManageMenuItem[] => {
   const { ViewAll, EditAll } = permission;
 
@@ -101,7 +105,8 @@ export const getTestCaseManageMenuItems = (
             onClick: () =>
               showModal({
                 name: fqn,
-                onExport: exportTestCasesInCSV,
+                onExport: (name: string, params?: { recursive?: boolean }) =>
+                  exportTestCasesInCSV(name, { ...params, ...listFilters }),
                 exportTypes: [ExportTypes.CSV],
               }),
           },
@@ -123,10 +128,7 @@ export const getTestCaseManageMenuItems = (
                 `${getEntityBulkEditPath(
                   EntityType.TEST_CASE,
                   fqn
-                )}${getTestCaseBulkEditSearch(
-                  sourceEntityType,
-                  bulkEditFilters
-                )}`
+                )}${getTestCaseBulkEditSearch(sourceEntityType, listFilters)}`
               ),
           },
         ]
@@ -141,7 +143,7 @@ export const ExtraTestCaseDropdownOptions = (
   navigate: NavigateFunction,
   showModal: (data: ExportData) => void,
   sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE,
-  bulkEditFilters?: TestCaseExportFilters
+  listFilters?: TestCaseExportFilters
 ): ItemType[] =>
   getTestCaseManageMenuItems(
     fqn,
@@ -150,7 +152,7 @@ export const ExtraTestCaseDropdownOptions = (
     navigate,
     showModal,
     sourceEntityType,
-    bulkEditFilters
+    listFilters
   ).map((item) => {
     const label = (
       <ManageButtonItemLabel

@@ -192,8 +192,39 @@ describe('TestCaseUtils', () => {
 
       expect(mockShowModal).toHaveBeenCalledWith({
         name: fqn,
-        onExport: exportTestCasesInCSV,
+        onExport: expect.any(Function),
         exportTypes: [ExportTypes.CSV],
+      });
+
+      mockShowModal.mock.calls.at(-1)[0].onExport(fqn, { recursive: true });
+
+      expect(exportTestCasesInCSV).toHaveBeenLastCalledWith(fqn, {
+        recursive: true,
+      });
+    });
+
+    it('should export only the test cases matching the list filters', () => {
+      const permission = { ViewAll: true, EditAll: true };
+      const result = ExtraTestCaseDropdownOptions(
+        fqn,
+        permission,
+        false,
+        mockNavigate,
+        mockShowModal,
+        EntityType.TABLE,
+        {
+          testCaseStatus: TestCaseStatus.Aborted,
+          testCaseType: TestCaseType.all,
+        }
+      );
+
+      (result[1] as { onClick?: () => void }).onClick?.();
+      mockShowModal.mock.calls.at(-1)[0].onExport(fqn, { recursive: true });
+
+      expect(exportTestCasesInCSV).toHaveBeenLastCalledWith(fqn, {
+        recursive: true,
+        testCaseStatus: TestCaseStatus.Aborted,
+        testCaseType: TestCaseType.all,
       });
     });
 
