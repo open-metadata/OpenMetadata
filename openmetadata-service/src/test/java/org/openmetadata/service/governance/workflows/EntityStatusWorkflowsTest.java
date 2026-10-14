@@ -1,8 +1,10 @@
 package org.openmetadata.service.governance.workflows;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mockStatic;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -10,7 +12,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -104,6 +108,48 @@ class EntityStatusWorkflowsTest {
         EntityStatusWorkflows.ACTIVE
             .owningStageOf(Entity.METRIC, new Metric().withName("weekly"))
             .isEmpty());
+  }
+
+  @Test
+  void theLoadedListIsReusedUntilAWorkflowChanges() {
+    EntityStatusWorkflows.invalidate();
+    AtomicInteger loads = new AtomicInteger();
+    try (MockedStatic<WorkflowHandler> handler = mockStatic(WorkflowHandler.class)) {
+      handler
+          .when(WorkflowHandler::isInitialized)
+          .thenAnswer(
+              invocation -> {
+                loads.incrementAndGet();
+                return false;
+              });
+
+      EntityStatusWorkflows.ACTIVE.owningStageOf(Entity.METRIC);
+      EntityStatusWorkflows.ACTIVE.owningStageOf(Entity.METRIC);
+    }
+
+    assertEquals(1, loads.get());
+  }
+
+  @Test
+  void aWorkflowChangeDuringTheLoadIsNotHiddenByWhatTheLoadRead() {
+    EntityStatusWorkflows.invalidate();
+    AtomicInteger loads = new AtomicInteger();
+    try (MockedStatic<WorkflowHandler> handler = mockStatic(WorkflowHandler.class)) {
+      handler
+          .when(WorkflowHandler::isInitialized)
+          .thenAnswer(
+              invocation -> {
+                if (loads.incrementAndGet() == 1) {
+                  EntityStatusWorkflows.invalidate();
+                }
+                return false;
+              });
+
+      EntityStatusWorkflows.ACTIVE.owningStageOf(Entity.METRIC);
+      EntityStatusWorkflows.ACTIVE.owningStageOf(Entity.METRIC);
+    }
+
+    assertEquals(2, loads.get(), "a list read before the change must not be served after it");
   }
 
   private static ObjectNode metricApprovalWorkflow() throws IOException {

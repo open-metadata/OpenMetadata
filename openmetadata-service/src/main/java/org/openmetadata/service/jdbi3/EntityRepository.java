@@ -154,6 +154,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
@@ -285,6 +286,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.SingleFlight;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import software.amazon.awssdk.utils.Either;
 
@@ -351,6 +353,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private static final int STRING_OBJECT_OVERHEAD_BYTES = 40;
 
+  // Declared before the caches below, whose static initializers build with these loaders.
+  private static final EntityLoaderWithName NAME_LOADER = new EntityLoaderWithName();
+  private static final EntityLoaderWithId ID_LOADER = new EntityLoaderWithId();
+  private static final SingleFlight<Pair<String, String>, String> NAME_LOADS = new SingleFlight<>();
+  private static final SingleFlight<Pair<String, UUID>, String> ID_LOADS = new SingleFlight<>();
+
   // Conservative upper-bound weight for a String: length() * 2 (UTF-16 worst-case) + 40 (header).
   // On Java 21 with compact strings, LATIN1 content uses fewer bytes, so this overestimates
   // slightly — which is intentional for memory capping. Zero allocation, single field read.
@@ -391,6 +399,52 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   @VisibleForTesting
   static long readEpochByName(String entityType, String fqn) {
     return readEpochByName(cacheNameKey(entityType, fqn));
+  }
+
+  /**
+   * Loads a {@link #CACHE_WITH_ID} miss. {@code CACHE_WITH_ID.get} would run the loader's Redis and
+   * database reads inside Guava's per-entry {@code synchronized}, pinning a virtual thread to its
+   * carrier; {@link SingleFlight} runs it unlocked with the same one-load-per-key behavior.
+   */
+  @VisibleForTesting
+  static String loadById(Pair<String, UUID> key) throws ExecutionException {
+    return ID_LOADS.run(
+        key,
+        () -> {
+          long startEpoch = readEpochById(key);
+          String json = ID_LOADER.load(key);
+          return storeUnlessWritten(
+              CACHE_WITH_ID, key, json, () -> readEpochById(key) != startEpoch);
+        });
+  }
+
+  /** {@link #loadById} for {@link #CACHE_WITH_NAME}. */
+  @VisibleForTesting
+  static String loadByName(Pair<String, String> key) throws ExecutionException {
+    return NAME_LOADS.run(
+        key,
+        () -> {
+          long startEpoch = readEpochByName(key);
+          String json = NAME_LOADER.load(key);
+          return storeUnlessWritten(
+              CACHE_WITH_NAME, key, json, () -> readEpochByName(key) != startEpoch);
+        });
+  }
+
+  /**
+   * Stores a loaded entity unless a write bumped its epoch since the load began. Writers bump the
+   * epoch before evicting, so a write after this check evicts the stored copy, and one before it is
+   * caught here. Throwing {@link LoaderRaceException} sends every waiting caller to the bypass read.
+   */
+  @VisibleForTesting
+  static <K> String storeUnlessWritten(
+      Cache<K, String> cache, K key, String json, BooleanSupplier writtenSinceLoad) {
+    cache.put(key, json);
+    if (writtenSinceLoad.getAsBoolean()) {
+      cache.invalidate(key);
+      throw new LoaderRaceException("Concurrent write while storing %s".formatted(key));
+    }
+    return json;
   }
 
   private static void bumpWriteEpoch(String entityType, UUID id, String fqn) {
@@ -472,7 +526,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                 (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
         .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
         .recordStats()
-        .build(new EntityLoaderWithName());
+        .build(NAME_LOADER);
   }
 
   private static LoadingCache<Pair<String, UUID>, String> buildEntityIdCache(
@@ -484,7 +538,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                 (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
         .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
         .recordStats()
-        .build(new EntityLoaderWithId());
+        .build(ID_LOADER);
   }
 
   private static final int DEFAULT_FIELD_FETCH_POOL_SIZE =
@@ -1961,7 +2015,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           throw new EntityNotFoundException(entityNotFound(entityType, id));
         }
         try (var ignored = phase("cacheGet")) {
-          cachedJson = CACHE_WITH_ID.get(cacheKey);
+          cachedJson = loadById(cacheKey);
         }
       } else if (include == NON_DELETED
           && notFoundCache != null
@@ -2610,7 +2664,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           throw new EntityNotFoundException(entityNotFound(entityType, fqn));
         }
         try (var ignored = phase("cacheGet")) {
-          cachedJson = CACHE_WITH_NAME.get(cacheKey);
+          cachedJson = loadByName(cacheKey);
         }
       } else if (include == NON_DELETED
           && notFoundCache != null

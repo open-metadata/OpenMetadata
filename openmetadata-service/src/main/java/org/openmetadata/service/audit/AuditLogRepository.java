@@ -201,7 +201,7 @@ public class AuditLogRepository {
       return AuditLogRecord.ActorType.BOT;
     }
     try {
-      if (Boolean.TRUE.equals(IS_BOT_CACHE.get(userName, () -> lookupIsBot(userName)))) {
+      if (isBot(userName)) {
         return AuditLogRecord.ActorType.BOT;
       }
     } catch (Exception e) {
@@ -214,6 +214,18 @@ public class AuditLogRepository {
    * Swallows the lookup failure rather than propagating it so that an unresolvable actor — a deleted
    * user, a name that never was one — caches as "not a bot" instead of re-querying on every event.
    */
+  // Not IS_BOT_CACHE.get(key, loader): Guava runs the loader inside a per-entry synchronized, and
+  // the lookup reads the database on the virtual thread that writes audit events. Two racing
+  // lookups for one name just store the same answer.
+  private static boolean isBot(String userName) {
+    Boolean isBot = IS_BOT_CACHE.getIfPresent(userName);
+    if (isBot == null) {
+      isBot = lookupIsBot(userName);
+      IS_BOT_CACHE.put(userName, isBot);
+    }
+    return isBot;
+  }
+
   private static boolean lookupIsBot(String userName) {
     try {
       org.openmetadata.schema.entity.teams.User user =

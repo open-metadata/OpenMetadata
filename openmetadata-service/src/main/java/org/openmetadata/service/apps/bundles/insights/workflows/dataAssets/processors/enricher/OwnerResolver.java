@@ -79,7 +79,18 @@ public final class OwnerResolver {
     if (owner.getId() == null) {
       return Optional.empty();
     }
-    return userTeamCache.get(owner.getId(), this::loadTeamNameByUserId);
+    return cachedTeamNameByUserId(owner.getId());
+  }
+
+  // Not userTeamCache.get(key, loader): Caffeine runs the loader inside a ConcurrentHashMap bin
+  // lock, and the user read would pin the workflow's virtual thread to its carrier.
+  private Optional<String> cachedTeamNameByUserId(UUID userId) {
+    Optional<String> teamName = userTeamCache.getIfPresent(userId);
+    if (teamName == null) {
+      teamName = loadTeamNameByUserId(userId);
+      userTeamCache.put(userId, teamName);
+    }
+    return teamName;
   }
 
   private Optional<String> loadTeamNameByUserId(UUID id) {
