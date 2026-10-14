@@ -34,10 +34,7 @@ import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { UICustomization } from '../../generated/system/ui/uiCustomization';
-import {
-  AppMode,
-  PersonaPreferences,
-} from '../../generated/type/personaPreferences';
+import { PersonaPreferences } from '../../generated/type/personaPreferences';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -49,6 +46,8 @@ import { getPersonaByName } from '../../rest/PersonaAPI';
 import { docStoreQueryKey } from '../../rest/queries/docStoreQuery';
 import {
   normalizePersonaDocument,
+  PersonaAppLayoutPreferences,
+  updatePersonaAppLayout,
   updatePersonaDocumentPage,
 } from '../../utils/CustomizePage/PersonaPage.utils';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
@@ -71,10 +70,12 @@ const CustomizeGlossaryTermDetailPage = withSuspenseFallback(
   )
 );
 
-const SettingsAppModePage = withSuspenseFallback(
+const PersonaAppLayoutPage = withSuspenseFallback(
   lazy(() =>
-    import('../SettingsAppModePage/SettingsAppModePage').then((m) => ({
-      default: m.SettingsAppModePage,
+    import(
+      '../platform/persona/PersonaAppLayoutPage/PersonaAppLayoutPage'
+    ).then((m) => ({
+      default: m.PersonaAppLayoutPage,
     }))
   )
 );
@@ -267,33 +268,21 @@ const CustomizablePageContent = () => {
     }
   };
 
-  const handleAppModeSave = async (appMode: AppMode) => {
-    if (!document) {
+  const handleAppLayoutSave = async (
+    preferences: PersonaAppLayoutPreferences
+  ) => {
+    if (!document || !personaDetails) {
       return;
     }
     try {
       let response: Document;
       const newDoc = cloneDeep(document);
-      const existing = (newDoc.data.personaPreferences ??
-        []) as PersonaPreferences[];
-      const match = existing.find(
-        (persona) => persona.personaId === personaDetails?.id
-      );
 
-      newDoc.data.personaPreferences = match
-        ? existing.map((persona) =>
-            persona.personaId === personaDetails?.id
-              ? { ...persona, appMode }
-              : persona
-          )
-        : [
-            ...existing,
-            {
-              personaId: personaDetails?.id ?? '',
-              personaName: personaDetails?.name ?? '',
-              appMode,
-            },
-          ];
+      newDoc.data.personaPreferences = updatePersonaAppLayout(
+        (newDoc.data.personaPreferences ?? []) as PersonaPreferences[],
+        personaDetails,
+        preferences
+      );
 
       if (document.id) {
         const jsonPatch = compare(document, newDoc);
@@ -315,7 +304,7 @@ const CustomizablePageContent = () => {
             : t('label.created-lowercase'),
         })
       );
-    } catch {
+    } catch (error) {
       showErrorToast(
         t('server.page-layout-operation-error', {
           operation: document.id
@@ -323,6 +312,10 @@ const CustomizablePageContent = () => {
             : t('label.creating-lowercase'),
         })
       );
+
+      // NavigationBlocker's "Save and leave" only stays on the page when the
+      // save rejects; swallowing it here would navigate away and drop the edits.
+      throw error;
     }
   };
 
@@ -412,11 +405,12 @@ const CustomizablePageContent = () => {
         />
       );
 
-    case 'app-mode':
+    case 'app-layout':
       return (
-        <SettingsAppModePage
+        <PersonaAppLayoutPage
           personaDetails={personaDetails}
-          onSave={handleAppModeSave}
+          personaDocument={document}
+          onSave={handleAppLayoutSave}
         />
       );
 

@@ -19,6 +19,10 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  TourContext,
+  TourProviderContextProps,
+} from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -229,6 +233,21 @@ jest.mock('../../common/EntityTitleSection/EntityTitleSection', () => ({
   )),
 }));
 
+const mockGetLineageDataByFQN = jest.fn();
+
+jest.mock('../../../rest/lineageAPI', () => ({
+  ...jest.requireActual('../../../rest/lineageAPI'),
+  getLineageDataByFQN: (...args: unknown[]) => mockGetLineageDataByFQN(...args),
+}));
+
+const mockGetListTestCaseBySearch = jest.fn();
+
+jest.mock('../../../rest/testAPI', () => ({
+  ...jest.requireActual('../../../rest/testAPI'),
+  getListTestCaseBySearch: (...args: unknown[]) =>
+    mockGetListTestCaseBySearch(...args),
+}));
+
 const mockGetTableDetailsByFQN = jest.fn();
 
 jest.mock('../../../rest/tableAPI', () => ({
@@ -276,6 +295,62 @@ describe('EntitySummaryPanel component tests', () => {
     expect(
       await screen.findByTestId('custom-summary-panel')
     ).toBeInTheDocument();
+  });
+
+  it('keeps the tour mock table read-only and offline across the panel tabs', async () => {
+    const getEntityPermission = usePermissionProvider()
+      .getEntityPermission as jest.Mock;
+    getEntityPermission.mockClear();
+    // Full grants from the server must not reach the tour: its grant is view-only.
+    getEntityPermission.mockResolvedValue({ ViewAll: true, EditAll: true });
+    mockGetTableDetailsByFQN.mockClear();
+    mockGetLineageDataByFQN.mockClear();
+    mockGetListTestCaseBySearch.mockClear();
+
+    render(
+      <TourContext.Provider
+        value={
+          {
+            isTourPage: true,
+          } as Partial<TourProviderContextProps> as TourProviderContextProps
+        }>
+        <EntitySummaryPanel
+          isSideDrawer
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              id: 'tour-table-id',
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      </TourContext.Provider>
+    );
+
+    expect(
+      await screen.findByTestId('entity-title-section')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('edit-displayName-button')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('lineage-tab'));
+    fireEvent.click(screen.getByTestId('data-quality-tab'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('data-quality-tab')).toBeInTheDocument()
+    );
+
+    expect(getEntityPermission).not.toHaveBeenCalled();
+    expect(mockGetTableDetailsByFQN).not.toHaveBeenCalled();
+    expect(mockGetLineageDataByFQN).not.toHaveBeenCalled();
+    expect(mockGetListTestCaseBySearch).not.toHaveBeenCalled();
+
+    getEntityPermission.mockReturnValue({
+      ViewBasic: true,
+      ViewCustomFields: true,
+    });
   });
 
   it('should fetch extension entities using their original entity type', async () => {

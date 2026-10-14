@@ -127,6 +127,27 @@ class ListFilterTest {
   }
 
   @Test
+  void taskConditions_bindValuesInsteadOfInliningThemInSql() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("taskType", "task-type");
+    filter.addQueryParam("taskFormType", "form-type");
+    filter.addQueryParam("taskFormCategory", "follow-up");
+    filter.addQueryParam("taskPriority", "high");
+
+    String condition = filter.getCondition();
+
+    assertTrue(condition.contains("type = :taskType"), condition);
+    assertTrue(condition.contains("taskType = :taskFormType"), condition);
+    assertTrue(condition.contains("taskCategory = :taskFormCategory"), condition);
+    assertTrue(condition.contains("priority = :taskPriority"), condition);
+    assertFalse(condition.contains("follow-up"), condition);
+    assertEquals("task-type", filter.getQueryParam("taskType"));
+    assertEquals("form-type", filter.getQueryParam("taskFormType"));
+    assertEquals("follow-up", filter.getQueryParam("taskFormCategory"));
+    assertEquals("high", filter.getQueryParam("taskPriority"));
+  }
+
+  @Test
   void getCondition_neverFiltersMemoriesByShareConfigVisibility() {
     // The search reindex reads memories through this filter, and a user's own PRIVATE/SHARED
     // memories have to reach the index to stay findable in the ContextCenter listing.

@@ -828,6 +828,20 @@
       "locationPath": {
         "type": "keyword"
       },
+      "aliases": {
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
+      },
       "usageSummary": {
         "properties": {
           "dailyStats": {

@@ -37,15 +37,52 @@
 
     color: var(--tw-color-text-white);
     display: flex;
-    align-items: center;
-    gap: 8px;
-    justify-content: center;
+    align-items: flex-start;
+    gap: 12px;
+    justify-content: flex-start;
     min-width: 140px;
-    padding: @size-lg 0;
+    padding: 16px 20px;
 
-    .whats-new-alert-rocket-icon {
-      width: 30px;
-      height: 30px;
+    &.whats-new-alert-left--centered {
+      align-items: center;
+      justify-content: center;
+
+      .whats-new-alert-version-block {
+        align-items: center;
+      }
+    }
+
+    .whats-new-alert-version-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .whats-new-alert-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .whats-new-alert-meta-label {
+      color: var(--tw-color-text-white);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .whats-new-alert-divider {
+      height: 1px;
+      width: 100%;
+      background: #ffffff4d;
+    }
+
+    .whats-new-alert-released-date {
+      color: var(--tw-color-text-white);
+      font-size: 16px;
+      font-weight: 600;
     }
   }
 }
@@ -66,8 +103,9 @@
 }
 
 .whats-new-alert-version {
-  .text-lg();
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
 
   color: @white !important;
 }

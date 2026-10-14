@@ -13,7 +13,7 @@
 
 from typing import Dict, Tuple  # noqa: UP035
 
-from jinja2 import Template
+from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy import text
 
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
@@ -43,7 +43,8 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
         for param_name in user_params:
             bind_params_template[param_name] = f":{param_name}"
 
-        template = Template(sql_template.root)
+        # User-authored template: sandboxed so it cannot reach Python internals.
+        template = SandboxedEnvironment().from_string(sql_template.root)
         compiled_sql = template.render(**bind_params_template)
 
         return compiled_sql, user_params

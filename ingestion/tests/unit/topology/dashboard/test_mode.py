@@ -17,9 +17,10 @@ import pytest
 
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Column, ColumnName, Table
+from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import LineageInformation
 from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataWorkflowConfig
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.mode.metadata import ModeSource
@@ -109,7 +110,10 @@ def mode_source():
     source.context.get().__dict__["charts"] = []
     source.context.get().__dict__["dataModels"] = []
     source.status = MagicMock()
-    return source
+    yield source
+    # context is a class attribute shared by every DashboardServiceSource subclass
+    for key in ("dashboard_service", "charts", "dataModels"):
+        source.context.get().__dict__[key] = None
 
 
 def _details(mode_source, queries=None):
@@ -139,6 +143,10 @@ class TestModeQueryMetadata:
         assert mode_source.get_dashboard_name({**REPORT, "name": None}) == "report-token"
 
     def test_query_becomes_registered_dashboard_data_model(self, mode_source):
+        # `SELECT *` from a table OpenMetadata does not know yet has no columns to expand to
+        mode_source.metadata = MagicMock()
+        mode_source.metadata.search_in_any_service.return_value = []
+
         result = list(mode_source.yield_datamodel(_details(mode_source)))
 
         assert len(result) == 1
@@ -324,3 +332,221 @@ class TestModeQueryLineage:
 
         assert result == []
         mode_source.metadata.search_in_any_service.assert_not_called()
+
+
+COLUMN_QUERY = {
+    **QUERY,
+    "raw_query": (
+        "-- revenue per order\n"
+        "WITH recent AS (SELECT id, amount FROM analytics.orders) "
+        "SELECT id AS order_id, SUM(amount) AS total FROM recent "
+        "WHERE id > {{ min_id }} GROUP BY 1"
+    ),
+}
+
+ORDERS_FQN = "warehouse.analytics_db.analytics.orders"
+DATA_MODEL_FQN = 'mock_mode.model."report-token.query-token"'
+
+
+def _orders_table() -> Table:
+    return Table.model_construct(
+        id=Uuid("b9553fd0-408d-45aa-b38a-43e72ec731ee"),
+        name=EntityName("orders"),
+        fullyQualifiedName=FullyQualifiedEntityName(ORDERS_FQN),
+        columns=[
+            Column.model_construct(
+                name=ColumnName(name), fullyQualifiedName=FullyQualifiedEntityName(f"{ORDERS_FQN}.{name}")
+            )
+            for name in ("id", "amount", "status")
+        ],
+    )
+
+
+def _data_model_with(columns: list[Column]) -> DashboardDataModel:
+    return DashboardDataModel.model_construct(
+        id=Uuid("6e781e63-e30f-4c6e-891a-389f1f982cab"),
+        fullyQualifiedName=FullyQualifiedEntityName(DATA_MODEL_FQN),
+        columns=[
+            Column.model_construct(
+                name=column.name,
+                displayName=column.displayName,
+                fullyQualifiedName=FullyQualifiedEntityName(f"{DATA_MODEL_FQN}.{column.name.root}"),
+            )
+            for column in columns
+        ],
+    )
+
+
+class TestModeColumnLineage:
+    @pytest.fixture
+    def column_source(self, mode_source):
+        mode_source.metadata = MagicMock()
+        mode_source.metadata.search_in_any_service = MagicMock(return_value=[_orders_table()])
+        return mode_source
+
+    def _column_names(self, source, query) -> list[str]:
+        details = _details(source, [query])
+        data_model = next(iter(source.yield_datamodel(details))).right
+        return [column.name.root for column in data_model.columns]
+
+    def test_data_model_columns_come_from_query_output(self, column_source):
+        assert sorted(self._column_names(column_source, COLUMN_QUERY)) == ["order_id", "total"]
+
+    def test_select_star_expands_to_source_table_columns(self, column_source):
+        star_query = {**QUERY, "raw_query": "SELECT * FROM analytics.orders"}
+
+        assert self._column_names(column_source, star_query) == ["id", "amount", "status"]
+
+    def _column_lineage(self, source, query) -> dict[str, list[str]]:
+        details = _details(source, [query])
+        data_model_request = next(iter(source.yield_datamodel(details))).right
+        data_model = _data_model_with(data_model_request.columns)
+        source.metadata.get_by_name = MagicMock(return_value=data_model)
+        source.context.get().__dict__["dataModels"] = ["report-token.query-token"]
+
+        result = list(source.yield_dashboard_lineage_details(details))
+
+        assert [res.left for res in result if res.left] == []
+        (edge,) = [res.right.edge for res in result]
+        assert edge.toEntity.id == data_model.id
+        return {
+            lineage.toColumn.root: sorted(column.root for column in lineage.fromColumns)
+            for lineage in edge.lineageDetails.columnsLineage
+        }
+
+    def test_column_lineage_maps_output_columns_to_source_columns(self, column_source):
+        assert self._column_lineage(column_source, COLUMN_QUERY) == {
+            f"{DATA_MODEL_FQN}.order_id": [f"{ORDERS_FQN}.id"],
+            f"{DATA_MODEL_FQN}.total": [f"{ORDERS_FQN}.amount"],
+        }
+
+    def test_select_star_lineage_covers_every_source_column(self, column_source):
+        star_query = {**QUERY, "raw_query": "SELECT * FROM analytics.orders"}
+
+        assert self._column_lineage(column_source, star_query) == {
+            f"{DATA_MODEL_FQN}.{name}": [f"{ORDERS_FQN}.{name}"] for name in ("id", "amount", "status")
+        }
+
+    def test_multi_statement_sql_keeps_table_lineage_without_columns(self, column_source):
+        multi_statement = {**QUERY, "raw_query": "SET TIME ZONE '-06:00'; SELECT id FROM analytics.orders"}
+        details = _details(column_source, [multi_statement])
+        data_model_request = next(iter(column_source.yield_datamodel(details))).right
+        column_source.metadata.get_by_name = MagicMock(return_value=_data_model_with([]))
+        column_source.context.get().__dict__["dataModels"] = ["report-token.query-token"]
+
+        (lineage,) = list(column_source.yield_dashboard_lineage_details(details))
+
+        assert data_model_request.columns == []
+        assert lineage.right.edge.fromEntity.id == _orders_table().id
+        assert lineage.right.edge.lineageDetails.columnsLineage is None
+
+    @pytest.mark.parametrize(
+        "raw_query",
+        [
+            pytest.param(
+                "INSERT INTO staging.tmp_orders SELECT id AS order_id FROM analytics.orders", id="insert-select"
+            ),
+            pytest.param(
+                "CREATE TABLE tmp AS SELECT id AS order_id FROM analytics.orders; SELECT order_id FROM tmp",
+                id="ctas-then-select",
+            ),
+        ],
+    )
+    def test_write_statements_do_not_leak_their_target_columns(self, column_source, raw_query):
+        details = _details(column_source, [{**QUERY, "raw_query": raw_query}])
+        data_model_request = next(iter(column_source.yield_datamodel(details))).right
+        column_source.metadata.get_by_name = MagicMock(return_value=_data_model_with([]))
+        column_source.context.get().__dict__["dataModels"] = ["report-token.query-token"]
+
+        lineage = list(column_source.yield_dashboard_lineage_details(details))
+
+        assert data_model_request.columns == []
+        assert {res.right.edge.fromEntity.id.root for res in lineage} == {_orders_table().id.root}
+
+    def test_select_star_expands_through_the_db_service_prefix(self, column_source):
+        column_source.source_config.lineageInformation = LineageInformation(
+            dbServicePrefixes=["warehouse.analytics_db"]
+        )
+        column_source.data_sources["source-id"].pop("database")
+        star_query = {**QUERY, "raw_query": "SELECT * FROM analytics.orders"}
+
+        assert self._column_names(column_source, star_query) == ["id", "amount", "status"]
+        assert column_source.metadata.search_in_any_service.call_args.kwargs["fqn_search_string"].startswith(
+            "warehouse.analytics_db."
+        )
+
+    def test_unparseable_sql_still_yields_data_model(self, column_source):
+        broken = {**QUERY, "raw_query": "SELEC oops FROM"}
+
+        assert self._column_names(column_source, broken) == []
+
+
+CREATOR_REPORT = {**REPORT, "_links": {**REPORT["_links"], "creator": {"href": "/api/jane"}}}
+
+
+class TestModeOwners:
+    @pytest.fixture
+    def owner_source(self, mode_source):
+        mode_source.source_config.includeOwners = True
+        mode_source.metadata = MagicMock()
+        return mode_source
+
+    def test_owner_is_report_creator_matched_by_email(self, owner_source):
+        owner_source.client.get_user_email.return_value = "jane@acme.com"
+
+        owners = owner_source.get_owner_ref(CREATOR_REPORT)
+
+        owner_source.client.get_user_email.assert_called_once_with("jane")
+        owner_source.metadata.get_reference_by_email.assert_called_once_with("jane@acme.com")
+        assert owners is owner_source.metadata.get_reference_by_email.return_value
+
+    def test_no_owner_without_creator_email(self, owner_source):
+        owner_source.client.get_user_email.return_value = None
+
+        assert owner_source.get_owner_ref(CREATOR_REPORT) is None
+        owner_source.metadata.get_reference_by_email.assert_not_called()
+
+    def test_owners_skipped_when_disabled(self, owner_source):
+        owner_source.source_config.includeOwners = False
+
+        assert owner_source.get_owner_ref(CREATOR_REPORT) is None
+        owner_source.client.get_user_email.assert_not_called()
+
+
+class TestModeNewStagesNeverFailTheRun:
+    """Owners and columns are additions: any failure must degrade to 'not ingested'."""
+
+    def test_report_without_creator_link_has_no_owner(self, mode_source):
+        mode_source.source_config.includeOwners = True
+
+        assert mode_source.get_owner_ref(REPORT) is None
+        mode_source.client.get_user_email.assert_not_called()
+
+    def test_owner_lookup_failure_is_swallowed(self, mode_source):
+        mode_source.source_config.includeOwners = True
+        mode_source.client.get_user_email.side_effect = RuntimeError("boom")
+
+        assert mode_source.get_owner_ref(CREATOR_REPORT) is None
+
+    def test_column_failure_still_yields_data_model(self, mode_source):
+        mode_source.metadata = MagicMock()
+        mode_source.metadata.search_in_any_service.side_effect = RuntimeError("search down")
+
+        (result,) = list(mode_source.yield_datamodel(_details(mode_source)))
+
+        assert result.right.columns == []
+
+    def test_unmatched_columns_only_drop_their_column_edge(self, mode_source):
+        mode_source.metadata = MagicMock()
+        mode_source.metadata.search_in_any_service.return_value = [_orders_table()]
+        query = {**QUERY, "raw_query": "SELECT id, missing_col FROM analytics.orders"}
+        details = _details(mode_source, [query])
+        data_model = _data_model_with(next(iter(mode_source.yield_datamodel(details))).right.columns)
+        mode_source.metadata.get_by_name = MagicMock(return_value=data_model)
+        mode_source.context.get().__dict__["dataModels"] = ["report-token.query-token"]
+
+        (lineage,) = list(mode_source.yield_dashboard_lineage_details(details))
+
+        assert [column.toColumn.root for column in lineage.right.edge.lineageDetails.columnsLineage] == [
+            f"{DATA_MODEL_FQN}.id"
+        ]

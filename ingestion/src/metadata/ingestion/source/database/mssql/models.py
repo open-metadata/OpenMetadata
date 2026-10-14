@@ -10,7 +10,7 @@
 #  limitations under the License.
 """MSSQL models"""
 
-from enum import IntEnum
+from enum import Enum, IntEnum
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -39,3 +39,27 @@ class MssqlStoredProcedure(BaseModel):
     owner: Optional[str] = Field(None)  # noqa: UP045
     language: str = Field(Language.SQL)
     definition: Optional[str] = Field(None)  # noqa: UP045
+
+
+class SynonymUnresolvedReason(str, Enum):
+    """Why a discovered synonym could not be attached to a canonical table"""
+
+    UNRESOLVED = "Unresolved"
+    UNSUPPORTED_TARGET_TYPE = "UnsupportedTargetType"
+    REMOTE_TARGET_UNMAPPED = "RemoteTargetUnmapped"
+
+
+class MssqlSynonym(BaseModel):
+    """A row from sys.synonyms joined to sys.schemas"""
+
+    synonym_schema: str = Field(...)
+    synonym_name: str = Field(...)
+    base_object_name: str = Field(...)
+
+
+class MssqlSynonymTarget(BaseModel):
+    """The parsed three-part target a synonym resolves to"""
+
+    database: str = Field(...)
+    schema_name: str = Field(...)
+    table: str = Field(...)

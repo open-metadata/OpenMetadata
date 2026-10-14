@@ -26,6 +26,8 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -67,6 +69,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.cache.CachedSearchLayer;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobArgs;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
@@ -99,6 +102,7 @@ import os.org.opensearch.client.opensearch.core.search.Suggest;
 @Collection(name = "search")
 @LatencyPhase
 public class SearchResource {
+  private static final String MUST_BE_NON_NEGATIVE = "must be greater than or equal to 0";
   private final SearchRepository searchRepository;
   private final Authorizer authorizer;
 
@@ -158,10 +162,12 @@ public class SearchResource {
           Boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("from")
           int from,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("size")
           int size,
       @Parameter(
@@ -263,6 +269,17 @@ public class SearchResource {
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
 
+    return cachedSearch(request, subjectContext);
+  }
+
+  private Response cachedSearch(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return cachedSearch(request, subjectContext, CachedSearchLayer.Operation.QUERY);
+  }
+
+  private Response cachedSearch(
+      SearchRequest request, SubjectContext subjectContext, CachedSearchLayer.Operation operation)
+      throws IOException {
     // Auth-aware response cache (Item 1). Bots bypass — they do bulk indexing reads with
     // cardinalities that would pollute the user-keyed cache. Uses the layer's loadOrCompute
     // to get single-flight semantics: 100 concurrent users hitting the same uncached query
@@ -272,7 +289,7 @@ public class SearchResource {
     String principal = subjectContext.user() != null ? subjectContext.user().getName() : null;
     boolean cacheable = searchCache != null && searchCache.enabled() && !subjectContext.isBot();
     if (!cacheable) {
-      return searchRepository.search(request, subjectContext);
+      return executeSearch(request, subjectContext, operation);
     }
 
     // Buffer the upstream response body once so the cache stores exactly what we return. The
@@ -289,9 +306,10 @@ public class SearchResource {
         searchCache.loadOrCompute(
             request,
             principal,
+            operation,
             () -> {
               try {
-                Response upstream = searchRepository.search(request, subjectContext);
+                Response upstream = executeSearch(request, subjectContext, operation);
                 capturedResponse[0] = upstream;
                 if (upstream.getStatus() != 200) {
                   return null; // don't cache non-200; loadOrCompute treats null as "no cache write"
@@ -319,7 +337,15 @@ public class SearchResource {
     // response was non-cacheable, so the cache stayed empty and we received body=null. Fall
     // through to a live call (this is rare and only affects the second+ caller of a query
     // that's currently returning errors).
-    return searchRepository.search(request, subjectContext);
+    return executeSearch(request, subjectContext, operation);
+  }
+
+  private Response executeSearch(
+      SearchRequest request, SubjectContext subjectContext, CachedSearchLayer.Operation operation)
+      throws IOException {
+    return operation == CachedSearchLayer.Operation.ENTITY_TYPE_COUNTS
+        ? searchRepository.getEntityTypeCounts(request, request.getIndex(), subjectContext)
+        : searchRepository.search(request, subjectContext);
   }
 
   @GET
@@ -520,6 +546,8 @@ public class SearchResource {
       @RequestBody(description = "Preview request containing search settings", required = true)
           PreviewSearchRequest previewRequest)
       throws IOException {
+    requireNonNegative("from", previewRequest.getFrom());
+    requireNonNegative("size", previewRequest.getSize());
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
 
@@ -541,6 +569,12 @@ public class SearchResource {
 
     return searchRepository.previewSearch(
         searchRequest, subjectContext, previewRequest.getSearchSettings());
+  }
+
+  private static void requireNonNegative(String fieldName, Integer value) {
+    if (value != null && value < 0) {
+      throw new BadRequestException(String.format("%s %s", fieldName, MUST_BE_NON_NEGATIVE));
+    }
   }
 
   @GET
@@ -574,10 +608,12 @@ public class SearchResource {
           boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("from")
           int from,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("size")
           int size,
       @Parameter(
@@ -709,10 +745,12 @@ public class SearchResource {
           boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("from")
           int from,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("size")
           int size)
       throws IOException {
@@ -868,7 +906,11 @@ public class SearchResource {
           String queryFilter,
       @Parameter(description = "Elasticsearch query that will be used as a post_filter")
           @QueryParam("post_filter")
-          String postFilter)
+          String postFilter,
+      @Parameter(description = "Include the global top hit as an Explore tab-selection hint")
+          @DefaultValue("false")
+          @QueryParam("include_top_hit")
+          boolean includeTopHit)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -884,16 +926,20 @@ public class SearchResource {
     SearchRequest request =
         new SearchRequest()
             .withQuery(query)
-            .withSize(0)
+            .withSize(includeTopHit ? 1 : 0)
             .withFrom(0)
             .withDeleted(deleted)
             .withFetchSource(false)
             .withTrackTotalHits(true)
             .withQueryFilter(queryFilter)
             .withPostFilter(postFilter)
-            .withDomains(domains);
+            .withDomains(domains)
+            .withApplyDomainFilter(
+                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
+            .withIncludeAggregations(false);
 
-    return searchRepository.getEntityTypeCounts(request, index, subjectContext);
+    request.setIndex(index);
+    return cachedSearch(request, subjectContext, CachedSearchLayer.Operation.ENTITY_TYPE_COUNTS);
   }
 
   @POST

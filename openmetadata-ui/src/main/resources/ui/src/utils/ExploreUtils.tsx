@@ -22,6 +22,7 @@ import {
 } from '../components/Explore/ExplorePage.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { useExploreCache } from '../hooks/useExploreCache';
 import { Aggregations, SearchResponse } from '../interface/search.interface';
 import {
   QueryFilterInterface,
@@ -31,7 +32,11 @@ import {
   getAggregateFieldOptions,
   postAggregateFieldOptions,
 } from '../rest/miscAPI';
-import { nlqSearch, searchQuery } from '../rest/searchAPI';
+import {
+  nlqSearch,
+  searchEntityTypeCounts,
+  searchQuery,
+} from '../rest/searchAPI';
 import { getCountBadge } from './EntityDisplayPureUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import {
@@ -167,7 +172,7 @@ export const fetchEntityData = async ({
   page,
   size,
   isNLPRequestEnabled,
-  tab,
+  tab = '',
   TABS_SEARCH_INDEXES,
   EntityTypeSearchIndexMapping,
   setSearchHitCounts,
@@ -176,6 +181,7 @@ export const fetchEntityData = async ({
   setUpdatedAggregations,
   setShowIndexNotFoundAlert,
   onNlqAppliedFilters,
+  onResultsSettled,
   showRankingDetails,
 }: {
   searchQueryParam: string;
@@ -200,6 +206,7 @@ export const fetchEntityData = async ({
   setUpdatedAggregations: (aggs: Aggregations) => void;
   setShowIndexNotFoundAlert: (show: boolean) => void;
   onNlqAppliedFilters?: (filters?: QueryFilterInterface) => void;
+  onResultsSettled?: () => void;
   showRankingDetails?: boolean;
 }) => {
   const combinedQueryFilter = getCombinedQueryFilterObject(
@@ -221,20 +228,40 @@ export const fetchEntityData = async ({
         includeDeleted: showDeleted,
         filters: '',
       };
+      const normalizedCountPayload = {
+        query: countPayload.query,
+        queryFilter: combinedQueryFilter,
+        searchIndex: TABS_SEARCH_INDEXES,
+        includeDeleted: showDeleted,
+        includeTopHit: !tab.trim(),
+      };
       const runCountSearch = () =>
         isNlqSearch
           ? nlqSearch({ ...countPayload, fetchSource: false })
-          : searchQuery({
-              ...countPayload,
-              fetchSource: true,
-              includeFields: ['entityType'],
-            });
+          : useExploreCache
+              .getState()
+              .getOrLoad(
+                `counts:${JSON.stringify(normalizedCountPayload)}`,
+                () => searchEntityTypeCounts(normalizedCountPayload)
+              );
 
       const handleSearchError = (error: unknown) => {
         if (isElasticsearchError(error)) {
           setShowIndexNotFoundAlert(true);
         } else {
           showErrorToast(error as AxiosError);
+        }
+      };
+
+      let currentCounts: SearchHitCounts | undefined;
+      let resultCount: { index: ExploreSearchIndex; total: number } | undefined;
+      const publishCounts = () => {
+        if (currentCounts || resultCount) {
+          const counts = { ...currentCounts } as SearchHitCounts;
+          if (resultCount) {
+            counts[resultCount.index] = resultCount.total;
+          }
+          setSearchHitCounts(counts);
         }
       };
 
@@ -249,7 +276,8 @@ export const fetchEntityData = async ({
             counts[searchIndexKey ?? ''] = item.doc_count;
           }
         });
-        setSearchHitCounts(counts as SearchHitCounts);
+        currentCounts = counts as SearchHitCounts;
+        publishCounts();
 
         const topHitEntityType = res.hits.hits[0]?._source?.entityType;
         const topHitSearchIndex = topHitEntityType
@@ -295,6 +323,13 @@ export const fetchEntityData = async ({
           const searchRes = await searchRequest(updatedSearchPayload);
           setSearchResults(searchRes as SearchResponse<ExploreSearchIndex>);
           setUpdatedAggregations(searchRes.aggregations);
+          // A write can land inside the count-cache TTL. The visible tab must always
+          // show the total returned with its rows, whichever request finishes first.
+          resultCount = {
+            index: effectiveSearchIndex,
+            total: searchRes.hits.total.value,
+          };
+          publishCounts();
 
           // For NLQ searches, surface the backend-detected filters so the Explore
           // filters tab can mark them. Non-NLQ responses omit applied_quick_filters.
@@ -306,6 +341,8 @@ export const fetchEntityData = async ({
           }
         } catch (error) {
           handleSearchError(error);
+        } finally {
+          onResultsSettled?.();
         }
       };
 

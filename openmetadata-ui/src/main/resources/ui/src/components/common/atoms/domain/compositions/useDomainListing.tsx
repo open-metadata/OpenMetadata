@@ -28,6 +28,8 @@ import { useDomainRenderers } from '../ui/useDomainRenderers';
 
 interface UseDomainListingConfig {
   baseFilter?: string;
+  /** Run the search as a natural-language query while the NLQ toggle is on. */
+  enableNlq?: boolean;
   nameLabelKey?: string;
   pageSize?: number;
   basePath?: string;
@@ -47,6 +49,7 @@ export const useDomainListing = (
   const {
     searchKey = 'q',
     baseFilter = '',
+    enableNlq = false,
     nameLabelKey = 'label.domain',
     pageSize = TABLE_CARD_PAGE_SIZE,
     basePath = '/domain',
@@ -114,6 +117,7 @@ export const useDomainListing = (
     renderers,
     basePath,
     searchKey,
+    enableNlq,
   });
 
   return listingData;

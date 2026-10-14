@@ -65,20 +65,23 @@ const exportOdpsYaml = async (apiContext: APIRequestContext, id: string) => {
   return response.text();
 };
 
-// Rename only the ODPS product name (product.details.<lang>.name) rather than
-// string-replacing every occurrence of the old name in the exported document.
-// The backend derives the imported entity name by slugifying this single field
-// (ODPSConverter.fromODPS → findExistingByName), so mutating it is enough to
-// give the round-trip a fresh identity — without corrupting another field
-// (productID mirrors the FQN, description, etc.) that happens to echo the name.
-const renameOdpsProduct = (yaml: string, newName: string): string => {
+// Give the round-trip a fresh identity. The backend derives the imported entity
+// name by slugifying product.details.<lang>.productID (ODPSConverter.fromODPS →
+// findExistingByName is keyed on that), and maps product.details.<lang>.name to
+// displayName. So re-homing the import onto a brand-new product means changing
+// productID — leaving it untouched would collide with the source product (409).
+// We set the display name to match so the new product reads cleanly.
+const reidentifyOdpsProduct = (yaml: string, newId: string): string => {
   const doc = yamlLoad(yaml) as {
-    product?: { details?: Record<string, { name?: string }> };
+    product?: {
+      details?: Record<string, { name?: string; productID?: string }>;
+    };
   };
   const details = doc?.product?.details ?? {};
   Object.values(details).forEach((detail) => {
     if (detail) {
-      detail.name = newName;
+      detail.productID = newId;
+      detail.name = newId;
     }
   });
 
@@ -191,7 +194,7 @@ test.describe('DataProduct ODPS — REST contract', () => {
     // export → import round-trip preserves the mapped fields, without colliding
     // with the source product.
     const newName = `pw-odps-imported-${uuid()}`;
-    const importYaml = renameOdpsProduct(yaml, newName);
+    const importYaml = reidentifyOdpsProduct(yaml, newName);
 
     const imported = await apiContext.post('/api/v1/dataProducts/odps/yaml', {
       headers: YAML_HEADERS,

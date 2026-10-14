@@ -99,11 +99,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Input: ({
       'data-testid': testId,
       value,
+      onBlur,
       onChange,
       type,
     }: {
       'data-testid'?: string;
       value?: string;
+      onBlur?: () => void;
       onChange?: (value: string) => void;
       type?: string;
       className?: string;
@@ -112,6 +114,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         data-testid={testId}
         type={type}
         value={value}
+        onBlur={onBlur}
         onChange={(e) => onChange?.(e.target.value)}
       />
     ),
@@ -518,6 +521,105 @@ describe('ProfileSampleConfigField', () => {
           thresholds: [{ rowCountThreshold: 1, profileSample: 100 }],
         },
       });
+    });
+  });
+
+  // Ingestion treats a 0 sample as "no sampling" and scans the full table.
+  describe('Minimum profile sample', () => {
+    it('raises a static profile sample below 1 to 1 on blur', () => {
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={{
+            sampleConfigType: SampleConfigType.Static,
+            config: { ...staticFormData.config, profileSample: 0 },
+          }}
+        />
+      );
+
+      fireEvent.blur(screen.getByTestId('profile-sample-input'));
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Static,
+        config: { ...staticFormData.config, profileSample: 1 },
+      });
+    });
+
+    it('raises a threshold profile sample below 1 to 1 on blur', () => {
+      const threshold = dynamicFormData.config?.thresholds?.[0];
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={{
+            sampleConfigType: SampleConfigType.Dynamic,
+            config: {
+              smartSampling: false,
+              thresholds: [{ ...threshold, profileSample: 0 }],
+            },
+          }}
+        />
+      );
+
+      fireEvent.blur(screen.getByTestId('profile-sample-0'));
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Dynamic,
+        config: {
+          smartSampling: false,
+          thresholds: [{ ...threshold, profileSample: 1 }],
+        },
+      });
+    });
+
+    it('does not clamp while typing so a cleared threshold can be retyped', () => {
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={dynamicFormData}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId('profile-sample-0'), {
+        target: { value: '' },
+      });
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Dynamic,
+        config: {
+          smartSampling: false,
+          thresholds: [
+            { ...dynamicFormData.config?.thresholds?.[0], profileSample: 0 },
+          ],
+        },
+      });
+    });
+
+    it('does not rewrite a valid sample on blur', () => {
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={staticFormData}
+        />
+      );
+
+      fireEvent.blur(screen.getByTestId('profile-sample-input'));
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+    });
+
+    it('renders a stored 0 sample as-is without rewriting it', () => {
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={{
+            sampleConfigType: SampleConfigType.Static,
+            config: { profileSample: 0 },
+          }}
+        />
+      );
+
+      expect(screen.getByTestId('profile-sample-input')).toHaveValue(0);
+      expect(mockOnChange).not.toHaveBeenCalled();
     });
   });
 

@@ -14,7 +14,7 @@ Glue source models.
 
 from typing import List, Optional  # noqa: UP035
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class GlueSchema(BaseModel):
@@ -28,6 +28,10 @@ class DatabasePage(BaseModel):
 
 
 class TableParameters(BaseModel):
+    # Glue table parameters are operator-authored key/values. A closed model drops every key but
+    # the one we branch on, which would leave nothing to ingest as custom properties.
+    model_config = ConfigDict(extra="allow")
+
     table_type: Optional[str] = None  # noqa: UP045
 
 

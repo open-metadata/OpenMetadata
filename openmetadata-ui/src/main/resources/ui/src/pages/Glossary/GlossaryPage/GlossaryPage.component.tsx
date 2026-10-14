@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -249,6 +249,34 @@ const GlossaryPage = () => {
 
   const isTermView = !isGlossaryActive && Boolean(glossaryFqn);
 
+  const isGlossaryView = isGlossaryActive && Boolean(glossaryFqn);
+
+  const glossaryFoundInList = useMemo(
+    () => glossaries.find((g) => g.fullyQualifiedName === glossaryFqn),
+    [glossaries, glossaryFqn]
+  );
+
+  const glossaryQueryEnabled = useMemo(
+    () => isGlossaryView && !glossaryFoundInList,
+    [isGlossaryView, glossaryFoundInList]
+  );
+
+  const {
+    data: glossaryFetchedDetails,
+    isFetching: glossaryFetching,
+    error: glossaryError,
+  } = useQuery({
+    queryKey: ['glossary', glossaryFqn],
+    queryFn: () =>
+      getGlossariesByName(glossaryFqn, { fields: GLOSSARY_LIST_FIELDS }),
+    enabled: Boolean(glossaryQueryEnabled),
+  });
+
+  const glossaryDetails = useMemo(
+    () => glossaryFoundInList ?? glossaryFetchedDetails,
+    [glossaryFoundInList, glossaryFetchedDetails]
+  );
+
   const {
     data: glossaryTermDetails,
     isFetching: glossaryTermFetching,
@@ -287,6 +315,13 @@ const GlossaryPage = () => {
     }
   }, [glossaryTermError, navigate]);
 
+  useEffect(() => {
+    const status = (glossaryError as AxiosError | undefined)?.response?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    }
+  }, [glossaryError, navigate]);
+
   // Sync the fetched term into the Zustand store consumed by {@code GlossaryV1}. The
   // store is also written to by the glossary-list code path below, so the two writers
   // share a single sink rather than the component branching on isGlossaryActive twice.
@@ -297,31 +332,17 @@ const GlossaryPage = () => {
   }, [isTermView, glossaryTermDetails, setActiveGlossary]);
 
   useEffect(() => {
-    if (glossaries.length && isGlossaryActive) {
-      setActiveGlossary(
-        glossaries.find(
-          (glossary) => glossary.fullyQualifiedName === glossaryFqn
-        ) || glossaries[0]
-      );
-
-      if (isEmpty(glossaryFqn) && glossaries[0].fullyQualifiedName) {
+    if (glossaryDetails && isGlossaryActive) {
+      setActiveGlossary(glossaryDetails);
+    } else if (glossaries.length && isGlossaryActive && !glossaryFqn) {
+      setActiveGlossary(glossaries[0]);
+      if (glossaries[0].fullyQualifiedName) {
         navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
           replace: true,
         });
       }
     }
-  }, [isGlossaryActive, glossaryFqn, glossaries]);
-
-  const isRightPanelLoading = useMemo(() => {
-    if (!glossaries.length) {
-      return true;
-    }
-    if (isTermView) {
-      return glossaryTermFetching;
-    }
-
-    return false;
-  }, [glossaries.length, isTermView, glossaryTermFetching]);
+  }, [isGlossaryActive, glossaryFqn, glossaries, glossaryDetails]);
 
   const isTermNotFound = useMemo(
     () =>
@@ -329,6 +350,40 @@ const GlossaryPage = () => {
       (glossaryTermError as AxiosError | undefined)?.response?.status === 404,
     [isTermView, glossaryTermError]
   );
+
+  const isGlossaryNotFound = useMemo(
+    () =>
+      isGlossaryView &&
+      !glossaryFoundInList &&
+      (glossaryError as AxiosError | undefined)?.response?.status === 404,
+    [isGlossaryView, glossaryFoundInList, glossaryError]
+  );
+
+  const isRightPanelLoading = useMemo(() => {
+    if (isGlossaryNotFound || isTermNotFound) {
+      return false;
+    }
+    if (!glossaries.length) {
+      return true;
+    }
+    if (isTermView) {
+      return glossaryTermFetching;
+    }
+    if (isGlossaryView && !glossaryFoundInList) {
+      return glossaryFetching;
+    }
+
+    return false;
+  }, [
+    isGlossaryNotFound,
+    isTermNotFound,
+    glossaries.length,
+    isTermView,
+    glossaryTermFetching,
+    isGlossaryView,
+    glossaryFoundInList,
+    glossaryFetching,
+  ]);
 
   const updateGlossary = useCallback(
     async (updatedData: Glossary) => {
@@ -556,6 +611,14 @@ const GlossaryPage = () => {
   let glossaryElement;
   if (isRightPanelLoading) {
     glossaryElement = <Loader />;
+  } else if (isGlossaryNotFound) {
+    glossaryElement = (
+      <div className="content-height-with-resizable-panel tw:relative">
+        <NoDataPlaceholder
+          description={getEntityMissingMessage(t('label.glossary'), glossaryFqn)}
+        />
+      </div>
+    );
   } else if (isTermNotFound) {
     glossaryElement = (
       <div className="content-height-with-resizable-panel tw:relative">

@@ -321,6 +321,38 @@ class DistributedSearchIndexExecutorTest {
   }
 
   /**
+   * Regression: a stop that lands while {@code createJob()} is still building partitions finds no
+   * job to stop. {@code execute()} then started the job anyway, leaving it RUNNING with none of our
+   * workers on it, so peer servers adopted it as an orphan, reindexed what the user had stopped,
+   * and the app run stayed "running" for good.
+   */
+  @Test
+  void executeEndsJobStoppedBeforeItStartedInsteadOfStartingIt() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJob readyJob =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.READY).build();
+    ReindexingProgressListener listener = mock(ReindexingProgressListener.class);
+    executor.addListener(listener);
+    executor.stop();
+    setField("currentJob", readyJob);
+    when(coordinator.getJob(jobId)).thenReturn(Optional.of(readyJob));
+    when(coordinator.getJobWithAggregatedStats(jobId))
+        .thenReturn(readyJob.withStatus(IndexJobStatus.STOPPED));
+
+    DistributedSearchIndexExecutor.ExecutionResult result =
+        executor.execute(
+            mock(BulkSink.class),
+            stagedContext("table"),
+            ReindexingConfiguration.builder().entities(Set.of("table")).build());
+
+    assertEquals(IndexJobStatus.STOPPED, result.status());
+    verify(coordinator, never()).startJob(jobId);
+    verify(coordinator).requestStop(jobId);
+    verify(coordinator).releaseReindexLock(jobId);
+    verify(listener, never()).onJobStarted(any());
+  }
+
+  /**
    * Regression: clicking Stop in the UI used to "do nothing" because workers blocked inside the
    * bulk-sink semaphore, slow DB queries, or {@code waitForSinkOperations} (5-min deadline)
    * never observed the {@code stopped} boolean. {@code stop()} must also call

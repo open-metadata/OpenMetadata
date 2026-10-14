@@ -29,6 +29,12 @@ export interface BulkCreateTable {
  */
 export interface CreateTableRequest {
     /**
+     * Alternate fully qualified SQL names that resolve to this table, such as SQL Server
+     * synonyms. Source-managed: the ingestion connector recomputes and overwrites this list on
+     * every run.
+     */
+    aliases?: string[];
+    /**
      * Name of the tables in the database
      */
     columns: Column[];

@@ -326,8 +326,9 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     }
 
     ContextFile file = mapper.createToEntity(createFile, user);
+    // prepareInternal validates the name (incl. archived namesakes) before we stream to storage,
+    // so a duplicate upload fails fast without a wasted object-store write.
     repository.prepareInternal(file, false);
-    repository.validateNoDuplicateFileName(pageName, file.getFolder(), null);
 
     try (ContextFileUploadSupport.BufferedUpload bufferedUpload =
         ContextFileUploadSupport.bufferUpload(fileInputStream, maxFileSize)) {

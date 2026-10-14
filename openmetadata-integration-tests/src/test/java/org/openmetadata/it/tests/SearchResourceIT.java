@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -42,6 +44,7 @@ import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 
 /**
  * Integration tests for Search functionality using fluent API.
@@ -1801,10 +1804,22 @@ public class SearchResourceIT {
   void testSearchWithNegativeOffset(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Negative offset is invalid - Elasticsearch rejects it
-    assertThrows(
-        org.openmetadata.sdk.exceptions.ApiException.class,
-        () -> client.search().query("*").index("table_search_index").from(-1).size(10).execute());
+    // The engine would also reject it; the message shows the request never reached it.
+    InvalidRequestException thrown =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .search()
+                    .query("*")
+                    .index("table_search_index")
+                    .from(-25)
+                    .size(25)
+                    .execute());
+
+    assertTrue(
+        thrown.getMessage().contains("query param from must be greater than or equal to 0"),
+        thrown.getMessage());
   }
 
   @Test
@@ -1984,5 +1999,61 @@ public class SearchResourceIT {
     assertEquals(200, response.statusCode());
     String[] lines = response.body().split("\n");
     assertEquals(1, lines.length, "Export beyond results should only contain header");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "/v1/search/query?q=*&index=table_search_index&size=-1",
+        "/v1/search/nlq/query?q=tables&index=table_search_index&from=-25",
+        "/v1/search/fieldQuery?fieldName=name&fieldValue=orders&index=table_search_index&from=-25",
+        "/v1/search/fieldQuery?fieldName=name&fieldValue=orders&index=table_search_index&size=-1"
+      })
+  void testNegativePaginationIsRejectedAsBadRequest(String path) throws Exception {
+    HttpResponse<String> response = httpGetSearch(path);
+
+    assertEquals(400, response.statusCode(), path + " returned " + response.body());
+    assertTrue(
+        response.body().contains("must be greater than or equal to 0"),
+        path + " returned " + response.body());
+  }
+
+  @Test
+  void testPreviewSearchWithNegativeOffsetIsRejectedAsBadRequest() throws Exception {
+    String previewRequest =
+        """
+        {"query": "*", "index": "table", "from": -25, "size": 25, "searchSettings": {}}
+        """;
+
+    HttpResponse<String> response = httpPostJson("/v1/search/preview", previewRequest);
+
+    assertEquals(400, response.statusCode(), response.body());
+    assertTrue(
+        response.body().contains("from must be greater than or equal to 0"), response.body());
+  }
+
+  private HttpResponse<String> httpGetSearch(String path) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Accept", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> httpPostJson(String path, String jsonBody) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 }

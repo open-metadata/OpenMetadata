@@ -5,6 +5,13 @@
   "description": "User-specific preferences for a persona that override default persona UI customization. These are limited customizations that users can apply to personalize their experience while still inheriting the base persona configuration.",
   "type": "object",
   "javaType": "org.openmetadata.schema.type.PersonaPreferences",
+  "definitions": {
+    "pageViewMode": {
+      "description": "Layout a page with a view toggle opens in.",
+      "type": "string",
+      "enum": ["table", "card", "tree"]
+    }
+  },
   "properties": {
     "personaId": {
       "description": "UUID of the persona these preferences belong to.",
@@ -34,6 +41,21 @@
       "type": "string",
       "enum": ["classic", "AI"],
       "default": "classic"
+    },
+    "defaultLandingPage": {
+      "description": "Route path users of this persona land on when they open the app (e.g. `/explore`). Unset means Home (My Data).",
+      "type": "string"
+    },
+    "defaultViewModes": {
+      "description": "Layout each page with a view toggle opens in for users of this persona. A page without an entry opens in Table view. Only Domains offers Tree.",
+      "type": "object",
+      "properties": {
+        "domains": { "$ref": "#/definitions/pageViewMode" },
+        "subDomains": { "$ref": "#/definitions/pageViewMode" },
+        "dataProducts": { "$ref": "#/definitions/pageViewMode" },
+        "learningResources": { "$ref": "#/definitions/pageViewMode" }
+      },
+      "additionalProperties": false
     }
   },
   "required": ["personaId", "personaName"],

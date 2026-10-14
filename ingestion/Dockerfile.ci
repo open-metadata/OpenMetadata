@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.3.1-python3.12
+FROM apache/airflow:3.3.2-python3.12
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -60,8 +60,9 @@ RUN dpkg --configure -a \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
        perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev \
+  # DockerOperator uses docker-py; the Airflow base's Go CLI is unused.
   && apt-get -qq purge -y \
-       'imagemagick*' 'libmagick*' 'graphicsmagick*' \
+       'imagemagick*' 'libmagick*' 'graphicsmagick*' docker-ce-cli \
   && apt-get -qq autoremove -y --purge \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
@@ -102,7 +103,7 @@ COPY --chown=airflow:0 openmetadata-airflow-apis /home/airflow/openmetadata-airf
 # Required for Airflow DAGs of Sample Data
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 COPY --chown=airflow:0 ingestion/examples/airflow/test_dags /opt/airflow/dags
-COPY --chown=airflow:0 ingestion/airflow-constraints-3.3.1.txt /home/airflow/airflow-constraints-3.3.1.txt
+COPY --chown=airflow:0 ingestion/airflow-constraints-3.3.2.txt /home/airflow/airflow-constraints-3.3.2.txt
 
 # Refresh the interpreter-level pip before dropping privileges. The per-user
 # pip upgrade below only reaches ~/.local, leaving the base image's
@@ -130,20 +131,24 @@ RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
 # Install FAB provider for Airflow 3.x Flask Blueprint compatibility
-RUN pip install "apache-airflow-providers-fab>=1.0.0" --constraint "/home/airflow/airflow-constraints-3.3.1.txt" || true
+RUN pip install "apache-airflow-providers-fab>=1.0.0" --constraint "/home/airflow/airflow-constraints-3.3.2.txt" || true
 
 
 WORKDIR /home/airflow/openmetadata-airflow-apis
-RUN pip install "." --constraint "/home/airflow/airflow-constraints-3.3.1.txt"
+RUN pip install "." --constraint "/home/airflow/airflow-constraints-3.3.2.txt"
 
 WORKDIR /home/airflow/ingestion
 
 # Pre-install dialect packages that declare SQLAlchemy<2 in their metadata
 # but work fine at runtime with SQLAlchemy 2.0 (unmaintained packages).
 RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3"
-RUN pip install "datamodel-code-generator==0.64.0"
-RUN mkdir -p /home/airflow/ingestion/src/metadata/generated
-RUN python /home/airflow/scripts/datamodel_generation.py
+# 0.64.0 is vulnerable to CVE-2026-107377 (first patched in 0.81.0). Generate with
+# 0.83.0, then remove it in the same layer so its files cannot remain in the final
+# image's lower layers.
+RUN pip install "datamodel-code-generator==0.83.0" \
+  && mkdir -p /home/airflow/ingestion/src/metadata/generated \
+  && python /home/airflow/scripts/datamodel_generation.py \
+  && pip uninstall -y datamodel-code-generator
 RUN wget -q https://repo1.maven.org/maven2/org/antlr/antlr4/4.9.2/antlr4-4.9.2-complete.jar -O /tmp/antlr.jar \
   && echo "bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd  /tmp/antlr.jar" | sha256sum -c - \
   && mkdir -p /home/airflow/ingestion/src/metadata/generated/antlr \
@@ -179,11 +184,11 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 RUN mkdir -p /opt/airflow/dag_generated_configs
 
 EXPOSE 8080
-# Airflow 3.3.1 requires universal-pathlib>=0.3.8, but prior installs in this image
+# Airflow 3.3.2 requires universal-pathlib>=0.3.8, but prior installs in this image
 # can leave stale 0.2.6 `upath` module files in site-packages that cause import
 # errors at runtime. Force-remove the stale registration then pin to the required version.
 RUN pip uninstall upath -y && pip install "universal-pathlib==0.3.10"
-
+RUN python -c "import importlib.util as u; assert u.find_spec('datamodel_code_generator') is None"
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
 # See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the

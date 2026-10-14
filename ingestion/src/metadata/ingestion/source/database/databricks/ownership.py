@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 OWNER_CACHE_SIZE = 1000
-EMAIL_STR_ADAPTER = TypeAdapter(EmailStr)
+EMAIL_STR_ADAPTER = TypeAdapter(EmailStr)  # pyright: ignore[reportArgumentType]
 
 
 @dataclass(frozen=True)

@@ -691,10 +691,10 @@ export const DataAssetsHeader = ({
   }, [dataAsset, t]);
 
   useEffect(() => {
-    if (dataAsset.id) {
+    if (dataAsset.id && !isTourPage) {
       fetchDataContract(dataAsset.id);
     }
-  }, [dataAsset?.id]);
+  }, [dataAsset?.id, isTourPage]);
 
   const hasDisplayName = !isEmpty(dataAsset.displayName);
 

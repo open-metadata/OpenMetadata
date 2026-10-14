@@ -40,11 +40,15 @@ def test_basic_and_chromium_share_the_bounded_common_lane():
     planner = load_script("build_playwright_shards")
 
     assert planner.PROJECT_LANES["Basic"] == "chromium"
-    assert planner.lane_bounds("chromium", "full") == (5, 24)
+    assert planner.lane_bounds("chromium", "full") == (
+        5,
+        planner.COMMON_MAX_SHARDS,
+    )
 
 
-def test_full_common_shard_count_is_capped_at_24():
+def test_full_common_shard_count_is_capped_at_the_common_max():
     planner = load_script("build_playwright_shards")
+    cap = planner.COMMON_MAX_SHARDS
     units = [
         planner.Unit(
             "chromium",
@@ -52,13 +56,10 @@ def test_full_common_shard_count_is_capped_at_24():
             str(index),
             weight_ms=1_000_000,
         )
-        for index in range(81)
+        for index in range(cap * 4)
     ]
-    units.append(
-        planner.Unit("chromium", "remainder.spec.ts", "remainder", weight_ms=363_055)
-    )
 
-    assert planner.shard_count(units, "chromium", "full") == 24
+    assert planner.shard_count(units, "chromium", "full") == cap
 
 
 def test_common_lane_keeps_one_minute_of_allocation_reserve():
@@ -1770,7 +1771,7 @@ def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated
     assert "playwright/e2e/Features/OntologyExplorerRdf.spec.ts" not in selected_specs
     # ...while the non-delegated OntologyExplorer specs from the same glob remain,
     # proving the mapping fired and only the delegated spec was dropped.
-assert "playwright/e2e/Features/OntologyStudio.spec.ts" in selected_specs
+    assert "playwright/e2e/Features/OntologyStudio.spec.ts" in selected_specs
 
 
 def test_generated_impact_map_extends_hand_authored_routing(tmp_path, monkeypatch):

@@ -615,4 +615,33 @@ describe('Test PropertyValue Component', () => {
       await screen.findByTestId('entity-reference-select')
     ).toBeInTheDocument();
   });
+
+  it('Should render a single object stored under an "entityReferenceList" property', async () => {
+    const extension = {
+      yNumber: {
+        id: 'entityReferenceId',
+        name: 'entityReferenceName',
+        fullyQualifiedName: 'entityReferenceFullyQualifiedName',
+        type: 'user',
+      },
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'entityReferenceList',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />,
+      {
+        wrapper: RouterWrapper,
+      }
+    );
+
+    expect(
+      await screen.findByTestId('entityReferenceName')
+    ).toBeInTheDocument();
+  });
 });

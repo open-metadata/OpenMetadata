@@ -13,8 +13,10 @@
 from dataclasses import asdict, dataclass
 from typing import Optional
 
+from minio import Minio
+from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
-from testcontainers.minio import MinioContainer
+from testcontainers.core.waiting_utils import wait_container_is_ready
 from testcontainers.mysql import MySqlContainer
 
 
@@ -37,15 +39,54 @@ class MySqlContainerConfigs:
         self.exposed_port = container.get_exposed_port(self.port)
 
 
-@dataclass
-class MinioContainerConfigs:
-    """MinIO Configurations"""
+class S3ProxyContainer(DockerContainer):
+    """S3-compatible object storage, backed by S3Proxy (https://github.com/gaul/s3proxy).
 
-    # testcontainers defaults to minio/minio on Docker Hub, which MinIO has deleted.
-    # The same release is still published on quay.io.
-    image: str = "quay.io/minio/minio:RELEASE.2022-12-02T19-19-22Z"
-    access_key: str = "minio"
-    secret_key: str = "password"
+    Stands in for MinIO, whose image was deleted from Docker Hub. S3Proxy is
+    Apache-2.0, multi-arch and boots in well under a second.
+
+    S3Proxy answers ``NotImplemented`` to bucket/object tagging and bucket
+    lifecycle, so tests must not depend on those calls succeeding.
+    """
+
+    def __init__(self, image: str, access_key: str, secret_key: str, port: int = 9000, **kwargs):
+        super().__init__(image, **kwargs)
+        self.access_key = access_key
+        self.secret_key = secret_key
+        self.port = port
+        self.with_exposed_ports(port)
+        # S3Proxy listens on :80 out of the box; move it to the S3 port the
+        # ingestion configs and network aliases already assume.
+        self.with_env("S3PROXY_ENDPOINT", f"http://0.0.0.0:{port}")
+        self.with_env("S3PROXY_AUTHORIZATION", "aws-v2-or-v4")
+        self.with_env("S3PROXY_IDENTITY", access_key)
+        self.with_env("S3PROXY_CREDENTIAL", secret_key)
+
+    def get_client(self) -> Minio:
+        return Minio(
+            f"{self.get_container_host_ip()}:{self.get_exposed_port(self.port)}",
+            access_key=self.access_key,
+            secret_key=self.secret_key,
+            secure=False,
+        )
+
+    @wait_container_is_ready(Exception)
+    def _wait_until_serving(self) -> None:
+        self.get_client().list_buckets()
+
+    def start(self, *args, **kwargs):
+        super().start(*args, **kwargs)
+        self._wait_until_serving()
+        return self
+
+
+@dataclass
+class S3ContainerConfigs:
+    """S3-compatible object storage configuration"""
+
+    image: str = "andrewgaul/s3proxy:4.1.1"
+    access_key: str = "accesskey"
+    secret_key: str = "secretkey"
     port: int = 9000
     container_name: Optional[str] = None  # noqa: UP045
     exposed_port: Optional[int] = None  # noqa: UP045
@@ -72,10 +113,10 @@ def get_mysql_container(mysql_config: MySqlContainerConfigs):
     return container
 
 
-def get_minio_container(minio_config: MinioContainerConfigs):
-    container = MinioContainer(
-        **{k: v for k, v in asdict(minio_config).items() if k not in ["exposed_port", "container_name"]}
+def get_s3_container(s3_config: S3ContainerConfigs):
+    container = S3ProxyContainer(
+        **{k: v for k, v in asdict(s3_config).items() if k not in ["exposed_port", "container_name"]}
     )
-    container.with_name(minio_config.container_name)
+    container.with_name(s3_config.container_name)
 
     return container

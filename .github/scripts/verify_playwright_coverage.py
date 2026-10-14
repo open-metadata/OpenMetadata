@@ -10,6 +10,28 @@ from collections import Counter
 from pathlib import Path
 
 
+# Playwright "setup" projects declared in playwright.config.ts as
+# `dependencies: [...]` values on other projects. Their tests run once per
+# shard-invocation that includes a dependent project, not once per plan, so
+# they never appear in a shard's `testIds` but do appear in its timing
+# artifact. Without this filter, splitting two @data-insight specs across
+# shards flags `data-insight-application` as unexpected + duplicate.
+# Keep this list aligned with playwright.config.ts's setup-project section.
+LIFECYCLE_PROJECTS: frozenset[str] = frozenset(
+    {
+        "setup",
+        "entity-data-setup",
+        "entity-data-teardown",
+        "data-insight-application",
+        "search-rbac-setup",
+        "search-rbac-teardown",
+    }
+)
+
+
+def is_lifecycle_test(test: dict) -> bool:
+    return test.get("project") in LIFECYCLE_PROJECTS
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--plan-glob", required=True)
@@ -68,7 +90,11 @@ def main() -> None:
 
     for filename in timing_files:
         payload = json.loads(Path(filename).read_text(encoding="utf-8"))
-        executed.update(test["id"] for test in payload.get("tests", []))
+        executed.update(
+            test["id"]
+            for test in payload.get("tests", [])
+            if not is_lifecycle_test(test)
+        )
 
     zero_attempt_skipped: dict[str, dict] = {}
     for filename in result_files:

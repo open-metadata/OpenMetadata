@@ -16,8 +16,8 @@ Source connection handler
 from copy import deepcopy
 from typing import Optional, Union
 
-from confluent_kafka import Consumer
-from confluent_kafka.admin import AdminClient, KafkaException
+from confluent_kafka import Consumer, KafkaException
+from confluent_kafka.admin import AdminClient
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
 
 from metadata.generated.schema.entity.automations.workflow import (

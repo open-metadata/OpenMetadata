@@ -118,7 +118,7 @@ test.describe(
           consumerPage.getByTestId('marketplace-greeting')
         ).toBeVisible();
         await expect(
-          consumerPage.getByTestId('marketplace-search-bar')
+          consumerPage.getByTestId('explore-search-form')
         ).toBeVisible();
       });
 

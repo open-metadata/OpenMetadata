@@ -22,7 +22,6 @@ import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.lang.reflect.Field;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,12 +42,6 @@ class RdfResourceTest {
     securityContext = Mockito.mock(SecurityContext.class);
     doNothing().when(authorizer).authorizeAdmin(securityContext);
     rdfResource = new RdfResource(authorizer);
-  }
-
-  private void setRdfRepository(RdfRepository repository) throws Exception {
-    Field field = RdfResource.class.getDeclaredField("rdfRepository");
-    field.setAccessible(true);
-    field.set(rdfResource, repository);
   }
 
   @Test
@@ -105,7 +98,7 @@ class RdfResourceTest {
     when(repository.isEnabled()).thenReturn(true);
     when(repository.getGlossaryTermGraph(glossaryId, glossaryTermId, null, 500, 0, true))
         .thenReturn("{\"nodes\":[],\"edges\":[]}");
-    setRdfRepository(repository);
+    rdfResource = new RdfResource(authorizer, () -> repository);
 
     Response response =
         rdfResource.getGlossaryTermGraph(
@@ -119,7 +112,7 @@ class RdfResourceTest {
   void rejectsMultipleWhereBearingUpdateOperationsBeforeRepositoryExecution() throws Exception {
     RdfRepository repository = Mockito.mock(RdfRepository.class);
     when(repository.isEnabled()).thenReturn(true);
-    setRdfRepository(repository);
+    rdfResource = new RdfResource(authorizer, () -> repository);
     String update =
         "DELETE WHERE { <urn:first> ?predicate ?object }; "
             + "DELETE WHERE { <urn:second> ?predicate ?object }";
@@ -139,7 +132,7 @@ class RdfResourceTest {
   void allowsOneWhereBearingOperationWithDataOnlyOperations() throws Exception {
     RdfRepository repository = Mockito.mock(RdfRepository.class);
     when(repository.isEnabled()).thenReturn(true);
-    setRdfRepository(repository);
+    rdfResource = new RdfResource(authorizer, () -> repository);
     String update =
         "DELETE WHERE { <urn:first> ?predicate ?object }; "
             + "INSERT DATA { <urn:first> <urn:predicate> <urn:object> }";

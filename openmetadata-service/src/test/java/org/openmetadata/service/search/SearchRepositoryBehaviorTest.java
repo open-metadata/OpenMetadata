@@ -54,6 +54,7 @@ import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
@@ -458,6 +459,23 @@ class SearchRepositoryBehaviorTest {
         "cluster_table_search_index,cluster_domain_search_index",
         repository.getIndexOrAliasName("table, ,domain"));
     assertEquals(", ,", repository.getIndexOrAliasName(", ,"));
+  }
+
+  @Test
+  void getEntityTypesForIndexUsesRegisteredMappings() {
+    SearchRepository resolver =
+        newRepository(
+            Map.of(
+                Entity.TABLE, TABLE_MAPPING,
+                Entity.TABLE_COLUMN, COLUMN_MAPPING,
+                Entity.DOMAIN, DOMAIN_MAPPING,
+                Entity.MLMODEL_SERVICE, MLMODEL_SERVICE_MAPPING),
+            "cluster");
+    assertEquals(
+        List.of("domain", "table"),
+        resolver.getEntityTypesForIndex("table,domain,table_search_index"));
+    assertEquals(List.of("mlmodelService"), resolver.getEntityTypesForIndex("mlModelService"));
+    assertEquals(List.of(), resolver.getEntityTypesForIndex("unknown"));
   }
 
   @Test
@@ -3067,6 +3085,34 @@ class SearchRepositoryBehaviorTest {
 
     setPrivateField(repository, "vectorIndexService", mock(VectorIndexService.class));
     repository.updateHybridSearchPipeline(0.8, 0.2);
+  }
+
+  @Test
+  void checkHybridSearchPipelineChecksTheWeightsSearchWillSend() throws Exception {
+    SearchRepository openSearchRepository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "cluster",
+            ElasticSearchConfiguration.SearchType.OPENSEARCH,
+            new NaturalLanguageSearchConfiguration().withSemanticSearchEnabled(true));
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    when(vectorService.checkHybridSearchPipeline(0.7, 0.7)).thenReturn(Optional.of("rejected"));
+    setPrivateField(openSearchRepository, "vectorIndexService", vectorService);
+    SearchSettings adminWeights =
+        new SearchSettings()
+            .withGlobalSettings(
+                new GlobalSettings().withKeywordWeight(0.7).withSemanticWeight(0.7));
+
+    try (MockedStatic<SettingsCache> settingsCacheMock = mockStatic(SettingsCache.class)) {
+      settingsCacheMock
+          .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
+          .thenReturn(adminWeights);
+
+      assertEquals(Optional.of("rejected"), openSearchRepository.checkHybridSearchPipeline());
+    }
+
+    setPrivateField(openSearchRepository, "vectorIndexService", mock(VectorIndexService.class));
+    assertEquals(Optional.empty(), openSearchRepository.checkHybridSearchPipeline());
   }
 
   @Test

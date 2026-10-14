@@ -5,6 +5,9 @@ Data quality validation utility functions.
 from typing import Any, Callable, List, Optional, TypeVar, Union  # noqa: UP035
 from urllib.parse import quote
 
+from jinja2 import StrictUndefined, TemplateSyntaxError, UndefinedError
+from jinja2.exceptions import SecurityError
+from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy.engine import URL
 
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
@@ -111,3 +114,21 @@ def casefold_if_string(value: Any) -> Any:
         Any: case folded value
     """
     return value.casefold() if isinstance(value, str) else value
+
+
+def render_sql_expression(sql_template: str, params: dict[str, str]) -> str:
+    """Render a Rule Library SQL expression, raising ``ValueError`` on any template error.
+
+    The expression is user-authored, so it is rendered sandboxed: a plain Template
+    lets it reach Python internals and run code on the ingestion worker.
+    """
+    try:
+        return SandboxedEnvironment(undefined=StrictUndefined).from_string(sql_template).render(**params)
+    except TemplateSyntaxError as e:
+        raise ValueError(f"Invalid Jinja2 syntax in SQL expression: {e.message}") from e
+    except SecurityError as e:
+        raise ValueError(f"Unsafe operation in SQL expression: {e}") from e
+    except UndefinedError as e:
+        raise ValueError(
+            f"Undefined variable in SQL expression: {e.message}. Available parameters: {list(params.keys())}"
+        ) from e

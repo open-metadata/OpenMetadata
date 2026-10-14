@@ -19,10 +19,9 @@ import traceback
 from abc import ABC
 from typing import Any, Iterable, Optional  # noqa: UP035
 
-import confluent_kafka
+import confluent_kafka.admin
 from cachetools import LRUCache
 from confluent_kafka import KafkaError, KafkaException
-from confluent_kafka.admin import ConfigResource
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 
@@ -116,7 +115,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
         try:
-            schema_type_map = {key.lower(): value.value for key, value in SchemaType.__members__.items()}
+            schema_type_map = {key.lower(): value for key, value in SchemaType.__members__.items()}
             logger.info(f"Fetching topic schema {topic_details.topic_name}")
             topic_schema = self._parse_topic_metadata(topic_details.topic_name)
             logger.info(f"Fetching topic config {topic_details.topic_name}")
@@ -126,11 +125,15 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 partitions=len(topic_details.topic_metadata.partitions),
                 replicationFactor=len(topic_details.topic_metadata.partitions.get(0).replicas),
             )
-            topic_config_resource = self.admin_client.describe_configs(
-                [ConfigResource(confluent_kafka.admin.RESOURCE_TOPIC, topic_details.topic_name)]
+            # confluent_kafka.admin ships py.typed but declares no __all__, so every name
+            # it exposes reads as a private import to the type checker.
+            config_resource = confluent_kafka.admin.ConfigResource(  # pyright: ignore[reportPrivateImportUsage]
+                confluent_kafka.admin.RESOURCE_TOPIC,  # pyright: ignore[reportPrivateImportUsage]
+                topic_details.topic_name,
             )
+            topic_config_resource = self.admin_client.describe_configs([config_resource])
             self.add_properties_to_topic_from_resource(topic, topic_config_resource)
-            if topic_schema is not None:
+            if topic_schema is not None and topic_schema.schema_type is not None:
                 schema_type = topic_schema.schema_type.lower()
                 load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
                 if not load_parser_fn:
@@ -146,7 +149,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
                 topic.messageSchema = Topic(
                     schemaText=topic_schema.schema_str,
-                    schemaType=schema_type_map.get(topic_schema.schema_type.lower(), SchemaType.Other.value),
+                    schemaType=schema_type_map.get(schema_type, SchemaType.Other),
                     schemaFields=schema_fields if schema_fields is not None else [],
                 )
             else:
@@ -192,7 +195,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     topic_config[key] = conf_response.value
                 topic.topicConfig = topic_config
 
-        except (KafkaException, KafkaError) as exc:
+        # KafkaError is an error-detail object, not a BaseException subclass, so it
+        # cannot appear in an except clause -- Python raises TypeError on match.
+        except KafkaException as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Exception adding properties to topic [{topic.name}]: {exc}")
 
@@ -317,7 +322,13 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             # One deserializer per schema: this runs once per sampled message.
             deserializer = self._avro_deserializers.get(schema)
             if deserializer is None:
-                deserializer = AvroDeserializer(schema_str=schema, schema_registry_client=self.schema_registry_client)
+                # confluent_kafka.schema_registry.avro stacks `import *` from _async, _sync
+                # and common, so a type checker binds AvroDeserializer to the wrong class;
+                # at runtime _sync wins and these keywords are correct.
+                deserializer = AvroDeserializer(
+                    schema_str=schema,  # pyright: ignore[reportCallIssue]
+                    schema_registry_client=self.schema_registry_client,  # pyright: ignore[reportCallIssue]
+                )
                 self._avro_deserializers[schema] = deserializer
             return str(deserializer(bytes(record), None))
         if schema_type == SchemaType.Protobuf:

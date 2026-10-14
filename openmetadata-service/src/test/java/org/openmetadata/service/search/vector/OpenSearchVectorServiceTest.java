@@ -11,8 +11,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -21,13 +24,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
+import os.org.opensearch.client.opensearch.generic.Request;
 import os.org.opensearch.client.opensearch.generic.Response;
 
 class OpenSearchVectorServiceTest {
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private OpenSearchVectorService vectorService;
   private OpenSearchClient mockClient;
@@ -470,6 +478,26 @@ class OpenSearchVectorServiceTest {
   }
 
   @Test
+  void testInlinePipelineDefinitionIsByteIdenticalToTheStoredPipelineBody() throws IOException {
+    // Hybrid ranking now travels with the query as an ad-hoc pipeline, because creating the
+    // stored one needs cluster:admin/search/pipeline/put and a search role confined to a single
+    // index prefix does not have it. Both forms must stay the same document: if they drift,
+    // deployments on the stored pipeline and deployments inlining it silently rank differently.
+    mockOpenSearchResponse("{\"acknowledged\":true}");
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+
+    vectorService.ensureHybridSearchPipeline(0.4, 0.6);
+
+    verify(mockGenericClient).execute(captor.capture());
+    String storedBody =
+        new String(
+            captor.getValue().getBody().get().bodyAsBytes(),
+            java.nio.charset.StandardCharsets.UTF_8);
+    assertEquals(storedBody, OpenSearchVectorService.buildHybridRrfPipelineDefinition(0.4, 0.6));
+  }
+
+  @Test
   void testEnsureHybridSearchPipelineWithCustomWeights() throws IOException {
     mockOpenSearchResponse("{\"acknowledged\":true}");
 
@@ -489,43 +517,67 @@ class OpenSearchVectorServiceTest {
   }
 
   @Test
-  void testCheckHybridSearchPipelineReturnsEmptyWhenAvailable() throws IOException {
-    mockOpenSearchResponse("{\"hybrid-rrf\":{}}");
+  void testCheckHybridSearchPipelineRunsAHybridQueryWithTheInlinePipeline() throws IOException {
+    mockOpenSearchResponse("{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}");
+    ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
 
-    assertTrue(
-        vectorService.checkHybridSearchPipeline().isEmpty(),
-        "Pipeline should be available when OpenSearch returns 200");
+    Optional<String> result = vectorService.checkHybridSearchPipeline(0.6, 0.4);
+
+    verify(mockGenericClient).execute(captor.capture());
+    Request probe = captor.getValue();
+    assertTrue(result.isEmpty(), "A query OpenSearch accepts means hybrid search can run");
+    assertEquals("POST", probe.getMethod());
+    assertEquals("/" + vectorService.getChunkIndexName() + "/_search", probe.getEndpoint());
+    assertEquals("true", probe.getParameters().get("ignore_unavailable"));
+    JsonNode body = MAPPER.readTree(probe.getBody().get().bodyAsString());
+    assertEquals(2, body.path("query").path("hybrid").path("queries").size());
+    assertEquals(
+        MAPPER.readTree(OpenSearchVectorService.buildHybridRrfPipelineDefinition(0.6, 0.4)),
+        body.path("search_pipeline"));
   }
 
   @Test
-  void testCheckHybridSearchPipelineReturnsErrorOn404() throws IOException {
-    Response mockResponse = mock(Response.class);
-    when(mockResponse.getStatus()).thenReturn(404);
-    when(mockResponse.getBody()).thenReturn(Optional.empty());
-    when(mockGenericClient.execute(any())).thenReturn(mockResponse);
+  void testCheckHybridSearchPipelineStaysInsideTheClusterAliasPrefix() throws IOException {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.getClusterAlias()).thenReturn("bi4all-pt");
+    Entity.setSearchRepository(searchRepository);
+    mockOpenSearchResponse("{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}");
+    ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+    try {
+      vectorService.checkHybridSearchPipeline(0.6, 0.4);
+    } finally {
+      Entity.setSearchRepository(null);
+    }
 
-    Optional<String> result = vectorService.checkHybridSearchPipeline();
-    assertTrue(result.isPresent(), "Should return error when pipeline not found");
-    assertTrue(result.get().contains("not found"), "Error should mention pipeline not found");
+    verify(mockGenericClient).execute(captor.capture());
+    assertEquals(
+        "/bi4all-pt_data_asset_embeddings_chunks/_search", captor.getValue().getEndpoint());
   }
 
   @Test
-  void testCheckHybridSearchPipelineReturnsErrorOn5xx() throws IOException {
+  void testCheckHybridSearchPipelineReportsWhyOpenSearchRejectedTheQuery() throws IOException {
+    String rejection =
+        "{\"error\":{\"type\":\"illegal_argument_exception\",\"reason\":\"sum of weights for"
+            + " combination must be equal to 1.0\"},\"status\":400}";
     Response mockResponse = mock(Response.class);
-    when(mockResponse.getStatus()).thenReturn(500);
-    when(mockResponse.getBody()).thenReturn(Optional.empty());
+    when(mockResponse.getStatus()).thenReturn(400);
+    when(mockResponse.getBody())
+        .thenReturn(
+            Optional.of(Body.from(rejection.getBytes(StandardCharsets.UTF_8), "application/json")));
     when(mockGenericClient.execute(any())).thenReturn(mockResponse);
 
-    Optional<String> result = vectorService.checkHybridSearchPipeline();
-    assertTrue(result.isPresent(), "Should return error on server error");
-    assertTrue(result.get().contains("Unexpected status 500"), "Error should mention status code");
+    Optional<String> result = vectorService.checkHybridSearchPipeline(0.7, 0.7);
+
+    assertTrue(result.isPresent(), "A rejected query means hybrid search cannot run");
+    assertTrue(result.get().contains("status 400"), "Error should mention the status code");
+    assertTrue(result.get().contains("sum of weights"), "Error should carry OpenSearch's reason");
   }
 
   @Test
   void testCheckHybridSearchPipelineReturnsErrorOnException() throws IOException {
     when(mockGenericClient.execute(any())).thenThrow(new IOException("Connection refused"));
 
-    Optional<String> result = vectorService.checkHybridSearchPipeline();
+    Optional<String> result = vectorService.checkHybridSearchPipeline(0.6, 0.4);
     assertTrue(result.isPresent(), "Should return error when exception occurs");
     assertTrue(
         result.get().contains("Connection refused"), "Error should include exception message");

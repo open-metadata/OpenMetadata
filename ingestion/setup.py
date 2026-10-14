@@ -22,8 +22,11 @@ VERSIONS = {
     # CVE-2026-42252 BashOperator Jinja2 injection; CVE-2026-48891 /ui/dependencies leaks
     # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0);
     # CVE-2026-67587 Dag-author RCE on the Scheduler via a Serde Callback deserialization
-    # gadget and CVE-2026-54183 Variables unmasked in the UI (both need 3.3.1)
-    "airflow": "apache-airflow==3.3.1",
+    # gadget and CVE-2026-54183 Variables unmasked in the UI (both need 3.3.1);
+    # CVE-2026-86473 logout ignores a presented Authorization bearer token, leaving it
+    # revocable only by expiry, and CVE-2026-75158 the asset events API returns events for
+    # every Dag with no per-Dag authorization filter (both need 3.3.2)
+    "airflow": "apache-airflow==3.3.2",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
@@ -86,6 +89,7 @@ VERSIONS = {
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf>=8.2,<8.8",  # 8.8+ requires chardet>=7, conflicting with the chardet==4.0.0 profiler pin
+    "canmatrix": "canmatrix<1.3",  # 1.3 breaks importing asammdf: https://github.com/ebroecker/canmatrix/issues/926
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
     "factory-boy": "factory-boy~=3.3.3",
@@ -102,6 +106,7 @@ COMMONS = {
     },
     "datalake": {
         VERSIONS["asammdf"],
+        VERSIONS["canmatrix"],
         VERSIONS["avro"],
         VERSIONS["boto3"],
         VERSIONS["ijson"],
@@ -120,7 +125,15 @@ COMMONS = {
     },
     "kafka": {
         VERSIONS["avro"],
-        "confluent_kafka>=2.1.1,<=2.6.1",
+        # CVE-2026-15911 (improper TLS certificate validation in the HashiCorp Vault KMS
+        # integration) is fixed in 2.15.0. The <=2.6.1 ceiling this replaces dated from
+        # Jan 2025 and pinned the client nine minor versions behind.
+        # The [schemaregistry] extra is required, not cosmetic: from 2.9 the schema registry
+        # client's dependencies (certifi, httpx, attrs, cachetools, authlib) moved behind it,
+        # and a bare install raises ModuleNotFoundError on `confluent_kafka.schema_registry`
+        # -- which messaging/common_broker_source.py, messaging/kafka/connection.py and
+        # sampler/messaging/kafka/sampler.py all import at module level.
+        "confluent_kafka[schemaregistry]>=2.15.0,<3",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
@@ -169,7 +182,7 @@ base_requirements = {
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
-    "Jinja2>=2.11.3",
+    "Jinja2>=3.1.6",  # 3.1.5/3.1.6 close sandbox escapes; the Rule Library relies on the sandbox
     "idna>=3.15",  # CVE-2026-45409 idna.encode() bypass of CVE-2024-3651 fix
     "jsonpatch<2.0, >=1.24",
     "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
@@ -187,7 +200,10 @@ base_requirements = {
     "PyYAML~=6.0",
     "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
-    "sqlalchemy>=2.0.0,<3",
+    # snowflake-sqlalchemy subclasses sqlalchemy.orm.context.ORMSelectCompileState, which is
+    # private in SQLAlchemy 2.1 — importing the Snowflake dialect raises AttributeError there.
+    # Raise the ceiling once a snowflake-sqlalchemy release supports 2.1.
+    "sqlalchemy>=2.0.0,<2.1",
     "collate-sqllineage==2.1.7",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
@@ -195,7 +211,7 @@ base_requirements = {
     "packaging",  # For version parsing
     "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.15",
+    "collate-data-diff>=0.11.17",  # get_stats_dict(retain_rows=...), DataDiffDuplicateKeyError
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
@@ -332,6 +348,10 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         # (data amplification): thrift <0.24.0 is vulnerable. impyla hard-pinned thrift==0.16.0
         # from 0.18.0 through 0.23.0 and only relaxed it to >=0.23.0 in 0.24.0, so the driver
         # has to move for this floor to be satisfiable.
+        # CVE-2026-66858 + CVE-2026-85494 need >=0.25.0 and are NOT fixed here: the latest
+        # databricks-sql-connector (4.6.0) requires thrift<0.25.0, and the "all" extra installs
+        # both, so raising this floor makes "all" unresolvable. Revisit when Databricks relaxes
+        # its ceiling.
         "thrift>=0.24.0,<1",
         # Replacing sasl with pure-sasl based on https://github.com/cloudera/python-sasl/issues/30 for py 3.11
         "pure-sasl",
@@ -346,7 +366,8 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "impala": {
         "presto-types-parser>=0.0.2",
         # See the hive extra: impyla <0.24.0 hard-pins thrift==0.16.0, which is what holds
-        # thrift below the fixed 0.24.0.
+        # thrift below the fixed 0.24.0, and why CVE-2026-66858 / CVE-2026-85494 cannot be
+        # cleared here either.
         "impyla[kerberos]~=0.24.0",
         "thrift>=0.24.0,<1",
         "pure-sasl",
@@ -452,7 +473,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
 dev = {
     "ruff~=0.15.12",
     "uvloop==0.21.0",
-    "datamodel-code-generator==0.64.0",
+    "datamodel-code-generator==0.83.0",
     "boto3-stubs",
     "mypy-boto3-glue",
     "google-api-python-client-stubs",
@@ -533,6 +554,7 @@ test = {
     VERSIONS["starrocks"],
     *plugins["vertica"],
     "testcontainers~=4.8.0",
+    # S3 client for the S3Proxy-backed object-storage test containers
     "minio==7.2.5",
     *plugins["mlflow"],
     "skops",  # mlflow 3.14 switched the mlflow.sklearn serialization default to skops, which mlflow-skinny does not pull in

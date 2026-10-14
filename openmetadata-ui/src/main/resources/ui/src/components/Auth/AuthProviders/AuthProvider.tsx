@@ -370,12 +370,17 @@ export const AuthProvider = ({
     navigate(ROUTES.SIGNIN);
   }, [timeoutId]);
 
+  // handledVerifiedUser is memoized into handleSuccessfulLogin, so it needs a ref
+  // to see the current page rather than the one the user logged out from.
+  const pathnameRef = useRef(location.pathname);
+
+  useEffect(() => {
+    pathnameRef.current = location.pathname;
+  }, [location.pathname]);
+
   const handledVerifiedUser = () => {
-    if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      // Route to `/` and let the (mode-specific) route tree render its
-      // own landing page. Rendering in place at `/` is provider-agnostic
-      // and lets non-default app modes (e.g. AskCollate's AI) own their
-      // own landing page without racing an early client-side redirect.
+    if (!applicationRoutesClass.isProtectedRoute(pathnameRef.current)) {
+      // Route to `/`; PersonaLandingRedirect then sends it to the persona's landing page.
       navigate(ROUTES.HOME);
     }
   };

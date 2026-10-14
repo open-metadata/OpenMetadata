@@ -75,6 +75,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
@@ -567,6 +568,7 @@ public class TagRepository extends EntityRepository<Tag> {
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
 
         searchRepository.updateEntity(ref);
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -630,6 +632,7 @@ public class TagRepository extends EntityRepository<Tag> {
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
 
     success.add(new BulkResponse().withRequest(columnRef));
@@ -709,6 +712,7 @@ public class TagRepository extends EntityRepository<Tag> {
       if (!dryRun) {
         // Update ES
         searchRepository.updateEntity(ref);
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -748,6 +752,7 @@ public class TagRepository extends EntityRepository<Tag> {
     if (!dryRun) {
       // Update the parent table's search index
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
   }
 

@@ -48,6 +48,7 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.findEntityByNameOrNull;
@@ -59,6 +60,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notTaskAssignee;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -1294,6 +1296,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected T restorePatchSecrets(T original, T updated) {
     return updated;
   }
+
+  /**
+   * Rejects {@code updated}, the result of applying {@code patch} to {@code original}, when the
+   * patch breaks a rule that depends on the patch operations themselves. Runs on every PATCH before
+   * the entity is prepared; does nothing unless a repository overrides it.
+   */
+  protected void validatePatch(T original, T updated, JsonPatch patch) {}
 
   /**
    * This function updates the Elasticsearch indexes wherever the specific entity is present.
@@ -2558,6 +2567,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  /**
+   * Loads {@code fields} onto rows the caller already read, so one thread can page by keyset while
+   * others load fields. A row that fails to deserialize comes back as an error with no entity; one
+   * whose fields fail to load comes back as an error that still carries its stored data.
+   */
+  public ResultList<T> hydrate(List<String> jsons, Fields fields, ListFilter filter) {
+    final List<T> entities = new ArrayList<>();
+    final List<EntityError> errors = new ArrayList<>();
+    serializeJsons(jsons, fields, null, filter)
+        .forEachRemaining(result -> result.apply(entities::add, errors::add));
+    return new ResultList<>(entities, errors, null, null, entities.size());
+  }
+
   @SuppressWarnings("unchecked")
   Map<String, String> parseCursorMap(String param) {
     Map<String, String> cursorMap;
@@ -2817,30 +2839,79 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 page.cursorId(),
                 fetchLimit);
 
-    List<T> entities = new ArrayList<>(JsonUtils.readObjects(jsons, getEntityClass()));
-    boolean hasMoreInCurrentDirection = entities.size() > limit;
+    List<T> pageRows = new ArrayList<>(JsonUtils.readObjects(jsons, getEntityClass()));
+    boolean hasMoreInCurrentDirection = pageRows.size() > limit;
     if (hasMoreInCurrentDirection) {
-      entities = new ArrayList<>(entities.subList(0, limit));
+      pageRows = new ArrayList<>(pageRows.subList(0, limit));
     }
     if (page.isBackward()) {
-      Collections.reverse(entities);
+      Collections.reverse(pageRows);
     }
-    setFieldsInBulk(putFields, entities);
-    hydrateHistoryEntities(entities);
+    // Cursors describe the rows the SQL page held, not the rows that survive hydration. Hydration
+    // drops an entity that was hard-deleted mid-request, and a cursor taken from the survivors
+    // would re-read those dropped rows on the next page -- or, when none survive, end the walk
+    // before its last page.
+    String firstCursor = pageRows.isEmpty() ? null : historyCursor(pageRows.getFirst());
+    String lastCursor = pageRows.isEmpty() ? null : historyCursor(pageRows.getLast());
+    List<T> entities = hydrateHistoryPage(pageRows);
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
-    return historyPageResult(entities, page, hasMoreInCurrentDirection, total);
+    return historyPageResult(
+        entities, page, hasMoreInCurrentDirection, total, firstCursor, lastCursor);
+  }
+
+  private String historyCursor(T entity) {
+    return entity.getUpdatedAt() + ":" + entity.getId().toString();
+  }
+
+  /**
+   * Hydrate a history page, tolerating an entity hard-deleted between the version query (which
+   * takes no lock) and this call. {@link #setFieldsInBulk} resolves live relationships for the
+   * whole page in one go, so one vanished entity throws and takes every other row down with it:
+   * the reader gets a 404 for a window it never asked about. Retrying row by row keeps the page
+   * and drops only what actually vanished.
+   */
+  private List<T> hydrateHistoryPage(List<T> entities) {
+    try {
+      hydrateHistoryRows(entities);
+      return entities;
+    } catch (EntityNotFoundException e) {
+      return hydrateHistoryRowByRow(entities);
+    }
+  }
+
+  private void hydrateHistoryRows(List<T> entities) {
+    setFieldsInBulk(putFields, entities);
+    hydrateHistoryEntities(entities);
+  }
+
+  private List<T> hydrateHistoryRowByRow(List<T> entities) {
+    List<T> hydrated = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      try {
+        hydrateHistoryRows(new ArrayList<>(List.of(entity)));
+        hydrated.add(entity);
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "Dropping {} {} from history page, deleted mid-request: {}",
+            entityType,
+            entity.getId(),
+            e.getMessage());
+      }
+    }
+    return hydrated;
   }
 
   private ResultList<T> historyPageResult(
-      List<T> entities, HistoryPage page, boolean hasMoreInCurrentDirection, int total) {
-    if (entities.isEmpty()) {
+      List<T> entities,
+      HistoryPage page,
+      boolean hasMoreInCurrentDirection,
+      int total,
+      String firstCursor,
+      String lastCursor) {
+    if (firstCursor == null) {
       return getResultList(entities, null, null, total);
     }
-    T first = entities.getFirst();
-    T last = entities.getLast();
-    String firstCursor = first.getUpdatedAt() + ":" + first.getId().toString();
-    String lastCursor = last.getUpdatedAt() + ":" + last.getId().toString();
     boolean hasNewerVersions = page.isBackward() ? hasMoreInCurrentDirection : !page.isFirstPage();
     boolean hasOlderVersions = page.isBackward() || hasMoreInCurrentDirection;
     return getResultList(
@@ -3130,13 +3201,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(tagsByTarget);
-
-    for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
-      String targetFqn = entry.getKey();
-      for (TagLabel tagLabel : entry.getValue()) {
-        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFqn);
-      }
-    }
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {
@@ -4345,6 +4409,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("patchRestoreSecrets")) {
       updated = restorePatchSecrets(original, updated);
     }
+    validatePatch(original, updated, patch);
 
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
@@ -4851,56 +4916,59 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final void cleanup(String deletedBy, T entityInterface) {
     Entity.getJdbi()
         .inTransaction(
-            handle -> {
-              // Perform Entity Specific Cleanup
-              entitySpecificCleanup(deletedBy, entityInterface);
+            handle ->
+                TransactionRollbackTracker.runAttempt(
+                    () -> {
+                      // Perform Entity Specific Cleanup
+                      entitySpecificCleanup(deletedBy, entityInterface);
 
-              UUID id = entityInterface.getId();
+                      UUID id = entityInterface.getId();
 
-              // Must run before the relationship delete below: the Task 2.0 artifacts
-              // (tasks/announcements) are found via the entity --MENTIONED_IN--> artifact edge,
-              // which deleteAll() removes, so collecting them afterwards would orphan them.
-              deleteFeedArtifactsAbout(id);
+                      // Must run before the relationship delete below: the Task 2.0 artifacts
+                      // (tasks/announcements) are found via the entity --MENTIONED_IN--> artifact
+                      // edge, which deleteAll() removes, so collecting them afterwards would
+                      // orphan them.
+                      deleteFeedArtifactsAbout(id);
 
-              // Delete all the relationships to other entities
-              daoCollection.relationshipDAO().deleteAll(id, entityType);
+                      // Delete all the relationships to other entities
+                      daoCollection.relationshipDAO().deleteAll(id, entityType);
 
-              if (shouldCleanupFqnDependents()) {
-                daoCollection
-                    .fieldRelationshipDAO()
-                    .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
-              }
+                      if (shouldCleanupFqnDependents()) {
+                        daoCollection
+                            .fieldRelationshipDAO()
+                            .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+                      }
 
-              // Delete all the extensions of entity
-              daoCollection.entityExtensionDAO().deleteAll(id);
+                      // Delete all the extensions of entity
+                      daoCollection.entityExtensionDAO().deleteAll(id);
 
-              if (shouldCleanupFqnDependents()) {
-                daoCollection
-                    .tagUsageDAO()
-                    .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
-                daoCollection
-                    .tagUsageDAO()
-                    .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
-              }
-              // Delete all the usage data
-              daoCollection.usageDAO().delete(id);
+                      if (shouldCleanupFqnDependents()) {
+                        daoCollection
+                            .tagUsageDAO()
+                            .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+                        daoCollection
+                            .tagUsageDAO()
+                            .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+                      }
+                      // Delete all the usage data
+                      daoCollection.usageDAO().delete(id);
 
-              // Delete the extension data storing custom properties
-              removeExtension(entityInterface);
+                      // Delete the extension data storing custom properties
+                      removeExtension(entityInterface);
 
-              // Delete all the threads that are about this entity
-              Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
+                      // Delete all the threads that are about this entity
+                      Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
-              // Drop cached state before the DB row goes away. A concurrent read arriving
-              // between this invalidate and the dao.delete below would still observe the
-              // entity in the DB; the post-commit invalidate below closes that window.
-              invalidate(entityInterface);
+                      // Drop cached state before the DB row goes away. A concurrent read arriving
+                      // between this invalidate and the dao.delete below would still observe the
+                      // entity in the DB; the post-commit invalidate below closes that window.
+                      invalidate(entityInterface);
 
-              // Finally, delete the entity
-              dao.delete(id);
+                      // Finally, delete the entity
+                      dao.delete(id);
 
-              return null;
-            });
+                      return null;
+                    }));
     // Flowable uses a separate transaction. Cancelling only after this one commits prevents a
     // rolled-back entity delete from leaving a live entity without its workflow, and keeps the
     // workflow queries out of the entity transaction's lock-hold time.
@@ -5013,22 +5081,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
    *
    * <p>No network side effect (RDF/SPARQL, Elasticsearch, Redis L2) may run inside {@code flushBody}
    * — a pooled connection is held for the whole body, so a network round trip there would pin the
-   * connection and starve the pool. Tag RDF is deferred via {@link RdfTagUpdater#beginDeferral()},
-   * the domain/data-product lineage-ES leaf via {@link LineageUtil#beginLineageDeferral()}, and the
-   * Redis-L2 cache invalidation issued by {@code addRelationship}/{@code deleteRelationship}/{@code
-   * invalidateCacheForEntity} via {@link #beginCacheInvalidationDeferral()} — all drained
-   * post-commit on the request thread. Only the cheap local Guava-L1 eviction stays inline. Redis
-   * cache write-through likewise happens post-commit on the request thread (read-your-write safe).
+   * connection and starve the pool. The domain/data-product lineage-ES leaf is deferred via {@link
+   * LineageUtil#beginLineageDeferral()}, and the Redis-L2 cache invalidation issued by {@code
+   * addRelationship}/{@code deleteRelationship}/{@code invalidateCacheForEntity} via {@link
+   * #beginCacheInvalidationDeferral()} — both drained post-commit on the request thread. Only the
+   * cheap local Guava-L1 eviction stays inline. Redis cache write-through likewise happens
+   * post-commit on the request thread (read-your-write safe).
+   *
+   * <p>The {@link RdfTagUpdater#beginDeferral()} scope opened/drained alongside these is now
+   * vestigial: it used to defer inline tag-RDF SPARQL writes, but that writer was removed (#33474)
+   * in favor of the async snapshot writer ({@code RdfUpdater.updateEntity}), so the scope always
+   * drains an empty closure list today. Left in place rather than torn out here — see the PR
+   * description for the follow-up to remove it along with {@code ownsRdf}/{@code rdfCheckpoint}.
    */
   private void runInTransactionWithRetry(Runnable flushBody) {
     DeadlockRetry.execute(
         () ->
             Entity.getJdbi()
                 .inTransaction(
-                    handle -> {
-                      flushBody.run();
-                      return null;
-                    }));
+                    handle ->
+                        TransactionRollbackTracker.runAttempt(
+                            () -> {
+                              flushBody.run();
+                              return null;
+                            })));
   }
 
   protected T createNewEntity(T entity) {
@@ -5870,23 +5946,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     Map<String, List<TagLabel>> tagsByTarget = new LinkedHashMap<>();
     collectColumnTags(columns, tagsByTarget);
-    applyTagsBatchWithRdf(tagsByTarget);
+    applyTagsBatch(tagsByTarget);
   }
 
-  protected void applyTagsBatchWithRdf(Map<String, List<TagLabel>> tagsByTarget) {
+  protected void applyTagsBatch(Map<String, List<TagLabel>> tagsByTarget) {
     if (tagsByTarget == null || tagsByTarget.isEmpty()) {
       return;
     }
     daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(tagsByTarget);
-
-    for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
-      String targetFQN = entry.getKey();
-      for (TagLabel tagLabel : entry.getValue()) {
-        if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
-          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
-        }
-      }
-    }
   }
 
   protected void collectColumnTags(List<Column> columns, Map<String, List<TagLabel>> tagsByTarget) {
@@ -5906,7 +5973,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected void applyTags(T entity) {
     if (supportsTags) {
-      applyTagsAdd(entity.getTags(), entity.getFullyQualifiedName(), entityType, entity.getId());
+      applyTagsAdd(entity.getTags(), entity.getFullyQualifiedName());
     }
   }
 
@@ -5915,15 +5982,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTags(List<TagLabel> tagLabels, String targetFQN) {
-    applyTags(tagLabels, targetFQN, null, null);
-  }
-
-  /**
-   * Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN}
-   */
-  @Transaction
-  public final void applyTags(
-      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
       if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
         daoCollection
@@ -5938,10 +5996,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getReason(),
                 tagLabel.getAppliedBy(),
                 tagLabel.getMetadata());
-
-        // Update RDF store
-        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
-            tagLabel, targetFQN, targetType, targetId);
       }
     }
   }
@@ -5951,15 +6005,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTagsAdd(List<TagLabel> tagLabels, String targetFQN) {
-    applyTagsAdd(tagLabels, targetFQN, null, null);
-  }
-
-  /**
-   * Apply multiple tags in batch to improve performance
-   */
-  @Transaction
-  public final void applyTagsAdd(
-      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
@@ -5971,12 +6016,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nonDerivedTags.isEmpty()) {
       daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, targetFQN);
-
-      // Update RDF store for each tag
-      for (TagLabel tagLabel : nonDerivedTags) {
-        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
-            tagLabel, targetFQN, targetType, targetId);
-      }
     }
   }
 
@@ -5985,15 +6024,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTagsDelete(List<TagLabel> tagLabels, String targetFQN) {
-    applyTagsDelete(tagLabels, targetFQN, null, null);
-  }
-
-  /**
-   * Delete multiple tags in batch to improve performance
-   */
-  @Transaction
-  public final void applyTagsDelete(
-      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
@@ -6005,12 +6035,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nonDerivedTags.isEmpty()) {
       daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFQN);
-
-      // Remove from RDF store for each tag
-      for (TagLabel tagLabel : nonDerivedTags) {
-        org.openmetadata.service.rdf.RdfTagUpdater.removeTag(
-            tagLabel, targetFQN, targetType, targetId);
-      }
     }
   }
 
@@ -6895,11 +6919,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     jdbi.inTransaction(
-        handle -> {
-          bulkCleanupReferences(entities);
-          bulkDeleteEntityRows(entities);
-          return null;
-        });
+        handle ->
+            TransactionRollbackTracker.runAttempt(
+                () -> {
+                  bulkCleanupReferences(entities);
+                  bulkDeleteEntityRows(entities);
+                  return null;
+                }));
     // Keep Flowable's separate transaction outside the entity delete transaction. See cleanup().
     cancelWorkflowInstances(entityIds(entities));
   }
@@ -8850,8 +8876,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       versionChanged = snapshot.versionChanged;
       entityStored = snapshot.entityStored;
       majorVersionChange = snapshot.majorVersionChange;
-      // The flush body repopulates deferredReactOperations (tag-RDF closures) via
-      // deferReactOperation; clear them so a deadlock replay does not double-enqueue.
+      // The flush body repopulates deferredReactOperations via deferReactOperation; clear them
+      // so a deadlock replay does not double-enqueue.
       deferredReactOperations.clear();
       deferredReactExecuted = false;
       resetForRetryAttempt();
@@ -9239,14 +9265,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Default implementation. Override this to add any entity specific field updates
     }
 
+    /**
+     * Whether a bot write must keep a non-empty description. A bot PUT never changes it without
+     * overrideMetadata; with it (a bulk force-sync) a real source value may replace it, but an empty
+     * one must not blank it - a connector that finds no comment omits the field, and that absence
+     * is not "delete the description". An ingestion-bot PATCH follows the same rule: pre-2.0
+     * clients still patch existing tables with the source's empty column comments under
+     * overrideMetadata. App bots are exempt, since some (the Automator's remove-description action)
+     * clear descriptions on purpose.
+     */
+    protected final boolean keepsStoredDescription(String stored, String incoming) {
+      boolean botPut =
+          operation.isPut() && updatedByBot() && (!overrideMetadata || nullOrEmpty(incoming));
+      boolean ingestionPatchBlanking =
+          operation.isPatch()
+              && INGESTION_BOT_NAME.equals(updatingUser.getName())
+              && nullOrEmpty(incoming);
+      return !nullOrEmpty(stored) && (botPut || ingestionPatchBlanking);
+    }
+
     private void updateDescription() {
-      if (operation.isPut()
-          && !nullOrEmpty(original.getDescription())
-          && updatedByBot()
-          && !overrideMetadata) {
-        // Revert change to non-empty description if it is being updated by a bot
-        // This is to prevent bots from overwriting the description. Description need to be
-        // updated with a PATCH request, or via the bulk path with overrideMetadata=true
+      if (keepsStoredDescription(original.getDescription(), updated.getDescription())) {
         updated.setDescription(original.getDescription());
         return;
       }
@@ -9283,11 +9322,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // authorizes with the coarse EDIT_ALL operation, which does not intersect that field-level
       // deny, so re-apply it here. Bots the policy allows - for example the SCIM bot syncing
       // identity attributes through the repository - fall through and update it. A bulk force-sync
-      // (overrideMetadata=true) also bypasses this guard.
+      // (overrideMetadata=true) also bypasses this guard, unless it would blank the displayName.
       boolean preserveUserDisplayName =
           updatedByBot()
               && !nullOrEmpty(original.getDisplayName())
-              && !overrideMetadata
+              && (!overrideMetadata || nullOrEmpty(updated.getDisplayName()))
               && !Objects.equals(original.getDisplayName(), updated.getDisplayName())
               && updatingBotDeniedOperation(MetadataOperation.EDIT_DISPLAY_NAME);
       if (preserveUserDisplayName) {
@@ -9302,15 +9341,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
         if (original.getEntityStatus() == updated.getEntityStatus()) {
           return;
         }
-        // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
+        // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status. A workflow's
+        // approval task already decided who may approve, so the rule only guards direct edits.
         if (!consolidatingChanges
             && original.getEntityStatus() == EntityStatus.IN_REVIEW
             && (updated.getEntityStatus() == EntityStatus.APPROVED
-                || updated.getEntityStatus() == EntityStatus.REJECTED)) {
+                || updated.getEntityStatus() == EntityStatus.REJECTED)
+            && !isWorkflowChange(updated)) {
           checkUpdatedByReviewer(original, updated.getUpdatedBy());
         }
         recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
       }
+    }
+
+    // Workflows change entities as, or impersonating, the governance bot.
+    private static boolean isWorkflowChange(EntityInterface entity) {
+      return GOVERNANCE_BOT.equals(entity.getUpdatedBy())
+          || GOVERNANCE_BOT.equals(entity.getImpersonatedBy());
     }
 
     public static void checkUpdatedByReviewer(EntityInterface entity, String updatedBy) {
@@ -9342,16 +9389,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateOwners() {
-      // A bot whose policy denies EditOwners (e.g. the ingestion bot via DefaultBotPolicy /
-      // IngestionBotPolicy) must not clobber user-curated owners. A PUT or bulk update authorizes
-      // with the coarse EDIT_ALL operation, which does not intersect that field-level deny, so
-      // re-apply it here. Bots the policy allows fall through and update owners as before. A bulk
-      // force-sync (overrideMetadata=true) also bypasses this guard.
+      // A bot PUT only fills owners on an entity that has none: owners sent by ingestion
+      // (ownerConfig, includeOwners) must not replace the ones a user assigned, as includeOwners
+      // documents. This can't be left to the bot policy - no shipped bot policy denies EditOwners,
+      // so a policy check never fired. A PATCH, or a bulk run with overrideMetadata=true, still
+      // reassigns them.
       boolean preserveUserOwners =
-          updatedByBot()
-              && !nullOrEmpty(original.getOwners())
-              && !overrideMetadata
-              && updatingBotDeniedOperation(MetadataOperation.EDIT_OWNERS);
+          operation.isPut()
+              && updatedByBot()
+              && !nullOrEmpty(getEntityReferences(original.getOwners()))
+              && !overrideMetadata;
       if (preserveUserOwners) {
         updated.setOwners(original.getOwners());
         return;
@@ -9427,6 +9474,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         checkMutuallyExclusive(updatedTags);
       } else {
         // PATCH and an explicit PUT override replace tags.
+        if (operation.isPut()) {
+          keepTagsOutsideRequestedClassifications(origTags, updatedTags);
+        }
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
         Set<String> updatedTagKeys = createTagKeySet(updatedTags);
         Set<String> origTagKeys = createTagKeySet(origTags);
@@ -9457,10 +9507,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Apply differential updates - only modify what changed
       if (!deletedTags.isEmpty()) {
-        applyTagsDeleteInFlushAndDeferRdf(deletedTags, fqn);
+        applyTagsDeleteInFlush(deletedTags, fqn);
       }
       if (!addedTags.isEmpty()) {
-        applyTagsAddInFlushAndDeferRdf(
+        applyTagsAddInFlush(
             addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(), fqn);
       }
 
@@ -9468,6 +9518,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
       recordListChange(
           fieldName, origTags, updatedTags, new ArrayList<>(), new ArrayList<>(), tagLabelMatch);
       updatedTags.sort(compareTagLabel);
+    }
+
+    /**
+     * An override run replaces tags only within the classifications and glossaries it sends. Tier,
+     * automator-propagated and user-applied tags from any other one are never emitted by a source,
+     * so their absence from the request must not delete them.
+     */
+    private void keepTagsOutsideRequestedClassifications(
+        List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      Set<String> requestedRoots =
+          getNonDerivedTags(updatedTags).stream()
+              .map(tag -> FullyQualifiedName.getRoot(tag.getTagFQN()))
+              .collect(Collectors.toSet());
+      EntityUtil.mergeTags(
+          updatedTags,
+          origTags.stream()
+              .filter(tag -> !requestedRoots.contains(FullyQualifiedName.getRoot(tag.getTagFQN())))
+              .toList());
     }
 
     protected void updateTagsForImport(
@@ -9490,7 +9558,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<TagLabel> deletedTags = new ArrayList<>();
       recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
       updatedTags.sort(compareTagLabel);
-      applyTagsReplaceInFlushAndDeferRdf(origTags, updatedTags, fqn);
+      applyTagsAddInFlush(updatedTags, fqn);
     }
 
     private List<TagLabel> getNonDerivedTags(List<TagLabel> tags) {
@@ -9502,51 +9570,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .toList();
     }
 
-    protected final void applyTagsAddInFlushAndDeferRdf(
-        List<TagLabel> tagLabels, String targetFqn) {
+    protected final void applyTagsAddInFlush(List<TagLabel> tagLabels, String targetFqn) {
       List<TagLabel> nonDerivedTags = getNonDerivedTags(tagLabels);
       if (nonDerivedTags.isEmpty()) {
         return;
       }
       daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, targetFqn);
-      List<TagLabel> tagsForRdf = List.copyOf(nonDerivedTags);
-      deferReactOperation(
-          () -> {
-            for (TagLabel tagLabel : tagsForRdf) {
-              org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFqn);
-            }
-          });
     }
 
-    protected final void applyTagsDeleteInFlushAndDeferRdf(
-        List<TagLabel> tagLabels, String targetFqn) {
+    protected final void applyTagsDeleteInFlush(List<TagLabel> tagLabels, String targetFqn) {
       List<TagLabel> nonDerivedTags = getNonDerivedTags(tagLabels);
       if (nonDerivedTags.isEmpty()) {
         return;
       }
       daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFqn);
-      List<TagLabel> tagsForRdf = List.copyOf(nonDerivedTags);
-      deferReactOperation(
-          () -> {
-            for (TagLabel tagLabel : tagsForRdf) {
-              org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel, targetFqn);
-            }
-          });
-    }
-
-    private void applyTagsReplaceInFlushAndDeferRdf(
-        List<TagLabel> originalTags, List<TagLabel> updatedTags, String targetFqn) {
-      List<TagLabel> originalNonDerived = getNonDerivedTags(originalTags);
-      if (!originalNonDerived.isEmpty()) {
-        List<TagLabel> tagsToRemove = List.copyOf(originalNonDerived);
-        deferReactOperation(
-            () -> {
-              for (TagLabel tagLabel : tagsToRemove) {
-                org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel, targetFqn);
-              }
-            });
-      }
-      applyTagsAddInFlushAndDeferRdf(updatedTags, targetFqn);
     }
 
     private void updateExtension(boolean consolidatingChanges) {
@@ -9848,6 +9885,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
         recordChange(FIELD_STYLE, original.getStyle(), updated.getStyle(), true);
       }
+    }
+
+    /**
+     * Updates a field only users set and no connector sends, such as retentionPeriod. A bot PUT
+     * always omits it, so - override or not - that absence keeps the stored value instead of
+     * blanking it.
+     */
+    protected final <V> void updateUserOnlyField(
+        String fieldName, V origValue, V updatedValue, Consumer<V> setUpdated) {
+      if (operation.isPut() && updatedByBot() && updatedValue == null && origValue != null) {
+        setUpdated.accept(origValue);
+        return;
+      }
+      recordChange(fieldName, origValue, updatedValue);
     }
 
     private void updateLifeCycle() {
@@ -10743,7 +10794,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
-        applyTagsAddInFlushAndDeferRdf(
+        applyTagsAddInFlush(
             listOrEmpty(added.getTags()).stream()
                 .map(tag -> tag.withAppliedBy(updatingUser.getName()))
                 .toList(),
@@ -10810,14 +10861,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateColumnDescription(
         String fieldPrefix, Column origColumn, Column updatedColumn) {
-      // A bot PUT preserves a non-empty column description. A bulk force-sync
-      // (overrideMetadata=true) may replace it with a real source comment, but must never blank
-      // it: a connector that finds no comment on the column omits the field entirely, and an
-      // override run must not read that absence as "delete the description".
-      if (operation.isPut()
-          && !nullOrEmpty(origColumn.getDescription())
-          && updatedByBot()
-          && (!overrideMetadata || nullOrEmpty(updatedColumn.getDescription()))) {
+      if (keepsStoredDescription(origColumn.getDescription(), updatedColumn.getDescription())) {
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }

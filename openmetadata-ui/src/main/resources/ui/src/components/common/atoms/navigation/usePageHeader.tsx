@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { LearningIcon } from '../../../Learning/LearningIcon/LearningIcon.component';
 import HeaderShell from '../../HeaderShell/HeaderShell.component';
+import { SearchHeaderRow } from '../../HeaderShell/SearchHeaderRow';
 import ProfilePicture from '../../ProfilePicture/ProfilePicture';
 
 export type PageHeaderVariant = 'default' | 'greeting' | 'search' | 'beta';
@@ -149,23 +150,37 @@ export const usePageHeader = (config: PageHeaderConfig) => {
         </>
       ) : undefined;
 
-    const actions = isGreeting ? undefined : (
-      <>
-        {showSearch && config.search}
-        {config.actions ?? addButton}
-      </>
-    );
+    const pageActions = config.actions ?? addButton;
+
+    // With a search, the title row carries it, centred between the title and
+    // the actions. Without one, the search slot is empty and the plain
+    // title/subtitle layout applies.
+    const hasCentredSearch = showSearch && Boolean(config.search);
+
+    const actions = isGreeting || hasCentredSearch ? undefined : pageActions;
 
     return (
       <HeaderShell
         actions={actions}
-        badge={badge}
+        badge={hasCentredSearch ? undefined : badge}
         breadcrumb={config.breadcrumb}
         className="tw:mb-5"
         data-testid="page-header-container"
         leading={leading}
-        subtitle={displayDescription}
-        title={title}
+        subtitle={hasCentredSearch ? undefined : displayDescription}
+        title={
+          hasCentredSearch ? (
+            <SearchHeaderRow
+              actions={pageActions}
+              badge={badge}
+              search={config.search}
+              subtitle={displayDescription}
+              title={title}
+            />
+          ) : (
+            title
+          )
+        }
         variant="gradient"
       />
     );

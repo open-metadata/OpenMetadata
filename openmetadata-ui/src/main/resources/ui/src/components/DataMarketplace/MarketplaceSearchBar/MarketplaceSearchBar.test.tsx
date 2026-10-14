@@ -11,24 +11,13 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useSearchStore } from '../../../hooks/useSearchStore';
-import {
-  getNLPEnabledStatus,
-  nlqSearch,
-  searchQuery,
-} from '../../../rest/searchAPI';
+import { nlqSearch, searchQuery } from '../../../rest/searchAPI';
 import MarketplaceSearchBar from './MarketplaceSearchBar.component';
 
 const mockNavigate = jest.fn();
-
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => mockNavigate,
@@ -36,444 +25,251 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../rest/searchAPI', () => ({
   getNLPEnabledStatus: jest.fn().mockResolvedValue(true),
-  nlqSearch: jest.fn().mockResolvedValue({ hits: { hits: [] } }),
-  searchQuery: jest.fn().mockResolvedValue({ hits: { hits: [] } }),
+  nlqSearch: jest.fn(),
+  searchQuery: jest.fn(),
 }));
 
-jest.mock('../../../hooks/useMarketplaceStore', () => ({
-  useMarketplaceStore: jest.fn().mockReturnValue({
-    dataProductBasePath: '/dataProduct',
-  }),
-}));
-
+const mockAddSearch = jest.fn();
 jest.mock('../../../hooks/useMarketplaceRecentSearches', () => ({
-  useMarketplaceRecentSearches: jest.fn().mockReturnValue({
-    addSearch: jest.fn(),
+  useMarketplaceRecentSearches: () => ({ addSearch: mockAddSearch }),
+}));
+
+// `getDomainDetailsPath` reads the store statically, so the mock needs
+// `getState` as well as the hook call.
+const marketplaceState = {
+  dataProductBasePath: '/dataProduct',
+  domainBasePath: '/domain',
+  isMarketplace: true,
+};
+jest.mock('../../../hooks/useMarketplaceStore', () => ({
+  useMarketplaceStore: Object.assign(() => marketplaceState, {
+    getState: () => marketplaceState,
   }),
 }));
 
-jest.mock('../../../utils/DataProductUtils', () => ({
-  getDataProductIconByUrl: jest.fn().mockReturnValue(<span>dp-icon</span>),
-}));
+const dataProductHit = {
+  _source: {
+    id: 'dp1',
+    name: 'Orders',
+    fullyQualifiedName: 'Orders',
+    entityType: 'dataProduct',
+  },
+};
+const domainHit = {
+  _source: {
+    id: 'd1',
+    name: 'Finance',
+    fullyQualifiedName: 'Finance',
+    entityType: 'domain',
+  },
+};
 
-jest.mock('../../../utils/DomainUtils', () => ({
-  getDomainIcon: jest.fn().mockReturnValue(<span>domain-icon</span>),
-}));
+const mockSearchQuery = searchQuery as jest.Mock;
+const mockNlqSearch = nlqSearch as jest.Mock;
 
-jest.mock('../../../utils/RouterUtils', () => ({
-  getDomainDetailsPath: jest.fn((fqn) => `/domain/${fqn}`),
-}));
-
-jest.mock('../../../utils/StringUtils', () => ({
-  getEncodedFqn: jest.fn((fqn) => fqn),
-}));
-
-jest.mock('@openmetadata/ui-core-components', () => {
-  const Input = ({
-    value,
-    onChange,
-    onKeyDown,
-    placeholder,
-    isDisabled,
-    ...rest
-  }: {
-    value?: string;
-    onChange?: (val: string) => void;
-    onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-    placeholder?: string;
-    isDisabled?: boolean;
-  } & Record<string, unknown>) => (
-    <input
-      data-testid="marketplace-search-input"
-      disabled={isDisabled}
-      placeholder={placeholder}
-      value={value}
-      onChange={(e) => onChange?.(e.target.value)}
-      onKeyDown={onKeyDown}
-      {...rest}
-    />
+const renderBar = (props: { isEditView?: boolean } = {}) =>
+  render(
+    <MemoryRouter>
+      <MarketplaceSearchBar {...props} />
+    </MemoryRouter>
   );
 
-  const SelectPopover = ({
-    children,
-    isOpen,
-  }: {
-    children: React.ReactNode;
-    isOpen?: boolean;
-  }) => (isOpen ? <div data-testid="search-popover">{children}</div> : null);
+// The testid sits on the Input wrapper, so query the real field by role.
+const input = () => screen.getByRole('textbox');
 
-  const Typography = ({
-    children,
-    ...rest
-  }: {
-    children?: React.ReactNode;
-  } & Record<string, unknown>) => <span {...rest}>{children}</span>;
+const type = (value: string) =>
+  fireEvent.change(input(), { target: { value } });
 
-  return { Input, SelectPopover, Typography };
-});
+// Longer than the bar's 400ms debounce, so a search that was going to run has.
+const settle = () =>
+  act(async () => {
+    jest.advanceTimersByTime(1000);
+  });
 
-jest.mock('@untitledui/icons', () => ({
-  SearchLg: () => <span data-testid="search-icon">search</span>,
-}));
+const submit = () =>
+  act(async () => {
+    fireEvent.submit(screen.getByTestId('explore-search-form'));
+  });
 
-const mockDataProducts = [
-  {
-    id: 'dp-1',
-    name: 'product-one',
-    displayName: 'Product One',
-    fullyQualifiedName: 'domain.product-one',
-    style: { iconURL: '' },
-  },
-];
-
-const mockDomains = [
-  {
-    id: 'domain-1',
-    name: 'marketing',
-    displayName: 'Marketing',
-    fullyQualifiedName: 'marketing',
-    style: { iconURL: '' },
-  },
-];
-
-const renderComponent = (props = {}) =>
-  render(<MarketplaceSearchBar {...props} />, { wrapper: MemoryRouter });
+const setNlq = (isNLPActive: boolean) =>
+  useSearchStore.setState({
+    isNLPEnabled: true,
+    isNLPActive,
+    isNLPInitialized: true,
+  });
 
 describe('MarketplaceSearchBar', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useSearchStore.setState({
-      isNLPEnabled: true,
-      isNLPActive: false,
-      isNLPInitialized: true,
+    jest.useFakeTimers();
+    mockSearchQuery.mockResolvedValue({
+      hits: { hits: [dataProductHit, domainHit] },
     });
-    (getNLPEnabledStatus as jest.Mock).mockResolvedValue(true);
-    (searchQuery as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
-    (nlqSearch as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
+    mockNlqSearch.mockResolvedValue({
+      hits: { hits: [dataProductHit, domainHit] },
+    });
+    setNlq(false);
   });
 
-  it('renders the search input', () => {
-    renderComponent();
-
-    expect(screen.getByTestId('marketplace-search-bar')).toBeInTheDocument();
-    expect(screen.getByTestId('marketplace-search-input')).toBeInTheDocument();
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
-  it('shows NLQ toggle button when NLP is enabled', () => {
-    renderComponent();
+  it('renders Explore search chrome with the marketplace placeholder', () => {
+    renderBar();
 
-    const toggleBtn = screen.getByTestId('marketplace-nlq-toggle');
-
-    expect(toggleBtn).toBeInTheDocument();
-    expect(toggleBtn).not.toHaveClass('active');
+    expect(screen.getByTestId('explore-search-input')).toBeInTheDocument();
+    expect(screen.getByTestId('explore-search-form')).toBeInTheDocument();
   });
 
-  it('shows search icon fallback when NLP is disabled', () => {
-    useSearchStore.setState({ isNLPEnabled: false, isNLPActive: false });
+  it('shows the NLQ toggle when NLP is enabled', () => {
+    renderBar();
 
-    renderComponent();
+    expect(screen.getByTestId('explore-nlp-toggle')).toBeInTheDocument();
+  });
 
-    expect(screen.getByTestId('search-icon')).toBeInTheDocument();
+  it('shows the Cmd/K hint for the global Ask Collate shortcut', () => {
+    renderBar();
+
+    expect(screen.getByTestId('explore-search-shortcut')).toBeInTheDocument();
+  });
+
+  it('searches data products and domains as the user types', async () => {
+    renderBar();
+
+    type('finance');
+    await settle();
+
+    expect(mockSearchQuery).toHaveBeenCalled();
+    expect(mockNlqSearch).not.toHaveBeenCalled();
+  });
+
+  it('runs NLQ only on submit while the toggle is on', async () => {
+    setNlq(true);
+    renderBar();
+
+    type('who owns finance');
+    await settle();
+
+    // Typing must not spend an LLM call.
+    expect(mockNlqSearch).not.toHaveBeenCalled();
+
+    await submit();
+
+    expect(mockNlqSearch).toHaveBeenCalled();
+  });
+
+  it('does not run a pending keyword search as NLQ when the toggle flips', async () => {
+    renderBar();
+
+    type('finance');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('explore-nlp-toggle'));
+    });
+    await settle();
+
+    expect(mockNlqSearch).not.toHaveBeenCalled();
+  });
+
+  it('shows matching results in the popover', async () => {
+    renderBar();
+
+    type('finance');
+    await settle();
+
+    expect(screen.getByTestId('search-result-dp-dp1')).toBeInTheDocument();
+    expect(screen.getByTestId('search-result-domain-d1')).toBeInTheDocument();
+  });
+
+  it('opens a data product when its result is picked', async () => {
+    renderBar();
+
+    type('orders');
+    await settle();
+
+    fireEvent.click(screen.getByTestId('search-result-dp-dp1'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining('Orders'),
+      expect.objectContaining({ state: { fromMarketplace: true } })
+    );
+  });
+
+  it('opens a domain when its result is picked', async () => {
+    renderBar();
+
+    type('finance');
+    await settle();
+
+    fireEvent.click(screen.getByTestId('search-result-domain-d1'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining('Finance'),
+      expect.objectContaining({ state: { fromMarketplace: true } })
+    );
+  });
+
+  it('shows the empty message when nothing matches', async () => {
+    mockSearchQuery.mockResolvedValue({ hits: { hits: [] } });
+    renderBar();
+
+    type('zzz');
+    await settle();
+
+    expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+  });
+
+  it('records the query in recent searches on submit', async () => {
+    renderBar();
+
+    type('finance');
+    await submit();
+
+    expect(mockAddSearch).toHaveBeenCalledWith('finance');
+  });
+
+  it('closes the popover and drops results when cleared', async () => {
+    renderBar();
+
+    type('finance');
+    await settle();
+
+    expect(screen.getByTestId('search-result-domain-d1')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('explore-clear-search-button'));
+    });
+
     expect(
-      screen.queryByTestId('marketplace-nlq-toggle')
+      screen.queryByTestId('search-result-domain-d1')
     ).not.toBeInTheDocument();
   });
 
-  it('bootstraps isNLPEnabled from API when store is cold (direct marketplace navigation)', async () => {
-    useSearchStore.setState({
-      isNLPEnabled: false,
-      isNLPActive: false,
-      isNLPInitialized: false,
-    });
-    (getNLPEnabledStatus as jest.Mock).mockResolvedValue(true);
+  it('renders read-only in edit view', () => {
+    renderBar({ isEditView: true });
 
-    renderComponent();
-
-    await waitFor(() => {
-      expect(getNLPEnabledStatus).toHaveBeenCalledTimes(1);
-      expect(screen.getByTestId('marketplace-nlq-toggle')).toBeInTheDocument();
-    });
+    expect(input()).toBeDisabled();
   });
 
-  it('skips the API call when store is already initialized', () => {
-    useSearchStore.setState({
-      isNLPEnabled: false,
-      isNLPActive: false,
-      isNLPInitialized: true,
-    });
+  it('keeps the popover shut while the input is empty', async () => {
+    renderBar();
 
-    renderComponent();
+    type('');
+    await settle();
 
-    expect(getNLPEnabledStatus).not.toHaveBeenCalled();
+    expect(
+      screen.queryByTestId('search-result-domain-d1')
+    ).not.toBeInTheDocument();
   });
 
-  it('toggles NLQ active state when the toggle button is clicked', async () => {
-    renderComponent();
+  it('swallows a search failure instead of surfacing it', async () => {
+    mockSearchQuery.mockRejectedValue(new Error('boom'));
+    renderBar();
 
-    const toggleBtn = screen.getByTestId('marketplace-nlq-toggle');
+    type('finance');
+    await settle();
 
-    expect(toggleBtn).not.toHaveClass('active');
-    expect(toggleBtn).toHaveAttribute(
-      'title',
-      'label.use-natural-language-search'
-    );
-
-    await act(async () => {
-      fireEvent.click(toggleBtn);
-    });
-
-    expect(toggleBtn).toHaveClass('active');
-    expect(toggleBtn).toHaveAttribute(
-      'title',
-      'message.natural-language-search-active'
-    );
-
-    await act(async () => {
-      fireEvent.click(toggleBtn);
-    });
-
-    expect(toggleBtn).not.toHaveClass('active');
-  });
-
-  it('calls searchQuery for data products and domains on input change', async () => {
-    (searchQuery as jest.Mock).mockResolvedValue({
-      hits: { hits: mockDataProducts.map((dp) => ({ _source: dp })) },
-    });
-
-    renderComponent();
-
-    const input = screen.getByTestId('marketplace-search-input');
-
-    await act(async () => {
-      fireEvent.change(input, { target: { value: 'product' } });
-    });
-
-    await waitFor(() => {
-      expect(searchQuery).toHaveBeenCalledWith(
-        expect.objectContaining({ query: 'product' })
-      );
-    });
-  });
-
-  it('calls nlqSearch when NLQ is active and NLP is enabled', async () => {
-    useSearchStore.setState({ isNLPEnabled: true, isNLPActive: true });
-    (nlqSearch as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
-
-    renderComponent();
-
-    const input = screen.getByTestId('marketplace-search-input');
-
-    await act(async () => {
-      fireEvent.change(input, { target: { value: 'revenue data' } });
-    });
-
-    await waitFor(() => {
-      expect(nlqSearch).toHaveBeenCalledWith(
-        expect.objectContaining({ query: 'revenue data' })
-      );
-    });
-  });
-
-  it('does not open popover when input is empty', async () => {
-    renderComponent();
-
-    const input = screen.getByTestId('marketplace-search-input');
-
-    await act(async () => {
-      fireEvent.change(input, { target: { value: '' } });
-    });
-
-    expect(screen.queryByTestId('search-popover')).not.toBeInTheDocument();
-  });
-
-  it('shows data product results in the popover', async () => {
-    (searchQuery as jest.Mock)
-      .mockResolvedValueOnce({
-        hits: { hits: mockDataProducts.map((dp) => ({ _source: dp })) },
-      })
-      .mockResolvedValueOnce({ hits: { hits: [] } });
-
-    renderComponent();
-
-    const input = screen.getByTestId('marketplace-search-input');
-
-    await act(async () => {
-      fireEvent.change(input, { target: { value: 'product' } });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('search-result-dp-dp-1')).toBeInTheDocument();
-      expect(screen.getByText('Product One')).toBeInTheDocument();
-    });
-  });
-
-  it('shows domain results in the popover', async () => {
-    (searchQuery as jest.Mock)
-      .mockResolvedValueOnce({ hits: { hits: [] } })
-      .mockResolvedValueOnce({
-        hits: { hits: mockDomains.map((d) => ({ _source: d })) },
-      });
-
-    renderComponent();
-
-    const input = screen.getByTestId('marketplace-search-input');
-
-    await act(async () => {
-      fireEvent.change(input, { target: { value: 'marketing' } });
-    });
-
-    await waitFor(() => {
-      expect(
-        screen.getByTestId('search-result-domain-domain-1')
-      ).toBeInTheDocument();
-      expect(screen.getByText('Marketing')).toBeInTheDocument();
-    });
-  });
-
-  it('shows no-data message when search returns empty results', async () => {
-    (searchQuery as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
-
-    renderComponent();
-
-    const input = screen.getByTestId('marketplace-search-input');
-
-    await act(async () => {
-      fireEvent.change(input, { target: { value: 'xyz-no-match' } });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('search-popover')).toBeInTheDocument();
-      expect(screen.getByText(/no-data-found/i)).toBeInTheDocument();
-    });
-  });
-
-  it('navigates to data product page when a result is clicked', async () => {
-    (searchQuery as jest.Mock)
-      .mockResolvedValueOnce({
-        hits: { hits: mockDataProducts.map((dp) => ({ _source: dp })) },
-      })
-      .mockResolvedValueOnce({ hits: { hits: [] } });
-
-    renderComponent();
-
-    const input = screen.getByTestId('marketplace-search-input');
-
-    await act(async () => {
-      fireEvent.change(input, { target: { value: 'product' } });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('search-result-dp-dp-1')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('search-result-dp-dp-1'));
-    });
-
-    expect(mockNavigate).toHaveBeenCalledWith(
-      '/dataProduct/domain.product-one',
-      { state: { fromMarketplace: true } }
-    );
-  });
-
-  it('navigates to domain page when a domain result is clicked', async () => {
-    (searchQuery as jest.Mock)
-      .mockResolvedValueOnce({ hits: { hits: [] } })
-      .mockResolvedValueOnce({
-        hits: { hits: mockDomains.map((d) => ({ _source: d })) },
-      });
-
-    renderComponent();
-
-    const input = screen.getByTestId('marketplace-search-input');
-
-    await act(async () => {
-      fireEvent.change(input, { target: { value: 'marketing' } });
-    });
-
-    await waitFor(() => {
-      expect(
-        screen.getByTestId('search-result-domain-domain-1')
-      ).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('search-result-domain-domain-1'));
-    });
-
-    expect(mockNavigate).toHaveBeenCalledWith('/domain/marketing', {
-      state: { fromMarketplace: true },
-    });
-  });
-
-  it('clears results and closes popover when input is cleared', async () => {
-    (searchQuery as jest.Mock)
-      .mockResolvedValueOnce({
-        hits: { hits: mockDataProducts.map((dp) => ({ _source: dp })) },
-      })
-      .mockResolvedValueOnce({ hits: { hits: [] } });
-
-    renderComponent();
-
-    const input = screen.getByTestId('marketplace-search-input');
-
-    await act(async () => {
-      fireEvent.change(input, { target: { value: 'product' } });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('search-popover')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.change(input, { target: { value: '' } });
-    });
-
-    expect(screen.queryByTestId('search-popover')).not.toBeInTheDocument();
-  });
-
-  it('does not search when component is in edit view', () => {
-    renderComponent({ isEditView: true });
-
-    const input = screen.getByTestId('marketplace-search-input');
-
-    expect(input).toBeDisabled();
-  });
-
-  it('triggers search on Enter key press', async () => {
-    (searchQuery as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
-
-    renderComponent();
-
-    const input = screen.getByTestId('marketplace-search-input');
-
-    await act(async () => {
-      fireEvent.change(input, { target: { value: 'test query' } });
-    });
-
-    await act(async () => {
-      fireEvent.keyDown(input, { key: 'Enter' });
-    });
-
-    await waitFor(() => {
-      expect(searchQuery).toHaveBeenCalled();
-    });
-  });
-
-  it('handles search API error gracefully', async () => {
-    (searchQuery as jest.Mock).mockRejectedValue(new Error('API error'));
-
-    renderComponent();
-
-    const input = screen.getByTestId('marketplace-search-input');
-
-    await act(async () => {
-      fireEvent.change(input, { target: { value: 'error case' } });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('search-popover')).toBeInTheDocument();
-      expect(screen.getByText(/no-data-found/i)).toBeInTheDocument();
-    });
+    expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
   });
 });

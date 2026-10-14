@@ -28,6 +28,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { NodeSubType } from '../../../../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../../../../generated/governance/workflows/elements/nodeType';
 import { useEntityFields } from '../../../../hooks/useEntityFields';
+import { getFieldDisplayLabel } from '../../../../utils/WorkflowConfigUtils';
 import { FormActionButtons, MetadataFormSection } from './';
 
 interface ScoringLevel {
@@ -107,7 +108,9 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
       setSelectedFields(fields);
       // Sync useListData with loaded fields
       if (!initDoneRef.current) {
-        fields.forEach((f) => selectedFieldItems.append({ id: f, label: f }));
+        fields.forEach((f) =>
+          selectedFieldItems.append({ id: f, label: getFieldDisplayLabel(f) })
+        );
         initDoneRef.current = true;
       }
       setCheckForNull(node.data.checkForNull || false);
@@ -211,7 +214,10 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
             isRequired
             data-testid="fields-to-check-select"
             isDisabled={isFormDisabled}
-            items={fieldOptions.map((f) => ({ id: f, label: f }))}
+            items={fieldOptions.map((f) => ({
+              id: f,
+              label: getFieldDisplayLabel(f),
+            }))}
             label={t('label.fields')}
             placeholder={t('message.select-fields-to-check')}
             selectedItems={selectedFieldItems}
@@ -222,7 +228,10 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
               );
             }}
             onItemInserted={(key) => {
-              const item = { id: String(key), label: String(key) };
+              const item = {
+                id: String(key),
+                label: getFieldDisplayLabel(String(key)),
+              };
               selectedFieldItems.append(item);
               setSelectedFields((prev) => [...prev, String(key)]);
             }}>

@@ -163,8 +163,11 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
     // Check if the user exists in OM Database
     try {
-      User omUser =
-          userRepository.getByEmail(null, email, userRepository.getFields("id,name,email,roles"));
+      // Load every field the PUT below writes back. UserUtil.addOrUpdateUser -> createOrUpdate
+      // diffs the whole entity against the stored one, so any field a sparse fetch left null is
+      // recorded as a deletion -- which wiped the user's manually-assigned teams, personas and
+      // domains on every LDAP login.
+      User omUser = userRepository.getByEmail(null, email, userRepository.getAuthUpdateFields());
       getRoleForLdap(userDn, omUser, Boolean.TRUE);
       finalUser = omUser;
     } catch (EntityNotFoundException ex) {

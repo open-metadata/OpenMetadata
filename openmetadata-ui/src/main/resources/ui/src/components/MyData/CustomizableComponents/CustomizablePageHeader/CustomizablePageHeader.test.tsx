@@ -255,9 +255,9 @@ describe('CustomizablePageHeader', () => {
       ).toBeInTheDocument();
     });
 
-    it('uses app-mode subheader key when pageFqn is "app-mode"', () => {
+    it('uses app-layout subheader key when pageFqn is "app-layout"', () => {
       (useRequiredParams as jest.Mock).mockReturnValue({
-        pageFqn: 'app-mode',
+        pageFqn: 'app-layout',
       });
 
       render(
@@ -267,7 +267,7 @@ describe('CustomizablePageHeader', () => {
       );
 
       expect(
-        screen.getByTestId('message.customize-your-app-mode-subheader')
+        screen.getByTestId('message.customize-your-app-layout-subheader')
       ).toBeInTheDocument();
     });
 

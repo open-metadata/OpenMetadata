@@ -40,7 +40,12 @@ import {
   isStartNode,
 } from '../../../utils/NodeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { validateWorkflowConfig } from '../../../utils/WorkflowConfigUtils';
+import {
+  getGitSinkTriggerNodeConfig,
+  getTriggerDataAssets,
+  validateWorkflowConfig,
+  withExtensionPrefix,
+} from '../../../utils/WorkflowConfigUtils';
 import {
   serializeDataAssetFilters,
   serializeEventBasedFilters,
@@ -71,6 +76,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   workflowDefinition,
   workflowMetadata,
   onWorkflowMetadataUpdate,
+  hasGitSinkNode = false,
 }) => {
   const {
     allowFullStartNodeConfiguration,
@@ -120,7 +126,15 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       : getInitialNodeConfig({} as Node, workflowDefinition, null);
   }, [node, workflowDefinition, workflowMetadata, localName, localDescription]);
 
-  const effectiveConfig = localConfig || config;
+  // A Git sink workflow's trigger keeps only the entity types the sink syncs, whichever order the
+  // trigger and the sink were configured in.
+  const effectiveConfig = useMemo(() => {
+    const currentConfig = localConfig || config;
+
+    return hasGitSinkNode && isStartNode(node)
+      ? getGitSinkTriggerNodeConfig(currentConfig)
+      : currentConfig;
+  }, [localConfig, config, hasGitSinkNode, node]);
 
   const [customPropertyFields, setCustomPropertyFields] = useState<string[]>(
     []
@@ -137,7 +151,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     Promise.all(assets.map((asset) => getCustomPropertiesByEntityType(asset)))
       .then((results) => {
         const names = [
-          ...new Set(results.flat().map((p) => `extension.${p.name}`)),
+          ...new Set(results.flat().map((p) => withExtensionPrefix(p.name))),
         ];
         setCustomPropertyFields(names);
       })
@@ -147,6 +161,13 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   const availableExcludeFields = useMemo(() => {
     return [...Object.values(WorkflowTriggerFields), ...customPropertyFields];
   }, [customPropertyFields]);
+
+  // Entity types the trigger can be defined on.
+  const workflowEntityTypes = useMemo(
+    () =>
+      getTriggerDataAssets([...AVAILABLE_OPTIONS.DATA_ASSETS], hasGitSinkNode),
+    [hasGitSinkNode]
+  );
 
   useEffect(() => {
     if (isStartNode(node)) {
@@ -416,6 +437,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
         allowStartNodeFilterScheduleAndBatchEdit={
           allowStartNodeFilterScheduleAndBatchEdit
         }
+        availableDataAssets={workflowEntityTypes}
         availableEventTypes={[...AVAILABLE_OPTIONS.EVENT_TYPES]}
         availableExcludeFields={availableExcludeFields}
         config={effectiveConfig}

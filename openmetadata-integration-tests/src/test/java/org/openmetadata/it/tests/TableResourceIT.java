@@ -107,6 +107,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
@@ -2589,6 +2590,54 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table afterUpdate = client.tables().get(table.getId().toString(), "dataModel");
     assertNotNull(afterUpdate.getDataModel(), "dataModel was cleared by a PUT table update");
     assertEquals("select * from test;", afterUpdate.getDataModel().getSql());
+  }
+
+  /**
+   * The mssql synonym-aliases design assumes the connector recomputes the full {@code aliases}
+   * list from {@code sys.synonyms} on every run and ships it inside the {@code CreateTable}
+   * request, so created/dropped/retargeted synonyms reconcile through plain PUT upsert semantics
+   * with no diffing stage. That only holds if PUT replaces {@code aliases} wholesale rather than
+   * merging it (as tags do). This test is the gate on that assumption.
+   */
+  @Test
+  void put_tableAliases_replaceNotMerge(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createRequest =
+        createRequest(ns.prefix("aliases_replace_table"), ns)
+            .withAliases(List.of("svc.core_a.dbo.orders"));
+    Table created = createEntity(createRequest);
+    assertEquals(
+        List.of("svc.core_a.dbo.orders"),
+        created.getAliases(),
+        "create response should echo the requested aliases");
+
+    // Re-fetch from the server (rather than trusting the create/PUT response's in-memory echo) so
+    // every assertion below reflects what was actually persisted, not just what the request or
+    // response object carried. A mapper that dropped aliases at store time only on create, for
+    // example, would still pass an echo-only assertion here.
+    Table table = client.tables().get(created.getId().toString());
+    assertEquals(
+        List.of("svc.core_a.dbo.orders"),
+        table.getAliases(),
+        "initial aliases from the create request must be persisted, not just echoed");
+
+    // Retarget: the connector re-sends the full list, so the old alias must be gone.
+    createRequest.setAliases(List.of("svc.core_b.dbo.orders"));
+    client.tables().createOrUpdate(createRequest);
+    Table retargeted = client.tables().get(table.getId().toString());
+    assertEquals(
+        List.of("svc.core_b.dbo.orders"),
+        retargeted.getAliases(),
+        "aliases must be replaced wholesale, not merged with the previous run's list");
+
+    // Synonym dropped at the source: SynonymMap.aliases_for (ingestion/.../mssql/synonyms.py)
+    // returns None, not an empty list, on a miss, so the real connector clear path sends
+    // aliases=null rather than aliases=[]. Test that exact production path.
+    createRequest.setAliases(null);
+    client.tables().createOrUpdate(createRequest);
+    Table cleared = client.tables().get(table.getId().toString());
+    assertNull(cleared.getAliases(), "dropping every synonym must clear aliases");
   }
 
   // ===================================================================
@@ -6813,5 +6862,96 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertFalse(
         idTagsProfile.getTags().isEmpty(), "Tags must be present even when profile requested");
     assertNotNull(idTagsProfile.getProfile(), "Profile must be present when profile requested");
+  }
+
+  // ===================================================================
+  // PATCH PERSISTENCE: schemaDefinition (#32625) and tablePartition (#33429)
+  // Tables are created by ingestion-bot and patched by admin, as in production. A patch by the
+  // same user inside the session window is consolidated into the previous version and stored
+  // regardless, which would hide the tablePartition no-op.
+  // ===================================================================
+
+  private static final String VIEW_DDL = "CREATE VIEW probe_view AS SELECT id FROM probe";
+
+  @Test
+  void patch_unrelatedField_keepsSchemaDefinition(TestNamespace ns) throws Exception {
+    Table view = createAsIngestionBot(ns, "patch_keeps_ddl", TableType.View, VIEW_DDL);
+
+    patchAsAdmin(view, "[{\"op\": \"add\", \"path\": \"/description\", \"value\": \"edited\"}]");
+
+    Table stored =
+        SdkClients.adminClient().tables().get(view.getId().toString(), "schemaDefinition");
+    assertEquals("edited", stored.getDescription());
+    assertEquals(VIEW_DDL, stored.getSchemaDefinition());
+  }
+
+  @Test
+  void patch_removeSchemaDefinition_keepsStoredDdl(TestNamespace ns) throws Exception {
+    Table view = createAsIngestionBot(ns, "patch_remove_ddl", TableType.View, VIEW_DDL);
+
+    patchAsAdmin(view, "[{\"op\": \"remove\", \"path\": \"/schemaDefinition\"}]");
+
+    Table stored =
+        SdkClients.adminClient().tables().get(view.getId().toString(), "schemaDefinition");
+    assertEquals(VIEW_DDL, stored.getSchemaDefinition());
+  }
+
+  @Test
+  void patch_tablePartition_isPersisted(TestNamespace ns) throws Exception {
+    Table table = createAsIngestionBot(ns, "patch_partition", TableType.Regular, null);
+
+    patchAsAdmin(
+        table,
+        """
+        [{"op": "add", "path": "/tablePartition", "value": {"columns": [
+          {"columnName": "event_date", "intervalType": "TIME-UNIT", "interval": "daily"}]}}]
+        """);
+
+    Table stored =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "tablePartition");
+    assertNotNull(stored.getTablePartition());
+    assertEquals("event_date", stored.getTablePartition().getColumns().getFirst().getColumnName());
+    assertTrue(stored.getVersion() > table.getVersion());
+  }
+
+  @Test
+  void patch_tablePartition_unknownColumn_400(TestNamespace ns) {
+    Table table = createAsIngestionBot(ns, "patch_bad_partition", TableType.Regular, null);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            patchAsAdmin(
+                table,
+                """
+                [{"op": "add", "path": "/tablePartition", "value": {"columns": [
+                  {"columnName": "no_such_col", "intervalType": "TIME-UNIT", "interval": "daily"}]}}]
+                """));
+
+    Table stored =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "tablePartition");
+    assertNull(stored.getTablePartition());
+  }
+
+  private Table createAsIngestionBot(
+      TestNamespace ns, String name, TableType tableType, String schemaDefinition) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    CreateTable request =
+        new CreateTable()
+            .withName(ns.prefix(name))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withTableType(tableType)
+            .withSchemaDefinition(schemaDefinition)
+            .withColumns(
+                List.of(
+                    ColumnBuilder.of("id", "BIGINT").build(),
+                    ColumnBuilder.of("event_date", "DATE").build()));
+    return SdkClients.ingestionBotClient().tables().create(request);
+  }
+
+  private Table patchAsAdmin(Table table, String patchJson) throws Exception {
+    JsonNode patch = new ObjectMapper().readTree(patchJson);
+    return SdkClients.adminClient().tables().patch(table.getId(), patch);
   }
 }

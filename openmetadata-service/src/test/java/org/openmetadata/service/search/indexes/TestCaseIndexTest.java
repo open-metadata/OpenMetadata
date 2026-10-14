@@ -25,6 +25,8 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
@@ -149,6 +151,32 @@ class TestCaseIndexTest {
 
     // Entity-specific
     assertNotNull(result.get("originEntityFQN"));
+  }
+
+  @Test
+  void testTestCaseWithoutALoadedResultLeavesTheIndexedResultAlone() {
+    // Most test case updates never load the latest result. Sending it as null would remove the
+    // indexed result and status that the data quality filters and dashboards read.
+    TestCase tc = createTestCaseWithDefinition().withTestCaseStatus(TestCaseStatus.Failed);
+
+    Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDoc();
+
+    assertFalse(result.containsKey("testCaseResult"));
+    assertEquals(TestCaseStatus.Failed.value(), String.valueOf(result.get("testCaseStatus")));
+  }
+
+  @Test
+  void testTestCaseWithResultKeepsItsStatus() {
+    TestCase tc =
+        createTestCaseWithDefinition()
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTestCaseResult(
+                new TestCaseResult().withTimestamp(1L).withTestCaseStatus(TestCaseStatus.Failed));
+
+    Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDoc();
+
+    assertNotNull(result.get("testCaseResult"));
+    assertEquals(TestCaseStatus.Failed.value(), String.valueOf(result.get("testCaseStatus")));
   }
 
   @Test
