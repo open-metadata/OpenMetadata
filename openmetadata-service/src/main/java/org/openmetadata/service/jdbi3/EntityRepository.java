@@ -398,7 +398,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * Loads a cache miss without {@code cache.get(key)}: Guava runs the loader's Redis and database
    * reads inside a per-entry {@code synchronized}, which on JDK 21 pins a virtual thread to its
    * carrier. Writers bump the epoch before evicting, so re-checking it after the put drops a copy
-   * that raced a write. Failures come back wrapped, as {@code LoadingCache.get} throws them.
+   * that raced a write. Failures come back wrapped, as {@code LoadingCache.get} throws them. See
+   * ADR:2026-10-14-cache-misses-that-do-io-load-outside-the-cache-lock.
    */
   @VisibleForTesting
   static <K> String loadOutsideCacheLock(
