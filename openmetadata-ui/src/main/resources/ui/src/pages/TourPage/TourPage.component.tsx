@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Tour from '../../components/AppTour/Tour';
@@ -158,19 +159,24 @@ const TourPage = () => {
   // Pre-mount Explore (hidden) during the MyData phase so it stays mounted into
   // the Explore step — react-tour closes a step whose target is missing on
   // activation, and the redesigned Explore can't mount within its stepWaitTimer.
+  // Hidden with `visibility`, not `display: none`: under `display: none` the
+  // resizable results panel measures 0px on mount and keeps that width, so the
+  // highlighted result card is clipped away when the Explore step reveals it.
   const shouldRenderExplore =
     currentTourPage === CurrentTourPageType.MY_DATA_PAGE || isExplorePage;
-  const exploreStyle = useMemo(
-    () => ({ display: isExplorePage ? undefined : 'none' }),
-    [isExplorePage]
-  );
 
   const currentPageComponent = useMemo(() => {
     return (
       <>
         {currentTourPage === CurrentTourPageType.MY_DATA_PAGE && <MyDataPage />}
         {shouldRenderExplore && (
-          <div style={exploreStyle}>
+          <div
+            aria-hidden={!isExplorePage}
+            className={classNames({
+              'tw:pointer-events-none tw:invisible tw:fixed tw:inset-0':
+                !isExplorePage,
+            })}
+            data-testid="tour-explore-page">
             <ExplorePageV1Component pageTitle={t('label.explore')} />
           </div>
         )}
@@ -179,7 +185,7 @@ const TourPage = () => {
         )}
       </>
     );
-  }, [currentTourPage, shouldRenderExplore, exploreStyle, t]);
+  }, [currentTourPage, shouldRenderExplore, isExplorePage, t]);
 
   const tourSteps = useMemo(
     () =>

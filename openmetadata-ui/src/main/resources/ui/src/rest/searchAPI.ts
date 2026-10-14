@@ -195,7 +195,7 @@ export const rawSearchQuery = <
   >(apiUrl, {
     params: {
       index: getSearchIndexParam(searchIndex),
-      from: (pageNumber - 1) * pageSize,
+      from: (Math.max(1, pageNumber) - 1) * pageSize,
       size: pageSize,
       deleted: includeDeletedParam,
       query_filter: JSON.stringify(queryFilter),
@@ -292,7 +292,7 @@ export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
         q: query,
         index: searchIndex,
         size: pageSize,
-        from: (pageNumber - 1) * pageSize,
+        from: (Math.max(1, pageNumber) - 1) * pageSize,
         deleted: includeDeletedParam,
         sort_field: sortField,
         sort_order: sortOrder,
