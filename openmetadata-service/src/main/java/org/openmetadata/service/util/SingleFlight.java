@@ -29,7 +29,8 @@ import java.util.concurrent.ExecutionException;
  * scheduler stops. Waiting on a {@link CompletableFuture} unmounts instead.
  *
  * <p>Entries live only while their task runs, so the map is bounded by the number of concurrent
- * misses rather than by the key space.
+ * misses rather than by the key space. See
+ * ADR:2026-10-14-cache-misses-that-do-io-load-outside-the-cache-lock.
  */
 public final class SingleFlight<K, V> {
 
