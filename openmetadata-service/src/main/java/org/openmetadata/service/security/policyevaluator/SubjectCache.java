@@ -20,6 +20,7 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -36,6 +37,8 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.cache.Invalidatable;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -124,7 +127,8 @@ public class SubjectCache {
       (type, id, fqn) -> {
         if (Entity.TEAM.equals(type) || Entity.ROLE.equals(type) || Entity.POLICY.equals(type)) {
           invalidateAll();
-        } else if (Entity.PERSONA.equals(type)) {
+        } else if (Entity.PERSONA.equals(type)
+            || CacheInvalidationPubSub.TYPE_USER_CONTEXTS.equals(type)) {
           invalidateAllUserContexts();
         } else if (Entity.USER.equals(type) && fqn != null) {
           invalidateUserByFqn(fqn);
@@ -133,11 +137,27 @@ public class SubjectCache {
 
   private SubjectCache() {}
 
+  /** User contexts live this long when Redis pub/sub evicts them on every pod after a write. */
+  static final Duration USER_CONTEXT_TTL = Duration.ofMinutes(15);
+
   /**
-   * Rebuild auth caches with configured max entries. TTLs are kept at their original values
-   * (2 min for policies, 15 min for user context) because they serve different freshness needs.
+   * Without Redis pub/sub a write evicts only the serving pod, so the TTL alone bounds how long
+   * peers serve the old context. See ADR:2026-10-13-user-auth-context-expires-after-2-minutes-without-redis
+   */
+  static final Duration USER_CONTEXT_TTL_WITHOUT_PUBSUB = Duration.ofMinutes(2);
+
+  static Duration userContextTtl(CacheInvalidationPubSub pubSub) {
+    return pubSub != null && pubSub.isRunning()
+        ? USER_CONTEXT_TTL
+        : USER_CONTEXT_TTL_WITHOUT_PUBSUB;
+  }
+
+  /**
+   * Rebuild auth caches with configured max entries. Policies expire after 2 min; user contexts
+   * after {@link #userContextTtl}, as only Redis pub/sub evicts them on peer pods.
    */
   public static void initCaches(int maxEntries) {
+    Duration userContextTtl = userContextTtl(CacheBundle.getCacheInvalidationPubSub());
     USER_POLICIES_CACHE =
         CacheBuilder.newBuilder()
             .maximumSize(maxEntries)
@@ -147,10 +167,11 @@ public class SubjectCache {
     USER_CONTEXT_CACHE =
         CacheBuilder.newBuilder()
             .maximumSize(maxEntries)
-            .expireAfterWrite(15, TimeUnit.MINUTES)
+            .expireAfterWrite(userContextTtl.toMillis(), TimeUnit.MILLISECONDS)
             .recordStats()
             .build(new UserContextLoader());
-    LOG.info("Auth caches initialized: maxEntries={}", maxEntries);
+    LOG.info(
+        "Auth caches initialized: maxEntries={}, userContextTtl={}", maxEntries, userContextTtl);
   }
 
   public static List<PolicyContext> getPolicies(String userName) {
@@ -214,6 +235,15 @@ public class SubjectCache {
       userNames.add(user.getName());
     }
     userNames.forEach(SubjectCache::invalidateUserContext);
+  }
+
+  /** Drops every user context on this pod and, through Redis pub/sub, on its peers. */
+  public static void invalidateAllUserContextsEverywhere() {
+    invalidateAllUserContexts();
+    CacheInvalidationPubSub pubsub = CacheBundle.getCacheInvalidationPubSub();
+    if (pubsub != null) {
+      pubsub.publish(CacheInvalidationPubSub.TYPE_USER_CONTEXTS, null, null, "invalidate");
+    }
   }
 
   public static void invalidateAllUserContexts() {

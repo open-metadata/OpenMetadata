@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
@@ -278,6 +279,30 @@ public class SubjectCacheTest {
 
     verify(userRepository, times(1))
         .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
+  void testUserContextsSignalDropsAllUserContexts() {
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(CacheInvalidationPubSub.TYPE_USER_CONTEXTS, null, null);
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
+  void testUserContextExpiresSoonerUnlessRedisPubSubIsRunning() {
+    CacheInvalidationPubSub running = mock(CacheInvalidationPubSub.class);
+    Mockito.when(running.isRunning()).thenReturn(true);
+    CacheInvalidationPubSub failedToStart = mock(CacheInvalidationPubSub.class);
+
+    assertEquals(SubjectCache.USER_CONTEXT_TTL, SubjectCache.userContextTtl(running));
+    assertEquals(SubjectCache.USER_CONTEXT_TTL_WITHOUT_PUBSUB, SubjectCache.userContextTtl(null));
+    assertEquals(
+        SubjectCache.USER_CONTEXT_TTL_WITHOUT_PUBSUB, SubjectCache.userContextTtl(failedToStart));
   }
 
   @Test

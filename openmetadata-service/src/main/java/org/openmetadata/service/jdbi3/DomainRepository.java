@@ -65,6 +65,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.QueryFilterBuilder;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -923,6 +924,8 @@ public class DomainRepository extends EntityRepository<Domain> {
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.DOMAIN, renamedDomains);
       EntityRepository.finishInvalidateCacheForRenameCascade(
           Entity.DATA_PRODUCT, renamedDataProducts);
+      // Cached authorization contexts hold the old FQN that hasDomain() matches on
+      SubjectCache.invalidateAllUserContextsEverywhere();
     }
 
     private void invalidateDomainReferencers(UUID domainId) {

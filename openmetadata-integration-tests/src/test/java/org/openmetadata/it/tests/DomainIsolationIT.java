@@ -261,6 +261,42 @@ public class DomainIsolationIT {
   }
 
   @Test
+  void test_domainRename_keepsMemberAccess(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_d1", cleanup);
+      Table table = createTable(admin, p + "_t1", createSchema(ns, cleanup), domain, cleanup);
+      Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
+      String email = p + "_member@test.openmetadata.org";
+      User user =
+          admin
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(p + "_member")
+                      .withEmail(email)
+                      .withDomains(List.of(domain.getFullyQualifiedName()))
+                      .withRoles(List.of(domainOnlyRole.getId())));
+      cleanup.push(() -> admin.users().delete(user.getId()));
+      OpenMetadataClient client = SdkClients.createClient(email, email, new String[] {});
+      String tableId = table.getId().toString();
+
+      // The allowed read caches the member with the domain's original FQN
+      assertEquals(tableId, client.tables().get(tableId).getId().toString());
+
+      Domain renamed = admin.domains().get(domain.getId().toString());
+      renamed.setName(p + "_d1_renamed");
+      admin.domains().update(domain.getId().toString(), renamed);
+
+      assertEquals(tableId, client.tables().get(tableId).getId().toString());
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
   void test_lineage_userWithoutRoleSeesFullChain(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();
