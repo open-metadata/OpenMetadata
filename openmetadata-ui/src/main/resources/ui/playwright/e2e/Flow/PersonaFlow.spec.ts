@@ -839,7 +839,7 @@ test.describe('Curated Assets – Description filter', () => {
     await test.step('Click Create in curated assets widget and fill Description Contains filter', async () => {
       await adminPage
         .getByTestId('KnowledgePanel.CuratedAssets')
-        .getByText('Create')
+        .getByRole('button', { name: 'Create', exact: true })
         .click();
 
       await adminPage.locator('[data-testid="title-input"]').clear();
