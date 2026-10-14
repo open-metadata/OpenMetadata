@@ -190,6 +190,9 @@ describe('AlertRecentEventsTab', () => {
     expect(await screen.findByTestId('applied-filter-text')).toHaveTextContent(
       ': label.successful'
     );
+    expect(filterButton).toHaveAccessibleName(
+      'label.filter-plural : label.successful'
+    );
   });
 
   it('should go back to the first page when the filter changes', async () => {

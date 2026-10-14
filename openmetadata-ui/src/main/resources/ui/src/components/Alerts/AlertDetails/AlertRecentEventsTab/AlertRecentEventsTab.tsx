@@ -388,6 +388,11 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     };
   }, [currentPage, getAlertRecentEvents, pageSize]);
 
+  const appliedFilterText =
+    filter === AlertRecentEventFilters.ALL
+      ? ''
+      : ` : ${getAlertEventsFilterLabels(filter as AlertRecentEventFilters)}`;
+
   return (
     <Grid
       className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
@@ -413,17 +418,15 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           <Box className="layout-column tw:block">
             <Dropdown.Root>
               <Button
-                aria-label={t('label.filter-plural')}
+                aria-label={`${t('label.filter-plural')}${appliedFilterText}`}
                 color="secondary"
                 data-testid="filter-button"
                 iconLeading={FilterLines}
                 size="sm">
-                {filter !== AlertRecentEventFilters.ALL && (
-                  <Typography
-                    data-testid="applied-filter-text"
-                    weight="medium">{` : ${getAlertEventsFilterLabels(
-                    filter as AlertRecentEventFilters
-                  )}`}</Typography>
+                {appliedFilterText && (
+                  <Typography data-testid="applied-filter-text" weight="medium">
+                    {appliedFilterText}
+                  </Typography>
                 )}
               </Button>
               <Dropdown.Popover className="tw:w-auto">
