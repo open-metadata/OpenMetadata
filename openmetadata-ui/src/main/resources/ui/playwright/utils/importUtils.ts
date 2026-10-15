@@ -791,7 +791,7 @@ export const fillExtensionDetails = async (
   });
 
   // Verify header text
-  await expect(customPropertyEditor.getByTestId('header')).toContainText(
+  await expect(customPropertyEditor.getByTestId('dialog-title')).toContainText(
     'Edit CustomProperty'
   );
 
@@ -1034,11 +1034,9 @@ export const uploadCSVAndWaitForGrid = async (
       .getByTestId('csv-workflow-stepper')
       .waitFor({ state: 'visible' });
   }
-  await expect(
-    page.getByText('Drag & Drop or Browse CSV file here')
-  ).toBeVisible();
+  await expect(page.getByTestId('upload-file-widget')).toBeVisible();
 
-  const uploadWidget = page.getByTestId('upload-file-widget');
+  const uploadWidget = page.getByTestId('upload-file-input');
   await uploadWidget.waitFor({ state: 'attached' });
   let actualFilePath = filePath;
   let tempFilePath: string | undefined;

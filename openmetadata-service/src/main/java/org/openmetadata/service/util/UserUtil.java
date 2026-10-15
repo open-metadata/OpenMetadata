@@ -708,7 +708,7 @@ public final class UserUtil {
   }
 
   // The raw accessor, not getUserRoles(): the latter normalizes null to an empty set, which would
-  // make "no roles claim in the token" indistinguishable from "the provider revoked every role".
+  // make "nothing to sync from" indistinguishable from "the provider revoked every role".
   public static Set<String> getRolesFromAuthorizationToken(
       CatalogSecurityContext catalogSecurityContext) {
     return catalogSecurityContext.userRoles();
@@ -733,32 +733,37 @@ public final class UserUtil {
   }
 
   /**
-   * Syncs a user's roles to what the identity provider reported. {@code rolesFromToken} is
-   * authoritative when non-null, including when empty - that is the provider revoking every role. A
-   * null set means the provider said nothing (no roles claim, or the feature is off) and the user's
-   * OpenMetadata roles are left alone.
+   * Syncs a user's roles and admin status to what the identity provider reported. {@code
+   * rolesFromToken} is authoritative when non-null, including when empty - that is the provider
+   * revoking every role. A null set means there is nothing to sync from (the feature is off, or the
+   * token was minted by OpenMetadata) and the user is left alone.
    *
-   * <p>Admin is promotion-only. Demoting on a missing admin role would lock out anyone who is an
-   * admin through the {@code adminPrincipals} configuration rather than through the provider.
+   * <p>Admin follows the provider's {@code Admin} role, except for users named in {@code
+   * adminEmails} or {@code adminPrincipals}: the provider never granted them admin, so its silence
+   * must not demote them. ADR:2026-10-13-provider-token-is-authoritative-for-roles-and-admin
    */
   public static boolean reSyncUserRolesFromToken(
-      UriInfo uriInfo, User user, Set<String> rolesFromToken) {
+      UriInfo uriInfo,
+      User user,
+      Set<String> rolesFromToken,
+      AuthorizerConfiguration authorizerConfiguration) {
     if (rolesFromToken == null) {
       return false;
     }
     boolean syncUser = false;
     Set<String> mutableRolesFromToken = new HashSet<>(rolesFromToken);
+    boolean adminFromProvider = mutableRolesFromToken.remove(ADMIN_ROLE);
 
     User updatedUser = JsonUtils.deepCopy(user, User.class);
-    // Check if Admin User
-    if (mutableRolesFromToken.contains(ADMIN_ROLE)) {
-      if (Boolean.FALSE.equals(user.getIsAdmin())) {
-        syncUser = true;
-        updatedUser.setIsAdmin(true);
-      }
-
-      // Remove the Admin Role from the list
-      mutableRolesFromToken.remove(ADMIN_ROLE);
+    boolean isAdmin = Boolean.TRUE.equals(user.getIsAdmin());
+    if (adminFromProvider && !isAdmin) {
+      syncUser = true;
+      updatedUser.setIsAdmin(true);
+    } else if (!adminFromProvider
+        && isAdmin
+        && !isConfiguredAdmin(authorizerConfiguration, user.getEmail(), user.getName())) {
+      syncUser = true;
+      updatedUser.setIsAdmin(false);
     }
 
     Set<String> rolesFromUser = getRoleListFromUser(user);

@@ -70,7 +70,7 @@ const DataQualitySettings = ({
         color="primary"
         data-testid="add-dimension"
         iconLeading={Plus}
-        size="sm"
+        size="xs"
         onPress={() =>
           onNavigate({ type: 'page', page: 'data-quality', isEditing: true })
         }>

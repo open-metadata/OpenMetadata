@@ -120,7 +120,11 @@ test.describe('Topic entity specific tests ', () => {
 
     await expect(page.getByTestId('topic-schema-fields-table')).toBeVisible();
 
-    const expandButtons = page.locator('[data-testid="expand-icon"]');
+    // Scope to rows: the toolbar's Expand All icon reuses the expand-icon test id.
+    const expandButtons = page
+      .getByTestId('topic-schema-fields-table')
+      .getByRole('row')
+      .getByTestId('expand-icon');
     const expandButtonCount = await expandButtons.count();
 
     if (expandButtonCount > 0) {

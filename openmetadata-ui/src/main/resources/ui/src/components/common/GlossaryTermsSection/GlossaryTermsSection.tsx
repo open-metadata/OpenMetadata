@@ -18,8 +18,6 @@ import {
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { useEntityRules } from '../../../hooks/useEntityRules';
@@ -143,7 +141,6 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
               newLook
               data-testid="edit-glossary-terms"
               disabled={false}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               size="small"
               title={t('label.edit-entity', {
                 entity: t('label.glossary-term-plural'),

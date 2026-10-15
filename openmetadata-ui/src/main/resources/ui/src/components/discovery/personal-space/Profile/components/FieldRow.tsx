@@ -35,10 +35,7 @@ const FieldRow: React.FC<FieldRowProps> = ({
     className="tw:grid tw:[grid-template-columns:minmax(220px,1fr)_2fr]"
     gap={8}>
     <Box className="tw:max-w-[320px] tw:gap-0.5" direction="col">
-      <Typography
-        className="tw:text-primary-900"
-        size="text-sm"
-        weight="medium">
+      <Typography className="tw:text-primary" size="text-sm" weight="medium">
         {title}
       </Typography>
       {description && (

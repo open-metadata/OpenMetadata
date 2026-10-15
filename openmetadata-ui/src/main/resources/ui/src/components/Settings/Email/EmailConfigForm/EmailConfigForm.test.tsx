@@ -16,15 +16,6 @@ import { EMAIL_CONFIG_FORM_FIELDS } from '../../../../constants/EmailConfig.cons
 import { TransportationStrategy } from '../../../../generated/email/smtpSettings';
 import EmailConfigForm from './EmailConfigForm.component';
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Button: jest
-    .fn()
-    .mockImplementation(({ loading, onClick, children }) => (
-      <button onClick={onClick}>{loading ? 'Loader.Button' : children}</button>
-    )),
-}));
-
 const mockOnCancel = jest.fn();
 const mockOnFocus = jest.fn();
 const mockOnSubmit = jest.fn();
@@ -91,7 +82,9 @@ describe('Email Config Form Component', () => {
   it('submit button should be in loading state', async () => {
     render(<EmailConfigForm {...mockProps} isLoading />);
 
-    expect(screen.getByText('Loader.Button')).toBeInTheDocument();
+    expect(screen.getByText('label.save').closest('button')).toHaveAttribute(
+      'data-loading'
+    );
   });
 
   it('should call onCancel', () => {
@@ -157,10 +150,11 @@ describe('Email Config Form Component', () => {
       fireEvent.click(screen.getByText('label.save'));
     });
 
+    // Empty optional credentials are dropped rather than sent as ''.
     expect(mockOnSubmit).toHaveBeenCalledWith({
       ...emailConfigValues,
-      password: '',
-      username: '',
+      password: undefined,
+      username: undefined,
     });
   });
 
@@ -180,9 +174,11 @@ describe('Email Config Form Component', () => {
     expect(
       within(screen.getByTestId('smtp-server-input')).getByRole('switch')
     ).toBeDisabled();
-    expect(screen.getByTestId('transportation-strategy-input')).toHaveClass(
-      'ant-select-disabled'
-    );
+    expect(
+      within(screen.getByTestId('transportation-strategy-input')).getByRole(
+        'button'
+      )
+    ).toBeDisabled();
     expect(screen.getByTestId('username-input')).toBeEnabled();
     expect(screen.getByTestId('server-port-input')).toBeEnabled();
     expect(screen.getByText('label.save')).toBeInTheDocument();

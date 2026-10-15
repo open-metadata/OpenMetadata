@@ -11,109 +11,237 @@
  *  limitations under the License.
  */
 
+import { isEmpty } from 'lodash';
 import { lazy, type ComponentType } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import { LANDING_PAGE_DEFAULT_WIDGET_HEIGHT } from '../constants/CustomizeMyDataPage.constants';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
-import type { WidgetCommonProps } from '../pages/CustomizablePage/CustomizablePage.interface';
+import type {
+  WidgetCommonProps,
+  WidgetConfig,
+} from '../pages/CustomizablePage/CustomizablePage.interface';
+import { reflowLayoutToGrid } from './CustomizableLandingPagePureUtils';
 
-const KnowledgeCenterWidget = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../components/KnowledgeCenter/KnowledgeCenterWidget/KnowledgeCenterWidget'
-      )
-  )
-) as ComponentType<WidgetCommonProps>;
-const MyFeedWidget = withSuspenseFallback(
-  lazy(() =>
-    import('../components/MyData/FeedWidget/FeedWidget.component').then(
-      (m) => ({
-        default: m.MyFeedWidget,
-      })
-    )
-  )
-) as ComponentType<WidgetCommonProps>;
-const MyDataWidget = withSuspenseFallback(
-  lazy(() =>
-    import('../components/MyData/MyDataWidget/MyDataWidget.component').then(
-      (m) => ({ default: m.MyDataWidget })
-    )
-  )
-) as ComponentType<WidgetCommonProps>;
-const FollowingWidget = withSuspenseFallback(
-  lazy(() => import('../components/MyData/RightSidebar/FollowingWidget'))
-) as ComponentType<WidgetCommonProps>;
-const CuratedAssetsWidget = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget'
-      )
-  )
-) as ComponentType<WidgetCommonProps>;
-const DataAssetsWidget = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component'
-      )
-  )
-) as ComponentType<WidgetCommonProps>;
-const DataProductsWidget = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../components/MyData/Widgets/DataProductsWidget/DataProductsWidget.component'
-      )
-  )
-) as ComponentType<WidgetCommonProps>;
-const DomainsWidget = withSuspenseFallback(
-  lazy(() => import('../components/MyData/Widgets/DomainsWidget/DomainsWidget'))
-) as ComponentType<WidgetCommonProps>;
-const KPIWidget = withSuspenseFallback(
-  lazy(
-    () => import('../components/MyData/Widgets/KPIWidget/KPIWidget.component')
-  )
-) as ComponentType<WidgetCommonProps>;
-const MyTaskWidget = withSuspenseFallback(
-  lazy(() => import('../components/MyData/Widgets/MyTaskWidget/MyTaskWidget'))
-) as ComponentType<WidgetCommonProps>;
-const TotalDataAssetsWidget = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component'
-      )
-  )
-) as ComponentType<WidgetCommonProps>;
+/** Every landing widget occupies exactly one grid column. */
+const LANDING_PAGE_WIDGET_COLUMN_SPAN = 1;
 
 // This registry is intentionally isolated from the layout class base. The
 // class base is imported for sizing/defaults on /my-data, while widget chunks
 // should only become reachable through the deferred widget render path.
+const PlatformHealthWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/MyData/Widgets/PlatformHealthWidget/PlatformHealthWidget'
+      )
+  )
+) as ComponentType<WidgetCommonProps>;
+const DataEstateWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/MyData/Widgets/DataEstateWidget/DataEstateWidget')
+  )
+) as ComponentType<WidgetCommonProps>;
+const TeamActivityWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/MyData/Widgets/TeamActivityWidget/TeamActivityWidget'
+      )
+  )
+) as ComponentType<WidgetCommonProps>;
+const YoursAndFollowedWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/MyData/Widgets/YoursAndFollowedWidget/YoursAndFollowedWidget'
+      )
+  )
+) as ComponentType<WidgetCommonProps>;
+const ContextCenterWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/MyData/Widgets/ContextCenterWidget/ContextCenterWidget'
+      )
+  )
+) as ComponentType<WidgetCommonProps>;
+const CuratedAssetsSummaryWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/MyData/Widgets/CuratedAssetsSummaryWidget/CuratedAssetsSummaryWidget'
+      )
+  )
+) as ComponentType<WidgetCommonProps>;
+const DataQualityWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/MyData/Widgets/DataQualityWidget/DataQualityWidget')
+  )
+) as ComponentType<WidgetCommonProps>;
+const DomainsOverviewWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/MyData/Widgets/DomainsOverviewWidget/DomainsOverviewWidget'
+      )
+  )
+) as ComponentType<WidgetCommonProps>;
+const DataProductsOverviewWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/MyData/Widgets/DataProductsOverviewWidget/DataProductsOverviewWidget'
+      )
+  )
+) as ComponentType<WidgetCommonProps>;
+const KpiProgressWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/MyData/Widgets/KpiProgressWidget/KpiProgressWidget')
+  )
+) as ComponentType<WidgetCommonProps>;
+
+/**
+ * The landing-page registry: every key that resolves to a widget, and what it
+ * resolves to. Module-scope and single-source so the lookup and the
+ * "is this key still renderable" check can never disagree.
+ *
+ * Matched by prefix, not equality — a grid instance key carries a `uniqueId`
+ * suffix (e.g. `KnowledgePanel.Following-42`).
+ */
+const WIDGET_KEY_PREFIX_MAP: Array<
+  [LandingPageWidgetKeys, ComponentType<WidgetCommonProps>]
+> = [
+  [LandingPageWidgetKeys.PLATFORM_HEALTH, PlatformHealthWidget],
+  [LandingPageWidgetKeys.DATA_ESTATE, DataEstateWidget],
+  [LandingPageWidgetKeys.ACTIVITY_FEED, TeamActivityWidget],
+  [LandingPageWidgetKeys.YOURS_AND_FOLLOWED, YoursAndFollowedWidget],
+  [LandingPageWidgetKeys.KNOWLEDGE_CENTER, ContextCenterWidget],
+  [LandingPageWidgetKeys.CURATED_ASSETS, CuratedAssetsSummaryWidget],
+  [LandingPageWidgetKeys.DATA_QUALITY, DataQualityWidget],
+  [LandingPageWidgetKeys.DOMAINS, DomainsOverviewWidget],
+  [LandingPageWidgetKeys.DATA_PRODUCTS, DataProductsOverviewWidget],
+  [LandingPageWidgetKeys.KPI, KpiProgressWidget],
+];
+
+/**
+ * Every landing-page widget key this build resolves to a component, in default
+ * layout order. Exported so a caller can assert the whole set instead of
+ * re-deriving it, which is what makes adding or retiring a widget a visible,
+ * deliberate change rather than a silent one.
+ */
+export const MY_DATA_WIDGET_KEYS: readonly LandingPageWidgetKeys[] =
+  WIDGET_KEY_PREFIX_MAP.map(([widgetKey]) => widgetKey);
+
+/**
+ * Whether a saved layout entry still names a widget this build can render.
+ *
+ * Persona layouts outlive the widgets in them: a doc saved before a widget was
+ * retired still lists it. Callers use this to drop those entries rather than
+ * leave an empty cell in the grid.
+ *
+ * `knownWidgetKeys` defaults to the OSS registry. Callers that can see the
+ * class base pass `getKnownWidgetKeyPrefixes()` instead, so a key a subclass
+ * resolves through its own `getWidgetsFromKey` is not mistaken for a retired
+ * one.
+ */
+export const isKnownMyDataWidgetKey = (
+  widgetKey: string,
+  knownWidgetKeys: readonly string[] = MY_DATA_WIDGET_KEYS
+): boolean => knownWidgetKeys.some((prefix) => widgetKey.startsWith(prefix));
+
+/**
+ * The widget key a layout entry names, without the instance suffix.
+ *
+ * Widgets added through the Add Widgets picker get a lodash `uniqueId` suffix
+ * (`getAddWidgetHandler`), e.g. `KnowledgePanel.Domains-211`, so a layout key
+ * is not interchangeable with a widget key. Everything that resolves a widget
+ * from a layout entry already prefix-matches for this reason; this returns the
+ * matched prefix so the grid cell can carry the stable key as its test handle
+ * rather than the per-instance one.
+ */
+export const getMyDataWidgetBaseKey = (widgetKey: string): string =>
+  WIDGET_KEY_PREFIX_MAP.find(([prefix]) => widgetKey.startsWith(prefix))?.[0] ??
+  widgetKey;
+
+/**
+ * Whether a landing-page widget may appear on the page at all — both in the
+ * grid and in the Add Widgets picker.
+ *
+ * The picker and the renderer have to answer this the same way. A key the
+ * picker offers but the renderer cannot resolve becomes a blank grid cell, and
+ * a key the renderer accepts but the picker withholds is a widget nobody can
+ * add back once it is removed. Sharing one predicate is what keeps the offered
+ * set and the renderable set equal. The one deliberate gap is a widget the
+ * platform places itself (Collate's onboarding checklist): the picker passes
+ * `getPickableWidgetKeyPrefixes()`, which leaves it out.
+ */
+export const isAvailableMyDataWidgetKey = (
+  widgetKey: string,
+  excludedWidgetFqns: string[],
+  knownWidgetKeys: readonly string[] = MY_DATA_WIDGET_KEYS
+): boolean =>
+  isKnownMyDataWidgetKey(widgetKey, knownWidgetKeys) &&
+  !excludedWidgetFqns.some((fqn) => widgetKey.startsWith(fqn));
+
 export const getMyDataWidgetFromKey = (
   widgetKey: string
 ): ComponentType<WidgetCommonProps> => {
-  const widgetKeyPrefixMap: Array<
-    [LandingPageWidgetKeys, ComponentType<WidgetCommonProps>]
-  > = [
-    [LandingPageWidgetKeys.DATA_ASSETS, DataAssetsWidget],
-    [LandingPageWidgetKeys.DATA_PRODUCTS, DataProductsWidget],
-    [LandingPageWidgetKeys.MY_DATA, MyDataWidget],
-    [LandingPageWidgetKeys.ACTIVITY_FEED, MyFeedWidget],
-    [LandingPageWidgetKeys.KPI, KPIWidget],
-    [LandingPageWidgetKeys.TOTAL_DATA_ASSETS, TotalDataAssetsWidget],
-    [LandingPageWidgetKeys.FOLLOWING, FollowingWidget],
-    [LandingPageWidgetKeys.CURATED_ASSETS, CuratedAssetsWidget],
-    [LandingPageWidgetKeys.MY_TASK, MyTaskWidget],
-    [LandingPageWidgetKeys.DOMAINS, DomainsWidget],
-    [LandingPageWidgetKeys.KNOWLEDGE_CENTER, KnowledgeCenterWidget],
-  ];
-
-  const matchedWidget = widgetKeyPrefixMap.find(([prefix]) =>
+  const matchedWidget = WIDGET_KEY_PREFIX_MAP.find(([prefix]) =>
     widgetKey.startsWith(prefix)
   );
 
   return (
     matchedWidget?.[1] ?? ((() => null) as ComponentType<WidgetCommonProps>)
   );
+};
+
+/**
+ * The read path for a persona's landing layout, shared by the home page and by
+ * the customize page that edits it.
+ *
+ * A saved layout outlives the build that wrote it. It names widgets that have
+ * since been retired or excluded, carries `w` from when a column was a third of
+ * the row rather than half, and carries `x` from when the grid was three
+ * columns wide. None of those read as an error: a retired key resolves to a
+ * render-nothing component and leaves a hole, a stale `w` of 2 is no longer
+ * two-thirds but the whole row, and an `x` past the last column is pushed onto
+ * a row of its own, stranding the space it vacated. Both call sites must
+ * correct them identically or the editor shows an arrangement the home page
+ * will not render.
+ */
+export const normalizeLandingPageLayout = (
+  savedLayout: WidgetConfig[] | undefined,
+  defaultLayout: WidgetConfig[],
+  excludedWidgetFqns: string[],
+  cols: number,
+  knownWidgetKeys: readonly string[]
+): WidgetConfig[] => {
+  const filtered = (savedLayout ?? [])
+    .filter((widget) =>
+      isAvailableMyDataWidgetKey(widget.i, excludedWidgetFqns, knownWidgetKeys)
+    )
+    // One column each, rather than `getConstrainedWidgetWidth`'s upper bound.
+    // The landing grid exposes no width control -- CustomiseHomeModal adds at
+    // width 1 and both grids are `isResizable={false}` -- so any other width is
+    // stale state from the three-column era that nothing in the UI can undo,
+    // and at two columns a `w` of 2 spans the whole row. Revisit this line if a
+    // size control comes back.
+    //
+    // Height likewise: every topic card is one fixed height, and the editor
+    // already forces it on its first layout pass (`getLayoutUpdateHandler`).
+    // A pre-redesign `h` of 4 or 6 would otherwise draw the card up to twice
+    // as tall on the home page as in the editor that saved it. Clamped before
+    // the reflow, which stacks rows by `h`.
+    .map((widget) => ({
+      ...widget,
+      w: LANDING_PAGE_WIDGET_COLUMN_SPAN,
+      h: LANDING_PAGE_DEFAULT_WIDGET_HEIGHT,
+    }));
+
+  // Re-packed whichever source it came from: a default a subclass positioned
+  // itself can overflow the grid just as a saved layout can.
+  return reflowLayoutToGrid(isEmpty(filtered) ? defaultLayout : filtered, cols);
 };

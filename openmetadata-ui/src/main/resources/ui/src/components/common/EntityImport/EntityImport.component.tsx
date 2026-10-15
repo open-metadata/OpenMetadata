@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -239,23 +244,22 @@ export const EntityImport = ({
                 onCSVUploaded={handleLoadData}
               />
 
-              <Affix className="bg-white p-md import-preview-footer">
+              <Box className="tw:fixed tw:inset-x-0 tw:bottom-0 tw:z-4 tw:border-t tw:border-secondary tw:bg-surface tw:p-4">
                 <Box
                   inline
                   align="center"
-                  className="layout-space layout-space-horizontal justify-end w-full p-r-md"
+                  className="tw:w-full tw:pr-4"
                   gap={2}
-                  itemClassName="layout-space-item">
+                  justify="end">
                   <Button
-                    ghost
+                    color="secondary-brand"
                     data-testid="cancel-button"
-                    type="primary"
                     // as we need to redirect back, from where we enter import screen
                     onClick={onCancel}>
                     {t('label.cancel')}
                   </Button>
                 </Box>
-              </Affix>
+              </Box>
             </Grid.Item>
           </>
         )}
@@ -284,9 +288,8 @@ export const EntityImport = ({
                       gap={4}
                       itemClassName="layout-space-item">
                       <Button
-                        ghost
+                        color="secondary-brand"
                         data-testid="cancel-button"
-                        type="primary"
                         onClick={handleCancel}>
                         {t('label.back')}
                       </Button>
@@ -311,32 +314,31 @@ export const EntityImport = ({
                     {children}
                   </Grid.Item>
                 </Grid>
-                <Affix className="bg-white p-md import-preview-footer">
+                <Box className="tw:fixed tw:inset-x-0 tw:bottom-0 tw:z-4 tw:border-t tw:border-secondary tw:bg-surface tw:p-4">
                   <Box
                     inline
                     align="center"
-                    className="layout-space layout-space-horizontal justify-end w-full p-r-md"
+                    className="tw:w-full tw:pr-4"
                     gap={2}
-                    itemClassName="layout-space-item">
+                    justify="end">
                     <Button
-                      ghost
+                      color="secondary-brand"
                       data-testid="preview-cancel-button"
-                      disabled={isImporting}
-                      type="primary"
+                      isDisabled={isImporting}
                       onClick={handleCancel}>
                       {t('label.back')}
                     </Button>
                     {!isFailure && (
                       <Button
+                        color="primary"
                         data-testid="import-button"
-                        disabled={isImporting}
-                        type="primary"
+                        isDisabled={isImporting}
                         onClick={handleImport}>
                         {t('label.import')}
                       </Button>
                     )}
                   </Box>
-                </Affix>
+                </Box>
               </div>
             )}
           </Grid.Item>
@@ -366,8 +368,8 @@ export const EntityImport = ({
                     gap={4}
                     itemClassName="layout-space-item">
                     <Button
+                      color="primary"
                       data-testid="preview-button"
-                      type="primary"
                       onClick={onSuccess}>
                       {t('label.view')}
                     </Button>

@@ -20,6 +20,10 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
+import {
+  TourContext,
+  TourProviderContextProps,
+} from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
@@ -174,8 +178,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Owner: jest.fn().mockImplementation(() => <div>Owner.component</div>),
   ClassificationTag: jest
     .fn()
-    .mockImplementation(({ label, 'data-testid': testId }) => (
-      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
+    .mockImplementation(({ label, href, 'data-testid': testId }) => (
+      <a data-testid={testId ?? 'classification-tag'} href={href}>
+        {label}
+      </a>
     )),
 }));
 jest.mock('../../../components/common/TierCard/TierCard', () =>
@@ -542,6 +548,26 @@ describe('DataAssetsHeader component', () => {
     );
 
     expect(screen.getByTestId('Tier')).toBeInTheDocument();
+  });
+
+  it('should show the Tier description tooltip on the Tier chip', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          tags: [MOCK_TIER_DATA],
+        }}
+      />
+    );
+
+    act(() => {
+      screen.getByTestId('Tier').focus();
+    });
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      MOCK_TIER_DATA.tagFQN
+    );
   });
 
   it('should not render the Tier data if not  present', () => {
@@ -1211,6 +1237,25 @@ describe('DataAssetsHeader component', () => {
       getDataContractStatusIcon as jest.Mock;
     const mockUseCustomPages = useCustomPages as jest.Mock;
     const mockGetEntityDetailsPath = getEntityDetailsPath as jest.Mock;
+
+    it('should not fetch a data contract for the tour mock entity', async () => {
+      (getContractByEntityId as jest.Mock).mockClear();
+
+      await act(async () => {
+        render(
+          <TourContext.Provider
+            value={
+              {
+                isTourPage: true,
+              } as Partial<TourProviderContextProps> as TourProviderContextProps
+            }>
+            <DataAssetsHeader {...mockProps} />
+          </TourContext.Provider>
+        );
+      });
+
+      expect(getContractByEntityId).not.toHaveBeenCalled();
+    });
 
     it('should render data contract button when contract tab is visible and status is in allowed list', async () => {
       mockUseCustomPages.mockReturnValue({

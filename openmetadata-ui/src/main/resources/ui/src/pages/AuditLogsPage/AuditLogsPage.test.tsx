@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
@@ -82,6 +83,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         onChange={(e) => onChange?.(e.target.value)}
       />
     )),
+  SimpleModal: jest.requireActual('@openmetadata/ui-core-components')
+    .SimpleModal,
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
@@ -704,11 +707,11 @@ describe('AuditLogsPage', () => {
         expect(screen.getByText('label.export-entity')).toBeInTheDocument();
       });
 
-      // Find the primary button in modal footer (Export button)
-      const modalFooter = document.querySelector('.ant-modal-footer');
-      const okButton = modalFooter?.querySelector('button.ant-btn-primary');
-
-      expect(okButton).toBeDisabled();
+      expect(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: 'label.export',
+        })
+      ).toBeDisabled();
     });
 
     it('shows error toast when export fails', async () => {
@@ -821,9 +824,9 @@ describe('AuditLogsPage', () => {
       });
       await act(async () => {
         fireEvent.click(
-          document.querySelector(
-            '.ant-modal-footer button.ant-btn-primary'
-          ) as HTMLElement
+          within(screen.getByRole('dialog')).getByRole('button', {
+            name: 'label.export',
+          })
         );
       });
 
