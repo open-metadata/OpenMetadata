@@ -165,7 +165,7 @@ public final class OntologyReasoningResource {
     try {
       return Response.ok(closures().activate(glossaryId).orElseThrow(() -> notFound(glossaryId)))
           .build();
-    } catch (OntologyClosures.ActivationRefusedException refused) {
+    } catch (OntologyClosures.PublicationRefusedException refused) {
       return Response.status(Response.Status.CONFLICT).entity(refused.closure()).build();
     } catch (OntologyClosures.ClosureChangedException changed) {
       throw new WebApplicationException(changed.getMessage(), Response.Status.CONFLICT);
@@ -181,8 +181,10 @@ public final class OntologyReasoningResource {
           "Adds the Draft and In Review graphs of the given axioms and terms, and of those a change"
               + " set touches, to the glossary's Approved closure, publishes the result as a"
               + " candidate manifest, and returns it with the CHECK request for the store."
-              + " Production reasoning and the active closure are not changed.")
-  public RdfOntologyClosure candidate(
+              + " Production reasoning and the active closure are not changed. Answers 409 with"
+              + " the closure's problems when an import is missing, the imports form a cycle, or"
+              + " a graph the closure needs has no digest, since no manifest could pin it.")
+  public Response candidate(
       @Context final SecurityContext securityContext,
       @PathParam("glossaryId") final UUID glossaryId,
       @Parameter(description = "An ontology change set whose axioms and terms to include")
@@ -200,9 +202,13 @@ public final class OntologyReasoningResource {
       throw new BadRequestException("Name a change set or at least one entity to check");
     }
     try {
-      return closures().candidate(glossaryId, candidates).orElseThrow(() -> notFound(glossaryId));
+      return Response.ok(
+              closures().candidate(glossaryId, candidates).orElseThrow(() -> notFound(glossaryId)))
+          .build();
     } catch (IllegalArgumentException tooMany) {
       throw new BadRequestException(tooMany.getMessage());
+    } catch (OntologyClosures.PublicationRefusedException refused) {
+      return Response.status(Response.Status.CONFLICT).entity(refused.closure()).build();
     } catch (OntologyClosures.ClosureChangedException changed) {
       throw new WebApplicationException(changed.getMessage(), Response.Status.CONFLICT);
     }

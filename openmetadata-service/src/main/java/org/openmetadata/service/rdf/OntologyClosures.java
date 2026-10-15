@@ -80,7 +80,7 @@ import org.openmetadata.service.Entity;
  * <p>See ADR:2026-10-15-reasoning-closures-are-approved-graphs-pinned-by-a-content-manifest.
  */
 public final class OntologyClosures {
-  static final String DIGEST_ALGORITHM = "om-closure-v1";
+  static final String DIGEST_ALGORITHM = "om-closure-v2";
   static final int PAGE_SIZE = 2000;
   static final int MAX_CANDIDATE_ENTITIES = 10_000;
   static final int MAX_LISTED_CANDIDATES = 1000;
@@ -121,13 +121,20 @@ public final class OntologyClosures {
     Optional<RdfSourceRevision> sourceRevision();
   }
 
-  /** Activation was refused; the closure carries the problems. */
-  public static final class ActivationRefusedException extends RuntimeException {
+  /**
+   * Publication or activation was refused; the closure carries the problems. Activation is refused
+   * for any problem; a candidate only for those that leave a manifest unable to pin its closure.
+   */
+  public static final class PublicationRefusedException extends RuntimeException {
     private final transient RdfOntologyClosure closure;
 
-    ActivationRefusedException(final RdfOntologyClosure closure) {
+    PublicationRefusedException(final String what, final RdfOntologyClosure closure) {
       super(
-          "Ontology closure cannot be activated: " + closure.getProblems().size() + " problem(s)");
+          "Ontology closure cannot be "
+              + what
+              + ": "
+              + closure.getProblems().size()
+              + " problem(s)");
       this.closure = closure;
     }
 
@@ -195,7 +202,7 @@ public final class OntologyClosures {
     try {
       final Node root = compute(glossary.get(), Overlay.NONE, new HashMap<>());
       if (!root.allProblems().isEmpty()) {
-        throw new ActivationRefusedException(describe(root, true));
+        throw new PublicationRefusedException("activated", describe(root, true));
       }
       publish(root, new HashSet<>());
       activateAll(root, new HashSet<>());
@@ -210,8 +217,9 @@ public final class OntologyClosures {
    * Publishes a candidate closure: the Approved closure with the Draft and In Review graphs of
    * these entities added, in whichever glossary of the closure owns them. Production is untouched:
    * no activation changes, and the candidate's manifest is a separate graph. The result carries the
-   * CHECK request that asks the store whether the candidate is consistent. See
-   * ADR:2026-10-15-candidate-checks-add-draft-graphs-to-the-approved-closure.
+   * CHECK request that asks the store whether the candidate is consistent. Refused, like activation,
+   * when an import is missing or imports form a cycle, since its manifest could not pin that
+   * closure. See ADR:2026-10-15-candidate-checks-add-draft-graphs-to-the-approved-closure.
    */
   public Optional<RdfOntologyClosure> candidate(
       final UUID glossaryId, final Collection<UUID> entityIds) {
@@ -228,6 +236,9 @@ public final class OntologyClosures {
     PUBLICATION.lock();
     try {
       final Node root = compute(glossary.get(), overlay, new HashMap<>());
+      if (root.unpinnable()) {
+        throw new PublicationRefusedException("published", describe(root, false));
+      }
       publish(root, new HashSet<>());
       sweepManifests();
       final RdfOntologyClosure closure = describe(root, false);
@@ -282,6 +293,7 @@ public final class OntologyClosures {
       List<Node> imports,
       List<String> importLines,
       List<RdfOntologyClosureProblem> problems,
+      boolean pinsAll,
       SortedMap<String, String> typeGraphs,
       SortedMap<String, String> candidateGraphs) {
 
@@ -293,6 +305,14 @@ public final class OntologyClosures {
       final List<RdfOntologyClosureProblem> all = new ArrayList<>(problems);
       imports.forEach(imported -> all.addAll(imported.allProblems()));
       return all;
+    }
+
+    /**
+     * A missing import or an import cycle: the closure digest records neither, so no manifest of
+     * this closure can be published.
+     */
+    boolean unpinnable() {
+      return !pinsAll || imports.stream().anyMatch(Node::unpinnable);
     }
   }
 
@@ -314,17 +334,17 @@ public final class OntologyClosures {
     final List<RdfOntologyClosureProblem> problems = new ArrayList<>();
     final List<Node> imports = new ArrayList<>();
     final List<String> importLines = new ArrayList<>();
+    boolean pinsAll = true;
     for (final EntityReference imported : imports(glossary)) {
-      final String importedIri = GlossaryOntologyIri.entityIri(imported.getId(), base);
       if (path.contains(imported.getId())) {
         problems.add(problem(RdfOntologyClosureProblemCode.IMPORT_CYCLE, glossary, imported));
-        importLines.add("import-cycle <" + importedIri + ">");
+        pinsAll = false;
         continue;
       }
       final Optional<Glossary> target = metadata.glossary(imported.getId());
       if (target.isEmpty()) {
         problems.add(problem(RdfOntologyClosureProblemCode.MISSING_IMPORT, glossary, imported));
-        importLines.add("import-missing <" + importedIri + ">");
+        pinsAll = false;
         continue;
       }
       final Node node = compute(target.get(), overlay, done, path);
@@ -372,6 +392,7 @@ public final class OntologyClosures {
             List.copyOf(imports),
             List.copyOf(importLines),
             List.copyOf(problems),
+            pinsAll,
             types,
             candidates);
     done.put(glossary.getId(), node);
@@ -591,8 +612,9 @@ public final class OntologyClosures {
    * The closure digest, version {@value #DIGEST_ALGORITHM}: SHA-256 over UTF-8 lines, each ending
    * in a newline: the algorithm name; {@code ontology <iri>}; {@code glossary <iri>}; {@code
    * selection APPROVED|CANDIDATE}; one {@code member <graph> <digest>} per pinned graph in graph-IRI
-   * order; then the import lines, sorted: {@code import <ontology> <closure digest>}, {@code
-   * import-missing <glossary>} or {@code import-cycle <glossary>}.
+   * order; then one {@code import <ontology> <closure digest>} per import, sorted. A missing
+   * import or an import cycle has no line: such a closure is never published (see {@link
+   * Node#unpinnable()}).
    */
   static final class ClosureDigest {
     private final MessageDigest sha256 = OntologyGraphDigest.newSha256();

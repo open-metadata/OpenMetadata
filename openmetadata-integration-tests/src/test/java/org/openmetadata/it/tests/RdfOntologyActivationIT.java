@@ -227,7 +227,8 @@ public class RdfOntologyActivationIT {
   }
 
   @Test
-  void activationIsRefusedWhileAnImportIsMissing(final TestNamespace namespace) throws Exception {
+  void activationAndCandidatesAreRefusedWhileAnImportIsMissing(final TestNamespace namespace)
+      throws Exception {
     final Glossary imported = createGlossary(namespace, "imported");
     final Glossary importer =
         namespace.trackRoot(
@@ -250,22 +251,33 @@ public class RdfOntologyActivationIT {
         .glossaries()
         .delete(imported.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
 
-    final HttpResponse<String> response =
-        HTTP.send(
-            HttpRequest.newBuilder()
-                .uri(
-                    URI.create(
-                        SdkClients.getServerUrl()
-                            + REASONING
-                            + "/closures/"
-                            + importer.getId()
-                            + "/activation"))
-                .timeout(Duration.ofSeconds(60))
-                .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-                .POST(HttpRequest.BodyPublishers.noBody())
-                .build(),
-            HttpResponse.BodyHandlers.ofString());
+    final OntologyAxiom draft =
+        SdkClients.adminClient()
+            .ontologyAxioms()
+            .create(
+                axiomRequest(
+                    importer,
+                    "importerDraft",
+                    "https://example.org/" + namespace.prefix("importer") + "/Vip",
+                    named("https://example.org/Customer")));
 
+    final HttpResponse<String> activation =
+        post(REASONING + "/closures/" + importer.getId() + "/activation");
+    assertRefusedForMissingImport(activation);
+    assertFalse(JsonUtils.readValue(activation.body(), RdfOntologyClosure.class).getActive());
+
+    final HttpResponse<String> candidate =
+        post(REASONING + "/closures/" + importer.getId() + "/candidates?entityId=" + draft.getId());
+    assertRefusedForMissingImport(candidate);
+    final RdfOntologyClosure refused =
+        JsonUtils.readValue(candidate.body(), RdfOntologyClosure.class);
+    assertFalse(refused.getPublished(), "no candidate manifest is written");
+    assertFalse(
+        ask("ASK { GRAPH <%s> { ?s ?p ?o } }".formatted(refused.getManifestGraph())),
+        candidate.body());
+  }
+
+  private static void assertRefusedForMissingImport(final HttpResponse<String> response) {
     assertEquals(409, response.statusCode(), response.body());
     final RdfOntologyClosure refused =
         JsonUtils.readValue(response.body(), RdfOntologyClosure.class);
@@ -273,7 +285,17 @@ public class RdfOntologyActivationIT {
         refused.getProblems().stream()
             .anyMatch(problem -> problem.getCode() == RdfOntologyClosureProblemCode.MISSING_IMPORT),
         response.body());
-    assertFalse(refused.getActive());
+  }
+
+  private static HttpResponse<String> post(final String path) throws Exception {
+    return HTTP.send(
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .timeout(Duration.ofSeconds(60))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
   }
 
   private static RdfOntologyClosure closure(final Glossary glossary) {

@@ -256,8 +256,10 @@ class OntologyClosuresTest {
   }
 
   @Test
-  void aMissingImportOrAnImportCycleRefusesActivation() {
+  void aMissingImportOrAnImportCycleRefusesActivationAndCandidates() {
     final Glossary retail = catalog.glossary("Retail");
+    final OntologyAxiom draft =
+        save(axiom(retail, "Vip", named(EX + "Customer"), EntityStatus.DRAFT));
     final EntityReference missing =
         new EntityReference()
             .withId(UUID.randomUUID())
@@ -265,22 +267,34 @@ class OntologyClosuresTest {
             .withFullyQualifiedName("Gone");
     retail.getOntologyConfiguration().setImports(List.of(missing));
 
-    final OntologyClosures.ActivationRefusedException refused =
+    final OntologyClosures.PublicationRefusedException refused =
         assertThrows(
-            OntologyClosures.ActivationRefusedException.class,
+            OntologyClosures.PublicationRefusedException.class,
             () -> closures.activate(retail.getId()));
 
     assertEquals(List.of(RdfOntologyClosureProblemCode.MISSING_IMPORT), codes(refused.closure()));
+    final OntologyClosures.PublicationRefusedException candidate =
+        assertThrows(
+            OntologyClosures.PublicationRefusedException.class,
+            () -> closures.candidate(retail.getId(), List.of(draft.getId())));
+    assertEquals(List.of(RdfOntologyClosureProblemCode.MISSING_IMPORT), codes(candidate.closure()));
+    assertFalse(candidate.closure().getPublished());
     assertTrue(manifestGraphs().isEmpty(), "nothing is published");
 
     final Glossary first = catalog.glossary("First");
     final Glossary second = catalog.glossary("Second", first);
     first.getOntologyConfiguration().setImports(List.of(second.getEntityReference()));
-    final OntologyClosures.ActivationRefusedException cycle =
+    final OntologyClosures.PublicationRefusedException cycle =
         assertThrows(
-            OntologyClosures.ActivationRefusedException.class,
+            OntologyClosures.PublicationRefusedException.class,
             () -> closures.activate(first.getId()));
     assertEquals(List.of(RdfOntologyClosureProblemCode.IMPORT_CYCLE), codes(cycle.closure()));
+    final OntologyAxiom secondDraft =
+        save(axiom(second, "Later", named(EX + "Thing"), EntityStatus.DRAFT));
+    assertThrows(
+        OntologyClosures.PublicationRefusedException.class,
+        () -> closures.candidate(first.getId(), List.of(secondDraft.getId())));
+    assertTrue(manifestGraphs().isEmpty(), "no candidate is published either");
   }
 
   @Test
@@ -290,9 +304,9 @@ class OntologyClosuresTest {
     catalog.saveWithoutProjecting(
         axiom(retail, "NotYetProjected", named(EX + "Party"), EntityStatus.APPROVED));
 
-    final OntologyClosures.ActivationRefusedException refused =
+    final OntologyClosures.PublicationRefusedException refused =
         assertThrows(
-            OntologyClosures.ActivationRefusedException.class,
+            OntologyClosures.PublicationRefusedException.class,
             () -> closures.activate(retail.getId()));
 
     assertEquals(
