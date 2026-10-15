@@ -740,7 +740,7 @@
       "_comment": "Metric page, custom-metric page, bulk-edit grid, and the CSV import/export machinery all funnel through this cluster. MetricBulkImportExportEdit + BulkImport + ClassificationImportExport have been ejecting PRs from the merge queue because none of them named these paths — PR CI skipped them entirely and the queue was the first place they ran. The two playwright helpers are included so a wait/selector fix in importUtils.ts also routes back to the specs that consume it.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/MetricsPage/**",
-        "openmetadata-ui/src/main/resources/ui/src/pages/AddCustomMetricPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/CustomMetricForm/**",
         "openmetadata-ui/src/main/resources/ui/src/components/Metric/**",
         "openmetadata-ui/src/main/resources/ui/src/components/BulkEditEntity/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/metricsAPI.ts",
