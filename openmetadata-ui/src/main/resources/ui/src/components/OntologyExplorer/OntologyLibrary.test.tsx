@@ -145,7 +145,9 @@ describe('OntologyLibrary', () => {
 
     await screen.findByTestId('ontology-pack-fhir');
     fireEvent.click(screen.getByTestId('ontology-library-close'));
-    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.keyDown(screen.getByTestId('ontology-library'), {
+      key: 'Escape',
+    });
 
     expect(onClose).toHaveBeenCalledTimes(2);
   });

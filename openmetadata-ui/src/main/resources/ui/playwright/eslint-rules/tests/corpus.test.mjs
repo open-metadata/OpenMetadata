@@ -67,7 +67,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // UserDetails and team-editor specs removes more, and pinning
     // customize-navigation switches to their tree rows removes four more.
     // Picking the bulk-import entity type by its option role removes one more.
-    'om-playwright/no-positional-locator': 559,
+    'om-playwright/no-positional-locator': 552,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
