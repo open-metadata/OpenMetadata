@@ -275,34 +275,56 @@ has neither graph nor record.
 | `omr:entityType` | `"ontologyAxiom"`, `"glossaryTerm"` or `"relationshipType"` |
 | `omr:lifecycleStatus` | The owner's `entityStatus`, such as `"Approved"` or `"In Review"`; absent when it has none |
 | `omr:glossary` | The owning glossary's entity IRI; axioms and terms only |
-| `omr:contentDigest` | The graph digest, `"sha256:<hex>"` |
+| `omr:contentDigest` | The graph digest, `"sha256:<hex>"`; absent when the graph is too symmetric to digest |
+| `omr:digestAlgorithm` | `"om-graph-v2"`, the algorithm of `omr:contentDigest`; absent with it |
 | `omr:tripleCount` | Triples in the graph, `xsd:integer` |
 | `omr:definesProperty` | The predicate a relationship type defines |
 | `omr:usesProperty` | Each other object property the graph declares |
 
-The **graph digest** is SHA-256 over the graph's N-Triples with blank nodes relabelled from their
-neighbourhood (`RdfBlankNodeCanonicalizer`), one triple per line, lines sorted in Java string
-order, each ending in `\n`. Two writes of the same axiom digest equally, although Jena labels
-their blank nodes differently.
+The **graph digest** (`om-graph-v2`, `OntologyGraphCanonicalForm`) is SHA-256 over the graph's
+canonical N-Triples, one triple per line, lines sorted in Java string order, each ending in
+`\n`. Nothing in it depends on blank node labels, so two writes of the same axiom, and the
+store's copy of either, digest equally:
+
+1. *Refinement.* A blank node's first colour is the SHA-256 hex of its incident triples, each
+   written `s p o` with the node itself as `_:self`, other blank nodes as `_:` and everything
+   else in N-Triples, sorted and joined by `|`. Its next colour is the SHA-256 hex of its colour,
+   `\n`, and the same text with other blank nodes written `_:<colour>`. Rounds stop at the first
+   that does not increase the number of distinct colours, keeping the colours before it.
+2. *Distinguishing.* While colours tie, take the smallest tied colour; for each node with it,
+   set its colour to SHA-256(colour + `*`), refine and repeat; keep the result whose text sorts
+   first. If no triple joins more than two blank nodes, none is inside a triple term and the joins
+   form no cycle, only the first such node is tried: the tied nodes are then interchangeable.
+3. *Text.* Each blank node is written `_:b<colour>`; a triple term as `<<( s p o )>>`.
+
+More than 1024 distinguishing steps, or 10,000,000 incident-triple visits in refinement, and
+the graph has no digest: its member record omits `omr:contentDigest` and `omr:digestAlgorithm`,
+and no closure can pin it. The OWL 2 RDF mapping only writes trees of blank nodes, which never
+reach the bounds. Shared test vectors live in
+`openmetadata-service/src/test/resources/rdf/digest-vectors` and in the store's tests.
 
 ### Closures
 
 A glossary's **closure** pins its Approved axiom and term graphs, the relationship-type graphs
 whose `omr:definesProperty` a member uses (followed through the types those types use), and the
 closure of each glossary in `ontologyConfiguration.imports`. Its **ontology IRI** is the
-glossary's `ontologyConfiguration.baseIri`, or its entity IRI, as in the export. The **closure
-digest** (`om-closure-v1`) is SHA-256 over UTF-8 lines, each ending in `\n`:
+glossary's `ontologyConfiguration.baseIri`, or its entity IRI, as in the export. Only member
+records with `omr:digestAlgorithm "om-graph-v2"` are pinned. The **closure digest**
+(`om-closure-v2`) is SHA-256 over UTF-8 lines, each ending in `\n`:
 
 ```text
-om-closure-v1
+om-closure-v2
 ontology <ontology IRI>
 glossary <glossary entity IRI>
 selection APPROVED                       (or CANDIDATE)
 member <graph IRI> sha256:<graph digest> (one per pinned graph, in graph-IRI order)
 import <imported ontology IRI> sha256:<its closure digest>   (import lines sorted)
-import-missing <glossary entity IRI>
-import-cycle <glossary entity IRI>
 ```
+
+Every line can be recomputed from a manifest and the manifests it imports. A closure with a
+missing import, an import cycle, or an Approved or used relationship-type graph without an
+`om-graph-v2` digest has nothing a manifest could record for it, so it is never published:
+activation and candidate publication both answer 409 with the problems.
 
 It changes when, and only when, a member's triples, the member set, an import's closure, the
 ontology IRI or the selection does. The **version IRI** is the ontology IRI, without a trailing
@@ -321,7 +343,7 @@ A closure's manifest is the graph `{base}graph/manifest/<hex of the closure dige
     omr:glossary <glossary entity IRI> ;
     omr:selection "APPROVED" ;                      # or "CANDIDATE"
     omr:closureDigest "sha256:..." ;
-    omr:digestAlgorithm "om-closure-v1" ;
+    omr:digestAlgorithm "om-closure-v2" ;
     omr:memberCount 2 ;
     omr:createdAt "2026-10-15T08:00:00Z"^^xsd:dateTime ;
     omr:importsManifest <imported manifest graph> ; # one per direct import
@@ -346,7 +368,7 @@ the 32 newest candidate manifests are kept.
 | `GET /v1/ontology/reasoning/status` | Included axiom and term graphs, excluded ones by reason, active closures |
 | `GET /v1/ontology/reasoning/closures/{glossaryId}` | The Approved closure as it stands; writes nothing |
 | `POST /v1/ontology/reasoning/closures/{glossaryId}/activation` | Publishes the manifests of the glossary and its imports and activates them; 409 with problems on a missing import, an import cycle, degraded projection, or Approved graphs the store does not hold yet |
-| `POST /v1/ontology/reasoning/closures/{glossaryId}/candidates?entityId=&changeSetId=` | Publishes a candidate closure with the Draft and In Review graphs of those entities, and returns the `CHECK` request for it; production is unchanged |
+| `POST /v1/ontology/reasoning/closures/{glossaryId}/candidates?entityId=&changeSetId=` | Publishes a candidate closure with the Draft and In Review graphs of those entities, and returns the `CHECK` request for it; production is unchanged. 409 with problems on a missing import, an import cycle, or a graph without a current digest |
 
 A candidate `CHECK` request names the ontology IRI, `ontologySelection: CANDIDATE`, and the
 candidate closure digest as `ontologyDigest`; the store reads the manifest named by that digest.
@@ -354,7 +376,9 @@ candidate closure digest as `ontologyDigest`; the store reads the manifest named
 ## Upgrading an existing RDF store
 
 Ontology graphs and their member records appear as each axiom, relationship type and term is
-next written; until then, activation reports incomplete projection. A `RdfIndexApp` run writes
+next written; until then, activation reports incomplete projection. Member records written
+before `om-graph-v2` have no `omr:digestAlgorithm` and are reported the same way until the
+graph is written again or `RdfIndexApp` runs. A `RdfIndexApp` run writes
 all of them; with `recreateIndex=true` it also removes the
 `om:expressions` and `om:literal` JSON earlier releases stored on axiom records. No
 database migration is needed.
