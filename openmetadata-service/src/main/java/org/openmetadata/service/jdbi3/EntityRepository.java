@@ -7880,7 +7880,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             .withFromEntity(fromEntity)
             .withToEntity(toEntity)
             .withRelationshipType(relationship);
-    RdfUpdater.addRelationship(entityRelationship);
+    RdfUpdater.addRelationship(entityRelationship, bidirectional);
 
     if (bidirectional) {
       // Also add the reverse relationship to RDF
@@ -7891,7 +7891,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               .withFromEntity(toEntity)
               .withToEntity(fromEntity)
               .withRelationshipType(relationship);
-      RdfUpdater.addRelationship(reverseRelationship);
+      RdfUpdater.addRelationship(reverseRelationship, true);
     }
     // Drop cached bundle/owners/domains/container for both sides — relationship just changed and
     // any cached EntityReference list on either side is now stale. The FQN is unknown here so

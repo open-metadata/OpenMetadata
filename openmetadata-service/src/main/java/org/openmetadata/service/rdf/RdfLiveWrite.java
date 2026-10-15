@@ -76,10 +76,20 @@ public sealed interface RdfLiveWrite {
     }
   }
 
-  record RelationshipChange(String relationshipJson, boolean remove) implements RdfLiveWrite {
+  /**
+   * @param bidirectional the relationship is stored as one row for both of its directions, smaller
+   *     id first, so this edge may be recorded by a row in either orientation
+   */
+  record RelationshipChange(String relationshipJson, boolean remove, boolean bidirectional)
+      implements RdfLiveWrite {
     public static RelationshipChange capture(
         final EntityRelationship relationship, final boolean remove) {
-      return new RelationshipChange(JsonUtils.pojoToJson(relationship), remove);
+      return capture(relationship, remove, false);
+    }
+
+    public static RelationshipChange capture(
+        final EntityRelationship relationship, final boolean remove, final boolean bidirectional) {
+      return new RelationshipChange(JsonUtils.pojoToJson(relationship), remove, bidirectional);
     }
 
     @Override
@@ -104,15 +114,32 @@ public sealed interface RdfLiveWrite {
       }
     }
 
-    private static boolean exists(final EntityRelationship relationship) {
+    private boolean exists(final EntityRelationship relationship) {
+      final UUID from = relationship.getFromId();
+      final UUID to = relationship.getToId();
+      final String fromType = relationship.getFromEntity();
+      final String toType = relationship.getToEntity();
+      final int relation = relationship.getRelationshipType().ordinal();
+      if (isStored(from, to, fromType, toType, relation)) {
+        return true;
+      }
+      // The single row may have its ids swapped, with or without its entity types.
+      return bidirectional
+          && (isStored(to, from, fromType, toType, relation)
+              || (!fromType.equals(toType)
+                  && (isStored(to, from, toType, fromType, relation)
+                      || isStored(from, to, toType, fromType, relation))));
+    }
+
+    private static boolean isStored(
+        final UUID fromId,
+        final UUID toId,
+        final String fromType,
+        final String toType,
+        final int relation) {
       return Entity.getCollectionDAO()
               .relationshipDAO()
-              .existsRelationship(
-                  relationship.getFromId(),
-                  relationship.getToId(),
-                  relationship.getFromEntity(),
-                  relationship.getToEntity(),
-                  relationship.getRelationshipType().ordinal())
+              .existsRelationship(fromId, toId, fromType, toType, relation)
           > 0;
     }
   }

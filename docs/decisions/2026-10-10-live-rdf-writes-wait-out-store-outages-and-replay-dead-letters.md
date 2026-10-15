@@ -21,8 +21,8 @@ until the next full rebuild.
   as the oldest write has failed. A write that fails while the store answers still counts.
 - Every live write is applied from the database's current state, as a replay is: an entity write
   reloads its row, and an edge change applies only if the database still agrees with it, so a write
-  delivered late cannot put back older data. Producers keep the enqueue lock that RDF freshness
-  needs.
+  delivered late cannot put back older data. A relationship stored as one row for both directions
+  agrees with both of its edges. Producers keep the enqueue lock that RDF freshness needs.
 - While the live queue is idle, up to 50 dead letters are replayed every 5 minutes once the store
   answers. Health clears only when every failure since the last repair was a replayed dead letter;
   a replay records an untracked write so reasoning results read before it are no longer current.

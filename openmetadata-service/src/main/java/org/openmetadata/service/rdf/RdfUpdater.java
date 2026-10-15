@@ -111,17 +111,25 @@ public final class RdfUpdater {
   }
 
   public static void addRelationship(final EntityRelationship relationship) {
-    submitRelationship(relationship, false);
+    addRelationship(relationship, false);
+  }
+
+  /**
+   * @param bidirectional the relationship is stored as one row for both of its directions
+   */
+  public static void addRelationship(
+      final EntityRelationship relationship, final boolean bidirectional) {
+    submitRelationship(relationship, false, bidirectional);
   }
 
   public static void removeRelationship(final EntityRelationship relationship) {
-    submitRelationship(relationship, true);
+    submitRelationship(relationship, true, false);
   }
 
   private static void submitRelationship(
-      final EntityRelationship relationship, final boolean remove) {
+      final EntityRelationship relationship, final boolean remove, final boolean bidirectional) {
     if (isEnabled() && shouldIndexRelationship(relationship)) {
-      submit(RdfLiveWrite.RelationshipChange.capture(relationship, remove));
+      submit(RdfLiveWrite.RelationshipChange.capture(relationship, remove, bidirectional));
     }
   }
 

@@ -24,10 +24,11 @@ them may run while a pooled connection is held.
   transaction on the thread's DAO handle (`CollectionDAO.withHandle`, then `inTransaction`).
 - Only the outermost boundary retries a deadlock, by replaying everything. A nested call joins the
   open transaction; a transaction a caller opened itself (a raw `inTransaction` or a `@Transaction`
-  SQL object method) propagates the deadlock to that caller.
+  SQL object method) propagates the deadlock to that caller, and the unit's effects wait for that
+  transaction: its commit publishes them, a rollback drops them.
 - `RepositorySideEffectScope` collects the effects of each attempt, clears them on rollback or
   replay, and runs them once after the final commit, each step guarded so one failure does not
-  skip the rest. Nothing it runs holds the transaction's connection.
+  skip the rest. Nothing it runs holds an open transaction.
 
 ## Consequences
 
