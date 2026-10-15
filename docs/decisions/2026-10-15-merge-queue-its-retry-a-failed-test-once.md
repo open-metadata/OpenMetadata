@@ -42,8 +42,9 @@ fixed, and until then every occurrence costs the queue an hour.
 - A flaky test no longer ejects a pull request; a deterministic failure still does. A green lane
   costs no extra time. A retried test costs its own duration again, within the lane's 65-minute
   limit.
-- Flakes stay visible: they are in the report XML and in failsafe's summary, and still need an
-  owner. The retry is a safety net, not a substitute for fixing them.
+- Flakes stay visible: each lane annotates the tests that passed only on retry, and after a green
+  merge-queue run the workflow posts them, with the PRs and the run, to #ci-cleanup. They still need
+  an owner; the retry is a safety net, not a substitute for fixing them.
 - A test that only passes on a quiet server can now merge. That is the trade-off accepted here.
 - A pull request that adds a dependency that does not exist spends two extra attempts (about a
   minute) before it fails.

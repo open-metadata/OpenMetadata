@@ -464,6 +464,29 @@ jobs:
           docker compose down --remove-orphans
           sudo rm -rf "${PWD}/docker-volume"
 
+      # Tests failsafe re-ran and passed are flaky (ADR:2026-10-15-merge-queue-its-retry-a-failed-test-once).
+      # One annotation per lane lists them; the final job posts them to #ci-cleanup.
+      - name: Annotate tests that passed only on retry
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import glob
+          import xml.etree.ElementTree as ET
+
+          flaky = set()
+          for report in glob.glob("openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml"):
+              try:
+                  cases = ET.parse(report).getroot().iter("testcase")
+              except ET.ParseError:
+                  continue
+              for case in cases:
+                  if any(child.tag in ("flakyFailure", "flakyError") for child in case):
+                      flaky.add(f"{case.get('classname', '').rsplit('.', 1)[-1]}.{case.get('name')}")
+          if flaky:
+              print("::warning title=IT passed on retry::" + "%0A".join(sorted(flaky)))
+          PY
+
       - name: Publish Test Report
         if: ${{ always() }}
         continue-on-error: true
@@ -479,6 +502,11 @@ jobs:
     name: integration-tests-mysql-elasticsearch
     needs: [changes, integration-test-build, integration-test-lanes]
     runs-on: ubuntu-latest
+    # Reads the lane jobs' annotations to report flaky ITs.
+    permissions:
+      actions: read
+      checks: read
+      contents: read
     timeout-minutes: 5
     # Skipped on PRs (see the trigger comment): a skipped required check counts as passing.
     if: ${{ always() && github.event_name != 'pull_request' }}
@@ -499,3 +527,51 @@ jobs:
             echo "Java integration jobs did not complete successfully: changes=${CHANGES_RESULT}, build=${BUILD_RESULT}, lanes=${LANES_RESULT}"
             exit 1
           fi
+
+      # success() posts once per queue run, from the attempt whose lanes all passed; failed attempts
+      # already reach the dequeue report.
+      - name: Build the merge-queue flaky IT message
+        id: queue-flaky
+        if: ${{ success() && github.event_name == 'merge_group' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -uo pipefail
+          prs=$(grep -oE 'pr-[0-9]+' <<< "$HEAD_REF" | sed 's/pr-//' | sort -u | tr '\n' ' ')
+          flaky=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
+              --jq '.jobs[] | select(.name | startswith("Integration Test Lane")) | .id' 2>/dev/null |
+            while read -r job; do
+              gh api --paginate "repos/$GITHUB_REPOSITORY/check-runs/$job/annotations" \
+                --jq '.[] | select(.title == "IT passed on retry") | .message' 2>/dev/null
+            done | sed '/^$/d' | sort -u)
+          if [[ -z "$flaky" ]]; then
+            echo "No ITs passed only on retry in this queue run."
+            exit 0
+          fi
+          # shellcheck disable=SC2016 # \(...) is jq interpolation, not shell
+          jq -n --arg channel C0AC5T013V1 --arg workflow "$WORKFLOW_NAME" --arg prs "$prs" \
+            --arg flaky "$flaky" --arg run "$RUN_URL" --arg repo "$REPO_URL" '
+            def lines($s): $s | split("\n") | map(select(length > 0));
+            (lines($flaky)) as $tests |
+            {channel: $channel, text: ([
+              ":large_yellow_circle: *\($workflow): \($tests | length) test(s) passed only on retry*" +
+                (if ($prs | length) > 0 then " for " + ([$prs | split(" ")[] | select(length > 0) | "<\($repo)/pull/\(.)|#\(.)>"] | join(", ")) else "" end)
+            ] + [$tests[:15][] | "• FLAKY `\(.)`"]
+              + (if ($tests | length) > 15 then ["…and \(($tests | length) - 15) more (see the run)"] else [] end)
+              + ["<\($run)|run>"] | join("\n"))}' > "$RUNNER_TEMP/queue-flaky.json"
+          echo "posted=true" >> "$GITHUB_OUTPUT"
+
+      - name: Post merge-queue flaky ITs to Slack (ci-cleanup)
+        if: ${{ success() && github.event_name == 'merge_group' && steps.queue-flaky.outputs.posted == 'true' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ runner.temp }}/queue-flaky.json
