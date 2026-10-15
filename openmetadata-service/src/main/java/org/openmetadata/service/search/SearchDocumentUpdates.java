@@ -87,6 +87,16 @@ public final class SearchDocumentUpdates {
     return null;
   }
 
+  /**
+   * Whether {@code update} only replaces a fenced relationship field. Its revision orders it, so
+   * the read-time guard must not veto it: concurrent membership changes can be prepared in any
+   * order, and the one carrying the newest revision has to land whatever its read time.
+   */
+  static boolean isRelationshipReplacement(final SearchDocumentUpdate update) {
+    return update.script().equals(TEST_CASE_RELATIONSHIP_REVISION.replacementScript())
+        || update.script().equals(TEST_SUITE_RELATIONSHIP_REVISION.replacementScript());
+  }
+
   public static SearchDocumentUpdate relationshipReplacement(
       EntityInterface<?> entity, Map<String, Object> document, long revision) {
     applyRelationshipRevision(entity, document, revision);
