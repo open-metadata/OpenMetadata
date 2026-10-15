@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Calendar,
   DataQuality,
   ShieldTick,
 } from '@openmetadata/ui-core-components/icons';
-import { Typography } from '@openmetadata/ui-core-components';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';

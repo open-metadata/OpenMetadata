@@ -24,11 +24,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
 import { TestCasePageTabs } from '../../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
-import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   TableStatusCounts,
   toTableCountsKey,
 } from '../../../../utils/dataQualityFilters';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import {

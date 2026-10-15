@@ -15,7 +15,6 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCase, TestCaseStatus } from '../generated/tests/testCase';
 import { getDataQualityReport, getListTestCaseBySearch } from '../rest/testAPI';
-import { getEntityFQN } from '../utils/FeedUtilsPure';
 import {
   DataQualityFilters,
   DataQualityViewer,
@@ -25,6 +24,7 @@ import {
   toTableCountsQuery,
   toTableStatusCounts,
 } from '../utils/dataQualityFilters';
+import { getEntityFQN } from '../utils/FeedUtilsPure';
 
 export const DATA_QUALITY_QUERY_KEY = ['landingPage', 'widgets', 'dataQuality'];
 const TTL_MS = 5 * 60 * 1000;
