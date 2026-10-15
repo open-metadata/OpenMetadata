@@ -6,6 +6,7 @@
 - **Guard:** `SearchVersionGuardTest`, `SearchDocumentUpdatesTest`, `SearchRepositoryBehaviorTest`
   (`createEntityIndexWritesTheDocumentGuardedByWhenItWasRead`,
   `createEntitiesIndexWritesDocumentsGuardedByWhenTheyWereRead`, the time-series write tests),
+  `SearchDocumentUpdatesTest.aRelationshipReplacementIsOrderedByItsRevisionAlone`,
   `BulkWriteOptionsTest`, `SearchIndexSettingsTest`
 - **Related:** `docs/plans/2026-10-06-database-search-indexing-design.md`,
   `docs/plans/2026-10-06-database-projection-implementation.md` (in-place reindex, step 1)
@@ -26,6 +27,11 @@ retry that waited out an outage, puts back older content and nothing corrects it
 - Creates (single and bulk), updates, soft delete and restore, time-series records and reindex
   bulk upserts are guarded (`SearchVersionGuard`, `BulkWriteOptions`, `SoftDeleteScript`). A write
   queued to run later is stamped with the time it was queued (`SearchVersionGuard.readAt`).
+- A fenced relationship replacement (a test case's `testSuites`, a logical suite's `tests`) is
+  ordered by its relationship revision alone, and is neither checked against nor stamped with
+  `sourceReadAt` (`SearchDocumentUpdates.isRelationshipReplacement`): concurrent membership changes
+  can be prepared in any order, and the one carrying the newest revision must land. The rest of such
+  an entity's document is still guarded by read time.
 - Every index built from now on declares `sourceReadAt` as a `long`
   (`SearchIndexSettings.forIndexCreation`), so its type does not depend on the first write.
   Readers that deserialize documents strictly drop it, as time-series listings do.
