@@ -217,6 +217,17 @@ def class_fqn(path: str) -> str | None:
     return None
 
 
+def class_header(text: str, name: str) -> str | None:
+    """The annotations and declaration of class `name` in a Java source, without comments."""
+    declaration = re.search(rf"\bclass\s+{re.escape(name)}\b", text)
+    if not declaration:
+        return None
+    start = 0
+    for statement in IMPORT_OR_PACKAGE.finditer(text, 0, declaration.start()):
+        start = statement.end()
+    return COMMENT.sub(" ", text[start : declaration.end()])
+
+
 def is_pattern(test: str) -> bool:
     """A glob or a path; a bare class name is one test, which the map must not list."""
     return any(char in test for char in "*?[/")
@@ -529,14 +540,9 @@ class Repo:
         prefix = self.it_root + "/"
         headers = {}
         for relative, name in self.it_classes.items():
-            text = self.it_sources.get(prefix + relative, "")
-            declaration = re.search(rf"\bclass\s+{re.escape(name)}\b", text)
-            if not declaration:
-                continue
-            start = 0
-            for statement in IMPORT_OR_PACKAGE.finditer(text, 0, declaration.start()):
-                start = statement.end()
-            headers[relative] = COMMENT.sub(" ", text[start : declaration.end()])
+            header = class_header(self.it_sources.get(prefix + relative, ""), name)
+            if header is not None:
+                headers[relative] = header
         return headers
 
     @cached_property
@@ -601,6 +607,26 @@ class Repo:
                 and UNIT_TEST_CLASS.match(simple_name(path))
             }
         return modules
+
+    def is_abstract_unit_test(self, module: str, name: str) -> bool:
+        path = self.unit_test_classes.get(module, {}).get(name)
+        header = class_header(self._read(path), name) if path else None
+        return bool(header and re.search(r"\babstract\b", header))
+
+    def unit_test_subclasses(self, module: str, base: str) -> list[str]:
+        """The unit test classes of `module` that extend `base` directly."""
+        classes = self.unit_test_classes.get(module, {})
+        subclasses = []
+        for path in self.referencing_files(base, [f"{module}/src/test/java"]):
+            name = simple_name(path)
+            extends = (
+                rf"\bclass\s+{re.escape(name)}\b[^{{]*\bextends\s+{re.escape(base)}\b"
+            )
+            if classes.get(name) == path and re.search(
+                extends, COMMENT.sub(" ", self._read(path))
+            ):
+                subclasses.append(name)
+        return sorted(subclasses)
 
     def _lane_membership(self) -> dict[str, list[str]]:
         """Class-name patterns per lane, read from the IT pom so they cannot drift from CI.
@@ -1130,7 +1156,15 @@ class Planner:
         )
 
     def _add_unit(self, plan: Plan, module: str, name: str, reason: str) -> None:
-        plan.unit_tests.setdefault(module, {}).setdefault(name, set()).add(reason)
+        if self.repo.is_abstract_unit_test(module, name):
+            # Surefire runs an abstract class's tests only inside the classes extending it, and
+            # reports them under those names; selected by its own name, it never reports.
+            for subclass in self.repo.unit_test_subclasses(module, name):
+                self._add_unit(
+                    plan, module, subclass, f"extends {name}, which {reason}"
+                )
+        else:
+            plan.unit_tests.setdefault(module, {}).setdefault(name, set()).add(reason)
 
     def _add_unit_tests_for_class(self, plan: Plan, name: str, path: str) -> bool:
         found = False
