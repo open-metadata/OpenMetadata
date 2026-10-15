@@ -278,8 +278,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     if (statuses != null) {
       searchListFilter.withMemoryStatuses(statuses);
     }
-    SearchSortFilter searchSortFilter =
-        new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null);
+    SearchSortFilter searchSortFilter = searchSort(sortBy, sortOrder);
     EntityUtil.Fields fields = getFields(fieldsParam);
     // shareConfig visibility, the conservative anchor rule and the selected statuses are enforced
     // at query time by ContextMemorySearchVisibility (see
@@ -415,6 +414,15 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
               + sortBy
               + "'. Allowed: updatedAt, appliedCount, usageCount, updatedBy.");
     };
+  }
+
+  /**
+   * Only memories a recount reached carry outcomes, so the others tie on the applied count; their
+   * recorded usage orders them as it did before outcomes existed.
+   */
+  static SearchSortFilter searchSort(String sortBy, String sortOrder) {
+    return new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null)
+        .thenBy("appliedCount".equals(sortBy) ? "usageCount" : null);
   }
 
   private static String resolveSortOrder(String sortOrder) {

@@ -15,11 +15,13 @@ package org.openmetadata.service.resources.context;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import jakarta.ws.rs.BadRequestException;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.context.MemoryOutcomes;
+import org.openmetadata.service.search.SearchSortFilter;
 
 class ContextMemoryResourceTest {
 
@@ -51,6 +53,15 @@ class ContextMemoryResourceTest {
   void aRecountInThePastOrWithinTheClockSkewIsAccepted() {
     assertDoesNotThrow(() -> ContextMemoryResource.requireRecountTime(countedAt(NOW - 1), NOW));
     assertDoesNotThrow(() -> ContextMemoryResource.requireRecountTime(countedAt(NOW + SKEW), NOW));
+  }
+
+  @Test
+  void mostUsedBreaksAppliedCountTiesByRecordedUsage() {
+    SearchSortFilter mostUsed = ContextMemoryResource.searchSort("appliedCount", "desc");
+
+    assertEquals("outcomes.appliedCount", mostUsed.getSortField());
+    assertEquals("usageCount", mostUsed.getThenSortField());
+    assertNull(ContextMemoryResource.searchSort("updatedAt", "desc").getThenSortField());
   }
 
   private static MemoryOutcomes countedAt(long countedAt) {

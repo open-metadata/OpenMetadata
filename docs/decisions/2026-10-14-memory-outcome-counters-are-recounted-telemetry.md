@@ -50,7 +50,8 @@ event is replayed, and a vote can be withdrawn or changed, which an increment ca
 - Context Center reads `outcomes.appliedCount` and `lastAppliedAt` as "Cited", and shows helpful,
   unhelpful and corrected counts. A memory with no `outcomes` yet, or outcomes no recount stamped
   with `countedAt`, still shows its legacy `usageCount`. "Most used" sorts by
-  `outcomes.appliedCount`, and a memory never counted has no such value, so it sorts last.
+  `outcomes.appliedCount`, so a memory never counted, which has no such value, sorts after the
+  counted ones; ties break on `usageCount`, so uncounted memories keep their legacy order.
 - Nothing in OpenMetadata alone records outcomes. Without a recording service, `outcomes` stays
   empty and the UI keeps showing usage.
 - Existing indexes need a reindex to type the new fields; until then dynamic mapping types the
