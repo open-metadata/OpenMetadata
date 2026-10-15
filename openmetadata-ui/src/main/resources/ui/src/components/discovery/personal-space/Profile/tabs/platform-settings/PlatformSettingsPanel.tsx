@@ -62,6 +62,8 @@ import TableSchemaSettings from './TableSchemaSettings';
 import TableSchemaSettingsForm from './TableSchemaSettingsForm';
 import ThemeSettings from './ThemeSettings';
 import ThemeSettingsForm from './ThemeSettingsForm';
+import TimeFormatSettings from './TimeFormatSettings';
+import TimeFormatSettingsForm from './TimeFormatSettingsForm';
 
 interface PlatformSettingsPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
@@ -85,7 +87,8 @@ const VIEW_PAGES: Partial<
   'learning-resources': (props) => <LearningResourcesSettings {...props} />,
   'app-mode': (props) => <AppModeSettings {...props} />,
   'table-schema': (props) => <TableSchemaSettings {...props} />,
-  glossary: () => <GlossarySettings className="tw:p-0" />,
+  'time-format': (props) => <TimeFormatSettings {...props} />,
+  glossary: () => <GlossarySettings embedded />,
   search: (props) =>
     props.itemId ? (
       <EntitySearchSettings {...props} />
@@ -111,6 +114,7 @@ const FORM_PAGES: Partial<
   'learning-resources': (props) => <LearningResourceSettingsForm {...props} />,
   'app-mode': (props) => <AppModeSettingsForm {...props} />,
   'table-schema': (props) => <TableSchemaSettingsForm {...props} />,
+  'time-format': (props) => <TimeFormatSettingsForm {...props} />,
 };
 
 const isFormView = (view: PlatformSettingsView) =>

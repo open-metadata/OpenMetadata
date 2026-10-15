@@ -171,6 +171,8 @@ export { Dataflow03 } from './Dataflow03';
 export { Dataflow04 } from './Dataflow04';
 export { DateTimeType } from './DateTimeType';
 export { DateType } from './DateType';
+export { DefaultAppMode } from './DefaultAppMode';
+export { DefaultTime } from './DefaultTime';
 export { Deploy } from './Deploy';
 export { Docs } from './Docs';
 export { Documents } from './Documents';

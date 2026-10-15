@@ -20,6 +20,7 @@ import { MOCK_GLOSSARY } from '../../../mocks/Glossary.mock';
 import {
   getGlossariesByName,
   getGlossariesList,
+  getGlossaryTermByFQN,
   patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
@@ -134,6 +135,11 @@ jest.mock('../../../components/Glossary/GlossaryV1.component', () => {
     </div>
   ));
 });
+
+jest.mock(
+  '../../../components/Suggestions/SuggestionsProvider/SuggestionsProvider',
+  () => jest.fn(({ children }) => children)
+);
 
 jest.mock('../GlossaryLeftPanel/GlossaryLeftPanel.component', () => {
   return jest
@@ -476,5 +482,37 @@ describe('GlossaryPage nonexistent glossary FQN', () => {
     expect(screen.queryByText(/Glossary.component/i)).not.toBeInTheDocument();
     expect(mockSetActiveGlossary).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+});
+
+describe('GlossaryPage term view refetch', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useFqn as jest.Mock).mockReturnValue({ fqn: 'Business glossary.Term' });
+  });
+
+  it('keeps the term mounted while its details refetch in the background', async () => {
+    const { queryClient } = renderWithQueryClient(
+      <GlossaryPage {...mockProps} />
+    );
+
+    expect(await screen.findByText(/Glossary.component/i)).toBeInTheDocument();
+
+    let resolveRefetch: ((value: unknown) => void) | undefined;
+    (getGlossaryTermByFQN as jest.Mock).mockImplementationOnce(
+      () => new Promise((resolve) => (resolveRefetch = resolve))
+    );
+
+    await act(async () => {
+      queryClient.invalidateQueries({ queryKey: ['glossaryTerm'] });
+      // React Query batches observer notifications on a (fake) timer.
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(getGlossaryTermByFQN).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(/Glossary.component/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+
+    await act(async () => resolveRefetch?.({ data: MOCK_GLOSSARY }));
   });
 });

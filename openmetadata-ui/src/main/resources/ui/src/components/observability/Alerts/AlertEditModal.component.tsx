@@ -11,13 +11,24 @@
  *  limitations under the License.
  */
 
+import {
+  Box,
+  Button,
+  FeaturedIcon,
+  SlideoutMenu,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AiFormModal } from '../../../components/common/atoms/drawer/AiFormModal';
+import { ShowHintToggle } from '../../../components/common/atoms/drawer/ShowHintToggle';
 import Loader from '../../../components/common/Loader/Loader';
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
+import {
+  FORM_DRAWER_WIDTH_WITHOUT_HINT,
+  FORM_DRAWER_WIDTH_WITH_HINT,
+} from '../../../constants/common/formHint.constants';
 import {
   AlertType,
   ProviderType,
@@ -36,7 +47,7 @@ import {
 import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
 
 interface AlertEditModalProps {
-  /** Which alerts this modal edits; defaults to Observability. */
+  /** Which alerts this drawer edits; defaults to Observability. */
   kind?: AlertKind;
   fqn?: string;
   isOpen: boolean;
@@ -45,7 +56,7 @@ interface AlertEditModalProps {
   onSaved: (fqn?: string) => Promise<void> | void;
 }
 
-/** Converts fetched alert details into the editable AI modal form shape. */
+/** Converts fetched alert details into the editable AI form shape. */
 const getInitialValues = (
   alertType: AlertType,
   alert?: ModifiedEventSubscription
@@ -61,7 +72,7 @@ const getInitialValues = (
   timeout: alert?.timeout ?? ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
 });
 
-/** Builds the blank create-alert payload used by the add alert modal. */
+/** Builds the blank create-alert payload used by the add alert drawer. */
 const getEmptyInitialValues = (
   alertType: AlertType
 ): ModifiedCreateEventSubscription => ({
@@ -79,7 +90,7 @@ const getEmptyInitialValues = (
   timeout: ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
 });
 
-/** Renders the shared add/edit alert modal using OSS alert form hooks and AI fields. */
+/** Renders the shared add/edit alert drawer using OSS alert form hooks and AI fields. */
 function AlertEditModal({
   kind = OBSERVABILITY_ALERT_KIND,
   fqn,
@@ -114,7 +125,7 @@ function AlertEditModal({
     alertType,
     fqn,
     onCancel: onClose,
-    // `input` is left out, as before: this modal does not yet ask the server to warn about
+    // `input` is left out, as before: this drawer does not yet ask the server to warn about
     // sources the chosen filters and triggers never match.
     sources: formData.resources,
   });
@@ -135,8 +146,8 @@ function AlertEditModal({
     ? t('label.edit-entity', { entity: t('label.alert') })
     : t('label.add-entity', { entity: t('label.alert') });
 
-  // Block dismissal while a save is in flight. AiFormModal is a controlled
-  // modal (open is driven by isOpen), so a no-op close keeps it open.
+  // Block dismissal while a save is in flight. The drawer is controlled
+  // (open is driven by isOpen), so a no-op close keeps it open.
   const handleClose = () => {
     if (!saving) {
       onClose();
@@ -157,50 +168,103 @@ function AlertEditModal({
   );
 
   return (
-    <AiFormModal
-      cancelTestId="cancel-button"
-      footerActions={extraFooterButtons}
-      hintOpen={showHint}
-      icon={AlertTriangle}
-      isSubmitDisabled={saving || isLoading}
-      isSubmitting={saving}
-      open={isOpen}
-      submitFormId={ALERT_AI_FORM_MODAL_ID}
-      submitLabel={t('label.save')}
-      submitTestId="save-button"
-      subtitle={t('message.alerts-description')}
-      title={title}
-      onClose={handleClose}
-      onHintToggle={setShowHint}>
-      {isLoading || (isEditMode && isUndefined(alert)) ? (
-        <div className="tw:flex tw:min-h-[360px] tw:flex-1 tw:items-center tw:justify-center">
-          <Loader />
-        </div>
-      ) : (
-        <AlertAiForm
-          alert={alert}
-          containerEntities={selection.support.containerEntities}
-          filterResources={filterResources}
-          formId={ALERT_AI_FORM_MODAL_ID}
-          inlineAlert={inlineAlertDetails}
-          mode={mode}
-          recipientCategories={selection.support.recipientCategories}
-          shouldShowActionsSection={
-            kind.hasTriggers && shouldShowActionsSection
-          }
-          shouldShowFiltersSection={shouldShowFiltersSection}
-          showHint={showHint}
-          supportedFilters={selection.support.supportedFilters}
-          supportedTriggers={selection.support.supportedTriggers}
-          templateResourcePermission={templateResourcePermission}
-          templates={templates}
-          templatesLoading={loadingState.templates}
-          value={formData}
-          onChange={setFormData}
-          onSubmit={handleSave}
-        />
-      )}
-    </AiFormModal>
+    <SlideoutMenu
+      isDismissable
+      aria-label={title}
+      // The width follows the Form Hint column, which collapses over 240ms, so
+      // the drawer animates with it. Not while sliding in or out: `duration-*`
+      // also sets the slide animation's duration.
+      className={({ isEntering, isExiting }) =>
+        isEntering || isExiting
+          ? ''
+          : 'tw:transition-[max-width] tw:duration-[240ms] tw:ease-in-out'
+      }
+      dialogClassName="tw:gap-0"
+      isOpen={isOpen}
+      width={
+        showHint ? FORM_DRAWER_WIDTH_WITH_HINT : FORM_DRAWER_WIDTH_WITHOUT_HINT
+      }
+      onOpenChange={(open) => !open && handleClose()}>
+      <SlideoutMenu.Header
+        className="tw:border-b tw:border-secondary tw:pb-4"
+        onClose={handleClose}>
+        {/* pr-10 keeps the Show Hint toggle clear of the header's close button. */}
+        <Box align="center" className="tw:pr-10" gap={3} justify="between">
+          <Box align="center" className="tw:min-w-0" gap={3}>
+            <FeaturedIcon
+              color="gray"
+              icon={AlertTriangle}
+              radius="md"
+              shape="square"
+              size="md"
+              theme="light"
+            />
+            <Box direction="col">
+              <Typography size="text-md" weight="medium">
+                {title}
+              </Typography>
+              <Typography className="tw:text-tertiary" size="text-sm">
+                {t('message.alerts-description')}
+              </Typography>
+            </Box>
+          </Box>
+          <ShowHintToggle isSelected={showHint} onChange={setShowHint} />
+        </Box>
+      </SlideoutMenu.Header>
+      {/* The form and the Form Hint column each scroll on their own and run to
+          the drawer's edges, so the content row carries no padding. */}
+      <SlideoutMenu.Content className="tw:flex-row tw:gap-0 tw:px-0 tw:md:px-0">
+        {isLoading || (isEditMode && isUndefined(alert)) ? (
+          <div className="tw:flex tw:flex-1 tw:items-center tw:justify-center">
+            <Loader />
+          </div>
+        ) : (
+          <AlertAiForm
+            alert={alert}
+            containerEntities={selection.support.containerEntities}
+            filterResources={filterResources}
+            formId={ALERT_AI_FORM_MODAL_ID}
+            inlineAlert={inlineAlertDetails}
+            mode={mode}
+            recipientCategories={selection.support.recipientCategories}
+            shouldShowActionsSection={
+              kind.hasTriggers && shouldShowActionsSection
+            }
+            shouldShowFiltersSection={shouldShowFiltersSection}
+            showHint={showHint}
+            supportedFilters={selection.support.supportedFilters}
+            supportedTriggers={selection.support.supportedTriggers}
+            templateResourcePermission={templateResourcePermission}
+            templates={templates}
+            templatesLoading={loadingState.templates}
+            value={formData}
+            onChange={setFormData}
+            onSubmit={handleSave}
+          />
+        )}
+      </SlideoutMenu.Content>
+      <SlideoutMenu.Footer>
+        <Box gap={3} justify="end">
+          <Button
+            color="secondary"
+            data-testid="cancel-button"
+            onClick={handleClose}>
+            {t('label.cancel')}
+          </Button>
+          {extraFooterButtons}
+          {/* The form lives in the drawer body; `form` submits it natively. */}
+          <Button
+            color="primary"
+            data-testid="save-button"
+            form={ALERT_AI_FORM_MODAL_ID}
+            isDisabled={saving || isLoading}
+            isLoading={saving}
+            type="submit">
+            {t('label.save')}
+          </Button>
+        </Box>
+      </SlideoutMenu.Footer>
+    </SlideoutMenu>
   );
 }
 

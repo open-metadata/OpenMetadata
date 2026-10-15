@@ -78,6 +78,7 @@ import { OntologyNodeRelationsContent } from './OntologyNodeRelationsContent';
 import { OntologyRelationDetailsPanel } from './OntologyRelationDetailsPanel';
 import {
   buildOntologyTreeGroups,
+  buildOntologyTreeMetrics,
   getOntologyHealthSummary,
   resolveOntologyTermLabel,
 } from './OntologyStudio.utils';
@@ -415,7 +416,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     return {
       showConceptInspector:
         scope === 'global' &&
-        surface === 'graph' &&
+        surface !== 'term' &&
         isTermConcept &&
         !selectedEdge,
       showEntityPanel: Boolean(
@@ -648,6 +649,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         relationTypes
       ),
     [combinedGraphData, filters, glossaries, relationTypes]
+  );
+  const treeMetrics = useMemo(
+    () => buildOntologyTreeMetrics(combinedGraphData, filters),
+    [combinedGraphData, filters]
   );
 
   useEffect(() => {
@@ -1407,6 +1412,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     );
   };
 
+  const handleConnectTerm = (node: OntologyNode) => {
+    setSelectedNode(node);
+    onRequestEdit?.();
+  };
+
   const renderHealthPanel = () => {
     if (!showHealth) {
       return null;
@@ -1418,15 +1428,13 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         hidden={
           showConceptInspector ||
           Boolean(selectedEdge) ||
-          explorationMode === 'data'
+          explorationMode === 'data' ||
+          surface === 'tree'
         }>
         <OntologyHealthPanel
           health={healthSummary}
           isolatedTermCount={isolatedTermCount}
-          onConnect={(node) => {
-            setSelectedNode(node);
-            onRequestEdit?.();
-          }}
+          onConnect={handleConnectTerm}
         />
       </div>
     );
@@ -1441,7 +1449,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       return (
         <OntologyTreeView
           groups={treeGroups}
-          selectedNodeId={selectedNode?.id}
+          metrics={treeMetrics}
+          onConnect={handleConnectTerm}
           onSelect={setSelectedNode}
         />
       );

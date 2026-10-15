@@ -752,6 +752,7 @@
       "tests": [
         "*Workflow*IT",
         "*Approval*IT",
+        "ChangeRequest*IT",
         "*IntakeForm*IT",
         "*DataAccessRequest*IT",
         "*Incident*IT",
