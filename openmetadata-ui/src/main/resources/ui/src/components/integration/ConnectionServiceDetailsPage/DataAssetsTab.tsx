@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
@@ -30,10 +31,15 @@ import { ServicesType } from '../../../interface/service.interface';
 import ServiceMainTabContent from '../../../pages/ServiceDetailsPage/ServiceMainTabContent';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
+import DataProductsSection from '../../common/DataProductsSection/DataProductsSection';
 import Description from '../../common/EntityDescription/Description';
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
 import TagsSectionV1 from '../../common/TagsSection/TagsSection';
 import './data-assets-tab.less';
+
+const METADATA_DETAILS_KEY = 'metadata-details';
+// Opens on the service's description, terms, tags and data products rather than behind a click.
+const DEFAULT_EXPANDED_SECTIONS = [METADATA_DETAILS_KEY];
 
 interface DataAssetsTabProps {
   serviceCategory: ServiceCategory;
@@ -51,6 +57,8 @@ interface DataAssetsTabProps {
   pagingInfo: UsePagingInterface;
   setIsServiceLoading: Dispatch<SetStateAction<boolean>>;
   onDataProductUpdate: (dataProducts: DataProduct[]) => Promise<void>;
+  /** DataProductsSection saves the service itself; this keeps the caller's copy in step. */
+  onDataProductsChange: (dataProducts: EntityReference[]) => void;
 }
 
 const DataAssetsTab = ({
@@ -60,6 +68,7 @@ const DataAssetsTab = ({
   onDescriptionUpdate,
   saveUpdatedServiceData,
   onDataProductUpdate,
+  onDataProductsChange,
   ...rest
 }: DataAssetsTabProps) => {
   const { t } = useTranslation();
@@ -69,9 +78,18 @@ const DataAssetsTab = ({
     [serviceCategory]
   );
 
-  const allTags = serviceDetails?.tags ?? [];
+  const allTags = useMemo(
+    () => serviceDetails?.tags ?? [],
+    [serviceDetails?.tags]
+  );
+  // ServicesType doesn't declare the governance fields, though the service is fetched with them.
+  const { domains, dataProducts } = serviceDetails as unknown as {
+    domains?: EntityReference[];
+    dataProducts?: EntityReference[];
+  };
 
   const {
+    canEditAll: editDataProductsPermission,
     canEditTags: editTagsPermission,
     canEditGlossaryTerms: editGlossaryTermsPermission,
     canEditDescription: editDescriptionPermission,
@@ -109,8 +127,8 @@ const DataAssetsTab = ({
 
   return (
     <div className="data-assets-tab tw:flex tw:flex-col tw:gap-4">
-      <Accordion>
-        <AccordionItem id="metadata-details">
+      <Accordion defaultExpandedKeys={DEFAULT_EXPANDED_SECTIONS}>
+        <AccordionItem id={METADATA_DETAILS_KEY}>
           <AccordionHeader>{t('label.metadata-detail-plural')}</AccordionHeader>
           <AccordionPanel className="tw:!overflow-visible tw:!text-inherit">
             <div className="tw:flex tw:flex-col tw:gap-4">
@@ -123,6 +141,22 @@ const DataAssetsTab = ({
                 showCommentsIcon={false}
                 onDescriptionUpdate={onDescriptionUpdate}
               />
+              {/* Classic shows these in the right panel, which this tab hides. */}
+              <div data-testid="service-data-products">
+                <DataProductsSection
+                  activeDomains={domains}
+                  dataProducts={dataProducts}
+                  entityId={serviceDetails.id}
+                  entityType={entityType}
+                  hasPermission={editDataProductsPermission}
+                  // The section keeps what it shows in its own state; remount it when the
+                  // service's data products change underneath it, as the summary panel does.
+                  key={`data-products-${serviceDetails.id}-${
+                    dataProducts?.length ?? 0
+                  }`}
+                  onDataProductsUpdate={onDataProductsChange}
+                />
+              </div>
               <div className="glossary-terms-section">
                 <GlossaryTermsSection
                   entityId={serviceDetails.id}
@@ -151,6 +185,7 @@ const DataAssetsTab = ({
           serviceDetails={serviceDetails}
           serviceName={serviceDetails.name ?? ''}
           servicePermission={servicePermission}
+          wrapInCard={false}
           onDataProductUpdate={onDataProductUpdate}
           onDescriptionUpdate={onDescriptionUpdate}
         />

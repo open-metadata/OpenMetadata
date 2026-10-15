@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Alert,
   Divider,
   Input as UTInput,
   Select as UTSelect,
@@ -19,15 +20,7 @@ import {
   ToggleProps,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Alert,
-  Checkbox,
-  Form,
-  FormItemProps,
-  Input,
-  InputNumber,
-  Select,
-} from 'antd';
+import { Form, FormItemProps, Input, Select } from 'antd';
 import { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -99,11 +92,7 @@ const FIELD_ELEMENT_RENDERERS: Partial<
       />
     ),
   }),
-  [FieldTypes.NUMBER]: ({ props, id, placeholder }) => ({
-    element: (
-      <InputNumber id={id} placeholder={placeholder} size="small" {...props} />
-    ),
-  }),
+
   [FieldTypes.FILTER_PATTERN]: ({ props }) => ({
     element: <FilterPattern {...(props as unknown as FilterPatternProps)} />,
   }),
@@ -118,10 +107,7 @@ const FIELD_ELEMENT_RENDERERS: Partial<
       formPropsPatch: { valuePropName: 'isSelected' },
     };
   },
-  [FieldTypes.CHECK_BOX]: ({ props, id }) => ({
-    element: <Checkbox {...props} id={id} />,
-    formPropsPatch: { valuePropName: 'checked' },
-  }),
+
   [FieldTypes.SELECT]: ({ props, id }) => ({
     element: <Select {...props} id={id} />,
   }),
@@ -408,8 +394,8 @@ export const getField = (field: FieldProp) => {
           showIcon
           className="m-b-lg alert-icon"
           data-testid="form-item-alert"
-          message={helperText}
-          type="warning"
+          title={helperText}
+          variant="warning"
         />
       )}
 
