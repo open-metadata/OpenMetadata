@@ -14,6 +14,8 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { NavItemBase, type NavItemSize } from './nav-item';
 
+const Icon = () => <svg data-testid="nav-icon" />;
+
 describe('NavItemBase', () => {
   it.each<[NavItemSize, string]>([
     ['sm', 'tw:pl-9'],
@@ -30,4 +32,41 @@ describe('NavItemBase', () => {
       expect(screen.getByRole('link', { name: 'Child' })).toHaveClass(indent);
     }
   );
+
+  it.each<[NavItemSize, number]>([
+    ['md', 0],
+    ['lg', 1],
+  ])('shows a %s collapsible child icon %i time(s)', (size, count) => {
+    render(
+      <NavItemBase
+        href="/child"
+        icon={Icon}
+        size={size}
+        type="collapsible-child">
+        Child
+      </NavItemBase>
+    );
+
+    expect(screen.queryAllByTestId('nav-icon')).toHaveLength(count);
+  });
+
+  it('fills the current item with the brand colour in the solid variant', () => {
+    render(
+      <>
+        <NavItemBase current href="/a" type="link" variant="solid">
+          Current
+        </NavItemBase>
+        <NavItemBase current href="/b" type="link">
+          Default
+        </NavItemBase>
+      </>
+    );
+
+    expect(screen.getByRole('link', { name: 'Current' })).toHaveClass(
+      'tw:bg-brand-solid'
+    );
+    expect(screen.getByRole('link', { name: 'Default' })).toHaveClass(
+      'tw:bg-brand-primary_alt'
+    );
+  });
 });

@@ -105,7 +105,14 @@ const LeftSidebar = () => {
   };
 
   const renderLeaf = (item: SidebarEntry, parentKey?: string) => {
-    if (!item.redirect_url) {
+    const handleSelect = () => {
+      navigateToItem(item, parentKey);
+      if (item.key === SidebarItem.LOGOUT) {
+        handleLogoutClick();
+      }
+    };
+
+    if (isSidebarCollapsed && !item.redirect_url) {
       return (
         <Button
           aria-label={t(item.title)}
@@ -113,14 +120,8 @@ const LeftSidebar = () => {
           data-testid={item.dataTestId}
           iconLeading={item.icon}
           size="md"
-          onPress={() => {
-            navigateToItem(item, parentKey);
-            if (item.key === SidebarItem.LOGOUT) {
-              handleLogoutClick();
-            }
-          }}>
-          {!isSidebarCollapsed && t(item.title)}
-        </Button>
+          onPress={handleSelect}
+        />
       );
     }
 
@@ -153,10 +154,11 @@ const LeftSidebar = () => {
         dataTestId={item.dataTestId}
         href={item.redirect_url}
         icon={item.icon}
-        size="sm"
+        size="lg"
         truncate={false}
         type={parentKey ? 'collapsible-child' : 'link'}
-        onClick={() => navigateToItem(item, parentKey)}>
+        variant="solid"
+        onClick={handleSelect}>
         {t(item.title)}
       </NavItemBase>
     );
@@ -234,6 +236,7 @@ const LeftSidebar = () => {
 
     return (
       <details
+        className="tw:rounded-xl tw:open:border tw:open:border-t-0 tw:open:border-brand-subtle"
         open={openKeys.includes(item.key)}
         onToggle={(event) => toggleGroup(item.key, event.currentTarget.open)}>
         <NavItemBase
@@ -241,17 +244,15 @@ const LeftSidebar = () => {
             selectedKeys.includes(child.key)
           )}
           icon={item.icon}
-          size="sm"
+          size="lg"
           truncate={false}
-          type="collapsible">
+          type="collapsible"
+          variant="solid">
           <span data-testid={item.dataTestId}>{t(item.title)}</span>
         </NavItemBase>
         <ul className="tw:m-0 tw:list-none tw:p-0">
           {item.children?.map((child) => (
-            <li
-              className="tw:py-1"
-              data-testid={`side-bar-${child.dataTestId}`}
-              key={child.key}>
+            <li data-testid={`side-bar-${child.dataTestId}`} key={child.key}>
               {renderLeaf(child, item.key)}
             </li>
           ))}
@@ -285,12 +286,9 @@ const LeftSidebar = () => {
       <div className="left-sidebar-layout">
         <Box className="menu-container" direction="col">
           <nav aria-label={t('label.navigation')} className="top-menu">
-            <ul className="left-sidebar-menu tw:m-0 tw:list-none tw:px-3 tw:py-0">
+            <ul className="left-sidebar-menu tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:py-0 tw:ps-4 tw:pe-0">
               {sideBarItems.map((item) => (
-                <li
-                  className="tw:py-1.5"
-                  data-testid={`side-bar-${item.dataTestId}`}
-                  key={item.key}>
+                <li data-testid={`side-bar-${item.dataTestId}`} key={item.key}>
                   {item.children?.length ? renderGroup(item) : renderLeaf(item)}
                 </li>
               ))}
@@ -298,13 +296,11 @@ const LeftSidebar = () => {
           </nav>
           <nav
             aria-label={t('label.setting-plural')}
-            className="bottom-menu tw:px-3">
+            className="bottom-menu tw:ps-4">
             <Divider className="tw:my-2" />
-            <ul className="tw:m-0 tw:list-none tw:p-0">
+            <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
               {[SETTING_ITEM, LOGOUT_ITEM].map((item) => (
-                <li className="tw:py-1" key={item.key}>
-                  {renderLeaf(item)}
-                </li>
+                <li key={item.key}>{renderLeaf(item)}</li>
               ))}
             </ul>
           </nav>
