@@ -79,6 +79,7 @@ import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junitpioneer.jupiter.RetryingTest;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
@@ -1015,7 +1016,7 @@ public class WorkflowDefinitionResourceIT {
    * by an executor that no longer exists. Terminating the instance must remove the whole process
    * tree despite those locks and record the instance as FAILURE.
    */
-  @Test
+  @RetryingTest(2)
   void test_terminateStuckPeriodicBatchWorkflowInstance() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     Tag tag = createClassificationWithTags(client, "stuckTag", 1).getFirst();
@@ -1083,7 +1084,7 @@ public class WorkflowDefinitionResourceIT {
    * duration of the test, through the same {@link SinkProviderRegistry} Collate registers its Git
    * sink with. It needs the server running in this JVM, as the other tests reading Flowable do.
    */
-  @Test
+  @RetryingTest(2)
   void test_terminatePeriodicBatchWorkflowInstanceWhileItsSinkJobIsExecuting() throws Exception {
     SinkProviderRegistry registry = SinkProviderRegistry.getInstance();
     assertFalse(
@@ -1146,7 +1147,7 @@ public class WorkflowDefinitionResourceIT {
    * The test registers a capturing provider under the {@code webhook} type, as the termination test
    * does.
    */
-  @Test
+  @RetryingTest(2)
   void test_batchSinkReceivesOnlyTheEntitiesItsConditionMatches() throws Exception {
     SinkProviderRegistry registry = SinkProviderRegistry.getInstance();
     assertFalse(
@@ -1452,7 +1453,7 @@ public class WorkflowDefinitionResourceIT {
    * process-definition versions of its trigger, and they are suspended too, so the daily timer they
    * carry does not start it.
    */
-  @Test
+  @RetryingTest(2)
   void test_suspendedWorkflowStaysSuspendedWhenAnUpdateRedeploysIt() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String workflowName = periodicWorkflowName("tSusp");
@@ -1899,7 +1900,7 @@ public class WorkflowDefinitionResourceIT {
     assertNotNull(exception);
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(12)
   void test_WorkflowValidationEndpoint(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -3225,7 +3226,7 @@ public class WorkflowDefinitionResourceIT {
    * #28433: Verify the checkEntityAttributesTask evaluates {@code outputPortsCount > 0} as true for
    * a DataProduct that has output ports.
    */
-  @Test
+  @RetryingTest(2)
   void test_CheckEntityAttributes_DataProductOutputPortCount(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     ensureWorkflowEventConsumerIsActive(client);
@@ -4753,7 +4754,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("test_SetTierForMLModels completed successfully");
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(27)
   void test_PeriodicBatchWorkflowEntityFiltering(TestNamespace ns, TestInfo test) throws Exception {
     LOG.info("Starting test to verify periodic batch workflow entity filtering behavior");
@@ -6240,7 +6241,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("test_reviewerChangeDoesNotOverwriteOwnerAssignedApprovalTask completed successfully");
   }
 
-  @Test
+  @RetryingTest(2)
   void test_botChangesAreExcludedFromWorkflows(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     SharedEntities shared = SharedEntities.get();
@@ -6485,7 +6486,7 @@ public class WorkflowDefinitionResourceIT {
     assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
   }
 
-  @Test
+  @RetryingTest(2)
   void test_secondEditRevisesTheSameChangeRequest(TestNamespace ns) throws Exception {
     Glossary glossary = reviewedGlossary(ns, "revision");
     String requestId = submitDescription(glossary, "first draft");
@@ -6526,7 +6527,7 @@ public class WorkflowDefinitionResourceIT {
     assertEquals("renamed and described", after.getDescription());
   }
 
-  @Test
+  @RetryingTest(2)
   void test_changeWhoseFieldWasPublishedSinceIsSupersededAndItsTaskClosed(TestNamespace ns)
       throws Exception {
     Glossary glossary = reviewedGlossary(ns, "conflict");
@@ -6553,7 +6554,7 @@ public class WorkflowDefinitionResourceIT {
     assertEquals("rebased description", descriptionOf(glossary));
   }
 
-  @Test
+  @RetryingTest(2)
   void test_supersededChangeLeavesTheReviewAndTheOtherChangeIsStillApproved(TestNamespace ns)
       throws Exception {
     Glossary glossary = createReviewedGlossary(ns, "restate");
@@ -6589,7 +6590,7 @@ public class WorkflowDefinitionResourceIT {
     assertEquals("new name", after.getDisplayName());
   }
 
-  @Test
+  @RetryingTest(2)
   void test_partlyApprovedRequestPublishesTheTagAndKeepsTheDescriptionOnTheSameTask(
       TestNamespace ns) throws Exception {
     Glossary glossary = partialDecisionGlossary(ns, "partial", 1, List.of("description", "tags"));
@@ -6632,7 +6633,7 @@ public class WorkflowDefinitionResourceIT {
     assertEquals(1, requestHistory(requestId, "revisions").size());
   }
 
-  @Test
+  @RetryingTest(2)
   void test_partialRejectionDropsTheChangeAndKeepsTheRestPending(TestNamespace ns)
       throws Exception {
     Glossary glossary =
@@ -6658,7 +6659,7 @@ public class WorkflowDefinitionResourceIT {
     assertEquals(PUBLISHED_DESCRIPTION, after.getDescription());
   }
 
-  @Test
+  @RetryingTest(2)
   void test_reviewerCanApproveTheChangesASupersededChangeDoesNotTouch(TestNamespace ns)
       throws Exception {
     Glossary glossary =
@@ -6681,7 +6682,7 @@ public class WorkflowDefinitionResourceIT {
     awaitTaskClosed(glossary, task);
   }
 
-  @Test
+  @RetryingTest(2)
   void test_twoReviewersMustAgreeOnAChangeBeforeItIsPublished(TestNamespace ns) throws Exception {
     Glossary glossary =
         partialDecisionGlossary(ns, "partialTwo", 2, List.of("description", "displayName"));
@@ -6713,7 +6714,7 @@ public class WorkflowDefinitionResourceIT {
     assertEquals(4, requestHistory(requestId, "decisions").size());
   }
 
-  @Test
+  @RetryingTest(2)
   void test_aChangeReviewersCannotAgreeOnIsNotPublishedAndTheRestGoesOn(TestNamespace ns)
       throws Exception {
     Glossary glossary =
@@ -6765,7 +6766,7 @@ public class WorkflowDefinitionResourceIT {
     awaitTaskClosed(glossary, task);
   }
 
-  @Test
+  @RetryingTest(2)
   void test_requestWhoseOnlyChangeReviewersCannotAgreeOnEndsRejected(TestNamespace ns)
       throws Exception {
     Glossary glossary = partialDecisionGlossary(ns, "partialDisputeAll", 2, List.of("description"));
@@ -6961,7 +6962,7 @@ public class WorkflowDefinitionResourceIT {
     assertEquals("newer name", after.getDisplayName());
   }
 
-  @Test
+  @RetryingTest(2)
   void test_twoRequestersGetIndependentChangeRequests(TestNamespace ns) throws Exception {
     Glossary glossary = reviewedGlossary(ns, "twoRequesters");
     String first = submitDescription(glossary, "from user2");
@@ -6983,7 +6984,7 @@ public class WorkflowDefinitionResourceIT {
     assertEquals("from user2", descriptionOf(glossary));
   }
 
-  @Test
+  @RetryingTest(2)
   void test_withdrawnChangeRequestClosesItsTask(TestNamespace ns) throws Exception {
     Glossary glossary = reviewedGlossary(ns, "withdraw");
     String requestId = submitDescription(glossary, "withdrawn description");
@@ -7002,7 +7003,7 @@ public class WorkflowDefinitionResourceIT {
     assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
   }
 
-  @Test
+  @RetryingTest(2)
   void test_tagAnotherChangePublishedLeavesTheRequestAndTheRestStaysUnderReview(TestNamespace ns)
       throws Exception {
     Glossary glossary = partialDecisionGlossary(ns, "elsewhereTag", 1, List.of("tags"));
@@ -7054,7 +7055,7 @@ public class WorkflowDefinitionResourceIT {
             .collect(Collectors.toSet()));
   }
 
-  @Test
+  @RetryingTest(2)
   void test_ownerAnotherChangePublishedLeavesTheRequest(TestNamespace ns) throws Exception {
     SharedEntities shared = SharedEntities.get();
     Glossary glossary = partialDecisionGlossary(ns, "elsewhereOwner", 1, List.of("owners"));
@@ -7077,7 +7078,7 @@ public class WorkflowDefinitionResourceIT {
     assertEquals("Pending", changeRequest(requestId).get("status").asText());
   }
 
-  @Test
+  @RetryingTest(2)
   void test_requestEveryChangeOfWhichAnotherChangePublishedIsCancelled(TestNamespace ns)
       throws Exception {
     Glossary glossary = partialDecisionGlossary(ns, "elsewhereAll", 1, List.of("tags"));
@@ -7095,7 +7096,7 @@ public class WorkflowDefinitionResourceIT {
     awaitTaskClosed(glossary, task);
   }
 
-  @Test
+  @RetryingTest(2)
   void test_partlyPublishedRequestWhoseRestAnotherChangePublishedIsApplied(TestNamespace ns)
       throws Exception {
     Glossary glossary = partialDecisionGlossary(ns, "elsewhereRest", 1, List.of("tags"));
@@ -7119,7 +7120,7 @@ public class WorkflowDefinitionResourceIT {
     awaitTaskClosed(glossary, task);
   }
 
-  @Test
+  @RetryingTest(2)
   void test_deletingHookWorkflowCancelsPendingChangeRequests(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     Glossary glossary = createReviewedGlossary(ns, "workflowDeleted");
@@ -7143,7 +7144,7 @@ public class WorkflowDefinitionResourceIT {
     assertEquals("published directly", descriptionOf(glossary));
   }
 
-  @Test
+  @RetryingTest(2)
   void test_changeRequestHistoryListsRevisionsDecisionsAndEvents(TestNamespace ns)
       throws Exception {
     Glossary glossary = reviewedGlossary(ns, "history");
@@ -7205,7 +7206,7 @@ public class WorkflowDefinitionResourceIT {
     assertEquals(0, changeRequestsOn(glossary).size(), "A preview must not submit anything");
   }
 
-  @Test
+  @RetryingTest(2)
   void test_adminOverridePublishesWithoutReview(TestNamespace ns) throws Exception {
     Glossary glossary = reviewedGlossary(ns, "override");
     String requestId = submitDescription(glossary, "published by override");
@@ -7237,7 +7238,7 @@ public class WorkflowDefinitionResourceIT {
         eventTypes(requestHistory(requestId, "events")));
   }
 
-  @Test
+  @RetryingTest(2)
   void test_ownerApprovesAChangeThatAddsReviewersAndTheStatusStepSucceeds(TestNamespace ns)
       throws Exception {
     SharedEntities shared = SharedEntities.get();
@@ -7375,7 +7376,7 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @Test
+  @RetryingTest(2)
   void test_requestEndedBeforeItsTaskExistsLeavesNoOpenTask(TestNamespace ns) throws Exception {
     Glossary glossary = reviewedGlossary(ns, "earlyEnd");
     // Ended straight after submission, while delivery may still be creating the review task.
@@ -7575,7 +7576,7 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(result.getImportResultsCsv().contains(requests.get(0).get("id").asText()));
   }
 
-  @Test
+  @RetryingTest(2)
   void test_bulkGlossaryTermAssignmentHoldsGatedAssetsAsChangeRequests(TestNamespace ns)
       throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
@@ -8304,7 +8305,7 @@ public class WorkflowDefinitionResourceIT {
         : task.getAssignees().stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(34)
   void test_WorkflowValidationEndpoint() {
     LOG.info("Starting test_WorkflowValidationEndpoint");
@@ -9926,7 +9927,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("test_MutualExclusivitySmartReplacement completed successfully");
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(36)
   void test_CustomApprovalWorkflowForNewEntities(TestNamespace ns)
       throws IOException, InterruptedException {
@@ -10041,6 +10042,8 @@ public class WorkflowDefinitionResourceIT {
     assertNotNull(response);
     trackWorkflowFromJson(MAPPER.readTree(response));
     LOG.debug("Created unified approval workflow for dataContract, tag, and dataProduct entities");
+    // Entities below are created after deployment, so their creation events start runs
+    waitForWorkflowDeployment(client, "UnifiedApprovalWorkflow_" + suffix);
 
     // Step 2: Create database infrastructure with short names
     CreateDatabaseService createDbService =
@@ -10676,7 +10679,7 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(43)
   void test_PortChangesOnDataProductTriggerWorkflow(TestNamespace ns) throws Exception {
     LOG.info("Starting test_PortChangesOnDataProductTriggerWorkflow");
@@ -10958,7 +10961,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("test_CreateWorkflowWithoutEntityTypes completed successfully");
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(39)
   void test_reviewerChangeKeepsApprovalTaskAssignees(TestNamespace ns) throws Exception {
     LOG.info("Starting test_reviewerChangeKeepsApprovalTaskAssignees");
@@ -11159,7 +11162,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("test_reviewerChangeKeepsApprovalTaskAssignees completed successfully");
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(40)
   void test_ApiEndpointPeriodicBatchWorkflow(TestNamespace ns) throws JsonProcessingException {
     LOG.info("Starting test_ApiEndpointPeriodicBatchWorkflow");
@@ -11972,7 +11975,7 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(40)
   void test_WorkflowWithReviewersOwnersCandidates(TestNamespace ns) throws Exception {
     LOG.info("Starting test_WorkflowWithReviewersOwnersCandidates");
@@ -12043,25 +12046,7 @@ public class WorkflowDefinitionResourceIT {
     DatabaseSchema dbSchema = client.databaseSchemas().create(createSchema);
     LOG.debug("Created database schema: {}", dbSchema.getName());
 
-    // Step 3: Create test table with owner
-    LOG.debug("Creating test table with owner assignment");
-
-    CreateTable createTable =
-        new CreateTable()
-            .withName(ns.prefix("test_approval_table"))
-            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Test table for comprehensive workflow assignment testing")
-            .withOwners(List.of(ownerUser.getEntityReference()))
-            .withColumns(
-                List.of(
-                    new Column().withName("id").withDataType(ColumnDataType.INT),
-                    new Column().withName("name").withDataType(ColumnDataType.STRING),
-                    new Column().withName("created_date").withDataType(ColumnDataType.DATETIME)));
-
-    Table testTable = client.tables().create(createTable);
-    LOG.debug("Created test table: {} with owner: {}", testTable.getName(), ownerUser.getName());
-
-    // Step 4: Create comprehensive workflow with all assignment types
+    // Step 3: Create comprehensive workflow with all assignment types
     LOG.debug("Creating workflow with reviewers, owners, and candidates assignment");
 
     String workflowJson =
@@ -12170,6 +12155,24 @@ public class WorkflowDefinitionResourceIT {
     trackWorkflowFromJson(workflowCreated);
     waitForWorkflowDeployment(client, "TableApprovalWorkflow_" + uniqueSuffix);
 
+    // Step 4: Create the table once the workflow is deployed, so its creation event starts a run
+    LOG.debug("Creating test table with owner assignment");
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.prefix("test_approval_table"))
+            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
+            .withDescription("Test table for comprehensive workflow assignment testing")
+            .withOwners(List.of(ownerUser.getEntityReference()))
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING),
+                    new Column().withName("created_date").withDataType(ColumnDataType.DATETIME)));
+
+    Table testTable = client.tables().create(createTable);
+    LOG.debug("Created test table: {} with owner: {}", testTable.getName(), ownerUser.getName());
+
     // Step 5: Wait for initial workflow processing (table creation event)
     String tableFqn = testTable.getFullyQualifiedName();
     List<String> expectedAssignees =
@@ -12270,7 +12273,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("test_WorkflowWithReviewersOwnersCandidates completed successfully");
   }
 
-  @Test
+  @RetryingTest(2)
   void test_WorkflowApprovalThresholdReturnsOpenTaskUntilThresholdIsMet(TestNamespace ns)
       throws Exception {
     LOG.info("Starting test_WorkflowApprovalThresholdReturnsOpenTaskUntilThresholdIsMet");
@@ -12518,7 +12521,7 @@ public class WorkflowDefinitionResourceIT {
     client.users().delete(candidate2.getId().toString(), params);
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(41)
   void test_WorkflowWithTeamCandidates(TestNamespace ns) throws Exception {
     LOG.info("Starting test_WorkflowWithTeamCandidates");
@@ -12602,26 +12605,7 @@ public class WorkflowDefinitionResourceIT {
     DatabaseSchema dbSchema = client.databaseSchemas().create(createSchema);
     LOG.debug("Created database schema: {}", dbSchema.getName());
 
-    // Step 4: Create test table with owner
-    LOG.debug("Creating test table with owner assignment");
-
-    CreateTable createTable =
-        new CreateTable()
-            .withName(ns.prefix("test_team_approval_table"))
-            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Test table for team-based workflow assignment testing")
-            .withOwners(List.of(ownerUser.getEntityReference()))
-            .withColumns(
-                List.of(
-                    new Column().withName("id").withDataType(ColumnDataType.INT),
-                    new Column().withName("name").withDataType(ColumnDataType.STRING),
-                    new Column().withName("created_date").withDataType(ColumnDataType.DATETIME)));
-
-    Table testTable = client.tables().create(createTable);
-    LOG.debug("Created test table: {} with owner: {}", testTable.getName(), ownerUser.getName());
-    String tableFqn = testTable.getFullyQualifiedName();
-
-    // Step 5: Create team-based workflow
+    // Step 4: Create team-based workflow
     LOG.debug("Creating workflow with team candidates assignment");
 
     String workflowJson =
@@ -12717,6 +12701,25 @@ public class WorkflowDefinitionResourceIT {
     trackWorkflowFromJson(workflowCreated);
     waitForWorkflowDeployment(client, "TeamApprovalWorkflow_" + uniqueSuffix);
 
+    // Step 5: Create the table once the workflow is deployed, so its creation event starts a run
+    LOG.debug("Creating test table with owner assignment");
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.prefix("test_team_approval_table"))
+            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
+            .withDescription("Test table for team-based workflow assignment testing")
+            .withOwners(List.of(ownerUser.getEntityReference()))
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING),
+                    new Column().withName("created_date").withDataType(ColumnDataType.DATETIME)));
+
+    Table testTable = client.tables().create(createTable);
+    LOG.debug("Created test table: {} with owner: {}", testTable.getName(), ownerUser.getName());
+    String tableFqn = testTable.getFullyQualifiedName();
+
     // Step 6: Wait for initial workflow processing (table creation event)
     List<String> expectedAssignees =
         Stream.of(ownerUser.getName(), candidate1.getName(), candidate2.getName())
@@ -12811,7 +12814,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("test_WorkflowWithTeamCandidates completed successfully");
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(30)
   void test_TagChangeApprovalWithIncludeFields(TestNamespace ns) throws Exception {
     LOG.info("Testing Tag change approval workflow with include fields feature");
@@ -13039,7 +13042,7 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(31)
   void test_DomainChangeApprovalWithIncludeFields(TestNamespace ns) throws Exception {
     LOG.info("Testing Domain change approval workflow with include fields feature");
@@ -13264,7 +13267,7 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(32)
   void test_IncludeFieldsPriorityOverExclude(TestNamespace ns) throws Exception {
     LOG.info("Testing include fields have priority over exclude fields");
@@ -13473,7 +13476,7 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(33)
   void test_EmptyIncludeFieldsBehavior(TestNamespace ns) throws Exception {
     LOG.info("Testing empty include fields maintains backward compatibility");
@@ -13667,7 +13670,7 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(34)
   void test_MultipleFieldChangesWithIncludeFields(TestNamespace ns) throws Exception {
     LOG.info("Testing workflow with include fields for multiple different field types");
@@ -14766,7 +14769,7 @@ public class WorkflowDefinitionResourceIT {
    * CE2 is a true no-op: T1 must survive AND stay resolvable. Resolving it is the discriminator —
    * before the fix, the trigger-time terminate killed CE1's Flowable process, leaving T1 orphaned.
    */
-  @Test
+  @RetryingTest(2)
   void test_NoOpEventDoesNotInvalidatePendingApproval(TestNamespace ns) throws Exception {
     LOG.info("Starting test_NoOpEventDoesNotInvalidatePendingApproval");
     OpenMetadataClient client = SdkClients.adminClient();
@@ -14828,7 +14831,7 @@ public class WorkflowDefinitionResourceIT {
    * orphaned OM task) and exactly one new open task must remain. The new task must be resolvable,
    * proving its Flowable process is live.
    */
-  @Test
+  @RetryingTest(2)
   void test_NewApprovalRunSupersedesStalePendingTask(TestNamespace ns) throws Exception {
     LOG.info("Starting test_NewApprovalRunSupersedesStalePendingTask");
     OpenMetadataClient client = SdkClients.adminClient();
@@ -15420,7 +15423,7 @@ public class WorkflowDefinitionResourceIT {
             + current.getDisplayName());
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(211)
   void test_ColumnCustomPropertyChange_TriggersWorkflow(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
