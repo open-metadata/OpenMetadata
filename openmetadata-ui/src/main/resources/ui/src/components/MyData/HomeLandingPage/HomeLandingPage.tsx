@@ -15,7 +15,7 @@ import { PageLayout } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import type { ReactNode } from 'react';
-import { lazy, useMemo } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
 import type { ReactGridLayoutProps } from 'react-grid-layout';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useNavigate } from 'react-router-dom';
@@ -125,9 +125,10 @@ const usePersonaLandingPage = () => {
 /**
  * The home page, shared by both app modes.
  *
- * Fixed shell top to bottom — announcements rail, then the persona's widget
- * grid. Which widgets appear and where is entirely the persona's
- * landing-page layout (docStore), edited through `CustomizeMyData`; nothing
+ * Fixed shell top to bottom — announcements rail, the deployment's "Needs you
+ * now" section when it supplies one, then the persona's widget grid. Which
+ * widgets appear and where is entirely the persona's landing-page layout
+ * (docStore), edited through `CustomizeMyData`; nothing
  * here is mode-specific. Widgets that have AI-only content decide that for
  * themselves.
  */
@@ -173,6 +174,8 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
   );
 
   const personaFqn = selectedPersona?.fullyQualifiedName;
+  const NeedsYouNowSection =
+    customizeMyDataPageClassBase.getNeedsYouNowSection();
 
   // react-grid-layout has known RTL issues; the grid wrapper is pinned to ltr.
   useGridLayoutDirection(isLoading);
@@ -184,9 +187,17 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
         data-testid="home-landing-page"
         scroll="page">
         <PageLayout.Content className={contentClassName(Boolean(footerSlot))}>
-          <div className="tw:flex tw:flex-col tw:gap-14 tw:px-4 tw:pt-8">
+          <div className="tw:flex tw:flex-col tw:gap-10 tw:px-4 tw:pt-8">
             <CriticalAnnouncements />
             <AnnouncementsRail />
+
+            {NeedsYouNowSection && (
+              // A deployment's section is usually lazy; its own boundary keeps
+              // the rest of the page from waiting on that chunk.
+              <Suspense fallback={null}>
+                <NeedsYouNowSection />
+              </Suspense>
+            )}
 
             <section data-testid="topics-to-catch-up-on">
               <TopicsSectionHeader
