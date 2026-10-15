@@ -326,4 +326,13 @@ class OrderedLaneExecutorTest {
           nextRan.await(30, TimeUnit.SECONDS), "Lane must survive a throwing failure handler");
     }
   }
+
+  @Test
+  void lanesForWaitingTasksOutnumberTheProcessors() {
+    try (OrderedLaneExecutor executor =
+        OrderedLaneExecutor.forWaitingTasks((task, failure) -> {})) {
+      assertTrue(executor.getLaneCount() >= 32);
+      assertTrue(executor.getLaneCount() >= Runtime.getRuntime().availableProcessors());
+    }
+  }
 }

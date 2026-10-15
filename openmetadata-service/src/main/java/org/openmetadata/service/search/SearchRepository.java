@@ -1457,6 +1457,12 @@ public class SearchRepository {
    * {@code service.id} / {@code database.id} / {@code databaseSchema.id}, so delete by whichever
    * ancestor the deleted entity is.
    */
+  private static boolean hasDescendantColumns(String entityType) {
+    return Entity.DATABASE_SERVICE.equals(entityType)
+        || Entity.DATABASE.equals(entityType)
+        || Entity.DATABASE_SCHEMA.equals(entityType);
+  }
+
   private void deleteDescendantColumns(EntityInterface<?> entity, String entityType) {
     String columnParentField =
         switch (entityType) {
@@ -1866,15 +1872,9 @@ public class SearchRepository {
           writeIndex, entityId, update.parametersForIndexing(), update.script(), entityType);
 
       if (Entity.TABLE.equals(entityType)) {
-        try {
-          syncTableColumns((Table) entity, changeDescription);
-        } catch (Exception e) {
-          SearchIndexRetryQueue.enqueue(entity, "syncTableColumns", e);
-          LOG.error(
-              "Column sync failed for [{}]; the table is queued for retry, continuing with propagation",
-              entity.getFullyQualifiedName(),
-              e);
-        }
+        // Column documents may be rewritten by query, which waits for its task: off the write lane.
+        fanOutAfterEarlierWrites(
+            entity, "syncTableColumns", () -> syncTableColumns((Table) entity, changeDescription));
       }
 
       long updateTime = System.currentTimeMillis() - startTime;
@@ -3587,9 +3587,11 @@ public class SearchRepository {
       fanOutAfterEarlierWrites(
           entity, "deleteOrUpdateChildren", () -> deleteOrUpdateChildren(entity, indexMapping));
       if (Entity.TABLE.equals(entityType)) {
-        deleteTableColumns((Table) entity);
-      } else {
-        deleteDescendantColumns(entity, entityType);
+        fanOutAfterEarlierWrites(
+            entity, "deleteTableColumns", () -> deleteTableColumns((Table) entity));
+      } else if (hasDescendantColumns(entityType)) {
+        fanOutAfterEarlierWrites(
+            entity, "deleteDescendantColumns", () -> deleteDescendantColumns(entity, entityType));
       }
     } catch (Exception ie) {
       SearchIndexRetryQueue.enqueue(
@@ -3699,7 +3701,10 @@ public class SearchRepository {
       reindexQueriesForDomainSource(entityType, entity.getId(), entity.getFullyQualifiedName());
 
       if (Entity.TABLE.equals(entityType)) {
-        softDeleteOrRestoreTableColumns((Table) entity, delete);
+        fanOutAfterEarlierWrites(
+            entity,
+            "softDeleteOrRestoreTableColumns",
+            () -> softDeleteOrRestoreTableColumns((Table) entity, delete));
       }
     } catch (Exception ie) {
       SearchIndexRetryQueue.enqueue(
