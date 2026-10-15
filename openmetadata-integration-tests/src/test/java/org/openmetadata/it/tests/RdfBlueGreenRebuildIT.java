@@ -24,11 +24,7 @@ import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -53,6 +49,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.util.MutableClock;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfDatasetNames;
@@ -707,34 +704,6 @@ public class RdfBlueGreenRebuildIT {
               .toList());
     } finally {
       model.close();
-    }
-  }
-
-  private static final class MutableClock extends Clock {
-    private long millis = System.currentTimeMillis();
-
-    void advance(final long delta) {
-      millis += delta;
-    }
-
-    @Override
-    public ZoneId getZone() {
-      return ZoneOffset.UTC;
-    }
-
-    @Override
-    public Clock withZone(ZoneId zone) {
-      return this;
-    }
-
-    @Override
-    public Instant instant() {
-      return Instant.ofEpochMilli(millis);
-    }
-
-    @Override
-    public long millis() {
-      return millis;
     }
   }
 }

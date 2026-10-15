@@ -54,7 +54,7 @@ public final class RdfUpdater {
       writer =
           new RdfLiveWriter(
               store,
-              command -> command.apply(repository),
+              RdfLiveWriter.Target.of(repository),
               AsyncService.getInstance().getExecutorService());
       writeQueue = writer::enqueue;
       liveWriteStore = store;

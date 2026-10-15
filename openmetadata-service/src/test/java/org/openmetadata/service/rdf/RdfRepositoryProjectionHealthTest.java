@@ -13,20 +13,25 @@
 
 package org.openmetadata.service.rdf;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
+import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 
 class RdfRepositoryProjectionHealthTest {
   private static final String BASE_URI = "https://open-metadata.org/";
@@ -50,6 +55,30 @@ class RdfRepositoryProjectionHealthTest {
             repository.delete(
                 new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE)));
 
+    assertTrue(RdfProjectionHealth.isDegraded());
+  }
+
+  @Test
+  void bulkTranslationFailureCannotBeAcknowledgedAsDelivered() {
+    final Table table = new Table().withId(UUID.randomUUID()).withName("untranslatable");
+    final JsonLdTranslator translator = mock(JsonLdTranslator.class);
+    when(translator.toRdf(table)).thenThrow(new IllegalArgumentException("invalid RDF value"));
+    final RdfRepository repository =
+        new RdfRepository(configuration(), mock(RdfStorageInterface.class), translator);
+
+    assertThrows(RuntimeException.class, () -> repository.bulkCreateOrUpdate(List.of(table)));
+    assertFalse(RdfProjectionHealth.isDegraded());
+  }
+
+  @Test
+  void liveTranslationFailureDegradesProjectionHealth() {
+    final Table table = new Table().withId(UUID.randomUUID()).withName("untranslatable");
+    final JsonLdTranslator translator = mock(JsonLdTranslator.class);
+    when(translator.toRdf(table)).thenThrow(new IllegalArgumentException("invalid RDF value"));
+    final RdfRepository repository =
+        new RdfRepository(configuration(), mock(RdfStorageInterface.class), translator);
+
+    assertThrows(RuntimeException.class, () -> repository.createOrUpdate(table));
     assertTrue(RdfProjectionHealth.isDegraded());
   }
 

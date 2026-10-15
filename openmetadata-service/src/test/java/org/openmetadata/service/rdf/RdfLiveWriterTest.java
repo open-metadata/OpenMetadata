@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -31,10 +32,13 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException;
 import org.openmetadata.service.util.RequestEntityCache;
 
 class RdfLiveWriterTest {
@@ -46,7 +50,7 @@ class RdfLiveWriterTest {
   private final RdfLiveWriter writer =
       new RdfLiveWriter(
           store(),
-          applied::add,
+          new RdfLiveWriter.Target(applied::add, applied::add, () -> true),
           task -> {
             if (reject.get()) {
               throw new RejectedExecutionException("executor full");
@@ -114,17 +118,20 @@ class RdfLiveWriterTest {
     final RdfLiveWriter cachingWriter =
         new RdfLiveWriter(
             store(),
-            command -> {
-              cachedAtStart.add(cachedTable(tableId));
-              RequestEntityCache.putById(
-                  Entity.TABLE,
-                  tableId,
-                  null,
-                  null,
-                  false,
-                  new Table().withId(tableId).withName("stale"),
-                  Table.class);
-            },
+            new RdfLiveWriter.Target(
+                command -> {
+                  cachedAtStart.add(cachedTable(tableId));
+                  RequestEntityCache.putById(
+                      Entity.TABLE,
+                      tableId,
+                      null,
+                      null,
+                      false,
+                      new Table().withId(tableId).withName("stale"),
+                      Table.class);
+                },
+                applied::add,
+                () -> true),
             task -> assertTrue(pendingTask.compareAndSet(null, task)));
     try {
       cachingWriter.enqueue(new RdfLiveWrite.EntityUpdate(Entity.TABLE, tableId));
@@ -136,6 +143,96 @@ class RdfLiveWriterTest {
     } finally {
       RequestEntityCache.clear();
     }
+  }
+
+  @Test
+  void aWriteThatFailsWhileTheStoreIsUnreachableWaitsForTheStore() {
+    final RuntimeException failure =
+        failureOfOneWrite(new RdfStorageCircuitOpenException("write"), false);
+
+    assertTrue(failure instanceof RdfStoreUnavailableException, failure.toString());
+  }
+
+  @Test
+  void aWriteThatFailsWhileTheStoreAnswersKeepsItsOwnFailure() {
+    final RuntimeException failure =
+        failureOfOneWrite(new RdfStorageCircuitOpenException("write"), true);
+
+    assertTrue(failure instanceof RdfStorageCircuitOpenException, failure.toString());
+  }
+
+  @Test
+  void aRejectedWriteNeverAsksTheStoreAndKeepsItsOwnFailure() {
+    final AtomicInteger probes = new AtomicInteger();
+    final RuntimeException failure =
+        failureOfOneWrite(
+            new IllegalArgumentException("malformed literal"), () -> probes.incrementAndGet() < 0);
+
+    assertTrue(failure instanceof IllegalArgumentException, failure.toString());
+    assertEquals(0, probes.get(), "only availability failures probe the store");
+  }
+
+  @Test
+  void anIdleWriterReplaysDeadLettersThroughReplayNotLiveDelivery() {
+    final List<RdfLiveWrite> replayed = new ArrayList<>();
+    final RdfLiveWrite deadLetter = new RdfLiveWrite.EntityUpdate(Entity.TABLE, UUID.randomUUID());
+    final RdfLiveWriteStore idleStore = mock(RdfLiveWriteStore.class);
+    when(idleStore.processNext(any())).thenReturn(false);
+    when(idleStore.hasDeadLettersToReplay()).thenReturn(true);
+    when(idleStore.replayDeadLetters(anyInt(), any()))
+        .thenAnswer(
+            call -> {
+              final Consumer<String> replay = call.getArgument(1);
+              replay.accept(JsonUtils.pojoToJson(deadLetter));
+              return 1;
+            });
+    final RdfLiveWriter idleWriter =
+        new RdfLiveWriter(
+            idleStore,
+            new RdfLiveWriter.Target(applied::add, replayed::add, () -> true),
+            task -> assertTrue(pendingTask.compareAndSet(null, task)));
+
+    idleWriter.wake();
+    runPending();
+
+    assertEquals(List.of(deadLetter), replayed);
+    assertTrue(applied.isEmpty(), "a dead letter goes through replay, not live delivery");
+  }
+
+  private RuntimeException failureOfOneWrite(final RuntimeException thrown, final boolean up) {
+    return failureOfOneWrite(thrown, () -> up);
+  }
+
+  private RuntimeException failureOfOneWrite(
+      final RuntimeException thrown, final BooleanSupplier reachable) {
+    final AtomicReference<RuntimeException> failure = new AtomicReference<>();
+    final RdfLiveWriteStore failingStore = mock(RdfLiveWriteStore.class);
+    when(failingStore.processNext(any()))
+        .thenAnswer(
+            call -> {
+              final Consumer<String> apply = call.getArgument(0);
+              try {
+                apply.accept(
+                    JsonUtils.pojoToJson(
+                        new RdfLiveWrite.EntityUpdate(Entity.TABLE, UUID.randomUUID())));
+              } catch (RuntimeException delivered) {
+                failure.set(delivered);
+              }
+              return false;
+            });
+    final RdfLiveWriter failingWriter =
+        new RdfLiveWriter(
+            failingStore,
+            new RdfLiveWriter.Target(
+                command -> {
+                  throw thrown;
+                },
+                applied::add,
+                reachable),
+            task -> assertTrue(pendingTask.compareAndSet(null, task)));
+    failingWriter.wake();
+    runPending();
+    return failure.get();
   }
 
   private static Table cachedTable(final UUID tableId) {

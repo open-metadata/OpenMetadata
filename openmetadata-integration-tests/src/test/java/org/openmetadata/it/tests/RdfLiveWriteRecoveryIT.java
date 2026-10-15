@@ -17,18 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.ConnectException;
 import java.net.URI;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.AfterAll;
@@ -38,10 +34,12 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.openmetadata.it.util.MutableClock;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
+import org.openmetadata.service.rdf.RdfStoreUnavailableException;
 import org.openmetadata.service.rdf.rebuild.RdfMutation;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
@@ -77,7 +75,7 @@ public class RdfLiveWriteRecoveryIT {
       fuseki.start();
       endpoint = "http://" + fuseki.getHost() + ":" + fuseki.getMappedPort(3030);
     }
-    for (RdfTestDatabase.Backend backend : RdfTestDatabase.Backend.values()) {
+    for (RdfTestDatabase.Backend backend : RdfTestDatabase.backends().toList()) {
       DATABASES.put(backend, new RdfTestDatabase(backend));
     }
   }
@@ -92,7 +90,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void backlogBeyondTheOldMemoryLimitSurvivesRestart(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       final int writes = 1005;
@@ -128,7 +126,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void failureIsSharedAndRecoversIncrementallyInOrder(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       final UUID entityId = UUID.randomUUID();
@@ -157,7 +155,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void onlyOneServerDrainsButProducersDoNotWaitForFuseki(final RdfTestDatabase.Backend backend)
       throws Exception {
     try (Fixture fixture = new Fixture(backend);
@@ -191,7 +189,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void crashAfterFusekiCommitReplaysWithoutResurrectingDeletedEntity(
       final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
@@ -217,7 +215,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void rebuildCannotEraseConcurrentFailuresOrPendingRetries(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       fixture.primary.markDegraded("first failure");
@@ -242,7 +240,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void retryingOneWriteDoesNotClearAnUnrecoverableFailure(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       fixture.primary.markDegraded("failure outside the queue");
@@ -253,7 +251,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void migrationReapplicationPreservesFailuresAndPendingWrites(
       final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
@@ -267,7 +265,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void malformedCommandIsRetainedWithAnInspectableFailure(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       fixture.primary.enqueue("malformed");
@@ -280,7 +278,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void exhaustedCommandDoesNotBlockLaterWritesAndRequiresReconciliation(
       final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
@@ -317,7 +315,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void theWatermarkPassesAWriteOnlyOnceItIsApplied(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       fixture.primary.enqueue(insert(1));
@@ -344,7 +342,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void aWriteOutsideTheQueueTakesTheNextIdWithoutAnythingToDeliver(
       final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
@@ -364,7 +362,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void aDeadLetteredWriteMovesTheWatermarkOnAndLeavesTheGraphDegraded(
       final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
@@ -384,7 +382,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void aDeliveredWriteFromAnOlderServerStaysInTheEnqueuedWatermark(
       final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
@@ -399,7 +397,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void aDeadLetteredWriteFromAnOlderServerStaysInTheEnqueuedWatermark(
       final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
@@ -417,7 +415,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void anExhaustedWriteCannotBeReplayedAfterALaterDelete(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       final UUID id = UUID.randomUUID();
@@ -441,7 +439,7 @@ public class RdfLiveWriteRecoveryIT {
   }
 
   @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
   void failureToPersistDeadLetterRollsBackTheQueueAndHealth(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       fixture.primary.enqueue("malformed");
@@ -464,6 +462,82 @@ public class RdfLiveWriteRecoveryIT {
       assertTrue(fixture.other.processNext(fixture::apply));
       assertEquals(0, fixture.primary.pendingWrites());
       assertEquals(1, fixture.deadLetters());
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
+  void aWriteWaitsForAnUnreachableStoreWithoutSpendingAttempts(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.primary.enqueue(insert(1));
+      for (int probe = 0; probe < 20; probe++) {
+        assertFalse(
+            fixture.primary.processNext(
+                payload -> {
+                  throw new RdfStoreUnavailableException(new ConnectException("down"));
+                }));
+        fixture.clock.advance(10_000);
+      }
+
+      assertEquals(0, fixture.deadLetters(), "an outage must not dead-letter queued writes");
+      assertEquals(0, fixture.headAttempts());
+      assertTrue(
+          fixture.primary.isDegraded(), "a write waiting on the store degrades the projection");
+      assertTrue(fixture.primary.processNext(fixture::apply));
+      assertEquals(0, fixture.primary.pendingWrites());
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
+  void deadLettersAreReplayedInTheBackgroundAndHealthRecovers(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.deadLetter(insert(1));
+      assertTrue(fixture.newStore().isDegraded());
+
+      assertEquals(1, fixture.other.replayDeadLetters(10, fixture::apply));
+
+      assertEquals(0, fixture.deadLetters());
+      assertFalse(fixture.newStore().isDegraded());
+      assertTrue(
+          fixture
+              .storage
+              .executeSparqlQuery(
+                  "ASK { GRAPH <" + GRAPH + "> { <urn:queued:1> <" + NAME + "> \"value\" } }",
+                  "json")
+              .contains("true"));
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
+  void aFailureThatLeftNoDeadLetterStillNeedsARebuild(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.deadLetter(insert(1));
+      fixture.primary.markDegraded("failed outside the live queue");
+
+      assertEquals(1, fixture.other.replayDeadLetters(10, fixture::apply));
+
+      assertTrue(fixture.newStore().isDegraded(), "only a rebuild covers the unqueued failure");
+      fixture.primary.markRebuilt(fixture.primary.failureVersion());
+      assertFalse(fixture.newStore().isDegraded());
+      assertEquals(0, fixture.deadLetters());
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("org.openmetadata.it.tests.RdfTestDatabase#backends")
+  void aDeadLetterThatStillFailsIsKeptForTheNextReplay(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.deadLetter("malformed");
+
+      assertEquals(0, fixture.other.replayDeadLetters(10, fixture::apply));
+
+      assertEquals(1, fixture.deadLetters());
+      assertTrue(fixture.other.hasDeadLettersToReplay());
+      assertTrue(fixture.newStore().isDegraded());
     }
   }
 
@@ -569,6 +643,31 @@ public class RdfLiveWriteRecoveryIT {
                       .one());
     }
 
+    /** Exhausts the delivery attempts of {@code payload} so it lands in the dead-letter table. */
+    void deadLetter(final String payload) {
+      primary.enqueue(payload);
+      for (int attempt = 1; attempt <= 10; attempt++) {
+        primary.processNext(
+            ignored -> {
+              throw new IllegalStateException("Fuseki rejected this write");
+            });
+        clock.advance(60_000);
+      }
+      assertEquals(1, deadLetters());
+      assertEquals(0, primary.pendingWrites());
+    }
+
+    int headAttempts() {
+      return database
+          .jdbi()
+          .withHandle(
+              handle ->
+                  handle
+                      .createQuery("SELECT attempts FROM rdf_live_write_queue ORDER BY id LIMIT 1")
+                      .mapTo(Integer.class)
+                      .one());
+    }
+
     long deadLetters() {
       return database
           .jdbi()
@@ -633,32 +732,4 @@ public class RdfLiveWriteRecoveryIT {
   private static final class SimulatedProcessCrash extends Error {}
 
   private record DeadLetter(String payload, int attempts, String lastError, long failureVersion) {}
-
-  private static final class MutableClock extends Clock {
-    private final AtomicLong now = new AtomicLong(System.currentTimeMillis());
-
-    void advance(final long millis) {
-      now.addAndGet(millis);
-    }
-
-    @Override
-    public ZoneId getZone() {
-      return ZoneOffset.UTC;
-    }
-
-    @Override
-    public Clock withZone(final ZoneId zone) {
-      return this;
-    }
-
-    @Override
-    public Instant instant() {
-      return Instant.ofEpochMilli(millis());
-    }
-
-    @Override
-    public long millis() {
-      return now.get();
-    }
-  }
 }

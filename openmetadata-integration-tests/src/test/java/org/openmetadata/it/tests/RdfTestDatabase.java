@@ -78,6 +78,7 @@ final class RdfTestDatabase implements AutoCloseable {
 
   void applyReleaseMigration() {
     applyMigration("2.0.2");
+    applyDeadLetterReplayMigration();
   }
 
   /** Every statement of a release that names the table, in file order, on one connection. */
@@ -90,6 +91,18 @@ final class RdfTestDatabase implements AutoCloseable {
       throw new IllegalStateException("Missing migration for " + table);
     }
     jdbi.useHandle(handle -> changes.forEach(handle::execute));
+  }
+
+  /** 2.2.0 adds the dead-letter replay marker; MySQL adds it through a prepared statement. */
+  private void applyDeadLetterReplayMigration() {
+    jdbi.useHandle(
+        handle ->
+            migrationStatements("2.2.0").stream()
+                .filter(
+                    statement ->
+                        statement.contains("replayedAt")
+                            || statement.contains("rdf_dead_letter_replayed"))
+                .forEach(handle::execute));
   }
 
   void applyMigration(final String version) {
