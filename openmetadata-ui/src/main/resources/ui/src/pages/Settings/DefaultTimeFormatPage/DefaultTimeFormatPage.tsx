@@ -24,7 +24,7 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
-import { TIME_FORMAT_OPTIONS } from '../../../components/discovery/personal-space/Profile/tabs/platform-settings/TimeFormatSettings.constants';
+import { TIME_FORMAT_OPTIONS } from '../../../components/discovery/personal-space/Profile/tabs/platform-settings/PlatformSettings.constants';
 import { DefaultTimeFormat } from '../../../generated/api/configuration/appConfiguration';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {

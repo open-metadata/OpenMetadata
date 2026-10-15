@@ -17,7 +17,7 @@ import SettingsSection, { ReadOnlyRow } from '../../components/SettingsSection';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
 import SettingValue from './SettingValue';
-import { TIME_FORMAT_OPTIONS } from './TimeFormatSettings.constants';
+import { TIME_FORMAT_OPTIONS } from './PlatformSettings.constants';
 import { useEditHeaderAction } from './useEditHeaderAction';
 import { useSettingsFetch } from './useSettingsFetch';
 

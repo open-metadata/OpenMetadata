@@ -30,6 +30,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
+import { DefaultTimeFormat } from '../../../../../../generated/api/configuration/appConfiguration';
 import { isLoginConfigurationApplicable } from '../../../../../../utils/AuthProvider.util';
 import type { PlatformSettingsPage } from './PlatformSettings.types';
 
@@ -159,3 +160,8 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
 export const BRAND_URL_FIELDS = ['openMetadataUrl'] as const;
 
 export const APP_MODE_FIELDS = ['defaultAppMode'] as const;
+
+export const TIME_FORMAT_OPTIONS = [
+  { value: DefaultTimeFormat.The12H, labelKey: 'label.12-hour-format' },
+  { value: DefaultTimeFormat.The24H, labelKey: 'label.24-hour-format' },
+];

@@ -36,7 +36,7 @@ import SettingsFormLayout, {
   SettingsFormSection,
   SettingsSkeleton,
 } from './SettingsFormLayout';
-import { TIME_FORMAT_OPTIONS } from './TimeFormatSettings.constants';
+import { TIME_FORMAT_OPTIONS } from './PlatformSettings.constants';
 import { useSettingsFetch } from './useSettingsFetch';
 
 interface TimeFormatFormValues {
