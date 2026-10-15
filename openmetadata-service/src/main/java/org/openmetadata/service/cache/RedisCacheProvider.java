@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -75,7 +76,10 @@ public class RedisCacheProvider implements CacheProvider {
   private final AtomicInteger consecutiveSuccesses = new AtomicInteger(0);
   // Recovery cleanup shares this lock with skipped/failed-write tracking so steady traffic
   // cannot prevent recovery. Cleanup while available must leave the lock free for request outcomes.
-  private final Object stateLock = new Object();
+  // Not a monitor: recovery cleanup holds it across a Redis round trip, and on JDK 21 a virtual
+  // thread waiting to enter a monitor keeps its carrier
+  // (ADR:2026-10-14-cache-misses-that-do-io-load-outside-the-cache-lock).
+  private final ReentrantLock stateLock = new ReentrantLock();
 
   // A write skipped while unavailable, or one that failed, leaves Redis holding the value from
   // before it for up to the entity TTL (an hour by default), and every server reads it once the
@@ -90,8 +94,7 @@ public class RedisCacheProvider implements CacheProvider {
   // while the second is still issuing GETs — observable as random latency spikes and apparent
   // hangs in other paths sharing the connection. We hold the lock for one pipeline at a time
   // and unconditionally restore auto-flush in a finally.
-  private final java.util.concurrent.locks.ReentrantLock pipelineLock =
-      new java.util.concurrent.locks.ReentrantLock();
+  private final ReentrantLock pipelineLock = new ReentrantLock();
 
   public RedisCacheProvider(CacheConfig config) {
     this.config = config;
@@ -142,12 +145,15 @@ public class RedisCacheProvider implements CacheProvider {
         recordFailure(new IllegalStateException("Unexpected PING reply: " + reply));
         return;
       }
-      synchronized (stateLock) {
+      stateLock.lock();
+      try {
         if (!available) {
           deleteUnconfirmedWrites();
           recordSuccess();
           return;
         }
+      } finally {
+        stateLock.unlock();
       }
       deleteUnconfirmedWrites();
       recordSuccess();
@@ -195,12 +201,15 @@ public class RedisCacheProvider implements CacheProvider {
    * provider down is either recorded before recovery becomes visible or sent to Redis after it.
    */
   private boolean recordIfStillUnavailable(Collection<String> writtenKeys) {
-    synchronized (stateLock) {
+    stateLock.lock();
+    try {
       boolean skipped = !available;
       if (skipped) {
         unconfirmedWrites.record(writtenKeys);
       }
       return skipped;
+    } finally {
+      stateLock.unlock();
     }
   }
 
@@ -209,9 +218,12 @@ public class RedisCacheProvider implements CacheProvider {
   }
 
   private void recordWriteFailure(Exception e, Collection<String> writtenKeys) {
-    synchronized (stateLock) {
+    stateLock.lock();
+    try {
       unconfirmedWrites.record(writtenKeys);
       recordFailure(e);
+    } finally {
+      stateLock.unlock();
     }
   }
 
@@ -223,11 +235,12 @@ public class RedisCacheProvider implements CacheProvider {
    * longer flips us back: that caused the flapping behaviour where every health-check window let
    * one more real op pay a timeout before going to fast-fail again.
    *
-   * <p>Synchronized with {@link #recordFailure(Exception)} on {@link #stateLock} so a concurrent
+   * <p>Holds {@link #stateLock}, as {@link #recordFailure(Exception)} does, so a concurrent
    * failure can't be racing with the {@code consecutiveSuccesses}/{@code available} transitions.
    */
   private void recordSuccess() {
-    synchronized (stateLock) {
+    stateLock.lock();
+    try {
       if (!available) {
         int n = consecutiveSuccesses.incrementAndGet();
         // Late successful operations also reach this method; only recovery with no pending
@@ -242,6 +255,8 @@ public class RedisCacheProvider implements CacheProvider {
       }
       consecutiveSuccesses.set(0);
       pruneOldFailures(System.currentTimeMillis());
+    } finally {
+      stateLock.unlock();
     }
   }
 
@@ -253,11 +268,12 @@ public class RedisCacheProvider implements CacheProvider {
    * recovery on the next PING produced the flap pattern that made indexing pay a 300ms timeout
    * per Redis call indefinitely.
    *
-   * <p>Synchronized with {@link #recordSuccess()} on {@link #stateLock} so a concurrent
+   * <p>Holds {@link #stateLock}, as {@link #recordSuccess()} does, so a concurrent
    * success-recovery transition can't observe a half-applied failure (or vice versa).
    */
   private void recordFailure(Exception e) {
-    synchronized (stateLock) {
+    stateLock.lock();
+    try {
       consecutiveSuccesses.set(0);
       long now = System.currentTimeMillis();
       failureTimestamps.addLast(now);
@@ -270,6 +286,8 @@ public class RedisCacheProvider implements CacheProvider {
             FAILURE_WINDOW_MS,
             e);
       }
+    } finally {
+      stateLock.unlock();
     }
   }
 
