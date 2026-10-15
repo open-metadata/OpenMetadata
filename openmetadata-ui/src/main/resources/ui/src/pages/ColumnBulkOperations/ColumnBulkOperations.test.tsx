@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import ColumnBulkOperations from './ColumnBulkOperations.component';
@@ -48,5 +48,28 @@ describe('ColumnBulkOperations', () => {
       'label.deprecated'
     );
     expect(screen.getByTestId('column-grid')).toBeInTheDocument();
+  });
+
+  it('explains the deprecation in a card on hovering the badge', () => {
+    jest.useFakeTimers();
+    // Establish pointer modality so react-aria accepts hover events.
+    fireEvent.mouseMove(document);
+    renderPage(true);
+    const trigger = screen.getByTestId('deprecated-badge')
+      .parentElement as HTMLElement;
+
+    fireEvent.mouseEnter(trigger, { pointerType: 'mouse' });
+    act(() => jest.advanceTimersByTime(300));
+
+    expect(screen.getByTestId('deprecated-popover')).toHaveTextContent(
+      'message.feature-deprecated-but-functional'
+    );
+
+    fireEvent.mouseLeave(trigger, { pointerType: 'mouse' });
+    act(() => jest.advanceTimersByTime(200));
+
+    expect(screen.queryByTestId('deprecated-popover')).not.toBeInTheDocument();
+
+    jest.useRealTimers();
   });
 });

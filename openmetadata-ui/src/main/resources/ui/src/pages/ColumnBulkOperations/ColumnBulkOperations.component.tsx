@@ -10,8 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Box, PageLayout } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  BadgeWithIcon,
+  Box,
+  HoverCard,
+  PageLayout,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import {
@@ -32,9 +41,46 @@ const ColumnBulkOperations = () => {
   ];
 
   const deprecatedBadge = (
-    <Badge color="warning" data-testid="deprecated-badge" size="sm">
-      {t('label.deprecated')}
-    </Badge>
+    <HoverCard
+      className="tw:w-100 tw:max-w-[calc(100vw-2rem)] tw:p-0"
+      content={
+        <div data-testid="deprecated-popover">
+          <Box
+            align="center"
+            className="tw:border-b tw:border-secondary tw:px-5 tw:py-3"
+            gap={2}>
+            <InfoCircle
+              aria-hidden
+              className="tw:size-4 tw:text-fg-quaternary"
+            />
+            <Typography size="text-xs" weight="semibold">
+              {t('label.about-this-feature')}
+            </Typography>
+          </Box>
+          <Box className="tw:px-5 tw:pt-4 tw:pb-5" direction="col" gap={2}>
+            <Box align="center" gap={2} wrap="wrap">
+              <Typography size="text-sm">
+                {t('label.column-bulk-operations')}
+              </Typography>
+              <Badge color="warning" size="sm">
+                {t('label.deprecated')}
+              </Badge>
+            </Box>
+            <Typography as="p" color="secondary" size="text-xs">
+              {t('message.feature-deprecated-but-functional')}
+            </Typography>
+          </Box>
+        </div>
+      }
+      placement="bottom start">
+      <AriaButton
+        className="tw:cursor-default tw:rounded-full tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
+        data-testid="deprecated-badge">
+        <BadgeWithIcon color="warning" iconTrailing={InfoCircle} size="sm">
+          {t('label.deprecated')}
+        </BadgeWithIcon>
+      </AriaButton>
+    </HoverCard>
   );
 
   return (
