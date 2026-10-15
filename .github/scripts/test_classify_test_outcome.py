@@ -226,3 +226,28 @@ def test_cli_fails_closed_when_a_successful_step_has_no_results(tmp_path: Path) 
     result = json.loads(output.read_text(encoding="utf-8"))
     assert completed.returncode == 1
     assert result["classification"] == "missing_results"
+
+
+def test_a_test_that_passed_on_rerun_in_another_report_file_is_passed(tmp_path: Path) -> None:
+    # Failsafe re-running a parallel JUnit lane can write the retried test's pass into another
+    # class's report while its first attempt's failure stays in its own.
+    failed_first = write_report(
+        tmp_path / "TEST-OwnIT.xml",
+        '<testsuite tests="1" failures="1" errors="0" skipped="0">'
+        '<testcase classname="OwnIT" name="flaky(TestNamespace)">'
+        '<failure message="first attempt"/></testcase>'
+        "</testsuite>",
+    )
+    passed_on_rerun = write_report(
+        tmp_path / "TEST-OtherIT.xml",
+        '<testsuite tests="2" failures="0" errors="0" skipped="0">'
+        '<testcase classname="OtherIT" name="unrelated"/>'
+        '<testcase classname="OwnIT" name="flaky(TestNamespace)"/>'
+        "</testsuite>",
+    )
+
+    result = CLASSIFIER.classify_outcome("success", 0, [failed_first, passed_on_rerun], [])
+
+    assert result["classification"] == "passed"
+    assert result["tests"]["failures"] == 0
+    assert result["failedTests"] == []

@@ -436,15 +436,24 @@ jobs:
           import glob
           import xml.etree.ElementTree as ET
 
-          flaky = set()
+          # A parallel re-run can write a retried test's pass into another class's report, leaving
+          # its first failure in its own: a failure plus a pass anywhere is a flake too.
+          flaky, failed, passed = set(), set(), set()
           for report in glob.glob("openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml"):
               try:
                   cases = ET.parse(report).getroot().iter("testcase")
               except ET.ParseError:
                   continue
               for case in cases:
-                  if any(child.tag in ("flakyFailure", "flakyError") for child in case):
-                      flaky.add(f"{case.get('classname', '').rsplit('.', 1)[-1]}.{case.get('name')}")
+                  name = f"{case.get('classname', '').rsplit('.', 1)[-1]}.{case.get('name')}"
+                  tags = {child.tag for child in case}
+                  if tags & {"flakyFailure", "flakyError"}:
+                      flaky.add(name)
+                  elif tags & {"failure", "error"}:
+                      failed.add(name)
+                  elif "skipped" not in tags:
+                      passed.add(name)
+          flaky |= failed & passed
           if flaky:
               print("::warning title=IT passed on retry::" + "%0A".join(sorted(flaky)))
           PY
