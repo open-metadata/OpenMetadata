@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Badge as CoreBadge } from '@openmetadata/ui-core-components';
 import { Badge } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import { LeftSidebarItemProps } from './LeftSidebar.interface';
 
 const LeftSidebarItem = ({
-  data: { title, redirect_url, dataTestId, isBeta, onClick },
+  data: { title, redirect_url, dataTestId, isBeta, isDeprecated, onClick },
 }: LeftSidebarItemProps) => {
   const { t } = useTranslation();
 
@@ -37,6 +38,12 @@ const LeftSidebarItem = ({
           size="small"
           style={{ marginLeft: 8 }}
         />
+      )}
+
+      {isDeprecated && (
+        <CoreBadge className="tw:ml-2" color="warning" size="sm">
+          {t('label.deprecated')}
+        </CoreBadge>
       )}
     </NavLink>
   ) : (

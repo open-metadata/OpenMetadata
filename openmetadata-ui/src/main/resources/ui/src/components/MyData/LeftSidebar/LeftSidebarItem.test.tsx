@@ -104,4 +104,17 @@ describe('LeftSidebar Items', () => {
 
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  it('should render a deprecated badge for a deprecated item', () => {
+    render(
+      <BrowserRouter>
+        <LeftSidebarItem data={{ ...SETTING_ITEM, isDeprecated: true }} />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByTestId('app-bar-item-settings')).toHaveTextContent(
+      'label.deprecated'
+    );
+    expect(screen.queryByText('label.beta')).not.toBeInTheDocument();
+  });
 });
