@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import LeftSidebar from './LeftSidebar.component';
 
@@ -44,5 +45,31 @@ describe('LeftSidebar', () => {
     expect(screen.getByTestId('governance')).toBeInTheDocument();
     expect(screen.getByTestId('app-bar-item-settings')).toBeInTheDocument();
     expect(screen.getByTestId('app-bar-item-logout')).toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      'click',
+      (user: ReturnType<typeof userEvent.setup>, el: HTMLElement) =>
+        user.click(el),
+    ],
+    [
+      'Enter',
+      async (user: ReturnType<typeof userEvent.setup>, el: HTMLElement) => {
+        el.focus();
+        await user.keyboard('{Enter}');
+      },
+    ],
+  ])('asks to confirm logout on %s', async (_, activate) => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(
+      <BrowserRouter>
+        <LeftSidebar />
+      </BrowserRouter>
+    );
+
+    await activate(user, screen.getByTestId('app-bar-item-logout'));
+
+    expect(await screen.findByTestId('confirm-logout')).toBeInTheDocument();
   });
 });
