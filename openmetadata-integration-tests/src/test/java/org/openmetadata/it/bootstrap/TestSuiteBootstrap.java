@@ -53,6 +53,7 @@ import org.junit.platform.launcher.LauncherSession;
 import org.junit.platform.launcher.LauncherSessionListener;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -185,7 +186,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       return;
     }
     if (!STARTED.compareAndSet(false, true)) {
-      LOG.info("TestSuiteBootstrap already started, skipping initialization");
+      // A second session in this JVM is failsafe's re-run of the failed tests.
+      LOG.info("TestSuiteBootstrap already started; re-run pass reuses the running infrastructure");
+      TestNamespace.startRetryPass();
       return;
     }
 

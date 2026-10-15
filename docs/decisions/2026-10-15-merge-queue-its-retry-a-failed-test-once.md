@@ -34,9 +34,11 @@ fixed, and until then every occurrence costs the queue an hour.
   the re-run pass reaches the same server. `forkedProcessExitTimeoutInSeconds` is 180 so the forked
   JVM can finish that teardown.
 - The re-run runs in the same JVM, where `TestNamespace.prefix` would hand it the failed attempt's
-  names, and whatever that attempt created and did not track as a root is still there.
-  `TestNamespaceExtension` therefore suffixes the method id with `__retry` the second time it sees
-  a test's unique id, so the re-run creates fresh entities instead of failing on a 409.
+  names, and whatever that attempt (or its class's `@BeforeAll`) created and did not track as a
+  root is still there. When the second launcher session opens, `TestSuiteBootstrap` calls
+  `TestNamespace.startRetryPass()`, which changes every prefix from then on — method- and
+  class-level, extension-made or hand-made — so the re-run creates fresh entities instead of
+  failing on a 409. JUnit re-runs the failed test's `@BeforeAll` in that pass.
 - A lane re-invokes `mvn verify` up to three times, 30 seconds apart, only when it failed with a
   dependency-resolution error and wrote no failsafe report. A test failure is never retried this
   way.
