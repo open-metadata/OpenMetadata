@@ -77,6 +77,7 @@ const AccessControlLanding: FC<AccessControlLandingProps> = ({
             role="button"
             size="md"
             tabIndex={0}
+            variant="muted"
             onClick={() => onNavigate(card.view)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -92,7 +93,7 @@ const AccessControlLanding: FC<AccessControlLandingProps> = ({
                 gap={4}>
                 <Box
                   align="center"
-                  className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
+                  className="tw:shrink-0 tw:rounded-lg tw:bg-tertiary tw:h-10 tw:w-10"
                   justify="center">
                   <Icon className="tw:size-6 tw:text-secondary" />
                 </Box>

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { DataNode } from 'antd/lib/tree';
 import { cloneDeep, isEmpty, unionBy } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -31,6 +30,7 @@ import type {
   PageHierarchy,
   PageSearchResult,
 } from '../interface/knowledge-center.interface';
+import { TreeNode } from '../interface/tree.interface';
 import { getEntityName } from './EntityNameUtils';
 import Fqn from './Fqn';
 import { t } from './i18next/LocalUtil';
@@ -93,7 +93,7 @@ export const convertToTreeData = (
   activePage?: KnowledgePage,
   pages: PageHierarchy[] = []
 ) => {
-  const treeData: DataNode[] = pages.map((page) => {
+  const treeData: TreeNode[] = pages.map((page) => {
     const isActive = activePage?.fullyQualifiedName === page.fullyQualifiedName;
     const resolvedPage = isActive ? activePage : page;
     const title = getKnowledgePageName(resolvedPage as KnowledgePage);
@@ -104,13 +104,13 @@ export const convertToTreeData = (
         key: page.fullyQualifiedName,
         title,
         isLeaf: page.childrenCount === 0,
-      } as DataNode;
+      } as TreeNode;
     } else {
       return {
         key: page.fullyQualifiedName,
         title,
         children: convertToTreeData(activePage, page.children),
-      } as DataNode;
+      } as TreeNode;
     }
   });
 

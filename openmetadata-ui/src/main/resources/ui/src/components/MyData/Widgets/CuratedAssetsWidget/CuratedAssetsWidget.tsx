@@ -15,7 +15,6 @@ import { Grid, Typography } from '@openmetadata/ui-core-components';
 
 import { AxiosError } from 'axios';
 import { get, isEmpty } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
@@ -256,9 +255,9 @@ const CuratedAssetsWidgetContent = ({
   };
 
   const handleSortByClick = useCallback(
-    (e: MenuInfo) => {
+    (key: string) => {
       if (!isEditView) {
-        setSelectedSortBy(e.key);
+        setSelectedSortBy(key);
 
         return;
       }
@@ -271,7 +270,7 @@ const CuratedAssetsWidgetContent = ({
         const updatedLayout = hasCurrentCuratedAssets
           ? currentLayout?.map((layout: WidgetConfig) =>
               layout.i === widgetKey
-                ? { ...layout, config: { ...layout.config, sortBy: e.key } }
+                ? { ...layout, config: { ...layout.config, sortBy: key } }
                 : layout
             )
           : [
@@ -281,7 +280,7 @@ const CuratedAssetsWidgetContent = ({
                 i: widgetKey,
                 config: {
                   ...CURATED_ASSETS_WIDGET_DEFAULT_VALUES.config,
-                  sortBy: e.key,
+                  sortBy: key,
                 },
               },
             ];
@@ -455,7 +454,7 @@ const CuratedAssetsWidgetContent = ({
         }
         widgetKey={widgetKey}
         onEditClick={handleModalOpen}
-        onSortChange={(key: string) => handleSortByClick({ key } as MenuInfo)}
+        onSortChange={handleSortByClick}
         onTitleClick={handleTitleClick}
       />
     ),
