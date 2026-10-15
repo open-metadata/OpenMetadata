@@ -765,11 +765,6 @@
       "count": 3
     }
   },
-  "playwright/utils/sso.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 7
-    }
-  },
   "playwright/utils/task.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3

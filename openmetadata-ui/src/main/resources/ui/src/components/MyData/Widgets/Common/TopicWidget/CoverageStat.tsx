@@ -55,14 +55,14 @@ const CoverageStat: React.FC<CoverageStatProps> = ({
         {/* `!` on the colours: Typography renders `.prose`, whose unlayered
           `color` rule is emitted after the Tailwind utilities and would
           otherwise silently win. */}
-        <Typography className="tw:text-text-tertiary!" size="text-sm">
+        <Typography className="tw:text-text-tertiary!" size="text-xs">
           {label}
         </Typography>
         <div className="tw:mt-1 tw:flex tw:items-baseline tw:gap-2">
           <Typography
             className="tw:text-text-primary!"
             data-testid={dataTestId}
-            size="text-xl"
+            size="text-lg"
             weight="semibold">
             {`${Math.round(value)}%`}
           </Typography>
@@ -73,7 +73,7 @@ const CoverageStat: React.FC<CoverageStatProps> = ({
                   ? 'tw:text-utility-success-700!'
                   : 'tw:text-utility-error-700!'
               }
-              size="text-sm"
+              size="text-xs"
               weight="medium">
               {`${isUp ? '+' : ''}${(delta as number).toFixed(1)}`}
             </Typography>

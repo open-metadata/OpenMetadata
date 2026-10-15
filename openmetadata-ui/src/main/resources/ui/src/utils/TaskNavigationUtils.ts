@@ -59,10 +59,11 @@ export const getKnowledgeCenterPagePath = (
   return `${ROUTES.CONTEXT_CENTER_ARTICLES}/${encodedFqn}/${tab}/${subTab}`;
 };
 
-export const getTaskDetailPathFromTask = (task: TaskEntity) => {
-  const entityFqn = task.about?.fullyQualifiedName ?? '';
-  const entityType = (task.about?.type as EntityType) ?? '';
-
+/** The tasks tab of an asset, where the asset's tasks are opened. */
+export const getEntityTasksPath = (
+  entityType: EntityType,
+  entityFqn: string
+) => {
   if (entityType === EntityType.TEST_CASE) {
     return getTestCaseDetailPagePath(entityFqn, TestCasePageTabs.ISSUES);
   } else if (entityType === EntityType.USER) {
@@ -94,6 +95,12 @@ export const getTaskDetailPathFromTask = (task: TaskEntity) => {
     ActivityFeedTabs.TASKS
   );
 };
+
+export const getTaskDetailPathFromTask = (task: TaskEntity) =>
+  getEntityTasksPath(
+    (task.about?.type as EntityType) ?? '',
+    task.about?.fullyQualifiedName ?? ''
+  );
 
 /**
  * Where a task's asset lives, for a task that may not name one: an incident

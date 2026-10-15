@@ -28,9 +28,11 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.junit.jupiter.api.AfterEach;
@@ -290,6 +292,133 @@ class SetApprovalAssigneesImplTest {
         "Workflow-managed approvals should not assign the creator as approver");
     assertEquals("[]", assigneesJson);
     assertTrue((Boolean) capturedVars.get("hasAssignees"));
+  }
+
+  @Test
+  void testSelfApprovalPrevention_eventDrivenSoleRequester_keptWhenNoOneElse() {
+    // Event-driven approval (not workflow-managed, not a change request): the only reviewer is the
+    // requester, who is kept so the task stays actionable.
+    EntityReference creatorRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+
+    when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertTrue(assigneesJson.contains("alice"), "sole requester is kept outside change requests");
+  }
+
+  @Test
+  void testChangeRequestSoleRequester_routedToAdminsWithAssignAdminsStrategy() {
+    EntityReference creatorRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
+    givenChangeRequestBy("alice");
+    givenAdmins("alice", "platform_admin");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertTrue(assigneesJson.contains("platform_admin"), "admins review the change request");
+    assertFalse(assigneesJson.contains("<#E::user::alice>"), "never assigned to its requester");
+  }
+
+  @Test
+  void testChangeRequestSoleRequester_leftUnassignedWithoutStrategy() {
+    EntityReference creatorRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
+    givenChangeRequestBy("alice");
+    givenAdmins("alice", "platform_admin");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    assertEquals(
+        "[]",
+        capturedVars.get("ApprovalTask_assignees"),
+        "with no strategy, no one but the requester is eligible and the change approves itself");
+  }
+
+  @Test
+  void testChangeRequestWithNoReviewersOrOwners_leftUnassignedWithoutStrategy() {
+    when(mockEntity.getReviewers()).thenReturn(List.of());
+    givenChangeRequestBy("alice");
+    givenAdmins("platform_admin");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    assertEquals(
+        "[]",
+        capturedVars.get("ApprovalTask_assignees"),
+        "admins are added only when the node asks for them");
+  }
+
+  @Test
+  void testChangeRequestWhoseOnlyAdminIsTheRequester_staysUnassigned() {
+    EntityReference creatorRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
+    givenChangeRequestBy("alice");
+    givenAdmins("alice");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
+
+    delegate.execute(execution);
+
+    assertEquals(
+        "[]",
+        capturedVars.get("ApprovalTask_assignees"),
+        "self-approval is never possible, even through the admin fallback");
+  }
+
+  @Test
+  void testChangeRequestWithReviewers_doesNotAddAdmins() {
+    when(mockEntity.getReviewers())
+        .thenReturn(List.of(new EntityReference().withType("user").withFullyQualifiedName("bob")));
+    givenChangeRequestBy("alice");
+    givenAdmins("platform_admin");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertTrue(assigneesJson.contains("bob"));
+    assertFalse(assigneesJson.contains("platform_admin"), "admins are only a fallback");
+  }
+
+  private void givenChangeRequestBy(String requester) {
+    when(execution.getVariable("global_updatedBy")).thenReturn(requester);
+    when(execution.getVariable("global_changeRequestId")).thenReturn(UUID.randomUUID().toString());
+    when(execution.getVariable("global_changeRequestRevision")).thenReturn(1);
+  }
+
+  private void givenAdmins(String... names) {
+    UserRepository mockUserRepository = mock(UserRepository.class);
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);
+    List<User> admins = new ArrayList<>();
+    for (String name : names) {
+      admins.add(new User().withName(name).withFullyQualifiedName(name));
+    }
+    @SuppressWarnings("unchecked")
+    ResultList<User> page = mock(ResultList.class);
+    when(page.getData()).thenReturn(admins);
+    when(page.getPaging()).thenReturn(new Paging());
+    when(mockUserRepository.listAfter(isNull(), any(), any(), anyInt(), isNull())).thenReturn(page);
   }
 
   @Test
