@@ -373,9 +373,9 @@ class TestOMetaESAPI:
             lookup = Retrying(
                 stop=stop_after_delay(30),
                 wait=wait_fixed(0.25),
-                retry=retry_if_result(lambda result: result != expected),
+                retry=retry_if_result(lambda result: set(result) != expected),
             )
-            return lookup(metadata.es_get_indexed_ids, Table, [table_id])
+            return set(lookup(metadata.es_get_upstream_entity_ids, Table, [table_id]))
 
         def indexed_as_deleted():
             hits = metadata.client.get(
@@ -389,10 +389,42 @@ class TestOMetaESAPI:
         assert Retrying(stop=stop_after_delay(30), wait=wait_fixed(0.25), retry=retry_if_result(lambda ok: not ok))(
             indexed_as_deleted
         )
-        assert metadata.es_get_indexed_ids(Table, [table_id]) == {table_id}
+        assert set(metadata.es_get_upstream_entity_ids(Table, [table_id])) == {table_id}
 
         metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
         assert indexed_ids(set()) == set()
+
+    def test_upstream_entity_ids_follow_the_lineage_edges(self, metadata, es_schema):
+        """A table reports the id of every table its upstream lineage edges come from"""
+        source, target = (
+            metadata.create_or_update(
+                CreateTableRequest(
+                    name=generate_name(),
+                    databaseSchema=es_schema.fullyQualifiedName,
+                    columns=[Column(name="id", dataType=DataType.BIGINT)],
+                )
+            )
+            for _ in range(2)
+        )
+        source_id, target_id = str(source.id.root), str(target.id.root)
+        try:
+            metadata.add_lineage_by_name(
+                from_entity_fqn=source.fullyQualifiedName.root,
+                from_entity_type="table",
+                to_entity_fqn=target.fullyQualifiedName.root,
+                to_entity_type="table",
+            )
+            expected = {source_id: set(), target_id: {source_id}}
+            lookup = Retrying(
+                stop=stop_after_delay(30),
+                wait=wait_fixed(0.25),
+                retry=retry_if_result(lambda result: result != expected),
+            )
+
+            assert lookup(metadata.es_get_upstream_entity_ids, Table, [source_id, target_id]) == expected
+        finally:
+            for table in (source, target):
+                metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
 
     def test_paginate_no_filter(self, metadata):
         """We can paginate all the data"""

@@ -86,26 +86,39 @@ class TestLineageProcessedQueries:
         assert _mixin(RecordingSearchClient(fail=True)).es_get_lineage_processed_queries("svc", ["c1"]) == {}
 
 
-class TestIndexedIds:
-    def test_returns_only_the_ids_that_are_indexed(self):
-        indexed_id, missing_id = str(uuid4()), str(uuid4())
-        client = RecordingSearchClient([_hit(indexed_id, {"id": indexed_id})])
+class TestUpstreamEntityIds:
+    def test_maps_each_indexed_table_to_its_upstream_sources(self):
+        target_id, source_id, other_source_id, missing_id = (str(uuid4()) for _ in range(4))
+        client = RecordingSearchClient(
+            [
+                _hit(
+                    target_id,
+                    {
+                        "id": target_id,
+                        "upstreamLineage": [{"fromEntity": {"id": source_id}}, {"fromEntity": {"id": other_source_id}}],
+                    },
+                ),
+                _hit(source_id, {"id": source_id}),
+            ]
+        )
 
-        assert _mixin(client).es_get_indexed_ids(Table, [indexed_id, missing_id]) == {indexed_id}
+        upstreams = _mixin(client).es_get_upstream_entity_ids(Table, [target_id, source_id, missing_id])
+
+        assert upstreams == {target_id: {source_id, other_source_id}, source_id: set()}
 
     def test_large_lookups_are_split_into_requests_the_server_accepts(self):
         ids = [str(uuid4()) for _ in range(SEARCH_TERMS_BATCH_SIZE + 1)]
         client = RecordingSearchClient([_hit(entity_id, {"id": entity_id}) for entity_id in ids])
 
-        assert _mixin(client).es_get_indexed_ids(Table, ids) == set(ids)
+        assert set(_mixin(client).es_get_upstream_entity_ids(Table, ids)) == set(ids)
         assert client.sizes == [SEARCH_TERMS_BATCH_SIZE, 1]
         assert max(len(path) for path in client.paths) < SERVER_MAX_REQUEST_HEADER_BYTES
 
     def test_no_ids_sends_no_request(self):
         client = RecordingSearchClient()
 
-        assert _mixin(client).es_get_indexed_ids(Table, []) == set()
+        assert _mixin(client).es_get_upstream_entity_ids(Table, []) == {}
         assert client.paths == []
 
-    def test_failed_lookup_reports_no_indexed_ids(self):
-        assert _mixin(RecordingSearchClient(fail=True)).es_get_indexed_ids(Table, [str(uuid4())]) == set()
+    def test_failed_lookup_reports_no_indexed_tables(self):
+        assert _mixin(RecordingSearchClient(fail=True)).es_get_upstream_entity_ids(Table, [str(uuid4())]) == {}

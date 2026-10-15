@@ -303,21 +303,38 @@ def _lineage_endpoints(lineage_request: LineageRequest) -> list[EntityReference]
     return [lineage_request.edge.fromEntity, lineage_request.edge.toEntity]
 
 
+def _lineage_is_intact(table_ids: set[str], upstreams: dict[str, set[str]]) -> bool:
+    """
+    Whether every table recorded on a processed query is still indexed and joined by an
+    edge to another recorded table. Usage and search reindexes rewrite the recorded tables
+    from the current relationships, so a re-created table can be recorded under its new id;
+    it still has no edges, so the query fails this check and is processed again.
+    """
+    if not table_ids or not table_ids <= upstreams.keys():
+        return False
+    joined: set[str] = set()
+    for table_id in table_ids:
+        sources = (upstreams[table_id] & table_ids) - {table_id}
+        if sources:
+            joined |= sources | {table_id}
+    return joined == table_ids
+
+
 def _checksums_with_intact_lineage(
     metadata: OpenMetadata, service_name: str, table_queries: list[TableQuery]
 ) -> set[str]:
     """
     Checksums of the queries whose lineage needs no processing: the service processed
-    them before and every table their edges connect still exists. Deleting a table
-    deletes its edges, so a query that connected a deleted or re-created table is
-    processed again, as is one stored before its tables were recorded.
+    them before and the edges between the tables they connected are still there.
+    Deleting a table deletes its edges, so a query that connected a deleted or
+    re-created table is processed again, as is one stored before its tables were recorded.
     See ADR:2026-10-13-processed-lineage-queries-link-the-tables-their-edges-connect.
     """
     processed = metadata.es_get_lineage_processed_queries(
         service_name, {fqn.get_query_checksum(table_query.query) for table_query in table_queries}
     )
-    existing = metadata.es_get_indexed_ids(Table, set().union(*processed.values()))
-    return {checksum for checksum, entity_ids in processed.items() if entity_ids and entity_ids <= existing}
+    upstreams = metadata.es_get_upstream_entity_ids(Table, set().union(*processed.values()))
+    return {checksum for checksum, table_ids in processed.items() if _lineage_is_intact(table_ids, upstreams)}
 
 
 def query_lineage_processor(

@@ -89,7 +89,7 @@ class TestQueryLineageProcessor(unittest.TestCase):
         """Set up test fixtures"""
         self.mock_metadata = Mock()
         self.mock_metadata.es_get_lineage_processed_queries = Mock(return_value={})
-        self.mock_metadata.es_get_indexed_ids = Mock(return_value=set())
+        self.mock_metadata.es_get_upstream_entity_ids = Mock(return_value={})
         self.mock_queue = TopologyQueue()
         self.dialect = Dialect.MYSQL
         self.graph = nx.DiGraph()
@@ -149,7 +149,7 @@ class TestQueryLineageProcessor(unittest.TestCase):
             self.assertIsInstance(results[0], Either)
 
     def test_query_already_processed_check(self):
-        """Test that already processed queries are skipped while their tables exist"""
+        """Test that already processed queries are skipped while their edges exist"""
         query = TableQuery(
             query="INSERT INTO target SELECT * FROM source",
             databaseName="test_db",
@@ -157,12 +157,14 @@ class TestQueryLineageProcessor(unittest.TestCase):
             serviceName="test_service",
         )
 
-        # Mock that query is already processed and its tables still exist
+        # Mock that query is already processed and the edge between its tables still exists
         with patch("metadata.utils.fqn.get_query_checksum", return_value="checksum123"):
             self.mock_metadata.es_get_lineage_processed_queries = Mock(
                 return_value={"checksum123": {"source-id", "target-id"}}
             )
-            self.mock_metadata.es_get_indexed_ids = Mock(return_value={"source-id", "target-id"})
+            self.mock_metadata.es_get_upstream_entity_ids = Mock(
+                return_value={"source-id": set(), "target-id": {"source-id"}}
+            )
 
             # Process query
             query_lineage_processor(
@@ -219,17 +221,18 @@ SOURCE_ID, OTHER_SOURCE_ID, TARGET_ID = (str(uuid.uuid4()) for _ in range(3))
 
 class FakeLineageCatalog:
     """Stands in for the OpenMetadata search lookups: the queries the service already
-    processed for lineage with the tables they connected, and the indexed tables."""
+    processed for lineage with the tables recorded on them, and the upstream lineage
+    sources of each indexed table."""
 
-    def __init__(self, processed=None, indexed=()):
+    def __init__(self, processed=None, upstreams=None):
         self._processed = processed or {}
-        self._indexed = set(indexed)
+        self._upstreams = upstreams or {}
 
     def es_get_lineage_processed_queries(self, service_name, checksums):
         return {checksum: ids for checksum, ids in self._processed.items() if checksum in checksums}
 
-    def es_get_indexed_ids(self, entity, entity_ids):
-        return self._indexed & set(entity_ids)
+    def es_get_upstream_entity_ids(self, entity, entity_ids):
+        return {table_id: self._upstreams[table_id] for table_id in entity_ids if table_id in self._upstreams}
 
 
 def _edge(from_id, to_id, source="source"):
@@ -274,12 +277,12 @@ def _linked_table_ids(records):
 
 
 class TestProcessedQueryLineage:
-    """A processed query is skipped only while every table its lineage connected exists"""
+    """A processed query is skipped only while the edges between its tables still exist"""
 
-    def test_query_whose_tables_still_exist_is_skipped(self):
+    def test_query_whose_edges_are_intact_is_skipped(self):
         catalog = FakeLineageCatalog(
             processed={get_query_checksum(COPY_QUERY): {SOURCE_ID, TARGET_ID}},
-            indexed={SOURCE_ID, TARGET_ID},
+            upstreams={SOURCE_ID: set(), TARGET_ID: {SOURCE_ID}},
         )
 
         assert _process_copy_query(catalog, [_edge(SOURCE_ID, TARGET_ID)]) == []
@@ -288,7 +291,7 @@ class TestProcessedQueryLineage:
         recreated_source_id = str(uuid.uuid4())
         catalog = FakeLineageCatalog(
             processed={get_query_checksum(COPY_QUERY): {SOURCE_ID, TARGET_ID}},
-            indexed={recreated_source_id, TARGET_ID},
+            upstreams={recreated_source_id: set(), TARGET_ID: set()},
         )
 
         records = _process_copy_query(catalog, [_edge(recreated_source_id, TARGET_ID)])
@@ -297,10 +300,36 @@ class TestProcessedQueryLineage:
         assert records[1].processedLineage is True
         assert _linked_table_ids(records) == {recreated_source_id, TARGET_ID}
 
+    def test_query_is_reprocessed_when_usage_recorded_the_recreated_table(self):
+        """Usage rewrites the recorded tables from the current relationships, so the
+        re-created table's new id is recorded and every recorded table is indexed"""
+        recreated_source_id = str(uuid.uuid4())
+        catalog = FakeLineageCatalog(
+            processed={get_query_checksum(COPY_QUERY): {recreated_source_id, TARGET_ID}},
+            upstreams={recreated_source_id: set(), TARGET_ID: {SOURCE_ID}},
+        )
+
+        records = _process_copy_query(catalog, [_edge(recreated_source_id, TARGET_ID)])
+
+        assert _linked_table_ids(records) == {recreated_source_id, TARGET_ID}
+
+    def test_query_is_reprocessed_when_one_of_its_edges_is_missing(self):
+        catalog = FakeLineageCatalog(
+            processed={get_query_checksum(COPY_QUERY): {SOURCE_ID, OTHER_SOURCE_ID, TARGET_ID}},
+            upstreams={SOURCE_ID: set(), OTHER_SOURCE_ID: set(), TARGET_ID: {SOURCE_ID}},
+        )
+
+        records = _process_copy_query(
+            catalog,
+            [_edge(SOURCE_ID, TARGET_ID), _edge(OTHER_SOURCE_ID, TARGET_ID, source="other_source")],
+        )
+
+        assert _linked_table_ids(records) == {SOURCE_ID, OTHER_SOURCE_ID, TARGET_ID}
+
     def test_query_processed_before_its_tables_were_recorded_is_reprocessed(self):
         catalog = FakeLineageCatalog(
             processed={get_query_checksum(COPY_QUERY): set()},
-            indexed={SOURCE_ID, TARGET_ID},
+            upstreams={SOURCE_ID: set(), TARGET_ID: {SOURCE_ID}},
         )
 
         records = _process_copy_query(catalog, [_edge(SOURCE_ID, TARGET_ID)])
@@ -737,7 +766,7 @@ class TestMemoryEfficiency(unittest.TestCase):
 
         mock_metadata = Mock()
         mock_metadata.es_get_lineage_processed_queries = Mock(return_value={})
-        mock_metadata.es_get_indexed_ids = Mock(return_value=set())
+        mock_metadata.es_get_upstream_entity_ids = Mock(return_value={})
         mock_queue = TopologyQueue()
 
         with patch(

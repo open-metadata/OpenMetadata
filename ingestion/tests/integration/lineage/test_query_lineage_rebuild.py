@@ -10,7 +10,8 @@
 #  limitations under the License.
 """
 Query lineage is rebuilt once the tables a processed query connected are deleted and
-ingested again, while the queries of untouched tables are not processed again.
+ingested again, also when usage ran in between, while the queries of untouched tables
+are not processed again.
 """
 
 import uuid
@@ -41,6 +42,7 @@ from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig 
     QueryParserType,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlQuery
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.lineage import sql_lineage
 from metadata.ingestion.lineage.models import Dialect
@@ -57,6 +59,7 @@ DATABASE = "analytics"
 SCHEMA = f"sales_{uuid.uuid4().hex[:8]}"
 COPY_ORDERS = f"INSERT INTO {SCHEMA}.orders_copy SELECT * FROM {SCHEMA}.orders"
 COPY_ITEMS = f"INSERT INTO {SCHEMA}.items_copy SELECT * FROM {SCHEMA}.items"
+COPY_CUSTOMERS = f"INSERT INTO {SCHEMA}.customers_copy SELECT * FROM {SCHEMA}.customers"
 
 
 def _wait_until(condition) -> None:
@@ -103,11 +106,11 @@ def _ingest_table(metadata, service, name: str) -> Table:
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
     )
-    _wait_until(lambda: metadata.es_get_indexed_ids(Table, [model_str(table.id)]))
+    _wait_until(lambda: metadata.es_get_upstream_entity_ids(Table, [model_str(table.id)]))
     return table
 
 
-def _run_query_lineage(service_name: str) -> list:
+def _run_query_lineage(service_name: str, queries: tuple[str, ...]) -> list:
     """One lineage run over the query log: the shared processor feeding the REST sink"""
     # Each workflow run is a new process, so it starts without any resolved tables
     sql_lineage.search_cache.clear()
@@ -116,7 +119,7 @@ def _run_query_lineage(service_name: str) -> list:
     query_lineage_processor(
         table_queries=[
             TableQuery(query=query, serviceName=service_name, databaseName=DATABASE, databaseSchema=SCHEMA)
-            for query in (COPY_ORDERS, COPY_ITEMS)
+            for query in queries
         ],
         queue=queue,
         metadata=metadata,
@@ -156,21 +159,43 @@ def _ids(*tables: Table) -> set[str]:
     return {model_str(table.id) for table in tables}
 
 
+def _wait_until_processed(metadata, service_name: str, query: str, source: Table, target: Table) -> None:
+    """Wait until search reflects the processed query and its edge, as the next run reads them"""
+    _wait_until(lambda: _recorded_tables(metadata, service_name, query) == _ids(source, target))
+    _wait_until(
+        lambda: (
+            model_str(source.id)
+            in metadata.es_get_upstream_entity_ids(Table, _ids(target)).get(model_str(target.id), ())
+        )
+    )
+
+
+def _run_usage(metadata, service_name: str, query: str, *tables: Table) -> None:
+    """Attach the query to the tables it was used in, as the usage bulk sink does"""
+    for table in tables:
+        metadata.ingest_entity_queries_data(
+            entity=table,
+            queries=[
+                CreateQueryRequest(
+                    query=SqlQuery(query),
+                    service=FullyQualifiedEntityName(service_name),
+                    dialect=Dialect.ATHENA.value,
+                )
+            ],
+        )
+
+
 def test_query_lineage_is_rebuilt_after_its_tables_are_ingested_again(metadata, service):
     service_name = model_str(service.name)
     tables = {name: _ingest_table(metadata, service, name) for name in ("orders", "orders_copy", "items", "items_copy")}
 
-    first_run = _run_query_lineage(service_name)
+    first_run = _run_query_lineage(service_name, (COPY_ORDERS, COPY_ITEMS))
 
     assert sorted(_processed_queries(first_run)) == sorted([COPY_ORDERS, COPY_ITEMS])
     assert _upstream_ids(metadata, tables["orders_copy"]) == _ids(tables["orders"])
     assert _upstream_ids(metadata, tables["items_copy"]) == _ids(tables["items"])
-    _wait_until(
-        lambda: _recorded_tables(metadata, service_name, COPY_ORDERS) == _ids(tables["orders"], tables["orders_copy"])
-    )
-    _wait_until(
-        lambda: _recorded_tables(metadata, service_name, COPY_ITEMS) == _ids(tables["items"], tables["items_copy"])
-    )
+    _wait_until_processed(metadata, service_name, COPY_ORDERS, tables["orders"], tables["orders_copy"])
+    _wait_until_processed(metadata, service_name, COPY_ITEMS, tables["items"], tables["items_copy"])
 
     for name in ("orders", "orders_copy"):
         metadata.delete(entity=Table, entity_id=tables[name].id, hard_delete=True)
@@ -178,13 +203,36 @@ def test_query_lineage_is_rebuilt_after_its_tables_are_ingested_again(metadata, 
 
     assert _upstream_ids(metadata, tables["orders_copy"]) == set()
 
-    second_run = _run_query_lineage(service_name)
+    second_run = _run_query_lineage(service_name, (COPY_ORDERS, COPY_ITEMS))
 
     assert _processed_queries(second_run) == [COPY_ORDERS]
     assert _upstream_ids(metadata, tables["orders_copy"]) == _ids(tables["orders"])
     assert _upstream_ids(metadata, tables["items_copy"]) == _ids(tables["items"])
-    _wait_until(
-        lambda: _recorded_tables(metadata, service_name, COPY_ORDERS) == _ids(tables["orders"], tables["orders_copy"])
-    )
+    _wait_until_processed(metadata, service_name, COPY_ORDERS, tables["orders"], tables["orders_copy"])
 
-    assert _run_query_lineage(service_name) == []
+    assert _run_query_lineage(service_name, (COPY_ORDERS, COPY_ITEMS)) == []
+
+
+def test_query_lineage_is_rebuilt_when_usage_ran_after_re_ingestion(metadata, service):
+    """Usage records the re-created table on the stored query before lineage runs again:
+    a query without literals is the same Query for usage and lineage"""
+    service_name = model_str(service.name)
+    customers, customers_copy = (_ingest_table(metadata, service, name) for name in ("customers", "customers_copy"))
+
+    _run_query_lineage(service_name, (COPY_CUSTOMERS,))
+    _wait_until_processed(metadata, service_name, COPY_CUSTOMERS, customers, customers_copy)
+
+    metadata.delete(entity=Table, entity_id=customers.id, hard_delete=True)
+    customers = _ingest_table(metadata, service, "customers")
+    _run_usage(metadata, service_name, COPY_CUSTOMERS, customers, customers_copy)
+
+    _wait_until(lambda: _recorded_tables(metadata, service_name, COPY_CUSTOMERS) == _ids(customers, customers_copy))
+    assert _upstream_ids(metadata, customers_copy) == set()
+
+    rebuild_run = _run_query_lineage(service_name, (COPY_CUSTOMERS,))
+
+    assert _processed_queries(rebuild_run) == [COPY_CUSTOMERS]
+    assert _upstream_ids(metadata, customers_copy) == _ids(customers)
+    _wait_until_processed(metadata, service_name, COPY_CUSTOMERS, customers, customers_copy)
+
+    assert _run_query_lineage(service_name, (COPY_CUSTOMERS,)) == []

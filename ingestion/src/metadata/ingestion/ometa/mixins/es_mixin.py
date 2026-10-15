@@ -442,18 +442,25 @@ class ESMixin(Generic[T]):
                 processed[hit.source["checksum"]] = {ref["id"] for ref in hit.source.get("queryUsedIn") or []}
         return processed
 
-    def es_get_indexed_ids(self, entity: type[T], entity_ids: Collection[str]) -> set[str]:
+    def es_get_upstream_entity_ids(self, entity: type[T], entity_ids: Collection[str]) -> dict[str, set[str]]:
         """
-        The given ids that belong to an indexed entity of the given type, soft-deleted
-        entities included. An id missing from the result has no entity, or could not
-        be looked up.
+        Map each given id that belongs to an indexed entity of the given type, soft-deleted
+        entities included, to the ids of the entities its upstream lineage edges come from.
+        An id missing from the result has no entity, or could not be looked up.
         """
-        indexed: set[str] = set()
+        upstreams: dict[str, set[str]] = {}
         index = ES_INDEX_MAP[entity.__name__]
         for batch in _batched(sorted(entity_ids), SEARCH_TERMS_BATCH_SIZE):
             query_filter = {"query": {"ids": {"values": batch}}}
-            indexed.update(hit.id for hit in self._search_page(index, query_filter, size=len(batch), fields=["id"]))
-        return indexed
+            for hit in self._search_page(
+                index, query_filter, size=len(batch), fields=["id", "upstreamLineage.fromEntity.id"]
+            ):
+                upstreams[hit.id] = {
+                    edge["fromEntity"]["id"]
+                    for edge in hit.source.get("upstreamLineage") or []
+                    if (edge.get("fromEntity") or {}).get("id")
+                }
+        return upstreams
 
     def _search_page(self, index: str, query_filter: dict, size: int, fields: list[str]) -> list[HitsModel]:
         """
