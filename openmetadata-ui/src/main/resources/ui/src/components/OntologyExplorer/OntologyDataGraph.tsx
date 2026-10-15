@@ -96,8 +96,6 @@ const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 2;
 const ZOOM_BUTTON_FACTOR = 1.2;
 const WHEEL_ZOOM_STEP = 0.12;
-const TOOLBAR_CARD_CLASS =
-  'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
 
 function clampZoom(value: number): number {
   return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
@@ -981,11 +979,9 @@ const OntologyDataGraph = ({
       </div>
 
       <Card
-        className={classNames(
-          'tw:absolute tw:right-4 tw:bottom-4 tw:flex tw:items-center tw:gap-1 tw:p-1',
-          TOOLBAR_CARD_CLASS
-        )}
-        data-testid="ontology-data-graph-controls">
+        className="tw:absolute tw:bottom-4 tw:left-4 tw:z-6 tw:flex tw:items-center"
+        data-testid="ontology-data-graph-controls"
+        variant="elevated">
         <OntologyControlButtons
           isLoading={isLoadingMoreTerms}
           onFitToScreen={fitToScreen}

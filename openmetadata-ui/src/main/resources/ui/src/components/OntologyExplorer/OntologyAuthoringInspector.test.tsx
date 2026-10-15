@@ -131,20 +131,15 @@ describe('OntologyAuthoringInspector', () => {
     const inspector = screen.getByTestId('ontology-authoring-inspector');
 
     expect(inspector).toHaveClass(
-      'tw:w-[300px]',
-      'tw:p-[18px]',
-      'tw:border-l',
-      'tw:overflow-y-auto'
+      'tw:absolute',
+      'tw:w-[max(420px,40vw)]',
+      'tw:bg-overlay-surface'
     );
-    expect(screen.getByRole('heading', { level: 2 })).toHaveClass(
-      'tw:text-[17px]',
-      'tw:font-bold',
-      'tw:leading-[1.25]'
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+      'Anti-Money Laundering'
     );
-    expect(screen.getByText('finance.AntiMoneyLaundering')).toHaveClass(
-      'tw:font-mono',
-      'tw:text-[11px]'
-    );
+    expect(screen.getByText('finance')).toBeInTheDocument();
+    expect(screen.getByText('label.concept')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(

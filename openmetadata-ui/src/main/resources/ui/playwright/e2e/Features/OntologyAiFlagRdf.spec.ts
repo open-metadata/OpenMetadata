@@ -150,7 +150,10 @@ test.describe('Ontology AI effective flag', { tag: ['@ontology-rdf'] }, () => {
         .filter({ hasText: aiGlossary.responseData.displayName })
         .click();
       await page.getByTestId('mode-tab-ai').click();
-      await page.getByRole('tab', { name: 'Query' }).click();
+      await page
+        .getByTestId('ontology-ai-assistant')
+        .getByRole('tab', { name: 'Query' })
+        .click();
       await page
         .getByRole('textbox', { name: /Question/ })
         .fill('Show every concept');
