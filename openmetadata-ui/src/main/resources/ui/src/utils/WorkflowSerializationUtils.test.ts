@@ -12,7 +12,9 @@
  */
 import {
   deserializeEventBasedFilters,
+  parseFqnList,
   reconcileDataAssetFilters,
+  serializeFqnList,
 } from './WorkflowSerializationUtils';
 
 const filter = (id: number, dataAsset: string) => ({
@@ -74,5 +76,26 @@ describe('deserializeEventBasedFilters', () => {
   it('reads nothing from a string that is not a filter map', () => {
     expect(deserializeEventBasedFilters('not json', ['glossary'])).toBe('');
     expect(deserializeEventBasedFilters(undefined, ['glossary'])).toBe('');
+  });
+});
+
+describe('FQN list serialization', () => {
+  it('should round-trip FQNs that contain commas', () => {
+    const fqns = ['Data Procedures.GDPR, Personal', 'PII.Sensitive'];
+
+    expect(parseFqnList(serializeFqnList(fqns))).toEqual(fqns);
+  });
+
+  it('should store an empty selection as an empty string', () => {
+    expect(serializeFqnList([])).toBe('');
+    expect(parseFqnList('')).toEqual([]);
+  });
+
+  it('should read the legacy comma-separated format', () => {
+    expect(parseFqnList('PII.Sensitive, Tier.Tier1')).toEqual([
+      'PII.Sensitive',
+      'Tier.Tier1',
+    ]);
+    expect(parseFqnList('[PII].Sensitive')).toEqual(['[PII].Sensitive']);
   });
 });

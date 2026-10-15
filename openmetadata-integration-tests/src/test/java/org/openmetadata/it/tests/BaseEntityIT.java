@@ -10,6 +10,10 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -5473,6 +5477,180 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
           entity.getTags().stream()
               .anyMatch(t -> t.getTagFQN().equals(shared.PERSONAL_DATA_TAG_LABEL.getTagFQN())),
           "Bot-added PersonalData tag must be merged in: " + fqn);
+    }
+  }
+
+  // ===================================================================
+  // A BOT NEVER DELETES USER-CURATED METADATA
+  //
+  // Regression guard for the 2.0.x Override Metadata data loss: once override moved from the
+  // connector to the server (#28155), a re-ingestion whose source had no value - the field
+  // omitted, sent empty, or a tag set from other classifications - deleted user-curated metadata
+  // on every run. The tests above only replace one non-empty value with another.
+  // ===================================================================
+
+  private static final String CURATED_DESCRIPTION = "User-curated description";
+  private static final String CURATED_DISPLAY_NAME = "User Curated Display Name";
+  private static final String TIER1 = "Tier.Tier1";
+
+  private record CuratedFields(boolean displayName, boolean tags, boolean owners) {}
+
+  /**
+   * Request 0 omits the curated fields and request 1 sends them empty; both send one tag from a
+   * classification the user did not curate. Override off, then on twice - override also disables
+   * the sourceHash skip, which made the loss repeat on every scheduled run.
+   */
+  @Test
+  void test_bulkUpdate_bot_neverDeletesUserCuratedMetadata(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    List<K> requests = createBulkRequests(ns, "bulk_nodel_", 2);
+    CuratedFields curated = curatedFieldsOf(requests.getFirst());
+    BulkOperationResult created = executeBulkCreate(requests);
+    assertEquals(2, created.getNumberOfRowsPassed());
+    List<String> fqns =
+        created.getSuccessRequest().stream().map(r -> (String) r.getRequest()).toList();
+    fqns.forEach(fqn -> curateAsUser(fqn, curated));
+
+    sendNoSourceValues(requests.getFirst(), null, curated);
+    sendNoSourceValues(requests.getLast(), "", curated);
+    for (boolean overrideMetadata : new boolean[] {false, true, true}) {
+      assertEquals(2, executeBulkAsBot(requests, overrideMetadata).getNumberOfRowsPassed());
+      fqns.forEach(
+          fqn ->
+              assertKeepsCuratedMetadata(
+                  fqn, curated, "bulk PUT overrideMetadata=" + overrideMetadata));
+    }
+  }
+
+  @Test
+  void test_singleEntityPut_bot_neverDeletesUserCuratedMetadata(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    K request = createRequest(ns.prefix("put_nodel_"), ns);
+    CuratedFields curated = curatedFieldsOf(request);
+    String fqn = createEntity(request).getFullyQualifiedName();
+    curateAsUser(fqn, curated);
+
+    sendNoSourceValues(request, "", curated);
+    HttpResponse<String> response = putAs(request, BulkApi.botToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Bot single-entity PUT: " + response.statusCode() + " " + response.body());
+    assertKeepsCuratedMetadata(fqn, curated, "single-entity PUT");
+  }
+
+  /**
+   * Pre-2.0 ingestion clients left running against an upgraded server PATCH a source's empty
+   * comment over the curated description.
+   */
+  @Test
+  void test_ingestionBotPatch_cannotBlankUserDescription(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsPatch) return;
+
+    K request = createRequest(ns.prefix("patch_nodel_"), ns);
+    CuratedFields descriptionOnly = new CuratedFields(false, false, false);
+    T entity = createEntity(request);
+    curateAsUser(entity.getFullyQualifiedName(), descriptionOnly);
+
+    patchAsIngestionBot(
+        entity.getId(), "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"\"}]");
+    patchAsIngestionBot(entity.getId(), "[{\"op\":\"remove\",\"path\":\"/description\"}]");
+    assertKeepsCuratedMetadata(
+        entity.getFullyQualifiedName(), descriptionOnly, "ingestion-bot PATCH");
+  }
+
+  private CuratedFields curatedFieldsOf(K request) {
+    return new CuratedFields(
+        requestHas(request, "setDisplayName", String.class),
+        supportsTags && requestHas(request, "setTags", List.class),
+        supportsOwners && requestHas(request, "setOwners", List.class));
+  }
+
+  private boolean requestHas(K request, String setter, Class<?> paramType) {
+    try {
+      request.getClass().getMethod(setter, paramType);
+      return true;
+    } catch (NoSuchMethodException e) {
+      return false;
+    }
+  }
+
+  private void curateAsUser(String fqn, CuratedFields curated) {
+    SharedEntities shared = SharedEntities.get();
+    T entity = getEntityByNameWithFields(fqn, "tags,owners");
+    entity.setDescription(CURATED_DESCRIPTION);
+    if (curated.displayName()) {
+      entity.setDisplayName(CURATED_DISPLAY_NAME);
+    }
+    if (curated.tags()) {
+      TagLabel tier1 =
+          new TagLabel()
+              .withTagFQN(TIER1)
+              .withSource(TagLabel.TagSource.CLASSIFICATION)
+              .withLabelType(TagLabel.LabelType.MANUAL);
+      entity.setTags(List.of(tier1, shared.GLOSSARY1_TERM1_LABEL));
+    }
+    if (curated.owners()) {
+      entity.setOwners(List.of(shared.USER1_REF));
+    }
+    patchEntity(entity.getId().toString(), entity);
+  }
+
+  /** {@code emptyValue} null omits the curated fields from the request; "" sends them empty. */
+  private void sendNoSourceValues(K request, String emptyValue, CuratedFields curated) {
+    setDescription(request, emptyValue);
+    if (curated.displayName()) {
+      invoke(request, "setDisplayName", String.class, emptyValue);
+    }
+    if (curated.tags()) {
+      invoke(request, "setTags", List.class, List.of(SharedEntities.get().PII_SENSITIVE_TAG_LABEL));
+    }
+    if (curated.owners()) {
+      invoke(request, "setOwners", List.class, emptyValue == null ? null : List.of());
+    }
+  }
+
+  private void assertKeepsCuratedMetadata(String fqn, CuratedFields curated, String writePath) {
+    SharedEntities shared = SharedEntities.get();
+    T entity = getEntityByNameWithFields(fqn, "tags,owners");
+    String message = writePath + " deleted user-curated metadata on " + fqn;
+    assertEquals(CURATED_DESCRIPTION, entity.getDescription(), message);
+    if (curated.displayName()) {
+      assertEquals(CURATED_DISPLAY_NAME, entity.getDisplayName(), message);
+    }
+    if (curated.tags()) {
+      List<String> tagFqns =
+          Optional.ofNullable(entity.getTags()).orElse(List.of()).stream()
+              .map(TagLabel::getTagFQN)
+              .toList();
+      assertTrue(
+          tagFqns.containsAll(List.of(TIER1, shared.GLOSSARY1_TERM1_LABEL.getTagFQN())),
+          message + ": tags " + tagFqns);
+    }
+    if (curated.owners()) {
+      List<UUID> ownerIds =
+          Optional.ofNullable(entity.getOwners()).orElse(List.of()).stream()
+              .map(EntityReference::getId)
+              .toList();
+      assertEquals(List.of(shared.USER1.getId()), ownerIds, message + ": owners");
+    }
+  }
+
+  private void patchAsIngestionBot(UUID id, String jsonPatch) {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + getResourcePath() + id))
+            .header("Authorization", "Bearer " + BulkApi.botToken())
+            .header("Content-Type", "application/json-patch+json")
+            .method("PATCH", HttpRequest.BodyPublishers.ofString(jsonPatch))
+            .build();
+    try {
+      HttpResponse<String> response =
+          HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+      assertEquals(200, response.statusCode(), "ingestion-bot PATCH: " + response.body());
+    } catch (IOException | InterruptedException e) {
+      throw new IllegalStateException("ingestion-bot PATCH failed: " + e.getMessage(), e);
     }
   }
 
