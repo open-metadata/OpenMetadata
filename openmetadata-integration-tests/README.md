@@ -169,6 +169,34 @@ Awaitility.await()
 
 6. **Avoid single-line comments** - Write self-documenting code
 
+### 6. Shared server: only touch your own data
+
+The `parallel` lane runs IT classes concurrently against **one** server, database and search
+index. A test that reaches beyond its own data breaks other tests at random, and that shows up as
+merge-queue ejections of unrelated PRs.
+
+1. **Assert only on your own data.** Never assert a count, `paging.total`, list size, "list is
+   empty" or ordering over a whole collection. Filter to your own entity, table, suite or
+   namespace, and assert that your ids are present.
+2. **Write only to your own data.** A request that acts on every entity of a type (a bulk
+   `mode: "all"`, an unfiltered delete or update, a reindex, a global setting) must be scoped to
+   your own data. If it cannot be, the method runs alone:
+
+   ```java
+   @Test
+   @ResourceLock(value = Resources.GLOBAL, mode = ResourceAccessMode.READ_WRITE)
+   void test_bulkAddAllTestCasesToLogicalTestSuite(TestNamespace ns) { ... }
+   ```
+
+   A whole class that changes global state goes in the `global-state` lane instead
+   (`integrationTests.globalStateTests` in the pom).
+3. **Survive a retry.** The merge queue re-runs a failed test once, alone, in the same JVM
+   (ADR:2026-10-15-merge-queue-its-retry-a-failed-test-once). Build every name with
+   `org.openmetadata.it.util.TestNamespace` (`prefix`, `shortPrefix`, `uniqueShortId`), never a
+   hard-coded string or a name stored in a static field. Don't read state that another test method
+   creates. Don't close a `static final` client in `@AfterAll`; `@BeforeAll` runs again for the
+   retry.
+
 ## Project Structure
 
 ```

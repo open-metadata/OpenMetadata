@@ -175,6 +175,13 @@ repository) and `common/src/main/java/org/openmetadata/common/utils/CommonUtil.j
   extend `BaseEntityIT<T, K>` for entity CRUD; run concurrently (`@Execution(ExecutionMode.CONCURRENT)`);
   use `TestNamespace` for isolation and `SdkClients` for API calls
   (`SdkClients.adminClient().tables().create(...)`).
+- **An IT asserts on and writes to only its own data**: the `parallel` lane shares one server, DB and
+  search index. No counts/totals/"empty" over a whole collection. Anything that touches every entity
+  of a type or a global setting is scoped to the test's own data, or runs alone
+  (`@ResourceLock(value = Resources.GLOBAL, mode = ResourceAccessMode.READ_WRITE)`, or the
+  `global-state` lane). It must also survive the merge queue's one retry: names from
+  `org.openmetadata.it.util.TestNamespace` only, no state from another test method. See
+  `openmetadata-integration-tests/README.md` § "Shared server: only touch your own data".
 
 ## Commands
 
