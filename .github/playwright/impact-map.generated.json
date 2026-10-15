@@ -698,7 +698,7 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/playwright/e2e/Utils/aiAlertModal.ts"
+        "openmetadata-ui/src/main/resources/ui/playwright/e2e/Utils/aiAlertDrawer.ts"
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
