@@ -13,6 +13,8 @@
 
 import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
+import { PAGE_SIZE_LARGE } from '../constants/constants';
+import { SORT_ORDER } from '../enums/common.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Domain } from '../generated/entity/domains/domain';
 import { getAllDomainsWithAssetsCount } from '../rest/domainAPI';
@@ -22,7 +24,7 @@ import { getEntityName } from '../utils/EntityNameUtils';
 export const DOMAIN_OVERVIEW_QUERY_KEY = ['landingPage', 'widgets', 'domains'];
 const TTL_MS = 5 * 60 * 1000;
 
-export const OVERVIEW_PAGE_SIZE = 10;
+export const OVERVIEW_PAGE_SIZE = PAGE_SIZE_LARGE;
 
 /**
  * The ownership buckets the Domains and Data Products cards filter by. Each
@@ -68,6 +70,30 @@ export const emptyFqnsOf = (counts: Record<string, number>): string[] =>
     .map(([fqn]) => fqn)
     .sort((a, b) => a.localeCompare(b));
 
+/**
+ * The order the server pages in. Asset counts are not on the search document,
+ * so the card sorts by count reorder whichever page this order fetched.
+ * ADR:2026-10-14-overview-widgets-page-by-name-or-recency
+ */
+export enum OverviewOrder {
+  NAME = 'name',
+  RECENTLY_UPDATED = 'recentlyUpdated',
+}
+
+const ORDER_SORT: Record<
+  OverviewOrder,
+  { sortField: string; sortOrder: SORT_ORDER }
+> = {
+  [OverviewOrder.NAME]: {
+    sortField: 'name.keyword',
+    sortOrder: SORT_ORDER.ASC,
+  },
+  [OverviewOrder.RECENTLY_UPDATED]: {
+    sortField: 'updatedAt',
+    sortOrder: SORT_ORDER.DESC,
+  },
+};
+
 /** The documents of one page, untyped — each hook reads its own entity shape. */
 export interface OverviewPage {
   sources: unknown[];
@@ -77,7 +103,8 @@ export interface OverviewPage {
 export const fetchOverviewPage = async (
   searchIndex: SearchIndex.DOMAIN | SearchIndex.DATA_PRODUCT,
   filter: OverviewFilter,
-  emptyFqns: string[]
+  emptyFqns: string[],
+  order: OverviewOrder = OverviewOrder.NAME
 ): Promise<OverviewPage> => {
   if (filter === OverviewFilter.EMPTY && emptyFqns.length === 0) {
     return { sources: [] };
@@ -96,6 +123,9 @@ export const fetchOverviewPage = async (
     query: '',
     queryFilter,
     searchIndex,
+    // Never relevance: an empty query ranks by boosts like tier and votes, so a
+    // new entity could never reach the page however the card then sorts it.
+    ...ORDER_SORT[order],
   });
 
   return { sources: response.hits.hits.map((hit) => hit._source) };

@@ -27,6 +27,7 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
   redirectToHomePage,
+  selectOptionWithRetry,
   toastNotification,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -334,9 +335,10 @@ test.describe.serial(
       await page.getByTestId('preferences').click();
       await page.getByTestId('preferences.lineageConfig').click();
 
-      await page.getByTestId('field-pipeline-view-mode').click();
-
-      await page.getByTitle('Edge').filter({ visible: true }).click();
+      await selectOptionWithRetry(
+        page.getByTestId('field-pipeline-view-mode').getByRole('button'),
+        page.getByRole('option', { name: 'Edge', exact: true })
+      );
       const lineageSettingUpdate = page.waitForResponse(
         '/api/v1/system/settings'
       );
@@ -370,8 +372,10 @@ test.describe.serial(
       ).toBeVisible({ timeout: 10000 });
 
       // update pipeline view mode to Node
-      await page.getByTestId('field-pipeline-view-mode').click();
-      await page.getByTitle('Node').filter({ visible: true }).click();
+      await selectOptionWithRetry(
+        page.getByTestId('field-pipeline-view-mode').getByRole('button'),
+        page.getByRole('option', { name: 'Node', exact: true })
+      );
       const settingsUpdate = page.waitForResponse('/api/v1/system/settings');
       await page.getByTestId('save-button').click();
       await settingsUpdate;

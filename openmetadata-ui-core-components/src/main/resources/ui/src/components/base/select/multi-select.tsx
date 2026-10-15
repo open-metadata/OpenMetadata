@@ -13,6 +13,7 @@ import type {
   KeyboardEvent,
   PointerEventHandler,
   RefAttributes,
+  RefObject,
 } from 'react';
 import {
   createContext,
@@ -39,10 +40,11 @@ import {
 import type { ListData } from 'react-stately';
 import { SelectItem } from './select-item';
 
-interface ComboBoxValueProps
-  extends AriaGroupProps,
-    RefAttributes<HTMLDivElement> {
+// The trigger ref is a named prop, not `ref`: React 18 does not pass `ref` to a
+// function component, so the popover would have no trigger to anchor to.
+interface ComboBoxValueProps extends AriaGroupProps {
   size: 'sm' | 'md';
+  triggerRef: RefObject<HTMLDivElement>;
   shortcut?: boolean;
   isDisabled?: boolean;
   placeholder?: string;
@@ -169,11 +171,11 @@ const InnerMultiSelect = ({
   const isSelectionEmpty = comboBoxContext?.selectedItems?.items?.length === 0;
 
   return (
-    <div className="tw:relative tw:flex tw:w-full tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
+    <div className="tw:relative tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
       {!isSelectionEmpty &&
         comboBoxContext?.selectedItems?.items?.map((value) => (
           <span
-            className="tw:flex tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
+            className="tw:flex tw:max-w-full tw:min-w-0 tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
             key={value.id}>
             <Avatar alt={value?.label} size="xxs" src={value?.avatarUrl} />
 
@@ -234,6 +236,7 @@ export const MultiSelectTagsValue = ({
   icon: Icon = Search,
   // Omit this prop to avoid invalid HTML attribute warning
   isDisabled: _isDisabled,
+  triggerRef,
   ...otherProps
 }: ComboBoxValueProps) => {
   return (
@@ -249,7 +252,8 @@ export const MultiSelectTagsValue = ({
           isFocusWithin && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
           sizes[size].root
         )
-      }>
+      }
+      ref={triggerRef}>
       {({ isDisabled }) => (
         <>
           {Icon && (
@@ -419,9 +423,9 @@ export const MultiSelectBase = ({
 
             <MultiSelectTagsValue
               placeholder={placeholder}
-              ref={placeholderRef}
               shortcut={shortcut}
               size={size}
+              triggerRef={placeholderRef}
               // This is a workaround to correctly calculating the trigger width
               // while using ResizeObserver wasn't 100% reliable.
               onFocus={onResize}

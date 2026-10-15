@@ -147,6 +147,7 @@ const AddPipeLineModal = ({
           onClose={onModalCancel}>
           <Dialog.Content>
             <Input
+              aria-label={t('message.search-for-edge')}
               inputDataTestId="field-input"
               placeholder={t('message.search-for-edge')}
               value={edgeSearchValue}

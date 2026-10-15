@@ -171,6 +171,9 @@ const NodeChildren = ({
         data-testid="column-container">
         <div className="search-box">
           <Input
+            aria-label={t('label.search-entity', {
+              entity: childrenHeading,
+            })}
             icon={Search}
             inputDataTestId="search-column-input"
             placeholder={t('label.search-entity', {
