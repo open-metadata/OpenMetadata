@@ -39,9 +39,10 @@ fixed, and until then every occurrence costs the queue an hour.
   `TestNamespace.startRetryPass()`, which changes every prefix from then on — method- and
   class-level, extension-made or hand-made — so the re-run creates fresh entities instead of
   failing on a 409. JUnit re-runs the failed test's `@BeforeAll` in that pass.
-- A lane re-invokes `mvn verify` up to three times, 30 seconds apart, only when it failed with a
-  dependency-resolution error and wrote no failsafe report. A test failure is never retried this
-  way.
+- A lane re-invokes `mvn verify` up to three times, 30 seconds apart, only when the attempt failed
+  with a dependency-resolution error within 10 minutes and wrote no failsafe report. A test
+  failure or a hang is never retried this way. Before each retry it deletes `~/.m2/**/*.lastUpdated`:
+  Maven caches a "not found" there and would otherwise not ask Central again.
 
 ## Consequences
 

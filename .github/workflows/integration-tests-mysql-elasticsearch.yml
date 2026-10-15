@@ -347,8 +347,11 @@ jobs:
           # result: retry it. Test failures are never retried here; failsafe re-runs those once
           # (ADR:2026-10-15-merge-queue-its-retry-a-failed-test-once).
           reports="openmetadata-integration-tests/target/failsafe-reports"
+          : > "$maven_log"
           set +e
           for attempt in 1 2 3; do
+            attempt_start=$SECONDS
+            log_start=$(wc -l < "$maven_log")
             timeout --signal=TERM --kill-after=60s 65m \
               mvn --no-snapshot-updates verify -pl :openmetadata-integration-tests -Pmysql-elasticsearch \
                 -DintegrationTests.lane="${IT_LANE}" \
@@ -356,17 +359,22 @@ jobs:
                 -DintegrationTests.parallelism="${IT_PARALLELISM}" \
                 -DintegrationTests.maxPoolSize="${IT_MAX_POOL_SIZE}" \
                 -DintegrationTests.rerunFailingTestsCount=1 \
-              2>&1 | tee "$maven_log"
+              2>&1 | tee -a "$maven_log"
             pipeline_status=("${PIPESTATUS[@]}")
             exit_code="${pipeline_status[0]}"
             if (( exit_code == 0 && pipeline_status[1] != 0 )); then
               exit_code="${pipeline_status[1]}"
             fi
-            if (( exit_code == 0 || attempt == 3 )) || compgen -G "$reports/TEST-*.xml" > /dev/null \
-              || ! grep -qE 'Could not (resolve dependencies|transfer artifact|find artifact)' "$maven_log"; then
+            # A download failure fails within minutes; a long attempt with no report was a hang.
+            if (( exit_code == 0 || attempt == 3 || SECONDS - attempt_start > 600 )) \
+              || compgen -G "$reports/TEST-*.xml" > /dev/null \
+              || ! tail -n +"$((log_start + 1))" "$maven_log" \
+                | grep -qE 'Could not (resolve dependencies|transfer artifact|find artifact)'; then
               break
             fi
             echo "::warning::Dependency download failed before any test ran (attempt ${attempt}/3); retrying in 30s"
+            # Maven saves a "not found" in ~/.m2 and won't ask Central again; clear it so the retry does
+            find ~/.m2/repository -name '*.lastUpdated' -delete
             sleep 30
           done
           set -e
