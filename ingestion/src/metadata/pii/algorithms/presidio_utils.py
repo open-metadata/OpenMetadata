@@ -19,6 +19,7 @@ import re
 import types
 from collections.abc import Callable, Iterable
 from copy import copy
+from datetime import date
 from functools import cache, wraps
 from itertools import groupby
 from typing import ClassVar, cast
@@ -77,6 +78,9 @@ _MAX_PORT = 65535
 _CARD_CANDIDATES = re.compile(r"\d[\d -]*\d|\d")
 _CARD_PARTS = re.compile(r"\S+")
 _TRAILING_YEAR = re.compile(r"(?:19|20)\d{2}")
+_CARD_DATE_PREFIX = re.compile(r"([0-9]{4}-[0-9]{2}-[0-9]{2}) +")
+_CARD_QUANTITY_PREFIX = re.compile(r"[0-9]+ +")
+_QUANTITY_LABEL = re.compile(r"(?<![\w.+-])(?:qty|quantity)\s+$", re.IGNORECASE)
 _IP_CANDIDATES = re.compile(r"[\w:.%-]+")
 _IP_LABEL = re.compile(r"[a-zA-Z_]\w*")
 _NON_HEX = re.compile(r"[^0-9a-fA-F]")
@@ -278,6 +282,22 @@ def _card_prefix_before_year(candidate: str) -> str | None:
     return None
 
 
+def _card_start_after_explicit_prefix(text: str, start: int, end: int) -> int | None:
+    candidate = text[start:end]
+    prefix = _CARD_DATE_PREFIX.match(candidate)
+    if prefix:
+        try:
+            date.fromisoformat(prefix.group(1))
+        except ValueError:
+            return None
+    else:
+        prefix = _CARD_QUANTITY_PREFIX.match(candidate)
+        if not prefix or not _QUANTITY_LABEL.search(text, max(0, start - _MAX_CANDIDATE_LENGTH), start):
+            return None
+    card_start = start + prefix.end()
+    return card_start if _has_card_shape(text[card_start:end]) else None
+
+
 class SanitizedCreditCardRecognizer(CreditCardRecognizer):
     def _analyze_card_candidate(
         self, candidate: str, entities: list[str], start: int, end: int, regex_flags: int | None
@@ -300,6 +320,12 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
                 if whole_results:
                     results.extend(whole_results)
                     continue
+            card_start = _card_start_after_explicit_prefix(text, start, end)
+            if card_start is not None:
+                results.extend(
+                    self._analyze_card_candidate(text[card_start:end], entities, card_start, end, regex_flags)
+                )
+                continue
             parts = list(_CARD_PARTS.finditer(candidate))
             if len(parts) >= 2 and all(_has_card_shape(part.group()) for part in parts):
                 for part in parts:

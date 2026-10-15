@@ -110,6 +110,101 @@ def test_separate_compact_cards_keep_independent_offsets_with_repeated_spaces():
     assert [(result.start, result.end, result.score) for result in results] == [(0, 14, 1.0), (17, 33, 1.0)]
 
 
+@pytest.mark.parametrize(
+    "prefix",
+    [
+        "2024-01-15 ",
+        "2024-02-29   ",
+        "2000-02-29 ",
+        "Qty 2 ",
+        "Qty 0 ",
+        "Quantity 999999999999999999999999 ",
+        "qTy 002   ",
+        "QUANTITY 12 ",
+        "Quantity\t2 ",
+    ],
+)
+@pytest.mark.parametrize(
+    "card",
+    [
+        "4111111111111111",
+        "4111 1111 1111 1111",
+        "4111-1111-1111-1111",
+        "3056  930902   5904",
+        "4322 7148 2639 4388 390",
+    ],
+)
+def test_card_recovers_complete_remainder_after_explicit_prefix(prefix, card):
+    text = f"é {prefix}{card} issued"
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    results = recognizer.analyze(text, ["CREDIT_CARD"])
+    start = 2 + len(prefix)
+    assert [(result.start, result.end, result.score) for result in results] == [(start, start + len(card), 1.0)]
+    assert results[0].recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name
+    assert results[0].analysis_explanation.pattern_name == "Credit Card Number"
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    [
+        "2023-02-29 ",
+        "1900-02-29 ",
+        "2024-02-30 ",
+        "2024-13-01 ",
+        "0000-01-01 ",
+        "2024-1-15 ",
+        "1234 ",
+        "2 ",
+        "Qty -2 ",
+        "Qty +2 ",
+        "Qty 2.5 ",
+        "xQty 2 ",
+        "Qty_2 ",
+        "Quantity2 ",
+        "Phone +2 ",
+    ],
+)
+def test_card_rejects_unapproved_numeric_prefix(prefix):
+    assert _registered_recognizer(CreditCardRecognizer).analyze(prefix + "4111111111111111", ["CREDIT_CARD"]) == []
+
+
+@pytest.mark.parametrize("prefix", ["2024-01-15 ", "Qty 2 ", "Quantity 12 "])
+@pytest.mark.parametrize(
+    "remainder",
+    [
+        "4111111111111112",
+        "4111-1111 1111-1111",
+        "4111111111111111 123",
+        "4111 1111 1111 1111 123",
+        "4111111111111111 2025",
+        "41 12 34 56 78 90 12 38",
+        "+ 4111111111111111",
+        "x4111111111111111",
+        "4111111111111111_suffix",
+    ],
+)
+def test_card_prefix_recovery_requires_entire_valid_remainder(prefix, remainder):
+    assert _registered_recognizer(CreditCardRecognizer).analyze(prefix + remainder, ["CREDIT_CARD"]) == []
+
+
+@pytest.mark.parametrize("separator", ["\t", "\n", "\r\n", "\u00a0"])
+@pytest.mark.parametrize("prefix", ["2024-01-15", "2023-02-29", "Qty 2", "Quantity 12"])
+def test_card_preserves_independent_candidate_after_whitespace(prefix, separator):
+    text = f"é {prefix}{separator}4111111111111111"
+    results = _registered_recognizer(CreditCardRecognizer).analyze(text, ["CREDIT_CARD"])
+    assert [(result.start, result.end) for result in results] == [(len(text) - 16, len(text))]
+
+
+@pytest.mark.parametrize("length", [5000, 5001])
+def test_card_prefix_recovery_preserves_candidate_bound(length):
+    prefix, card = "2024-01-15", "4111111111111111"
+    text = prefix + " " * (length - len(prefix) - len(card)) + card
+    results = _registered_recognizer(CreditCardRecognizer).analyze(text, ["CREDIT_CARD"])
+    assert [(result.start, result.end) for result in results] == (
+        [(length - len(card), length)] if length == 5000 else []
+    )
+
+
 @pytest.mark.parametrize("card", ["4939323083746", "4924867307503760", "4930582239178"])
 def test_valid_card_is_not_vetoed_by_phone_overlap(card):
     recognizer = _registered_recognizer(CreditCardRecognizer)

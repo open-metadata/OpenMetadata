@@ -7,6 +7,7 @@ from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -56,7 +57,7 @@ def ingestion_config(db_service, metadata, workflow_config, sink_config):
             "sourceConfig": {
                 "config": {
                     "type": DatabaseMetadataConfigType.DatabaseMetadata.value,
-                    "tableFilterPattern": FilterPattern(includes=["^example_table$"]),
+                    "tableFilterPattern": FilterPattern(includes=["^(example_table|card_prefix_cases)$"]),
                 }
             },
             "serviceConnection": db_service.connection.model_dump(),
@@ -98,7 +99,7 @@ def autoclassification_config(db_service, bot_workflow_config, sink_config):
             "sourceConfig": {
                 "config": {
                     "type": "AutoClassification",
-                    "tableFilterPattern": FilterPattern(includes=["^example_table$"]),
+                    "tableFilterPattern": FilterPattern(includes=["^(example_table|card_prefix_cases)$"]),
                     "storeSampleData": True,
                 }
             },
@@ -203,7 +204,7 @@ def test_it_returns_the_expected_classifications(
         IsInstance(TagLabel)
         & HasAttributes(
             tagFQN=HasAttributes(root="PII.Sensitive"),
-            reason=Contains("Detected by `SanitizedCreditCardRecognizer`", "Patterns matched:"),
+            reason=Contains("Detected by `CreditCardRecognizer`", "Patterns matched:"),
         ),
     ]
     assert service_url_column.tags == [
@@ -220,3 +221,37 @@ def test_it_returns_the_expected_classifications(
             reason=Contains("Detected by `IpRecognizer`", "Patterns matched:"),
         ),
     ]
+
+
+def test_card_prefix_classifications_preserve_configured_metadata(
+    db_service: DatabaseService,
+    metadata: OpenMetadata,
+    run_autoclassification: AutoClassificationWorkflow,
+) -> None:
+    tag = metadata.get_by_name(entity=Tag, fqn="PII.Sensitive", fields=["recognizers"])
+    card_recognizer = next(
+        recognizer for recognizer in tag.recognizers if recognizer.name.root == "EnglishCreditCardRecognizer"
+    )
+    columns = {
+        column.name.root: column
+        for column in metadata.get_table_columns(
+            f"{db_service.fullyQualifiedName.root}.test_db.public.card_prefix_cases", fields=["tags"]
+        )
+    }
+    for name in ("date_compact", "date_spaced", "date_dashed", "qty_spaced", "quantity_diners", "quantity_19"):
+        assert len(columns[name].tags) == 1, name
+        label = columns[name].tags[0]
+        assert label.tagFQN.root == "PII.Sensitive", name
+        assert "Detected by `CreditCardRecognizer`" in label.reason, name
+        assert label.metadata is not None, name
+        evidence = label.metadata.recognizer
+        assert evidence.recognizerId == card_recognizer.id, name
+        assert evidence.recognizerName == "CreditCardRecognizer", name
+        assert evidence.score == 1.0, name
+        assert evidence.patterns, name
+        assert [(pattern.name, pattern.score) for pattern in evidence.patterns] == [("Credit Card Number", 1.0)], name
+    for name in ("invalid_date", "invalid_checksum", "unlabeled_number", "compact_short_suffix", "spaced_short_suffix"):
+        assert all(
+            label.metadata is None or label.metadata.recognizer.recognizerId != card_recognizer.id
+            for label in columns[name].tags
+        ), name

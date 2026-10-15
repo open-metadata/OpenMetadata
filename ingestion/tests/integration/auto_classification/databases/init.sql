@@ -1,5 +1,33 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+CREATE TABLE card_prefix_cases (
+    date_compact VARCHAR(255),
+    date_spaced VARCHAR(255),
+    date_dashed VARCHAR(255),
+    qty_spaced VARCHAR(255),
+    quantity_diners VARCHAR(255),
+    quantity_19 VARCHAR(255),
+    invalid_date VARCHAR(255),
+    invalid_checksum VARCHAR(255),
+    unlabeled_number VARCHAR(255),
+    compact_short_suffix VARCHAR(255),
+    spaced_short_suffix VARCHAR(255)
+);
+
+INSERT INTO card_prefix_cases VALUES (
+    '2024-01-15 4111111111111111',
+    '2024-02-29   4111 1111 1111 1111',
+    '2000-02-29 4111-1111-1111-1111',
+    'Qty 2 4111 1111 1111 1111',
+    'qUaNtItY 002 3056  930902   5904',
+    'QUANTITY 12 4322 7148 2639 4388 390',
+    '2023-02-29 4111111111111111',
+    'Qty 2 4111111111111112',
+    '2 4111111111111111',
+    '4111111111111111 123',
+    'Qty 2 4111 1111 1111 1111 123'
+);
+
 -- Create the example_table
 CREATE TABLE example_table (
     customer_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

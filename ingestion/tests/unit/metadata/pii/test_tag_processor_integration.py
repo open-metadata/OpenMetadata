@@ -249,6 +249,57 @@ def test_network_configured_context_preserves_recognizer_metadata(
     assert labels[0].metadata.recognizer.recognizerName == recognizer_name
 
 
+@pytest.mark.parametrize(
+    ("value", "expected_card"),
+    [
+        ("é 2024-01-15 4111111111111111", "4111111111111111"),
+        ("2024-02-29   4111 1111 1111 1111", "4111 1111 1111 1111"),
+        ("2000-02-29 4111-1111-1111-1111", "4111-1111-1111-1111"),
+        ("Qty 2 4111 1111 1111 1111", "4111 1111 1111 1111"),
+        ("qTy 002 3056  930902   5904", "3056  930902   5904"),
+        ("QUANTITY 12 4322 7148 2639 4388 390", "4322 7148 2639 4388 390"),
+        ("Quantity\t2 4111111111111111", "4111111111111111"),
+        ("2024-01-15\n4111111111111111", "4111111111111111"),
+        ("2023-02-29\t4111111111111111", "4111111111111111"),
+        ("2023-02-29 4111111111111111", None),
+        ("1900-02-29 4111111111111111", None),
+        ("2024-13-01 4111111111111111", None),
+        ("2024-01-15 4111111111111112", None),
+        ("Qty 2 4111111111111112", None),
+        ("2 4111111111111111", None),
+        ("xQty 2 4111111111111111", None),
+        ("Qty +2 4111111111111111", None),
+        ("Phone +49 1512 3456787", None),
+        ("Qty 2 41 12 34 56 78 90 12 38", None),
+        ("4111111111111111 123", None),
+        ("4111 1111 1111 1111 123", None),
+        ("2024-01-15 4111111111111111 123", None),
+        ("Qty 2 4111 1111 1111 1111 123", None),
+        ("Qty 2 4111111111111111 2025", None),
+    ],
+)
+def test_shipped_card_prefix_recovery_preserves_spans_and_label_metadata(shipped_pii, value, expected_card):
+    classification = _shipped_classification(shipped_pii)
+    tag = _shipped_tag(shipped_pii, classification, "Sensitive", {"EnglishCreditCardRecognizer"})
+    column = Column(name="payload", fullyQualifiedName="db.schema.table.payload", dataType=DataType.VARCHAR, tags=[])
+    analysis = TagAnalyzer(tag, column, load_nlp_engine(classification_language=ClassificationLanguage.en)).analyze(
+        [value]
+    )
+    assert [(result.start, result.end, result.score) for result in analysis.recognizer_results] == (
+        [(value.index(expected_card), value.index(expected_card) + len(expected_card), 1.0)] if expected_card else []
+    )
+    labels = _processor(classification, [tag]).create_column_tag_labels(column, [value])
+    assert [label.tagFQN.root for label in labels] == (["PII.Sensitive"] if expected_card else [])
+    if expected_card:
+        assert labels[0].metadata is not None
+        metadata = labels[0].metadata.recognizer
+        assert metadata.recognizerId == tag.recognizers[0].id
+        assert metadata.recognizerName == "CreditCardRecognizer"
+        assert metadata.score == 1.0
+        assert metadata.patterns
+        assert [(pattern.name, pattern.score) for pattern in metadata.patterns] == [("Credit Card Number", 1.0)]
+
+
 def test_luhn_valid_operational_lookalike_receives_conservative_sensitive_tag(shipped_pii):
     classification = _shipped_classification(shipped_pii)
     tag = _shipped_tag(shipped_pii, classification, "Sensitive", {"EnglishCreditCardRecognizer"})
