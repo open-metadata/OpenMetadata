@@ -12,16 +12,17 @@
  */
 
 import {
+  Alert,
   Button,
   ButtonUtility,
+  Dot,
   Dropdown,
   Popover,
   PopoverTrigger,
   Tooltip as CoreTooltip,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Alert, Badge, InputRef } from 'antd';
-import { Header } from 'antd/lib/layout/layout';
+import { RefreshCw01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { startCase, upperCase } from 'lodash';
@@ -39,7 +40,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
-import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
 import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
 import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
@@ -60,6 +60,7 @@ import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurre
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
+import { useSwitchActiveDomain } from '../../hooks/useSwitchActiveDomain';
 import { AsyncDeleteWebsocketResponse } from '../../interface/entity/asyncDelete.interface';
 import { getVersion } from '../../rest/miscAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
@@ -118,12 +119,11 @@ const NavBar = () => {
   const {
     activeDomain,
     activeDomainEntityRef,
-    updateActiveDomain,
     userDomains,
     isDomainRestricted,
   } = useDomainStore();
+  const switchActiveDomain = useSwitchActiveDomain();
   const { t } = useTranslation();
-  const searchRef = useRef<InputRef>(null);
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
   const [hasMentionNotification, setHasMentionNotification] =
@@ -310,7 +310,7 @@ const NavBar = () => {
 
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
     if (isCommandKeyPress(event) && event.key === Keys.K) {
-      searchRef.current?.focus();
+      document.getElementById('searchBox')?.focus();
       event.preventDefault();
     }
   }, []);
@@ -470,11 +470,10 @@ const NavBar = () => {
 
   const handleDomainChange = useCallback(
     async (domain: EntityReference | EntityReference[] | undefined) => {
-      updateActiveDomain(domain as EntityReference);
       setIsDomainDropdownOpen(false);
-      navigate(0);
+      await switchActiveDomain(domain as EntityReference | undefined);
     },
-    []
+    [switchActiveDomain]
   );
 
   const domainDisplayName = useMemo(
@@ -563,7 +562,9 @@ const NavBar = () => {
       showVersionMissMatchAlert ? (
         <Alert
           showIcon
-          action={
+          className="refresh-alert slide-in-top"
+          icon={RefreshCw01}
+          rightContent={
             <Button
               color="link-color"
               size="xs"
@@ -573,19 +574,17 @@ const NavBar = () => {
               {t('label.refresh')}
             </Button>
           }
-          className="refresh-alert slide-in-top"
-          description="For a seamless experience recommend you to refresh the page"
-          icon={<RefreshIcon />}
-          message="A new version is available"
-          type="info"
-        />
+          title={t('message.new-version-available')}
+          variant="brand">
+          {t('message.refresh-page-recommended')}
+        </Alert>
       ) : null,
     [showVersionMissMatchAlert, navigate, t]
   );
 
   return (
     <>
-      <Header style={headerStyle}>
+      <header className="app-navbar-header" style={headerStyle}>
         <div className="navbar-container">
           <div className="flex-center gap-2">
             <Tooltip arrow placement="right" title={sidebarTooltipTitle}>
@@ -642,11 +641,17 @@ const NavBar = () => {
                 aria-label={t('label.notification-plural')}
                 color="tertiary"
                 iconLeading={
-                  <Badge
-                    dot={hasTaskNotification || hasMentionNotification}
-                    offset={[-3, 3]}>
+                  <span className="tw:relative tw:inline-flex tw:items-center">
                     <IconBell data-testid="task-notifications" width={20} />
-                  </Badge>
+                    {(hasTaskNotification || hasMentionNotification) && (
+                      <Dot
+                        aria-label={t('label.notification-plural')}
+                        className="tw:absolute tw:-right-1 tw:top-0 tw:text-fg-error-primary"
+                        role="img"
+                        size="sm"
+                      />
+                    )}
+                  </span>
                 }
                 size="sm"
               />
@@ -687,7 +692,7 @@ const NavBar = () => {
             <UserProfileIcon />
           </div>
         </div>
-      </Header>
+      </header>
       {versionMismatchAlert}
       {renderAlertCards}
     </>

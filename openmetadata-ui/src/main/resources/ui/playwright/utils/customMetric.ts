@@ -35,31 +35,47 @@ type CustomMetricDetails = {
 
 const validateForm = async (page: Page, isColumnMetric = false) => {
   // error messages
-  await expect(page.locator('#name_help')).toHaveText('Name is required');
+  await expect(
+    page
+      .getByTestId('custom-metric-form')
+      .getByText('Name is required', { exact: true })
+  ).toHaveText('Name is required');
 
-  await expect(page.locator('#expression_help')).toHaveText(
-    'SQL Query is required.'
-  );
+  await expect(
+    page
+      .getByTestId('custom-metric-form')
+      .getByText('SQL Query is required.', { exact: true })
+  ).toHaveText('SQL Query is required.');
 
   if (isColumnMetric) {
-    await expect(page.locator('#columnName_help')).toHaveText(
-      'Column is required.'
-    );
+    await expect(
+      page
+        .getByTestId('custom-metric-form')
+        .getByText('Column is required.', { exact: true })
+    ).toHaveText('Column is required.');
   }
 
   // max length validation
-  await page.locator('#name').fill(INVALID_NAMES.MAX_LENGTH);
+  await page.getByTestId('custom-metric-name').fill(INVALID_NAMES.MAX_LENGTH);
 
-  await expect(page.locator('#name_help')).toHaveText(
-    NAME_MAX_LENGTH_VALIDATION_ERROR
-  );
+  await expect(
+    page
+      .getByTestId('custom-metric-form')
+      .getByText(NAME_MAX_LENGTH_VALIDATION_ERROR, { exact: true })
+  ).toBeVisible();
 
   // with special char validation
-  await page.locator('#name').fill(INVALID_NAMES.WITH_SPECIAL_CHARS);
+  await page
+    .getByTestId('custom-metric-name')
+    .fill(INVALID_NAMES.WITH_SPECIAL_CHARS);
 
-  await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
+  await expect(
+    page
+      .getByTestId('custom-metric-form')
+      .getByText(NAME_VALIDATION_ERROR, { exact: true })
+  ).toBeVisible();
 
-  await page.locator('#name').clear();
+  await page.getByTestId('custom-metric-name').clear();
 };
 
 export const createCustomMetric = async ({
@@ -106,10 +122,12 @@ export const createCustomMetric = async ({
   await validateForm(page, isColumnMetric);
 
   // fill form and submit
-  await page.fill('#name', metric.name);
+  await page.getByTestId('custom-metric-name').fill(metric.name);
   if (isColumnMetric) {
-    await page.click('#columnName');
-    await page.click(`[title="${metric.column}"]`);
+    await page.getByTestId('custom-metric-column').getByRole('button').click();
+    await page
+      .getByRole('option', { name: metric.column, exact: true })
+      .click();
   }
   if (metric.expression) {
     await clickCodeEditor(page);

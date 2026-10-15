@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { GlobalSettingItem } from './GlobalSettingsItem';
 
 const mockProps = {
@@ -54,5 +54,25 @@ describe('GlobalSettingItem', () => {
     fireEvent.change(input, { target: { value: '15000' } });
 
     expect(input).toHaveValue(15000);
+  });
+
+  it('Should not save a cleared value', async () => {
+    const onUpdate = jest.fn();
+    render(<GlobalSettingItem {...mockProps} onUpdate={onUpdate} />);
+
+    fireEvent.click(
+      screen.getByTestId(`global-setting-edit-icon-${mockProps.label}`)
+    );
+    fireEvent.change(screen.getByTestId('value-input'), {
+      target: { value: '' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('inline-save-btn'));
+    });
+
+    expect(onUpdate).not.toHaveBeenCalled();
+    expect(
+      screen.getByTestId(`global-setting-value-${mockProps.label}`)
+    ).toHaveTextContent(mockProps.value.toString());
   });
 });
