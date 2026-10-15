@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 /**
- * Payload for Metadata Completion tasks: the fields an asset still has to fill in before
- * its lifecycle workflow lets it leave the current stage
+ * Payload for Metadata Completion tasks: what an asset still needs before its lifecycle
+ * workflow lets it leave the current stage
  * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task). Only the
  * server writes it.
  */
 export interface MetadataCompletionPayload {
+    /**
+     * False while the stage's lifecycle conditions are not met.
+     */
+    conditionsMet?: boolean;
     /**
      * Paths of the required fields that are still empty, in the order the stage lists them.
      */

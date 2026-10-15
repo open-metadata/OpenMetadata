@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/type/metadataCompletionPayload.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "MetadataCompletionPayload",
-  "description": "Payload for Metadata Completion tasks: the fields an asset still has to fill in before its lifecycle workflow lets it leave the current stage (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task). Only the server writes it.",
+  "description": "Payload for Metadata Completion tasks: what an asset still needs before its lifecycle workflow lets it leave the current stage (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task). Only the server writes it.",
   "javaType": "org.openmetadata.schema.type.MetadataCompletionPayload",
   "type": "object",
   "properties": {
@@ -30,6 +30,11 @@
       "items": {
         "type": "string"
       }
+    },
+    "conditionsMet": {
+      "description": "False while the stage's lifecycle conditions are not met.",
+      "type": "boolean",
+      "default": true
     }
   },
   "required": [

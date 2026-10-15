@@ -58,6 +58,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.metadata.MetadataCollectionService;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
@@ -274,6 +275,14 @@ public class TaskWorkflowHandler {
         if (TaskRepository.isTerminalStatus(task.getStatus())) {
           throw TaskStateConflictException.of(
               String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
+        }
+        // The task row commits before the workflow's own transaction, so a live instance without
+        // its runtime task has not finished creating it. Closing the task directly would leave the
+        // workflow waiting on a task nobody can resolve any more.
+        if (isWorkflowStillRunning(task)) {
+          throw TaskStateConflictException.of(
+              String.format(
+                  "The workflow is still preparing task '%s'; retry the resolution", taskId));
         }
         LOG.warn(
             "[TaskWorkflowHandler] No active Flowable runtime task found for '{}'; applying direct task resolution fallback",
@@ -1307,6 +1316,13 @@ public class TaskWorkflowHandler {
       return false;
     }
     return WorkflowHandler.getInstance().hasMultiApprovalSupport(task.getId());
+  }
+
+  private static boolean isWorkflowStillRunning(Task task) {
+    return task.getWorkflowInstanceId() != null
+        && ((WorkflowInstanceRepository)
+                Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+            .isRunning(task.getWorkflowInstanceId());
   }
 
   private boolean isWorkflowManaged(Task task) {

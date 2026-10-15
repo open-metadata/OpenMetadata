@@ -12,7 +12,7 @@
  */
 /**
  * Keeps one Metadata Completion task open on an asset while it is in this node's stage and
- * any listed field is still empty
+ * any listed field is still empty or the stage's conditions are not met
  * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task). The stage
  * gate, not the task, decides whether the asset advances.
  */
@@ -33,9 +33,14 @@ export interface MetadataCollectionConfiguration {
      */
     candidates?: EntityReference[];
     /**
+     * JSON Logic condition the asset must also meet before it leaves the stage. The task only
+     * reports that it is not met.
+     */
+    conditions?: string;
+    /**
      * Fields the task asks for; it lists only the ones still empty.
      */
-    fields: RequiredField[];
+    fields?: RequiredField[];
     /**
      * The task applies while the asset is in this stage.
      */
@@ -45,7 +50,7 @@ export interface MetadataCollectionConfiguration {
      */
     targetStage?: EntityStatus;
     /**
-     * Who is asked to fill in the missing fields.
+     * Who is asked to complete what the stage still needs.
      */
     taskAssignees: TaskAssignees;
 }
@@ -135,7 +140,7 @@ export enum EntityStatus {
 }
 
 /**
- * Who is asked to fill in the missing fields.
+ * Who is asked to complete what the stage still needs.
  */
 export enum TaskAssignees {
     Candidates = "candidates",

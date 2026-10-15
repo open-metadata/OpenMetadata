@@ -18,6 +18,7 @@ import {
   EntityReference,
   Task,
   TaskCategory,
+  TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { DescriptionUpdatePayload } from '../../../../generated/type/descriptionUpdatePayload';
@@ -597,14 +598,16 @@ const describeDomainUpdate = (
   };
 };
 
-// The fields still missing, which the server rewrites as they are filled in; the
-// fixed instruction sits where other types put their requester's context.
+// The fields still missing and whether the stage's conditions hold, which the server rewrites as
+// they change; the fixed instruction sits where other types put their requester's context.
 const describeMetadataCompletion = (
   task: Task,
   t: Translate
 ): Partial<TaskDetailDescriptor> => {
   const payload = getMetadataCompletionPayload(task);
-  const missingFields = payload.missingFields ?? [];
+  // A closed task keeps the payload it had when it closed, which no longer describes the asset.
+  const isOpen = task.status === TaskStatus.Open;
+  const missingFields = isOpen ? payload.missingFields ?? [] : [];
 
   return {
     rows: [
@@ -624,6 +627,15 @@ const describeMetadataCompletion = (
             },
           ]
         : []),
+      // An unmet condition is reported, not spelled out: the stage's rule may be any JSON Logic.
+      ...textRow(
+        'conditions',
+        'shield',
+        t('label.condition-plural'),
+        isOpen && payload.conditionsMet === false
+          ? t('message.lifecycle-conditions-not-met')
+          : undefined
+      ),
       ...getCommonRows(task, t),
     ],
     callout: {

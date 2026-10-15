@@ -19,6 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@openmetadata/ui-core-components/icons';
+import { noop } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
@@ -37,14 +38,16 @@ import {
 } from '../../../../utils/WorkflowBuilderUtils';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { getRequiredFieldLabel } from '../../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
+import { SearchOutputType } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { FormField } from '../common/FormField';
 import { ModeAwareFormField } from '../ModeAwareFormField';
 import { FormActionButtons } from './FormActionButtons';
 import { MetadataFormSection } from './MetadataFormSection';
+import { QueryBuilderSection } from './QueryBuilderSection';
 
 interface CollectMetadataFormProps {
   node: Node;
-  entityTypes?: string[];
+  entityTypes?: EntityType[];
   onSave: (nodeId: string, config: Record<string, unknown>) => void;
   onClose: () => void;
   onDelete?: (nodeId: string) => void;
@@ -63,8 +66,8 @@ const ASSIGNEE_LABEL_KEYS: Record<TaskAssignees, string> = {
 };
 
 /**
- * The stage and its required fields belong to the lifecycle that compiled this node, so they
- * are shown read-only; who is asked to fill the fields in can change here.
+ * The stage, its required fields and its conditions belong to the lifecycle that compiled this
+ * node, so they are shown read-only; who is asked to complete them can change here.
  */
 export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
   node,
@@ -146,21 +149,37 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
           </div>
         </FormField>
 
-        <FormField
-          description={t('message.collect-metadata-fields-hint')}
-          label={t('label.required-field-plural')}>
-          <ul
-            className="tw:flex tw:flex-wrap tw:gap-2"
-            data-testid="collect-metadata-fields">
-            {(config.fields ?? []).map(({ field }) => (
-              <li key={field}>
-                <Badge color="brand" size="md" type="color">
-                  {getRequiredFieldLabel(field, t)}
-                </Badge>
-              </li>
-            ))}
-          </ul>
-        </FormField>
+        {Boolean(config.fields?.length) && (
+          <FormField
+            description={t('message.collect-metadata-fields-hint')}
+            label={t('label.required-field-plural')}>
+            <ul
+              className="tw:flex tw:flex-wrap tw:gap-2"
+              data-testid="collect-metadata-fields">
+              {(config.fields ?? []).map(({ field }) => (
+                <li key={field}>
+                  <Badge color="brand" size="md" type="color">
+                    {getRequiredFieldLabel(field, t)}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </FormField>
+        )}
+
+        {config.conditions && (
+          <div data-testid="collect-metadata-conditions">
+            <QueryBuilderSection
+              forceReadOnly
+              entityTypes={entityTypes?.[0] ?? EntityType.ALL}
+              label={t('label.condition-plural')}
+              outputType={SearchOutputType.JSONLogic}
+              showExploreLink={false}
+              value={config.conditions}
+              onChange={noop}
+            />
+          </div>
+        )}
 
         <FormField
           description={t('message.collect-metadata-assignees-hint')}
@@ -193,10 +212,6 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
                 listHeight={200}
                 multiple={{ user: true, team: true }}
                 owner={candidates}
-                popoverProps={{
-                  placement: 'bottomLeft',
-                  overlayStyle: { zIndex: 10000 },
-                }}
                 onUpdate={(updated) => setCandidates(updated ?? [])}>
                 <Button
                   className="tw:h-10 tw:w-full tw:min-w-0 tw:justify-start tw:overflow-hidden"

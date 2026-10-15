@@ -18,7 +18,12 @@ import {
 } from '../../../../rest/tasksAPI';
 import MetadataCompletionTask from './MetadataCompletionTask';
 
-const task = (status: TaskEntityStatus) =>
+const task = (
+  status: TaskEntityStatus,
+  outstanding: { missingFields?: string[]; conditionsMet?: boolean } = {
+    missingFields: ['experts', 'extension.costCenter'],
+  }
+) =>
   ({
     id: 'task-1',
     type: TaskEntityType.MetadataCompletion,
@@ -28,7 +33,8 @@ const task = (status: TaskEntityStatus) =>
       node: 'Collect0',
       stage: 'Draft',
       targetStage: 'In Review',
-      missingFields: ['experts', 'extension.costCenter'],
+      missingFields: [],
+      ...outstanding,
     },
   } as unknown as Task);
 
@@ -44,6 +50,45 @@ describe('MetadataCompletionTask', () => {
     expect(
       screen.getByText('message.metadata-completion-hint')
     ).toBeInTheDocument();
+  });
+
+  it('names missing fields and reports unmet conditions only generically', () => {
+    render(
+      <MetadataCompletionTask
+        task={task(TaskEntityStatus.Open, {
+          missingFields: ['experts'],
+          conditionsMet: false,
+        })}
+      />
+    );
+
+    expect(screen.getByText('label.expert-plural')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.lifecycle-conditions-not-met')
+    ).toBeInTheDocument();
+  });
+
+  it('shows only the conditions message when no field is missing', () => {
+    render(
+      <MetadataCompletionTask
+        task={task(TaskEntityStatus.Open, { conditionsMet: false })}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('metadata-completion-missing-fields')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('message.lifecycle-conditions-not-met')
+    ).toBeInTheDocument();
+  });
+
+  it('does not mention conditions while they are met', () => {
+    render(<MetadataCompletionTask task={task(TaskEntityStatus.Open)} />);
+
+    expect(
+      screen.queryByTestId('metadata-completion-conditions')
+    ).not.toBeInTheDocument();
   });
 
   it('says the fields are filled in once the task completes', () => {

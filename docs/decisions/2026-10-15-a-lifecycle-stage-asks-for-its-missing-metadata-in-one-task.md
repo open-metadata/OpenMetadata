@@ -38,6 +38,13 @@ nor its payload. An asset missing four fields produced four such tasks.
    allowed: the next reconcile reopens it while fields are still missing.
 5. Assignees are the asset's owners, its reviewers, or named users and teams. An asset with nobody to
    ask gets no task; the gate still holds it.
+6. A stage may also carry **conditions**: any JSON Logic rule, written with the workflow builder's
+   condition picker, that must hold as well as the required fields. Either part may be empty. The
+   stage's gate checks the conjunction; the collect node carries the conditions too, evaluated on the
+   same attributes the gate sees, and the task stays open while they fail. The task names missing
+   fields, but reports unmet conditions only as "The lifecycle conditions are not met"
+   (`conditionsMet: false` in the payload): a rule can be any expression, and spelling it out in
+   words would need a renderer for every operator.
 
 ## Consequences
 
@@ -45,6 +52,8 @@ nor its payload. An asset missing four fields produced four such tasks.
   covers an update whose event has not been processed yet.
 - An asset whose stage is changed directly, with no further event, or that moves to a stage without a
   collect node keeps its last task open until the next run of the workflow or a Re-check closes it.
+- A stage whose fields are all filled in but whose conditions fail keeps its task open with the
+  generic message; the people asked have to read the stage's conditions in the lifecycle editor.
 - The guided editor's per-field options — recommended and optional checks, conditional checks,
   completeness scores, guidance text — are not part of the lifecycle configuration. Completeness
   scoring stays available as its own node in the workflow builder.

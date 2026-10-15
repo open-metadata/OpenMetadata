@@ -23,12 +23,14 @@ interface MetadataCompletionTaskProps {
   task: Task;
 }
 
-/** The fields a lifecycle stage still needs, which the task's own workflow keeps current. */
+/** What a lifecycle stage still needs, which the task's own workflow keeps current. */
 const MetadataCompletionTask = ({ task }: MetadataCompletionTaskProps) => {
   const { t } = useTranslation();
   const payload = getMetadataCompletionPayload(task);
   const missingFields = payload.missingFields ?? [];
   const isOpen = task.status === TaskEntityStatus.Open;
+  // The task names missing fields; an unmet condition is reported, not spelled out.
+  const conditionsUnmet = isOpen && payload.conditionsMet === false;
 
   return (
     <div
@@ -49,6 +51,14 @@ const MetadataCompletionTask = ({ task }: MetadataCompletionTaskProps) => {
             </li>
           ))}
         </ul>
+      )}
+      {conditionsUnmet && (
+        <Typography
+          as="p"
+          className="tw:text-sm tw:text-warning-primary"
+          data-testid="metadata-completion-conditions">
+          {t('message.lifecycle-conditions-not-met')}
+        </Typography>
       )}
       {task.status === TaskEntityStatus.Completed && (
         <Typography as="p" className="tw:text-sm tw:text-primary">

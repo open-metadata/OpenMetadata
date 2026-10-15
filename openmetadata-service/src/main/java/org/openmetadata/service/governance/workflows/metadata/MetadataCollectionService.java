@@ -1,11 +1,13 @@
 package org.openmetadata.service.governance.workflows.metadata;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
 import jakarta.json.Json;
 import jakarta.json.JsonPatch;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -37,6 +39,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.CheckEntityAttributesImpl;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -44,8 +47,8 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 /**
  * Keeps one Metadata Completion task per asset and lifecycle stage: it lists the stage's required
- * fields that are still empty, completes itself once they are filled in, and closes when the asset
- * leaves the stage
+ * fields that are still empty and says when the stage's conditions are not met, completes itself
+ * once nothing is outstanding, and closes when the asset leaves the stage
  * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
  */
 @Slf4j
@@ -55,11 +58,12 @@ public final class MetadataCollectionService {
   static final String RECHECK = "recheck";
   static final String TITLE = "Fill in missing metadata";
   static final String DESCRIPTION =
-      "Fill in the fields this asset still needs to leave %s. The task completes itself once they"
-          + " are filled in.";
+      "Complete what this asset still needs to leave %s. The task completes itself once nothing is"
+          + " outstanding.";
   static final String STILL_MISSING =
       "Still missing: %s. The task completes itself once these are filled in.";
-  static final String FILLED_IN = "Every required field is filled in";
+  static final String CONDITIONS_NOT_MET = "The lifecycle conditions are not met.";
+  static final String FILLED_IN = "Everything the stage needs is in place";
   static final String LEFT_STAGE = "The asset left %s";
   private static final int MAX_STALE_TASKS = 10;
 
@@ -88,14 +92,15 @@ public final class MetadataCollectionService {
     final UUID id = taskId(entity.getId(), workflow, node);
     closeTasksOfOtherStages(entity, id);
     final boolean inStage = isInStage(entity, configuration.getStage());
-    final List<String> missing = inStage ? missingFields(entity, configuration) : List.of();
+    final Outstanding outstanding =
+        inStage ? outstanding(entity, configuration) : Outstanding.NOTHING;
     final Optional<Task> existing = findTask(id);
-    if (missing.isEmpty()) {
+    if (outstanding.isNothing()) {
       existing.filter(MetadataCollectionService::isOpen).ifPresent(task -> finish(task, inStage));
     } else if (existing.isEmpty()) {
-      open(entity, configuration, workflow, node, id, missing);
+      open(entity, configuration, workflow, node, id, outstanding);
     } else if (!Boolean.TRUE.equals(existing.get().getDeleted())) {
-      refresh(existing.get(), entity, configuration, workflow, node, missing);
+      refresh(existing.get(), entity, configuration, workflow, node, outstanding);
     }
   }
 
@@ -108,19 +113,14 @@ public final class MetadataCollectionService {
     final MetadataCompletionPayload payload =
         JsonUtils.convertValue(task.getPayload(), MetadataCompletionPayload.class);
     final EntityInterface<?> entity = Entity.getEntity(task.getAbout(), "*", Include.NON_DELETED);
-    final List<String> missing =
+    final Outstanding outstanding =
         isInStage(entity, payload.getStage())
             ? configuration(payload.getWorkflow(), payload.getNode())
-                .map(configuration -> missingFields(entity, configuration))
-                .orElse(List.of())
-            : List.of();
-    if (!missing.isEmpty()) {
-      throw BadRequestException.of(
-          String.format(
-              STILL_MISSING,
-              missing.stream()
-                  .map(MetadataCollectionService::fieldName)
-                  .collect(Collectors.joining(", "))));
+                .map(configuration -> outstanding(entity, configuration))
+                .orElse(Outstanding.NOTHING)
+            : Outstanding.NOTHING;
+    if (!outstanding.isNothing()) {
+      throw BadRequestException.of(outstanding.describe());
     }
   }
 
@@ -139,14 +139,22 @@ public final class MetadataCollectionService {
         "%s:%s:%s".formatted(entityId, workflow, node).getBytes(StandardCharsets.UTF_8));
   }
 
-  static List<String> missingFields(
+  /** The stage's fields that are still empty, and whether its conditions hold. */
+  static Outstanding outstanding(
       final EntityInterface<?> entity, final MetadataCollectionConfiguration configuration) {
-    final Map<String, Object> fields = JsonUtils.getMap(entity);
-    return listOrEmpty(configuration.getFields()).stream()
-        .filter(
-            field -> !Boolean.TRUE.equals(RuleEngine.getInstance().apply(field.getRules(), fields)))
-        .map(RequiredMetadataField::getField)
-        .toList();
+    final Map<String, Object> attributes =
+        CheckEntityAttributesImpl.attributesOf(entity.getEntityReference().getType(), entity);
+    final List<String> missing =
+        listOrEmpty(configuration.getFields()).stream()
+            .filter(field -> !holds(field.getRules(), attributes))
+            .map(RequiredMetadataField::getField)
+            .toList();
+    final String conditions = configuration.getConditions();
+    return new Outstanding(missing, nullOrEmpty(conditions) || holds(conditions, attributes));
+  }
+
+  private static boolean holds(final String rules, final Map<String, Object> attributes) {
+    return Boolean.TRUE.equals(RuleEngine.getInstance().apply(rules, attributes));
   }
 
   private static boolean isInStage(final EntityInterface<?> entity, final EntityStatus stage) {
@@ -211,14 +219,14 @@ public final class MetadataCollectionService {
       final String workflow,
       final String node,
       final UUID id,
-      final List<String> missing) {
+      final Outstanding outstanding) {
     final List<EntityReference> assignees = assignees(entity, configuration);
     if (assignees.isEmpty()) {
       LOG.info(
-          "[MetadataCompletion] {} has no {} to ask for {}",
+          "[MetadataCompletion] {} has no {} to ask: {}",
           entity.getFullyQualifiedName(),
           configuration.getTaskAssignees().value(),
-          missing);
+          outstanding.describe());
       return;
     }
     final long now = System.currentTimeMillis();
@@ -233,7 +241,7 @@ public final class MetadataCollectionService {
             .withPriority(TaskPriority.Medium)
             .withAbout(entity.getEntityReference())
             .withAssignees(assignees)
-            .withPayload(payload(configuration, workflow, node, missing))
+            .withPayload(payload(configuration, workflow, node, outstanding))
             .withAvailableTransitions(TRANSITIONS)
             .withCreatedBy(actor)
             .withCreatedAt(now)
@@ -259,11 +267,11 @@ public final class MetadataCollectionService {
       final MetadataCollectionConfiguration configuration,
       final String workflow,
       final String node,
-      final List<String> missing) {
+      final Outstanding outstanding) {
     final Task task =
         isOpen(existing) ? existing : repository.reopenTask(existing, actor.getName());
     final List<EntityReference> assignees = assignees(entity, configuration);
-    final MetadataCompletionPayload payload = payload(configuration, workflow, node, missing);
+    final MetadataCompletionPayload payload = payload(configuration, workflow, node, outstanding);
     final boolean changed =
         !Objects.equals(
                 JsonUtils.convertValue(task.getPayload(), MetadataCompletionPayload.class), payload)
@@ -297,13 +305,14 @@ public final class MetadataCollectionService {
       final MetadataCollectionConfiguration configuration,
       final String workflow,
       final String node,
-      final List<String> missing) {
+      final Outstanding outstanding) {
     return new MetadataCompletionPayload()
         .withWorkflow(workflow)
         .withNode(node)
         .withStage(configuration.getStage())
         .withTargetStage(configuration.getTargetStage())
-        .withMissingFields(missing);
+        .withMissingFields(outstanding.missingFields())
+        .withConditionsMet(outstanding.conditionsMet());
   }
 
   private static List<EntityReference> assignees(
@@ -328,5 +337,29 @@ public final class MetadataCollectionService {
             .withComment(
                 complete ? FILLED_IN : String.format(LEFT_STAGE, payload.getStage().value()));
     repository.resolveTask(task, resolution, actor.getName());
+  }
+
+  /** What a stage still needs: its empty required fields, and whether its conditions hold. */
+  record Outstanding(List<String> missingFields, boolean conditionsMet) {
+    static final Outstanding NOTHING = new Outstanding(List.of(), true);
+
+    boolean isNothing() {
+      return missingFields.isEmpty() && conditionsMet;
+    }
+
+    String describe() {
+      final List<String> parts = new ArrayList<>();
+      if (!missingFields.isEmpty()) {
+        parts.add(
+            STILL_MISSING.formatted(
+                missingFields.stream()
+                    .map(MetadataCollectionService::fieldName)
+                    .collect(Collectors.joining(", "))));
+      }
+      if (!conditionsMet) {
+        parts.add(CONDITIONS_NOT_MET);
+      }
+      return String.join(" ", parts);
+    }
   }
 }

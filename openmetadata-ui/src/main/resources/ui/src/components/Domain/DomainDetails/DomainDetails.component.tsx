@@ -34,6 +34,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
+import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../../components/Entity/Voting/Voting.component';
 import { AssetsTabRef } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
@@ -97,6 +98,7 @@ import {
   setCreateEntityFieldError,
   submitAndClose,
 } from '../../../utils/FormDrawerUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import Fqn from '../../../utils/Fqn';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
@@ -996,6 +998,14 @@ const DomainDetails = ({
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Domain),
     [tabs[0], activeTab]
   );
+
+  // A domain's lifecycle stage reads next to its name, as a data product's does.
+  const statusBadge =
+    entityUtilClassBase.shouldShowEntityStatus(EntityType.DOMAIN) &&
+    domain.entityStatus ? (
+      <EntityStatusBadge showDivider={false} status={domain.entityStatus} />
+    ) : null;
+
   if (isLoading) {
     return <Loader />;
   }
@@ -1031,9 +1041,12 @@ const DomainDetails = ({
               isFollowingLoading={isFollowingLoading}
               serviceName=""
               suffix={
-                !isTreeView && (
-                  <LearningIcon pageId={LEARNING_PAGE_IDS.DOMAIN} />
-                )
+                <>
+                  {statusBadge}
+                  {!isTreeView && (
+                    <LearningIcon pageId={LEARNING_PAGE_IDS.DOMAIN} />
+                  )}
+                </>
               }
               titleColor={domain.style?.color}
             />

@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -35,6 +36,7 @@ import org.openmetadata.service.jdbi3.TaskRepository;
 class LifecycleMetadataTasksIT {
   private static final String DRAFT_NODE = "CollectDraft";
   private static final String WORKFLOWS = "/v1/governance/workflowDefinitions";
+  private static final String READY = "{\"==\":[{\"var\":\"description\"},\"Ready\"]}";
 
   @Test
   void asksForEveryMissingFieldInOneTaskAndCompletesOnceTheyAreFilledIn(TestNamespace namespace) {
@@ -146,6 +148,31 @@ class LifecycleMetadataTasksIT {
     }
   }
 
+  @Test
+  void keepsTheTaskOpenWhileTheStageConditionsFailAndSaysSoGenerically(TestNamespace namespace) {
+    final Domain domain = createDomain(namespace);
+    final MetadataCollectionConfiguration conditionsOnly =
+        draftFields().withFields(List.of()).withConditions(READY);
+    final String workflow = createWorkflow(namespace, conditionsOnly);
+    try {
+      service().reconcile(domain, conditionsOnly, workflow, DRAFT_NODE);
+      final JsonNode task = onlyTask(domain);
+      assertEquals("Open", task.get("status").asText());
+      assertEquals(List.of(), missingFields(task));
+      assertFalse(task.at("/payload/conditionsMet").asBoolean());
+
+      final String taskId = task.get("id").asText();
+      final InvalidRequestException rechecked =
+          assertThrows(InvalidRequestException.class, () -> recheck(taskId));
+      assertTrue(rechecked.getMessage().contains("The lifecycle conditions are not met."));
+
+      service().reconcile(updateDescription(domain, "Ready"), conditionsOnly, workflow, DRAFT_NODE);
+      assertEquals("Completed", onlyTask(domain).get("status").asText());
+    } finally {
+      cleanup(domain, workflow);
+    }
+  }
+
   private static void recheck(String taskId) {
     SdkClients.adminClient()
         .tasks()
@@ -156,8 +183,13 @@ class LifecycleMetadataTasksIT {
                 .withResolutionType(TaskResolutionType.Completed));
   }
 
-  /** A re-check reads the fields the stored workflow's collect node asks for now. */
   private static String createWorkflow(TestNamespace namespace) {
+    return createWorkflow(namespace, draftFields());
+  }
+
+  /** A re-check reads what the stored workflow's collect node asks for now. */
+  private static String createWorkflow(
+      TestNamespace namespace, MetadataCollectionConfiguration configuration) {
     final String name = namespace.prefix("metadataTasksWorkflow");
     final Map<String, Object> collect =
         Map.of(
@@ -168,7 +200,7 @@ class LifecycleMetadataTasksIT {
             "name",
             DRAFT_NODE,
             "config",
-            draftFields(),
+            configuration,
             "inputNamespaceMap",
             Map.of("relatedEntity", "global"));
     execute(

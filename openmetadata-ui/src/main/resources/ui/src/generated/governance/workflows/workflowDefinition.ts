@@ -182,18 +182,23 @@ export enum EntityType {
 }
 
 /**
- * A stage of the guided lifecycle: the fields an asset needs before it can leave the stage,
- * and who is asked to fill them in.
+ * A stage of the guided lifecycle: the fields and conditions an asset needs before it can
+ * leave the stage, and who is asked to complete them.
  */
 export interface LifecycleGate {
     /**
      * Fields the asset must fill in before it can leave the stage.
      */
     checks: LifecycleFieldCheck[];
-    stage:  EntityStatus;
     /**
-     * Who is asked to fill in the missing fields. Without it the stage holds the asset and asks
-     * no one (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
+     * JSON Logic condition the asset must also meet before it can leave the stage.
+     */
+    conditions?: string;
+    stage:       EntityStatus;
+    /**
+     * Who is asked to fill in the missing fields or get the conditions met. Without it the
+     * stage holds the asset and asks no one
+     * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
      */
     task?: Task;
 }
@@ -234,8 +239,9 @@ export enum EntityStatus {
 }
 
 /**
- * Who is asked to fill in the missing fields. Without it the stage holds the asset and asks
- * no one (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
+ * Who is asked to fill in the missing fields or get the conditions met. Without it the
+ * stage holds the asset and asks no one
+ * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
  */
 export interface Task {
     assignees:   Assignees;

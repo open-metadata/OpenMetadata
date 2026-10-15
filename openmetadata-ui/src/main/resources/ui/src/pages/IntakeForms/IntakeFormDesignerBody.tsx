@@ -69,7 +69,11 @@ const IntakeFormDesignerBody = forwardRef<
   const [customProperties, setCustomProperties] = useState<CustomProperty[]>(
     []
   );
-  const [rows, setRows] = useState<IntakeFormFieldRow[]>([]);
+  // What the admin changed, by field path: the rows are recomputed when the custom properties
+  // arrive, and these edits must survive that.
+  const [edits, setEdits] = useState<
+    Record<string, Partial<IntakeFormFieldRow>>
+  >({});
   const [description, setDescription] = useState<string>('');
   const [enabled, setEnabled] = useState<boolean>(true);
   const [loadingProps, setLoadingProps] = useState(false);
@@ -80,6 +84,7 @@ const IntakeFormDesignerBody = forwardRef<
     }
     setDescription(initialValue?.description ?? '');
     setEnabled(initialValue?.enabled ?? true);
+    setEdits({});
   }, [open, initialValue]);
 
   useEffect(() => {
@@ -113,22 +118,20 @@ const IntakeFormDesignerBody = forwardRef<
     };
   }, [open, entityType]);
 
-  useEffect(() => {
-    setRows(
+  const rows = useMemo(
+    () =>
       computeFieldRows({
         nativeFields: intakeFormClassBase.getNativeFields(entityType),
         customProperties,
         initialValue,
         t,
-      })
-    );
-  }, [entityType, customProperties, initialValue, t]);
+      }).map((row) => ({ ...row, ...edits[row.path] })),
+    [entityType, customProperties, initialValue, t, edits]
+  );
 
   const updateRow = useCallback(
     (path: string, patch: Partial<IntakeFormFieldRow>) => {
-      setRows((prev) =>
-        prev.map((row) => (row.path === path ? { ...row, ...patch } : row))
-      );
+      setEdits((prev) => ({ ...prev, [path]: { ...prev[path], ...patch } }));
     },
     []
   );

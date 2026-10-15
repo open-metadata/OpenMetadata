@@ -14,7 +14,22 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Node } from 'reactflow';
 import { WorkflowModeProvider } from '../../../../contexts/WorkflowModeContext';
+import { EntityType } from '../../../../enums/entity.enum';
 import { CollectMetadataForm } from './CollectMetadataForm';
+
+jest.mock('./QueryBuilderSection', () => ({
+  QueryBuilderSection: ({
+    forceReadOnly,
+    value,
+  }: {
+    forceReadOnly?: boolean;
+    value: string;
+  }) => (
+    <div data-readonly={String(forceReadOnly)} data-testid="query-builder">
+      {value}
+    </div>
+  ),
+}));
 
 const FIELDS = [
   { field: 'description', rules: '{"!!":[{"var":"description"}]}' },
@@ -35,11 +50,18 @@ const node: Node = {
   },
 };
 
-const renderForm = (onSave = jest.fn()) =>
+const CONDITIONS =
+  '{"some":[{"var":"owners"},{"==":[{"var":"name"},"admin"]}]}';
+
+const renderForm = (onSave = jest.fn(), formNode = node) =>
   render(
     <MemoryRouter initialEntries={['/?mode=edit']}>
       <WorkflowModeProvider>
-        <CollectMetadataForm node={node} onClose={jest.fn()} onSave={onSave} />
+        <CollectMetadataForm
+          node={formNode}
+          onClose={jest.fn()}
+          onSave={onSave}
+        />
       </WorkflowModeProvider>
     </MemoryRouter>
   );
@@ -82,7 +104,7 @@ describe('CollectMetadataForm', () => {
       <MemoryRouter initialEntries={['/?mode=edit']}>
         <WorkflowModeProvider>
           <CollectMetadataForm
-            entityTypes={['domain']}
+            entityTypes={[EntityType.DOMAIN]}
             node={node}
             onClose={jest.fn()}
             onSave={jest.fn()}
@@ -95,5 +117,39 @@ describe('CollectMetadataForm', () => {
     expect(
       screen.queryByLabelText('label.reviewer-plural')
     ).not.toBeInTheDocument();
+  });
+
+  it('shows a condition-only stage read-only and keeps its conditions on save', () => {
+    const onSave = jest.fn();
+    renderForm(onSave, {
+      ...node,
+      data: {
+        ...node.data,
+        config: {
+          stage: 'Draft',
+          targetStage: 'In Review',
+          conditions: CONDITIONS,
+          taskAssignees: 'owners',
+          candidates: [],
+        },
+      },
+    });
+
+    expect(
+      screen.queryByTestId('collect-metadata-fields')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('query-builder')).toHaveAttribute(
+      'data-readonly',
+      'true'
+    );
+
+    fireEvent.click(screen.getByTestId('save-node-configuration-button'));
+
+    expect(onSave).toHaveBeenCalledWith(
+      'Collect0',
+      expect.objectContaining({
+        config: expect.objectContaining({ conditions: CONDITIONS }),
+      })
+    );
   });
 });

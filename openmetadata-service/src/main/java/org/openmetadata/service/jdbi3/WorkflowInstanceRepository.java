@@ -110,6 +110,14 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
         && stopRequestOf(beforeEnd).isEmpty();
   }
 
+  /** Whether the instance is still running; an unknown instance is not. */
+  public boolean isRunning(UUID workflowInstanceId) {
+    final String stored = timeSeriesDao.getById(workflowInstanceId);
+    return stored != null
+        && JsonUtils.readValue(stored, WorkflowInstance.class).getStatus()
+            == WorkflowInstance.WorkflowStatus.RUNNING;
+  }
+
   private WorkflowInstance readInstance(UUID workflowInstanceId) {
     return JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
   }

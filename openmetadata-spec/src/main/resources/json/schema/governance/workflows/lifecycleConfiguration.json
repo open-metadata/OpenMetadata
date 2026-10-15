@@ -48,8 +48,13 @@
             "$ref": "#/definitions/lifecycleFieldCheck"
           }
         },
+        "conditions": {
+          "description": "JSON Logic condition the asset must also meet before it can leave the stage.",
+          "type": "string",
+          "minLength": 1
+        },
         "task": {
-          "description": "Who is asked to fill in the missing fields. Without it the stage holds the asset and asks no one (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).",
+          "description": "Who is asked to fill in the missing fields or get the conditions met. Without it the stage holds the asset and asks no one (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).",
           "type": "object",
           "javaType": "org.openmetadata.schema.governance.workflows.LifecycleTask",
           "properties": {
@@ -79,7 +84,7 @@
         "checks"
       ],
       "additionalProperties": false,
-      "description": "A stage of the guided lifecycle: the fields an asset needs before it can leave the stage, and who is asked to fill them in."
+      "description": "A stage of the guided lifecycle: the fields and conditions an asset needs before it can leave the stage, and who is asked to complete them."
     },
     "lifecycleFieldCheck": {
       "description": "A field the asset must fill in before it can leave the gate's stage.",

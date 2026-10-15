@@ -76,18 +76,23 @@ export enum EntityType {
 }
 
 /**
- * A stage of the guided lifecycle: the fields an asset needs before it can leave the stage,
- * and who is asked to fill them in.
+ * A stage of the guided lifecycle: the fields and conditions an asset needs before it can
+ * leave the stage, and who is asked to complete them.
  */
 export interface LifecycleGate {
     /**
      * Fields the asset must fill in before it can leave the stage.
      */
     checks: LifecycleFieldCheck[];
-    stage:  EntityStatus;
     /**
-     * Who is asked to fill in the missing fields. Without it the stage holds the asset and asks
-     * no one (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
+     * JSON Logic condition the asset must also meet before it can leave the stage.
+     */
+    conditions?: string;
+    stage:       EntityStatus;
+    /**
+     * Who is asked to fill in the missing fields or get the conditions met. Without it the
+     * stage holds the asset and asks no one
+     * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
      */
     task?: Task;
 }
@@ -132,8 +137,9 @@ export enum EntityStatus {
 }
 
 /**
- * Who is asked to fill in the missing fields. Without it the stage holds the asset and asks
- * no one (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
+ * Who is asked to fill in the missing fields or get the conditions met. Without it the
+ * stage holds the asset and asks no one
+ * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
  */
 export interface Task {
     assignees:   TaskAssigneesEnum;
@@ -141,7 +147,7 @@ export interface Task {
 }
 
 /**
- * Who is asked to fill in the missing fields.
+ * Who is asked to complete what the stage still needs.
  */
 export enum TaskAssigneesEnum {
     Candidates = "candidates",
@@ -242,7 +248,7 @@ export interface EdgeDefinition {
  * Creates (or updates) a service-scoped AI Automation from a seed template and runs it.
  *
  * Keeps one Metadata Completion task open on an asset while it is in this node's stage and
- * any listed field is still empty
+ * any listed field is still empty or the stage's conditions are not met
  * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task). The stage
  * gate, not the task, decides whether the asset advances.
  */
@@ -387,6 +393,11 @@ export interface NodeConfiguration {
      */
     candidates?: EntityReference[];
     /**
+     * JSON Logic condition the asset must also meet before it leaves the stage. The task only
+     * reports that it is not met.
+     */
+    conditions?: string;
+    /**
      * Fields the task asks for; it lists only the ones still empty.
      */
     fields?: RequiredField[];
@@ -399,7 +410,7 @@ export interface NodeConfiguration {
      */
     targetStage?: EntityStatus;
     /**
-     * Who is asked to fill in the missing fields.
+     * Who is asked to complete what the stage still needs.
      */
     taskAssignees?: TaskAssigneesEnum;
 }
