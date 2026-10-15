@@ -9,6 +9,8 @@ import io.micrometer.core.instrument.Metrics;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.config.source.SettingsChangeWatcher;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 
 @Slf4j
 public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConfig> {
@@ -49,6 +51,10 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
     cacheConfig = configuration.getCacheConfig();
 
     LOG.info("CacheBundle.run() called with cacheConfig: {}", cacheConfig);
+
+    // Authorization caches live in every JVM whatever the cache provider is, so a local policy,
+    // role or team write must drop them even when no Redis layer exists.
+    registerInvalidatable(SubjectCache.invalidator());
 
     if (cacheConfig == null || cacheConfig.provider == CacheConfig.Provider.none) {
       LOG.info("Cache is disabled. Using NoopCacheProvider.");
@@ -96,8 +102,11 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       // changes, so without this a persona edit, a context regenerate, or a persona assignment is
       // visible on the writing pod only, for up to that cache's TTL.
       registerInvalidatable(org.openmetadata.service.aicontext.PersonaContextCache.invalidator());
+      // Resolves service tags/names/types/environments into the ids that the search-side service
+      // policy conditions compile into their query. A peer tagging a service has to drop this here
+      // too, or a Deny keyed on that tag keeps letting the service's assets through on this pod.
       registerInvalidatable(
-          org.openmetadata.service.security.policyevaluator.SubjectCache.invalidator());
+          org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver.invalidator());
       cacheInvalidationPubSub = new CacheInvalidationPubSub(cacheConfig);
       cacheInvalidationPubSub.setHandler(
           msg -> {
@@ -115,6 +124,12 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
                     wsManager.disconnectAllForUser(msg.id());
                   }
                 }
+                return;
+              }
+              // A setting changed on another server: check the stored settings now rather than at
+              // the next poll. No entity changed, so no entity cache is touched.
+              if (CacheInvalidationPubSub.TYPE_SETTINGS.equals(msg.type())) {
+                SettingsChangeWatcher.requestImmediatePoll();
                 return;
               }
               // Non-entity signals ride this channel too (a persona context rebuild mutates no

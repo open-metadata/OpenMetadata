@@ -102,13 +102,14 @@ const DELEGATION_DEPTH = 1;
 
 /**
  * Routed modules that legitimately set no title anywhere in their render
- * tree: app shells and nested routers (they only render other routes), and a
- * transient OAuth redirect that is gone before a title could be read.
+ * tree: app shells and nested routers (they only render other routes), and
+ * transient OAuth redirects that are gone before a title could be read.
  */
 const MODULES_WITHOUT_OWN_TITLE = new Set([
   'components/AppRouter/AuthenticatedApp.tsx',
   'components/AppRouter/ContextCenterRouter/ContextCenterRouter.tsx',
   'components/Auth/AppCallbacks/Auth0Callback/Auth0Callback.tsx',
+  'components/Auth/AppCallbacks/OktaCallback/OktaCallback.tsx',
   'components/platform/ai-shell/AppModeRoutes/AppModeRoutes.tsx',
 ]);
 

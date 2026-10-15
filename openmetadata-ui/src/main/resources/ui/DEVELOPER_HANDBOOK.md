@@ -170,6 +170,11 @@ components/governance/glossary/GlossaryList/
 
 - **Keep business logic out of the component.** Data shaping, filtering, and derivation go in
   `*.utils.ts` as pure functions — no React, no JSX. They are then unit-testable without rendering.
+- **A component file exports only the component.** Module-level constants (option lists, keys,
+  lookup tables) go in `[ComponentName].constants.ts` and helpers in `[ComponentName].utils.ts`
+  beside it; when another feature needs them too, move them to root `constants/[domain]/` or
+  `utils/[domain]/`. Anything that imports a value from a component file pulls in the component
+  and all of its imports, and that is how import cycles start.
 - **No `index.ts` barrel files inside a component folder.** A barrel re-export pulls every sibling
   module into the graph and defeats tree-shaking; the `no-internal-barrel-imports` lint rule reports
   it. Import the deep path instead.
@@ -299,10 +304,10 @@ folders stay at the top level.
   - ✅ Good: Store the key `message: 'label.name'`, then translate in component using `t('label.name')`
   - This prevents initialization order issues and keeps non-component code pure
 
-## 16. UI Library (@openmetadata/ui-core-components) and Icons (@untitledui/icons)
+## 16. UI Library (@openmetadata/ui-core-components) and Icons
 
 - Primary UI library: `@openmetadata/ui-core-components`, built on Untitled UI patterns with `react-aria-components` as the accessibility foundation.
-- Icon source: @untitledui/icons.
+- Icon source: `@openmetadata/ui-core-components/icons` (in-package generated icon set, see [ICONS.md](../../../../../openmetadata-ui-core-components/src/main/resources/ui/ICONS.md)).
 
 Usage guidance:
 - Component-level usage:
@@ -313,7 +318,7 @@ Usage guidance:
   - Use CSS custom properties (design tokens) defined in `openmetadata-ui-core-components` for colors instead of hardcoded values.
   - Use `.style.less` only for component-specific static styles/layout that predate the Tailwind migration.
 - Icons:
-  - Import icons directly to keep bundle size small: `import { IconName } from '@untitledui/icons';`
+  - Import icons directly to keep bundle size small: `import { IconName } from '@openmetadata/ui-core-components/icons';`
   - For rarely used icons, import directly where needed to enable tree-shaking.
   - If you need consistent sizing, color, or extra behavior, wrap icons in a shared component at
     `@src/components/common/Icon/Icon.tsx` (create it when the need arises — it does not exist yet).

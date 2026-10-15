@@ -12,10 +12,8 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { getRoleByName } from '../../../rest/rolesAPIV1';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { ROLE_DATA } from '../Roles.mock';

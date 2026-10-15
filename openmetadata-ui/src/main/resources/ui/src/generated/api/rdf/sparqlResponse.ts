@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /**
- * SPARQL query response
+ * SPARQL 1.2 query response
  */
 export interface SparqlResponse {
     /**
@@ -50,20 +50,57 @@ export interface Results {
     /**
      * Result bindings
      */
-    bindings?: { [key: string]: Binding }[];
+    bindings?: { [key: string]: RDFTerm }[];
     [property: string]: any;
 }
 
-export interface Binding {
-    datatype?:   string;
-    type:        Type;
-    value:       string;
+/**
+ * Value of an RDF 1.2 triple term. Components use the SPARQL Results JSON RDF-term
+ * representation recursively.
+ */
+export interface SparqlTripleTerm {
+    object:    RDFTerm;
+    predicate: RDFTerm;
+    subject:   RDFTerm;
+}
+
+/**
+ * An RDF term bound to a result variable using the SPARQL 1.2 Query Results JSON
+ * representation. A variable that is unbound in a row is absent from that row.
+ */
+export interface RDFTerm {
+    /**
+     * Datatype IRI of a typed literal.
+     */
+    datatype?: string;
+    /**
+     * Base direction of an RDF 1.2 directional language-tagged literal.
+     */
+    "its:dir"?: RDFDirection;
+    type:       Type;
+    /**
+     * Lexical string for an IRI, literal, or blank node; recursive subject-predicate-object
+     * value for a triple term.
+     */
+    value: SparqlTripleTerm | string;
+    /**
+     * Language tag of a language-tagged literal.
+     */
     "xml:lang"?: string;
     [property: string]: any;
+}
+
+/**
+ * Base direction of an RDF 1.2 directional language-tagged literal.
+ */
+export enum RDFDirection {
+    LTR = "ltr",
+    RTL = "rtl",
 }
 
 export enum Type {
     Bnode = "bnode",
     Literal = "literal",
+    Triple = "triple",
     URI = "uri",
 }

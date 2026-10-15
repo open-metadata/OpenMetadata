@@ -26,15 +26,36 @@ type EntityTypes = InstanceType<
   (typeof nestedChildrenTestData)[keyof typeof nestedChildrenTestData]['CreationClass']
 >;
 
+/**
+ * The nested-children shape each entity response exposes under a different key.
+ * Declared required so the per-type branches below can read the one key that
+ * entity actually carries without a guard for the keys it never has.
+ */
+type NestedChildrenNode = {
+  name: string;
+  fullyQualifiedName?: string;
+  children?: NestedChildrenNode[];
+};
+
+type NestedChildrenResponse = {
+  fullyQualifiedName: string;
+  columns?: NestedChildrenNode[];
+  fields?: NestedChildrenNode[];
+  requestSchema?: { schemaFields?: NestedChildrenNode[] };
+  messageSchema?: { schemaFields?: NestedChildrenNode[] };
+  dataModel?: { columns?: NestedChildrenNode[] };
+};
+
 export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
-  const entityData = data.entityResponseData as any;
+  const entityData =
+    data.entityResponseData as unknown as NestedChildrenResponse;
   const fqn = entityData.fullyQualifiedName;
 
   switch (type) {
     case 'API Endpoint': {
-      const field0 = entityData.requestSchema.schemaFields[0];
-      const field1 = field0.children[0];
-      const field2 = field1.children[0];
+      const field0 = (entityData.requestSchema?.schemaFields ?? [])[0];
+      const field1 = (field0.children ?? [])[0];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key:
           field0.fullyQualifiedName ?? `${fqn}.requestSchema.${field0.name}`,
@@ -48,9 +69,9 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Topic': {
-      const field0 = entityData.messageSchema.schemaFields[0];
-      const field1 = field0.children[0];
-      const field2 = field1.children[0];
+      const field0 = (entityData.messageSchema?.schemaFields ?? [])[0];
+      const field1 = (field0.children ?? [])[0];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key: field0.fullyQualifiedName ?? field0.name,
         level1Key: field1.fullyQualifiedName ?? field1.name,
@@ -59,9 +80,9 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Container': {
-      const field0 = entityData.dataModel.columns[3];
-      const field1 = field0.children[0];
-      const field2 = field1.children[0];
+      const field0 = (entityData.dataModel?.columns ?? [])[3];
+      const field1 = (field0.children ?? [])[0];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key: field0.fullyQualifiedName ?? `${fqn}.${field0.name}`,
         level1Key:
@@ -73,9 +94,9 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Data Model': {
-      const field0 = entityData.columns[1];
-      const field1 = field0.children[0];
-      const field2 = field1.children[0];
+      const field0 = (entityData.columns ?? [])[1];
+      const field1 = (field0.children ?? [])[0];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key: field0.fullyQualifiedName ?? `${fqn}.${field0.name}`,
         level1Key:
@@ -88,9 +109,9 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
     }
     case 'File':
     case 'Worksheet': {
-      const field0 = entityData.columns[1];
-      const field1 = field0.children[0];
-      const field2 = field1.children[0];
+      const field0 = (entityData.columns ?? [])[1];
+      const field1 = (field0.children ?? [])[0];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key: field0.fullyQualifiedName ?? `${fqn}.${field0.name}`,
         level1Key:
@@ -102,9 +123,9 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Search Index': {
-      const field0 = entityData.fields[3];
-      const field1 = field0.children[0];
-      const field2 = field1.children[0];
+      const field0 = (entityData.fields ?? [])[3];
+      const field1 = (field0.children ?? [])[0];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key: field0.fullyQualifiedName ?? `${fqn}.${field0.name}`,
         level1Key:
@@ -116,9 +137,9 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Table': {
-      const field0 = entityData.columns[2];
-      const field1 = field0.children[1];
-      const field2 = field1.children[0];
+      const field0 = (entityData.columns ?? [])[2];
+      const field1 = (field0.children ?? [])[1];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key: field0.fullyQualifiedName ?? `${fqn}.${field0.name}`,
         level1Key:
@@ -136,27 +157,20 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
 
 const DUPLICATE_NAME = `name-${uuid()}`;
 
-// check-click-confirm inside toPass: skips the click when the row is already in
-// the desired state (some entities auto-expand, so a blind click would toggle it
-// the wrong way), and a click that lands wrong fails the confirm so the retry
-// corrects it. Also absorbs the row remount and below-the-fold scroll.
 const expandNestedColumn = async (
   page: Page,
   rowKey: string,
   childKey: string
 ) => {
   const childRow = page.locator(`[data-row-key="${childKey}"]`);
+  await expect(page.locator(`[data-row-key="${rowKey}"]`)).toBeVisible();
   const expandIcon = page.locator(
     `[data-row-key="${rowKey}"] [data-testid="expand-icon"]`
   );
-  await expect(async () => {
-    if (await childRow.isVisible()) {
-      return;
-    }
-    await expandIcon.scrollIntoViewIfNeeded();
-    await expandIcon.click({ timeout: 10_000 });
-    await expect(childRow).toBeVisible({ timeout: 5_000 });
-  }).toPass({ timeout: 60_000 });
+  if (!(await childRow.isVisible())) {
+    await expandIcon.click();
+  }
+  await expect(childRow).toBeVisible();
 };
 
 const collapseNestedColumn = async (
@@ -168,27 +182,24 @@ const collapseNestedColumn = async (
   const expandIcon = page.locator(
     `[data-row-key="${rowKey}"] [data-testid="expand-icon"]`
   );
-  await expect(async () => {
-    if (!(await childRow.isVisible())) {
-      return;
-    }
-    await expandIcon.scrollIntoViewIfNeeded();
-    await expandIcon.click({ timeout: 10_000 });
-    await expect(childRow).toBeHidden({ timeout: 5_000 });
-  }).toPass({ timeout: 60_000 });
+  if (await childRow.isVisible()) {
+    await expandIcon.click();
+  }
+  await expect(childRow).toBeHidden();
 };
 
 export const verifyExpandCollapseForSummaryPanel = async (page: Page) => {
   // Check expand/collapse inside summary panel
+  // The expander's label and the field name make up the name cell's name.
   const getExpandButton = (rowKey: string) =>
     page
-      .getByRole('cell', { name: `Expand row ${rowKey}` })
-      .getByRole('button', { name: 'Expand row' });
+      .getByRole('rowheader', { name: `Expand ${rowKey}`, exact: true })
+      .getByRole('button', { name: 'Expand', exact: true });
 
   const getCollapseButton = (rowKey: string) =>
     page
-      .getByRole('cell', { name: `Collapse row ${rowKey}` })
-      .getByRole('button', { name: 'Collapse row' });
+      .getByRole('rowheader', { name: `Collapse ${rowKey}`, exact: true })
+      .getByRole('button', { name: 'Collapse', exact: true });
 
   // 1. Expand Level 0
   await getExpandButton('default').click();
@@ -461,7 +472,7 @@ export const createTopicEntity = async (apiContext: APIRequestContext) => {
   return {
     entity,
     service,
-    deleteService: () =>
+    deleteService: (): Promise<unknown> =>
       apiContext.delete(
         `/api/v1/services/messagingServices/name/${encodeURIComponent(
           service.fullyQualifiedName
@@ -473,6 +484,13 @@ export const createTopicEntity = async (apiContext: APIRequestContext) => {
         searchTerm: fqn,
         dataTestId: `${service.name}-${entity.name}`,
       });
+      // Small topic schemas expand automatically after mounting. Wait for
+      // that state before a conditional expand click can collapse the row.
+      await expect(
+        page.locator(
+          `[data-row-key="${fqn}.default.${DUPLICATE_NAME}.${DUPLICATE_NAME}"]`
+        )
+      ).toBeVisible();
     },
     keys: {
       level0Key: `${fqn}.default`,
@@ -1001,8 +1019,7 @@ export const createWorksheetEntity = async (apiContext: APIRequestContext) => {
   return {
     entity,
     service,
-    deleteService: () =>
-      worksheetClass.delete(apiContext).then(() => ({} as any)),
+    deleteService: () => worksheetClass.delete(apiContext),
     visitPage: async (page: Page) => {
       await worksheetClass.visitEntityPage(page);
     },
@@ -1070,7 +1087,7 @@ export const createFileEntity = async (apiContext: APIRequestContext) => {
   return {
     entity,
     service,
-    deleteService: () => fileClass.delete(apiContext).then(() => ({} as any)),
+    deleteService: () => fileClass.delete(apiContext),
     visitPage: async (page: Page) => {
       await fileClass.visitEntityPage(page);
       await page.getByTestId('schema').click();

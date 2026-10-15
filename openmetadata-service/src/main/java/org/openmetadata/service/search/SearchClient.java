@@ -142,6 +142,56 @@ public interface SearchClient
   String REMOVE_TAGS_CHILDREN_SCRIPT =
       "ctx._source.tags.removeIf(tag -> tag.tagFQN == params.fqn);" + TAG_RESEPARATION_SCRIPT;
 
+  /**
+   * Drops references to {@code params.ids} (lowercase UUIDs) from custom-property values: {@code
+   * extension} entries (a single reference or a list), {@code customPropertiesTyped}, and the same
+   * fields on every column and nested child column. A property left without references is removed.
+   * Ids are compared in lower case, since documents written before 2.1 may hold them as sent. The
+   * ids are held in a set, so each element of a reference list costs one hash lookup.
+   */
+  String REMOVE_CUSTOM_PROPERTY_REFERENCES_SCRIPT =
+      """
+      boolean isDead(def id, Set dead) {
+        return id != null && dead.contains(id.toString().toLowerCase());
+      }
+      boolean dropRefs(Map holder, Set dead) {
+        boolean changed = false;
+        def ext = holder.get('extension');
+        if (ext instanceof Map) {
+          List emptied = new ArrayList();
+          for (def key : ext.keySet()) {
+            def value = ext.get(key);
+            if (value instanceof List) {
+              if (value.removeIf(r -> r instanceof Map && isDead(r.get('id'), dead))) {
+                changed = true;
+                if (value.isEmpty()) { emptied.add(key); }
+              }
+            } else if (value instanceof Map && isDead(value.get('id'), dead)) {
+              emptied.add(key);
+              changed = true;
+            }
+          }
+          for (def key : emptied) { ext.remove(key); }
+        }
+        def typed = holder.get('customPropertiesTyped');
+        if (typed instanceof List
+            && typed.removeIf(e -> e instanceof Map && isDead(e.get('refId'), dead))) {
+          changed = true;
+        }
+        for (def nestedKey : ['columns', 'children']) {
+          def nested = holder.get(nestedKey);
+          if (nested instanceof List) {
+            for (def child : nested) {
+              if (child instanceof Map && dropRefs(child, dead)) { changed = true; }
+            }
+          }
+        }
+        return changed;
+      }
+      Set dead = new HashSet(params.ids);
+      if (!dropRefs(ctx._source, dead)) { ctx.op = 'noop'; }
+      """;
+
   String REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT =
       "ctx._source.dataProducts.removeIf(product -> product.fullyQualifiedName == params.fqn)";
 
@@ -341,30 +391,36 @@ public interface SearchClient
 
   String REMOVE_LINEAGE_SCRIPT =
       """
-      def removedKeys = new HashSet();
-      for (def lineage : ctx._source.upstreamLineage) {
-        if (params.docUniqueId.equals(lineage.docUniqueId) && lineage.containsKey('sqlQueryKey')) {
-          removedKeys.add(lineage.sqlQueryKey);
-        }
-      }
-      ctx._source.upstreamLineage.removeIf(lineage -> params.docUniqueId.equals(lineage.docUniqueId));
-      if (!removedKeys.isEmpty() && ctx._source.containsKey('lineageSqlQueries') && ctx._source.lineageSqlQueries != null) {
-        def sqlMap = ctx._source.lineageSqlQueries;
-        def usedKeys = new HashSet();
+      if (ctx._source.upstreamLineage != null) {
+        def removedKeys = new HashSet();
         for (def lineage : ctx._source.upstreamLineage) {
-          if (lineage.containsKey('sqlQueryKey')) {
-            usedKeys.add(lineage.sqlQueryKey);
+          if (params.docUniqueId.equals(lineage.docUniqueId) && lineage.containsKey('sqlQueryKey')) {
+            removedKeys.add(lineage.sqlQueryKey);
           }
         }
-        removedKeys.removeAll(usedKeys);
-        for (def key : removedKeys) {
-          sqlMap.remove(key);
+        ctx._source.upstreamLineage.removeIf(lineage -> params.docUniqueId.equals(lineage.docUniqueId));
+        if (!removedKeys.isEmpty() && ctx._source.containsKey('lineageSqlQueries') && ctx._source.lineageSqlQueries != null) {
+          def sqlMap = ctx._source.lineageSqlQueries;
+          def usedKeys = new HashSet();
+          for (def lineage : ctx._source.upstreamLineage) {
+            if (lineage.containsKey('sqlQueryKey')) {
+              usedKeys.add(lineage.sqlQueryKey);
+            }
+          }
+          removedKeys.removeAll(usedKeys);
+          for (def key : removedKeys) {
+            sqlMap.remove(key);
+          }
         }
       }
       """;
 
   String REMOVE_ENTITY_RELATIONSHIP =
-      "ctx._source.upstreamEntityRelationship.removeIf(relationship -> relationship.docId == params.docId)";
+      """
+      if (ctx._source.upstreamEntityRelationship != null) {
+        ctx._source.upstreamEntityRelationship.removeIf(relationship -> relationship.docId == params.docId);
+      }
+      """;
 
   String ADD_UPDATE_LINEAGE =
       """
@@ -454,8 +510,13 @@ public interface SearchClient
   // The script is used for updating the entityRelationship attribute of the entity in ES
   // It checks if any duplicate entry is present based on the docId and updates only if it is not
   // present
+  // The match query is caller-supplied, and upstreamEntityRelationship is seeded only by
+  // TableIndex, so the script cannot assume the field exists on every matched doc.
   String ADD_UPDATE_ENTITY_RELATIONSHIP =
       """
+      if (ctx._source.upstreamEntityRelationship == null) {
+        ctx._source.upstreamEntityRelationship = new ArrayList();
+      }
       boolean docIdExists = false;
       for (int i = 0; i < ctx._source.upstreamEntityRelationship.size(); i++) {
         if (ctx._source.upstreamEntityRelationship[i].docId.equalsIgnoreCase(params.entityRelationshipData.docId)) {
@@ -744,7 +805,7 @@ public interface SearchClient
           "tier",
           "changeDescription");
 
-  Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification");
+  Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification", "metricGroup");
 
   String FIELDS_TO_REMOVE = "fieldsToRemove";
 

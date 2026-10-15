@@ -44,6 +44,9 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public static final String CONTEXT_FILE_ENTITY = "contextFile";
   private static final String DUPLICATE_FILE_NAME_MESSAGE =
       "A file named '%s' already exists in this folder.";
+  private static final String ARCHIVED_FILE_NAME_MESSAGE =
+      "A file named '%s' is in the Archive. Restore it, or permanently delete it from the Archive, "
+          + "before adding a file with this name.";
   private final AssetRepository assetRepository;
   private final ContextFileContentRepository contentRepository;
   private final CollectionDAO.ContextFileDAO contextFileDAO;
@@ -135,6 +138,12 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     if (file.getFolder() != null) {
       Folder folder = Entity.getEntity(file.getFolder(), "", Include.NON_DELETED);
       file.setFolder(folder.getEntityReference());
+    }
+    // Enforce name uniqueness at the create chokepoint so every create path (REST create, upload,
+    // import) gets the actionable error rather than a raw DB unique-constraint 409. Skipped on
+    // update: a same-name PUT resolves to the existing row (restore), and move validates itself.
+    if (!update) {
+      validateNoDuplicateFileName(file.getName(), file.getFolder(), null);
     }
   }
 
@@ -267,6 +276,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
           "extractionStats", original.getExtractionStats(), updated.getExtractionStats(), true);
       recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
       recordChange("pageCount", original.getPageCount(), updated.getPageCount());
+      recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig(), true);
       updateFolder();
     }
 
@@ -329,6 +339,31 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     return contentId == null ? null : contentRepository.getById(contentId);
   }
 
+  /**
+   * Whether any live document is a view of this stored asset. A file can reach the Context Center
+   * from somewhere that has its own copy of the blob — a chat attachment — and that owner needs to
+   * know whether deleting its copy would take a document's content with it.
+   */
+  public boolean existsForAsset(String assetId) {
+    return assetId != null && contextFileDAO.countByAssetId(assetId) > 0;
+  }
+
+  /** The live documents that are views of this stored asset. */
+  public List<ContextFile> findByAsset(String assetId) {
+    if (assetId == null) {
+      return List.of();
+    }
+    return contextFileDAO.findByAssetId(assetId).stream()
+        .map(json -> JsonUtils.readValue(json, ContextFile.class))
+        .toList();
+  }
+
+  public List<ContextFile> listByExtractedSourceHash(String sourceHash, UUID excludeId) {
+    return JsonUtils.readObjects(
+        contextFileDAO.listByExtractedSourceHash(sourceHash, excludeId.toString()),
+        ContextFile.class);
+  }
+
   public void validateNoDuplicateFileName(String fileName, EntityReference folder, UUID excludeId) {
     if (fileName == null || fileName.isBlank()) {
       return;
@@ -340,6 +375,15 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
             fileName.trim(), folderId, excludedId, Relationship.CONTAINS.ordinal());
     if (count > 0) {
       throw new BadRequestException(String.format(DUPLICATE_FILE_NAME_MESSAGE, fileName.trim()));
+    }
+    // A soft-deleted (archived) file keeps its name reserved so it can still be restored, so a
+    // same-name create would otherwise fail the DB unique constraint with a generic "Entity already
+    // exists". Detect it here and tell the user where to resolve it instead.
+    int archivedCount =
+        contextFileDAO.countArchivedByFileNameInFolder(
+            fileName.trim(), folderId, excludedId, Relationship.CONTAINS.ordinal());
+    if (archivedCount > 0) {
+      throw new BadRequestException(String.format(ARCHIVED_FILE_NAME_MESSAGE, fileName.trim()));
     }
   }
 

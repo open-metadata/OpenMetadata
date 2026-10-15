@@ -69,6 +69,7 @@ class EntityFieldUtilsTest {
               eq("alice"),
               any(JsonPatch.class),
               isNull(),
+              eq("*"),
               eq("workflow-bot"));
 
       ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
@@ -275,6 +276,35 @@ class EntityFieldUtilsTest {
   }
 
   @Test
+  void appendGlossaryTermsKeepsCommasInsideJsonArrayFqns() {
+    TestEntity entity = entity();
+
+    try (MockedStatic<TagLabelUtil> mockedTagLabelUtil = mockStatic(TagLabelUtil.class)) {
+      stubTagLabelUtilities(mockedTagLabelUtil);
+      mockedTagLabelUtil
+          .when(() -> TagLabelUtil.getGlossaryTerm("Data Procedures.GDPR, Personal"))
+          .thenReturn(glossaryTerm("Data Procedures.GDPR, Personal"));
+      mockedTagLabelUtil
+          .when(() -> TagLabelUtil.getGlossaryTerm("Business.Critical"))
+          .thenReturn(glossaryTerm("Business.Critical"));
+
+      EntityFieldUtils.appendGlossaryTerms(
+          entity, "[\"Data Procedures.GDPR, Personal\",\"Business.Critical\"]");
+
+      assertEquals(
+          List.of("Data Procedures.GDPR, Personal", "Business.Critical"),
+          entity.getTags().stream().map(TagLabel::getTagFQN).toList());
+    }
+  }
+
+  @Test
+  void parseFqnListReadsJsonArraysAndLegacyCommaLists() {
+    assertEquals(List.of("A.b, c", "D.e"), EntityFieldUtils.parseFqnList("[\"A.b, c\",\"D.e\"]"));
+    assertEquals(List.of("A.b", " D.e"), EntityFieldUtils.parseFqnList("A.b, D.e"));
+    assertEquals(List.of("[PII].x"), EntityFieldUtils.parseFqnList("[PII].x"));
+  }
+
+  @Test
   void appendGlossaryTermsReplacesConflictingTerms() {
     TestEntity entity = entity();
     entity.setTags(
@@ -455,11 +485,13 @@ class EntityFieldUtilsTest {
     String approvedValue = EntityStatus.APPROVED.value();
 
     EntityFieldUtils.setEntityStatus(entity, approvedValue);
-    EntityFieldUtils.setEntityStatus(entity, "legacy-state");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> EntityFieldUtils.setEntityStatus(entity, "Superseded"));
     EntityFieldUtils.setEntityStatus(legacyEntity, approvedValue);
 
     assertEquals(EntityStatus.APPROVED, entity.getEntityStatus());
-    assertEquals("legacy-state", entity.getStatus());
+    assertNull(entity.getStatus());
     assertEquals(approvedValue, legacyEntity.getStatus());
   }
 
@@ -512,7 +544,7 @@ class EntityFieldUtilsTest {
     }
   }
 
-  private static class TestEntity implements EntityInterface {
+  private static class TestEntity implements EntityInterface<EntityStatus> {
     private UUID id;
     private String description;
     private String displayName;

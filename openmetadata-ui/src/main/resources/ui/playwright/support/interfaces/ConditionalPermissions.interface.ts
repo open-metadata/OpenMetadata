@@ -57,5 +57,6 @@ export type AssetTypes =
   | DashboardClass
   | MlModelClass
   | PipelineClass
+  | SearchIndexClass
   | TableClass
   | TopicClass;

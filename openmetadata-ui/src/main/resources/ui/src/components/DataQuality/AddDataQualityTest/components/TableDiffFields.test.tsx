@@ -25,7 +25,7 @@ import TableDiffFields, {
 } from './TableDiffFields';
 import { FormValues } from './TestCaseFormV1.interface';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Trash01: () => <span data-testid="trash-icon" />,
 }));
 

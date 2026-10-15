@@ -27,14 +27,20 @@ coverage, a retried one looks green.
 
 ## Entries
 
-1 entry. The threshold for quarantining is **2 or more** failures, counted per
-generated variant rather than per source line. The 11 merge_group runs sampled
-on 2026-09-04 that seeded this list are all released now; the entry below was
-tagged separately, on 2026-09-11.
+The live set is whatever the specs currently `@quarantine`-tag —
+`git grep '@quarantine' -- '*.spec.ts'` lists it; each tag should also have a row
+here with its evidence and owner. The threshold for quarantining is **2 or
+more** failures, counted per generated variant rather than per source line. The
+11 merge_group runs sampled on 2026-09-04 that seeded this list are all released
+now, as is the DataContracts entry that was tagged separately on 2026-09-11
+(see *Released from quarantine*).
 
-| Spec | Test | Seen | Symptom |
+| Spec | Test | Tagged | Status |
 |---|---|---|---|
-| `e2e/Pages/DataContracts.spec.ts` | Create Data Contract and validate for Table | 2/2 | Quarantined 2026-09-11 (BE bug, not a test flake). On both merge_group attempts of run 34588697338 the contract's quality/test-suite run finished without writing a result: `GET /dataContracts/{id}/results/{resultId}` shows `schemaValidation` (5/5) and `semanticsValidation` (1/1) populated but **`qualityValidation` absent**, so the aggregate `contractExecutionStatus` hangs on `Running` and never reaches a terminal state. The test suite + DQ ingestion pipeline were created and deployed fine (`POST …/ingestionPipelines/deploy` → 200), but the triggered Airflow DagRun completed in ~0.03s executing zero test cases, so no test-case result came back. `waitForDataContractExecution` then polls the full 600s and the fallback derives `suiteStatus = 'Running'`, failing `expect(...).toMatch(/^(Aborted\|Success\|Failed)$/)`. Fix is in BE: reap contract validation to a terminal state (`Aborted`/`Failed`) when the quality run fails to trigger or returns no result, instead of hanging on `Running`; plus BE/Ingestion should confirm test cases are attached before the pipeline is triggered so the run isn't empty. Owner: BE team. |
+| `e2e/Features/KnowledgeGraph.spec.ts` | re-fits each level around the subject and keeps the viewport when filtering | 2026-09-28 | Not yet diagnosed. Tagged without an entry when #34094 ported the spec from #33088; no failure evidence was recorded. |
+| `e2e/Features/KnowledgeGraph.spec.ts` | label modes and family highlights preserve all real canvas relationships | 2026-09-28 | Not yet diagnosed. Tagged in the same #34094 port, also without recorded evidence. |
+| `e2e/Features/AIMode/PersonaSettings.spec.ts` | all three describes (personal-space modal, management actions, customize saves) | 2026-10-14 | Re-quarantined. First tagged 2026-10-12 (#35244), released by #35234, and still failing afterwards: `Data Assets → Table: a new tab is saved` keeps ejecting PRs from the merge queue. Not yet diagnosed. The spec landed with #34916 (persona settings moved into the AI-mode profile modal). |
+| `e2e/Flow/Tour.spec.ts` | the whole describe (3 tests): Tour should work from help section; from welcome screen; from URL directly | 2026-10-09 | **Not a flake** — a known break, quarantined 2026-10-09 while the tour page is redesigned. The new landing page (`HomeLandingPage`) no longer mounts `FeedWidget`, so the tour's first step anchor `#feedWidgetData` never appears, and `TourPage.waitForTourFeedWidget` waits for its bounding rect *before* `updateIsTourOpen(true)` — so the whole tour hangs on a blank page instead of skipping one step. Steps 2 and 3 anchor on `#searchBox`, which came from `CustomiseSearchBar` in the old landing header; that header is gone and `NavBar` hides `GlobalSearchBar` on `/tour`, so there is no search box on the tour page at all. Known fix if the redesign does not supersede it: anchor step 1 on the activity card's grid cell (`[data-testid="KnowledgePanel.ActivityFeed"]`, present before the deferred widget mounts) and drop `!isTourPage` from NavBar's `GlobalSearchBar` guard (`GlobalSearchBar` already routes input through `useTourProvider` when the tour is open); keep the domain selector hidden on `/tour`. Release: Landing-page owner. Remove the tag when the redesigned tour page lands and all three tests pass with `PLAYWRIGHT_RUN_QUARANTINED=true`. |
 
 ### Triage, 2026-09-09
 
@@ -44,10 +50,13 @@ suite modal at 12-21s under a `test.slow()` timeout, Table Difference at
 10-19s, the glossary drag at 6-7s. Their recorded rates are 3/11 and 2/11 so
 this is the expected result rather than a contradiction — these are
 load-dependent and an idle laptop does not reproduce them. **More local runs
-will not settle them** — but neither will waiting for CI: nothing under
-`.github/` sets `PLAYWRIGHT_RUN_QUARANTINED`, so a quarantined test runs in no
-lane at all and has produced no evidence since it was tagged. The soak lane this
-file describes does not exist. Getting these three moving needs that lane (or a
+will not settle them** — but neither will waiting for CI: the only thing under
+`.github/` that sets `PLAYWRIGHT_RUN_QUARANTINED` is the *Inventory existing
+quarantined coverage* step in `playwright-e2e-reusable.yml`, and it runs
+`playwright test --list`. Listing is not executing, so a quarantined test still
+runs in no lane at all and has produced no evidence since it was tagged. The
+soak lane this file describes does not exist; the inventory step only makes the
+dropped coverage countable. Getting these three moving needs that lane (or a
 one-off dispatch) first.
 
 The test suite modal and Table Difference entries from this triage have since
@@ -86,8 +95,16 @@ Diagnosed and fixed, so the tag came off. If any of these flakes again the fix
 was wrong — re-quarantine it with the new evidence rather than restoring the old
 entry.
 
+Kafka AutoPilot was released on 2026-10-09 after the CI broker configuration
+fix was reported complete by @ShaileshParmar11. [#34951](https://github.com/open-metadata/OpenMetadata/pull/34951)
+had quarantined the Kafka serial group because the broker advertised
+`localhost:9092`, which Airflow could not reach. Both the service creation /
+AutoPilot status test and its dependent agent-deletion test now use the normal
+`@ingestion` tag.
+
 | Spec | Test | Root cause |
 |---|---|---|
+| `e2e/Pages/DataContracts.spec.ts` | Create Data Contract and validate for Table | Re-investigated with the BE team (2026-09-23). Not a "hangs on `Running`" bug — there is an abort mechanism: a failed trigger moves the contract to `Aborted` (terminal), and `abortRunningValidation` clears a stale validation when a new one starts. Test cases *are* attached and the DAG picks them up, so it is not an attachment issue. The real cause is a cold/first-run race: on the first Run-Now of a new contract the DQ pipeline is deployed and triggered almost immediately, and if Airflow hasn't parsed the new DAG yet the trigger doesn't land — it errors with `Failed to trigger IngestionPipeline` or the run comes back empty. On a fresh stack the first validation fails every time; the retry, once the DAG is parsed, runs cleanly to `Success`. Tag removed so the test runs in the AUT/ingestion lane, where the BE can pull logs and confirm the fix for the cold-start race. |
 | `e2e/Pages/TestSuiteDetailsPage.spec.ts` | Add test case modal on Test Suite details page - filters and select | A product bug, not a test race. `SearchDropdown` re-synced its pending selection from the `selectedKeys` prop on every identity change, *including while open*. In the Add Test Case modal that prop is a memo over the Column options, which the modal fetches once on mount with a catalog-wide `search/aggregate` over `columns.name.keyword`. Under shard load that request lands late — after the test has clicked a column but before Update — the memo gets a new identity, the effect wipes the click, and Update emits `[]`. No request ever carries `columnName`, so the hoisted `waitForResponse` never matches. A real user loses the click the same way. The earlier lead here assumed the options were still *populating*; the failure actually needs a valid option clicked first and the fetch to land *after*. Fixed by syncing from props only while closed (regression test in `SearchDropdown.test.tsx`), and the helper now searches for a uuid-suffixed column by name instead of taking `.first()` from an unscoped list. `TestSuite.spec.ts` shared the helper and the exposure. A second, independent cause surfaced while verifying: `TestSuiteListPanel` never cancelled its 500ms search debounce on unmount, so when the spec opened a suite within that window — which happens when its `testSuites/search/list*` wait resolves on the slow initial list request rather than the search — the stale `navigate({ search })` resolved against the list route and bounced the page back, failing `verifyBundleSuitePageLoaded`. Fixed by cancelling the debounce on unmount (regression test in `TestSuiteListPanel.test.tsx`). |
 | `e2e/Pages/EntityDataConsumer.spec.ts` | Update description (Table) | `updateDescription` resolved the editor with a page-global `descriptionBox` and `.first()`, so with the edit modal open it targeted the inline editor *behind* the overlay — visible, so the assertion passed, then the click failed on `ant-modal-wrap ... intercepts pointer events` until the test timed out. Now scoped to the dialog, asserting a single match. |
 | `e2e/Features/DataQuality/TestLibrary.spec.ts` | should create, edit, and delete a test definition | `TestDefinitionFormBody` rebuilt `options: toOptions(Object.values(…))` on every render. Focusing a field re-renders it via `onActiveFieldChange`, and the new `items` identity made react-aria rebuild the listbox collection, detaching the option mid-click. The option lists are enum-derived and now built once at module scope. |

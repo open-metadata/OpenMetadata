@@ -12,8 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Row, Space, Tooltip } from 'antd';
-import { DataNode } from 'antd/lib/tree';
+import { Box, Tooltip } from '@openmetadata/ui-core-components';
 import { groupBy, isUndefined, map, toLower } from 'lodash';
 import React from 'react';
 import { MenuOptions } from '../constants/execution.constants';
@@ -23,6 +22,8 @@ import {
   Task,
   TaskStatus,
 } from '../generated/entity/data/pipeline';
+import { TreeNode } from '../interface/tree.interface';
+import { getLayoutGutter } from './common/layout.utils';
 import { formatDateTime, formatDuration } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
 import { getStatusBadgeIcon } from './PipelineDetailsUtils';
@@ -43,7 +44,12 @@ export interface ViewDataInterface {
 }
 
 export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
-  <Space>
+  <Box
+    inline
+    align="center"
+    className="layout-space layout-space-horizontal"
+    gap={2}
+    itemClassName="layout-space-item">
     <Icon
       alt="result"
       className="align-middle"
@@ -59,7 +65,7 @@ export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
       {status === StatusType.Pending ? MenuOptions[StatusType.Pending] : ''}
       {status === StatusType.Skipped ? MenuOptions[StatusType.Skipped] : ''}
     </p>
-  </Space>
+  </Box>
 );
 
 /**
@@ -144,7 +150,7 @@ export const buildCompleteTree = (
   key: string,
   parentKey: string
 ) => {
-  let node: DataNode;
+  let node: TreeNode;
 
   const nodeKey: string = parentKey + '-' + key;
 
@@ -191,8 +197,8 @@ export const getTreeData = (
   viewData: Record<string, ViewDataInterface[]>
 ) => {
   const icon = <div className="tree-view-dot" />;
-  const treeDataList: DataNode[] = [];
-  const treeLabelList: DataNode[] = [];
+  const treeDataList: TreeNode[] = [];
+  const treeLabelList: TreeNode[] = [];
 
   // map execution element to task name
   const viewElements = map(
@@ -200,15 +206,27 @@ export const getTreeData = (
     (value: ViewDataInterface[], key: string) => ({
       key,
       value: (
-        <Row gutter={16} key={key}>
-          <Col>
+        <Box
+          className="layout-row"
+          key={key}
+          style={{ ...getLayoutGutter(16) }}
+          wrap="wrap">
+          <Box className="layout-column tw:block">
             <div className="execution-node-container">
               {value.map((status: ViewDataInterface) => (
                 <Tooltip
+                  arrow
+                  excludeTriggerFromTabOrder
                   key={`${status.timestamp}-${status.executionStatus}`}
                   placement="top"
                   title={
-                    <Space direction="vertical">
+                    <Box
+                      inline
+                      align="stretch"
+                      className="layout-space"
+                      direction="col"
+                      gap={2}
+                      itemClassName="layout-space-item">
                       <div>{status.timestamp}</div>
                       <div>{status.executionStatus}</div>
                       {status.startTime && (
@@ -228,8 +246,9 @@ export const getTreeData = (
                           {t('label.duration')}: {status.duration}
                         </div>
                       )}
-                    </Space>
-                  }>
+                    </Box>
+                  }
+                  triggerClassName="tw:inline-flex">
                   <Icon
                     alt="result"
                     className="align-middle"
@@ -240,8 +259,8 @@ export const getTreeData = (
                 </Tooltip>
               ))}
             </div>
-          </Col>
-        </Row>
+          </Box>
+        </Box>
       ),
     })
   );

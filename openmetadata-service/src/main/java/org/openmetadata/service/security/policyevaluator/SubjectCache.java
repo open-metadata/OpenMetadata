@@ -17,27 +17,24 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
+import com.google.common.base.Ticker;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import javax.annotation.CheckForNull;
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.Role;
-import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.Invalidatable;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
+import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -48,39 +45,90 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class SubjectCache {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile,domains";
   private static final String USER_CONTEXT_FIELDS =
-      "roles,teams,isAdmin,profile,domains,personas,defaultPersona";
-  private static final String TEAM_FIELDS = "defaultRoles,policies,parents,profile,domains";
+      "roles,teams,isAdmin,profile,domains,personas,defaultPersona,defaultDomain";
 
   static class UserPoliciesContext {
     final List<PolicyContext> policies;
     final List<UUID> teamsVisited;
+    final TeamHierarchySummary hierarchy;
 
-    UserPoliciesContext(List<PolicyContext> policies, List<UUID> teamsVisited) {
+    UserPoliciesContext(
+        List<PolicyContext> policies, List<UUID> teamsVisited, TeamHierarchySummary hierarchy) {
       this.policies = policies;
       this.teamsVisited = teamsVisited;
+      this.hierarchy = hierarchy;
     }
   }
 
-  private static volatile LoadingCache<String, UserPoliciesContext> USER_POLICIES_CACHE =
-      CacheBuilder.newBuilder()
-          .maximumSize(10000)
-          .expireAfterWrite(2, TimeUnit.MINUTES)
-          .recordStats()
-          .build(new UserPoliciesLoader());
+  /**
+   * The answers {@code inAnyTeam()}, {@code matchTeam()} and {@code hasAnyRole()} need, flattened
+   * out of the team hierarchy the policy loader already walked. Those are rule conditions, so they
+   * are evaluated once per rule per entity; resolving the hierarchy on each call is what made a
+   * listing request for a member of many teams issue thousands of queries (#19778).
+   */
+  record TeamHierarchySummary(Set<UUID> teamIds, Set<String> teamNames, Set<String> roleNames) {
 
-  private static volatile LoadingCache<String, User> USER_CONTEXT_CACHE =
-      CacheBuilder.newBuilder()
-          .maximumSize(10000)
-          .expireAfterWrite(15, TimeUnit.MINUTES)
-          .recordStats()
-          .build(new UserContextLoader());
+    static TeamHierarchySummary of(List<EntityReference> teams) {
+      return of(teams, TeamHierarchyResolver.closure(teams));
+    }
+
+    static TeamHierarchySummary of(
+        List<EntityReference> teams, Map<UUID, TeamHierarchyResolver.TeamNode> hierarchy) {
+      Set<String> teamNames = new HashSet<>();
+      Set<String> roleNames = new HashSet<>();
+      for (TeamHierarchyResolver.TeamNode node : hierarchy.values()) {
+        teamNames.add(node.name());
+        node.defaultRoles().forEach(role -> roleNames.add(role.getName()));
+      }
+      return new TeamHierarchySummary(teamIdsOf(teams), teamNames, roleNames);
+    }
+
+    /**
+     * Whether this summary was built for exactly {@code teams}. A {@link SubjectContext} can be
+     * constructed around a {@code User} that did not come from this cache, and answering such a
+     * caller from the cached hierarchy would silently authorize against the wrong memberships.
+     */
+    boolean covers(List<EntityReference> teams) {
+      return teamIds.equals(teamIdsOf(teams));
+    }
+
+    private static Set<UUID> teamIdsOf(List<EntityReference> teams) {
+      Set<UUID> ids = new HashSet<>();
+      for (EntityReference team : listOrEmpty(teams)) {
+        if (team != null && team.getId() != null) {
+          ids.add(team.getId());
+        }
+      }
+      return ids;
+    }
+  }
+
+  private static final int DEFAULT_MAX_ENTRIES = 10000;
+  private static final Duration POLICIES_TTL = Duration.ofMinutes(2);
+  private static final Duration USER_CONTEXT_TTL = Duration.ofMinutes(15);
+
+  private static final RevocableLoadingCache<UserPoliciesContext> USER_POLICIES_CACHE =
+      new RevocableLoadingCache<>(
+          DEFAULT_MAX_ENTRIES,
+          POLICIES_TTL,
+          Ticker.systemTicker(),
+          SubjectCache::loadPoliciesFresh);
+
+  private static final RevocableLoadingCache<User> USER_CONTEXT_CACHE =
+      new RevocableLoadingCache<>(
+          DEFAULT_MAX_ENTRIES,
+          USER_CONTEXT_TTL,
+          Ticker.systemTicker(),
+          SubjectCache::loadUserContextFresh);
 
   private static final Invalidatable INVALIDATOR =
       (type, id, fqn) -> {
-        if (Entity.PERSONA.equals(type) || Entity.TEAM.equals(type)) {
+        if (Entity.TEAM.equals(type) || Entity.ROLE.equals(type) || Entity.POLICY.equals(type)) {
+          invalidateAll();
+        } else if (Entity.PERSONA.equals(type)) {
           invalidateAllUserContexts();
         } else if (Entity.USER.equals(type) && fqn != null) {
-          invalidateUserContextByFqn(fqn);
+          invalidateUserByFqn(fqn);
         }
       };
 
@@ -91,18 +139,8 @@ public class SubjectCache {
    * (2 min for policies, 15 min for user context) because they serve different freshness needs.
    */
   public static void initCaches(int maxEntries) {
-    USER_POLICIES_CACHE =
-        CacheBuilder.newBuilder()
-            .maximumSize(maxEntries)
-            .expireAfterWrite(2, TimeUnit.MINUTES)
-            .recordStats()
-            .build(new UserPoliciesLoader());
-    USER_CONTEXT_CACHE =
-        CacheBuilder.newBuilder()
-            .maximumSize(maxEntries)
-            .expireAfterWrite(15, TimeUnit.MINUTES)
-            .recordStats()
-            .build(new UserContextLoader());
+    USER_POLICIES_CACHE.resize(maxEntries);
+    USER_CONTEXT_CACHE.resize(maxEntries);
     LOG.info("Auth caches initialized: maxEntries={}", maxEntries);
   }
 
@@ -111,8 +149,30 @@ public class SubjectCache {
       return USER_POLICIES_CACHE.get(userName).policies;
     } catch (Exception e) {
       LOG.warn("Failed to load policies from cache for user {}", userName, e);
-      return loadPoliciesForUser(userName).policies;
+      return loadPoliciesFresh(userName).policies;
     }
+  }
+
+  /** Names of every team the user belongs to or sits under, including the teams themselves. */
+  public static Set<String> getTeamNamesInHierarchy(String userName, List<EntityReference> teams) {
+    return hierarchyFor(userName, teams).teamNames();
+  }
+
+  /** Names of the default roles the user inherits from the team hierarchy. */
+  public static Set<String> getInheritedRoleNames(String userName, List<EntityReference> teams) {
+    return hierarchyFor(userName, teams).roleNames();
+  }
+
+  private static TeamHierarchySummary hierarchyFor(String userName, List<EntityReference> teams) {
+    try {
+      TeamHierarchySummary cached = USER_POLICIES_CACHE.get(userName).hierarchy;
+      if (cached.covers(teams)) {
+        return cached;
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to load the team hierarchy from cache for user {}", userName, e);
+    }
+    return TeamHierarchySummary.of(teams);
   }
 
   public static List<UUID> getVisitedTeams(String userName) {
@@ -126,13 +186,13 @@ public class SubjectCache {
 
   public static void invalidateUser(String userName) {
     LOG.debug("Invalidating policy cache for user: {}", userName);
-    USER_POLICIES_CACHE.invalidate(userName);
-    USER_CONTEXT_CACHE.invalidate(userName);
+    USER_POLICIES_CACHE.invalidateUser(userName);
+    USER_CONTEXT_CACHE.invalidateUser(userName);
   }
 
   public static void invalidateUserContext(String userName) {
     LOG.debug("Invalidating user context cache for user: {}", userName);
-    USER_CONTEXT_CACHE.invalidate(userName);
+    USER_CONTEXT_CACHE.invalidateUser(userName);
   }
 
   public static void invalidateUserContexts(List<EntityReference> users) {
@@ -166,8 +226,13 @@ public class SubjectCache {
    * A context {@code refresh} is published under {@code TYPE_PERSONA_CONTEXT} and so does not land
    * here.
    *
-   * <p>Scoped to user contexts. {@code USER_POLICIES_CACHE} has its own 2-minute TTL and peers
-   * relying on it is pre-existing behaviour that this persona fix deliberately doesn't widen.
+   * <p>A team, role or policy write drops the policy cache too, not just the user contexts. That
+   * cache carries the team names and inherited role names {@code hasAnyRole()} and
+   * {@code inAnyTeam()} answer from, and both used to be read from the database on every
+   * evaluation; if only the writing pod dropped it, a peer would keep granting access through a
+   * role that was removed from a team, or through a parent that was reparented away, until the
+   * entry expired. These are rare administrative writes, so dropping every entry is the cheaper
+   * trade against deriving the affected users from the message.
    */
   public static Invalidatable invalidator() {
     return INVALIDATOR;
@@ -178,25 +243,31 @@ public class SubjectCache {
    * the request presented it, so match case-insensitively rather than dropping a key that may not
    * exist in that exact form.
    *
-   * <p>Not an exact-key {@code invalidate}: {@code SecurityUtil.getUserName} only splits the
-   * principal on {@code [/@]} and does not case-fold, so an IdP emitting {@code John.Doe@corp.com}
-   * keys this cache under {@code John.Doe} while the FQN is {@code john.doe}. Keys also arrive
-   * from {@code createdBy}/{@code updatedBy} strings. An O(1) lookup would silently miss those and
-   * leave exactly the stale persona this fix is about. The scan is bounded by the cache's maximum
-   * size and only runs on user writes, which are logins and profile edits — per-request activity
+   * <p>{@code SecurityUtil.getUserName} only splits the principal on {@code [/@]} and does not
+   * case-fold, so an IdP emitting {@code John.Doe@corp.com} keys this cache under {@code John.Doe}
+   * while the FQN is {@code john.doe}. Keys also arrive from {@code createdBy}/{@code updatedBy}
+   * strings. The cache shards by the lower-cased key, so every spelling of the name is dropped
+   * together, and this only runs on user writes — logins and profile edits; per-request activity
    * tracking updates the row through a raw {@code JSON_SET} that publishes nothing.
    */
-  private static void invalidateUserContextByFqn(String fqn) {
+  private static void invalidateUserByFqn(String fqn) {
     try {
       String userName = FullyQualifiedName.unquoteName(fqn);
-      USER_CONTEXT_CACHE.asMap().keySet().removeIf(key -> key.equalsIgnoreCase(userName));
+      USER_CONTEXT_CACHE.invalidateUser(userName);
+      // The policy entry holds this user's roles and their resolved team hierarchy, so a
+      // membership or role change on a peer has to drop it too.
+      USER_POLICIES_CACHE.invalidateUser(userName);
     } catch (Exception e) {
-      LOG.debug("Could not invalidate user context for fqn {}", fqn, e);
+      LOG.debug("Could not invalidate caches for user fqn {}", fqn, e);
     }
   }
 
   public static void invalidateAll() {
     LOG.info("Invalidating all user policy caches");
+    // The policy caches are derived from the team graph, so they have to be dropped together. The
+    // graph goes first: a load that starts once the caches are swapped must not read it stale and
+    // publish the result into the new cache.
+    TeamHierarchyResolver.invalidateAll();
     USER_POLICIES_CACHE.invalidateAll();
     USER_CONTEXT_CACHE.invalidateAll();
   }
@@ -206,7 +277,7 @@ public class SubjectCache {
       return USER_CONTEXT_CACHE.get(userName);
     } catch (Exception e) {
       LOG.warn("Failed to load user context from cache for user {}", userName, e);
-      return Entity.getEntityByName(Entity.USER, userName, USER_CONTEXT_FIELDS, NON_DELETED);
+      return loadUserContextFresh(userName);
     }
   }
 
@@ -216,16 +287,24 @@ public class SubjectCache {
         USER_POLICIES_CACHE.stats(), USER_CONTEXT_CACHE.stats());
   }
 
-  static class UserPoliciesLoader extends CacheLoader<String, UserPoliciesContext> {
-    @Override
-    public @NonNull UserPoliciesContext load(@CheckForNull String userName) {
+  /**
+   * Every load runs in its own fresh-read scope. The request entity cache is thread-local and
+   * survives on pool threads, so a load that reuses it would read the rules cached before an edit,
+   * and a retry after an invalidation would publish them into the new shared cache.
+   *
+   * <p>Bypass the entity L1 as well: inline transaction evictions can be refilled from pre-edit
+   * rows, and a Guava load can finish publishing after post-commit eviction. A new authorization
+   * generation must read the database rather than join or reuse that older entity load. See
+   * ADR:2026-10-13-authorization-caches-retire-generations-after-commit.
+   */
+  private static UserPoliciesContext loadPoliciesFresh(String userName) {
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
       return loadPoliciesForUser(userName);
     }
   }
 
-  static class UserContextLoader extends CacheLoader<String, User> {
-    @Override
-    public @NonNull User load(@CheckForNull String userName) {
+  private static User loadUserContextFresh(String userName) {
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
       LOG.debug("Loading user context from database for user: {}", userName);
       return Entity.getEntityByName(Entity.USER, userName, USER_CONTEXT_FIELDS, NON_DELETED);
     }
@@ -234,6 +313,8 @@ public class SubjectCache {
   private static UserPoliciesContext loadPoliciesForUser(String userName) {
     LOG.debug("Loading policies for user: {}", userName);
     User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
+    List<EntityReference> teams = listOrEmpty(user.getTeams());
+    Map<UUID, TeamHierarchyResolver.TeamNode> hierarchy = TeamHierarchyResolver.closure(teams);
     List<PolicyContext> policies = new ArrayList<>();
     List<UUID> teamsVisited = new ArrayList<>();
 
@@ -244,13 +325,14 @@ public class SubjectCache {
 
     // 2. Team policies (skip for bots)
     if (!Boolean.TRUE.equals(user.getIsBot())) {
-      for (EntityReference teamRef : listOrEmpty(user.getTeams())) {
-        policies.addAll(loadTeamPolicies(teamRef.getId(), teamsVisited, false));
+      for (EntityReference teamRef : teams) {
+        policies.addAll(loadTeamPolicies(teamRef.getId(), hierarchy, teamsVisited, false));
       }
     }
 
     LOG.debug("Loaded {} policies for user: {}", policies.size(), userName);
-    return new UserPoliciesContext(policies, teamsVisited);
+    return new UserPoliciesContext(
+        policies, teamsVisited, TeamHierarchySummary.of(teams, hierarchy));
   }
 
   private static List<PolicyContext> loadRolePolicies(
@@ -268,34 +350,37 @@ public class SubjectCache {
   }
 
   private static List<PolicyContext> loadTeamPolicies(
-      UUID teamId, List<UUID> visited, boolean skipRoles) {
+      UUID teamId,
+      Map<UUID, TeamHierarchyResolver.TeamNode> hierarchy,
+      List<UUID> visited,
+      boolean skipRoles) {
     List<PolicyContext> policies = new ArrayList<>();
     if (visited.contains(teamId)) {
       return policies;
     }
     visited.add(teamId);
 
-    try {
-      Team team = Entity.getEntity(Entity.TEAM, teamId, TEAM_FIELDS, NON_DELETED);
+    TeamHierarchyResolver.TeamNode team = hierarchy.get(teamId);
+    if (team == null) {
+      LOG.warn("Failed to load team: {}", teamId);
+      return policies;
+    }
 
-      // Team's default roles
-      if (!skipRoles) {
-        for (EntityReference roleRef : listOrEmpty(team.getDefaultRoles())) {
-          policies.addAll(loadRolePolicies(Entity.TEAM, team.getName(), roleRef));
-        }
+    // Team's default roles
+    if (!skipRoles) {
+      for (EntityReference roleRef : team.defaultRoles()) {
+        policies.addAll(loadRolePolicies(Entity.TEAM, team.name(), roleRef));
       }
+    }
 
-      // Direct policies on team
-      for (EntityReference policyRef : listOrEmpty(team.getPolicies())) {
-        policies.add(loadPolicyContext(Entity.TEAM, team.getName(), null, policyRef));
-      }
+    // Direct policies on team
+    for (EntityReference policyRef : team.policies()) {
+      policies.add(loadPolicyContext(Entity.TEAM, team.name(), null, policyRef));
+    }
 
-      // Parent teams
-      for (EntityReference parentRef : listOrEmpty(team.getParents())) {
-        policies.addAll(loadTeamPolicies(parentRef.getId(), visited, skipRoles));
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to load team: {}", teamId, e);
+    // Parent teams
+    for (EntityReference parentRef : team.parents()) {
+      policies.addAll(loadTeamPolicies(parentRef.getId(), hierarchy, visited, skipRoles));
     }
     return policies;
   }
@@ -312,6 +397,8 @@ public class SubjectCache {
 
   public static List<PolicyContext> getTeamPoliciesForResource(
       UUID teamId, List<UUID> teamsVisited) {
-    return loadTeamPolicies(teamId, teamsVisited, true);
+    EntityReference teamRef = new EntityReference().withId(teamId).withType(Entity.TEAM);
+    return loadTeamPolicies(
+        teamId, TeamHierarchyResolver.closure(List.of(teamRef)), teamsVisited, true);
   }
 }

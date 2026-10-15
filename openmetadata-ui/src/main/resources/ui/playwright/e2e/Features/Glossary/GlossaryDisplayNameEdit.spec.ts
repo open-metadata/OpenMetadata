@@ -77,8 +77,8 @@ test.describe('Glossary displayName-only edit — left panel freshness', () => {
 
       // The menu initially shows the original displayName. The list panel
       // collapses its width to 0 until the resizable container measures, but
-      // the antd Menu items are still in the DOM and readable — assert on
-      // text presence (attached) rather than strict viewport visibility.
+      // the nav links are still in the DOM and readable — assert on text
+      // presence (attached) rather than strict viewport visibility.
       await expect(
         leftPanel.getByText(DISPLAY_INITIAL, { exact: true })
       ).toBeAttached({

@@ -21,8 +21,15 @@ test.describe('Table & Data Model columns table pagination', () => {
   test('Page size should persist across different pages', async ({
     dataConsumerPage: page,
   }) => {
+    // Walks three pages, changing and re-reading the persisted page size at
+    // each, so its 39.5s timing baseline leaves under 1.6x of headroom against
+    // the 60s default. Shards routinely run ~1.7x their baseline (measured
+    // across 124 baselined tests on chromium-01), which puts this at 67s.
+    test.slow();
+
     await page.goto(
-      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table',
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);

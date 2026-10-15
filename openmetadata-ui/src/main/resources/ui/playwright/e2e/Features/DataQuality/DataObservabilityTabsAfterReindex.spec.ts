@@ -165,7 +165,8 @@ test('Tag Data Observability tab still loads after the tag is reindexed', async 
   await afterAction();
 
   await page.goto(
-    `/tag/${encodeURIComponent(tag.responseData.fullyQualifiedName)}`
+    `/tag/${encodeURIComponent(tag.responseData.fullyQualifiedName)}`,
+    { waitUntil: 'domcontentloaded' }
   );
   await waitForAllLoadersToDisappear(page);
 
@@ -198,7 +199,8 @@ test('GlossaryTerm Data Observability tab still loads after the term is reindexe
   await page.goto(
     `/glossary/${encodeURIComponent(
       glossaryTerm.responseData.fullyQualifiedName
-    )}`
+    )}`,
+    { waitUntil: 'domcontentloaded' }
   );
   await waitForAllLoadersToDisappear(page);
 
@@ -219,7 +221,9 @@ test('Domain Data Observability tab still loads after the domain is reindexed', 
   await afterAction();
 
   const domainFqn = domain.responseData.fullyQualifiedName ?? domain.data.name;
-  await page.goto(`/domain/${encodeURIComponent(domainFqn)}`);
+  await page.goto(`/domain/${encodeURIComponent(domainFqn)}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
 
   await page.getByRole('tab', { name: /data observability/i }).click();

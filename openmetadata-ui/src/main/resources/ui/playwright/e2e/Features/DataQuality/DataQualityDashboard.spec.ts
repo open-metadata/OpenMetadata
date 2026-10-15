@@ -561,20 +561,28 @@ test.describe(
 
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="status-data-widget"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
       await test.step('Filter by Glossary Term and verify all API responses succeed', async () => {
         await page.getByRole('button', { name: 'Glossary Term' }).click();
-        await page.getByTestId('search-input').click();
+        // The tree picker owns its search box and keys rows by FQN.
+        const glossarySearch = page.getByTestId(
+          'search-dropdown-Glossary Term-search'
+        );
+        await glossarySearch.click();
         const glossaryTermSearchApi = page.waitForResponse(
           '/api/v1/search/query?*q=*index=glossaryTerm*'
         );
-        await page.getByTestId('search-input').fill(glossaryTerm.data.name);
+        await glossarySearch.fill(glossaryTerm.data.name);
         await glossaryTermSearchApi;
         await page
-          .getByText(glossaryTerm.responseData.fullyQualifiedName)
+          .getByTestId(
+            `tree-node-${glossaryTerm.responseData.fullyQualifiedName}`
+          )
           .click();
         const glossaryTermApiResponse = waitForDashboardApiResponses(
           page,
@@ -589,8 +597,10 @@ test.describe(
 
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="status-data-widget"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
       await test.step('Filter by Data Product and verify all API responses succeed', async () => {
@@ -623,8 +633,10 @@ test.describe(
 
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="status-data-widget"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
       // table3 is given an owner in beforeAll, so the incident raised by the
@@ -738,8 +750,11 @@ test.describe(
 
       await test.step('Reopen the incident as Acknowledged from the header', async () => {
         await page.click('[data-testid="edit-resolution-icon"]');
-        await page.click('[data-testid="test-case-resolution-status-type"]');
-        await page.click('[title="Ack"]');
+        await page
+          .getByTestId('test-case-resolution-status-type')
+          .getByRole('button')
+          .click();
+        await page.getByRole('option', { name: 'Ack', exact: true }).click();
 
         const reopenResponse = page.waitForResponse(
           (response) =>
@@ -917,8 +932,10 @@ test.describe(
       await test.step('Navigate to Data Quality dashboard', async () => {
         await goToDataQualityDashboard(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="status-data-widget"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await waitForAllLoadersToDisappear(page);
       });
 
@@ -938,8 +955,10 @@ test.describe(
           if (!page.url().includes('/data-quality/dashboard')) {
             await goToDataQualityDashboard(page);
             await expect(
-              page.locator('[data-testid="status-data-widget"]').first()
-            ).toBeVisible();
+              page
+                .locator('[data-testid="status-data-widget"]')
+                .filter({ visible: true })
+            ).not.toHaveCount(0);
             await waitForAllLoadersToDisappear(page);
           }
 
@@ -987,7 +1006,12 @@ test.describe(
           TestCaseStatus.Failed,
           TestCaseStatus.Aborted,
         ];
-        const navFailed = page.waitForURL((url) => {
+        await clickPieChartSegmentByIndex(
+          page,
+          ENTITY_HEALTH_PIE_CHART_TEST_ID,
+          1
+        );
+        await expect(page).toHaveURL((url) => {
           const selectedStatuses = url.searchParams.getAll('testCaseStatus[]');
 
           return (
@@ -997,13 +1021,6 @@ test.describe(
             )
           );
         });
-        await clickPieChartSegmentByIndex(
-          page,
-          ENTITY_HEALTH_PIE_CHART_TEST_ID,
-          1
-        );
-        await navFailed;
-        await expect(page).toHaveURL(/\/data-quality\/test-cases/);
         expect(
           new URL(page.url()).searchParams.getAll('testCaseStatus[]')
         ).toEqual(expectedStatuses);
@@ -1022,17 +1039,16 @@ test.describe(
       });
 
       await test.step('Click success segment and verify redirect', async () => {
-        const navSuccess = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Success/
-        );
         await clickPieChartSegmentByIndex(
           page,
           TEST_CASE_STATUS_PIE_CHART_TEST_ID,
           0
         );
-        await navSuccess;
-        await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-        expect(page.url()).toContain('testCaseStatus=Success');
+        await expect(page).toHaveURL(
+          (url) =>
+            url.pathname === '/data-quality/test-cases' &&
+            url.searchParams.get('testCaseStatus') === TestCaseStatus.Success
+        );
       });
 
       await test.step('Navigate back to Data Quality dashboard', async () => {
@@ -1044,17 +1060,16 @@ test.describe(
       });
 
       await test.step('Click failed segment and verify redirect', async () => {
-        const navFailed = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Failed/
-        );
         await clickPieChartSegmentByIndex(
           page,
           TEST_CASE_STATUS_PIE_CHART_TEST_ID,
           1
         );
-        await navFailed;
-        await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-        expect(page.url()).toContain('testCaseStatus=Failed');
+        await expect(page).toHaveURL(
+          (url) =>
+            url.pathname === '/data-quality/test-cases' &&
+            url.searchParams.get('testCaseStatus') === TestCaseStatus.Failed
+        );
       });
 
       await test.step('Navigate back to Data Quality dashboard', async () => {
@@ -1066,17 +1081,16 @@ test.describe(
       });
 
       await test.step('Click aborted segment and verify redirect', async () => {
-        const navAborted = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Aborted/
-        );
         await clickPieChartSegmentByIndex(
           page,
           TEST_CASE_STATUS_PIE_CHART_TEST_ID,
           2
         );
-        await navAborted;
-        await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-        expect(page.url()).toContain('testCaseStatus=Aborted');
+        await expect(page).toHaveURL(
+          (url) =>
+            url.pathname === '/data-quality/test-cases' &&
+            url.searchParams.get('testCaseStatus') === TestCaseStatus.Aborted
+        );
       });
     });
 
@@ -1092,13 +1106,11 @@ test.describe(
       });
 
       await test.step('Click covered segment and verify redirect to Test Suites', async () => {
-        const navTestSuites = page.waitForURL(/\/data-quality\/test-suites/);
         await clickPieChartSegmentByIndex(
           page,
           DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
           0
         );
-        await navTestSuites;
         await expect(page).toHaveURL(/\/data-quality\/test-suites/);
       });
 
@@ -1111,13 +1123,11 @@ test.describe(
       });
 
       await test.step('Click not covered segment and verify redirect to Explore', async () => {
-        const navExplore = page.waitForURL(/\/explore/);
         await clickPieChartSegmentByIndex(
           page,
           DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
           1
         );
-        await navExplore;
         await expect(page).toHaveURL(/\/explore/);
       });
     });
@@ -1137,7 +1147,7 @@ test.describe(
           '/api/v1/search/query?*index=dataProduct*'
         );
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="dataProductFqn"]');
+        await page.getByTestId('advanced-filter-option-dataProductFqn').click();
         await dataProductOptionsRes;
 
         await expect(
@@ -1146,7 +1156,9 @@ test.describe(
       });
 
       await test.step('Select data product and verify API carries dataProductFqn', async () => {
-        const dataProductInput = page.locator('#dataProductFqn');
+        const dataProductInput = page
+          .getByTestId('data-product-select-filter')
+          .getByRole('combobox');
         const dataProductOptionsRes = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/search/query') &&
@@ -1163,8 +1175,8 @@ test.describe(
             r.url().includes('dataProductFqn')
         );
         await page
-          .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
-          .getByText(dataProductDisplayName)
+          .getByRole('listbox')
+          .getByRole('option', { name: dataProductDisplayName, exact: true })
           .click();
         await filterApiRes;
       });
@@ -1174,7 +1186,7 @@ test.describe(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="dataProductFqn"]');
+        await page.getByTestId('advanced-filter-option-dataProductFqn').click();
         await getTestCases;
 
         await expect(

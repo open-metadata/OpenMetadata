@@ -40,7 +40,6 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.quartz.JobKey;
@@ -55,6 +54,7 @@ import org.testcontainers.containers.wait.strategy.Wait;
 public class RdfCatalogScaleIT {
   private static final String APP = "/v1/apps/name/RdfIndexApp/runs/latest";
   private static final String OWNS_TEST_SESSION = "rdfScaleOwnsTestSession";
+  private static final int PRODUCER_THREADS = Integer.getInteger("rdfScaleProducerThreads", 4);
   private static final List<AppRunRecord.Status> TERMINAL =
       List.of(
           AppRunRecord.Status.COMPLETED,
@@ -153,18 +153,18 @@ public class RdfCatalogScaleIT {
   }
 
   private void validateRebuilds(final RdfScaleCatalog catalog) throws Exception {
-    rebuild("local", false);
+    rebuild("first");
     final RdfScaleQueries.Snapshot snapshot = verifySnapshot(catalog);
     record("snapshot", snapshot);
-    queries.saveSubjectCounts(output.resolve("subjects-local.json"));
-    queryBenchmark("after-local");
+    queries.saveSubjectCounts(output.resolve("subjects-first.json"));
+    queryBenchmark("after-first");
     interruptRebuild(snapshot);
     rebuildWithServingQueries();
     final var recovered = verifySnapshot(catalog);
     record("snapshotAfterRecovery", recovered);
     queries.saveSubjectCounts(output.resolve("subjects-recovered.json"));
     assertEquals(snapshot, recovered);
-    queryBenchmark("after-distributed");
+    queryBenchmark("after-recovery");
   }
 
   private void environment(final GenericContainer<?> fuseki, final RdfScaleCatalog catalog)
@@ -214,13 +214,13 @@ public class RdfCatalogScaleIT {
         TestSuiteBootstrap.getDatabaseContainer().getContainerInfo().getHostConfig().getNanoCPUs());
   }
 
-  private AppRunRecord rebuild(final String label, final boolean distributed) throws IOException {
+  private AppRunRecord rebuild(final String label) throws IOException {
     resources.phase(label);
     final String serving = activeDataset();
     report.putObject(label).put("servingBefore", serving);
     final Long previous = latestStart();
     final long start = System.nanoTime();
-    trigger(distributed);
+    trigger();
     final AppRunRecord run = awaitRun(previous);
     report.withObject("/" + label).put("terminalObservedSeconds", secondsSince(start));
     awaitIndexingWorkerShutdown(Duration.ofMinutes(12));
@@ -234,36 +234,11 @@ public class RdfCatalogScaleIT {
         "RDF scale rebuild failed: " + JsonUtils.pojoToJson(run));
     assertEquals(0, stats(run).path("failedRecords").asLong());
     assertNotEquals(serving, activeDataset(), "A successful blue/green rebuild must promote");
-    if (distributed) verifyDistributedClaims(label, run);
+    assertTrue(
+        resources.peaks().readerThreads() <= PRODUCER_THREADS,
+        "Reader count must respect configuration");
     System.out.printf("RDF_SCALE %s complete %.1fs %s%n", label, secondsSince(start), stats(run));
     return run;
-  }
-
-  private void verifyDistributedClaims(final String label, final AppRunRecord run)
-      throws IOException {
-    final String jobId =
-        TestSuiteBootstrap.getJdbi()
-            .withHandle(
-                handle ->
-                    handle
-                        .createQuery(
-                            "SELECT id FROM rdf_index_job WHERE createdAt >= :start AND createdAt <= :end")
-                        .bind("start", run.getStartTime())
-                        .bind("end", run.getEndTime())
-                        .mapTo(String.class)
-                        .one());
-    final var partitions = Entity.getCollectionDAO().rdfIndexPartitionDAO().findByJobId(jobId);
-    final int retries = partitions.stream().mapToInt(partition -> partition.retryCount()).sum();
-    final ObjectNode claims = report.withObject("/" + label).putObject("claims");
-    claims.put("jobId", jobId);
-    claims.put("partitions", partitions.size());
-    claims.put("retries", retries);
-    checkpoint();
-    assertTrue(!partitions.isEmpty(), "Distributed rebuild must create partitions");
-    assertEquals(0, retries, "Healthy workers must not lose their claims during the scale run");
-    assertEquals(0, resources.peaks().participantWorkers(), "Coordinator must not join itself");
-    assertTrue(
-        resources.peaks().coordinatorWorkers() <= 3, "Worker count must respect configuration");
   }
 
   private void recordRun(final String label, final long start, final AppRunRecord run)
@@ -286,7 +261,7 @@ public class RdfCatalogScaleIT {
                   queries.measureDuringRebuild(
                       output.resolve("queries-during-recovery.jsonl"), stop));
       try {
-        rebuild("distributed-recovery", true);
+        rebuild("recovery");
       } finally {
         stop.countDown();
       }
@@ -301,7 +276,7 @@ public class RdfCatalogScaleIT {
     final String serving = activeDataset();
     final Long previous = latestStart();
     final long start = System.nanoTime();
-    trigger(true);
+    trigger();
     awaitPartialRebuild(previous);
     client.execute(HttpMethod.POST, "/v1/apps/stop/RdfIndexApp", null, Void.class);
     final AppRunRecord stopped = awaitRun(previous);
@@ -416,7 +391,7 @@ public class RdfCatalogScaleIT {
     record("queries-" + label, results);
   }
 
-  private void trigger(final boolean distributed) {
+  private void trigger() {
     client.execute(
         HttpMethod.POST,
         "/v1/apps/trigger/RdfIndexApp",
@@ -430,15 +405,7 @@ public class RdfCatalogScaleIT {
             "batchSize",
             Integer.getInteger("rdfScaleBatchSize", 1000),
             "producerThreads",
-            Integer.getInteger("rdfScaleProducerThreads", 2),
-            "consumerThreads",
-            3,
-            "queueSize",
-            5000,
-            "useDistributedIndexing",
-            distributed,
-            "partitionSize",
-            Integer.getInteger("rdfScalePartitionSize", 10_000)),
+            PRODUCER_THREADS),
         Void.class);
   }
 

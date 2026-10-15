@@ -22,8 +22,6 @@ import {
   buildGraphFromAllTerms,
   buildGraphFromOntologyData,
   convertRdfGraphToOntologyGraph,
-  OBSERVED_LINEAGE_EDGE_KIND,
-  OBSERVED_LINEAGE_RELATION_TYPE,
   projectOntologyRelationsToAssets,
   SEMANTIC_PROJECTION_EDGE_KIND,
 } from './graphBuilders';
@@ -50,7 +48,7 @@ const glossaries: Glossary[] = [
 ];
 
 describe('buildGraphFromOntologyData', () => {
-  it('maps bounded clusters, observed lineage, and asset binding edges', () => {
+  it('maps bounded clusters and asset binding edges, leaving asset lineage out', () => {
     const result = buildGraphFromOntologyData(
       {
         clusters: [
@@ -102,20 +100,17 @@ describe('buildGraphFromOntologyData', () => {
         }),
       ])
     );
-    expect(result.edges).toContainEqual({
-      edgeKind: ASSET_BINDING_EDGE_KIND,
-      from: 'asset-1',
-      label: 'label.tagged-with',
-      relationType: ASSET_RELATION_TYPE,
-      to: 'term-1',
-    });
-    expect(result.edges).toContainEqual({
-      edgeKind: OBSERVED_LINEAGE_EDGE_KIND,
-      from: 'asset-1',
-      label: 'label.observed-lineage',
-      relationType: OBSERVED_LINEAGE_RELATION_TYPE,
-      to: 'asset-2',
-    });
+    // The Data view shows relations between concepts only, so the asset
+    // lineage in the response does not become an edge.
+    expect(result.edges).toEqual([
+      {
+        edgeKind: ASSET_BINDING_EDGE_KIND,
+        from: 'asset-1',
+        label: 'label.tagged-with',
+        relationType: ASSET_RELATION_TYPE,
+        to: 'term-1',
+      },
+    ]);
   });
 });
 

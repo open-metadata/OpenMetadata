@@ -1,9 +1,9 @@
 {
   "$id": "https://open-metadata.org/schema/entity/applications/marketplace/appMarketPlaceDefinition.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AppMarketPlaceDefinition",
   "javaType": "org.openmetadata.schema.entity.app.AppMarketPlaceDefinition",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "description": "This schema defines the applications for Open-Metadata.",
   "type": "object",
   "properties": {

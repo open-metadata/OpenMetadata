@@ -18,10 +18,7 @@ import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { ReactFlowInstance } from 'reactflow';
 import type { EdgeData } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import type {
-  EdgeDetails,
-  LineageData,
   LineageEntityReference,
-  LineageNodeType,
   LineageSourceType,
 } from '../components/Lineage/Lineage.interface';
 import { LINEAGE_EXPORT_HEADERS } from '../constants/Lineage.constants';
@@ -36,6 +33,11 @@ import type {
 } from '../generated/type/entityLineage';
 import type { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
+import type {
+  EdgeDetails,
+  LineageData,
+  LineageNodeType,
+} from '../interface/lineage.interface';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import { getNodeLineageData } from './EntityLineageNodeUtils';
 import { getEntityName } from './EntityNameUtils';
@@ -273,10 +275,7 @@ const handleNodePagination = (
 };
 
 const processNodeArray = (
-  nodes: Record<
-    string,
-    import('../components/Lineage/Lineage.interface').NodeData
-  >,
+  nodes: Record<string, import('../interface/lineage.interface').NodeData>,
   entityFqn: string
 ): LineageNodeType[] => {
   return Object.values(nodes).map(

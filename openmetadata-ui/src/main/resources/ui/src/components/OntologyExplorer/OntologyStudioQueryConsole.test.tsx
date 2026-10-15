@@ -213,7 +213,7 @@ describe('OntologyStudioQueryConsole', () => {
     renderConsole();
 
     expect(screen.getByTestId('ontology-query-sample-rail')).toHaveClass(
-      'tw:w-60'
+      'tw:w-70'
     );
     expect(
       (screen.getByTestId('schema-editor') as HTMLTextAreaElement).value
@@ -225,7 +225,7 @@ describe('OntologyStudioQueryConsole', () => {
       screen.queryByText('Concepts regulated by AML')
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('ontology-query-read-only')).toHaveTextContent(
-      'label.read-only'
+      'label.shared-read-only'
     );
   });
 
@@ -254,6 +254,47 @@ describe('OntologyStudioQueryConsole', () => {
     ).toHaveTextContent(
       'https://open-metadata.org/entity/glossaryTerm/example'
     );
+  });
+
+  it('renders an RDF 1.2 triple term instead of crashing the results panel', async () => {
+    mockRunGlossarySparqlQuery.mockResolvedValue({
+      format: 'json',
+      body: '',
+      contentType: 'application/sparql-results+json',
+      durationMs: 12,
+      parsed: {
+        head: { vars: ['statement', 'source'] },
+        results: {
+          bindings: [
+            {
+              statement: {
+                type: Type.Triple,
+                value: {
+                  subject: { type: Type.URI, value: 'urn:s' },
+                  predicate: { type: Type.URI, value: 'urn:p' },
+                  object: {
+                    type: Type.Literal,
+                    value: 'قطة',
+                    'xml:lang': 'ar',
+                    'its:dir': 'rtl',
+                  },
+                },
+              },
+              source: { type: Type.URI, value: 'urn:g' },
+            },
+          ],
+        },
+      },
+    } as never);
+    renderConsole();
+
+    fireEvent.click(
+      screen.getByTestId('ontology-query-suggestion-ontology-relatedTo-target')
+    );
+
+    expect(
+      await screen.findByText('<<( <urn:s> <urn:p> "قطة"@ar--rtl )>>')
+    ).toBeInTheDocument();
   });
 
   it('keeps unrestricted knowledge-graph queries admin-only', async () => {
@@ -318,10 +359,58 @@ describe('OntologyStudioQueryConsole', () => {
     );
   });
 
-  it('creates and persists a private user-authored query', async () => {
+  it('creates a new query under My queries, then saves edits and a rename in place', async () => {
     renderConsole();
 
     fireEvent.click(screen.getByTestId('ontology-query-new'));
+
+    await waitFor(() =>
+      expect(mockReplaceSavedQueries).toHaveBeenLastCalledWith([
+        expect.objectContaining({ name: 'label.untitled-query' }),
+      ])
+    );
+
+    expect(screen.getByTestId('ontology-query-saved-list')).toHaveTextContent(
+      'label.untitled-query'
+    );
+    expect(await screen.findByTestId('ontology-query-update')).toBeDisabled();
+
+    fireEvent.change(screen.getByTestId('schema-editor'), {
+      target: { value: 'SELECT ?concept WHERE { ?concept ?p ?o }' },
+    });
+
+    expect(screen.getByTestId('ontology-query-unsaved')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-query-update'));
+
+    await waitFor(() =>
+      expect(mockReplaceSavedQueries).toHaveBeenLastCalledWith([
+        expect.objectContaining({
+          name: 'label.untitled-query',
+          query: 'SELECT ?concept WHERE { ?concept ?p ?o }',
+        }),
+      ])
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-query-rename'));
+    const renameInput = screen.getByTestId('ontology-query-rename-input');
+    fireEvent.change(renameInput, { target: { value: 'My ontology query' } });
+    fireEvent.keyDown(renameInput, { key: 'Enter' });
+
+    await waitFor(() =>
+      expect(mockReplaceSavedQueries).toHaveBeenLastCalledWith([
+        expect.objectContaining({ name: 'My ontology query' }),
+      ])
+    );
+
+    expect(await screen.findByTestId('ontology-query-title')).toHaveTextContent(
+      'My ontology query'
+    );
+  });
+
+  it('saves a copy of a query under My queries', async () => {
+    renderConsole();
+
     fireEvent.change(screen.getByTestId('schema-editor'), {
       target: { value: 'SELECT ?concept WHERE { ?concept ?p ?o }' },
     });

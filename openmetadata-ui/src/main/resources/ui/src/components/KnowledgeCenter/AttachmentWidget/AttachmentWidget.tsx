@@ -18,7 +18,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Download01 } from '@untitledui/icons';
+import { Download01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -128,7 +128,7 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
               <Typography ellipsis as="p" size="text-sm" weight="medium">
                 {item.name}
               </Typography>
-              <Typography as="p" className="tw:text-gray-500" size="text-xs">
+              <Typography as="p" className="tw:text-quaternary" size="text-xs">
                 {getReadableFileSize(item.size)}
               </Typography>
             </div>

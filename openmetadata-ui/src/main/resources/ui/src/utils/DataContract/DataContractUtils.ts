@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RuleObject } from 'antd/lib/form';
 import { dump } from 'js-yaml';
 import { isEmpty, omit } from 'lodash';
+import { DateTime } from 'luxon';
 import { ReactComponent as ContractAbortedIcon } from '../../assets/svg/ic-contract-aborted.svg';
 import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contract-failed.svg';
 import { ReactComponent as ContractRunningIcon } from '../../assets/svg/ic-contract-running.svg';
@@ -30,28 +30,41 @@ import {
   ContractExecutionStatus,
   DataContract,
 } from '../../generated/entity/data/dataContract';
-import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
-import { formatMonth } from '../date-time/DateTimeUtils';
+import {
+  DataContractResult,
+  SlaValidation,
+} from '../../generated/entity/datacontract/dataContractResult';
+import { customFormatDateTime, formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
+import { withGlossaryTermField } from '../queryBuilderWidgets/glossaryTermQueryField';
 import { getTermQuery } from '../SearchPureUtils';
 
-export const semanticRuleValidator = (_: RuleObject, value: string) => {
-  if (isEmpty(value) || value === '""' || value === '{}') {
-    return Promise.reject(
-      new Error(
-        t('message.field-text-is-required', {
-          fieldText: t('label.rule'),
-        })
-      )
-    );
-  }
-
-  return Promise.resolve();
-};
+export const semanticRuleValidator = (value?: string) =>
+  isEmpty(value) || value === '""' || value === '{}'
+    ? t('message.field-text-is-required', { fieldText: t('label.rule') })
+    : true;
 
 export const getContractStatusLabelBasedOnFailedResult = (failed?: number) => {
   return failed === 0 ? t('label.passed') : t('label.failed');
+};
+
+/**
+ * An SLA requirement nothing could evaluate is neither passed nor failed, so
+ * an SLA with no evaluated requirement is reported as not evaluated.
+ */
+export const getSlaStatusLabel = (slaValidation: SlaValidation) => {
+  const evaluated = [
+    slaValidation.refreshFrequencyMet,
+    slaValidation.latencyMet,
+    slaValidation.availabilityMet,
+  ].filter((met) => met !== undefined && met !== null);
+
+  if (evaluated.includes(false)) {
+    return t('label.failed');
+  }
+
+  return isEmpty(evaluated) ? t('label.not-evaluated') : t('label.passed');
 };
 
 export const getConstraintStatus = (
@@ -78,6 +91,10 @@ export const getConstraintStatus = (
     statusArray['quality'] = getContractStatusLabelBasedOnFailedResult(
       latestContractResults.qualityValidation.failed
     );
+  }
+
+  if (latestContractResults.slaValidation) {
+    statusArray['sla'] = getSlaStatusLabel(latestContractResults.slaValidation);
   }
 
   return statusArray;
@@ -256,14 +273,14 @@ export const getSematicRuleFields = () => {
         defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
         operators: SEMANTIC_TAG_OPERATORS,
-        fieldSettings: {
+        fieldSettings: withGlossaryTermField({
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
             fieldName: 'fullyQualifiedName',
             fieldLabel: 'name',
           }),
           useAsyncSearch: true,
-        },
+        }),
       },
     },
   };
@@ -322,55 +339,6 @@ export const processContractExecutionData = (
   });
 };
 
-// Create custom scale function for positioning bars from left
-export const createContractExecutionCustomScale = (
-  data: DataContractProcessedResultCharts[]
-) => {
-  const domainValues = data.map((d) => d.name);
-  let rangeValues = [0, 800];
-
-  const scale = (value: string) => {
-    const index = data.findIndex((item) => item.name === value);
-    if (index === -1) {
-      return 0;
-    }
-
-    // Calculate position starting from the left edge
-    const maxBarWidth = 20; // Wider bars for better visibility
-    const spacing = 8; // More spacing between bars
-    const position = rangeValues[0] + index * (maxBarWidth + spacing);
-
-    return position;
-  };
-
-  // Implement chainable methods like d3-scale
-  scale.domain = (domain?: string[]) => {
-    if (domain === undefined) {
-      return domainValues;
-    }
-
-    return scale;
-  };
-
-  scale.range = (range?: number[]) => {
-    if (range === undefined) {
-      return rangeValues;
-    }
-    rangeValues = range;
-
-    return scale;
-  };
-
-  scale.ticks = () => [];
-  scale.tickFormat = () => formatMonth;
-  scale.bandwidth = () => 20; // Match the maxBarWidth
-  scale.copy = () => createContractExecutionCustomScale(data);
-  scale.nice = () => scale;
-  scale.type = 'band';
-
-  return scale;
-};
-
 // Generate tick positions for month labels
 export const generateMonthTickPositions = (
   processedData: DataContractProcessedResultCharts[]
@@ -379,7 +347,12 @@ export const generateMonthTickPositions = (
   const tickPositions: string[] = [];
 
   for (const item of processedData) {
-    const monthKey = new Date(item.displayTimestamp).toISOString().slice(0, 7); // YYYY-MM format
+    // Group runs in the same timezone `formatMonth` renders in (luxon's default
+    // zone, i.e. the browser's local zone) so tick selection and the month name
+    // painted on each tick agree, even for runs near a UTC month boundary.
+    const monthKey = DateTime.fromMillis(item.displayTimestamp).toFormat(
+      'yyyy-MM'
+    );
     if (!uniqueMonths.has(monthKey)) {
       uniqueMonths.add(monthKey);
       // Use the first occurrence of each month as the tick position
@@ -390,13 +363,22 @@ export const generateMonthTickPositions = (
   return tickPositions;
 };
 
-// Format tick value for month display
-export const formatContractExecutionTick = (value: string) => {
-  // Extract timestamp from the unique name (format: timestamp_index)
-  const timestamp = value.split('_')[0];
+// Extract timestamp from the unique name (format: timestamp_index)
+const contractExecutionTimestamp = (value: string) =>
+  Number(value.split('_')[0]);
 
-  return formatMonth(Number(timestamp));
-};
+// Format tick value for month display
+export const formatContractExecutionTick = (value: string) =>
+  formatMonth(contractExecutionTimestamp(value));
+
+const CONTRACT_EXECUTION_DAY_TICK_FORMAT = 'MMM d';
+
+// Format tick value for day display
+export const formatContractExecutionDayTick = (value: string) =>
+  customFormatDateTime(
+    contractExecutionTimestamp(value),
+    CONTRACT_EXECUTION_DAY_TICK_FORMAT
+  );
 
 // Utility function to convert string to options array for Ant Design Select
 export const generateSelectOptionsFromString = (

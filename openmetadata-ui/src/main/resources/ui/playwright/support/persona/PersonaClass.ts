@@ -13,6 +13,7 @@
 import { APIRequestContext } from '@playwright/test';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -59,7 +60,8 @@ export class PersonaClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/personas/${this.responseData.id}?hardDelete=true&recursive=false`
     );
 

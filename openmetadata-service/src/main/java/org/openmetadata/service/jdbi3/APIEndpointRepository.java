@@ -25,7 +25,7 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -290,7 +290,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   @Override
   public EntityRepository<APIEndpoint>.EntityUpdater getUpdater(
       APIEndpoint original, APIEndpoint updated, Operation operation, ChangeSource changeSource) {
-    return new APIEndpointUpdater(original, updated, operation);
+    return new APIEndpointUpdater(original, updated, operation, changeSource);
   }
 
   private void setDefaultFields(APIEndpoint apiEndpoint) {
@@ -325,7 +325,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     for (Field field : fields) {
       validateTags(field.getTags());
       field.setTags(addDerivedTags(field.getTags()));
-      checkMutuallyExclusive(field.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(field.getTags());
       if (field.getChildren() != null) {
         validateSchemaFieldTags(field.getChildren());
       }
@@ -365,13 +365,14 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   }
 
   @Override
-  protected void applyInheritance(APIEndpoint entity, Fields fields, EntityInterface parent) {
+  protected void applyInheritance(APIEndpoint entity, Fields fields, EntityInterface<?> parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
+    inheritTags(entity, fields, parent);
   }
 
   @Override
-  public EntityInterface getParentEntity(APIEndpoint entity, String fields) {
+  public EntityInterface<?> getParentEntity(APIEndpoint entity, String fields) {
     return Entity.getEntity(entity.getApiCollection(), fields, Include.ALL);
   }
 
@@ -524,7 +525,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     APIEndpoint apiEndpoint = (APIEndpoint) entity;
     EntityUtil.mergeTags(allTags, apiEndpoint.getTags());
@@ -548,8 +549,9 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   public class APIEndpointUpdater extends EntityUpdater {
     public static final String FIELD_DATA_TYPE_DISPLAY = "dataTypeDisplay";
 
-    public APIEndpointUpdater(APIEndpoint original, APIEndpoint updated, Operation operation) {
-      super(original, updated, operation);
+    public APIEndpointUpdater(
+        APIEndpoint original, APIEndpoint updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Transaction

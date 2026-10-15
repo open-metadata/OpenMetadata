@@ -11,35 +11,24 @@
  *  limitations under the License.
  */
 import {
+  Alert,
+  Divider,
   Input as UTInput,
   Select as UTSelect,
   SelectItemType,
   Toggle,
   ToggleProps,
-} from '@openmetadata/ui-core-components';
-import {
-  Alert,
-  Checkbox,
-  Divider,
-  Form,
-  FormItemProps,
-  Input,
-  InputNumber,
-  Select,
-  Switch,
-  TooltipProps,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Form, FormItemProps, Input, Select } from 'antd';
 import { RuleObject } from 'antd/lib/form';
-import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString, startCase, toString } from 'lodash';
-import React, { ComponentProps, Fragment, ReactNode } from 'react';
+import { ComponentProps, Fragment, ReactNode } from 'react';
+import type { Placement } from 'react-aria';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
-import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
-import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
@@ -51,9 +40,6 @@ import { RichTextEditorProp } from '../components/common/RichTextEditor/RichText
 import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
 import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from '../components/common/SliderWithInput/SliderWithInput.interface';
-import TagSuggestion, {
-  TagSuggestionProps,
-} from '../components/common/TagSuggestion/TagSuggestion';
 import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -106,22 +92,22 @@ const FIELD_ELEMENT_RENDERERS: Partial<
       />
     ),
   }),
-  [FieldTypes.NUMBER]: ({ props, id, placeholder }) => ({
-    element: (
-      <InputNumber id={id} placeholder={placeholder} size="small" {...props} />
-    ),
-  }),
+
   [FieldTypes.FILTER_PATTERN]: ({ props }) => ({
     element: <FilterPattern {...(props as unknown as FilterPatternProps)} />,
   }),
-  [FieldTypes.SWITCH]: ({ props, id }) => ({
-    element: <Switch {...props} id={id} />,
-    formPropsPatch: { valuePropName: 'checked' },
-  }),
-  [FieldTypes.CHECK_BOX]: ({ props, id }) => ({
-    element: <Checkbox {...props} id={id} />,
-    formPropsPatch: { valuePropName: 'checked' },
-  }),
+  [FieldTypes.SWITCH]: ({ props, id }) => {
+    // Callers still pass antd's `disabled`; map it so they need no change.
+    const { disabled, ...rest } = props as ToggleProps & {
+      disabled?: boolean;
+    };
+
+    return {
+      element: <Toggle isDisabled={disabled} {...rest} id={id} />,
+      formPropsPatch: { valuePropName: 'isSelected' },
+    };
+  },
+
   [FieldTypes.SELECT]: ({ props, id }) => ({
     element: <Select {...props} id={id} />,
   }),
@@ -142,13 +128,6 @@ const FIELD_ELEMENT_RENDERERS: Partial<
       <AntDTagSuggestion
         {...(props as unknown as AntDTagSuggestionProps)}
         newLook
-      />
-    ),
-  }),
-  [FieldTypes.TREE_ASYNC_SELECT_LIST]: ({ props }) => ({
-    element: (
-      <TreeAsyncSelectList
-        {...(props as unknown as Omit<AsyncSelectListProps, 'fetchOptions'>)}
       />
     ),
   }),
@@ -199,9 +178,6 @@ const FIELD_ELEMENT_RENDERERS: Partial<
       ),
     };
   },
-  [FieldTypes.COLOR_PICKER]: ({ props }) => ({
-    element: <ColorPicker {...props} />,
-  }),
   [FieldTypes.COMPONENT]: ({ props }) => ({
     element: props.children,
   }),
@@ -271,29 +247,6 @@ const renderUtSelectField = ({
   );
 };
 
-const renderUtTagSuggestionField = ({
-  formProps,
-  props,
-  placeholder,
-  label,
-  fieldRules,
-}: FieldRenderContext) => {
-  const isRequired = (fieldRules ?? []).some(
-    (rule) => (rule as RuleObject).required
-  );
-
-  return (
-    <Form.Item {...formProps}>
-      <TagSuggestion
-        {...(props as unknown as TagSuggestionProps)}
-        label={typeof label === 'string' ? label : undefined}
-        placeholder={placeholder}
-        required={isRequired}
-      />
-    </Form.Item>
-  );
-};
-
 const renderUtSwitchField = ({
   formProps,
   props,
@@ -322,7 +275,6 @@ const CUSTOM_FIELD_RENDERERS: Partial<
 > = {
   [FieldTypes.UT_TEXT]: renderUtTextField,
   [FieldTypes.UT_SELECT]: renderUtSelectField,
-  [FieldTypes.UT_TAG_SUGGESTION]: renderUtTagSuggestionField,
   [FieldTypes.UT_SWITCH]: renderUtSwitchField,
 };
 
@@ -404,14 +356,11 @@ export const getField = (field: FieldProp) => {
 
   const labelValue = (
     <FormItemLabel
-      align={props.tooltipAlign as TooltipProps['align']}
       helperText={helperText}
       helperTextType={helperTextType}
       isBeta={isBeta}
       label={label}
-      overlayClassName={props.overlayClassName as string}
-      overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
-      placement={props.tooltipPlacement as TooltipPlacement}
+      placement={props.tooltipPlacement as Placement}
       showHelperText={showHelperText}
     />
   );
@@ -420,9 +369,9 @@ export const getField = (field: FieldProp) => {
     return (
       <div className="d-flex gap-2 form-switch-container">
         <Form.Item className="m-b-0" {...formProps}>
-          <Switch />
+          <Toggle />
         </Form.Item>
-        <Typography.Text className="font-medium">{labelValue}</Typography.Text>
+        <Typography className="font-medium">{labelValue}</Typography>
       </div>
     );
   }
@@ -445,12 +394,12 @@ export const getField = (field: FieldProp) => {
           showIcon
           className="m-b-lg alert-icon"
           data-testid="form-item-alert"
-          message={helperText}
-          type="warning"
+          title={helperText}
+          variant="warning"
         />
       )}
 
-      {hasSeparator && <Divider />}
+      {hasSeparator && <Divider className="tw:my-6" />}
     </Fragment>
   );
 };

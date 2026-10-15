@@ -10,30 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Box,
+  Divider,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
-import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { get, isEmpty, isUndefined, noop } from 'lodash';
+import { get, isUndefined, noop } from 'lodash';
 import { Fragment, lazy, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../assets/svg/entity/domain.svg';
-import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { DE_ACTIVE_COLOR } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
+import { AssetsOfEntity } from '../enums/Assets.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { Domain } from '../generated/entity/domains/domain';
 import { Operation } from '../generated/entity/policies/policy';
 import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/page';
@@ -119,22 +120,34 @@ const ResizablePanels = withSuspenseFallback(
 
 // Domain type description which will be shown in tooltip
 export const domainTypeTooltipDataRender = () => (
-  <Space direction="vertical" size="middle">
+  <Box
+    inline
+    align="stretch"
+    className="layout-space"
+    direction="col"
+    gap={4}
+    itemClassName="layout-space-item">
     {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
       <Fragment key={type}>
-        <Space direction="vertical" size={0}>
-          <Typography.Text className="tw:text-primary_on-brand">{`${t(
+        <Box
+          inline
+          align="stretch"
+          className="layout-space"
+          direction="col"
+          gap={0}
+          itemClassName="layout-space-item">
+          <Typography className="tw:text-primary_on-brand">{`${t(
             type
-          )} :`}</Typography.Text>
-          <Typography.Paragraph className="m-0 tw:text-primary_on-brand">
+          )} :`}</Typography>
+          <Typography as="p" className="m-0 tw:text-primary_on-brand">
             {t(description)}
-          </Typography.Paragraph>
-        </Space>
+          </Typography>
+        </Box>
 
         {index !== 2 && <Divider className="m-0" />}
       </Fragment>
     ))}
-  </Space>
+  </Box>
 );
 
 export const renderDomainLink = (
@@ -149,7 +162,11 @@ export const renderDomainLink = (
     : domainDisplayName;
 
   return (
-    <AntDTooltip title={domainDisplayName ?? getEntityName(domain)}>
+    <Tooltip
+      arrow
+      excludeTriggerFromTabOrder
+      title={domainDisplayName ?? getEntityName(domain)}
+      triggerClassName="tw:inline-flex tw:min-w-0 tw:max-w-full">
       <Link
         className={classNames(
           'no-underline domain-link domain-link-text font-medium',
@@ -162,75 +179,17 @@ export const renderDomainLink = (
         data-testid="domain-link"
         to={getDomainPath(domain?.fullyQualifiedName)}>
         {trimLink ? (
-          <Typography.Text
+          <Typography
             className="domain-link-name"
-            ellipsis={{ tooltip: false }}>
+            ellipsis={{ tooltip: false, excludeTriggerFromTabOrder: true }}>
             {displayName}
-          </Typography.Text>
+          </Typography>
         ) : (
           <>{displayName}</>
         )}
       </Link>
-    </AntDTooltip>
+    </Tooltip>
   );
-};
-
-export const convertDomainsToTreeOptions = (
-  options: EntityReference[] | Domain[] = [],
-  level = 0,
-  multiple = false
-): TreeListItem[] => {
-  const treeData = options.map((option) => {
-    const hasChildren = 'children' in option && !isEmpty(option?.children);
-    const domainOption = option as unknown as Domain;
-    const hasChildrenCount =
-      'childrenCount' in domainOption && (domainOption.childrenCount ?? 0) > 0;
-
-    return {
-      id: option.id,
-      value: option.fullyQualifiedName,
-      name: option.name,
-      label: option.name,
-      key: option.fullyQualifiedName,
-      displayName: option.displayName,
-      childrenCount:
-        domainOption.childrenCount || domainOption.children?.length || 0,
-      fullyQualifiedName: option.fullyQualifiedName,
-      title: (
-        <div className="d-flex items-center gap-1">
-          {level === 0 ? (
-            <DomainIcon
-              color={DE_ACTIVE_COLOR}
-              height={20}
-              name="domain"
-              width={20}
-            />
-          ) : (
-            <SubDomainIcon
-              color={DE_ACTIVE_COLOR}
-              height={20}
-              name="subdomain"
-              width={20}
-            />
-          )}
-
-          <Typography.Text ellipsis>{getEntityName(option)}</Typography.Text>
-        </div>
-      ),
-      'data-testid': `tag-${option.fullyQualifiedName}`,
-      isLeaf: !hasChildren && !hasChildrenCount,
-      selectable: !multiple,
-      children: hasChildren
-        ? convertDomainsToTreeOptions(
-            domainOption?.children as EntityReference[],
-            level + 1,
-            multiple
-          )
-        : undefined,
-    };
-  });
-
-  return treeData;
 };
 
 export const getDomainDetailTabs = ({
@@ -269,7 +228,7 @@ export const getDomainDetailTabs = ({
         />
       ),
       key: EntityTabs.DOCUMENTATION,
-      children: <GenericTab type={PageType.Domain} variant="flat" />,
+      children: <GenericTab type={PageType.Domain} />,
     },
     ...(isVersionsView
       ? []

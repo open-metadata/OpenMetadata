@@ -793,30 +793,9 @@ def test_yield_tags_skipped_when_include_tags_disabled(omni_source):
     assert list(omni_source.yield_tags(details)) == []
 
 
-def test_yield_dashboard_attaches_label_tags(omni_source):
-    """The dashboard request carries the document's labels, resolved against the
-    Omni classification (tag FQN resolution itself is a server call)."""
-    from metadata.generated.schema.type.tagLabel import (
-        LabelType,
-        State,
-        TagFQN,
-        TagLabel,
-        TagSource,
-    )
-
-    labelled = MOCK_DOCUMENT.model_copy(update={"labels": [OmniLabel(name="Company North Star")]})
+def test_yield_dashboard_attaches_label_tags(omni_source, tag_metadata):
+    omni_source.metadata = tag_metadata
+    labelled = MOCK_DOCUMENT.model_copy(update={"labels": [OmniLabel(name="Shared.Tag")]})
     details = OmniDashboardDetails(document=labelled, dashboard=MOCK_DASHBOARD_DOC)
-    resolved = [
-        TagLabel(
-            tagFQN=TagFQN(root='OmniLabels."Company North Star"'),
-            source=TagSource.Classification,
-            labelType=LabelType.Automated,
-            state=State.Suggested,
-        )
-    ]
-    with patch("metadata.ingestion.source.dashboard.omni.metadata.get_tag_labels", return_value=resolved) as get_labels:
-        dashboard = _rights(omni_source.yield_dashboard(details))[0]
-
-    assert [t.tagFQN.root for t in dashboard.tags] == ['OmniLabels."Company North Star"']
-    assert get_labels.call_args.kwargs["tags"] == ["Company North Star"]
-    assert get_labels.call_args.kwargs["classification_name"] == "OmniLabels"
+    dashboard = _rights(omni_source.yield_dashboard(details))[0]
+    assert [t.tagFQN.root for t in dashboard.tags] == ['OmniLabels."Shared.Tag"']

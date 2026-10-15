@@ -15,6 +15,7 @@ import type { HTMLAttributes, ReactNode } from 'react';
 
 export type DividerOrientation = 'horizontal' | 'vertical';
 export type DividerLabelAlignment = 'start' | 'center' | 'end';
+export type DividerColor = 'secondary' | 'primary';
 
 export interface DividerProps extends HTMLAttributes<HTMLDivElement> {
   orientation?: DividerOrientation;
@@ -26,21 +27,30 @@ export interface DividerProps extends HTMLAttributes<HTMLDivElement> {
    * cannot be dashed.
    */
   dashed?: boolean;
+  /**
+   * `secondary` (default) separates items inside a surface; `primary` is the
+   * stronger rule for partitioning whole panels, which the subtle rule leaves
+   * near-invisible on dark surfaces.
+   */
+  color?: DividerColor;
 }
 
 // Solid rules are a filled 1px box. Dashed ones must use a border instead, so
 // the box collapses to zero in the relevant axis and the border supplies the
 // visible line.
-const ruleClasses = (dashed: boolean, axis: 'x' | 'y') => {
+const ruleClasses = (dashed: boolean, axis: 'x' | 'y', color: DividerColor) => {
+  const primary = color === 'primary';
   if (!dashed) {
-    return axis === 'y'
-      ? 'tw:w-px tw:bg-border-secondary'
-      : 'tw:h-px tw:bg-border-secondary';
+    const fill = primary ? 'tw:bg-border-primary' : 'tw:bg-border-secondary';
+
+    return axis === 'y' ? `tw:w-px ${fill}` : `tw:h-px ${fill}`;
   }
 
+  const stroke = primary ? 'tw:border-primary' : 'tw:border-secondary';
+
   return axis === 'y'
-    ? 'tw:w-0 tw:border-l tw:border-dashed tw:border-secondary'
-    : 'tw:h-0 tw:border-t tw:border-dashed tw:border-secondary';
+    ? `tw:w-0 tw:border-l tw:border-dashed ${stroke}`
+    : `tw:h-0 tw:border-t tw:border-dashed ${stroke}`;
 };
 
 export const Divider = ({
@@ -48,6 +58,7 @@ export const Divider = ({
   label,
   labelAlign = 'center',
   dashed = false,
+  color = 'secondary',
   className,
   ...props
 }: DividerProps) => {
@@ -62,7 +73,7 @@ export const Divider = ({
           // `self-center`) overrides it. `min-h-[1em]` keeps the rule visible
           // in both cases without capping it when stretching does apply.
           'tw:self-stretch tw:min-h-[1em] tw:shrink-0',
-          ruleClasses(dashed, 'y'),
+          ruleClasses(dashed, 'y', color),
           className
         )}
         role="separator"
@@ -77,7 +88,7 @@ export const Divider = ({
         aria-orientation="horizontal"
         className={cx(
           'tw:w-full tw:shrink-0',
-          ruleClasses(dashed, 'x'),
+          ruleClasses(dashed, 'x', color),
           className
         )}
         role="separator"
@@ -92,13 +103,13 @@ export const Divider = ({
       aria-orientation="horizontal"
       className={cx('tw:flex tw:items-center tw:w-full tw:gap-2', className)}>
       {labelAlign !== 'start' && (
-        <div className={cx('tw:flex-1', ruleClasses(dashed, 'x'))} />
+        <div className={cx('tw:flex-1', ruleClasses(dashed, 'x', color))} />
       )}
       <span className="tw:shrink-0 tw:text-xs tw:font-medium tw:text-tertiary">
         {label}
       </span>
       {labelAlign !== 'end' && (
-        <div className={cx('tw:flex-1', ruleClasses(dashed, 'x'))} />
+        <div className={cx('tw:flex-1', ruleClasses(dashed, 'x', color))} />
       )}
     </div>
   );

@@ -38,6 +38,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -60,6 +61,7 @@ import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -102,8 +104,10 @@ import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
+import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.policyevaluator.TeamHierarchyResolver;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.tasks.TaskAssigneeCleanup;
 import org.openmetadata.service.util.AsyncService;
@@ -112,6 +116,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
@@ -137,9 +142,9 @@ public class UserRepository extends EntityRepository<User> {
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
   static final String USER_PATCH_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
   static final String USER_UPDATE_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
   private static final String OWNS_ENTITY_TYPE_PARAM = "ownsEntityType";
   private static final String DIRECT_OWNS_ONLY_PARAM = "directOwnsOnly";
   private volatile EntityReference organization;
@@ -165,6 +170,7 @@ public class UserRepository extends EntityRepository<User> {
     this.fieldFetchers.put("follows", this::fetchAndSetFollows);
     this.fieldFetchers.put("personas", this::fetchAndSetPersonas);
     this.fieldFetchers.put("defaultPersona", this::fetchAndSetDefaultPersona);
+    this.fieldFetchers.put("defaultDomain", this::fetchAndSetDefaultDomain);
     this.fieldFetchers.put("inheritedPersonas", this::fetchAndSetInheritedPersonas);
     this.fieldFetchers.put("domains", this::fetchAndSetDomains);
 
@@ -277,6 +283,39 @@ public class UserRepository extends EntityRepository<User> {
       validateGroupTeams(user.getTeams());
     }
     validateRoles(user.getRoles());
+    validateDefaultDomain(user);
+  }
+
+  /**
+   * Names of users whose navbar selection ({@code defaultDomain}) is one of {@code domainIds}. The
+   * selection is a {@code DEFAULTS_TO} relationship, so deleting the domain removes it; callers use
+   * this only to evict those users' cached context.
+   */
+  public List<String> listUsersDefaultingTo(Collection<UUID> domainIds) {
+    List<String> userIds =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                domainIds.stream().map(UUID::toString).toList(),
+                Relationship.DEFAULTS_TO.ordinal(),
+                Entity.DOMAIN,
+                USER)
+            .stream()
+            .map(CollectionDAO.EntityRelationshipObject::getToId)
+            .distinct()
+            .toList();
+    return batchResolveRefs(USER, userIds.stream().map(UUID::fromString).toList()).values().stream()
+        .map(EntityReference::getName)
+        .toList();
+  }
+
+  /** A navbar selection must resolve to a real domain; anything else is rejected up front. */
+  private void validateDefaultDomain(User user) {
+    if (user.getDefaultDomain() != null) {
+      user.setDefaultDomain(
+          Entity.getEntityReferenceById(
+              Entity.DOMAIN, user.getDefaultDomain().getId(), NON_DELETED));
+    }
   }
 
   @Override
@@ -293,12 +332,16 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(user.getIsBot())) {
       return Collections.emptyList(); // No inherited roles for bots
     }
-    return SubjectContext.getRolesForTeams(getTeams(user));
+    // setFields resolves teams before inherited roles, so re-reading them here is a wasted query.
+    // Teams are stripped from the stored JSON, so a non-null value can only have come from there.
+    List<EntityReference> teams = user.getTeams() != null ? user.getTeams() : getTeams(user);
+    return SubjectContext.getRolesForTeams(teams);
   }
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("roles", "teams", "inheritedRoles", "inheritedPersonas", "defaultPersona");
+    return List.of(
+        "roles", "teams", "inheritedRoles", "inheritedPersonas", "defaultPersona", "defaultDomain");
   }
 
   @Override
@@ -416,6 +459,7 @@ public class UserRepository extends EntityRepository<User> {
     assignRoles(user, user.getRoles());
     assignTeams(user, user.getTeams());
     assignDefaultPersona(user, user.getDefaultPersona());
+    assignDefaultDomain(user, user.getDefaultDomain());
     assignPersonas(user, user.getPersonas());
     user.setInheritedRoles(getInheritedRoles(user));
     user.setInheritedPersonas(getInheritedPersonas(user));
@@ -426,15 +470,10 @@ public class UserRepository extends EntityRepository<User> {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
     if (fields.contains(FIELD_DOMAINS)) {
-      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> teams =
           !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
-      if (!nullOrEmpty(teams)) {
-        for (EntityReference team : teams) {
-          Team parent = Entity.getEntity(TEAM, team.getId(), "domains", ALL);
-          combinedParent.addAll(parent.getDomains());
-        }
-      }
+      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
+      combinedParent.addAll(TeamHierarchyResolver.domainsForTeams(teams));
       user.setDomains(
           EntityUtil.mergedInheritedEntityRefs(
               user.getDomains(), combinedParent.stream().toList()));
@@ -456,6 +495,8 @@ public class UserRepository extends EntityRepository<User> {
     user.setPersonas(fields.contains("personas") ? getPersonas(user) : user.getPersonas());
     user.setDefaultPersona(
         fields.contains("defaultPersona") ? getDefaultPersona(user) : user.getDefaultPersona());
+    user.setDefaultDomain(
+        fields.contains("defaultDomain") ? getDefaultDomain(user) : user.getDefaultDomain());
     user.withInheritedRoles(
         fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
     user.setInheritedPersonas(
@@ -478,6 +519,7 @@ public class UserRepository extends EntityRepository<User> {
     user.setLastLoginTime(fields.contains("lastLoginTime") ? user.getLastLoginTime() : null);
     user.setPersonas(fields.contains("personas") ? user.getPersonas() : null);
     user.setDefaultPersona(fields.contains("defaultPersona") ? user.getDefaultPersona() : null);
+    user.setDefaultDomain(fields.contains("defaultDomain") ? user.getDefaultDomain() : null);
     user.setInheritedPersonas(fields.contains("personas") ? user.getInheritedPersonas() : null);
     user.setDomains(fields.contains("domains") ? user.getDomains() : null);
   }
@@ -583,13 +625,24 @@ public class UserRepository extends EntityRepository<User> {
     return daoCollection.userDAO().checkUserNameExists(username) > 0;
   }
 
+  /**
+   * Creates the admin and test users of the authorizer configuration in effect, the same one the
+   * request filters enforce, rather than the configuration file's copy, which a value saved in the
+   * UI may override.
+   */
   public void initializeUsers(OpenMetadataApplicationConfig config) {
     AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
+    AuthorizerConfiguration authorizer =
+        Optional.ofNullable(SecurityConfigurationManager.getCurrentAuthzConfig())
+            .orElse(config.getAuthorizerConfiguration());
 
-    UserUtil.createOrUpdateAdminUsers(authProvider, config.getAuthorizerConfiguration());
+    UserUtil.createOrUpdateAdminUsers(authProvider, authorizer);
 
-    String domain = SecurityUtil.getDomain(config);
-    Set<String> testUsers = new HashSet<>(config.getAuthorizerConfiguration().getTestPrincipals());
+    String domain = SecurityUtil.getDomain(authorizer);
+    Set<String> testUsers =
+        authorizer.getTestPrincipals() == null
+            ? new HashSet<>()
+            : new HashSet<>(authorizer.getTestPrincipals());
     UserUtil.addUsers(authProvider, testUsers, domain, null);
   }
 
@@ -704,6 +757,10 @@ public class UserRepository extends EntityRepository<User> {
 
   public List<EntityReference> getPersonas(User user) {
     return findFrom(user.getId(), USER, Relationship.APPLIED_TO, Entity.PERSONA);
+  }
+
+  public EntityReference getDefaultDomain(User user) {
+    return getFromEntityRef(user.getId(), USER, Relationship.DEFAULTS_TO, Entity.DOMAIN, false);
   }
 
   public EntityReference getDefaultPersona(User user) {
@@ -886,6 +943,12 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  private void assignDefaultDomain(User user, EntityReference domain) {
+    if (domain != null) {
+      addRelationship(domain.getId(), user.getId(), Entity.DOMAIN, USER, Relationship.DEFAULTS_TO);
+    }
+  }
+
   private void assignDefaultPersona(User user, EntityReference persona) {
     if (persona != null) {
       addRelationship(
@@ -997,12 +1060,32 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     Map<UUID, List<EntityReference>> userToTeams = batchFetchTeamsForUsers(userIds);
+    // One hierarchy walk for the whole page rather than one per user: members of the same teams
+    // share almost all of it, and a user in many teams would otherwise pay for each of them.
+    Map<UUID, TeamHierarchyResolver.TeamNode> hierarchy =
+        TeamHierarchyResolver.closure(effectiveTeams(users, userToTeams));
 
     for (User user : users) {
       List<EntityReference> roleRefs = userToRoles.get(user.getId());
       user.setRoles(roleRefs != null ? roleRefs : new ArrayList<>());
-      user.withInheritedRoles(getInheritedRoles(user, userToTeams.get(user.getId())));
+      user.withInheritedRoles(getInheritedRoles(user, userToTeams.get(user.getId()), hierarchy));
     }
+  }
+
+  /** Teams whose roles the page inherits, with the organization standing in for no membership. */
+  private Set<EntityReference> effectiveTeams(
+      List<User> users, Map<UUID, List<EntityReference>> userToTeams) {
+    Set<EntityReference> teams = new HashSet<>();
+    for (User user : users) {
+      if (!Boolean.TRUE.equals(user.getIsBot())) {
+        teams.addAll(effectiveTeams(userToTeams.get(user.getId())));
+      }
+    }
+    return teams;
+  }
+
+  private List<EntityReference> effectiveTeams(List<EntityReference> teams) {
+    return nullOrEmpty(teams) ? List.of(getOrganization()) : teams;
   }
 
   private Map<UUID, List<EntityReference>> batchFetchTeamsForUsers(List<String> userIds) {
@@ -1024,14 +1107,13 @@ public class UserRepository extends EntityRepository<User> {
     return userToTeams;
   }
 
-  private List<EntityReference> getInheritedRoles(User user, List<EntityReference> teams) {
+  private List<EntityReference> getInheritedRoles(
+      User user, List<EntityReference> teams, Map<UUID, TeamHierarchyResolver.TeamNode> hierarchy) {
     List<EntityReference> roles;
     if (Boolean.TRUE.equals(user.getIsBot())) {
       roles = Collections.emptyList();
     } else {
-      List<EntityReference> effectiveTeams =
-          nullOrEmpty(teams) ? new ArrayList<>(List.of(getOrganization())) : teams;
-      roles = SubjectContext.getRolesForTeams(effectiveTeams);
+      roles = TeamHierarchyResolver.rolesForTeams(effectiveTeams(teams), hierarchy);
     }
     return roles;
   }
@@ -1242,6 +1324,28 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> personaRefs = userToPersonas.get(user.getId());
       user.setPersonas(personaRefs != null ? personaRefs : new ArrayList<>());
     }
+  }
+
+  private void fetchAndSetDefaultDomain(List<User> users, Fields fields) {
+    if (!fields.contains("defaultDomain") || users == null || users.isEmpty()) {
+      return;
+    }
+    List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(userIds, Relationship.DEFAULTS_TO.ordinal(), Entity.DOMAIN, USER);
+    Map<UUID, EntityReference> domainsById =
+        batchResolveRefs(
+            Entity.DOMAIN, records.stream().map(r -> UUID.fromString(r.getFromId())).toList());
+    Map<UUID, EntityReference> userToDomain = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference domainRef = domainsById.get(UUID.fromString(record.getFromId()));
+      if (domainRef != null) {
+        userToDomain.put(UUID.fromString(record.getToId()), domainRef);
+      }
+    }
+    users.forEach(user -> user.setDefaultDomain(userToDomain.get(user.getId())));
   }
 
   private void fetchAndSetDefaultPersona(List<User> users, Fields fields) {
@@ -1533,12 +1637,31 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  protected DeleteLifecycle beginDeleteLifecycle(User entity, String deletedBy) {
+    DeleteLifecycle parentLifecycle = super.beginDeleteLifecycle(entity, deletedBy);
+    try {
+      Runnable finishCredentialDelete =
+          Boolean.TRUE.equals(entity.getIsBot())
+              ? BotTokenCache.denyToken(entity.getName())
+              : UserTokenCache.denyToken(entity.getName());
+      return () -> {
+        try (parentLifecycle) {
+          finishCredentialDelete.run();
+        }
+      };
+    } catch (RuntimeException | Error failure) {
+      try {
+        parentLifecycle.close();
+      } catch (RuntimeException | Error closeFailure) {
+        failure.addSuppressed(closeFailure);
+      }
+      throw failure;
+    }
+  }
+
+  @Override
   protected void postDelete(User entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    // If the User is bot it's token needs to be invalidated
-    if (Boolean.TRUE.equals(entity.getIsBot())) {
-      BotTokenCache.invalidateToken(entity.getName());
-    }
     JwtFilter.invalidateResolvedEmailIdentity(entity.getEmail());
     revokeLiveSessions(entity);
     if (hardDelete) {
@@ -1558,6 +1681,21 @@ public class UserRepository extends EntityRepository<User> {
                 LOG.error("Error updating test case incident assignee: ", ex);
               }
             });
+  }
+
+  @Override
+  protected void postRestore(User entity) {
+    super.postRestore(entity);
+    String userName = entity.getName();
+    boolean isBot = Boolean.TRUE.equals(entity.getIsBot());
+    PostCommitActionQueue.runOrDefer(
+        () -> {
+          if (isBot) {
+            BotTokenCache.reloadToken(userName);
+          } else {
+            UserTokenCache.reloadToken(userName);
+          }
+        });
   }
 
   /**
@@ -1658,6 +1796,15 @@ public class UserRepository extends EntityRepository<User> {
     return false;
   }
 
+  /**
+   * Evicts a cached subject twice: now, so this request reads its own write, and again after the
+   * commit, so a concurrent load that captured the pre-commit row cannot outlive the update.
+   */
+  static void evictNowAndAfterCommit(Runnable evict) {
+    evict.run();
+    PostCommitActionQueue.runOrDefer(evict);
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class UserUpdater extends EntityUpdater {
     public UserUpdater(User original, User updated, Operation operation) {
@@ -1742,6 +1889,7 @@ public class UserRepository extends EntityRepository<User> {
       compareAndUpdate("teams", () -> updateTeams(original, updated));
       compareAndUpdate("personas", () -> updatePersonas(original, updated));
       compareAndUpdate("defaultPersona", () -> updateDefaultPersona(original, updated));
+      compareAndUpdate("defaultDomain", () -> updateDefaultDomain(original, updated));
       compareAndUpdate(
           "profile",
           () -> recordChange("profile", original.getProfile(), updated.getProfile(), true));
@@ -1761,11 +1909,18 @@ public class UserRepository extends EntityRepository<User> {
       compareAndUpdate("personaPreferences", () -> updatePersonaPreferences(original, updated));
       compareAndUpdate(
           "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
-      compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
       compareAndUpdateAny(
-          () -> SubjectCache.invalidateUserContext(updated.getName()),
+          () -> evictNowAndAfterCommit(() -> SubjectCache.invalidateUser(updated.getName())),
+          "roles",
+          "teams");
+      // Authorization reads these from the cached user context (e.g. hasDomain() and admin checks)
+      compareAndUpdateAny(
+          () -> evictNowAndAfterCommit(() -> SubjectCache.invalidateUserContext(updated.getName())),
           "personas",
-          "defaultPersona");
+          "defaultPersona",
+          "defaultDomain",
+          FIELD_DOMAINS,
+          "isAdmin");
       JwtFilter.invalidateResolvedEmailIdentity(original.getEmail());
       JwtFilter.invalidateResolvedEmailIdentity(updated.getEmail());
     }
@@ -1841,7 +1996,7 @@ public class UserRepository extends EntityRepository<User> {
     private void updateTeams(User original, User updated) {
       List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
       List<EntityReference> requestedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
-      validateGroupTeams(requestedTeams);
+      validateGroupTeams(findAddedTeams(origTeams, requestedTeams));
 
       // Remove teams from original and add teams from updated
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.TEAM);
@@ -1860,9 +2015,18 @@ public class UserRepository extends EntityRepository<User> {
       Stream.concat(added.stream(), deleted.stream())
           .forEach(
               teamRef -> {
-                EntityInterface team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
+                EntityInterface<?> team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
                 searchRepository.updateEntityIndex(team);
               });
+    }
+
+    private List<EntityReference> findAddedTeams(
+        List<EntityReference> originalTeams, List<EntityReference> requestedTeams) {
+      final Set<UUID> originalTeamIds =
+          originalTeams.stream().map(EntityReference::getId).collect(Collectors.toSet());
+      return requestedTeams.stream()
+          .filter(team -> !originalTeamIds.contains(team.getId()))
+          .toList();
     }
 
     private void updatePersonas(User original, User updated) {
@@ -1885,6 +2049,27 @@ public class UserRepository extends EntityRepository<User> {
           added,
           deleted,
           EntityUtil.entityReferenceMatch);
+    }
+
+    private void updateDefaultDomain(User original, User updated) {
+      // The relationship is: domain --DEFAULTS_TO--> user
+      EntityReference originalDefaultDomain = getDefaultDomain(original);
+      if (operation.isPut() && updated.getDefaultDomain() == null) {
+        // A PUT body (CreateUser) has no defaultDomain; it must not clear the saved selection.
+        updated.setDefaultDomain(originalDefaultDomain);
+        return;
+      }
+      EntityReference updatedDefaultDomain = updated.getDefaultDomain();
+      deleteTo(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.DOMAIN);
+      assignDefaultDomain(updated, updatedDefaultDomain);
+      // A view preference (e.g. the navbar pick): saved without a version bump, like lastLoginTime.
+      recordChange(
+          "defaultDomain",
+          originalDefaultDomain,
+          updatedDefaultDomain,
+          true,
+          EntityUtil.entityReferenceMatch,
+          false);
     }
 
     private void updateDefaultPersona(User original, User updated) {

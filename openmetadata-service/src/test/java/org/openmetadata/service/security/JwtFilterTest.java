@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,6 +51,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -62,12 +64,15 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
@@ -115,6 +120,7 @@ class JwtFilterTest {
   @AfterEach
   void clearRequestContext() {
     ActivePersonaContext.clear();
+    ActiveDomainContext.clear();
   }
 
   @Test
@@ -203,7 +209,12 @@ class JwtFilterTest {
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
     when(context.getHeaderString(JwtFilter.ACTIVE_PERSONA_HEADER)).thenReturn(activePersona);
 
-    try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
+    try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class);
+        MockedStatic<SubjectCache> subjectCache =
+            org.mockito.Mockito.mockStatic(SubjectCache.class)) {
+      subjectCache
+          .when(() -> SubjectCache.getUserContext("sam"))
+          .thenReturn(new User().withName("sam"));
       jwtFilter.filter(context);
       entity.verifyNoInteractions();
     }
@@ -215,6 +226,86 @@ class JwtFilterTest {
         (CatalogSecurityContext) securityContextArgument.getValue();
     assertEquals(activePersona, catalogSecurityContext.activePersona());
     assertEquals(activePersona, ActivePersonaContext.getActivePersona());
+  }
+
+  @Test
+  void testActiveDomainIsResolvedFromTheCachedUser() {
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+    EntityReference selected =
+        new EntityReference().withId(UUID.randomUUID()).withType("domain").withName("Sales");
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    try (MockedStatic<SubjectCache> subjectCache =
+        org.mockito.Mockito.mockStatic(SubjectCache.class)) {
+      subjectCache
+          .when(() -> SubjectCache.getUserContext("sam"))
+          .thenReturn(new User().withName("sam").withDefaultDomain(selected));
+      jwtFilter.filter(context);
+    }
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContextArgument.capture());
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) securityContextArgument.getValue();
+    assertEquals(selected, catalogSecurityContext.activeDomain());
+    assertEquals(selected, ActiveDomainContext.getActiveDomain());
+  }
+
+  @Test
+  void testPersonalAccessTokensCarryNoActiveDomain() {
+    // The navbar selection is a UI preference: scripts and SDK calls using a personal access token
+    // list without it.
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .withClaim(TOKEN_TYPE, ServiceTokenType.PERSONAL_ACCESS.value())
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    try (MockedStatic<UserTokenCache> userTokenCache =
+            org.mockito.Mockito.mockStatic(UserTokenCache.class);
+        MockedStatic<SubjectCache> subjectCache =
+            org.mockito.Mockito.mockStatic(SubjectCache.class)) {
+      userTokenCache.when(() -> UserTokenCache.isTokenValid("sam", jwt)).thenReturn(true);
+      subjectCache
+          .when(() -> SubjectCache.getUserContext("sam"))
+          .thenReturn(
+              new User()
+                  .withName("sam")
+                  .withDefaultDomain(
+                      new EntityReference().withId(UUID.randomUUID()).withType("domain")));
+      jwtFilter.filter(context);
+    }
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContextArgument.capture());
+    assertNull(((CatalogSecurityContext) securityContextArgument.getValue()).activeDomain());
+    assertNull(ActiveDomainContext.getActiveDomain());
+  }
+
+  @Test
+  void testBotsCarryNoActiveDomain() {
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "ingestion-bot")
+            .withClaim(JwtFilter.BOT_CLAIM, true)
+            .sign(algorithm);
+
+    try (MockedStatic<SubjectCache> subjectCache =
+        org.mockito.Mockito.mockStatic(SubjectCache.class)) {
+      CatalogSecurityContext securityContext = jwtFilter.getCatalogSecurityContext(jwt);
+
+      assertNull(securityContext.activeDomain());
+      subjectCache.verifyNoInteractions();
+    }
   }
 
   @Test
@@ -327,7 +418,7 @@ class JwtFilterTest {
   }
 
   @Test
-  void testPersonalAccessTokenValidationSucceedsWithCachedToken() {
+  void testPersonalAccessTokenValidationSucceedsWithCurrentToken() {
     String jwt =
         JWT.create()
             .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
@@ -339,12 +430,58 @@ class JwtFilterTest {
 
     try (MockedStatic<UserTokenCache> userTokenCache =
         org.mockito.Mockito.mockStatic(UserTokenCache.class)) {
-      userTokenCache.when(() -> UserTokenCache.getToken("sam")).thenReturn(Set.of(jwt));
+      userTokenCache.when(() -> UserTokenCache.isTokenValid("sam", jwt)).thenReturn(true);
       jwtFilter.filter(context);
     }
 
     verify(context, times(1))
         .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+  }
+
+  @Test
+  void botTokenIsRejectedOnceRevokedOrRotated() {
+    String jwt = botJwt("ingestion-bot");
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    try (MockedStatic<BotTokenCache> botTokenCache =
+        org.mockito.Mockito.mockStatic(BotTokenCache.class)) {
+      // Revoked: the stored token is cleared. Rotated: a newer token is stored. The presented
+      // token matches neither, so both must fail even though the JWT is still signed and unexpired.
+      botTokenCache
+          .when(() -> BotTokenCache.isTokenValid("ingestion-bot", jwt))
+          .thenReturn(false, false);
+      for (int attempt = 0; attempt < 2; attempt++) {
+        Exception exception =
+            assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+        assertTrue(exception.getMessage().contains("does not match the current bot's token"));
+      }
+    }
+    verify(context, never()).setSecurityContext(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
+  void botTokenIsAcceptedWhileItIsTheCurrentOne() {
+    String jwt = botJwt("ingestion-bot");
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    try (MockedStatic<BotTokenCache> botTokenCache =
+        org.mockito.Mockito.mockStatic(BotTokenCache.class)) {
+      botTokenCache.when(() -> BotTokenCache.isTokenValid("ingestion-bot", jwt)).thenReturn(true);
+      jwtFilter.filter(context);
+    }
+
+    verify(context, times(1))
+        .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+  }
+
+  private static String botJwt(String botName) {
+    return JWT.create()
+        .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+        .withClaim("sub", botName)
+        .withClaim("email", botName + "@openmetadata.org")
+        .withClaim(JwtFilter.BOT_CLAIM, true)
+        .withClaim(TOKEN_TYPE, ServiceTokenType.BOT.value())
+        .sign(algorithm);
   }
 
   @ParameterizedTest
@@ -518,11 +655,15 @@ class JwtFilterTest {
   }
 
   private static JwtFilter newEnforcingFilterForKeyId(String keyId) throws Exception {
+    return new JwtFilter(jwkProviderForKeyId(keyId), List.of("sub", "email"), OM_ISSUER, true);
+  }
+
+  private static JwkProvider jwkProviderForKeyId(String keyId) throws Exception {
     Jwk jwk = mock(Jwk.class);
     when(jwk.getPublicKey()).thenReturn(publicKey);
     JwkProvider keyIdAwareProvider = mock(JwkProvider.class);
     when(keyIdAwareProvider.get(keyId)).thenReturn(jwk);
-    return new JwtFilter(keyIdAwareProvider, List.of("sub", "email"), OM_ISSUER, true);
+    return keyIdAwareProvider;
   }
 
   /**
@@ -878,14 +1019,47 @@ class JwtFilterTest {
   }
 
   @Test
-  void rolesClaimAbsentLeavesContextRolesNull() throws Exception {
-    // Regression guard: an empty set here would tell the role sync the provider revoked every
-    // role, wiping the roles of every user on a deployment that never configured a roles claim.
+  void providerTokenWithoutARolesClaimGrantsNoRoles() throws Exception {
+    // Entra ID omits the roles claim once a user has no app roles left. Reading that as "unknown"
+    // left every revoked role in place.
     JwtFilter filter = filterWithRolesFromProvider(true);
 
     CatalogSecurityContext context = filter.getCatalogSecurityContext(rolesClaimJwt(null));
 
-    assertNull(context.userRoles());
+    assertEquals(Set.of(), context.userRoles());
+  }
+
+  @Test
+  void openMetadataIssuedTokenRolesNeverReachTheRoleSync() throws Exception {
+    // A session token or PAT carries the roles the user had when it was minted. Treating them as
+    // the provider's would let a tab left open restore roles the provider has since revoked.
+    JwtFilter filter = filterWithRolesFromProvider(jwkProviderForKeyId(OM_KEY_ID), true);
+    String jwt =
+        JWT.create()
+            .withKeyId(OM_KEY_ID)
+            .withIssuer(OM_ISSUER)
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
+            .withClaim("roles", List.of("Admin", "DataSteward"))
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    try (MockedStatic<JWTTokenGenerator> generator =
+        org.mockito.Mockito.mockStatic(
+            JWTTokenGenerator.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      JWTTokenGenerator instance = mock(JWTTokenGenerator.class);
+      when(instance.getIssuer()).thenReturn(OM_ISSUER);
+      when(instance.getKid()).thenReturn(OM_KEY_ID);
+      generator.when(JWTTokenGenerator::getInstance).thenReturn(instance);
+
+      filter.filter(context);
+    }
+
+    ArgumentCaptor<SecurityContext> securityContext =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContext.capture());
+    assertNull(((CatalogSecurityContext) securityContext.getValue()).userRoles());
   }
 
   @Test
@@ -963,8 +1137,12 @@ class JwtFilterTest {
 
   private static JwtFilter filterWithRolesFromProvider(boolean useRolesFromProvider)
       throws Exception {
-    JwtFilter filter =
-        new JwtFilter(jwkProvider, List.of("sub", "email"), "openmetadata.org", false);
+    return filterWithRolesFromProvider(jwkProvider, useRolesFromProvider);
+  }
+
+  private static JwtFilter filterWithRolesFromProvider(
+      JwkProvider provider, boolean useRolesFromProvider) throws Exception {
+    JwtFilter filter = new JwtFilter(provider, List.of("sub", "email"), "openmetadata.org", false);
     Field field = JwtFilter.class.getDeclaredField("useRolesFromProvider");
     field.setAccessible(true);
     field.setBoolean(filter, useRolesFromProvider);

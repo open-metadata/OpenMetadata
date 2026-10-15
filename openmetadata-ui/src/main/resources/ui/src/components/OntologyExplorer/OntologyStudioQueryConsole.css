@@ -11,35 +11,44 @@
  *  limitations under the License.
  */
 
-.ontology-studio-query-editor .CodeMirror {
-  height: auto;
-  min-height: 138px;
-  background: var(--color-bg-primary);
-  color: var(--color-text-primary);
+.ontology-studio-query-editor {
+  flex: 1;
+  min-height: 0;
+}
+
+.ontology-studio-query-editor .cm-editor {
+  height: 100%;
+  background: var(--tw-color-bg-primary);
+  color: var(--tw-color-text-primary);
   font-family: 'Geist Mono', ui-monospace, monospace;
-  font-size: var(--om-font-size-xs);
-  font-weight: var(--om-font-weight-regular);
-  line-height: 1.6;
+  font-size: var(--tw-text-sm);
+  font-weight: var(--tw-font-weight-normal);
+  line-height: 22px;
 }
 
-.ontology-studio-query-editor .CodeMirror-scroll {
-  min-height: 138px;
-  max-height: 240px;
+.ontology-studio-query-editor .cm-gutters {
+  border-right: 1px solid var(--tw-color-border-secondary);
+  background: var(--tw-color-bg-secondary_subtle);
+  color: var(--tw-color-text-quaternary);
 }
 
-.ontology-studio-query-editor .CodeMirror-gutters {
-  display: none;
+.ontology-studio-query-editor .cm-gutterElement {
+  padding: 0 calc(var(--tw-spacing) * 3) 0 calc(var(--tw-spacing) * 4);
 }
 
-.ontology-studio-query-editor .CodeMirror-lines {
-  padding: var(--om-space-12) var(--om-space-16);
+.ontology-studio-query-editor .cm-content {
+  padding: calc(var(--tw-spacing) * 4) calc(var(--tw-spacing) * 5);
 }
 
-.ontology-studio-query-editor pre.CodeMirror-line,
-.ontology-studio-query-editor pre.CodeMirror-line-like {
+.ontology-studio-query-editor .cm-line {
   padding: 0;
 }
 
-.ontology-studio-query-editor .CodeMirror-code > div:nth-child(-n + 2) span {
-  color: var(--color-utility-purple-600);
+.ontology-studio-query-editor .cm-content > .cm-line:nth-child(-n + 2) span {
+  color: var(--tw-color-utility-purple-600);
+}
+
+.ontology-studio-query-editor .cm-editor.cm-focused {
+  outline: 2px solid var(--tw-color-border-brand);
+  outline-offset: -2px;
 }

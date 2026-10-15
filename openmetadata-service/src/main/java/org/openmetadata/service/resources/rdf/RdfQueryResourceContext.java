@@ -24,7 +24,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
  * Policy resource for the RDF query surface. RDF has no entity repository, so the entity-backed
  * {@code ResourceContext} cannot be used; the dataset has no owners, tags, or domains to evaluate.
  */
-enum RdfQueryResourceContext implements ResourceContextInterface {
+public enum RdfQueryResourceContext implements ResourceContextInterface {
   INSTANCE;
 
   @Override
@@ -43,7 +43,7 @@ enum RdfQueryResourceContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityInterface getEntity() {
+  public EntityInterface<?> getEntity() {
     return null;
   }
 

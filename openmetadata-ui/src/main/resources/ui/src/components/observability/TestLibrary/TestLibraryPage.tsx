@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, PageLayout } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -38,6 +38,7 @@ const TestLibraryPage = () => {
   const {
     testDefinitions,
     isLoading,
+    isInitialLoading,
     createPermission,
     viewPermission,
     testDefinitionPermissions,
@@ -45,7 +46,11 @@ const TestLibraryPage = () => {
     pagingData,
     showPagination,
     urlFilters,
+    searchQuery,
+    sortDescriptor,
+    handleSortChange,
     setSingleFilter,
+    handleSearchChange,
     clearAllFilters,
     hasActiveFilters,
     isFormVisible,
@@ -119,27 +124,32 @@ const TestLibraryPage = () => {
           />
         }
         pageTitle={t('label.test-library')}>
-        <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary">
+        <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface">
           <div className="tw:p-4">
             <TestDefinitionFilterBar
               filterValues={urlFilters}
               hasActiveFilters={hasActiveFilters}
+              searchQuery={searchQuery}
               onClearAll={clearAllFilters}
               onFilterChange={setSingleFilter}
+              onSearchChange={handleSearchChange}
             />
           </div>
           <TestDefinitionTable
             hasActiveFilters={hasActiveFilters}
+            isInitialLoading={isInitialLoading}
             isLoading={isLoading}
             pagingData={pagingData}
             permissionLoading={permissionLoading}
             showPagination={showPagination}
+            sortDescriptor={sortDescriptor}
             testDefinitionPermissions={testDefinitionPermissions}
             testDefinitions={testDefinitions}
             onClearFilters={clearAllFilters}
             onDelete={handleDeleteClick}
             onEdit={handleEdit}
             onEnableToggle={handleEnableToggle}
+            onSortChange={handleSortChange}
           />
         </div>
       </ObservabilityPageShell>

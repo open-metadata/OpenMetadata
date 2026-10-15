@@ -13,8 +13,8 @@
 
 import { HTMLAttributes } from 'react';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   updateMlModelDetailsState?: (data: DataAssetWithDomains) => void;

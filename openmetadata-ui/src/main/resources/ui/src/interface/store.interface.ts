@@ -10,28 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
+import type {
   AuthenticationConfigurationWithScope,
   IAuthContext,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
-import {
-  EntityUnion,
-  ExploreSearchIndex,
-} from '../components/Explore/ExplorePage.interface';
-import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
-import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
-import { LineageSettings } from '../generated/configuration/lineageSettings';
-import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
-import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
-import { SearchSettings } from '../generated/configuration/searchSettings';
-import { UIThemePreference } from '../generated/configuration/uiThemePreference';
-import { User } from '../generated/entity/teams/user';
-import { EntityReference } from '../generated/entity/type';
+import type { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
+import type { EntityUnion } from '../components/Explore/ExplorePage.interface';
+import type { DefaultColumnOrder } from '../generated/api/configuration/appConfiguration';
+import type { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import type { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
+import type { LineageSettings } from '../generated/configuration/lineageSettings';
+import type { LoginConfiguration } from '../generated/configuration/loginConfiguration';
+import type { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import type { SearchSettings } from '../generated/configuration/searchSettings';
+import type { UIThemePreference } from '../generated/configuration/uiThemePreference';
+import type { User } from '../generated/entity/teams/user';
+import type { EntityReference } from '../generated/entity/type';
+import type { ExploreSearchIndex } from './discovery/explore.interface';
 
 export interface AppPreferences {
   lineageConfig?: LineageSettings;
   searchConfig?: SearchSettings;
+  /** Tenant default for table schema views; unset means alphabetical. */
+  defaultColumnOrder?: DefaultColumnOrder;
 }
 
 export interface ApplicationStore
@@ -42,6 +43,7 @@ export interface ApplicationStore
   isApplicationLoading: boolean;
   setApplicationLoading: (loading: boolean) => void;
   isAuthenticating: boolean;
+  setIsAuthenticating: (authenticating: boolean) => void;
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
   selectedPersona?: EntityReference;
@@ -86,6 +88,8 @@ export interface ApplicationStore
   setAppVersion: (version: string) => void;
   setRdfEnabled: (enabled: boolean) => void;
   initializeAuthState: () => void;
+  timeFormat: '12h' | '24h';
+  setTimeFormat: (format: '12h' | '24h') => void;
 }
 
 export interface DomainStore {
@@ -93,7 +97,15 @@ export interface DomainStore {
   activeDomain: string;
   activeDomainEntityRef?: EntityReference;
   isDomainRestricted: boolean;
-  updateActiveDomain: (domain: EntityReference) => void;
+  updateActiveDomain: (domain?: EntityReference) => void;
   setUserDomains: (userDomainsArr: EntityReference[]) => void;
   setDomainRestriction: (restricted: boolean) => void;
+}
+
+export interface ApprovalEnforcedEntityTypesStore {
+  // Undefined until read; a failed read leaves it undefined so the next caller reads again.
+  entityTypes?: string[];
+  isLoading: boolean;
+  fetchEntityTypes: () => Promise<void>;
+  invalidate: () => void;
 }

@@ -45,6 +45,9 @@ export const HOVER_CHART_OPACITY = 0.3;
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 export const DOMAIN_STORAGE_KEY = 'om_domains';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
+// Marks a request whose results must not be narrowed to the selected navbar domain; the
+// domain-filter interceptor reads and removes it before the request is sent.
+export const SKIP_DOMAIN_FILTER_HEADER = 'X-Skip-Domain-Filter';
 export const DOMAIN_ONLY_ACCESS_ROLE = 'DomainOnlyAccessRole';
 export const REFRESH_TOKEN_KEY = 'refreshToken';
 
@@ -328,10 +331,13 @@ export const ROUTES = {
   NOTIFICATION_ALERT_LIST: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}`,
   NOTIFICATION_ALERT_DETAILS_WITH_TAB: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
+  SETTINGS_ANNOUNCEMENTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}`,
+  SETTINGS_ANNOUNCEMENT_ADD: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/add`,
+  SETTINGS_ANNOUNCEMENT_EDIT: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/edit/${PLACEHOLDER_ROUTE_ID}`,
+  SETTINGS_ANNOUNCEMENT_DUPLICATE: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/duplicate/${PLACEHOLDER_ROUTE_ID}`,
 
   // Metric Entity
   METRICS: '/metrics',
-  ADD_METRIC: '/metrics/add-metric',
 
   // Entity Import
   ENTITY_IMPORT: `/bulk/import/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
@@ -342,6 +348,7 @@ export const ROUTES = {
 
   // Settings
   SETTINGS_SSO: '/settings/sso',
+  SETTINGS_DEFAULT_TIME_FORMAT: '/settings/default-time-format',
 };
 
 export const SOCKET_EVENTS = {
@@ -411,6 +418,8 @@ export const ENTITY_PATH = {
   agentExecutions: 'agentExecution',
   mcpExecutions: 'mcpExecution',
   promptTemplates: 'promptTemplate',
+  teams: 'team',
+  users: 'user',
 };
 
 export const CUSTOM_PROPERTIES_DOCS =
@@ -501,6 +510,7 @@ export const VALIDATION_MESSAGES = {
 
 export const ERROR_MESSAGE = {
   alreadyExist: 'already exists',
+  mutuallyExclusive: 'mutually exclusive',
 };
 
 export const ICON_DIMENSION = {

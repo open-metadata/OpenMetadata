@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -27,6 +28,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyChangeApplicationResult;
 import org.openmetadata.schema.type.OntologyChangeOperation;
+import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -53,6 +55,15 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
         UPDATE_FIELDS);
   }
 
+  public List<OntologyChangeSet> findOpenBySourceMemoryId(final UUID memoryId) {
+    return daoCollection
+        .ontologyChangeSetDAO()
+        .findOpenBySourceMemoryId(memoryId.toString(), Relationship.DERIVED_FROM.ordinal())
+        .stream()
+        .map(json -> JsonUtils.readValue(json, OntologyChangeSet.class))
+        .toList();
+  }
+
   @Override
   public void setFields(
       final OntologyChangeSet entity,
@@ -69,24 +80,67 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
     if (entity.getUpdatedAt() == null) {
       entity.setUpdatedAt(System.currentTimeMillis());
     }
-    entity.setGlossaries(validateGlossaries(entity.getGlossaries()));
     OntologyChangeSetValidator.normalizeAndValidate(entity);
+    // Discarding must always succeed: a draft whose glossary was deleted, or whose planned
+    // glossary has since been created elsewhere, would otherwise be impossible to clean up.
+    if (entity.getState() != OntologyChangeSetState.DISCARDED) {
+      entity.setGlossaries(validateGlossaries(entity, update));
+    }
     validateStateResult(entity);
   }
 
   private static List<EntityReference> validateGlossaries(
-      final List<EntityReference> glossaryReferences) {
+      final OntologyChangeSet changeSet, final boolean update) {
     final Set<UUID> glossaryIds = new HashSet<>();
     final List<EntityReference> glossaries =
-        listOrEmpty(glossaryReferences).stream()
-            .map(OntologyChangeSetRepository::requireEditableGlossary)
-            .map(Glossary::getEntityReference)
+        listOrEmpty(changeSet.getGlossaries()).stream()
+            .map(reference -> validateGlossary(changeSet, reference, update))
             .toList();
     if (glossaries.isEmpty()
         || glossaries.stream().anyMatch(ref -> !glossaryIds.add(ref.getId()))) {
       throw new BadRequestException("Ontology change sets require unique editable glossaries");
     }
     return glossaries;
+  }
+
+  private static EntityReference validateGlossary(
+      final OntologyChangeSet changeSet, final EntityReference reference, final boolean update) {
+    final Glossary planned = plannedGlossary(changeSet, reference.getId());
+    if (planned == null) {
+      return requireEditableGlossary(reference).getEntityReference();
+    }
+    if (!planned.getFullyQualifiedName().equals(reference.getFullyQualifiedName())
+        || !planned.getName().equals(planned.getFullyQualifiedName())) {
+      throw new BadRequestException("Planned glossary scope does not match its create operation");
+    }
+    // Only a new draft must not plan an existing glossary. Once saved, the name may be taken by
+    // another draft's apply; the executor then fails this draft's apply, and it stays discardable.
+    if (!update) {
+      requireGlossaryNameAvailable(planned);
+    }
+    return planned.getEntityReference();
+  }
+
+  private static void requireGlossaryNameAvailable(final Glossary planned) {
+    final GlossaryRepository repository =
+        (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
+    final boolean isTaken =
+        repository
+            .getByNameOrNull(
+                null, planned.getFullyQualifiedName(), repository.getFields(""), Include.ALL, false)
+            .isPresent();
+    if (isTaken) {
+      throw new BadRequestException("Glossary already exists: " + planned.getFullyQualifiedName());
+    }
+  }
+
+  private static Glossary plannedGlossary(
+      final OntologyChangeSet changeSet, final UUID glossaryId) {
+    return listOrEmpty(changeSet.getOperations()).stream()
+        .map(OntologyChangeOperation::getGlossary)
+        .filter(glossary -> glossary != null && glossary.getId().equals(glossaryId))
+        .findFirst()
+        .orElse(null);
   }
 
   private static Glossary requireEditableGlossary(final EntityReference reference) {
@@ -128,13 +182,55 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
   @Override
   public void storeRelationships(final OntologyChangeSet entity) {
     for (final EntityReference glossary : entity.getGlossaries()) {
-      addRelationship(
-          glossary.getId(),
-          entity.getId(),
-          Entity.GLOSSARY,
-          Entity.ONTOLOGY_CHANGE_SET,
-          Relationship.CONTAINS);
+      // A glossary the draft plans to create does not exist yet; it is linked once applied.
+      if (plannedGlossary(entity, glossary.getId()) == null) {
+        storeGlossaryRelationship(entity, glossary);
+      }
     }
+    storeSourceMemoryRelationships(entity);
+  }
+
+  private void storeGlossaryRelationship(
+      final OntologyChangeSet changeSet, final EntityReference glossary) {
+    addRelationship(
+        glossary.getId(),
+        changeSet.getId(),
+        Entity.GLOSSARY,
+        Entity.ONTOLOGY_CHANGE_SET,
+        Relationship.CONTAINS);
+  }
+
+  private void storePlannedGlossaryRelationships(final OntologyChangeSet changeSet) {
+    for (final OntologyChangeOperation operation :
+        changeSet.getOperations().subList(0, changeSet.getUndoCursor())) {
+      if (operation.getOperationType() == OntologyChangeOperationType.CREATE_GLOSSARY) {
+        storeGlossaryRelationship(changeSet, operation.getGlossary().getEntityReference());
+      }
+    }
+  }
+
+  // Indexed edges let a memory find its open drafts without scanning every draft's operations.
+  private void storeSourceMemoryRelationships(final OntologyChangeSet changeSet) {
+    for (final UUID memoryId : sourceMemoryIds(changeSet)) {
+      if (ContextMemoryRepository.memoryExists(memoryId)) {
+        addRelationship(
+            changeSet.getId(),
+            memoryId,
+            Entity.ONTOLOGY_CHANGE_SET,
+            Entity.CONTEXT_MEMORY,
+            Relationship.DERIVED_FROM);
+      }
+    }
+  }
+
+  private static Set<UUID> sourceMemoryIds(final OntologyChangeSet changeSet) {
+    final Set<UUID> memoryIds = new LinkedHashSet<>();
+    for (final OntologyChangeOperation operation : listOrEmpty(changeSet.getOperations())) {
+      if (operation.getSourceMemoryIds() != null) {
+        memoryIds.addAll(operation.getSourceMemoryIds());
+      }
+    }
+    return memoryIds;
   }
 
   public PutResponse<OntologyChangeSet> replaceOperations(
@@ -242,6 +338,18 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
     public void entitySpecificUpdate(final boolean consolidatingChanges) {
       if (!original.getGlossaries().equals(updated.getGlossaries())) {
         throw new BadRequestException("Ontology change set scope is immutable");
+      }
+      if (updated.getState() == OntologyChangeSetState.APPLIED
+          && original.getState() != OntologyChangeSetState.APPLIED) {
+        storePlannedGlossaryRelationships(updated);
+      }
+      if (!sourceMemoryIds(original).equals(sourceMemoryIds(updated))) {
+        deleteFrom(
+            updated.getId(),
+            Entity.ONTOLOGY_CHANGE_SET,
+            Relationship.DERIVED_FROM,
+            Entity.CONTEXT_MEMORY);
+        storeSourceMemoryRelationships(updated);
       }
       recordChange("operations", original.getOperations(), updated.getOperations(), true);
       recordChange("undoCursor", original.getUndoCursor(), updated.getUndoCursor());

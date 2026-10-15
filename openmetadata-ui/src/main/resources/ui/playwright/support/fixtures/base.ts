@@ -23,8 +23,9 @@ import { installServerLoadReducers } from './serverLoad';
  *
  * Specs that build their own pages via `browser.newContext()` or
  * `browser.newPage()` bypass this fixture entirely and call
- * `installServerLoadReducers` themselves — see `e2e/fixtures/pages.ts` and
- * `support/fixtures/userPages.ts`.
+ * `installServerLoadReducers` themselves — that is `support/fixtures/userPages.ts`,
+ * which owns every signed-in role page. (`e2e/fixtures/pages.ts` re-exports those
+ * and aliases `page` to `adminPage`; it builds no pages of its own.)
  */
 export const test = playwrightTest.extend({
   context: async ({ context }, use) => {

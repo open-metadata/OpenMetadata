@@ -23,10 +23,15 @@ import {
   HintText,
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { lazy, useEffect, useRef } from 'react';
-import { RegisterOptions, useFieldArray, UseFormReturn } from 'react-hook-form';
+import {
+  RegisterOptions,
+  useFieldArray,
+  UseFormReturn,
+  useWatch,
+} from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../../constants/profiler.constant';
 import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
@@ -40,9 +45,11 @@ import {
 } from '../../../../generated/tests/testDefinition';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
+  DIMENSION_FAILURE_POLICY_PARAM,
   getParamOptionLabelKey,
   getThresholdUnitLabelParts,
-  isThresholdUnitOptionDisabled,
+  isMinRowsPerDimensionApplicable,
+  MIN_ROWS_PER_DIMENSION_PARAM,
   THRESHOLD_PARAM,
   THRESHOLD_UNIT_PARAM,
 } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
@@ -64,8 +71,7 @@ const CodeEditor = withSuspenseFallback(
 interface ParamArrayFieldProps {
   form: UseFormReturn<FormValues>;
   data: TestCaseParameterDefinition;
-  // The selected test definition's doc, shown in the Form Hint popover on
-  // focus so the AI modal matches the classic drawer's documentation panel.
+  // The selected test definition's doc, shown in the Form Hint on focus.
   testDefinitionDoc?: string;
 }
 
@@ -124,8 +130,7 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({
               // must not repeat it. Validation is still enforced via `rules`.
               required: false,
               rules: rowRequired ? { required: rowRequired } : undefined,
-              // Surface the selected test definition's doc in the Form Hint
-              // popover on focus, matching the classic drawer's doc panel.
+              // Show the selected test definition's doc in the Form Hint.
               doc: testDefinitionDoc ?? data.description,
               placeholder: t('message.enter-a-field', { field: label }),
               id: `testCaseFormV1_params_${data.name}_${index}_value`,
@@ -228,9 +233,15 @@ export interface ParameterFieldsProps {
   definition: TestDefinition;
   table?: Table;
   // Doc for the selected test definition (from TestCaseForm.md), shown in the
-  // Form Hint popover when any parameter field is focused so the AI modal
-  // matches the classic drawer's documentation panel.
+  // Form Hint when any parameter field is focused.
   testDefinitionDoc?: string;
+  // `dimensionFailurePolicy` rolls dimension group verdicts up into the test
+  // case status, so it only means something on a dimension-level test.
+  isDimensionalTest?: boolean;
+  // Renders only these parameters. A dynamic assertion learns the bounds, so
+  // the static-bound inputs are hidden while the parameters that still apply
+  // to learned bounds stay editable.
+  onlyParams?: readonly string[];
 }
 
 const ParameterFields: React.FC<ParameterFieldsProps> = ({
@@ -238,8 +249,32 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   definition,
   table,
   testDefinitionDoc,
+  isDimensionalTest = false,
+  onlyParams,
 }) => {
   const { t } = useTranslation();
+  const [policyValue, unitValue] = useWatch({
+    control: form.control,
+    name: [
+      `params.${DIMENSION_FAILURE_POLICY_PARAM}`,
+      `params.${THRESHOLD_UNIT_PARAM}`,
+    ] as never,
+  }) as unknown[];
+
+  const isHiddenRollUpParam = (name?: string): boolean => {
+    if (name === DIMENSION_FAILURE_POLICY_PARAM) {
+      return !isDimensionalTest;
+    }
+    if (name === MIN_ROWS_PER_DIMENSION_PARAM) {
+      return !isMinRowsPerDimensionApplicable(
+        isDimensionalTest,
+        policyValue,
+        unitValue
+      );
+    }
+
+    return false;
+  };
 
   const buildRules = (
     data: TestCaseParameterDefinition,
@@ -336,11 +371,6 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
     (data.optionValues ?? []).map((optionValue) => ({
       id: optionValue as string,
       label: getOptionLabel(data, optionValue as string),
-      // A unit this test's validator never reads is shown but not selectable,
-      // rather than offered and then warned about in the preview.
-      isDisabled:
-        data.name === THRESHOLD_UNIT_PARAM &&
-        isThresholdUnitOptionDisabled(definition.name, optionValue as string),
     }));
 
   const getStringFieldProp = (
@@ -380,10 +410,15 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
       type: FieldTypes.TEXT,
       required: data.required,
       rules: buildRules(data, label),
-      helperText: data.description,
+      // The policy's own description cannot carry the Others caveat: it is
+      // seeded data, and existing installs keep the copy they were seeded with.
+      helperText:
+        data.name === DIMENSION_FAILURE_POLICY_PARAM
+          ? t('message.dimension-failure-policy-helper')
+          : data.description,
       helperTextType: HelperTextType.TOOLTIP,
-      // Form Hint popover shows the selected test definition's doc (matching
-      // the classic drawer's doc panel); the tooltip keeps the per-param text.
+      // The Form Hint shows the selected test definition's doc; the tooltip
+      // keeps the per-param text.
       doc: testDefinitionDoc ?? data.description,
       // Legacy antd form-item id kept as the stable E2E selector.
       id: `testCaseFormV1_params_${data.name}`,
@@ -445,7 +480,11 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   // definition declares it further down (tableCustomSQLQuery does). Pulling it
   // up is only safe when the threshold it belongs beside is declared too,
   // otherwise the unit would be skipped and never rendered.
-  const params = definition.parameterDefinition;
+  const params = onlyParams
+    ? definition.parameterDefinition?.filter((param) =>
+        onlyParams.includes(param.name ?? '')
+      )
+    : definition.parameterDefinition;
   const thresholdUnitParam = params?.some(
     (param) => param.name === THRESHOLD_PARAM
   )
@@ -475,6 +514,10 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   return (
     <>
       {params?.map((data) => {
+        if (isHiddenRollUpParam(data.name)) {
+          return null;
+        }
+
         if (thresholdUnitParam) {
           if (data.name === THRESHOLD_UNIT_PARAM) {
             return null;

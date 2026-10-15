@@ -18,12 +18,13 @@ import functools
 import json
 import traceback
 from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 from typing import (
     Annotated,
     Generic,
     TypeVar,
 )
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from pydantic import Field, field_validator
 
@@ -41,6 +42,15 @@ from metadata.utils.logger import ometa_logger
 logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)
+
+
+@dataclass(frozen=True)
+class FqnSearchResult:
+    """Unhydrated FQN candidates and the server's hit count."""
+
+    fqns: tuple[str, ...]
+    total: int
+    total_is_exact: bool
 
 
 class TotalModel(BaseModel):
@@ -110,6 +120,46 @@ class ESMixin(Generic[T]):
     """
 
     client: REST
+
+    def search_fqn_candidates(
+        self,
+        entity_type: type[T],
+        value: str,
+        *,
+        wildcard: bool = False,
+        size: int = 11,
+    ) -> FqnSearchResult:
+        """Search active FQNs without caching or hydration; propagate lookup failures."""
+        if size < 1:
+            raise ValueError("Candidate search size must be positive")
+        if not wildcard:
+            value = value.replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?")
+        params = urlencode(
+            {
+                "fieldName": "fullyQualifiedName",
+                "fieldValue": value,
+                "index": ES_INDEX_MAP[entity_type.__name__],
+                "deleted": "false",
+                "from": 0,
+                "size": size,
+            }
+        )
+        response = self.client.get("/search/fieldQuery?" + params)
+        if not isinstance(response, dict):
+            raise TypeError("Invalid FQN search response")
+        if response.get("timed_out") or response.get("_shards", {}).get("failed", 0):
+            raise ValueError("Incomplete FQN search response")
+        hits = response["hits"]
+        total = hits["total"]
+        if isinstance(total, int):
+            count, exact = total, True
+        else:
+            count, exact = total["value"], total["relation"] == "eq"
+        return FqnSearchResult(
+            fqns=tuple(hit["_source"]["fullyQualifiedName"] for hit in hits["hits"]),
+            total=count,
+            total_is_exact=exact,
+        )
 
     fqdn_search = (
         "/search/fieldQuery?fieldName={field_name}&fieldValue={field_value}&from={from_}"

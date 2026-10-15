@@ -45,6 +45,7 @@ const DqSearchFilterChip = ({
 
   return (
     <FilterSelect
+      bordered
       hideCounts
       searchable
       showSelectAll

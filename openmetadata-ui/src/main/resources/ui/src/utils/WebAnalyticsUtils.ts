@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  getSession,
-  removeSession,
-  setSession,
-} from '@analytics/session-utils';
+import { getSession, setSession } from '@analytics/session-utils';
 import Analytics, { AnalyticsInstance } from 'analytics';
 import {
   WebAnalyticEventData,
@@ -72,9 +68,4 @@ export const getAnalyticInstance = (userId?: string): AnalyticsInstance => {
       },
     ],
   });
-};
-
-export const resetWebAnalyticSession = () => {
-  removeSession();
-  setSession(30);
 };

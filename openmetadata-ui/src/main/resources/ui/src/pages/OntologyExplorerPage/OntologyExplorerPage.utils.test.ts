@@ -12,7 +12,7 @@
  */
 
 import { useOntologyEditLease } from '../../components/OntologyExplorer/hooks/useOntologyEditLease';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import { checkPermission } from '../../utils/PermissionsUtils';

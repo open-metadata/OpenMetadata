@@ -1,9 +1,12 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.Entity.TEST_CASE;
 
 import java.util.List;
 import java.util.Map;
@@ -12,9 +15,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.tests.ResultSummary;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 class TestSuiteRepositoryTest {
 
@@ -91,6 +98,54 @@ class TestSuiteRepositoryTest {
           Map.of(testSuiteId, 9L),
           TestSuiteRepository.getTestsRelationshipRevisions(callerDAO, List.of(testSuiteId)));
       verifyNoInteractions(globalDAO);
+    }
+  }
+
+  @Test
+  void summaryLeavesOutResultsOfTestCasesDeletedAfterTheyWereListed() {
+    String tableTestFqn = "svc.db.schema.orders.row_count";
+    String columnTestFqn = "svc.db.schema.orders.id.not_null";
+    String deletedTestFqn = "svc.db.schema.orders.deleted_by_another_request";
+    TestCase tableTest =
+        new TestCase()
+            .withFullyQualifiedName(tableTestFqn)
+            .withEntityLink("<#E::table::svc.db.schema.orders>");
+    TestCase columnTest =
+        new TestCase()
+            .withFullyQualifiedName(columnTestFqn)
+            .withEntityLink("<#E::table::svc.db.schema.orders::columns::id>");
+    List<ResultSummary> listedResults =
+        List.of(
+            new ResultSummary().withTestCaseName(tableTestFqn).withStatus(TestCaseStatus.Success),
+            new ResultSummary().withTestCaseName(columnTestFqn).withStatus(TestCaseStatus.Failed),
+            new ResultSummary().withTestCaseName(deletedTestFqn).withStatus(TestCaseStatus.Failed));
+    TestCaseRepository testCaseRepository = mock(TestCaseRepository.class);
+    when(testCaseRepository.findByNames(anyList(), eq(Include.ALL)))
+        .thenReturn(List.of(tableTest, columnTest));
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      // The deleted test case is gone from the database, so neither lookup can find it
+      entity.when(() -> Entity.getEntityRepository(TEST_CASE)).thenReturn(testCaseRepository);
+      entity
+          .when(() -> Entity.getEntityByName(TEST_CASE, tableTestFqn, "", Include.ALL))
+          .thenReturn(tableTest);
+      entity
+          .when(() -> Entity.getEntityByName(TEST_CASE, columnTestFqn, "", Include.ALL))
+          .thenReturn(columnTest);
+      entity
+          .when(() -> Entity.getEntityByName(TEST_CASE, deletedTestFqn, "", Include.ALL))
+          .thenThrow(
+              EntityNotFoundException.byMessage("Entity not found: testCase " + deletedTestFqn));
+
+      TestSummary summary = TestSuiteRepository.getTestSummary(listedResults);
+
+      assertEquals(1, summary.getSuccess());
+      assertEquals(1, summary.getFailed());
+      assertEquals(
+          List.of(columnTest.getEntityLink()),
+          summary.getColumnTestSummary().stream()
+              .map(ColumnTestSummaryDefinition::getEntityLink)
+              .toList());
     }
   }
 }

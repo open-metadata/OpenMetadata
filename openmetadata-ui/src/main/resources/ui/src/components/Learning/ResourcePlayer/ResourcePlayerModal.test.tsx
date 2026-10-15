@@ -27,10 +27,16 @@ jest.mock('./StorylaneTour.component', () => ({
     .mockImplementation(() => <div data-testid="storylane-tour" />),
 }));
 
+jest.mock('./PdfViewer', () => ({
+  PdfViewer: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="pdf-viewer" />),
+}));
+
 const mockOnClose = jest.fn();
 
 const createMockResource = (
-  resourceType: 'Video' | 'Storylane',
+  resourceType: 'Video' | 'Storylane' | 'PDF',
   overrides?: Partial<LearningResource>
 ): LearningResource => ({
   id: 'test-id',
@@ -89,6 +95,24 @@ describe('ResourcePlayerModal', () => {
     );
 
     expect(screen.getByTestId('storylane-tour')).toBeInTheDocument();
+  });
+
+  it('should render PdfViewer for PDF resource type', () => {
+    const resource = createMockResource('PDF');
+    render(
+      <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
+    );
+
+    expect(screen.getByTestId('pdf-viewer')).toBeInTheDocument();
+  });
+
+  it('should display formatted duration with min read for PDF', () => {
+    const resource = createMockResource('PDF');
+    render(
+      <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
+    );
+
+    expect(screen.getByText('5 label.min-read')).toBeInTheDocument();
   });
 
   it('should display resource description', () => {

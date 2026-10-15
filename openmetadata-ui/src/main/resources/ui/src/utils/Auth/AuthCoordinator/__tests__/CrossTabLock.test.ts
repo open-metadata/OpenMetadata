@@ -20,6 +20,15 @@ const TEST_CHANNEL_NAME = 'test-channel';
 
 describe('CrossTabLock (Web Locks path)', () => {
   let held: Set<string>;
+  // Queue of blocking waiters per lock name. Each entry has a `run` that the
+  // release path invokes when it's this waiter's turn, and a `signal` so the
+  // release loop can skip aborted requests. Mirrors the real navigator.locks
+  // ordering: FIFO among pending waiters, unblocks in the microtask the
+  // holder's callback returns in.
+  let waiterQueues: Map<
+    string,
+    Array<{ run: () => void; signal?: AbortSignal }>
+  >;
 
   beforeEach(() => {
     // The global BroadcastChannel stub in setupTests.js hands back independent
@@ -55,6 +64,23 @@ describe('CrossTabLock (Web Locks path)', () => {
     // elsewhere (e.g. SseStreamUtils.test.ts).
     jest.useRealTimers();
     held = new Set();
+    waiterQueues = new Map();
+
+    const releaseNext = (name: string) => {
+      const q = waiterQueues.get(name);
+      if (!q) {
+        return;
+      }
+      // Drop any aborted entries first so they don't win a phantom slot.
+      while (q.length && q[0].signal?.aborted) {
+        q.shift();
+      }
+      const next = q.shift();
+      if (next) {
+        next.run();
+      }
+    };
+
     // Plain `globalThis.navigator = {...}` is a silent no-op under jsdom
     // (navigator is an accessor with no setter on the window proxy), so the
     // fake Locks API must be installed via defineProperty instead.
@@ -65,17 +91,67 @@ describe('CrossTabLock (Web Locks path)', () => {
           request: jest.fn(
             async (
               name: string,
-              opts: { ifAvailable?: boolean },
+              opts: { ifAvailable?: boolean; signal?: AbortSignal },
               cb: LockCb<unknown>
             ) => {
-              if (opts.ifAvailable && held.has(name)) {
-                return cb(null);
+              // ifAvailable probe: never queues; returns immediately with
+              // either the lock or `null` if held.
+              if (opts.ifAvailable) {
+                if (held.has(name)) {
+                  return cb(null);
+                }
+                held.add(name);
+                try {
+                  return await cb({});
+                } finally {
+                  held.delete(name);
+                  releaseNext(name);
+                }
               }
+
+              // Blocking path: queue behind the current holder (if any) and
+              // resolve when it's our turn OR when our AbortSignal fires.
+              if (held.has(name)) {
+                await new Promise<void>((resolve, reject) => {
+                  const entry = {
+                    run: resolve,
+                    signal: opts.signal,
+                  };
+                  const q = waiterQueues.get(name) ?? [];
+                  q.push(entry);
+                  waiterQueues.set(name, q);
+
+                  if (opts.signal) {
+                    const onAbort = () => {
+                      const queue = waiterQueues.get(name);
+                      if (queue) {
+                        const i = queue.indexOf(entry);
+                        if (i >= 0) {
+                          queue.splice(i, 1);
+                        }
+                      }
+                      // Match browser: aborted lock.request rejects with an
+                      // AbortError-shaped DOMException.
+                      reject(new DOMException('Aborted', 'AbortError'));
+                    };
+                    if (opts.signal.aborted) {
+                      onAbort();
+
+                      return;
+                    }
+                    opts.signal.addEventListener('abort', onAbort, {
+                      once: true,
+                    });
+                  }
+                });
+              }
+
               held.add(name);
               try {
                 return await cb({});
               } finally {
                 held.delete(name);
+                releaseNext(name);
               }
             }
           ),
@@ -145,6 +221,38 @@ describe('CrossTabLock (Web Locks path)', () => {
     expect(received).toEqual([{ type: 'failed', reason: 'renewer blew up' }]);
   });
 
+  // Rotating-refresh IdP hardening: when work() succeeded and publish()
+  // threw (e.g. storage persist failed), the leader still holds a
+  // valid RenewResult in memory. Broadcast `done` with that value so
+  // followers apply it without re-running work() — a duplicate
+  // renewer() call would consume the just-rotated refresh token and
+  // invalidate this leader's session.
+  it('broadcasts done (not failed) when publish throws after work succeeded', async () => {
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+    const received: unknown[] = [];
+    (
+      lock as unknown as {
+        channel: {
+          addEventListener: (t: string, cb: (e: MessageEvent) => void) => void;
+        };
+      }
+    ).channel.addEventListener('message', (event: MessageEvent) => {
+      received.push(event.data);
+    });
+
+    await expect(
+      lock.runExclusive(async () => ({ idToken: 'fresh', expiresAt: 42 }), {
+        publish: async () => {
+          throw new Error('storage write failed');
+        },
+      })
+    ).rejects.toThrow('storage write failed');
+
+    expect(received).toEqual([
+      { type: 'done', payload: { idToken: 'fresh', expiresAt: 42 } },
+    ]);
+  });
+
   it('throws LockTimeoutError if the leader never notifies', async () => {
     const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
     held.add(TEST_LOCK_NAME);
@@ -176,6 +284,196 @@ describe('CrossTabLock (Web Locks path)', () => {
     });
 
     expect(heldDuringPublish).toBe(true);
+  });
+
+  // Greptile P1 (r4043885089): the previous impl only had (broadcast, soft
+  // timeout) as follower signals, so a leader whose refresh legitimately
+  // took longer than the 10s wait would trip the timeout even while it was
+  // still working — and after AuthCoordinator's one retry, the follower
+  // signed out. The event-driven wait now races a THIRD signal: a blocking
+  // Web Lock request that unblocks the microsecond the previous holder
+  // releases (crashed tab / closed tab / just-finished-and-released). Both
+  // regressions this fixes:
+  //
+  //   1. A leader taking 30s to complete but broadcasting `done` correctly
+  //      resolves the follower with that payload — no LockTimeoutError.
+  //   2. A leader that dies (closes / crashes) without broadcasting
+  //      resolves the follower via the leader-released signal, in the
+  //      microtask the holder's callback returns rather than after the
+  //      soft 60s ceiling.
+  it('follower still receives the leader payload when the leader takes hundreds of ms, well past the previous 10s ceiling would have needed', async () => {
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+    // Passing a generous `waitTimeoutMs` here is the point: the default
+    // soft ceiling is now 60s (up from 10s) so a slow-but-healthy leader
+    // can't trip a spurious LockTimeoutError. The 300ms hold below stands
+    // in for the pathological CI cases (30-40s IdP round-trips) the fix
+    // is really aimed at; keeping the test itself fast avoids adding
+    // multi-second waits to the suite.
+    held.add(TEST_LOCK_NAME);
+    const payload = { idToken: 'slow-leader', expiresAt: 12_345 };
+    const p = lock.runExclusive(async () => 42, { waitTimeoutMs: 5_000 });
+
+    setTimeout(() => lock.notifyDone(payload), 300);
+
+    await expect(p).resolves.toEqual({
+      role: 'follower',
+      message: { type: 'done', payload },
+    });
+  });
+
+  it('follower still resolves with `done` when the broadcast arrives just after the lock release', async () => {
+    // Greptile r4053143978 / gitar-bot r4053151880: `notifyDone()`
+    // dispatches asynchronously, so a healthy leader that finishes by
+    // publishing + returning from its lock callback can look like a
+    // crashed leader to a follower — the lock release grant arrives
+    // before the pending `done` broadcast. Without the handoff grace
+    // this follower would synthesise `failed` and the coordinator would
+    // duplicate-invoke the renewer (invalidating the first refresh
+    // when the IdP rotates refresh tokens).
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+    held.add(TEST_LOCK_NAME);
+    const payload = { idToken: 'from-healthy-leader', expiresAt: 12_345 };
+    const p = lock.runExclusive(async () => 42, { waitTimeoutMs: 5_000 });
+
+    setTimeout(() => {
+      // Release the lock (leader returned from its callback) FIRST.
+      held.delete(TEST_LOCK_NAME);
+      const queue = waiterQueues.get(TEST_LOCK_NAME);
+      if (queue && queue.length > 0) {
+        queue.shift()?.run();
+      }
+      // Then the delayed BroadcastChannel message arrives at the
+      // follower, mimicking the cross-context postMessage delivery lag.
+      // Well within the follower's handoff-grace window.
+      setTimeout(() => lock.notifyDone(payload), 30);
+    }, 20);
+
+    await expect(p).resolves.toEqual({
+      role: 'follower',
+      message: { type: 'done', payload },
+    });
+  });
+
+  it('follower unblocks after the handoff grace when the leader releases its lock without broadcasting', async () => {
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+    // Model a crashed / closed leader: it acquires the lock, then goes
+    // away WITHOUT broadcasting done or failed. The browser releases the
+    // lock automatically; the follower's blocking request unblocks in
+    // the very next microtask.
+    held.add(TEST_LOCK_NAME);
+    const start = Date.now();
+    const p = lock.runExclusive(async () => 42, { waitTimeoutMs: 5_000 });
+
+    setTimeout(() => {
+      held.delete(TEST_LOCK_NAME);
+      // Release the queued follower waiter — this is what the browser
+      // does under a real navigator.locks on tab teardown.
+      const queue = waiterQueues.get(TEST_LOCK_NAME);
+      if (queue && queue.length > 0) {
+        queue.shift()?.run();
+      }
+    }, 20);
+
+    await expect(p).resolves.toEqual({
+      role: 'follower',
+      message: {
+        type: 'failed',
+        reason: 'leader released lock without broadcasting',
+      },
+    });
+    // Sanity: must have unblocked promptly after the release, not after
+    // the 5-second soft ceiling.
+    expect(Date.now() - start).toBeLessThan(500);
+  });
+
+  // A second runExclusive slot opening within DONE_RETAIN_MS of a
+  // sibling's `done` broadcast must reuse that mint (via the primed
+  // per-slot buffer) instead of racing HANDOFF_GRACE_MS to a synthetic
+  // `failed` and retrying with a duplicate renewer() call —
+  // rotating-refresh IdPs would consume the just-rotated refresh
+  // token and invalidate the leader's session.
+  it('a runExclusive slot opening shortly after a done broadcast reuses that mint instead of running work again', async () => {
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+
+    // First cycle: leader mints, broadcasts done via `publish`.
+    const first = await lock.runExclusive(
+      async () => ({ idToken: 'sibling-mint', expiresAt: 42 }),
+      {
+        publish: async (v) => {
+          lock.notifyDone(v);
+        },
+      }
+    );
+
+    expect(first).toEqual({
+      role: 'leader',
+      value: { idToken: 'sibling-mint', expiresAt: 42 },
+    });
+
+    // Second cycle within the retain window. `work` here would be the
+    // duplicate renewer() — it must NOT run. Instead the primed
+    // buffer surfaces the sibling's mint.
+    const workAgain = jest.fn(async () => ({
+      idToken: 'should-not-mint',
+      expiresAt: 43,
+    }));
+    const second = await lock.runExclusive(workAgain);
+
+    expect(workAgain).not.toHaveBeenCalled();
+    expect(second).toEqual({
+      role: 'follower',
+      message: {
+        type: 'done',
+        payload: { idToken: 'sibling-mint', expiresAt: 42 },
+      },
+    });
+  });
+
+  // Greptile P1 r4083354131: the recent-done shortcut must fire at
+  // most ONCE per broadcast per coordinator. A caller that already
+  // consumed the mint (and had the server reject it) must fall
+  // through to a real refresh on the forced retry — otherwise it
+  // reuses the just-known-bad token.
+  it('a second runExclusive on the SAME broadcast falls through to work, not the shortcut', async () => {
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+
+    // First cycle mints and broadcasts done.
+    await lock.runExclusive(
+      async () => ({ idToken: 'first-mint', expiresAt: 42 }),
+      {
+        publish: async (v) => {
+          lock.notifyDone(v);
+        },
+      }
+    );
+
+    // Second cycle — same broadcast, first shortcut consumer.
+    const shortcutHit = await lock.runExclusive(
+      jest.fn(async () => ({ idToken: 'unused', expiresAt: 43 }))
+    );
+
+    expect(shortcutHit).toEqual({
+      role: 'follower',
+      message: {
+        type: 'done',
+        payload: { idToken: 'first-mint', expiresAt: 42 },
+      },
+    });
+
+    // Third cycle — SAME broadcast, forced re-entry (simulates the
+    // "server rejected first-mint, try again" path). Must NOT
+    // shortcut; must call work.
+    const secondMintWork = jest.fn(async () => ({
+      idToken: 'second-mint',
+      expiresAt: 44,
+    }));
+    const retry = await lock.runExclusive(secondMintWork);
+
+    expect(secondMintWork).toHaveBeenCalledTimes(1);
+    expect(retry).toEqual({
+      role: 'leader',
+      value: { idToken: 'second-mint', expiresAt: 44 },
+    });
   });
 
   it('rejects a concurrent ifAvailable probe while publish is running', async () => {
