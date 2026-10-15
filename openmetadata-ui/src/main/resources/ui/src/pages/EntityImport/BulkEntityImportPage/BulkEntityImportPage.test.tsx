@@ -150,6 +150,10 @@ jest.mock('../../../utils/EntityBulkEdit/EntityBulkEditUtils');
 jest.mock('../../../rest/csvAPI', () => ({
   cancelCsvAsyncJob: jest.fn(),
   getCsvAsyncJobs: jest.fn().mockResolvedValue([]),
+  // Mirror the real helper: return the inline result when present, else "fetch".
+  resolveCsvImportResult: jest.fn((_jobId, inlineResult) =>
+    Promise.resolve(inlineResult)
+  ),
   getCsvDocumentation: jest.fn().mockResolvedValue({
     headers: [
       {

@@ -27,6 +27,7 @@ import {
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
 } from '../../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
+import { resolveCsvImportResult } from '../../../rest/csvAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Stepper from '../../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import UploadFile from '../../UploadFile/UploadFile';
@@ -122,63 +123,87 @@ export const EntityImport = ({
     activeAsyncImportJobRef.current = undefined;
   }, [setActiveAsyncImportJob, activeAsyncImportJobRef]);
 
+  // Handles the `COMPLETED` branch; extracted to keep handleImportWebsocketResponse simple.
+  const handleCompletedImport = useCallback(
+    async (
+      activeImportJob: CSVImportJobType,
+      websocketResponse: CSVImportAsyncWebsocketResponse
+    ) => {
+      // The completion frame is thin; fetch the persisted result by job id so a large
+      // result never travels through the websocket relay (an inline result is used as-is).
+      let importResults = websocketResponse.result;
+      try {
+        importResults = await resolveCsvImportResult(
+          websocketResponse.jobId,
+          websocketResponse.result
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+
+      if (!importResults) {
+        // The result could not be fetched; the error toast above already informed the user.
+        // Unblock the UI so the buttons aren't stuck disabled (the same hang this PR fixes).
+        setIsImporting(false);
+        handleResetImportJob();
+
+        return;
+      }
+
+      // If the job is complete and the status is success and job was for initial load then
+      // check if the initial result is available and then read the initial result.
+      if (
+        activeImportJob.type === 'initialLoad' &&
+        activeImportJob.initialResult
+      ) {
+        setCsvImportResult(importResults);
+        onCsvResultUpdate && onCsvResultUpdate(importResults);
+        setCsvFileResult(activeImportJob.initialResult);
+        setActiveStep(2);
+        handleResetImportJob();
+
+        return;
+      }
+
+      if (activeImportJob.type === 'onValidate') {
+        setCsvImportResult(importResults);
+        onCsvResultUpdate && onCsvResultUpdate(importResults);
+        setActiveStep(3);
+        setIsImporting(false);
+        handleResetImportJob();
+      }
+    },
+    [onCsvResultUpdate, handleResetImportJob]
+  );
+
   const handleImportWebsocketResponse = useCallback(
-    (websocketResponse: CSVImportAsyncWebsocketResponse) => {
+    async (websocketResponse: CSVImportAsyncWebsocketResponse) => {
       if (!websocketResponse.jobId) {
         return;
       }
 
       const activeImportJob = activeAsyncImportJobRef.current;
 
-      if (websocketResponse.jobId === activeImportJob?.jobId) {
-        setActiveAsyncImportJob((job) => {
-          if (!job) {
-            return;
-          }
+      if (websocketResponse.jobId !== activeImportJob?.jobId) {
+        return;
+      }
 
-          return {
-            ...job,
-            ...websocketResponse,
-          };
-        });
-
-        if (websocketResponse.status === 'COMPLETED') {
-          const importResults = websocketResponse.result;
-
-          // If the job is complete and the status is success
-          // and job was for initial load then check if the initial result is available
-          // and then read the initial result
-          if (
-            activeImportJob.type === 'initialLoad' &&
-            activeImportJob.initialResult
-          ) {
-            setCsvImportResult(importResults);
-            onCsvResultUpdate && onCsvResultUpdate(importResults);
-            setCsvFileResult(activeImportJob.initialResult);
-            setActiveStep(2);
-            handleResetImportJob();
-
-            return;
-          }
-
-          if (activeImportJob.type === 'onValidate') {
-            setCsvImportResult(importResults);
-            onCsvResultUpdate && onCsvResultUpdate(importResults);
-            setActiveStep(3);
-            setIsImporting(false);
-            handleResetImportJob();
-
-            return;
-          }
+      setActiveAsyncImportJob((job) => {
+        if (!job) {
+          return;
         }
+
+        return {
+          ...job,
+          ...websocketResponse,
+        };
+      });
+
+      if (websocketResponse.status === 'COMPLETED') {
+        await handleCompletedImport(activeImportJob, websocketResponse);
       }
     },
-    [
-      activeAsyncImportJobRef,
-      setActiveAsyncImportJob,
-      onCsvResultUpdate,
-      handleResetImportJob,
-    ]
+    [activeAsyncImportJobRef, setActiveAsyncImportJob, handleCompletedImport]
   );
 
   useEffect(() => {
@@ -189,7 +214,7 @@ export const EntityImport = ({
             importResponse
           ) as CSVImportAsyncWebsocketResponse;
 
-          handleImportWebsocketResponse(importResponseData);
+          void handleImportWebsocketResponse(importResponseData);
         }
       });
     }
