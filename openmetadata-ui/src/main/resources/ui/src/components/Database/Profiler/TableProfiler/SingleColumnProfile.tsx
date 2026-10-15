@@ -238,7 +238,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
             <ColumnSummary column={selectedColumn} />
           </div>
           <div className="tw:col-span-24 tw:@4xl:col-span-10">
-            <div className="tw:h-full tw:rounded-[10px] tw:border tw:border-border-secondary tw:shadow-none">
+            <div className="tw:h-full tw:rounded-[10px] tw:border tw:border-border-secondary tw:bg-surface tw:shadow-none">
               <div className="tw:p-4">
                 <p className="tw:m-0 tw:text-md tw:font-medium tw:text-primary">
                   {t('label.data-quality-test-plural')}

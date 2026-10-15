@@ -31,7 +31,7 @@ const ColumnSummary: FC<ColumnSummaryProps> = ({ column }) => {
   }, [column.tags]);
 
   return (
-    <div className="tw:h-full tw:rounded-[10px] tw:border tw:border-border-secondary tw:shadow-none">
+    <div className="tw:h-full tw:rounded-[10px] tw:border tw:border-border-secondary tw:bg-surface tw:shadow-none">
       <div className="tw:flex tw:items-center tw:gap-3 tw:p-4">
         <p className="tw:m-0 tw:text-md tw:font-medium tw:text-primary">
           {getEntityName(column)}

@@ -35,7 +35,7 @@ const ProfilerStateWrapper = ({
         </p>
       )}
       <div
-        className="tw:rounded-[10px] tw:border tw:border-border-secondary tw:p-4 tw:shadow-none"
+        className="tw:rounded-[10px] tw:border tw:border-border-secondary tw:bg-surface tw:p-4 tw:shadow-none"
         data-testid={dataTestId ?? 'profiler-details-card-container'}>
         <div className="tw:flex tw:flex-col tw:gap-4">
           {profilerLatestValueProps && (
