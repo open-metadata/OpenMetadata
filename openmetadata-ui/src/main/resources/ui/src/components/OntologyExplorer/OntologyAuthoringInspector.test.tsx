@@ -131,7 +131,7 @@ describe('OntologyAuthoringInspector', () => {
     const inspector = screen.getByTestId('ontology-authoring-inspector');
 
     expect(inspector).toHaveClass(
-      'tw:absolute',
+      'tw:fixed',
       'tw:w-[max(420px,40vw)]',
       'tw:bg-overlay-surface'
     );
@@ -155,7 +155,7 @@ describe('OntologyAuthoringInspector', () => {
       )
     ).toBeInTheDocument();
     expect(screen.getByTestId('authoring-more-assets')).toHaveTextContent(
-      '+46 label.more-lowercase label.data-asset-lowercase-plural'
+      'label.show-count-more'
     );
   });
 
@@ -232,10 +232,18 @@ describe('OntologyAuthoringInspector', () => {
     );
 
     fireEvent.click(screen.getByTestId('authoring-add-relationship'));
-    fireEvent.click(
-      screen.getByTestId(`authoring-relation-type-${RELATIONSHIP_TYPE.name}`)
-    );
-    fireEvent.click(screen.getByTestId(`authoring-target-${TARGET_ID}`));
+    fireEvent.click(screen.getByRole('button', { name: /label\.type/ }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Requires' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Show options/ }));
+    fireEvent.click(await screen.findByRole('option', { name: /Target/ }));
+
+    expect(
+      within(screen.getByTestId('authoring-relationship-draft')).getByText(
+        'Source'
+      )
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('authoring-save-relationship'));
 
     await waitFor(() => {
       expect(onCreateRelation).toHaveBeenCalledWith(

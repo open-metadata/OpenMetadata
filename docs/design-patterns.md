@@ -109,7 +109,7 @@ abstract hooks the subclass fills. **The backbone of the backend.**
 - *Use it when* something should happen on entity change or per request: add a handler/subscription,
   don't wire the caller directly to the reaction.
 - *Here:* `openmetadata-service/src/main/java/org/openmetadata/service/events/EventHandler.java`,
-  the change-event publisher family (`openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/changeEvent/AlertPublisher.java`),
+  the change-event publisher family (`openmetadata-service/src/main/java/org/openmetadata/service/alerting/AlertPublisher.java`),
   `openmetadata-service/src/main/java/org/openmetadata/service/socket/WebSocketManager.java`.
 
 **Chain of Responsibility** — an ordered series of handlers, each doing its part and passing control on.

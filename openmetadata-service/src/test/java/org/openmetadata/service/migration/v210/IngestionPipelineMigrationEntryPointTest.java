@@ -36,6 +36,7 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
+import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
@@ -82,6 +83,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(AlertBacklogMigration.class);
         MockedStatic<AuthenticationSecretsEncryptionMigration> authenticationSecretsMigration =
             mockStatic(AuthenticationSecretsEncryptionMigration.class);
+        MockedStatic<ConsumerIdMigration> consumerIdMigration =
+            mockStatic(ConsumerIdMigration.class);
         MockedStatic<DeltaLakeRetirementMigration> deltaLakeRetirement =
             mockStatic(DeltaLakeRetirementMigration.class)) {
       migration.runDataMigration();

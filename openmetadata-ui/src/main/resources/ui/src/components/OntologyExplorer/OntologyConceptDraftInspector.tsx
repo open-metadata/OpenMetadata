@@ -19,6 +19,7 @@ import {
   Input,
   Select,
   SelectItemType,
+  SlideoutMenu,
   TextArea,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
@@ -31,6 +32,7 @@ import { OntologyAttribute } from '../../generated/type/ontologyAttribute';
 import { addGlossaryTerm } from '../../rest/glossaryAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { OntologyConceptAttributes } from './OntologyConceptAttributes.component';
+import { ONTOLOGY_DRAWER_WIDTH } from './OntologyExplorer.constants';
 import { OntologyNode } from './OntologyExplorer.interface';
 
 type DraftNodeUpdate = Partial<
@@ -162,11 +164,20 @@ const OntologyConceptDraftInspector = ({
   };
 
   return (
-    <aside
-      className="tw:absolute tw:inset-y-0 tw:right-0 tw:z-20 tw:w-[max(420px,40vw)] tw:max-w-full tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-overlay-surface tw:shadow-2xl"
-      data-testid="ontology-concept-draft-inspector">
+    <SlideoutMenu
+      isDismissable
+      isOpen
+      aria-label={t('label.new-entity', { entity: t('label.concept') })}
+      dialogClassName="tw:gap-0 tw:items-stretch"
+      width={ONTOLOGY_DRAWER_WIDTH}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onCancel();
+        }
+      }}>
       <form
-        className="tw:flex tw:h-full tw:min-h-0 tw:flex-col"
+        className="tw:flex tw:size-full tw:min-h-0 tw:flex-col"
+        data-testid="ontology-concept-draft-inspector"
         onSubmit={handleFormSubmit}>
         <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-6 tw:pt-5 tw:pb-8">
           <div className="tw:flex tw:items-center tw:gap-1.5">
@@ -301,7 +312,7 @@ const OntologyConceptDraftInspector = ({
           </Button>
         </div>
       </form>
-    </aside>
+    </SlideoutMenu>
   );
 };
 
