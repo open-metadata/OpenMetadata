@@ -179,7 +179,6 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
                   allowFilter
                   activeKeys={activeKeys}
                   entities={sortedEntitiesByValue}
-                  gutter={DI_STRUCTURE.rightRowGutter}
                   latestData={latestData}
                   relativePercentage={relativePercentage}
                   selectedDays={selectedDays}
