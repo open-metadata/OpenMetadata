@@ -274,7 +274,10 @@ def test_merge_queue_flaky_tests_alert_pw_health_from_annotations():
     ]
     build = next(s for s in steps if s.get("id") == "queue-flaky")
     assert "github.event_name == 'merge_group'" in build["if"]
-    assert "failure()" not in build["if"], "flakes are reported on green queue runs too"
+    # Only the green attempt posts, so a failed-then-rerun queue run alerts once.
+    assert build["if"].startswith("${{ success() &&"), build["if"]
+    post = next(s for s in steps if s["name"].startswith("Post merge-queue flaky"))
+    assert post["if"].startswith("${{ success() &&"), post["if"]
     assert "C0C008ZAK0V" in build["run"]  # #pw-health
     # Reads what the shards already emit instead of uploading reports.
     assert '"Retry pass in merge queue"' in build["run"]

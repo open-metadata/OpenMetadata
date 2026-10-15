@@ -17,7 +17,6 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Affix } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -245,13 +244,13 @@ export const EntityImport = ({
                 onCSVUploaded={handleLoadData}
               />
 
-              <Affix className="bg-white p-md import-preview-footer">
+              <Box className="tw:fixed tw:inset-x-0 tw:bottom-0 tw:z-4 tw:border-t tw:border-secondary tw:bg-surface tw:p-4">
                 <Box
                   inline
                   align="center"
-                  className="layout-space layout-space-horizontal justify-end w-full p-r-md"
+                  className="tw:w-full tw:pr-4"
                   gap={2}
-                  itemClassName="layout-space-item">
+                  justify="end">
                   <Button
                     color="secondary-brand"
                     data-testid="cancel-button"
@@ -260,7 +259,7 @@ export const EntityImport = ({
                     {t('label.cancel')}
                   </Button>
                 </Box>
-              </Affix>
+              </Box>
             </Grid.Item>
           </>
         )}
@@ -315,13 +314,13 @@ export const EntityImport = ({
                     {children}
                   </Grid.Item>
                 </Grid>
-                <Affix className="bg-white p-md import-preview-footer">
+                <Box className="tw:fixed tw:inset-x-0 tw:bottom-0 tw:z-4 tw:border-t tw:border-secondary tw:bg-surface tw:p-4">
                   <Box
                     inline
                     align="center"
-                    className="layout-space layout-space-horizontal justify-end w-full p-r-md"
+                    className="tw:w-full tw:pr-4"
                     gap={2}
-                    itemClassName="layout-space-item">
+                    justify="end">
                     <Button
                       color="secondary-brand"
                       data-testid="preview-cancel-button"
@@ -339,7 +338,7 @@ export const EntityImport = ({
                       </Button>
                     )}
                   </Box>
-                </Affix>
+                </Box>
               </div>
             )}
           </Grid.Item>

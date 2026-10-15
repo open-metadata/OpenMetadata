@@ -10,15 +10,71 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { expect, test } from '../../support/fixtures/base';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
+import { getWorkerAdminAPIContext } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
-const user = new UserClass();
+// The tour's table, mirrored from src/constants/mockTourData.constants.ts. The tour runs on mock
+// data only, so any API request naming this table is a component fetching the mock for real:
+// it 404s on an instance without the sample data and throws error toasts mid-tour. CI always
+// ingests the sample data, which is why such a leak cannot surface as a failed response there.
+// ADR:2026-10-13-the-product-tour-never-requests-its-mock-entity
+const TOUR_TABLE_FQN = 'sample_data.ecommerce_db.shopify.dim_address';
+const TOUR_TABLE_ID = '9d664bbd-8c9e-4068-9112-9ab0457d4c52';
+const TOUR_SEARCH_TERM = 'dim_a';
+const EMPTY_TABLE_ENTITY_LINK = '<#E::table::>';
+const TOUR_MOCK_MARKERS = [
+  TOUR_TABLE_FQN,
+  TOUR_TABLE_ID,
+  EMPTY_TABLE_ENTITY_LINK,
+];
+const TOUR_LINEAGE_TABLES = ['raw_customer', 'dim_address', 'fact_order'];
+
+// Each test signs in as its own account: a describe-level account is deleted by whichever
+// worker finishes first, under the tests still running on the others.
+const test = base.extend<{ tourUser: UserClass }>({
+  // eslint-disable-next-line no-empty-pattern -- The account needs only the worker's admin API context.
+  tourUser: async ({}, use) => {
+    const apiContext = await getWorkerAdminAPIContext();
+    const user = new UserClass();
+    await user.create(apiContext);
+
+    try {
+      await use(user);
+    } finally {
+      await user.delete(apiContext);
+    }
+  },
+});
+
+const decodeUrl = (url: string) => {
+  try {
+    return decodeURIComponent(url);
+  } catch {
+    return url;
+  }
+};
+
+const recordTourMockRequests = (page: Page) => {
+  const requests: string[] = [];
+
+  page.on('request', (request) => {
+    const url = decodeUrl(request.url());
+    const isTourMockRequest =
+      url.includes('/api/v1/') &&
+      TOUR_MOCK_MARKERS.some((marker) => url.includes(marker));
+
+    if (isTourMockRequest) {
+      requests.push(`${request.method()} ${url}`);
+    }
+  });
+
+  return requests;
+};
 
 const expectTourBadge = async (
   page: Page,
@@ -34,151 +90,119 @@ const expectTourBadge = async (
   });
 };
 
+const expectTourStep = async (page: Page, step: number, target: Locator) => {
+  await expectTourBadge(page, String(step));
+  // In the viewport, not merely visible: toBeVisible ignores overflow clipping, so it passed
+  // while the spotlight sat over a result card clipped to nothing by a zero-width panel.
+  await expect(target).toBeInViewport();
+};
+
+const goToNextTourStep = async (page: Page) => {
+  await page.locator('[data-tour-elem="right-arrow"]').click();
+};
+
 const validateTourSteps = async (page: Page) => {
-  await expectTourBadge(page, '1');
+  const searchBox = page.getByTestId('searchBox');
 
-  // step 1
-  await page.locator('[data-tour-elem="right-arrow"]').click();
+  await expectTourStep(page, 1, page.locator('#feedWidgetData'));
+  await goToNextTourStep(page);
 
-  await expectTourBadge(page, '2');
+  await expectTourStep(page, 2, searchBox);
+  await goToNextTourStep(page);
 
-  // step 2
-  await page.locator('[data-tour-elem="right-arrow"]').click();
+  // A typing step: the tour advances on Enter only once the exact term is typed.
+  await expectTourStep(page, 3, searchBox);
+  await searchBox.fill(TOUR_SEARCH_TERM);
+  await searchBox.press('Enter');
 
-  await expectTourBadge(page, '3');
+  await expectTourStep(page, 4, page.locator(`#search-card-${TOUR_TABLE_ID}`));
+  await goToNextTourStep(page);
 
-  await page.getByTestId('searchBox').fill('dim_a');
+  // Click steps are advanced the way a user advances them — by clicking the highlighted
+  // target — which also proves the target can receive the click, not merely that it exists.
+  const tableLink = page.getByTestId(TOUR_TABLE_FQN);
+  await expectTourStep(page, 5, tableLink);
+  await tableLink.click();
 
-  // The tour search is fully mock-driven and fires no API call; pressing Enter
-  // advances the tour to the Explore step, which must render the mocked result
-  // card without hitting the backend.
-  await page.getByTestId('searchBox').press('Enter');
+  await expectTourStep(page, 6, page.getByTestId('entity-page-header'));
+  await goToNextTourStep(page);
 
-  await waitForAllLoadersToDisappear(page);
+  await expectTourStep(page, 7, page.getByTestId('owner-label'));
+  await goToNextTourStep(page);
 
-  await expectTourBadge(page, '4');
+  await expectTourStep(page, 8, page.getByTestId('entity-follow-button'));
+  await goToNextTourStep(page);
 
-  await expect(
-    page.getByTestId('sample_data.ecommerce_db.shopify.dim_address')
-  ).toBeVisible();
+  await expectTourStep(page, 9, page.locator('#schemaDetails'));
+  await goToNextTourStep(page);
 
-  // step 3
-  await page.locator('[data-tour-elem="right-arrow"]').click();
+  const sampleDataTab = page.getByTestId('sample_data');
+  await expectTourStep(page, 10, sampleDataTab);
+  await sampleDataTab.click();
 
-  await expectTourBadge(page, '5');
+  await expectTourStep(page, 11, page.getByTestId('sample-data-table'));
+  await goToNextTourStep(page);
 
-  await expect(
-    page.getByTestId('sample_data.ecommerce_db.shopify.dim_address')
-  ).toBeVisible();
+  const profilerTab = page.getByTestId('profiler');
+  await expectTourStep(page, 12, profilerTab);
+  await profilerTab.click();
 
-  // step 4
-  await page.locator('[data-tour-elem="right-arrow"]').click();
+  await expectTourStep(page, 13, page.locator('#profilerDetails'));
+  await goToNextTourStep(page);
 
-  await expectTourBadge(page, '6');
+  const lineageTab = page.getByTestId('lineage');
+  await expectTourStep(page, 14, lineageTab);
+  await lineageTab.click();
 
-  // step 5
-  await page.locator('[data-tour-elem="right-arrow"]').click();
+  const lineageDetails = page.getByTestId('lineage-details');
+  await expectTourStep(page, 15, lineageDetails);
 
-  await expectTourBadge(page, '7');
-
-  // step 6
-  await page.locator('[data-tour-elem="right-arrow"]').click();
-
-  await expectTourBadge(page, '8');
-
-  // step 7
-  await page.locator('[data-tour-elem="right-arrow"]').click();
-
-  await expectTourBadge(page, '9');
-
-  // step 8
-  await page.locator('[data-tour-elem="right-arrow"]').click();
-
-  await expectTourBadge(page, '10');
-
-  await expect(
-    page.getByTestId('sample_data').getByText('Sample Data')
-  ).toBeVisible();
-
-  // step 9
-  await page.locator('[data-tour-elem="right-arrow"]').click();
-
-  await expectTourBadge(page, '11');
-
-  // step 10
-  await page.locator('[data-tour-elem="right-arrow"]').click();
-
-  await expectTourBadge(page, '12');
-
-  await expect(
-    page.getByTestId('profiler').getByText('Data Observability')
-  ).toBeVisible();
-
-  // step 11
-  await page.locator('[data-tour-elem="right-arrow"]').click();
-
-  await expectTourBadge(page, '13');
-  await expect(page.locator('#profilerDetails')).toBeVisible();
-
-  // step 12
-  await page.locator('[data-tour-elem="right-arrow"]').click();
-
-  await expectTourBadge(page, '14');
-
-  await expect(page.getByTestId('lineage').getByText('Lineage')).toBeVisible();
-
-  // step 13
-  await page.locator('[data-tour-elem="right-arrow"]').click();
-
-  await expectTourBadge(page, '15');
+  for (const table of TOUR_LINEAGE_TABLES) {
+    await expect(
+      lineageDetails.getByTestId(
+        `lineage-node-sample_data.ecommerce_db.shopify.${table}`
+      )
+    ).toBeVisible();
+  }
 
   await expect(page.getByTestId('lineage-map-onboarding-dialog')).toBeHidden();
+
   await page.getByTestId('last-step-button').click();
   await page.getByTestId('saveButton').click();
+
+  await expect(page).not.toHaveURL(/\/tour/);
+  await expect(page.locator('[data-tour-elem="badge"]')).toBeHidden();
 };
 
 test.describe(
   'Tour should work properly',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.beforeAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await user.create(apiContext);
-      await afterAction();
-    });
-
-    test.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await user.delete(apiContext);
-      await afterAction();
-    });
-
-    test.beforeEach('Visit entity details page', async ({ page }) => {
-      // Tour is entered from the welcome banner, so this suite must NOT suppress
-      // it. The other tour tests already guard against the banner if present.
-      // The banner is gated on the `loggedInUsers` seed, not on the form, so
-      // signIn() renders it too once the same opt-out is passed.
-      await user.signIn(page, undefined, undefined, {
-        suppressWelcomeScreen: false,
-      });
-    });
-
-    test('Tour should work from help section', async ({ page }) => {
+    test('Tour should work from help section', async ({ page, tourUser }) => {
       test.slow();
+
+      const tourMockRequests = recordTourMockRequests(page);
+      await tourUser.signIn(page);
 
       await page.locator('[data-testid="help-icon"]').click();
       await page.getByRole('link', { name: 'Tour', exact: true }).click();
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await page.waitForURL('**/tour', { waitUntil: 'domcontentloaded' });
 
-      await page.locator('#feedWidgetData').waitFor();
-
       await validateTourSteps(page);
+
+      expect(
+        tourMockRequests,
+        'the tour must not request its mock table from the server'
+      ).toEqual([]);
     });
 
-    test('Tour should work from welcome screen', async ({ page }) => {
+    test('Tour should work from welcome screen', async ({ page, tourUser }) => {
       test.slow();
+
+      // The welcome screen only renders until the user is recorded as seen, so it is kept.
+      await tourUser.signIn(page, undefined, undefined, {
+        suppressWelcomeScreen: false,
+      });
 
       const isAlertVisible = await page
         .getByTestId('whats-new-alert-card')
@@ -194,37 +218,25 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-      const isWelcomeScreenVisible = await page
-        .getByTestId('welcome-screen')
-        .isVisible();
-      if (isWelcomeScreenVisible) {
-        await page.getByTestId('welcome-screen-close-btn').click();
-      }
-
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,
       // here we only validate whether the tour is loading or not.
       await expectTourBadge(page, '1');
     });
 
-    test('Tour should work from URL directly', async ({ page }) => {
-      await page.goto('/tour', { waitUntil: 'domcontentloaded' });
-      await waitForAllLoadersToDisappear(page);
-      const isWelcomeScreenVisible = await page
-        .getByTestId('welcome-screen')
-        .isVisible();
+    test('Tour should start for a first-time user opening it from the URL', async ({
+      page,
+      tourUser,
+    }) => {
+      // Lands on /tour before My Data has ever rendered for this user, so the welcome screen
+      // is still due. It must not take the place of the step targets and block the tour.
+      await tourUser.signIn(page, undefined, undefined, {
+        suppressWelcomeScreen: false,
+        landingPath: '/tour',
+      });
 
-      if (isWelcomeScreenVisible) {
-        await page.getByTestId('welcome-screen-close-btn').click();
-      }
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await page.waitForURL('**/tour', { waitUntil: 'domcontentloaded' });
-
-      await page.locator('#feedWidgetData').waitFor();
-      // Since the tour steps are already tested in the first test,
-      // here we only validate whether the tour is loading or not.
-      await expectTourBadge(page, '1');
+      await expectTourStep(page, 1, page.locator('#feedWidgetData'));
+      await expect(page.getByTestId('welcome-screen')).toBeHidden();
     });
   }
 );

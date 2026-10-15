@@ -1210,7 +1210,13 @@ test.describe('Context Center Articles', () => {
     await navigateToArticle(page, article.fullyQualifiedName);
     const titleInput = page.getByTestId('entity-header-display-name');
     await titleInput.fill(`${updatedTitle} Unsaved`);
-    await page.goBack();
+    // The unsaved title raises the page's beforeunload prompt. Accept it explicitly, and wait on
+    // the document rather than `load`, which can go unreported after the prompt and hang goBack.
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.goBack({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+    await expect(
+      page.getByTestId('context-center-articles-page')
+    ).toBeVisible();
     await waitForAllLoadersToDisappear(page);
     await verifyArticleSearch(page, updatedTitle);
     await expect(

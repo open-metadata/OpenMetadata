@@ -58,7 +58,7 @@ and add tests when it:
 
 When unsure, add the whole area. A few extra minutes locally cost less than an ejection from the
 merge queue. Add with a reason, on the run as well as the plan (nothing is saved between them);
-the PR block shows both:
+the details show both:
 
 ```bash
 make java_affected_run ARGS='--add-area lineage --add-it TableResourceIT --reason "moves the edge payload lineage reads" --update-pr'

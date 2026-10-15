@@ -169,7 +169,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
            * and keep the card's bottom border-radius visible during scroll. */}
           {!hideFooter && (
             <Box
-              className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1"
+              className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:border-t tw:border-secondary tw:bg-surface tw:pt-4 tw:pb-1"
               direction="row"
               gap={2}
               justify="end">

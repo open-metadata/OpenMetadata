@@ -32,6 +32,7 @@ import {
   createFormKeyDownHandler,
   getProviderDisplayName,
   getProviderIcon,
+  ProviderIcon,
 } from '../../../utils/SSOUtils';
 import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
@@ -45,6 +46,7 @@ import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
 import { SSOFieldTemplate } from '../SSOFieldTemplate/SSOFieldTemplate';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
+import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
 import SsoTestLoginModal from '../SsoTestLogin/SsoTestLoginModal';
 import { useSsoConfiguration } from '../useSsoConfiguration';
 import './sso-configuration-form.less';
@@ -447,11 +449,10 @@ const SSOConfigurationFormRJSF = ({
         <div className="flex align-items-center gap-2 flex items-center">
           <div className="provider-icon-container">
             {getProviderIcon(currentProvider) && (
-              <img
+              <SsoProviderIcon
                 alt={getProviderDisplayName(currentProvider)}
-                height={22}
-                src={getProviderIcon(currentProvider) as string}
-                width={22}
+                icon={getProviderIcon(currentProvider) as ProviderIcon}
+                size={22}
               />
             )}
           </div>
