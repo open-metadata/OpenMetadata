@@ -5171,6 +5171,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/userDetails.ts"
       ],
       "specs": [
+        "playwright/e2e/Pages/Teams.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts"
       ]
     },
@@ -5669,6 +5670,16 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/BlockEditor/Extensions/image/UploadFile/UploadFileTab.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/BulkImport.spec.ts",
+        "playwright/e2e/Features/BulkImportWithDotInName.spec.ts",
+        "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/BulkEditEntity/BulkEditEntity.component.tsx"
       ],
       "specs": [
@@ -5892,6 +5903,7 @@
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
+        "playwright/e2e/Features/SSOConfiguration.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts"
       ]
@@ -6154,6 +6166,7 @@
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
+        "playwright/e2e/Features/SSOConfiguration.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
@@ -7805,6 +7818,7 @@
         "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerLocaleLayout.spec.ts",
+        "playwright/e2e/Features/NavigationBlocker.spec.ts",
         "playwright/e2e/Features/RoleFixtureSessions.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts"
@@ -8077,33 +8091,6 @@
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/PaginationComponent/PaginationComponent.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
-        "playwright/e2e/Features/Container.spec.ts",
-        "playwright/e2e/Features/Dashboards.spec.ts",
-        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
-        "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
-        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
-        "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
-        "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
-        "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
-        "playwright/e2e/Features/IngestionListNameSorting.spec.ts",
-        "playwright/e2e/Features/Pagination.spec.ts",
-        "playwright/e2e/Features/QueryEntity.spec.ts",
-        "playwright/e2e/Features/Table.spec.ts",
-        "playwright/e2e/Flow/UsersPagination.spec.ts",
-        "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts",
-        "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
     },
     {
@@ -8753,8 +8740,13 @@
         "openmetadata-ui/src/main/resources/ui/src/components/SettingsSso/SSOConfigurationForm/SSOConfigurationForm.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/ProfileSsoSettings.spec.ts",
-        "playwright/e2e/Features/SSOConfiguration.spec.ts"
+        "playwright/e2e/Features/SSOConfiguration.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/ODCSImportExport.spec.ts"
       ]
     },
     {
@@ -8839,7 +8831,9 @@
       ],
       "specs": [
         "playwright/e2e/Features/BulkImport.spec.ts",
-        "playwright/e2e/Features/BulkImportWithDotInName.spec.ts"
+        "playwright/e2e/Features/BulkImportWithDotInName.spec.ts",
+        "playwright/e2e/Features/ClassificationImportExport.spec.ts",
+        "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts"
       ]
     },
     {
@@ -9859,6 +9853,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/TeamsDragAndDrop.spec.ts",
+        "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts"
       ]
     },

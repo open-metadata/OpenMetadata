@@ -40,6 +40,8 @@ export interface InputBaseProps extends TextFieldProps {
   placeholder?: string;
   /** Increment used by numeric inputs. */
   step?: AriaInputProps['step'];
+  'aria-valuemin'?: number;
+  'aria-valuemax'?: number;
   /** Class name for the icon. */
   iconClassName?: string;
   /** Class name for the input. */
@@ -302,6 +304,8 @@ export const Input = forwardRef<HTMLInputElement, Omit<InputProps, 'ref'>>(
     {
       size = 'sm',
       fontSize = 'sm',
+      'aria-valuemin': ariaValueMin,
+      'aria-valuemax': ariaValueMax,
       placeholder,
       step,
       icon: Icon,
@@ -340,6 +344,8 @@ export const Input = forwardRef<HTMLInputElement, Omit<InputProps, 'ref'>>(
             )}
 
             <InputBase
+              aria-valuemax={ariaValueMax}
+              aria-valuemin={ariaValueMin}
               ref={ref}
               {...{
                 // The group only restyles the outline; the input text, leading

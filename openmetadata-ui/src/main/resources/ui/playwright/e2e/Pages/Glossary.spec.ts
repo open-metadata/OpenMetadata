@@ -184,7 +184,7 @@ test.describe('Glossary tests', () => {
       await page1.getByTestId('task-notifications').click();
       await page1.getByTestId('notification-heading').waitFor();
       const firstNotification = page1
-        .locator('.ant-list-items > .ant-list-item')
+        .locator('.notification-box li.notification-dropdown-list-btn')
         .first();
 
       await expect(firstNotification).toContainText(
