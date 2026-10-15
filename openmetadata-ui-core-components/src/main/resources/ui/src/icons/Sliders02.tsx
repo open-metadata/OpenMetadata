@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Sliders02: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const Sliders02: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M5 21v-6m0 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4m0-8V3m7 18v-6m0-8V3m0 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 14v-4m0 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4m0-8V3"
+      d="M4.167 17.5v-5m0 0a1.667 1.667 0 1 0 0-3.333 1.667 1.667 0 0 0 0 3.333m0-6.667V2.5M10 17.5v-5m0-6.667V2.5m0 3.333a1.667 1.667 0 1 0 0 3.333 1.667 1.667 0 0 0 0-3.333M15.833 17.5v-3.333m0 0a1.667 1.667 0 1 0 0-3.333 1.667 1.667 0 0 0 0 3.333m0-6.667v-5"
       stroke="currentColor"
       strokeWidth={1.3}
     />

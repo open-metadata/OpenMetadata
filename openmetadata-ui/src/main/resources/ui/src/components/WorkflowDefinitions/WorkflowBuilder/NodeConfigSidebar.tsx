@@ -443,7 +443,8 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       setIsUpdating(true);
       const isTriggerNode = isStartNode(node);
 
-      if (isTriggerNode && allowFullStartNodeConfiguration) {
+      // OSS keeps the description editable; name and trigger type are locked in the form.
+      if (isTriggerNode) {
         updateWorkflowMetadata();
       }
 
@@ -471,7 +472,6 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     buildTaskConfiguration,
     onSave,
     onClose,
-    allowFullStartNodeConfiguration,
   ]);
 
   const handleCancel = useCallback(() => {

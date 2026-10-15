@@ -987,6 +987,7 @@ export const DataAssetSummaryPanelV1 = ({
     statusCounts,
     entityPermissions,
     changeSummary,
+    t,
   ]);
 
   useEffect(() => {
