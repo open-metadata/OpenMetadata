@@ -17,6 +17,7 @@ import {
   getDefaultAdminAPIContext,
   redirectToHomePage,
 } from '../../../utils/common';
+import { isRepresentativeEntityRun } from '../../../utils/entityMatrix';
 import { test } from '../../fixtures/pages';
 
 type HeartbeatWindow = Window & {
@@ -110,63 +111,72 @@ const readHeartbeat = (page: Page) =>
     return { ticks, longestGapMs };
   });
 
-test.describe(
-  'Lineage tab with a very large lineage response',
-  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
-  () => {
-    const table = new TableClass();
+// Building and parsing a 52,550-edge response is too heavy for every pull
+// request and merge-queue run, so those runs leave this suite out. The nightly
+// full suite runs it, and so does the gating run of a pull request that edits
+// this file (see utils/entityMatrix.ts).
+if (!isRepresentativeEntityRun(__filename)) {
+  test.describe(
+    'Lineage tab with a very large lineage response',
+    PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+    () => {
+      const table = new TableClass();
 
-    test.beforeAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
-        browser
-      );
-      await table.create(apiContext);
-      await afterAction();
-    });
+      test.beforeAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+          browser
+        );
+        await table.create(apiContext);
+        await afterAction();
+      });
 
-    test.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
-        browser
-      );
-      await table.delete(apiContext);
-      await afterAction();
-    });
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+          browser
+        );
+        await table.delete(apiContext);
+        await afterAction();
+      });
 
-    test('keeps the page responsive while it processes 52,550 edges', async ({
-      page,
-    }) => {
-      test.slow();
+      test('keeps the page responsive while it processes 52,550 edges', async ({
+        page,
+      }) => {
+        test.slow();
 
-      const rootFqn = table.entityResponseData.fullyQualifiedName ?? '';
-      const body = JSON.stringify(buildBusyTableLineage(rootFqn));
-      await page.route('**/api/v1/lineage/getLineage?*', (route) =>
-        route.fulfill({ status: 200, contentType: 'application/json', body })
-      );
-      await startHeartbeat(page);
+        const rootFqn = table.entityResponseData.fullyQualifiedName ?? '';
+        const body = JSON.stringify(buildBusyTableLineage(rootFqn));
+        await page.route('**/api/v1/lineage/getLineage?*', (route) =>
+          route.fulfill({ status: 200, contentType: 'application/json', body })
+        );
+        await startHeartbeat(page);
 
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
+        await redirectToHomePage(page);
+        await table.visitEntityPage(page);
 
-      const lineageResponse = page.waitForResponse(
-        '**/api/v1/lineage/getLineage?*'
-      );
-      await page.getByTestId('lineage').click();
-      await (await lineageResponse).finished();
+        const lineageResponse = page.waitForResponse(
+          '**/api/v1/lineage/getLineage?*'
+        );
+        await page.getByTestId('lineage').click();
+        await (await lineageResponse).finished();
 
-      const { ticks: ticksAtResponse } = await readHeartbeat(page);
+        const { ticks: ticksAtResponse } = await readHeartbeat(page);
 
-      // Wait until the page has run two seconds of heartbeats after the
-      // response: by then the response has been parsed, and any long block
-      // while parsing it is recorded as the longest gap.
-      await expect
-        .poll(async () => (await readHeartbeat(page)).ticks - ticksAtResponse, {
-          timeout: 120_000,
-        })
-        .toBeGreaterThan(2_000 / HEARTBEAT_MS);
+        // Wait until the page has run two seconds of heartbeats after the
+        // response: by then the response has been parsed, and any long block
+        // while parsing it is recorded as the longest gap.
+        await expect
+          .poll(
+            async () => (await readHeartbeat(page)).ticks - ticksAtResponse,
+            {
+              timeout: 120_000,
+            }
+          )
+          .toBeGreaterThan(2_000 / HEARTBEAT_MS);
 
-      const { longestGapMs } = await readHeartbeat(page);
+        const { longestGapMs } = await readHeartbeat(page);
 
-      expect(longestGapMs).toBeLessThan(MAX_MAIN_THREAD_GAP_MS);
-    });
-  }
-);
+        expect(longestGapMs).toBeLessThan(MAX_MAIN_THREAD_GAP_MS);
+      });
+    }
+  );
+}
