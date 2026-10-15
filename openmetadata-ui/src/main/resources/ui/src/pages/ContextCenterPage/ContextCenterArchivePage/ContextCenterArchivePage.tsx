@@ -227,8 +227,9 @@ const ContextCenterArchivePage: FC = () => {
       setItemToDelete(undefined);
       // A 202 finishes on a background thread, so the count is converged once
       // the row is actually gone, not invalidated on the response. Not awaited
-      // — holding `isDeleting` through the poll would spin the modal button.
-      reconcileCountAfterAsyncDelete(
+      // — holding `isDeleting` through the poll would spin the modal button, so
+      // `void` marks the float as deliberate.
+      void reconcileCountAfterAsyncDelete(
         queryClient,
         CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
         () =>
