@@ -394,6 +394,15 @@
     width: 100%;
   }
 
+  // The embedded view needs a sensible canvas floor so the KG tab looks right
+  // inside the entity page, but in fullscreen the viewport IS the floor —
+  // honouring `min-height: calc(--om-space-40 * 8)` here overflows a narrow
+  // viewport + 2x zoom and pushes the canvas past the container bottom (fails
+  // the geometry poll in the narrow-layouts test).
+  .knowledge-graph-body {
+    min-height: 0;
+  }
+
   .knowledge-graph-canvas {
     width: 100%;
     height: 100%;
