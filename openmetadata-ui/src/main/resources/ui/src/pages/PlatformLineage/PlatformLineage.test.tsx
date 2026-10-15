@@ -107,9 +107,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }
   );
 
+  const SelectMock = Object.assign(jest.fn(), {
+    ComboBox: jest.fn(() => <div>Select</div>),
+    Item: ({ children }: GridProps) => <div>{children}</div>,
+  });
+
   return {
     Card: CardMock,
     Grid: GridMock,
+    Select: SelectMock,
     Tooltip: jest
       .fn()
       .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -273,7 +279,8 @@ const mockPageLayoutV1 = require('../../components/PageLayoutV1/PageLayoutV1')
 const mockEntitySuggestionOption =
   require('../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component')
     .default as jest.Mock;
-const mockSelect = require('antd').Select as jest.Mock;
+const mockSelect = require('@openmetadata/ui-core-components').Select
+  .ComboBox as jest.Mock;
 
 jest.mock('../../components/Entity/EntityLineage/LineageConfigModal', () => ({
   __esModule: true,
@@ -309,16 +316,6 @@ jest.mock(
     default: jest.fn(() => <div>EntitySuggestionOption</div>),
   })
 );
-
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Select: jest.fn(() => <div>Select</div>),
-    Card: jest.fn(({ children }) => <div>{children}</div>),
-  };
-});
 
 jest.mock('../../assets/svg/ic-download.svg', () => ({
   ReactComponent: () => <div>DownloadIcon</div>,
@@ -628,23 +625,25 @@ describe('PlatformLineage Component Logic', () => {
       // one drives: focus, typing, and the option list it is handed.
       mockSelect.mockImplementation(
         ({
-          options,
+          items,
+          children,
           onFocus,
-          onSearch,
+          onInputChange,
         }: {
-          options?: { value: string; label: React.ReactNode }[];
+          items?: { id: string; label: string }[];
+          children: (item: { id: string; label: string }) => React.ReactNode;
           onFocus?: () => void;
-          onSearch?: (value: string) => void;
+          onInputChange?: (value: string) => void;
         }) => (
           <div>
             <input
               aria-label="Search entity"
               data-testid="entity-search-input"
-              onChange={(event) => onSearch?.(event.target.value)}
+              onChange={(event) => onInputChange?.(event.target.value)}
               onFocus={() => onFocus?.()}
             />
-            {options?.map((option) => (
-              <div key={option.value}>{option.label}</div>
+            {items?.map((item) => (
+              <div key={item.id}>{children(item)}</div>
             ))}
           </div>
         )

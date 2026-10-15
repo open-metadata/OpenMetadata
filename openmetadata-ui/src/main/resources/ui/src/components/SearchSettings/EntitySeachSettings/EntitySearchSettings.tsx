@@ -15,10 +15,11 @@ import {
   Badge,
   Box,
   Grid,
+  Select,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Collapse, InputNumber, Select } from 'antd';
+import { Collapse, InputNumber } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, omit, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -69,10 +70,10 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CollapseHeader from '../../common/CollapseHeader/CollapseHeader';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import FieldValueBoostDialog from '../../discovery/personal-space/Profile/tabs/platform-settings/search/FieldValueBoostDialog';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import FieldConfiguration from '../FieldConfiguration/FieldConfiguration';
 import FieldValueBoostList from '../FieldValueBoostList/FieldValueBoostList';
-import FieldValueBoostModal from '../FieldValueBoostModal/FieldValueBoostModal';
 import SearchPreview from '../SearchPreview/SearchPreview';
 import TermBoostList from '../TermBoostList/TermBoostList';
 import './entity-search-settings.less';
@@ -829,24 +830,28 @@ const EntitySearchSettings = () => {
                   {t('label.boost-mode')}
                 </Typography>
                 <Select
-                  bordered={false}
-                  className="w-full border-none custom-select"
-                  options={boostModeOptions}
-                  value={signals.boostMode}
-                  onChange={handleRankingSignalBoostModeChange}
-                />
+                  aria-label={t('label.boost-mode')}
+                  items={boostModeOptions}
+                  value={signals.boostMode ?? null}
+                  onChange={(key) =>
+                    handleRankingSignalBoostModeChange(key as BoostMode)
+                  }>
+                  {(item) => <Select.Item id={item.id} label={item.label} />}
+                </Select>
               </Grid.Item>
               <Grid.Item className="layout-column" span={12}>
                 <Typography className="text-xs font-normal" color="secondary">
                   {t('label.score-mode')}
                 </Typography>
                 <Select
-                  bordered={false}
-                  className="w-full border-none custom-select"
-                  options={scoreModeOptions}
-                  value={signals.scoreMode}
-                  onChange={handleRankingSignalScoreModeChange}
-                />
+                  aria-label={t('label.score-mode')}
+                  items={scoreModeOptions}
+                  value={signals.scoreMode ?? null}
+                  onChange={(key) =>
+                    handleRankingSignalScoreModeChange(key as ScoreMode)
+                  }>
+                  {(item) => <Select.Item id={item.id} label={item.label} />}
+                </Select>
               </Grid.Item>
               <Grid.Item
                 className="layout-column ranking-number-control"
@@ -989,15 +994,17 @@ const EntitySearchSettings = () => {
                         {t('label.score-mode')}
                       </Typography>
                       <Select
-                        bordered={false}
-                        className="w-full border-none custom-select"
+                        aria-label={t('label.score-mode')}
                         data-testid="score-mode-select"
-                        options={scoreModeOptions}
-                        value={searchSettings.scoreMode}
-                        onChange={(value: ScoreMode) =>
-                          handleModeUpdate('scoreMode', value)
-                        }
-                      />
+                        items={scoreModeOptions}
+                        value={searchSettings.scoreMode ?? null}
+                        onChange={(key) =>
+                          handleModeUpdate('scoreMode', key as ScoreMode)
+                        }>
+                        {(item) => (
+                          <Select.Item id={item.id} label={item.label} />
+                        )}
+                      </Select>
                     </div>
                     <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
                       <Typography
@@ -1006,15 +1013,17 @@ const EntitySearchSettings = () => {
                         {t('label.boost-mode')}
                       </Typography>
                       <Select
-                        bordered={false}
-                        className="w-full border-none custom-select"
+                        aria-label={t('label.boost-mode')}
                         data-testid="boost-mode-select"
-                        options={boostModeOptions}
-                        value={searchSettings.boostMode}
-                        onChange={(value: BoostMode) =>
-                          handleModeUpdate('boostMode', value)
-                        }
-                      />
+                        items={boostModeOptions}
+                        value={searchSettings.boostMode ?? null}
+                        onChange={(key) =>
+                          handleModeUpdate('boostMode', key as BoostMode)
+                        }>
+                        {(item) => (
+                          <Select.Item id={item.id} label={item.label} />
+                        )}
+                      </Select>
                     </div>
                   </Box>
                 </Box>
@@ -1035,7 +1044,6 @@ const EntitySearchSettings = () => {
                   handleDeleteTermBoost={handleDeleteTermBoost}
                   handleTermBoostChange={handleTermBoostChange}
                   showNewTermBoost={showNewTermBoost}
-                  termBoostCardClassName="term-boost-card"
                   termBoosts={searchSettings.termBoosts ?? []}
                 />
               </div>
@@ -1075,16 +1083,17 @@ const EntitySearchSettings = () => {
         </Box>
       </Box>
 
-      <FieldValueBoostModal
-        entityOptions={fieldValueBoostOptions ?? []}
-        open={showNewFieldValueBoost}
-        selectedBoost={selectedFieldValueBoost}
-        onCancel={() => {
-          setShowNewFieldValueBoost(false);
-          setSelectedFieldValueBoost(undefined);
-        }}
-        onSave={handleSaveFieldValueBoost}
-      />
+      {showNewFieldValueBoost && (
+        <FieldValueBoostDialog
+          boost={selectedFieldValueBoost}
+          fieldOptions={fieldValueBoostOptions ?? []}
+          onClose={() => {
+            setShowNewFieldValueBoost(false);
+            setSelectedFieldValueBoost(undefined);
+          }}
+          onSave={handleSaveFieldValueBoost}
+        />
+      )}
     </PageLayoutV1>
   );
 };
