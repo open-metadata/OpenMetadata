@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -102,7 +106,7 @@ const WhatsNewAlert = () => {
   return (
     <>
       {showWhatsNew.alert && isHomePage && (
-        <Affix className="whats-new-alert-affix">
+        <Box className="tw:fixed tw:right-8 tw:bottom-8 tw:z-2000">
           <Card
             className="whats-new-alert-card"
             data-testid="whats-new-alert-card">
@@ -149,21 +153,19 @@ const WhatsNewAlert = () => {
                 </Typography>
                 <div className="whats-new-alert-links">
                   <Button
-                    className="p-0"
+                    color="link-color"
                     href={releaseLink}
                     rel="noopener noreferrer"
-                    target="_blank"
-                    type="link">
+                    target="_blank">
                     {t('label.release-notes')}
                   </Button>
                   {/* Only show the blog link for major releases */}
                   {isMajorRelease && (
                     <Button
-                      className="p-0"
+                      color="link-color"
                       href={blogLink}
                       rel="noopener noreferrer"
-                      target="_blank"
-                      type="link">
+                      target="_blank">
                       {t('label.blog')}
                     </Button>
                   )}
@@ -178,7 +180,7 @@ const WhatsNewAlert = () => {
               </Box>
             </Box>
           </Card>
-        </Affix>
+        </Box>
       )}
     </>
   );

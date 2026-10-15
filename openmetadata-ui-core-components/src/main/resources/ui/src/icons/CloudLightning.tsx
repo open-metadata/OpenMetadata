@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const CloudLightning: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const CloudLightning: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M19 15.744a4.502 4.502 0 0 0-1.08-8.725 6.002 6.002 0 0 0-11.84 0A4.5 4.5 0 0 0 5 15.744M13 10l-4 6h6l-4 6"
+      d="M15.833 13.12a3.752 3.752 0 0 0-.9-7.271 5.002 5.002 0 0 0-9.867 0 3.75 3.75 0 0 0-.899 7.271m6.666-4.787-3.333 5h5l-3.333 5"
       stroke="currentColor"
       strokeWidth={1.3}
     />

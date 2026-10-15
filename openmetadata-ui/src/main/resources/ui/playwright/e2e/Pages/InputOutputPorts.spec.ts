@@ -408,7 +408,7 @@ test.describe('Input Output Ports', () => {
         await page
           .locator(`[data-testid="table-data-card_${table1Fqn}"]`)
           .getByTestId('asset-checkbox')
-          .check();
+          .click();
 
         const searchRes2 = page.waitForResponse(
           (res) =>
@@ -421,7 +421,7 @@ test.describe('Input Output Ports', () => {
         await page
           .locator(`[data-testid="table-data-card_${table2Fqn}"]`)
           .getByTestId('asset-checkbox')
-          .check();
+          .click();
 
         const addRes = page.waitForResponse(
           (res) =>
@@ -616,13 +616,14 @@ test.describe('Input Output Ports', () => {
           state: 'visible',
         });
 
-        // Verify info banner is visible with correct message
-        await expect(page.locator('.ant-alert-info')).toBeVisible();
-        await expect(
-          page.locator(
-            'text=Output ports can only be added from assets that belong to this Data Product'
-          )
-        ).toBeVisible();
+        const infoBanner = page
+          .getByTestId('asset-selection-modal')
+          .getByTestId('asset-selection-info-banner');
+
+        await expect(infoBanner).toBeVisible();
+        await expect(infoBanner).toContainText(
+          'Output ports can only be added from assets that belong to this Data Product'
+        );
       });
     });
 
@@ -646,8 +647,15 @@ test.describe('Input Output Ports', () => {
           state: 'visible',
         });
 
-        // Info banner should NOT be visible for input ports
-        await expect(page.locator('.ant-alert-info')).not.toBeVisible();
+        // Wait for the drawer body so the absence check is not vacuous.
+        await expect(
+          page.getByTestId('asset-selection-modal').getByTestId('asset-filters')
+        ).toBeVisible();
+        await expect(
+          page
+            .getByTestId('asset-selection-modal')
+            .getByTestId('asset-selection-info-banner')
+        ).toHaveCount(0);
       });
     });
 
@@ -1866,7 +1874,7 @@ test.describe('Input Output Ports', () => {
         await page
           .locator(`[data-testid="table-data-card_${tableFqn}"]`)
           .getByTestId('asset-checkbox')
-          .check();
+          .click();
 
         await page.getByTestId('delete-all-button').click();
 

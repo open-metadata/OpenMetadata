@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Badge, Button, List } from 'antd';
+import { Button, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Badge, List } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -269,12 +269,12 @@ const NotificationBox = ({
           className="notification-content-container"
           dataSource={notificationDropDownList}
           footer={
-            <Button block href={viewAllPath} type="link">
-              <span>
+            <Button className="tw:w-full" color="link-color" href={viewAllPath}>
+              <Typography>
                 {t('label.view-entity', {
                   entity: t('label.all-lowercase'),
                 })}
-              </span>
+              </Typography>
             </Button>
           }
           itemLayout="vertical"

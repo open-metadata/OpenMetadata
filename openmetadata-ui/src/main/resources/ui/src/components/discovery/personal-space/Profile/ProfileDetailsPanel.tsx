@@ -53,7 +53,7 @@ const PreferredNameRow: React.FC<PreferredNameRowProps> = ({
   updateUserDetails,
 }) => {
   const { t } = useTranslation();
-  const displayName = getEntityName(userData) || userData.name;
+  const displayName = getEntityName(userData);
   const [draft, setDraft] = useState(displayName);
 
   return (
@@ -71,11 +71,8 @@ const PreferredNameRow: React.FC<PreferredNameRowProps> = ({
       testId="preferred-name"
       title={t('label.preferred-name')}
       view={
-        <Typography
-          className="tw:text-primary-900"
-          size="text-sm"
-          weight="regular">
-          {startCase(displayName)}
+        <Typography className="tw:text-primary" size="text-sm" weight="regular">
+          {userData.displayName || startCase(userData.name)}
         </Typography>
       }
       onEnterEdit={() => setDraft(displayName)}
@@ -99,7 +96,7 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   const { currentUser, authConfig } = useApplicationStore();
-  const displayName = getEntityName(userData) || userData.name;
+  const displayName = getEntityName(userData);
   const isSelf = currentUser?.name === userData.name;
   const canEditName = (Boolean(isAdminUser) || isSelf) && !userData.deleted;
   const canChangePassword = canUserChangePassword({
@@ -134,7 +131,7 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
           title={t('label.email')}>
           <Box gap={2}>
             <Typography
-              className="tw:text-primary-900"
+              className="tw:text-primary"
               size="text-sm"
               weight="regular">
               {userData.email ?? ''}

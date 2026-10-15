@@ -42,7 +42,7 @@ public final class BenchmarkMetrics {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final Path OUTPUT_DIR = Path.of("target", "benchmark");
-  private static final String UNKNOWN = "unknown";
+  public static final String UNKNOWN = "unknown";
   private static final String GIT_SHA_PROPERTY = "jpw.bench.gitSha";
   private static final String GIT_SHA_ENV = "GITHUB_SHA";
   private static final String VERSION_PATH = "/v1/system/version";
@@ -68,11 +68,21 @@ public final class BenchmarkMetrics {
       final Map<String, Object> params,
       final Map<String, Latency> latencies,
       final Map<String, Object> counters) {
+    return report(serverVersion(client), benchmarkId, params, latencies, counters);
+  }
+
+  /** For callers that resolved the server version themselves, or could not reach a server. */
+  public static BenchmarkReport report(
+      final String serverVersion,
+      final String benchmarkId,
+      final Map<String, Object> params,
+      final Map<String, Latency> latencies,
+      final Map<String, Object> counters) {
     return new BenchmarkReport(
         SCHEMA_VERSION,
         benchmarkId,
         gitSha(),
-        serverVersion(client),
+        serverVersion,
         Instant.now().toString(),
         params,
         latencies,
@@ -93,7 +103,7 @@ public final class BenchmarkMetrics {
    * unreachable, but the run is then unattributable, so the failure is logged rather than swallowed
    * silently.
    */
-  private static String serverVersion(final OpenMetadataClient client) {
+  public static String serverVersion(final OpenMetadataClient client) {
     try {
       final String response =
           client.getHttpClient().executeForString(HttpMethod.GET, VERSION_PATH, null);

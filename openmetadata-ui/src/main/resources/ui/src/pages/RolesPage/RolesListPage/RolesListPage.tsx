@@ -14,13 +14,13 @@
 import {
   Badge,
   Box,
+  Button,
   ButtonUtility,
   Grid,
   Popover,
   PopoverTrigger,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -351,8 +351,8 @@ const RolesListPage = () => {
 
             {addRolePermission && (
               <Button
+                color="primary"
                 data-testid="add-role"
-                type="primary"
                 onClick={handleAddRole}>
                 {t('label.add-entity', { entity: t('label.role').toString() })}
               </Button>

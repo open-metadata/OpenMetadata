@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Input, Modal } from 'antd';
+import {
+  Button,
+  Input,
+  SimpleModal,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -120,40 +125,39 @@ const AddPipeLineModal = ({
   }, []);
 
   return (
-    <Modal
-      destroyOnClose
+    <SimpleModal
       data-testid="add-edge-modal"
       footer={[
         <Button
-          danger
+          color="primary-destructive"
           data-testid="remove-edge-button"
           key="remove-edge-btn"
-          type="primary"
           onClick={onRemoveEdgeClick}>
           {t('label.remove-entity', {
             entity: t('label.edge-lowercase'),
           })}
         </Button>,
         <Button
+          color="primary"
           data-testid="save-button"
+          isLoading={loading}
           key="save-btn"
-          loading={loading}
-          type="primary"
           onClick={() => onSave(edgeSelection)}>
           {t('label.save')}
         </Button>,
       ]}
-      maskClosable={false}
-      open={showAddEdgeModal}
+      isDismissable={false}
+      isOpen={showAddEdgeModal}
       title={t(`label.${isUndefined(selectedEdge) ? 'add' : 'edit'}-entity`, {
         entity: t('label.edge'),
       })}
       onCancel={onModalCancel}>
       <Input
-        data-testid="field-input"
+        aria-label={t('message.search-for-edge')}
+        inputDataTestId="field-input"
         placeholder={t('message.search-for-edge')}
         value={edgeSearchValue}
-        onChange={(e) => handleChange(e.target.value)}
+        onChange={handleChange}
       />
 
       <div className="edge-option-container">
@@ -181,12 +185,14 @@ const AddPipeLineModal = ({
               )}
               <div>
                 <div className="d-flex flex-wrap">
-                  <span className="truncate breadcrumb">{breadcrumb}</span>
+                  <Typography className="truncate breadcrumb">
+                    {breadcrumb}
+                  </Typography>
                 </div>
                 <div className="d-flex flex-col">
-                  <span className="font-medium truncate">
+                  <Typography className="truncate" weight="medium">
                     {getEntityName(item)}
-                  </span>
+                  </Typography>
                 </div>
               </div>
             </div>
@@ -195,7 +201,7 @@ const AddPipeLineModal = ({
 
         {errorPlaceholderEdge}
       </div>
-    </Modal>
+    </SimpleModal>
   );
 };
 

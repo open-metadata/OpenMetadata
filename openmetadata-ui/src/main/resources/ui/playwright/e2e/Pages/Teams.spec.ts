@@ -381,9 +381,10 @@ test.describe('Teams Page', () => {
       await scopedUserPage.locator('[data-testid="leave-team-button"]').click();
       // Click on confirm button
       await scopedUserPage
-        .locator('.ant-modal-footer')
-        .getByText('Confirm')
+        .getByTestId('remove-team-user-modal')
+        .getByRole('button', { name: 'Confirm' })
         .click();
+
       await leaveTeamResponse;
 
       // Verify that the "Join Teams" button is now visible

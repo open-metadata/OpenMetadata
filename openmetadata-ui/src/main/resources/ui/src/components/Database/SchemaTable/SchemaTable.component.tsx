@@ -12,15 +12,15 @@
  */
 
 import {
-  Button as CoreButton,
+  Button,
   ButtonUtility,
   Dropdown,
   Grid,
   Label,
+  Select,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
@@ -122,6 +122,8 @@ const ModalWithMarkdownEditor = withSuspenseFallback(
     )
   )
 );
+
+const NO_CONSTRAINT_KEY = 'none';
 
 const SchemaTable = () => {
   const { t } = useTranslation();
@@ -242,7 +244,11 @@ const SchemaTable = () => {
       columnSortBy?: 'name' | 'ordinalPosition',
       columnSortOrder?: 'asc' | 'desc'
     ) => {
+      // The customize page previews this table without a route FQN, so there
+      // is nothing to fetch and the loader would otherwise never clear.
       if (!tableFqn) {
+        setColumnsLoading(false);
+
         return;
       }
 
@@ -293,7 +299,11 @@ const SchemaTable = () => {
       columnSortBy?: 'name' | 'ordinalPosition',
       columnSortOrder?: 'asc' | 'desc'
     ) => {
+      // The customize page previews this table without a route FQN, so there
+      // is nothing to fetch and the loader would otherwise never clear.
       if (!tableFqn) {
+        setColumnsLoading(false);
+
         return;
       }
 
@@ -765,14 +775,13 @@ const SchemaTable = () => {
       {
         title: (
           <Button
-            className="d-flex items-center cursor-pointer bg-transparent border-none p-0 h-auto hover:bg-transparent"
+            color="tertiary"
             data-testid="name-column-header"
-            type="text"
             onClick={handleColumnHeaderSortToggle}>
-            <span
+            <Typography
               className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
               {t('label.name')}
-            </span>
+            </Typography>
             <IconSortIndicator
               className="m-l-xss"
               data-testid="sort-indicator"
@@ -903,18 +912,30 @@ const SchemaTable = () => {
         })}
       </Label>
       <Select
-        allowClear
+        aria-label={t('label.entity-type-plural', {
+          entity: t('label.constraint'),
+        })}
         data-testid="constraint-type-select"
-        getPopupContainer={(triggerNode) => triggerNode.parentElement}
-        options={constraintOptionsTranslated}
         placeholder={t('label.select-entity', {
           entity: t('label.entity-type-plural', {
             entity: t('label.constraint'),
           }),
         })}
-        value={editConstraint}
-        onChange={(value) => setEditConstraint(value)}
-      />
+        selectedKey={editConstraint ?? null}
+        onSelectionChange={(key) =>
+          setEditConstraint(
+            key === NO_CONSTRAINT_KEY ? undefined : (key as Constraint)
+          )
+        }>
+        <Select.Item id={NO_CONSTRAINT_KEY} label={t('label.none')} />
+        {constraintOptionsTranslated.map((option) => (
+          <Select.Item
+            id={option.value}
+            key={option.value}
+            label={option.label}
+          />
+        ))}
+      </Select>
     </div>
   );
 
@@ -991,13 +1012,13 @@ const SchemaTable = () => {
           extraTableFilters={
             <div className="d-flex items-center gap-4">
               <Dropdown.Root>
-                <CoreButton
+                <Button
                   color="tertiary"
                   data-testid="sort-dropdown"
                   iconLeading={<IconSort height={14} width={14} />}
                   size="sm">
                   {t('label.sort')}
-                </CoreButton>
+                </Button>
                 <Dropdown.Popover className="tw:w-auto">
                   <Dropdown.Menu
                     aria-label={t('label.sort')}
@@ -1006,17 +1027,17 @@ const SchemaTable = () => {
                     <Dropdown.Item
                       id="name"
                       textValue={t('label.alphabetical')}>
-                      <span data-testid="sort-alphabetical">
+                      <Typography data-testid="sort-alphabetical">
                         {/* eslint-disable-next-line i18next/no-literal-string -- decorative sort-direction glyph */}
                         {t('label.alphabetical')} (A → Z)
-                      </span>
+                      </Typography>
                     </Dropdown.Item>
                     <Dropdown.Item
                       id="ordinalPosition"
                       textValue={t('label.original-order')}>
-                      <span data-testid="sort-original-order">
+                      <Typography data-testid="sort-original-order">
                         {t('label.original-order')}
-                      </span>
+                      </Typography>
                     </Dropdown.Item>
                   </Dropdown.Menu>
                 </Dropdown.Popover>
