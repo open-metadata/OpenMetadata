@@ -2551,6 +2551,50 @@ public interface TimeSeriesDAOs {
       return listLastTestCaseResultsForTestSuite(Map.of("testSuiteId", testSuiteId.toString()));
     }
 
+    /** Status of each live test case's latest result at or before {@code asOf}. */
+    @ConnectionAwareSqlQuery(
+        value =
+            """
+            WITH suite_test_cases AS (
+                SELECT tc.fqnHash
+                FROM entity_relationship er
+                INNER JOIN test_case tc ON er.toId = tc.id
+                WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
+                AND er.fromId = :testSuiteId AND (tc.deleted = FALSE OR tc.deleted IS NULL)
+            ),
+            latest_results AS (
+                SELECT JSON_UNQUOTE(JSON_EXTRACT(dqdts.json, '$.testCaseStatus')) as testCaseStatus,
+                       ROW_NUMBER() OVER (PARTITION BY dqdts.entityFQNHash ORDER BY dqdts.timestamp DESC) as rn
+                FROM data_quality_data_time_series dqdts
+                WHERE dqdts.entityFQNHash IN (SELECT fqnHash FROM suite_test_cases)
+                AND dqdts.timestamp <= :asOf
+            )
+            SELECT testCaseStatus FROM latest_results WHERE rn = 1
+            """,
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            """
+            WITH suite_test_cases AS (
+                SELECT tc.fqnHash
+                FROM entity_relationship er
+                INNER JOIN test_case tc ON er.toId = tc.id
+                WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
+                AND er.fromId = :testSuiteId AND (tc.deleted = FALSE OR tc.deleted IS NULL)
+            ),
+            latest_results AS (
+                SELECT dqdts.json->>'testCaseStatus' as testCaseStatus,
+                       ROW_NUMBER() OVER (PARTITION BY dqdts.entityFQNHash ORDER BY dqdts.timestamp DESC) as rn
+                FROM data_quality_data_time_series dqdts
+                WHERE dqdts.entityFQNHash IN (SELECT fqnHash FROM suite_test_cases)
+                AND dqdts.timestamp <= :asOf
+            )
+            SELECT testCaseStatus FROM latest_results WHERE rn = 1
+            """,
+        connectionType = POSTGRES)
+    List<String> listLatestTestCaseStatusesAsOf(
+        @Bind("testSuiteId") String testSuiteId, @Bind("asOf") long asOf);
+
     record ResultSummaryRow(
         String testSuiteId, String testCaseFQN, String testCaseStatus, long timestamp) {}
 

@@ -39,6 +39,7 @@ import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.HealthyDataAssetsChartMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
@@ -79,7 +80,9 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<AlertBacklogMigration> alertBacklogMigration =
             mockStatic(AlertBacklogMigration.class);
         MockedStatic<AuthenticationSecretsEncryptionMigration> authenticationSecretsMigration =
-            mockStatic(AuthenticationSecretsEncryptionMigration.class)) {
+            mockStatic(AuthenticationSecretsEncryptionMigration.class);
+        MockedStatic<HealthyDataAssetsChartMigration> healthyDataAssetsChartMigration =
+            mockStatic(HealthyDataAssetsChartMigration.class)) {
       migration.runDataMigration();
 
       ingestionPipelineMigration.verify(
@@ -92,6 +95,8 @@ class IngestionPipelineMigrationEntryPointTest {
       authenticationSecretsMigration.verify(
           () ->
               AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
+      healthyDataAssetsChartMigration.verify(
+          HealthyDataAssetsChartMigration::repairHealthyDataAssetsCharts);
     }
   }
 
