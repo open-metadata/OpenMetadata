@@ -1112,6 +1112,12 @@ MOCK_HIVE_VIEW = {
     "ViewOriginalText": "SELECT secret_token FROM private_data",
     "ViewExpandedText": "SELECT secret_token FROM private_data",
 }
+MOCK_SPARK_VIEW = {
+    "TableType": "VIRTUAL_VIEW",
+    "Parameters": {"spark.sql.create.version": "3.5.0"},
+    "ViewOriginalText": "SELECT secret_token FROM private_data",
+    "ViewExpandedText": "SELECT secret_token FROM private_data",
+}
 MOCK_ATHENA_VIEW = {
     "TableType": "VIRTUAL_VIEW",
     "Parameters": {"presto_view": "true"},
@@ -1303,10 +1309,13 @@ class TestAthenaPartitionedIcebergTableType:
 
 
 class TestAthenaHiveViewDefinitionWarning:
-    def test_hive_view_is_emitted_without_definition_and_with_safe_fqn_warning(self, bulk_tables_catalog, caplog):
+    @pytest.mark.parametrize("glue_view_metadata", [MOCK_HIVE_VIEW, MOCK_SPARK_VIEW], ids=["hive", "spark"])
+    def test_hive_view_is_emitted_without_definition_and_with_safe_fqn_warning(
+        self, bulk_tables_catalog, caplog, glue_view_metadata
+    ):
         source = _ingest_tables_through_bulk_sink(
             include_views=True,
-            glue_view_metadata=MOCK_HIVE_VIEW,
+            glue_view_metadata=glue_view_metadata,
             view_error=RuntimeError("SHOW CREATE VIEW unsupported for Hive view"),
         )
 
@@ -1329,11 +1338,6 @@ class TestAthenaHiveViewDefinitionWarning:
                 "Parameters": {},
                 "ViewOriginalText": "SELECT id FROM source_table",
                 "ViewDefinition": {"Representations": []},
-            },
-            {
-                "TableType": "VIRTUAL_VIEW",
-                "Parameters": {"spark.sql.create.version": "3.5.0"},
-                "ViewOriginalText": "SELECT id FROM source_table",
             },
         ],
     )

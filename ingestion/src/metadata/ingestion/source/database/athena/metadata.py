@@ -221,6 +221,11 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
         return super().get_table_type_for_partitioned_table(table_type)
 
     def _is_hive_view(self, table_name: str, schema_name: str) -> bool:
+        """Whether Glue stores this view in Hive form, whose definition SHOW CREATE VIEW cannot read.
+
+        Athena reads only its own views and Data Catalog views. Spark writes its views to Glue in Hive
+        form too, so they count as Hive views here.
+        """
         if not self.glue_client:
             return False
         get_table_params = {"DatabaseName": schema_name, "Name": table_name}
@@ -238,7 +243,6 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
         return bool(
             (original_text or table.get("ViewExpandedText"))
             and str(parameters.get("presto_view", "")).lower() != "true"
-            and "spark.sql.create.version" not in parameters
             and not original_text.lstrip().startswith("/* Presto View:")
         )
 
@@ -266,13 +270,14 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
                 )
                 self.status.warning(
                     key=table_fqn,
-                    reason="Athena cannot retrieve this Hive view definition with SHOW CREATE VIEW. "
+                    reason="Athena cannot retrieve this Hive or Spark view definition with SHOW CREATE VIEW. "
                     "The view was ingested without SQL; recreate it in Athena to make its definition available.",
                 )
             elif self._hive_view_warning_count == MAX_HIVE_VIEW_WARNINGS:
                 self.status.warning(
                     key=context.database_service,  # pyright: ignore[reportAttributeAccessIssue]
-                    reason=f"Additional Hive view definition warnings omitted after {MAX_HIVE_VIEW_WARNINGS} views.",
+                    reason="Additional Hive or Spark view definition warnings omitted "
+                    f"after {MAX_HIVE_VIEW_WARNINGS} views.",
                 )
             self._hive_view_warning_count += 1
             return None

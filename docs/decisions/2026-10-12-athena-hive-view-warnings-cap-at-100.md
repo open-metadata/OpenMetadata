@@ -15,7 +15,9 @@ every affected view would make workflow status grow with the size of a catalog.
 ## Decision
 
 Athena identifies a Hive view from Glue's `VIRTUAL_VIEW` metadata and skips `SHOW CREATE VIEW` for
-that view. The source adds a workflow warning keyed by the OpenMetadata table FQN for each of the
+that view. A Hive view is any Glue view that is neither an Athena view nor a Data Catalog view. Views
+created by Spark count, because Spark stores them in Glue in the same Hive form and Athena cannot read
+them either. The source adds a workflow warning keyed by the OpenMetadata table FQN for each of the
 first 100 Hive views, then one summary warning for further views. Warning text describes the
 limitation and action without including source SQL or credentials. Athena and Data Catalog views
 continue through their existing definition lookup.
