@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { isNil } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { createPath } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ICON_DIMENSION } from '../../../constants/constants';
 import {
@@ -56,33 +56,51 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
   const renderInfoValue = (info: EntityInfoItemV1) => {
     if (!info.isLink) {
-      return isNil(info.value) ? '-' : info.value;
-    }
-
-    if (info.isExternal && info.value !== '-') {
       return (
-        <a
-          className="summary-item-link tw:text-xs!"
-          href={info.url}
-          rel="noopener noreferrer"
-          target="_blank">
-          {info.value}
-          <IconExternalLink
-            className="m-l-xs tw:inline-block tw:align-middle"
-            data-testid="external-link-icon"
-            {...ICON_DIMENSION}
-          />
-        </a>
+        <Typography
+          className="tw:flex-1"
+          data-testid={`${info.name}-value`}
+          size="text-xs"
+          weight="medium">
+          {isNil(info.value) ? '-' : info.value}
+        </Typography>
       );
     }
 
+    // Rendered outside Typography: the global `.prose-typography a` rule in
+    // fonts.less would otherwise force the link to 14px.
+    const isExternal = info.isExternal && info.value !== '-';
+    const to = info.linkProps ?? info.url ?? '';
+
     return (
-      <Link
-        className="summary-item-link tw:text-xs!"
-        to={info.linkProps ?? info.url ?? ''}
-        onClick={onLinkClick}>
-        {info.value}
-      </Link>
+      <div className="tw:flex-1" data-testid={`${info.name}-value`}>
+        {isExternal ? (
+          <Button
+            className="tw:whitespace-normal"
+            color="link-color"
+            href={info.url}
+            iconTrailing={
+              <IconExternalLink
+                data-testid="external-link-icon"
+                {...ICON_DIMENSION}
+              />
+            }
+            rel="noopener noreferrer"
+            size="xs"
+            target="_blank">
+            {info.value}
+          </Button>
+        ) : (
+          <Button
+            className="tw:whitespace-normal"
+            color="link-color"
+            href={typeof to === 'string' ? to : createPath(to)}
+            size="xs"
+            onPress={onLinkClick}>
+            {info.value}
+          </Button>
+        )}
+      </div>
     );
   };
 
@@ -100,19 +118,13 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
         visibleEntityInfo.map((info) => (
           <div className="overview-row" key={info.name}>
             <Typography
-              className="overview-label tw:text-secondary"
+              className="tw:w-30 tw:shrink-0 tw:text-secondary"
               data-testid={`${info.name}-label`}
               size="text-xs"
               weight="regular">
               {info.name}
             </Typography>
-            <Typography
-              className="overview-value"
-              data-testid={`${info.name}-value`}
-              size="text-xs"
-              weight="medium">
-              {renderInfoValue(info)}
-            </Typography>
+            {renderInfoValue(info)}
           </div>
         ))
       )}

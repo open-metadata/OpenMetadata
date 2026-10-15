@@ -214,10 +214,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   const descriptionHeader = (
     <div className="description-header">
       <div className="description-title-row">
-        <Typography
-          className="description-title"
-          size="text-xs"
-          weight="semibold">
+        <Typography size="text-xs" weight="semibold">
           {t('label.description')}
         </Typography>
         {headerBadge}

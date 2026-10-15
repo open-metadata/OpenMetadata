@@ -259,10 +259,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     return (
       <div className="data-products-section">
         <div className="data-products-header">
-          <Typography
-            className="data-products-title"
-            size="text-xs"
-            weight="semibold">
+          <Typography size="text-xs" weight="semibold">
             {t('label.data-product-plural')}
           </Typography>
           {editButton}
@@ -275,10 +272,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   return (
     <div className="data-products-section">
       <div className="data-products-header">
-        <Typography
-          className="data-products-title"
-          size="text-xs"
-          weight="semibold">
+        <Typography size="text-xs" weight="semibold">
           {t('label.data-product-plural')}
         </Typography>
         {editButton}

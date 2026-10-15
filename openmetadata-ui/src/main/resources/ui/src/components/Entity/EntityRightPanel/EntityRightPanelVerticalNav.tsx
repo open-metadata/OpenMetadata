@@ -158,7 +158,7 @@ const EntityRightPanelVerticalNav: React.FC<
               id={key}
               key={key}>
               {icon}
-              <Typography className="tw:mx-auto tw:block tw:w-[54px] tw:text-center tw:text-[10px] tw:leading-[1.2] tw:text-inherit tw:break-words tw:whitespace-normal">
+              <Typography className="tw:w-[54px] tw:text-center tw:text-[10px] tw:leading-[1.2] tw:break-words">
                 {label}
               </Typography>
             </Tabs.Item>

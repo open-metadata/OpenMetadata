@@ -647,10 +647,7 @@ export const DataAssetSummaryPanelV1 = ({
             (dataAsset.owners as EntityReference[])?.length || 0
           }`}>
           <div className="owners-header">
-            <Typography
-              className="owners-title"
-              size="text-xs"
-              weight="semibold">
+            <Typography size="text-xs" weight="semibold">
               {t('label.owner-plural')}
             </Typography>
             {editOwnerPermission && (
@@ -761,7 +758,7 @@ export const DataAssetSummaryPanelV1 = ({
           (dataAsset.owners as EntityReference[])?.length || 0
         }`}>
         <div className="owners-header">
-          <Typography className="owners-title" size="text-xs" weight="semibold">
+          <Typography size="text-xs" weight="semibold">
             {t('label.owner-plural')}
           </Typography>
           {editOwnerPermission && (
@@ -831,7 +828,7 @@ export const DataAssetSummaryPanelV1 = ({
           (dataAsset.owners as EntityReference[])?.length || 0
         }`}>
         <div className="owners-header">
-          <Typography className="owners-title" size="text-xs" weight="semibold">
+          <Typography size="text-xs" weight="semibold">
             {t('label.owner-plural')}
           </Typography>
           {editOwnerPermission && (
@@ -923,10 +920,7 @@ export const DataAssetSummaryPanelV1 = ({
             (dataAsset.owners as EntityReference[])?.length || 0
           }`}>
           <div className="owners-header">
-            <Typography
-              className="owners-title"
-              size="text-xs"
-              weight="semibold">
+            <Typography size="text-xs" weight="semibold">
               {t('label.owner-plural')}
             </Typography>
             {editOwnerPermission && (

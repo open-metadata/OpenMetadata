@@ -304,9 +304,10 @@ const EntityTitleColumn = ({
     {isTourOpen ? (
       <CoreButton color="link-color" data-testid={source.fullyQualifiedName}>
         <Typography
-          className="font-medium text-link-color tw:leading-5"
+          className="tw:text-link"
           data-testid="entity-header-display-name"
-          size="text-sm">
+          size="text-sm"
+          weight="medium">
           {renderHighlightedText(searchClassBase.getEntityName(source))}
         </Typography>
       </CoreButton>
@@ -329,9 +330,10 @@ const EntityTitleColumn = ({
           onFocus={handlePrefetch}
           onMouseEnter={handlePrefetch}>
           <Typography
-            className="font-medium text-link-color tw:leading-5 break-word whitespace-normal"
+            className="tw:text-link tw:break-words tw:whitespace-normal"
             data-testid="entity-header-display-name"
-            size="text-sm">
+            size="text-sm"
+            weight="medium">
             {renderHighlightedText(searchClassBase.getEntityName(source))}
           </Typography>
         </Link>
