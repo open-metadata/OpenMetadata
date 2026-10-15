@@ -331,6 +331,10 @@ export const ROUTES = {
   NOTIFICATION_ALERT_LIST: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}`,
   NOTIFICATION_ALERT_DETAILS_WITH_TAB: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
+  SETTINGS_ANNOUNCEMENTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}`,
+  SETTINGS_ANNOUNCEMENT_ADD: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/add`,
+  SETTINGS_ANNOUNCEMENT_EDIT: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/edit/${PLACEHOLDER_ROUTE_ID}`,
+  SETTINGS_ANNOUNCEMENT_DUPLICATE: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/duplicate/${PLACEHOLDER_ROUTE_ID}`,
 
   // Metric Entity
   METRICS: '/metrics',
