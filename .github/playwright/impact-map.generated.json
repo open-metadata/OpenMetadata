@@ -546,6 +546,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/constant/ssoConfiguration.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/SSOConfiguration.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/constant/tableConstraint.ts"
       ],
       "specs": [
@@ -4732,6 +4740,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/settingsSource.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/SSOConfiguration.spec.ts",
         "playwright/e2e/Pages/EmailConfiguration.spec.ts",
         "playwright/e2e/Pages/OmdURLConfiguration.spec.ts"
       ]
@@ -8143,6 +8152,7 @@
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/SSOConfiguration.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
@@ -9170,6 +9180,14 @@
       "specs": [
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
         "playwright/e2e/Flow/CredentialFileUpload.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/SSOConfiguration.spec.ts"
       ]
     },
     {
@@ -10936,6 +10954,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/SettingsSourceBanner/SettingsSourceBanner.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/SSOConfiguration.spec.ts",
         "playwright/e2e/Pages/EmailConfiguration.spec.ts",
         "playwright/e2e/Pages/OmdURLConfiguration.spec.ts"
       ]

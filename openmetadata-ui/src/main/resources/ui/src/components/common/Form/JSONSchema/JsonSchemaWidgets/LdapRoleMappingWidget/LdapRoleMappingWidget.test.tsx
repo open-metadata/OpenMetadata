@@ -486,59 +486,6 @@ describe('LdapRoleMappingWidget', () => {
     });
   });
 
-  describe('Duplicate detection of LDAP group DNs', () => {
-    const fillMappings = async (groups: string[]) => {
-      await act(async () => {
-        render(<LdapRoleMappingWidget {...baseProps} />);
-      });
-
-      for (const _group of groups) {
-        await act(async () => {
-          fireEvent.click(screen.getByTestId('add-mapping-btn'));
-        });
-      }
-
-      const inputs = screen.getAllByTestId(/^ldap-group-input-/);
-
-      for (const [index, group] of groups.entries()) {
-        await act(async () => {
-          fireEvent.change(inputs[index], { target: { value: group } });
-        });
-      }
-    };
-
-    it.each([
-      ['differs only in case', 'CN=ADMINS,DC=EXAMPLE,DC=COM'],
-      [
-        'differs only in surrounding whitespace',
-        '  cn=admins,dc=example,dc=com  ',
-      ],
-    ])(
-      'should flag both mappings when a group DN %s',
-      async (_variant, duplicate) => {
-        await fillMappings(['cn=admins,dc=example,dc=com', duplicate]);
-
-        const errors = screen.getAllByTestId(/^ldap-group-error-/);
-
-        expect(errors).toHaveLength(2);
-        expect(errors[0]).toHaveTextContent(
-          'message.ldap-group-duplicate-error'
-        );
-      }
-    );
-
-    it('should accept three mappings with distinct group DNs', async () => {
-      await fillMappings([
-        'cn=admins,dc=example,dc=com',
-        'cn=users,dc=example,dc=com',
-        'cn=guests,dc=example,dc=com',
-      ]);
-
-      expect(screen.getAllByTestId(/^ldap-group-input-/)).toHaveLength(3);
-      expect(screen.queryAllByTestId(/^ldap-group-error-/)).toHaveLength(0);
-    });
-  });
-
   describe('React Key Stability Tests', () => {
     it('should use stable IDs for consistent mappings', async () => {
       const existingMappings = JSON.stringify({
