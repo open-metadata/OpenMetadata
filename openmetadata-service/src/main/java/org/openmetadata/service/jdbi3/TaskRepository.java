@@ -77,6 +77,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.tasks.TaskFieldValidator;
@@ -1062,7 +1063,28 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     if (!closeTask) {
+      requireAssigneeForWorkflowApproval(task, securityContext);
       enforceReviewerForApprovalStatusTask(task, securityContext);
+    }
+  }
+
+  /**
+   * A workflow's approval — a stage move or a held change — is decided by its assignees: an admin
+   * or owner who is not assigned cannot decide it for them. Bots keep access; the workflow engine
+   * resolves tasks through its own path.
+   */
+  private void requireAssigneeForWorkflowApproval(Task task, SecurityContext securityContext) {
+    final boolean workflowApproval =
+        task.getWorkflowInstanceId() != null
+            && (task.getType() == TaskEntityType.RequestApproval
+                || ChangeRequestTasks.reviewsChangeRequest(task));
+    final String userName = securityContext.getUserPrincipal().getName();
+    if (workflowApproval) {
+      final SubjectContext subject = SubjectContext.getSubjectContext(userName);
+      if (!subject.isBot() && !subject.isOwner(task.getAssignees())) {
+        throw new AuthorizationException(
+            CatalogExceptionMessage.taskOperationNotAllowed(userName, "resolveTask"));
+      }
     }
   }
 

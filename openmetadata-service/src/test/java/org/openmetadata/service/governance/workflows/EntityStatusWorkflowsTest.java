@@ -35,6 +35,24 @@ class EntityStatusWorkflowsTest {
   }
 
   @Test
+  void anEnforceWorkflowsApprovalPublishesTheHeldChangeAndOwnsNoStage() throws IOException {
+    ObjectNode json = metricApprovalWorkflow();
+    ArrayNode nodes = (ArrayNode) json.get("nodes");
+    ArrayNode approvalOnly = nodes.arrayNode();
+    for (JsonNode node : nodes) {
+      if (!"setEntityAttributeTask".equals(node.path("subType").asText())) {
+        approvalOnly.add(node);
+      }
+    }
+    json.set("nodes", approvalOnly);
+    ((ObjectNode) json.path("trigger").path("config")).put("approvalMode", "Enforce");
+
+    assertFalse(EntityStatusWorkflows.ownsStage(workflow(json)));
+    ((ObjectNode) json.path("trigger").path("config")).put("approvalMode", "Default");
+    assertTrue(EntityStatusWorkflows.ownsStage(workflow(json)));
+  }
+
+  @Test
   void suspendedWorkflowOwnsNoStage() throws IOException {
     WorkflowDefinition workflow = workflow(metricApprovalWorkflow()).withSuspended(true);
 

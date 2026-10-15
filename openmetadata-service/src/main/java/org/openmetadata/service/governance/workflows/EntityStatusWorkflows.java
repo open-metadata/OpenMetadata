@@ -22,6 +22,7 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.EventBased
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.TriggerEntityFilter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -105,10 +106,17 @@ public final class EntityStatusWorkflows implements StageOwnership {
     ACTIVE_STAGE_WORKFLOWS.invalidateAll();
   }
 
-  /** Whether the workflow, once deployed, owns a stage: it is not suspended and sets the stage. */
+  /**
+   * Whether the workflow, once deployed, owns a stage: it is not suspended and sets the stage. An
+   * Enforce workflow's approval publishes the held change it reviewed, so only a node of its own
+   * that writes the stage makes it an owner.
+   */
   static boolean ownsStage(WorkflowDefinition workflow) {
-    return !Boolean.TRUE.equals(workflow.getSuspended())
-        && listOrEmpty(workflow.getNodes()).stream().anyMatch(EntityStatusWorkflows::setsStage);
+    final boolean setsStage =
+        GovernanceApprovalRegistry.holdsChanges(workflow)
+            ? writesStageInANode(workflow)
+            : listOrEmpty(workflow.getNodes()).stream().anyMatch(EntityStatusWorkflows::setsStage);
+    return !Boolean.TRUE.equals(workflow.getSuspended()) && setsStage;
   }
 
   static boolean startsOn(WorkflowDefinition workflow, String entityType) {

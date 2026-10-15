@@ -15963,4 +15963,109 @@ public class WorkflowDefinitionResourceIT {
             });
     return found.getFirst();
   }
+
+  @Test
+  void test_onlyTheAssigneesDecideAWorkflowApproval(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    User approver =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName("approver_" + suffix)
+                    .withEmail("approver_" + suffix + "@example.com"));
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName("AssigneeOnlyApproval_" + suffix)
+                    .withDescription("Tags only the named approver can approve"));
+    String workflowJson =
+        """
+            {
+              "name": "%s",
+              "displayName": "Named approver workflow",
+              "description": "Only the named approver decides a new tag",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["tag"],
+                  "events": ["Created"],
+                  "exclude": [],
+                  "filter": {"tag": "{\\\"!\\\":{\\\"in\\\":[\\\"%s\\\",{\\\"var\\\":\\\"fullyQualifiedName\\\"}]}}"}
+                },
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"name": "start", "type": "startEvent", "subType": "startEvent"},
+                {
+                  "name": "Approve",
+                  "type": "userTask",
+                  "subType": "userApprovalTask",
+                  "config": {
+                    "assignees": {
+                      "addReviewers": false,
+                      "addOwners": false,
+                      "candidates": [
+                        {"id": "%s", "type": "user", "fullyQualifiedName": "%s", "name": "%s"}
+                      ]
+                    },
+                    "approvalThreshold": 1,
+                    "rejectionThreshold": 1
+                  },
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {"relatedEntity": "global"},
+                  "output": ["updatedBy"],
+                  "branches": ["true", "false"]
+                },
+                {"name": "end", "type": "endEvent", "subType": "endEvent"}
+              ],
+              "edges": [
+                {"from": "start", "to": "Approve"},
+                {"from": "Approve", "to": "end", "condition": "approve"},
+                {"from": "Approve", "to": "end", "condition": "reject"}
+              ],
+              "config": {"storeStageStatus": true}
+            }
+            """
+            .formatted(
+                "wf_assigneeOnlyApproval_" + suffix,
+                classification.getName(),
+                approver.getId(),
+                approver.getFullyQualifiedName(),
+                approver.getName());
+    WorkflowDefinition workflow =
+        client
+            .workflowDefinitions()
+            .create(JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class));
+    trackWorkflow(workflow.getName(), workflow.getId().toString());
+    waitForWorkflowDeployment(client, workflow.getName());
+
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("NeedsApproval")
+                    .withClassification(classification.getName())
+                    .withDescription("A tag with no reviewers"));
+    Task task =
+        awaitOpenApprovalTaskAssignedTo(client, tag.getFullyQualifiedName(), approver.getId());
+    org.openmetadata.schema.api.tasks.ResolveTask approve =
+        new org.openmetadata.schema.api.tasks.ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved);
+
+    ForbiddenException refused =
+        assertThrows(
+            ForbiddenException.class,
+            () -> client.tasks().resolve(task.getId().toString(), approve));
+    assertEquals(403, refused.getStatusCode());
+
+    SdkClients.createClient(approver.getName(), approver.getEmail(), new String[] {})
+        .tasks()
+        .resolve(task.getId().toString(), approve);
+    awaitApprovedApprovalTask(client, tag.getFullyQualifiedName());
+  }
 }

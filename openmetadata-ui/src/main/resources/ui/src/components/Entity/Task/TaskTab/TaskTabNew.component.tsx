@@ -161,6 +161,7 @@ import { TaskTabProps } from './TaskTab.interface';
 import {
   computeTaskEditAccessFlags,
   computeTaskOwnershipFlags,
+  computeWorkflowTaskAccess,
 } from './TaskTab.utils';
 
 const FeedbackApprovalTask = withSuspenseFallback(
@@ -1170,12 +1171,26 @@ export const TaskTabNew = ({
     }
   };
 
+  const { hasWorkflowAccess, showsWorkflowActions } = computeWorkflowTaskAccess(
+    {
+      isRequestApproval: task.type === TaskEntityType.RequestApproval,
+      hasChangeRequest: Boolean(changeRequestId),
+      isAssignee,
+      isPartOfAssigneeTeam: Boolean(isPartOfAssigneeTeam),
+      hasEditAccess,
+      isCreator,
+    }
+  );
+
   const workflowTransitionActions = useMemo(() => {
-    if (!isWorkflowDrivenTask || !task.availableTransitions?.length) {
+    if (
+      !isWorkflowDrivenTask ||
+      !task.availableTransitions?.length ||
+      !showsWorkflowActions
+    ) {
       return null;
     }
 
-    const hasWorkflowAccess = hasEditAccess || isCreator;
     const menuItems: TaskActionSplitButtonItem[] =
       task.availableTransitions.map((transition) => ({
         key: transition.id,
@@ -1249,9 +1264,9 @@ export const TaskTabNew = ({
       </Box>
     );
   }, [
-    hasEditAccess,
+    hasWorkflowAccess,
+    showsWorkflowActions,
     isActionLoading,
-    isCreator,
     isWorkflowDrivenTask,
     runWorkflowTransition,
     selectedTransition,
