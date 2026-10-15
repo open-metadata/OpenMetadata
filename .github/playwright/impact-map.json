@@ -1016,6 +1016,21 @@
       "sources": ["openmetadata-ui/src/main/resources/ui/eslint-suppressions.json"],
       "projects": [],
       "specs": []
+    },
+    {
+      "_comment": "The Add/Edit Test Definition drawer and the Test Library pages that open it, in classic and AI mode. The generated map reaches only TestDefinitionFormBody (through its testIds), so a change to the drawer shell, its props or the AI-mode page would otherwise run the full suite.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/TestLibrary/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestLibrary/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/Observability.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts"
+      ]
     }
   ]
 }
