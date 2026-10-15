@@ -66,7 +66,8 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // Targeting the core TreeSelect popovers and team picker by test id in the
     // UserDetails and team-editor specs removes more, and pinning
     // customize-navigation switches to their tree rows removes four more.
-    'om-playwright/no-positional-locator': 560,
+    // Picking the bulk-import entity type by its option role removes one more.
+    'om-playwright/no-positional-locator': 559,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

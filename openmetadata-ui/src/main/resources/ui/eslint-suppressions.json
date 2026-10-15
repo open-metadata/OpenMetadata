@@ -727,7 +727,7 @@
   },
   "playwright/utils/importUtils.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 21
+      "count": 20
     }
   },
   "playwright/utils/incidentManager.ts": {
@@ -803,11 +803,6 @@
       "count": 3
     }
   },
-  "src/components/ContextCenter/CreateMemoryModal/CreateMemoryModal.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/Dashboard/DashboardVersion/DashboardVersion.component.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
@@ -833,14 +828,9 @@
       "count": 2
     }
   },
-  "src/components/DataInsight/TotalEntityInsightSummary.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/Database/TableQueries/TableQueries.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 3
+      "count": 2
     }
   },
   "src/components/Database/TableQueries/TableQueryRightPanel/TableQueryRightPanel.component.tsx": {
@@ -918,11 +908,6 @@
       "count": 1
     }
   },
-  "src/components/Pipeline/Execution/Execution.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
   "src/components/Pipeline/PipelineTaskTab/PipelineTaskTab.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
@@ -978,11 +963,6 @@
       "count": 1
     }
   },
-  "src/components/Settings/Bot/BotDetails/AuthMechanismForm.test.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/Settings/Bot/BotDetails/BotDetails.component.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 2
@@ -1013,39 +993,9 @@
       "count": 1
     }
   },
-  "src/components/common/AsyncSelect/AsyncSelect.test.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/common/AsyncSelect/AsyncSelect.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 3
-    }
-  },
-  "src/components/common/AsyncSelect/AsyncSelectList.interface.ts": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/common/DatePicker/DatePicker.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
   "src/components/common/DraggableTabs/DraggableTabs.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 4
-    }
-  },
-  "src/components/common/DrawerPopupContainerProvider/DrawerPopupContainerProvider.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/common/FilterPattern/FilterPattern.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
     }
   },
   "src/components/common/Form/FormItemLabel.tsx": {
@@ -1098,11 +1048,6 @@
       "count": 1
     }
   },
-  "src/components/common/SanitizedInput/SanitizedInput.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
   "src/components/common/Table/DraggableMenu/DraggableMenuItem.component.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 2
@@ -1113,29 +1058,9 @@
       "count": 1
     }
   },
-  "src/components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/constants/Form.constants.ts": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/context/AntDConfigProvider/AntDConfigProvider.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
-    }
-  },
-  "src/interface/FormUtils.interface.ts": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 3
-    }
-  },
-  "src/pages/AddNotificationPage/AddNotificationPage.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 3
     }
   },
   "src/pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage.tsx": {
@@ -1208,21 +1133,6 @@
       "count": 2
     }
   },
-  "src/utils/Alerts/AlertsUtilPure.ts": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/utils/CSV/CSVUtilsClassBase.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/utils/CSV/EntityBulkEditConfigClassBase.ts": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/utils/DataAssetsVersionHeaderUtils.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
@@ -1248,11 +1158,6 @@
       "count": 1
     }
   },
-  "src/utils/FilterQueryUtils.ts": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/utils/Lineage/LineageUtils.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 2
@@ -1269,11 +1174,6 @@
     }
   },
   "src/utils/ObservabilityUtils.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/utils/SearchSettingsUtils.ts": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
     }
@@ -1296,11 +1196,6 @@
   "src/utils/executionUtils.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
-    }
-  },
-  "src/utils/formUtils.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 5
     }
   },
   "src/utils/mocks/EntitySummaryPanelUtils.mock.tsx": {
