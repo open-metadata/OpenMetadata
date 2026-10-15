@@ -13,7 +13,7 @@
 
 import { Badge, ButtonUtility } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { isNumber } from 'lodash';
+import { isNil } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -33,6 +33,21 @@ export interface SubPanelProps {
   /** Extra sections rendered below the static config sections. */
   dynamicSections?: React.ReactNode;
 }
+
+// A text badge replaces the count and joins the accessible name, which aria-label would otherwise hide.
+const getItemBadge = (
+  item: SubNavItem,
+  label: string,
+  translate: (key: string) => string,
+  liveCount?: number
+) => {
+  const text = item.badgeKey ? translate(item.badgeKey) : undefined;
+
+  return {
+    badge: text ?? liveCount ?? item.badgeCount,
+    accessibleLabel: text ? `${label} (${text})` : label,
+  };
+};
 
 const SubPanel: React.FC<SubPanelProps> = ({
   config,
@@ -136,7 +151,12 @@ const SubPanel: React.FC<SubPanelProps> = ({
               const isActive = activeKey === item.key;
               const Icon =
                 isActive && item.activeIcon ? item.activeIcon : item.icon;
-              const count = badges?.[item.key] ?? item.badgeCount;
+              const { badge, accessibleLabel } = getItemBadge(
+                item,
+                label,
+                t,
+                badges?.[item.key]
+              );
               const itemClassName = classNames('ask-sub-panel__item', {
                 'ask-sub-panel__item--active': activeKey === item.key,
                 'ask-sub-panel__item--emphasized': item.emphasized,
@@ -149,11 +169,11 @@ const SubPanel: React.FC<SubPanelProps> = ({
                     </span>
                   ) : null}
                   <span className="ask-sub-panel__item-label">{label}</span>
-                  {isNumber(count) ? (
+                  {isNil(badge) ? null : (
                     <Badge color={item.badgeColor ?? 'gray'} size="sm">
-                      {count}
+                      {badge}
                     </Badge>
-                  ) : null}
+                  )}
                 </>
               );
 
@@ -164,7 +184,7 @@ const SubPanel: React.FC<SubPanelProps> = ({
                 <li key={item.key}>
                   {item.path && !item.intent ? (
                     <Link
-                      aria-label={label}
+                      aria-label={accessibleLabel}
                       className={itemClassName}
                       data-testid={`ask-sub-panel-item-${item.key}`}
                       to={item.path}>
@@ -172,7 +192,7 @@ const SubPanel: React.FC<SubPanelProps> = ({
                     </Link>
                   ) : (
                     <button
-                      aria-label={label}
+                      aria-label={accessibleLabel}
                       className={itemClassName}
                       data-testid={`ask-sub-panel-item-${item.key}`}
                       type="button"
