@@ -564,10 +564,12 @@ jobs:
       - uses: ./.github/actions/ci-java-reactor
         with:
           mode: restore
+      # Every attempt's: a re-run leaves the lanes it did not re-run with an earlier
+      # attempt's evidence, and `select` keeps each lane's newest.
       - name: Download the lanes' evidence
         uses: actions/download-artifact@v7
         with:
-          pattern: evidence-it-*-a${{ github.run_attempt }}
+          pattern: evidence-it-*
           path: ${{ env.WORK }}/evidence
       - name: Select failing tests
         id: select
