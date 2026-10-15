@@ -337,7 +337,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           const value = [...(keys as Set<LineageDirection>)][0];
           if (value) {
             handlePageChange(1);
-            updateURLParams({ dir: value });
+            updateURLParams({
+              dir: value,
+              depth:
+                value === LineageDirection.Upstream
+                  ? lineageConfig.upstreamDepth
+                  : lineageConfig.downstreamDepth,
+            });
           }
         }}>
         {radioGroupOptions.map((option) => (
@@ -350,7 +356,14 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         ))}
       </ButtonGroup>
     );
-  }, [handlePageChange, lineageDirection, radioGroupOptions, updateURLParams]);
+  }, [
+    handlePageChange,
+    lineageConfig.downstreamDepth,
+    lineageConfig.upstreamDepth,
+    lineageDirection,
+    radioGroupOptions,
+    updateURLParams,
+  ]);
 
   // Column-level filter keys used for column_filter post-processing
   // On Table-level: only COLUMN goes to column_filter (for Column dropdown in post-processing)
@@ -635,21 +648,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   useEffect(() => {
     updateEntityDataRef.current(entityType, entity, false);
   }, [entityType, entity]);
-
-  // Sync node depth with lineageConfig
-  useEffect(() => {
-    updateURLParams({
-      depth:
-        lineageDirection === LineageDirection.Upstream
-          ? lineageConfig.upstreamDepth
-          : lineageConfig.downstreamDepth,
-    });
-  }, [
-    lineageConfig.downstreamDepth,
-    lineageConfig.upstreamDepth,
-    lineageDirection,
-    updateURLParams,
-  ]);
 
   const nodeDepthOptions = useMemo(() => {
     return (

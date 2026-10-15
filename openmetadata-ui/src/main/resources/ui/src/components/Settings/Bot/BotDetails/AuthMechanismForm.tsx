@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Select } from 'antd';
+import {
+  Box,
+  Button,
+  FormField,
+  HookForm,
+  Select,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import { ClientErrors } from '../../../../enums/Axios.enum';
 import {
   PersonalAccessToken,
@@ -36,8 +42,6 @@ import {
 } from '../../../../rest/settingConfigAPI';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-
-const { Option } = Select;
 
 const DEFAULT_SCIM_CONFIGURATION: ScimConfiguration = {
   enabled: true,
@@ -65,6 +69,11 @@ const enableScimProvisioning = async () => {
   }
 };
 
+interface AuthFormValues {
+  authType?: string;
+  tokenExpiry: string;
+}
+
 interface Props {
   isUpdating: boolean;
   authenticationMechanism: AuthenticationMechanism | PersonalAccessToken;
@@ -83,9 +92,9 @@ const AuthMechanismForm: FC<Props> = ({
   isSCIMBot,
 }) => {
   const { t } = useTranslation();
-  const handleSave: FormProps['onFinish'] = (values) => {
+  const handleSave = (values: AuthFormValues) => {
     const updatedAuthMechanism: AuthenticationMechanism = {
-      authType: values?.authType ?? AuthType.Jwt,
+      authType: (values?.authType as AuthType) ?? AuthType.Jwt,
       config: {
         JWTTokenExpiry: values.tokenExpiry as JWTTokenExpiry,
       },
@@ -123,6 +132,10 @@ const AuthMechanismForm: FC<Props> = ({
     };
   }, [isBot, authenticationMechanism]);
 
+  const form = useForm<AuthFormValues>({
+    values: { authType, tokenExpiry },
+  });
+
   const handleGenerateSCIMToken = useCallback(async () => {
     if (isSCIMBot) {
       try {
@@ -154,45 +167,55 @@ const AuthMechanismForm: FC<Props> = ({
         </Typography>
       </div>
       <Button
-        className="text-sm generate-scim-token-btn"
+        color="primary"
         data-testid="generate-scim-token"
-        size="small"
-        type="primary"
+        size="xs"
         onClick={handleGenerateSCIMToken}>
         {t('label.generate-token')}
       </Button>
     </div>
   ) : (
-    <Form
+    <HookForm
+      className="tw:flex tw:flex-col tw:gap-4"
+      form={form}
       id="update-auth-mechanism-form"
-      initialValues={{ authType, tokenExpiry }}
-      layout="vertical"
-      validateMessages={VALIDATION_MESSAGES}
-      onFinish={handleSave}>
-      <Form.Item label={t('label.auth-mechanism')} name="authType">
-        <Select
-          disabled
-          className="w-full"
-          data-testid="auth-mechanism"
-          placeholder={t('label.select-field', {
-            field: t('label.auth-mechanism'),
-          })}>
-          <Option key={authOptions.value}>{authOptions.label}</Option>
-        </Select>
-      </Form.Item>
-
-      <Form.Item
-        label={t('label.token-expiration')}
+      onSubmit={form.handleSubmit(handleSave)}>
+      <Select
+        isDisabled
+        className="tw:w-full"
+        data-testid="auth-mechanism"
+        items={[{ id: authOptions.value, label: authOptions.label }]}
+        label={t('label.auth-mechanism')}
+        placeholder={t('label.select-field', {
+          field: t('label.auth-mechanism'),
+        })}
+        selectedKey={authOptions.value}>
+        {(item) => <Select.Item id={item.id} label={item.label} />}
+      </Select>
+      <FormField
+        control={form.control}
         name="tokenExpiry"
-        rules={[{ required: true }]}>
-        <Select
-          className="w-full"
-          data-testid="token-expiry"
-          placeholder={t('message.select-token-expiration')}>
-          {getJWTTokenExpiryOptions(!isBot)}
-        </Select>
-      </Form.Item>
-
+        rules={{
+          required: t('message.field-text-is-required', {
+            fieldText: t('label.token-expiration'),
+          }),
+        }}>
+        {({ field, fieldState }) => (
+          <Select
+            isRequired
+            className="tw:w-full"
+            data-testid="token-expiry"
+            hint={fieldState.error?.message}
+            isInvalid={fieldState.invalid}
+            items={getJWTTokenExpiryOptions(!isBot)}
+            label={t('label.token-expiration')}
+            placeholder={t('message.select-token-expiration')}
+            selectedKey={field.value ?? null}
+            onSelectionChange={(key) => key !== null && field.onChange(key)}>
+            {(item) => <Select.Item id={item.id} label={item.label} />}
+          </Select>
+        )}
+      </FormField>
       <Box
         inline
         align="center"
@@ -200,20 +223,23 @@ const AuthMechanismForm: FC<Props> = ({
         gap={1}
         itemClassName="layout-space-item">
         {!isEmpty(authenticationMechanism) && (
-          <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
+          <Button
+            color="link-color"
+            data-testid="cancel-edit"
+            onClick={onCancel}>
             {t('label.cancel')}
           </Button>
         )}
         <Button
+          color="primary"
           data-testid="save-edit"
           form="update-auth-mechanism-form"
-          htmlType="submit"
-          loading={isUpdating}
-          type="primary">
+          isLoading={isUpdating}
+          type="submit">
           {t('label.generate')}
         </Button>
       </Box>
-    </Form>
+    </HookForm>
   );
 };
 

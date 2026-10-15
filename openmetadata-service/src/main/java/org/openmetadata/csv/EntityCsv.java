@@ -101,8 +101,8 @@ import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -137,6 +137,10 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   public static final String FIELD_FULLY_QUALIFIED_NAME = "fullyQualifiedName";
 
   public static final int DEFAULT_BATCH_SIZE = 100;
+
+  // Glossary terms are imported and exported through GlossaryCsv, so they share its documentation.
+  private static final Map<String, String> CSV_DOCUMENTATION_TYPES =
+      Map.of(Entity.GLOSSARY_TERM, Entity.GLOSSARY);
 
   private final String entityType;
   private final List<CsvHeader> csvHeaders;
@@ -324,7 +328,8 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   }
 
   public static CsvDocumentation getCsvDocumentation(String entityType, boolean recursive) {
-    String effectiveEntityType = (recursive) ? "entity" : entityType;
+    String effectiveEntityType =
+        recursive ? "entity" : CSV_DOCUMENTATION_TYPES.getOrDefault(entityType, entityType);
     LOG.info("Initializing CSV documentation for entity {}", effectiveEntityType);
 
     String path =
@@ -334,24 +339,19 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     try {
       List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
       if (jsonDataFiles.isEmpty()) {
-        String message =
-            String.format(
-                "Failed to load CSV documentation for entity %s from path %s",
-                effectiveEntityType, path);
-        LOG.error("FATAL - {}", message);
-        throw new IllegalStateException(message);
+        throw EntityNotFoundException.byMessage(
+            String.format("No CSV documentation exists for entity type %s", entityType));
       }
       String json =
           CommonUtil.getResourceAsStream(
               EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
       return JsonUtils.readValue(json, CsvDocumentation.class);
     } catch (IOException | JsonParsingException e) {
-      String message =
+      throw new IllegalStateException(
           String.format(
               "Failed to load CSV documentation for entity %s from path %s",
-              effectiveEntityType, path);
-      LOG.error("FATAL - {}", message, e);
-      throw new IllegalStateException(message, e);
+              effectiveEntityType, path),
+          e);
     }
   }
 
@@ -1287,7 +1287,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   private void createChangeEventAndUpdateInES(PutResponse<T> response, String importedBy) {
     if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(
+          ChangeEvents.createChangeEventForEntity(
               importedBy, response.getChangeType(), response.getEntity());
       Object entity = changeEvent.getEntity();
       changeEvent = copyChangeEvent(changeEvent);
@@ -1327,7 +1327,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
                 .withDefaultPersona(user.getDefaultPersona());
       }
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(
+          ChangeEvents.createChangeEventForEntity(
               importedBy, response.getChangeType(), entityForEvent);
       Object eventEntity = changeEvent.getEntity();
       changeEvent = copyChangeEvent(changeEvent);
@@ -1339,7 +1339,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
 
   private void createChangeEventForBatchedEntity(EntityInterface<?> entity, EventType eventType) {
     ChangeEvent changeEvent =
-        FormatterUtil.createChangeEventForEntity(importedBy, eventType, entity);
+        ChangeEvents.createChangeEventForEntity(importedBy, eventType, entity);
     Object eventEntity = changeEvent.getEntity();
     changeEvent = copyChangeEvent(changeEvent);
     changeEvent.setEntity(JsonUtils.pojoToMaskedJson(eventEntity));

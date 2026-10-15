@@ -88,6 +88,8 @@ export interface ApplicationStore
   setAppVersion: (version: string) => void;
   setRdfEnabled: (enabled: boolean) => void;
   initializeAuthState: () => void;
+  timeFormat: '12h' | '24h';
+  setTimeFormat: (format: '12h' | '24h') => void;
 }
 
 export interface DomainStore {
@@ -95,7 +97,7 @@ export interface DomainStore {
   activeDomain: string;
   activeDomainEntityRef?: EntityReference;
   isDomainRestricted: boolean;
-  updateActiveDomain: (domain: EntityReference) => void;
+  updateActiveDomain: (domain?: EntityReference) => void;
   setUserDomains: (userDomainsArr: EntityReference[]) => void;
   setDomainRestriction: (restricted: boolean) => void;
 }

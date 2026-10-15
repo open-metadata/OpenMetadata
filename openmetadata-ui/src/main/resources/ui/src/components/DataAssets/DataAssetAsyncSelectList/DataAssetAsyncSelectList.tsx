@@ -15,9 +15,11 @@ import { castArray, isString } from 'lodash';
 import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { EntityIconSize } from '../../../utils/EntityIconUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import DataAssetPickerCountBar from '../DataAssetSelectList/DataAssetPickerCountBar';
+import DataAssetPickerFooter from '../DataAssetSelectList/DataAssetPickerFooter';
+import DataAssetPickerLoading from '../DataAssetSelectList/DataAssetPickerLoading';
+import DataAssetPickerRow from '../DataAssetSelectList/DataAssetPickerRow';
 import { useAsyncDataAssetOptions } from '../DataAssetSelectList/useAsyncDataAssetOptions';
 import {
   DataAssetAsyncSelectListProps,
@@ -58,13 +60,19 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState<DataAssetOption[]>([]);
 
-  const { options, loadOptions, handleSearchChange, handleScroll } =
-    useAsyncDataAssetOptions({
-      isOpen,
-      searchIndex,
-      queryFilter,
-      debounceTimeout,
-    });
+  const {
+    options,
+    isLoading,
+    totalCount,
+    loadOptions,
+    handleSearchChange,
+    handleScroll,
+  } = useAsyncDataAssetOptions({
+    isOpen,
+    searchIndex,
+    queryFilter,
+    debounceTimeout,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -141,7 +149,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
             <ProfilePicture
               isTeam={type === EntityType.TEAM}
               name={option?.name ?? ''}
-              width="24"
+              size="xs"
             />
             <span data-testid={item.label}>{item.label}</span>
           </div>
@@ -150,31 +158,43 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     }
 
     return (
-      <Autocomplete.Item
-        data-testid={`option-${item.id}`}
-        icon={searchClassBase.getEntityIconWithBg(
-          type ?? '',
-          EntityIconSize.Size14
-        )}
-        id={item.id}
+      <DataAssetPickerRow
         key={item.id}
-        label={item.label}
-        supportingText={type}
+        option={{
+          id: item.id,
+          label: item.label ?? '',
+          displayName: option?.displayName,
+          name: option?.name,
+          type,
+        }}
       />
     );
   };
+
+  const visibleCount = useMemo(() => {
+    const selectedIds = new Set(selectedItems.map((s) => s.id));
+
+    return items.filter((i) => !selectedIds.has(i.id)).length;
+  }, [items, selectedItems]);
 
   return (
     <Autocomplete
       // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the async select when the list mounts
       autoFocus={autoFocus}
       data-testid="asset-select-list"
+      emptyState={isLoading ? <DataAssetPickerLoading /> : undefined}
       filterOption={() => true}
       id={id}
-      items={items}
+      // Swap the list for the loader on every search, as DataAssetPickerShell does,
+      // rather than leave the previous query's results looking current.
+      items={isLoading ? [] : items}
       multiple={multiple}
       placeholder={placeholder}
       popoverClassName={popoverClassName}
+      popoverFooter={<DataAssetPickerFooter />}
+      popoverHeader={
+        <DataAssetPickerCountBar count={visibleCount} total={totalCount} />
+      }
       selectedItems={selectedItems}
       onItemCleared={handleItemCleared}
       onItemInserted={handleItemInserted}

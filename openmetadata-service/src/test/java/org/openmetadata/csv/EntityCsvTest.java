@@ -70,7 +70,7 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
-import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
@@ -697,11 +697,21 @@ public class EntityCsvTest {
     assertNotNull(recursiveDocumentation);
     assertTrue(recursiveDocumentation.getSummary().contains("Entity CSV file"));
 
-    IllegalStateException exception =
+    org.openmetadata.service.exception.EntityNotFoundException exception =
         assertThrows(
-            IllegalStateException.class,
+            org.openmetadata.service.exception.EntityNotFoundException.class,
             () -> EntityCsv.getCsvDocumentation("missing-entity-type", false));
+    assertEquals(Response.Status.NOT_FOUND.getStatusCode(), exception.getResponse().getStatus());
     assertTrue(exception.getMessage().contains("missing-entity-type"));
+  }
+
+  @Test
+  void test_getCsvDocumentationServesGlossaryDocumentationForGlossaryTerms() {
+    CsvDocumentation glossaryDocumentation = EntityCsv.getCsvDocumentation(Entity.GLOSSARY, false);
+    CsvDocumentation termDocumentation = EntityCsv.getCsvDocumentation(Entity.GLOSSARY_TERM, false);
+
+    assertFalse(termDocumentation.getHeaders().isEmpty());
+    assertEquals(glossaryDocumentation, termDocumentation);
   }
 
   @Test
@@ -1064,7 +1074,7 @@ public class EntityCsvTest {
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
         MockedStatic<RuleEngine> ruleEngineStatic = Mockito.mockStatic(RuleEngine.class);
         MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class);
-        MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
+        MockedStatic<ChangeEvents> formatterUtil = Mockito.mockStatic(ChangeEvents.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
       ruleEngineStatic.when(RuleEngine::getInstance).thenReturn(ruleEngine);
       validatorUtil.when(() -> ValidatorUtil.validate(createdEntity)).thenReturn(null);
@@ -1072,13 +1082,13 @@ public class EntityCsvTest {
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_CREATED, createdEntity))
           .thenReturn(createdChangeEvent);
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_UPDATED, updatedEntity))
           .thenReturn(updatedChangeEvent);
 
@@ -1233,7 +1243,7 @@ public class EntityCsvTest {
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
         MockedStatic<RuleEngine> ruleEngineStatic = Mockito.mockStatic(RuleEngine.class);
         MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class);
-        MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
+        MockedStatic<ChangeEvents> formatterUtil = Mockito.mockStatic(ChangeEvents.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
       ruleEngineStatic.when(RuleEngine::getInstance).thenReturn(ruleEngine);
       validatorUtil.when(() -> ValidatorUtil.validate(firstEntity)).thenReturn(null);
@@ -1241,7 +1251,7 @@ public class EntityCsvTest {
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_CREATED, firstEntity))
           .thenReturn(createdChangeEvent);
       Mockito.when(repository.findMatchForImport(firstEntity)).thenReturn(null);
@@ -1397,7 +1407,7 @@ public class EntityCsvTest {
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
         MockedStatic<RuleEngine> ruleEngineStatic = Mockito.mockStatic(RuleEngine.class);
         MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class);
-        MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
+        MockedStatic<ChangeEvents> formatterUtil = Mockito.mockStatic(ChangeEvents.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
       ruleEngineStatic.when(RuleEngine::getInstance).thenReturn(ruleEngine);
       validatorUtil.when(() -> ValidatorUtil.validate(firstEntity)).thenReturn(null);
@@ -1405,7 +1415,7 @@ public class EntityCsvTest {
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_CREATED, firstEntity))
           .thenReturn(createdChangeEvent);
       Mockito.when(repository.findMatchForImport(firstEntity)).thenReturn(null);
@@ -1502,17 +1512,17 @@ public class EntityCsvTest {
             .withEntityType(Entity.TABLE)
             .withEntity(entity)
             .withEventType(EventType.ENTITY_UPDATED);
-    try (MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
+    try (MockedStatic<ChangeEvents> formatterUtil = Mockito.mockStatic(ChangeEvents.class)) {
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_UPDATED, entity))
           .thenReturn(changeEvent);
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_CREATED, entity))
           .thenReturn(
               new ChangeEvent()
@@ -1670,7 +1680,7 @@ public class EntityCsvTest {
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
         MockedStatic<RuleEngine> ruleEngineStatic = Mockito.mockStatic(RuleEngine.class);
         MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class);
-        MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
+        MockedStatic<ChangeEvents> formatterUtil = Mockito.mockStatic(ChangeEvents.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
       entity
           .when(
@@ -1688,7 +1698,7 @@ public class EntityCsvTest {
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_CREATED, pendingEntity))
           .thenReturn(createdChangeEvent);
 
@@ -2439,7 +2449,7 @@ public class EntityCsvTest {
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
         MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class);
-        MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
+        MockedStatic<ChangeEvents> formatterUtil = Mockito.mockStatic(ChangeEvents.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(repository);
       validatorUtil.when(() -> ValidatorUtil.validate(user)).thenReturn(null);
       validatorUtil
@@ -2448,7 +2458,7 @@ public class EntityCsvTest {
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       Mockito.eq("admin"),
                       Mockito.eq(EventType.ENTITY_CREATED),
                       Mockito.any(EntityInterface.class)))

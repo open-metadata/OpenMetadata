@@ -730,10 +730,12 @@ export const addAssetToGlossaryTerm = async (
   await expect(assetSelectionModal).toBeVisible();
   await expect(assetSelectionModal).toContainText('Add Assets');
 
-  await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
+  await expect(page.getByTestId('asset-filters')).toBeVisible();
 
   await expect(
-    page.locator('.asset-filters-wrapper .explore-quick-filters-container')
+    page
+      .getByTestId('asset-filters')
+      .locator('.explore-quick-filters-container')
   ).toBeVisible();
 
   const filterButton = page.locator(
@@ -759,7 +761,7 @@ export const addAssetToGlossaryTerm = async (
     await page
       .locator(`[data-testid="table-data-card_${entityFqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
     await waitForAllLoadersToDisappear(page);
     await expect(
       page.locator(
@@ -868,10 +870,12 @@ export const verifyAssetModalFilters = async (
   await expect(assetSelectionModal).toBeVisible();
   await expect(assetSelectionModal).toContainText('Add Assets');
 
-  await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
+  await expect(page.getByTestId('asset-filters')).toBeVisible();
 
   await expect(
-    page.locator('.asset-filters-wrapper .explore-quick-filters-container')
+    page
+      .getByTestId('asset-filters')
+      .locator('.explore-quick-filters-container')
   ).toBeVisible();
 
   const filterButton = page.locator(
@@ -886,7 +890,7 @@ export const verifyAssetModalFilters = async (
     ).toBeVisible();
   }
 
-  const filterWrapper = page.locator('.asset-filters-wrapper');
+  const filterWrapper = page.getByTestId('asset-filters');
   await waitForAllLoadersToDisappear(page);
 
   await testFilterWithSpecificOption(
@@ -1851,7 +1855,17 @@ export const setupGlossaryDenyPermissionTest = async (
 };
 
 export const performExpandAll = async (page: Page) => {
-  const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
+  // Match only the expand-tree fetch (?glossary= / ?parent=). A bare
+  // glossaryTerms glob also matches the tab's first-level ?directChildrenOf=
+  // fetch, so the wait could resolve before the tree request was even sent.
+  const termRes = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname.endsWith('/api/v1/glossaryTerms') &&
+      (url.searchParams.has('glossary') || url.searchParams.has('parent'))
+    );
+  });
   await page.getByTestId('expand-collapse-all-button').click();
   await termRes;
 

@@ -85,25 +85,21 @@ test('Query Entity', async ({ page }) => {
     await page.click(descriptionBox);
     await page.keyboard.type(queryData.description);
 
-    await page
+    const queryUsedInInput = page
       .getByTestId('query-used-in')
-      .locator('div')
-      .filter({ hasText: 'Please Select a Query Used In' })
-      .click();
+      .getByRole('combobox');
+    await queryUsedInInput.click();
     const tableSearchResponse = page.waitForResponse(
       `/api/v1/search/query?q=*&index=table*`
     );
-    await page.keyboard.type(queryData.queryUsedIn.table1);
+    await queryUsedInInput.fill(queryData.queryUsedIn.table1);
     await tableSearchResponse;
 
     await page
-      .locator('.ant-select-dropdown:visible .ant-select-item-option')
-      .filter({
-        has: page.getByText(queryData.queryUsedIn.table1, { exact: true }),
-      })
+      .getByRole('option', { name: queryData.queryUsedIn.table1, exact: true })
       .click();
 
-    await clickOutside(page);
+    await page.keyboard.press('Escape');
 
     const createQueryResponse = page.waitForResponse('/api/v1/queries');
     await page.click('[data-testid="save-btn"]');
@@ -167,9 +163,9 @@ test('Query Entity', async ({ page }) => {
     );
     await page.click(`[data-testid="save"]`);
     await updateDescriptionResponse;
-    await page.locator('.ant-modal-body').waitFor({
-      state: 'detached',
-    });
+    await page
+      .locator('[role="dialog"].description-markdown-editor')
+      .waitFor({ state: 'detached' });
 
     // Update Tags
     await page.getByTestId('add-tag').click();
@@ -205,14 +201,18 @@ test('Query Entity', async ({ page }) => {
     await page.click(CODE_EDITOR_LINE, { clickCount: 3 });
     await page.keyboard.press('Backspace');
     await page.keyboard.type(`${queryData.queryUsedIn.table1}`);
-    await page.click('[data-testid="edit-query-used-in"]');
     const tableSearchResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=table*'
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('index=table')
     );
-    await page.keyboard.type(queryData.queryUsedIn.table2);
+    await page
+      .getByTestId('edit-query-used-in')
+      .getByRole('combobox')
+      .fill(queryData.queryUsedIn.table2);
     await tableSearchResponse;
     await page
-      .locator('.ant-select-dropdown:visible .ant-select-item-option')
+      .getByRole('option')
       .filter({
         has: page.getByText(queryData.queryUsedIn.table2, { exact: true }),
       })
@@ -423,28 +423,28 @@ test('Verify Query Pagination', async ({ page, browser }) => {
 
   await expect(page.getByTestId('previous')).toBeDisabled();
 
-  await expect(page.getByText('15 / page')).toBeVisible();
+  const pageSizeDropdown = page.getByTestId('rows-per-page-dropdown');
+
+  await expect(pageSizeDropdown).toContainText('15');
 
   // Change page size to 25
-  await page.locator('.ant-pagination-options-size-changer').click();
+  await pageSizeDropdown.click();
   const pageSizeResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=query&from=0&size=25&deleted=false&query_filter=**'
   );
-  await page.getByTitle('25 / Page').click();
+  await page.getByTestId('rows-per-page-option-25').click();
   await pageSizeResponse;
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByText('25 / page')).toBeVisible();
+  await expect(pageSizeDropdown).toContainText('25');
 
-  // check if the page size list is same as the page size list in the dropdown
-  await page.locator('.ant-pagination-options-size-changer').click();
+  // The page size list offers exactly 15, 25 and 50.
+  await pageSizeDropdown.click();
 
-  // This is to check in the options only 3 sizes are visible.
-  // 15, 25, 50  Derived from locator which is overall and not contain to check the exact text
-  await expect(page.locator('.ant-pagination-options')).toHaveText(
-    '25 / page15255015 / page25 / page50 / page'
-  );
+  await expect(
+    page.locator('[data-testid^="rows-per-page-option-"]')
+  ).toHaveText(['15', '25', '50']);
 
   await afterAction();
 });
