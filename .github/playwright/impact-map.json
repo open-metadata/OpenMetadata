@@ -496,6 +496,7 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/ContextMemoryRepositoryTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/search/ContextMemoryIndexMappingTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/search/indexes/ContextMemoryIndexTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/ContextMemoryResourceTest.java",
         "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterPureUtils.test.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ContextMemoryLifecycle.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/ContextMemoryLifecycleTest.java",

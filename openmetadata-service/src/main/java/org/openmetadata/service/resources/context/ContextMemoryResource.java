@@ -46,6 +46,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -90,6 +91,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   public static final String FIELDS =
       "owners,tags,domains,primaryEntity,relatedEntities,derivedEntities";
   static final String STALE_RECOUNT = "A later recount of this memory's outcomes is already stored";
+  static final String COUNTED_AT_REQUIRED = "countedAt is required: it orders the recounts";
+  static final String COUNTED_AT_AHEAD = "countedAt %d is ahead of the server clock";
+  static final Duration COUNTED_AT_CLOCK_SKEW = Duration.ofMinutes(1);
   private static final String PIN_UPDATE_FIELDS =
       FIELDS + ",rootMemory,parentMemory,sourceEntity,sourceFile";
 
@@ -708,8 +712,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       summary = "Record a memory's outcome counters",
       description =
           "Set the outcome counters of a context memory to the values of one recount. Only admins"
-              + " and bots may write them; the version and timestamps are unchanged, and a recount"
-              + " older than the stored one is rejected with 409.",
+              + " and bots may write them; countedAt is required and may not be ahead of the"
+              + " server clock; the version and timestamps are unchanged, and a recount older than"
+              + " the stored one is rejected with 409.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -718,6 +723,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = ContextMemory.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "countedAt is missing or ahead of the server clock, or a count is negative"),
         @ApiResponse(responseCode = "404", description = "Memory not found"),
         @ApiResponse(responseCode = "409", description = "A later recount is already stored")
       })
@@ -729,14 +738,26 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           UUID id,
       @Valid @NotNull MemoryOutcomes outcomes) {
     authorizer.authorizeAdminOrBot(securityContext);
+    requireRecountTime(outcomes, System.currentTimeMillis());
     repository.get(uriInfo, id, getFields(""), Include.NON_DELETED, false);
-    if (outcomes.getCountedAt() == null) {
-      outcomes.setCountedAt(System.currentTimeMillis());
-    }
     if (!MemoryOutcomeWriter.write(id, outcomes)) {
       throw new WebApplicationException(STALE_RECOUNT, Response.Status.CONFLICT);
     }
     return addHref(uriInfo, repository.get(uriInfo, id, getFields(""), Include.NON_DELETED, false));
+  }
+
+  /**
+   * The stored countedAt refuses every older recount, so a write must say when it counted, and a
+   * time ahead of this server would outrank every later recount and freeze the counts.
+   */
+  static void requireRecountTime(MemoryOutcomes outcomes, long now) {
+    Long countedAt = outcomes.getCountedAt();
+    if (countedAt == null) {
+      throw new BadRequestException(COUNTED_AT_REQUIRED);
+    }
+    if (countedAt > now + COUNTED_AT_CLOCK_SKEW.toMillis()) {
+      throw new BadRequestException(String.format(COUNTED_AT_AHEAD, countedAt));
+    }
   }
 
   private Response setPinned(

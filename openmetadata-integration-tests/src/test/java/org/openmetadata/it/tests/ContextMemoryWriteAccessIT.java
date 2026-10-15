@@ -14,13 +14,16 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.it.factories.ShortStackFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -334,7 +337,7 @@ public class ContextMemoryWriteAccessIT {
   @Test
   void onlyAdminsAndBotsRecordOutcomesAndNoOtherWriteChangesThem(TestNamespace ns) {
     ContextMemory created = adminMemories().create(preference(ns, "outcomes"));
-    MemoryOutcomes counted = outcomes(12, 2_000_000_000_000L);
+    MemoryOutcomes counted = outcomes(12, System.currentTimeMillis());
 
     assertThrows(
         ForbiddenException.class,
@@ -379,6 +382,36 @@ public class ContextMemoryWriteAccessIT {
         InvalidRequestException.class,
         () -> recordOutcomes(SdkClients.adminClient(), created.getId(), null));
     assertNull(adminMemories().get(created.getId().toString()).getOutcomes());
+  }
+
+  static Stream<Arguments> invalidRecounts() {
+    long now = System.currentTimeMillis();
+    return Stream.of(
+        Arguments.of("no-counted-at", outcomes(4, now).withCountedAt(null)),
+        Arguments.of("counted-an-hour-ahead", outcomes(4, now + Duration.ofHours(1).toMillis())),
+        Arguments.of("counted-in-microseconds", outcomes(4, now * 1_000)),
+        Arguments.of("negative-count", outcomes(-1, now)));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("invalidRecounts")
+  void anInvalidRecountIsABadRequestAndStoresNothing(
+      String reason, MemoryOutcomes recount, TestNamespace ns) {
+    ContextMemory created = adminMemories().create(preference(ns, "outcomes-" + reason));
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> recordOutcomes(SdkClients.adminClient(), created.getId(), recount));
+    assertNull(adminMemories().get(created.getId().toString()).getOutcomes());
+  }
+
+  @Test
+  void aBotRecordsOutcomes(TestNamespace ns) {
+    ContextMemory created = adminMemories().create(preference(ns, "outcomes-bot"));
+    MemoryOutcomes counted = outcomes(5, System.currentTimeMillis());
+
+    assertEquals(
+        counted, recordOutcomes(SdkClients.botClient(), created.getId(), counted).getOutcomes());
   }
 
   @Test

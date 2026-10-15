@@ -4,8 +4,9 @@
 - **Revisions:** v1 2026-10-14 (initial)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryOutcomeWriteSqlTest` (absolute, monotonic and preserved on both
-  engines), `ContextMemoryWriteAccessIT` (admin or bot only, stale recount refused, a PATCH
-  cannot change them in the database or the index, an uncounted memory indexed without them),
+  engines), `ContextMemoryWriteAccessIT` (admin or bot only, `countedAt` required and not ahead
+  of the server, stale recount refused, a PATCH cannot change them in the database or the index,
+  an uncounted memory indexed without them), `ContextMemoryResourceTest`,
   `ContextMemoryRepositoryTest`, `ContextMemoryIndexTest`, `ContextMemoryIndexMappingTest`,
   `ContextCenterPureUtils.test.ts` (usage shown until a recount stamps `countedAt`)
 - **Related:** open-metadata/ai-platform#1581;
@@ -31,6 +32,10 @@ event is replayed, and a vote can be withdrawn or changed, which an increment ca
   on a live memory, keeps the version and every timestamp, invalidates the cache and reindexes.
 - The write is skipped when the stored `countedAt` is later than the recount's, so a retry or an
   overlapping recount never moves the counts backwards. The endpoint answers 409 then.
+- Because `countedAt` decides which recount wins, the endpoint requires it and answers 400 for one
+  more than a minute ahead of the server clock: a time in the future, or in microseconds, would
+  outrank every later recount and freeze the counts. `MemoryOutcomeWriter` keeps taking the time
+  its in-process caller counted at.
 - Metadata writes keep the stored `outcomes`, exactly like usage. The updater also copies the
   stored telemetry onto the entity it returns and indexes, so a request cannot put values in search
   that the database refused.
