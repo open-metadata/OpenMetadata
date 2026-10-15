@@ -14,9 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.jdbi3.ListFilter.escape;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeBackslashAndApostrophe;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeForMySqlRegexReplacement;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -36,6 +33,7 @@ import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
+import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
@@ -55,7 +53,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindUUID;
-import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 public interface EntityDAO<T extends EntityInterface<?>> {
   org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(EntityDAO.class);
@@ -527,59 +524,23 @@ public interface EntityDAO<T extends EntityInterface<?>> {
     }
   }
 
-  default void updateFqn(String oldPrefix, String newPrefix) {
-    LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
-    if (!getNameHashColumn().equals("fqnHash")) {
-      return;
-    }
-    // The regex replacement argument to MySQL's REGEXP_REPLACE has its own escape layer
-    // on top of the SQL string-literal layer — `\1`/`\2` are backreferences, `\\` is a
-    // literal backslash. Using escapeBackslashAndApostrophe here would only escape for the
-    // SQL layer, leaving a stray backslash in newPrefix to be interpreted by the regex
-    // engine. escapeForMySqlRegexReplacement applies both layers (regex-replacement first,
-    // then SQL string-literal) so an input backslash round-trips to a single literal
-    // backslash in the replacement output. The source pattern goes through escape() which
-    // already covers the SQL + LIKE-underscore layers — the regex-pattern layer is
-    // tolerated here because OpenMetadata's name validation forbids the regex metas that
-    // would matter (\ . * ? + ^ $ ( ) [ ] { } |).
-    String mySqlUpdate =
-        String.format(
-            "UPDATE %s SET json = "
-                + "JSON_REPLACE(json, '$.fullyQualifiedName', REGEXP_REPLACE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')), '^%s\\.', '%s.')) "
-                + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                + "WHERE fqnHash LIKE '%s.%%'",
-            getTableName(),
-            escape(oldPrefix),
-            escapeForMySqlRegexReplacement(newPrefix),
-            FullyQualifiedName.buildHash(oldPrefix),
-            FullyQualifiedName.buildHash(newPrefix),
-            FullyQualifiedName.buildHash(oldPrefix));
-
-    // Postgres path embeds the prefixes inside a double-quoted JSON pattern, so escape
-    // backslashes and apostrophes first (so a literal "\\" or "''" isn't reparsed by the
-    // SQL string-literal layer), then escape double-quotes so the JSON-pattern delimiter
-    // can't be broken out of. Apostrophe escaping is still required because the JSON
-    // pattern itself sits inside a single-quoted SQL string literal.
-    String postgresUpdate =
-        String.format(
-            "UPDATE %s SET json = "
-                + "REPLACE(json::text, '\"fullyQualifiedName\": \"%s.', "
-                + "'\"fullyQualifiedName\": \"%s.')::jsonb "
-                + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                + "WHERE fqnHash LIKE '%s.%%'",
-            getTableName(),
-            ReindexingUtil.escapeDoubleQuotes(escapeBackslashAndApostrophe(oldPrefix)),
-            ReindexingUtil.escapeDoubleQuotes(escapeBackslashAndApostrophe(newPrefix)),
-            FullyQualifiedName.buildHash(oldPrefix),
-            FullyQualifiedName.buildHash(newPrefix),
-            FullyQualifiedName.buildHash(oldPrefix));
-    updateFqnInternal(mySqlUpdate, postgresUpdate);
+  /** Selects whether a prefix rewrite also changes FQNs nested in the row, such as columns. */
+  default FqnPrefixRewrite.Scope getFqnRewriteScope() {
+    return FqnPrefixRewrite.Scope.ENTITY;
   }
 
-  @ConnectionAwareSqlUpdate(value = "<mySqlUpdate>", connectionType = MYSQL)
-  @ConnectionAwareSqlUpdate(value = "<postgresUpdate>", connectionType = POSTGRES)
+  default void updateFqn(String oldPrefix, String newPrefix) {
+    LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
+    if (getNameHashColumn().equals("fqnHash")) {
+      updateFqnInternal(
+          getTableName(), new FqnPrefixRewrite(oldPrefix, newPrefix, getFqnRewriteScope()));
+    }
+  }
+
+  @ConnectionAwareSqlUpdate(value = FqnPrefixRewrite.MYSQL_UPDATE, connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(value = FqnPrefixRewrite.POSTGRES_UPDATE, connectionType = POSTGRES)
   void updateFqnInternal(
-      @Define("mySqlUpdate") String mySqlUpdate, @Define("postgresUpdate") String postgresUpdate);
+      @Define("table") String table, @BindMethods("prefix") FqnPrefixRewrite prefix);
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
   String findById(
@@ -609,6 +570,38 @@ public interface EntityDAO<T extends EntityInterface<?>> {
    */
   @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) FOR SHARE")
   List<String> lockExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
+  /** One page of row ids after {@code afterId}, in id order, read from the primary key. */
+  @SqlQuery("SELECT id FROM <table> WHERE id > :afterId ORDER BY id LIMIT :limit")
+  List<String> listIdsAfter(
+      @Define("table") String table, @Bind("afterId") String afterId, @Bind("limit") int limit);
+
+  /** A row and when it last changed, for the scheduled search repair. */
+  record ChangedRow(String id, long updatedAt) {}
+
+  /**
+   * One page of rows changed after the cursor ({@code afterUpdatedAt}, {@code afterId}) and no
+   * later than {@code until}, oldest first. It reads the {@code (updatedAt, id)} index, not the
+   * JSON.
+   */
+  @SqlQuery(
+      "SELECT id, updatedAt FROM <table> WHERE updatedAt <= :until "
+          + "AND (updatedAt > :afterUpdatedAt OR (updatedAt = :afterUpdatedAt AND id > :afterId)) "
+          + "ORDER BY updatedAt, id LIMIT :limit")
+  @RegisterRowMapper(ChangedRowMapper.class)
+  List<ChangedRow> listChangedAfter(
+      @Define("table") String table,
+      @Bind("until") long until,
+      @Bind("afterUpdatedAt") long afterUpdatedAt,
+      @Bind("afterId") String afterId,
+      @Bind("limit") int limit);
+
+  class ChangedRowMapper implements RowMapper<ChangedRow> {
+    @Override
+    public ChangedRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new ChangedRow(rs.getString("id"), rs.getLong("updatedAt"));
+    }
+  }
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumnHash> = :name <cond>")
   String findByName(

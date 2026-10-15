@@ -299,6 +299,7 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Bulk*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ChildField*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/CoreRelationship*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/FqnPrefixRewrite*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Deadlock*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Deletion*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Filter.java",
@@ -734,6 +735,18 @@
         "*Sparql*IT",
         "*Ontology*IT",
         "Rdf*Test"
+      ]
+    },
+    {
+      "name": "projection",
+      "description": "The projection capture journal: DAO decorators that record, inside the writing transaction, which entities a commit changed, and the journal, work and retention stores. Inactive in production until a consumer reads it.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/projection/**"
+      ],
+      "tests": [
+        "*Capture*IT",
+        "Projection*IT",
+        "RetainedMembership*IT"
       ]
     },
     {

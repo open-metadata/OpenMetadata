@@ -1,0 +1,22 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.projection;
+
+/** Dependency evidence retained across deletion and rename; targets must reload current state. */
+public record FieldRelationshipSnapshot(
+    long id, Endpoint from, Endpoint to, int relation, Metadata metadata) {
+  public record Endpoint(String fqnHash, String fqn, String type) {}
+
+  public record Metadata(String schema, String json) {}
+}

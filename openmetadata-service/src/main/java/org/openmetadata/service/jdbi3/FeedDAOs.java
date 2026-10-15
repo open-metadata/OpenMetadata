@@ -198,8 +198,12 @@ public interface FeedDAOs {
     @SqlQuery("UPDATE new_task_sequence SET id = id + 1 RETURNING id")
     long getNextTaskIdPostgres();
 
-    @SqlUpdate("DELETE FROM entity_relationship WHERE fromEntity = 'task' OR toEntity = 'task'")
-    void deleteTaskRelationships();
+    @CreateSqlObject
+    CoreRelationshipDAOs.EntityRelationshipDAO relationshipDAO();
+
+    default void deleteTaskRelationships() {
+      relationshipDAO().deleteTaskRelationships();
+    }
 
     @SqlUpdate("DELETE FROM task_entity")
     void deleteAll();
@@ -207,10 +211,9 @@ public interface FeedDAOs {
     @SqlUpdate("UPDATE new_task_sequence SET id = 0")
     void resetSequence();
 
-    @SqlUpdate(
-        "DELETE FROM entity_relationship WHERE fromEntity = 'domain' AND toEntity = 'task' "
-            + "AND relation = 10 AND toId IN (<taskIds>)")
-    void bulkRemoveDomainRelationships(@BindList("taskIds") List<String> taskIds);
+    default void bulkRemoveDomainRelationships(List<String> taskIds) {
+      relationshipDAO().bulkRemoveTaskDomainRelationships(taskIds);
+    }
 
     @ConnectionAwareSqlQuery(
         value =
