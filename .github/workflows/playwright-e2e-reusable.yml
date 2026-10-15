@@ -1323,7 +1323,9 @@ jobs:
           COMPOSE_FILE: docker/development/docker-compose-postgres.yml
         run: |
           docker compose -f "$COMPOSE_FILE" build --build-arg INGESTION_DEPENDENCY=playwright ingestion
-          echo "image=$(docker compose -f "$COMPOSE_FILE" config --images ingestion)" >> "$GITHUB_OUTPUT"
+          # `config --images <service>` also lists the service's dependencies.
+          image=$(docker compose -f "$COMPOSE_FILE" config --format json | jq -r '.services.ingestion.image // (.name + "-ingestion")')
+          echo "image=$image" >> "$GITHUB_OUTPUT"
 
       - name: Pack ingestion image
         env:
