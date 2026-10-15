@@ -726,15 +726,11 @@ public class RdfRepository {
               + "/"
               + entityReference.getId();
 
-      String sparqlUpdate =
-          buildEntityDeleteUpdate(entityUri)
-              + ";\n"
-              + buildOntologyGraphDeleteUpdate(
-                  config.getBaseUri().toString(),
-                  entityReference.getType(),
-                  entityReference.getId());
-
-      storageService.executeSparqlUpdate(sparqlUpdate);
+      storageService.executeSparqlUpdate(buildEntityDeleteUpdate(entityUri));
+      // A separate request: Fuseki answers 400 to one request holding two pattern DELETEs.
+      storageService.executeSparqlUpdate(
+          buildOntologyGraphDeleteUpdate(
+              config.getBaseUri().toString(), entityReference.getType(), entityReference.getId()));
       LOG.debug("Deleted entity {} from RDF store", entityReference.getId());
     } catch (RuntimeException e) {
       RdfProjectionHealth.markDegraded(e);
