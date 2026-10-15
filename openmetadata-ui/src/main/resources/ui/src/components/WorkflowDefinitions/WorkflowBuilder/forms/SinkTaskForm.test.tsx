@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { Node } from 'reactflow';
+import { MASKED_PASSWORD_VALUE } from '../../../../constants/Secrets.constants';
 import { WorkflowModeProvider } from '../../../../contexts/WorkflowModeContext';
 import { SinkTaskForm } from './SinkTaskForm';
 
@@ -32,6 +33,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
     isRequired?: boolean;
     type?: string;
     isDisabled?: boolean;
+    onFocus?: () => void;
+    onBlur?: () => void;
+    onKeyDown?: (event: React.KeyboardEvent) => void;
   }) => {
     const {
       value = '',
@@ -41,6 +45,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
       isRequired,
       type = 'text',
       isDisabled,
+      onFocus,
+      onBlur,
+      onKeyDown,
     } = props;
 
     return (
@@ -52,11 +59,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
           </>
         )}
         <input
+          aria-label={label}
           disabled={isDisabled}
-          role="textbox"
           type={type}
           value={value}
+          onBlur={onBlur}
           onChange={(e) => onChange?.(e.target.value)}
+          onFocus={onFocus}
+          onKeyDown={onKeyDown}
         />
       </div>
     );
@@ -86,6 +96,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <div>
         {label != null && <label>{label}</label>}
         <select
+          aria-label={label}
           data-testid={dataTestId}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}>
@@ -97,7 +108,67 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   const SelectWithItem = Object.assign(Select, { Item: SelectItem });
 
-  return { Input, Select: SelectWithItem };
+  const PasswordInput = (props: {
+    value?: string;
+    onChange?: (value: string) => void;
+    label?: string;
+    hint?: React.ReactNode;
+    'data-testid'?: string;
+    isDisabled?: boolean;
+    onFocus?: () => void;
+    onBlur?: () => void;
+    onKeyDown?: (event: React.KeyboardEvent) => void;
+  }) => {
+    const {
+      value = '',
+      onChange,
+      label,
+      hint,
+      'data-testid': dataTestId,
+      isDisabled,
+      onFocus,
+      onBlur,
+      onKeyDown,
+    } = props;
+
+    return (
+      <div data-testid={dataTestId}>
+        <textarea
+          aria-label={label}
+          disabled={isDisabled}
+          value={value}
+          onBlur={onBlur}
+          onChange={(e) => onChange?.(e.target.value)}
+          onFocus={onFocus}
+          onKeyDown={onKeyDown}
+        />
+        <div>{hint}</div>
+      </div>
+    );
+  };
+
+  const Checkbox = (props: {
+    isSelected?: boolean;
+    onChange?: (value: boolean) => void;
+    label?: string;
+    hint?: string;
+    'data-testid'?: string;
+    isDisabled?: boolean;
+  }) => (
+    <div>
+      <input
+        aria-label={props.label}
+        checked={props.isSelected ?? false}
+        data-testid={props['data-testid']}
+        disabled={props.isDisabled}
+        type="checkbox"
+        onChange={(e) => props.onChange?.(e.target.checked)}
+      />
+      <span>{props.hint}</span>
+    </div>
+  );
+
+  return { Checkbox, Input, PasswordInput, Select: SelectWithItem };
 });
 
 jest.mock('../../../../contexts/WorkflowModeContext', () => ({
@@ -125,11 +196,13 @@ jest.mock('./MetadataFormSection', () => ({
   MetadataFormSection: jest.fn().mockImplementation(({ name, description }) => (
     <div data-testid="metadata-form-section">
       <input
+        aria-label="Display Name"
         data-testid="display-name-input"
         defaultValue={name}
         placeholder="Display Name"
       />
       <input
+        aria-label="Description"
         data-testid="description-input"
         defaultValue={description}
         placeholder="Description"
@@ -200,9 +273,78 @@ const createMockNodeWithConfig = (): Node => ({
   },
 });
 
+const createMockNodeWithStoredConfig = (): Node => ({
+  id: 'test-node-3',
+  type: 'sinkTask',
+  position: { x: 0, y: 0 },
+  data: {
+    label: 'Stored Git Sink',
+    displayName: 'Stored Sink',
+    description: '',
+    config: {
+      sinkType: 'git',
+      outputFormat: 'json',
+      batchMode: true,
+      syncMode: 'overwrite',
+      sinkConfig: {
+        repositoryUrl: 'https://github.com/test-org/test-repo.git',
+        branch: 'main',
+        basePath: 'metadata',
+        apiBaseUrl: 'https://github.mycompany.com/api',
+        timeout: 120,
+        retryConfig: { maxRetries: 5 },
+        syncMetadata: { embed: true },
+        credentials: { type: 'token', token: MASKED_PASSWORD_VALUE },
+        conflictResolution: 'overwriteExternal',
+      },
+    },
+  },
+});
+
+const createMockWebhookNode = (): Node => ({
+  id: 'test-node-4',
+  type: 'sinkTask',
+  position: { x: 0, y: 0 },
+  data: {
+    label: 'Webhook Sink',
+    displayName: 'Webhook Sink',
+    description: '',
+    config: {
+      sinkType: 'webhook',
+      outputFormat: 'json',
+      batchMode: false,
+      sinkConfig: {
+        endpoint: 'https://hooks.example.com/metadata',
+        httpMethod: 'POST',
+        headers: { 'X-Api-Key': MASKED_PASSWORD_VALUE },
+        authentication: { type: 'bearer', token: MASKED_PASSWORD_VALUE },
+        retryConfig: { maxRetries: 2 },
+        timeout: 15,
+      },
+    },
+  },
+});
+
+const getTokenInput = (): HTMLInputElement =>
+  screen.getByTestId('token-input').querySelector('input') as HTMLInputElement;
+
+const enterSecret = (
+  input: HTMLInputElement | HTMLTextAreaElement,
+  value: string
+) => {
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value } });
+  fireEvent.blur(input);
+};
+
 const mockOnSave = jest.fn();
 const mockOnClose = jest.fn();
 const mockOnDelete = jest.fn();
+
+const getSavedConfig = () =>
+  mockOnSave.mock.calls[0][1] as {
+    config: Record<string, unknown> & { sinkConfig: Record<string, unknown> };
+  };
 
 const defaultProps = {
   node: createMockNode(),
@@ -340,8 +482,10 @@ describe('SinkTaskForm', () => {
       renderWithProvider();
 
       const tokenWrapper = screen.getByTestId('token-input');
-      const tokenInput = tokenWrapper.querySelector('input');
-      fireEvent.change(tokenInput!, { target: { value: 'ghp_test' } });
+      const tokenInput = tokenWrapper.querySelector(
+        'input'
+      ) as HTMLInputElement;
+      fireEvent.change(tokenInput, { target: { value: 'ghp_test' } });
 
       const saveButton = screen.getByTestId('save-button');
 
@@ -409,8 +553,10 @@ describe('SinkTaskForm', () => {
       renderWithProvider();
 
       const tokenWrapper = screen.getByTestId('token-input');
-      const tokenInput = tokenWrapper.querySelector('input');
-      fireEvent.change(tokenInput!, {
+      const tokenInput = tokenWrapper.querySelector(
+        'input'
+      ) as HTMLInputElement;
+      fireEvent.change(tokenInput, {
         target: { value: 'ghp_secrettoken123' },
       });
 
@@ -534,9 +680,189 @@ describe('SinkTaskForm', () => {
       renderWithProvider();
 
       const tokenWrapper = screen.getByTestId('token-input');
-      const tokenInput = tokenWrapper.querySelector('input');
+      const tokenInput = tokenWrapper.querySelector(
+        'input'
+      ) as HTMLInputElement;
 
       expect(tokenInput).toHaveAttribute('type', 'password');
+    });
+
+    it('should empty a masked token on focus', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithStoredConfig(),
+      });
+
+      fireEvent.focus(getTokenInput());
+
+      expect(getTokenInput()).toHaveValue('');
+    });
+
+    it('should replace a masked token with the typed value', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithStoredConfig(),
+      });
+
+      enterSecret(getTokenInput(), 'ghp_new');
+
+      expect(getTokenInput()).toHaveValue('ghp_new');
+
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.credentials).toEqual({
+        type: 'token',
+        token: 'ghp_new',
+      });
+    });
+
+    it('should save a token pasted over the mask verbatim, edge "*" included', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithStoredConfig(),
+      });
+
+      enterSecret(getTokenInput(), '*hunter2*');
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.credentials).toEqual({
+        type: 'token',
+        token: '*hunter2*',
+      });
+    });
+
+    it('should keep the masked token when focused and left without typing', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithStoredConfig(),
+      });
+
+      fireEvent.focus(getTokenInput());
+      fireEvent.blur(getTokenInput());
+
+      expect(getTokenInput()).toHaveValue(MASKED_PASSWORD_VALUE);
+
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.credentials).toEqual({
+        type: 'token',
+        token: MASKED_PASSWORD_VALUE,
+      });
+    });
+
+    it('should send the masked token when saved while its emptied field still has focus', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithStoredConfig(),
+      });
+
+      fireEvent.focus(getTokenInput());
+
+      expect(screen.getByTestId('save-button')).toBeEnabled();
+
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.credentials).toEqual({
+        type: 'token',
+        token: MASKED_PASSWORD_VALUE,
+      });
+    });
+
+    it('should send a masked token back as the mask when untouched', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithStoredConfig(),
+      });
+
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.credentials).toEqual({
+        type: 'token',
+        token: MASKED_PASSWORD_VALUE,
+      });
+    });
+  });
+
+  describe('Stored Webhook Sink', () => {
+    it('should not carry webhook fields or masks into the git config', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockWebhookNode(),
+      });
+
+      fireEvent.change(getInputByTestId('repository-url-input'), {
+        target: { value: 'https://github.com/org/repo.git' },
+      });
+      fireEvent.change(getTokenInput(), { target: { value: 'ghp_token' } });
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      const { config } = getSavedConfig();
+
+      expect(config.sinkType).toBe('git');
+      expect(config.sinkConfig).toEqual({
+        repositoryUrl: 'https://github.com/org/repo.git',
+        branch: 'main',
+        basePath: 'metadata',
+        credentials: { type: 'token', token: 'ghp_token' },
+        conflictResolution: 'overwriteExternal',
+        commitConfig: {
+          messageTemplate: 'Sync {entityType}: {entityName}',
+          authorName: 'label.brand-name-bot',
+          authorEmail: 'bot@openmetadata.org',
+        },
+      });
+      expect(JSON.stringify(config.sinkConfig)).not.toContain(
+        MASKED_PASSWORD_VALUE
+      );
+    });
+  });
+
+  describe('Stored Fields', () => {
+    it('should keep sinkConfig and task config fields the form does not render', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithStoredConfig(),
+      });
+
+      fireEvent.change(getInputByTestId('branch-input'), {
+        target: { value: 'develop' },
+      });
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      const { config } = getSavedConfig();
+
+      expect(config).toEqual(
+        expect.objectContaining({
+          sinkType: 'git',
+          outputFormat: 'json',
+          batchMode: true,
+          syncMode: 'overwrite',
+        })
+      );
+      expect(config.sinkConfig).toEqual(
+        expect.objectContaining({
+          branch: 'develop',
+          apiBaseUrl: 'https://github.mycompany.com/api',
+          timeout: 120,
+          retryConfig: { maxRetries: 5 },
+          syncMetadata: { embed: true },
+          credentials: { type: 'token', token: MASKED_PASSWORD_VALUE },
+        })
+      );
+    });
+
+    it('should save a cleared rendered field as cleared', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithStoredConfig(),
+      });
+
+      fireEvent.change(getInputByTestId('base-path-input'), {
+        target: { value: '' },
+      });
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.basePath).toBe('');
     });
   });
 
@@ -581,7 +907,9 @@ describe('SinkTaskForm', () => {
       expect(getInputByTestId('branch-input')).toHaveValue('main');
 
       const tokenWrapper = screen.getByTestId('token-input');
-      const tokenInput = tokenWrapper.querySelector('input');
+      const tokenInput = tokenWrapper.querySelector(
+        'input'
+      ) as HTMLInputElement;
 
       expect(tokenInput).toHaveValue('');
     });

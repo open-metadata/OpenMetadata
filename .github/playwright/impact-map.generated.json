@@ -697,7 +697,6 @@
         "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts",
-        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
       ]
@@ -1106,7 +1105,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
-        "playwright/e2e/Features/SampleDataTableOperations.spec.ts"
+        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Flow/Tour.spec.ts"
       ]
     },
     {
@@ -1386,7 +1386,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
-        "playwright/e2e/Features/SampleDataTableOperations.spec.ts"
+        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Flow/Tour.spec.ts"
       ]
     },
     {
@@ -1621,6 +1622,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityHeaderTitle/EntityHeaderTitle.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Flow/Tour.spec.ts",
         "playwright/e2e/Pages/DataProducts.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/VersionPages/ClassificationVersionPage.spec.ts"
@@ -2320,6 +2322,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/Lineage.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Flow/Tour.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
@@ -2932,7 +2935,6 @@
         "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts"
       ]
     },
@@ -3255,7 +3257,6 @@
         "playwright/e2e/Features/ServiceAgentsPauseResume.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
-        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts"
       ]
     },
@@ -3280,7 +3281,6 @@
         "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
         "playwright/e2e/Features/AutoPilot.spec.ts",
         "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
-        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/SearchIndexApplication.spec.ts"
       ]
     },
@@ -3617,6 +3617,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/CustomControls.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
@@ -3626,6 +3627,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/NodeConfigSidebar.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
@@ -3635,6 +3637,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/NodeFormSidebar.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
@@ -3644,6 +3647,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/WorkflowControls.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
@@ -3661,6 +3665,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/WorkflowHeader.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
@@ -3693,6 +3698,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/forms/FormActionButtons.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
       ]
     },
@@ -3703,6 +3709,14 @@
       "specs": [
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/forms/SinkTaskForm.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts"
       ]
     },
     {
@@ -4343,8 +4357,15 @@
       "specs": [
         "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
         "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
-        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/NavigationGuardModal/NavigationGuardModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/EditConnectionNavigation.spec.ts"
       ]
     },
     {
@@ -4403,7 +4424,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/BulkImport.spec.ts",
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Flow/Tour.spec.ts"
       ]
     },
     {
@@ -4414,7 +4436,8 @@
         "playwright/e2e/Features/BulkImport.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts"
+        "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
+        "playwright/e2e/Flow/Tour.spec.ts"
       ]
     },
     {
@@ -5261,6 +5284,7 @@
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryBulkOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryExpandAllWithStatusFilter.spec.ts",
@@ -5384,6 +5408,7 @@
         "playwright/e2e/Features/TierWidget.spec.ts",
         "playwright/e2e/Features/Topic.spec.ts",
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
+        "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowExecutionHistoryEntity.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
@@ -5396,6 +5421,7 @@
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Flow/EditConnectionNavigation.spec.ts",
         "playwright/e2e/Flow/ExploreAggregationCountsMatching.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Flow/FrequentlyJoined.spec.ts",
@@ -5464,7 +5490,6 @@
         "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts",
         "playwright/e2e/Pages/GlossaryTermRightPanel.spec.ts",
         "playwright/e2e/Pages/HealthCheck.spec.ts",
-        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/InputOutputPorts.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts",

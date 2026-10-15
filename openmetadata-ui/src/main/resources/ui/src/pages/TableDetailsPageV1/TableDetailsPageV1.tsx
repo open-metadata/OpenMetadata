@@ -118,6 +118,17 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import TableDetailsPageSkeleton from './TableDetailsPageSkeleton.component';
+
+// useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
+// the render that starts the request, so the badge never flashes a placeholder 0. The tour's
+// table is mock data with no stored queries, so it is never counted.
+const useTableQueryCount = (tableId: string, isTourDataset: boolean) =>
+  useQuery({
+    queryKey: tableQueryCountKey(tableId),
+    queryFn: tableQueryCountFn(tableId),
+    enabled: Boolean(tableId) && !isTourDataset,
+  });
+
 const TableDetailsPageV1: React.FC = () => {
   const {
     isTourOpen,
@@ -253,13 +264,8 @@ const TableDetailsPageV1: React.FC = () => {
     ),
   });
 
-  // useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
-  // the render that starts the request, so the badge never flashes a placeholder 0.
-  const { data: queryCount = 0, isFetching: isQueryCountLoading } = useQuery({
-    queryKey: tableQueryCountKey(tableDetails?.id ?? ''),
-    queryFn: tableQueryCountFn(tableDetails?.id ?? ''),
-    enabled: Boolean(tableDetails?.id),
-  });
+  const { data: queryCount = 0, isFetching: isQueryCountLoading } =
+    useTableQueryCount(tableDetails?.id ?? '', isTourOpen || isTourPage);
 
   // Forbidden → redirect, preserving the prior behavior. Run as an effect rather than during
   // render so the navigate call doesn't fire during the same commit that returns the query

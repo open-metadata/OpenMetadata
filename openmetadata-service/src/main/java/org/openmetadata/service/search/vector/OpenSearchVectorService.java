@@ -2,6 +2,7 @@ package org.openmetadata.service.search.vector;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -37,7 +38,9 @@ import os.org.opensearch.client.opensearch.core.get.GetResult;
 import os.org.opensearch.client.opensearch.core.mget.MultiGetResponseItem;
 import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
+import os.org.opensearch.client.opensearch.generic.Request;
 import os.org.opensearch.client.opensearch.generic.Requests;
+import os.org.opensearch.client.opensearch.generic.Response;
 
 @Slf4j
 public class OpenSearchVectorService implements VectorIndexService {
@@ -106,6 +109,10 @@ public class OpenSearchVectorService implements VectorIndexService {
    */
   public static String buildHybridRrfPipelineDefinition(
       double keywordWeight, double semanticWeight) {
+    return buildHybridRrfPipeline(keywordWeight, semanticWeight).toString();
+  }
+
+  private static ObjectNode buildHybridRrfPipeline(double keywordWeight, double semanticWeight) {
     var weights = MAPPER.createArrayNode().add(keywordWeight).add(semanticWeight);
     var combination =
         MAPPER
@@ -122,7 +129,7 @@ public class OpenSearchVectorService implements VectorIndexService {
 
     var pipeline = MAPPER.createObjectNode();
     pipeline.set("phase_results_processors", MAPPER.createArrayNode().add(scoreRanker));
-    return pipeline.toString();
+    return pipeline;
   }
 
   /**
@@ -143,50 +150,50 @@ public class OpenSearchVectorService implements VectorIndexService {
         semanticWeight);
   }
 
-  public Optional<String> checkHybridSearchPipeline() {
+  /**
+   * Runs a minimal hybrid query carrying the RRF pipeline inline, as hybrid search does. Never
+   * reads the stored pipeline: search does not use it, and a prefix-scoped search role cannot read
+   * it. {@code ignore_unavailable} keeps the check valid before the chunk index exists.
+   */
+  public Optional<String> checkHybridSearchPipeline(double keywordWeight, double semanticWeight) {
+    Optional<String> error;
     try {
-      OpenSearchGenericClient genericClient = client.generic();
-      var request =
+      Request probe =
           Requests.builder()
-              .endpoint("/_search/pipeline/" + HYBRID_PIPELINE_NAME)
-              .method("GET")
+              .endpoint("/" + getChunkIndexName() + "/_search")
+              .query(Map.of("ignore_unavailable", "true"))
+              .method("POST")
+              .json(buildHybridSearchProbe(keywordWeight, semanticWeight))
               .build();
-      try (var response = genericClient.execute(request)) {
-        int status = response.getStatus();
-        if (status < 400) {
-          return Optional.empty();
-        }
-        if (status == 404) {
-          return Optional.of(
-              "Hybrid search pipeline '"
-                  + HYBRID_PIPELINE_NAME
-                  + "' not found. Run a reindex to create it.");
-        }
-        String detail =
-            response
-                .getBody()
-                .map(
-                    b -> {
-                      try {
-                        String body = new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
-                        return body.length() > 200 ? body.substring(0, 200) : body;
-                      } catch (Exception ignored) {
-                        return "";
-                      }
-                    })
-                .orElse("");
-        return Optional.of(
-            "Unexpected status "
-                + status
-                + " when checking hybrid search pipeline '"
-                + HYBRID_PIPELINE_NAME
-                + "'."
-                + (detail.isEmpty() ? "" : " Response: " + detail));
+      try (Response response = client.generic().execute(probe)) {
+        error =
+            response.getStatus() < 400
+                ? Optional.empty()
+                : Optional.of(describeRejectedProbe(response));
       }
     } catch (Exception e) {
-      LOG.error("Failed to check hybrid search pipeline '{}'", HYBRID_PIPELINE_NAME, e);
-      return Optional.of("Failed to check hybrid search pipeline: " + e.toString());
+      LOG.error("Failed to run a hybrid search with the RRF pipeline", e);
+      error = Optional.of("Failed to run a hybrid search with the RRF pipeline: " + e);
     }
+    return error;
+  }
+
+  private static String buildHybridSearchProbe(double keywordWeight, double semanticWeight) {
+    ObjectNode probe = MAPPER.createObjectNode().put("size", 0);
+    ArrayNode subQueries = probe.putObject("query").putObject("hybrid").putArray("queries");
+    subQueries.addObject().putObject("match_all");
+    subQueries.addObject().putObject("match_all");
+    probe.set("search_pipeline", buildHybridRrfPipeline(keywordWeight, semanticWeight));
+    return probe.toString();
+  }
+
+  private static String describeRejectedProbe(Response response) {
+    String body = response.getBody().map(Body::bodyAsString).orElse("");
+    String detail = body.length() > 200 ? body.substring(0, 200) : body;
+    return "OpenSearch rejected a hybrid search with the RRF pipeline (status "
+        + response.getStatus()
+        + ")."
+        + (detail.isEmpty() ? "" : " Response: " + detail);
   }
 
   @Override

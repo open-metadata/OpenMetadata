@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, Response } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { TaskClass } from '../../support/entity/TaskClass';
@@ -19,6 +19,7 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { performAdminLogin } from '../../utils/admin';
+import { okJson } from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   assignTagToChildren,
@@ -752,6 +753,10 @@ test.describe('Large Table Column Search & Copy Link', () => {
     // 4. Read clipboard
     const clipboardText = await copyAndGetClipboardText(page, copyButton);
 
+    // Copying the link must not open the column detail panel (#35350)
+    await expect(rowSelector).toBeVisible();
+    await expect(page.locator('.column-detail-panel')).not.toBeVisible();
+
     // Verify URL format structure
     expect(clipboardText).toContain(
       `/table/${createdTable.fullyQualifiedName}`
@@ -796,6 +801,69 @@ test.describe('Large Table Column Search & Copy Link', () => {
     await expect(page).toHaveURL(
       new RegExp(`/table/${createdTable.fullyQualifiedName}$`)
     );
+  });
+
+  test('Opening and closing a column detail panel on page 2 keeps the columns list on page 2', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const tableFqn = String(createdTable.fullyQualifiedName);
+    const columnsPath = `/api/v1/tables/name/${tableFqn}/columns`;
+    const isColumnsPage = (response: Response, offset: string) => {
+      const url = new URL(response.url());
+
+      return (
+        url.pathname.endsWith(columnsPath) &&
+        url.searchParams.get('offset') === offset &&
+        response.request().method() === 'GET'
+      );
+    };
+
+    const firstPageResponse = page.waitForResponse((response) =>
+      isColumnsPage(response, '0')
+    );
+    await page.goto(`/table/${tableFqn}`, { waitUntil: 'domcontentloaded' });
+    expect((await firstPageResponse).status()).toBe(200);
+    await waitForAllLoadersToDisappear(page);
+
+    const pageIndicator = page.getByTestId('page-indicator');
+    await expect(pageIndicator).toContainText('Page 1 of');
+
+    const secondPageResponse = page.waitForResponse((response) =>
+      isColumnsPage(response, '50')
+    );
+    await page.getByTestId('next').click();
+    const {
+      data: [pageTwoColumn],
+    } = await okJson<{ data: { name: string; fullyQualifiedName: string }[] }>(
+      await secondPageResponse,
+      'columns page 2'
+    );
+    await waitForAllLoadersToDisappear(page);
+
+    const pageTwoRow = page.locator(
+      `[data-row-key="${pageTwoColumn.fullyQualifiedName}"]`
+    );
+    await expect(pageTwoRow).toBeVisible();
+    await expect(pageIndicator).toContainText('Page 2 of');
+    await expect(page).toHaveURL(/currentPage=2/);
+
+    const sidePanel = page.locator('.column-detail-panel');
+    await pageTwoRow.getByTestId('column-name').click();
+
+    await expect(sidePanel).toBeVisible();
+    await expect(sidePanel).toContainText(pageTwoColumn.name);
+    await expect(page).toHaveURL(/currentPage=2/);
+    await expect(pageIndicator).toContainText('Page 2 of');
+    await expect(pageTwoRow).toBeVisible();
+
+    await sidePanel.getByTestId('close-button').click();
+
+    await expect(sidePanel).not.toBeVisible();
+    await expect(page).toHaveURL(/currentPage=2/);
+    await expect(pageIndicator).toContainText('Page 2 of');
+    await expect(pageTwoRow).toBeVisible();
   });
 });
 

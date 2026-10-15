@@ -220,7 +220,7 @@ public class JwtFilter implements ContainerRequestFilter {
               catalogPrincipal,
               scheme,
               SecurityContext.DIGEST_AUTH,
-              getUserRolesFromClaims(claims, isBotUser),
+              getUserRolesFromClaims(claims, isBotUser, tokenKeyId),
               isBotUser,
               impersonatedBy,
               activePersona);
@@ -283,13 +283,12 @@ public class JwtFilter implements ContainerRequestFilter {
     // the case where OMD generated the Token for the Client in case OM generated Token
     validateTokenIsNotUsedAfterLogout(tokenFromHeader);
 
-    // OM-issued tokens (PATs, session tokens, user tokens) set preferred_username to the bare
-    // username without an @domain suffix, which causes getFirstMatchJwtClaim-based domain
-    // extraction to return an empty domain and fail enforcement. Since OM owns the user identity
-    // these tokens are trusted and domain enforcement is skipped — consistent with how bot tokens
-    // are already handled (validateDomainEnforcement returns early for isBot=true tokens).
-    // The isInternallyIssuedToken check is guarded by enforcePrincipalDomain to avoid the
-    // singleton lookup on deployments where enforcement is disabled.
+    // OM-issued tokens minted before JWTTokenGenerator mirrored the provider's claim shape carry a
+    // bare preferred_username, which getFirstMatchJwtClaim-based domain extraction turns into an
+    // empty domain. Unlimited-expiry bot tokens from that era are still in use, so OM-issued tokens
+    // stay exempt - consistent with how bot tokens are already handled (validateDomainEnforcement
+    // returns early for isBot=true tokens). The isInternallyIssuedToken check is guarded by
+    // enforcePrincipalDomain to avoid the singleton lookup where enforcement is disabled.
     if (enforcePrincipalDomain && !isInternallyIssuedToken(claims, tokenKeyId)) {
       validateDomainEnforcement(
           jwtPrincipalClaimsMapping,
@@ -322,11 +321,14 @@ public class JwtFilter implements ContainerRequestFilter {
         claims, tokenKeyId, tokenGenerator.getIssuer(), tokenGenerator.getKid());
   }
 
-  // null and an empty set say different things to the role sync downstream: "the provider told us
-  // nothing about roles" vs "the provider told us this user has none". Collapsing them would let a
-  // deployment that never configured a roles claim wipe every user's roles on login.
-  private Set<String> getUserRolesFromClaims(Map<String, Claim> claims, boolean isBot) {
-    if (!useRolesFromProvider || isBot || !claims.containsKey(ROLES_CLAIM)) {
+  // null tells the role sync downstream there is nothing to sync from. A token OpenMetadata minted
+  // (a session token or a PAT) is one of those: its roles are the ones the user had when it was
+  // minted, so syncing from it would restore roles the provider revoked since. In the provider's
+  // own token an absent roles claim means no roles - claims without a value are omitted (OIDC Core
+  // 5.1), and Entra ID drops the claim once a user's last app role is removed.
+  private Set<String> getUserRolesFromClaims(
+      Map<String, Claim> claims, boolean isBot, String tokenKeyId) {
+    if (!useRolesFromProvider || isBot || isInternallyIssuedToken(claims, tokenKeyId)) {
       return null;
     }
     return new HashSet<>(getClaimAsList(claims.get(ROLES_CLAIM)));
@@ -511,7 +513,7 @@ public class JwtFilter implements ContainerRequestFilter {
         catalogPrincipal,
         "https",
         SecurityContext.DIGEST_AUTH,
-        getUserRolesFromClaims(claims, isBotUser),
+        getUserRolesFromClaims(claims, isBotUser, JWT.decode(token).getKeyId()),
         isBotUser);
   }
 

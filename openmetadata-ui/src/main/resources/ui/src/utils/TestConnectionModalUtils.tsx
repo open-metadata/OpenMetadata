@@ -47,6 +47,13 @@ import {
 } from '../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../generated/entity/services/connections/testConnectionDefinition';
 
+const TEXT_UTILITY_SUCCESS_300_CLASS = 'tw:text-utility-success-300';
+const TEXT_UTILITY_ERROR_300_CLASS = 'tw:text-utility-error-300';
+const TEXT_UTILITY_WARNING_300_CLASS = 'tw:text-utility-warning-300';
+// Capped so a long stack trace scrolls inside the step instead of filling the modal.
+const CAPABILITY_STEP_LOG_CLASS =
+  'tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:m-3.5 tw:ml-[46px] tw:font-semibold tw:max-h-[220px]';
+
 const STEP_LABEL_KEYS: Record<string, string> = {
   CheckAccess: 'message.test-connection-step-check-access',
   GetDatabases: 'message.test-connection-step-get-databases',
@@ -288,6 +295,15 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   return (
     <IcTcQueued className="tw:text-utility-gray-300" height={16} width={16} />
   );
+}
+
+// A failed step's summary line is the definition's `errorMessage`, not a success
+// summary — `resultSummary` is the success channel. Painting it green reads as
+// "this step passed", so a failed step gets the advisory colour instead.
+function getSummaryColorClass(passed: boolean | undefined): string {
+  return passed
+    ? TEXT_UTILITY_SUCCESS_300_CLASS
+    : TEXT_UTILITY_WARNING_300_CLASS;
 }
 
 function renderColoredLines(
@@ -768,7 +784,7 @@ export function ConnectionCapabilitySection(
               <AccordionPanel unmountOnCollapse className="tw:p-0">
                 {result && (
                   <div className="tw:border-t tw:border-border-secondary">
-                    <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:m-3.5 tw:ml-[46px] tw:font-semibold">
+                    <pre className={CAPABILITY_STEP_LOG_CLASS}>
                       {result.executedCommand &&
                         renderColoredLines(
                           `> ${result.executedCommand}`,
@@ -782,13 +798,13 @@ export function ConnectionCapabilitySection(
                               ? ` (${result.durationMs} ms)`
                               : ''
                           }`,
-                          'tw:text-utility-success-300',
+                          getSummaryColorClass(result.passed),
                           'sum-'
                         )}
                       {result.errorLog &&
                         renderColoredLines(
                           result.errorLog,
-                          'tw:text-utility-error-300',
+                          TEXT_UTILITY_ERROR_300_CLASS,
                           'err-'
                         )}
                       {result.diagnosis &&
@@ -800,7 +816,7 @@ export function ConnectionCapabilitySection(
                           ]
                             .filter(Boolean)
                             .join('\n'),
-                          'tw:text-utility-warning-300',
+                          TEXT_UTILITY_WARNING_300_CLASS,
                           'diag-'
                         )}
                     </pre>
@@ -883,7 +899,7 @@ export function ConnectionRawLogSection(
               parts.push(
                 ...renderColoredLines(
                   `  ${summary}${timing}`,
-                  'tw:text-utility-success-300',
+                  getSummaryColorClass(result.passed),
                   `${stepIdx}-sum-`
                 )
               );
@@ -892,7 +908,7 @@ export function ConnectionRawLogSection(
               parts.push(
                 ...renderColoredLines(
                   result.errorLog,
-                  'tw:text-utility-error-300',
+                  TEXT_UTILITY_ERROR_300_CLASS,
                   `${stepIdx}-err-`
                 )
               );
@@ -907,7 +923,7 @@ export function ConnectionRawLogSection(
                   ]
                     .filter(Boolean)
                     .join('\n'),
-                  'tw:text-utility-warning-300',
+                  TEXT_UTILITY_WARNING_300_CLASS,
                   `${stepIdx}-diag-`
                 )
               );
@@ -1048,7 +1064,7 @@ export function ConnectionRemediationCard(
         return r?.diagnosis;
       })();
 
-  if (!errorContent) {
+  if (!errorContent && !diagnosis) {
     return null;
   }
 
@@ -1094,10 +1110,10 @@ export function ConnectionRemediationCard(
         </div>
       )}
       {!diagnosis && errorContent && (
-        <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold">
+        <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold tw:max-h-[220px]">
           {renderColoredLines(
             errorContent,
-            'tw:text-utility-error-300',
+            TEXT_UTILITY_ERROR_300_CLASS,
             'rem-'
           )}
         </pre>

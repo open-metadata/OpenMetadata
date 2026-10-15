@@ -17,7 +17,7 @@
     {
       "name": "matchEnum",
       "displayName": "Match enum",
-      "description": "If enabled, validate that each value independently matches the enum.",
+      "description": "If enabled, every value in the column must be in the set, and each value outside it counts as a failed row. If disabled, the test passes as soon as one value is in the set, whatever the other values hold.",
       "dataType": "BOOLEAN",
       "required": false
     }

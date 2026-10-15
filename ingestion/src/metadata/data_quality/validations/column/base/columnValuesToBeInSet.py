@@ -15,7 +15,6 @@ Validator for column value to be in set test case
 
 import traceback
 from abc import abstractmethod
-from ast import literal_eval
 from typing import List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
@@ -56,9 +55,8 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         Returns:
             TestCaseResult: The test case result for the overall validation
         """
-        test_params = self._get_test_parameters()
-
         try:
+            test_params = self._get_test_parameters()
             column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
             count_in_set = self._run_results(Metrics.countInSet, column, values=test_params[self.ALLOWED_VALUES])
 
@@ -105,11 +103,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         Returns:
             dict with keys: allowed_values, match_enum
         """
-        allowed_values = self.get_test_case_param_value(
-            self.test_case.parameterValues,
-            self.ALLOWED_VALUES,
-            literal_eval,
-        )
+        allowed_values = self.get_set_param_value(self.ALLOWED_VALUES)
         match_enum = utils.get_bool_test_case_param(self.test_case.parameterValues, self.MATCH_ENUM)
 
         return {

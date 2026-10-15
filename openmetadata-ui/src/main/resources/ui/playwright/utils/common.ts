@@ -155,8 +155,11 @@ export const redirectToHomePage = async (
 };
 
 export const redirectToExplorePage = async (page: Page) => {
-  await page.goto('/explore');
-  await page.waitForURL('**/explore');
+  // `load` (the default) also waits for every image, font and stylesheet; on a
+  // slow runner that alone can exceed the navigation timeout. Callers depend
+  // only on the DOM and the loader wait below.
+  await page.goto('/explore', { waitUntil: 'domcontentloaded' });
+  await page.waitForURL('**/explore', { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -1748,4 +1751,46 @@ export const selectOptionWithRetry = async (
 
     await option.click({ timeout: 2000 });
   }).toPass({ timeout: 15000 });
+};
+
+export const scrollIntoViewAndSettle = async (locator: Locator) => {
+  await locator.evaluate(async (element) => {
+    element.scrollIntoView({ block: 'center', inline: 'nearest' });
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve))
+    );
+  });
+};
+
+export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
+  await expect(trigger).toBeVisible();
+  const nestedControl = trigger.locator(
+    'input[role="combobox"], button[aria-haspopup="listbox"]'
+  );
+  const control = (await nestedControl.count()) === 1 ? nestedControl : trigger;
+  await control.focus();
+
+  // The listbox popup is a non-modal react-aria popover, and that is exactly
+  // what wires useCloseOnScroll: while it is open, ANY capture-phase scroll
+  // whose target contains the trigger closes it — a drawer body, a scrollable
+  // form panel, the document, or the scroll Playwright performs itself as part
+  // of a click's actionability checks. A one-shot open-then-click therefore
+  // dismisses the popup as often as it selects from it, and nothing reopens
+  // it, so the option click waits out the entire test timeout on a node that
+  // was detached mid-click. Centring the control before opening removes the
+  // actionability scroll that would close it; the retry remains for a popup
+  // dismissed by anything else, with a short option timeout so a detached
+  // option reopens quickly instead of waiting out a long click.
+  await expect(async () => {
+    if ((await control.getAttribute('aria-expanded')) !== 'true') {
+      await scrollIntoViewAndSettle(control);
+      if ((await control.getAttribute('role')) === 'combobox') {
+        await control.press('ArrowDown');
+      } else {
+        await control.click({ timeout: 5_000 });
+      }
+    }
+    await expect(option).toBeVisible({ timeout: 5_000 });
+    await option.click({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
 };

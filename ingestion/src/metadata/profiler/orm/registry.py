@@ -18,7 +18,7 @@ import math
 from enum import Enum
 
 import sqlalchemy
-from sqlalchemy import Date, DateTime, Integer, Numeric, Time
+from sqlalchemy import Boolean, Date, DateTime, Integer, Numeric, Time
 from sqlalchemy.sql.sqltypes import Concatenable, LargeBinary, Text
 
 from metadata.generated.schema.entity.data.table import DataType
@@ -189,6 +189,13 @@ def is_date_time(_type) -> bool:
         or issubclass(_type.__class__, DateTime)
         or issubclass(_type.__class__, CustomTimestamp)
     )
+
+
+def is_boolean(_type) -> bool:
+    """
+    Check if _type is a boolean, as a sqlalchemy type or an OpenMetadata DataType
+    """
+    return _type == DataType.BOOLEAN if isinstance(_type, DataType) else isinstance(_type, Boolean)
 
 
 def is_quantifiable(_type) -> bool:

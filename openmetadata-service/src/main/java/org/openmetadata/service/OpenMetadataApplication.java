@@ -204,7 +204,7 @@ import org.quartz.SchedulerException;
     info =
         @Info(
             title = "OpenMetadata APIs",
-            version = "2.0.4",
+            version = "2.0.6",
             description = "Common types and API definition for OpenMetadata",
             contact =
                 @Contact(
@@ -345,7 +345,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Instantiate JWT Token Generator
     JWTTokenGenerator.getInstance()
         .init(
-            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getCurrentAuthConfig(),
             catalogConfig.getJwtTokenConfiguration());
 
     initializeWebsockets(catalogConfig, environment);
@@ -900,7 +900,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Update JWT configuration first
       JWTTokenGenerator.getInstance()
           .init(
-              SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+              SecurityConfigurationManager.getCurrentAuthConfig(),
               config.getJwtTokenConfiguration());
 
       // Re-register authenticator with new config

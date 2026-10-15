@@ -29,6 +29,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.CustomPropertySearchFields;
+import org.openmetadata.service.search.LuceneQuerySyntax;
 import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
@@ -254,16 +255,22 @@ public class OpenSearchSourceBuilderFactory
             .filter(entry -> isNonFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
+    // The non-fuzzy branch is a multi_match, which never parses Lucene syntax; only this
+    // fuzzy branch can throw on user input. Text that Lucene cannot parse goes to
+    // simple_query_string, whose parser discards malformed syntax instead of raising a
+    // query_shard_exception, rather than failing the search outright (#27990).
     Query fuzzyQuery =
-        OpenSearchQueryBuilder.queryStringQuery(
-            query,
-            fuzzyFields,
-            Operator.And,
-            "1",
-            10,
-            3,
-            DEFAULT_TIE_BREAKER,
-            TextQueryType.MostFields);
+        !LuceneQuerySyntax.isWellFormed(query)
+            ? OpenSearchQueryBuilder.simpleQueryStringQuery(query, fuzzyFields, Operator.And)
+            : OpenSearchQueryBuilder.queryStringQuery(
+                query,
+                fuzzyFields,
+                Operator.And,
+                "1",
+                10,
+                3,
+                DEFAULT_TIE_BREAKER,
+                TextQueryType.MostFields);
 
     Query nonFuzzyQuery =
         OpenSearchQueryBuilder.multiMatchQuery(
@@ -448,7 +455,7 @@ public class OpenSearchSourceBuilderFactory
       return OpenSearchQueryBuilder.boolQuery()
           .must(OpenSearchQueryBuilder.matchAllQuery())
           .build();
-    } else if (containsQuerySyntax(query)) {
+    } else if (shouldParseAsLuceneSyntax(query)) {
       return buildComplexSyntaxQueryV2(query, assetConfig);
     } else {
       return buildSimpleQueryV2(query, assetConfig);
@@ -462,7 +469,7 @@ public class OpenSearchSourceBuilderFactory
           .build();
     }
 
-    if (containsQuerySyntax(query)) {
+    if (shouldParseAsLuceneSyntax(query)) {
       return buildComplexQueryV2(query, assetConfig);
     }
 

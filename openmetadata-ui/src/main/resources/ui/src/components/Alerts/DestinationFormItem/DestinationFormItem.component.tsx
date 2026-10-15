@@ -13,7 +13,7 @@
 
 import { Button, Col, Divider, Form, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isNil, isUndefined, noop } from 'lodash';
 import { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
@@ -66,6 +66,17 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
             destination.category === SubscriptionCategory.External &&
             !isEmpty(destination?.config)
         );
+
+        // The test endpoint rejects an empty list, so surface the
+        // required-field errors instead of sending the request.
+        if (isEmpty(externalDestinations)) {
+          setDestinationsWithStatus(undefined);
+          await form
+            .validateFields([['destinations']], { recursive: true })
+            .catch(noop);
+
+          return;
+        }
 
         const results = await testAlertDestination({
           destinations: externalDestinations,

@@ -246,7 +246,6 @@
       "specs": [
         "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
         "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
-        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts"
       ]
     },

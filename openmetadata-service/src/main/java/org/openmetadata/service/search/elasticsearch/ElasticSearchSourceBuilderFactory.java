@@ -37,6 +37,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.CustomPropertySearchFields;
+import org.openmetadata.service.search.LuceneQuerySyntax;
 import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
@@ -226,16 +227,22 @@ public class ElasticSearchSourceBuilderFactory
             .filter(entry -> isNonFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
+    // The non-fuzzy branch is a multi_match, which never parses Lucene syntax; only this
+    // fuzzy branch can throw on user input. Text that Lucene cannot parse goes to
+    // simple_query_string, whose parser discards malformed syntax instead of raising a
+    // query_shard_exception, rather than failing the search outright (#27990).
     Query fuzzyQuery =
-        ElasticQueryBuilder.queryStringQuery(
-            query,
-            fuzzyFields,
-            Operator.And,
-            "1",
-            10,
-            3,
-            DEFAULT_TIE_BREAKER,
-            TextQueryType.MostFields);
+        !LuceneQuerySyntax.isWellFormed(query)
+            ? ElasticQueryBuilder.simpleQueryStringQuery(query, fuzzyFields, Operator.And)
+            : ElasticQueryBuilder.queryStringQuery(
+                query,
+                fuzzyFields,
+                Operator.And,
+                "1",
+                10,
+                3,
+                DEFAULT_TIE_BREAKER,
+                TextQueryType.MostFields);
 
     Query nonFuzzyQuery =
         ElasticQueryBuilder.multiMatchQuery(
@@ -520,7 +527,7 @@ public class ElasticSearchSourceBuilderFactory
   private Query buildBaseQueryV2(String query, AssetTypeConfiguration assetConfig) {
     if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
       return ElasticQueryBuilder.boolQuery().must(ElasticQueryBuilder.matchAllQuery()).build();
-    } else if (containsQuerySyntax(query)) {
+    } else if (shouldParseAsLuceneSyntax(query)) {
       return buildComplexSyntaxQueryV2(query, assetConfig);
     } else {
       return buildSimpleQueryV2(query, assetConfig);
@@ -1153,7 +1160,7 @@ public class ElasticSearchSourceBuilderFactory
       return ElasticQueryBuilder.boolQuery().must(ElasticQueryBuilder.matchAllQuery()).build();
     }
 
-    if (containsQuerySyntax(query)) {
+    if (shouldParseAsLuceneSyntax(query)) {
       return buildComplexQueryV2(query, assetConfig);
     }
 

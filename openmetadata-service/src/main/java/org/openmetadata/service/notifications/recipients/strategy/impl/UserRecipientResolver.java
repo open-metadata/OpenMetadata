@@ -26,6 +26,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
@@ -76,6 +77,10 @@ public class UserRecipientResolver implements RecipientResolutionStrategy {
     try {
       User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, Include.NON_DELETED);
       return Recipient.fromUser(user, notificationType);
+    } catch (EntityNotFoundException e) {
+      // A user an alert names can be deleted later; that leaves no one to notify, not a failure.
+      LOG.debug("Skipping user recipient {}: {}", userName, e.getMessage());
+      return null;
     } catch (Exception e) {
       LOG.error("Failed to resolve user recipient for user {}", userName, e);
       return null;
@@ -112,6 +117,9 @@ public class UserRecipientResolver implements RecipientResolutionStrategy {
     try {
       User user = Entity.getEntity(Entity.USER, userId, USER_FIELDS, Include.NON_DELETED);
       return Recipient.fromUser(user, notificationType);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Skipping user recipient {}: {}", userId, e.getMessage());
+      return null;
     } catch (Exception e) {
       LOG.error("Failed to resolve user recipient for user {}", userId, e);
       return null;

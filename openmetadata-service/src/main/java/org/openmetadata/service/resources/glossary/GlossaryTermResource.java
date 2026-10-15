@@ -958,9 +958,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
    * but are edited through their parent table — they are not a resource with their own permissions.
    * Present them as tables for the type-level permission check so a caller who may edit the table's
    * glossary terms may edit its columns' too. The original references reach the repository unchanged,
-   * so the tag is still applied to / removed from the column itself.
+   * so the tag is still applied to / removed from the column itself. Package-private for unit tests.
    */
-  private List<EntityReference> permissionAssets(List<EntityReference> assets) {
+  List<EntityReference> permissionAssets(List<EntityReference> assets) {
     if (nullOrEmpty(assets)) {
       return assets;
     }

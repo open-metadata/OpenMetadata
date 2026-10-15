@@ -54,6 +54,11 @@ class PandasValidatorMixin:
 
     runner: "PandasRunner"
 
+    def get_set_values_type(self) -> None:
+        """None: pandas infers column types from the values (strings "True"/"False" read as
+        BOOLEAN), so a set keeps the values as written; this also avoids loading a chunk."""
+        return
+
     def get_column(self: HasValidatorContext, column_name: Optional[str] = None) -> SQALikeColumn:  # noqa: UP045
         """Get column object for the given column name
 

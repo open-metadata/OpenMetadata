@@ -2,6 +2,8 @@
 Data quality validation utility functions.
 """
 
+import math
+from ast import literal_eval
 from typing import Any, Callable, List, Optional, TypeVar, Union  # noqa: UP035
 from urllib.parse import quote
 
@@ -11,6 +13,7 @@ from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy.engine import URL
 
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
+from metadata.profiler.orm.registry import is_boolean
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -21,6 +24,30 @@ R = TypeVar("R")
 # Characters that terminate the userinfo (or the whole authority) while data-diff parses the URI.
 # They must stay percent-encoded even though data-diff will not decode them back.
 USERNAME_RESERVED_CHARACTERS = ":/?#"
+
+
+def is_unbounded(bound: Any) -> bool:
+    """Whether that side of a between window lets everything through
+
+    An unset bound resolves to -inf/+inf; only a float can be infinite, so a datetime window
+    compares as a real bound.
+    """
+    return bound is None or (isinstance(bound, float) and math.isinf(bound))
+
+
+def parse_set_values(raw: str, column_type) -> list:
+    """Parse an allowed or forbidden set; on a boolean column "true"/"false" strings become booleans
+
+    Only "true"/"false" (any case) are mapped: "1"/"0", "t"/"f" and "yes"/"no" stay as written.
+    """
+    values = literal_eval(raw)
+    if not isinstance(values, (list, tuple, set)):
+        raise ValueError(f"A set of values must be a list, got {raw}")  # noqa: TRY004 the set validators abort on ValueError
+    return [_as_boolean(value) for value in values] if is_boolean(column_type) else list(values)
+
+
+def _as_boolean(value):
+    return {"true": True, "false": False}.get(value.lower(), value) if isinstance(value, str) else value
 
 
 def get_test_case_param_value(

@@ -27,6 +27,7 @@
               "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
               "type": "number",
               "default": 100,
+              "minimum": 1,
               "title": "Profile Sample"
             }
           }
