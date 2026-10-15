@@ -875,7 +875,13 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   }) => {
     await page.setViewportSize({ width: 1000, height: 1000 });
     await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' });
-    await page.addInitScript(() => localStorage.setItem('ui-theme', 'dark'));
+    // Dark mode only applies in AI app mode (theme-provider line 88: classic
+    // mode is light-only). Preseed BOTH the stored theme preference AND the
+    // AI-mode session hint so the first mount lands in AI + dark.
+    await page.addInitScript(() => {
+      localStorage.setItem('ui-theme', 'dark');
+      sessionStorage.setItem('omAppMode', JSON.stringify({ mode: 'ai' }));
+    });
     await mockGraph(page);
     await open(page);
     await expect(page.getByTestId('exit-full-screen')).toBeVisible();
@@ -1333,10 +1339,12 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await page.getByRole('option', { name: 'column_299', exact: true }).click();
     await expect(page.getByTestId('node-column_299')).toBeFocused();
     await expect(page.getByTestId('node-column_299')).toBeInViewport();
+    // R9 drawer redesign renamed the footer CTA 'Open entity page' → 'Open
+    // asset page' (label.kg-open-asset-page); the href shape is unchanged.
     await expect(
       page
         .getByTestId('graph-inspector')
-        .getByRole('link', { name: 'Open entity page', exact: true })
+        .getByRole('link', { name: 'Open asset page', exact: true })
     ).toHaveAttribute('href', /\/table\//);
     await expect(page.locator('[data-node-id]')).toHaveCount(20);
     await expect(page.locator('[data-edge-id]')).toHaveCount(324);
