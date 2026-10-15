@@ -30,15 +30,22 @@ import org.openmetadata.service.migration.utils.IdBatches;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
- * Retires the removed DeltaLake database connector. Its services,
+ * Retires the removed DeltaLake database connector
+ * (ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step). Its services,
  * their databases, schemas, tables and stored procedures, and all of their version snapshots become
  * CustomDatabase, keeping their metadata. A service's connection config is replaced with {@code
  * {"type": "CustomDatabase"}}, so the old metastore password and storage keys are not kept as
  * unmasked extra properties. Its ingestion pipelines are force-deleted through the repository,
  * which also removes their DAGs from the pipeline service; an unreachable one is logged and left.
  *
- * <p>Every table is walked in {@link IdBatches} and every statement is keyed on {@code
- * 'DeltaLake'}, so a run cut short resumes and a second run changes nothing.
+ * <p>Every retype and delete statement is keyed on {@code 'DeltaLake'} and walks its table in
+ * {@link IdBatches}, so a run cut short resumes and a second run changes nothing.
+ *
+ * <p>The pipeline delete is the one step outside that guarantee. Its ids are read before the
+ * retype, the only point a DeltaLake pipeline can be told apart, and the retype commits before the
+ * deletes run, so the ids are gone from the database by then. A failing delete therefore only logs
+ * rather than aborting the run; a process killed inside the delete loop leaves the remaining
+ * pipelines and their DAGs behind for an operator to remove.
  */
 @Slf4j
 public final class DeltaLakeRetirementMigration {
@@ -124,8 +131,24 @@ public final class DeltaLakeRetirementMigration {
                             + isDeltaLakeWorkflow(connectionType))
                     .bindList(IDS_BIND, batch)
                     .execute());
-    pipelines.forEach(deletePipeline);
+    pipelines.forEach(pipeline -> deleteOrWarn(deletePipeline, pipeline));
     LOG.info("Deleted {} DeltaLake ingestion pipelines", pipelines.size());
+  }
+
+  /**
+   * The retype has already committed by now, so a DeltaLake pipeline's id is no longer recoverable
+   * from the database. Aborting on one failure would leave every later pipeline in the run
+   * undeletable, so the failure is logged with the id an operator has to clean up by hand.
+   */
+  private static void deleteOrWarn(final Consumer<UUID> deletePipeline, final UUID pipeline) {
+    try {
+      deletePipeline.accept(pipeline);
+    } catch (Exception e) {
+      LOG.error(
+          "DeltaLake ingestion pipeline {} could not be deleted; remove its DAG by hand",
+          pipeline,
+          e);
+    }
   }
 
   /** Version snapshots go first: re-running after an interruption still finds their entity. */

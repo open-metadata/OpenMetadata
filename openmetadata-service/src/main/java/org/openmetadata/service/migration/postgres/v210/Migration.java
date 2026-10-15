@@ -52,7 +52,8 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
-    // First, so no later step loads an entity still typed DeltaLake.
+    // First, so no later step loads an entity still typed DeltaLake:
+    // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
     retireDeltaLakeServices(handle, POSTGRES, getPipelineServiceClient());
     ConversationMigration.migrate(handle, POSTGRES);
     ConversationReferenceMigration.migrate(handle, POSTGRES);

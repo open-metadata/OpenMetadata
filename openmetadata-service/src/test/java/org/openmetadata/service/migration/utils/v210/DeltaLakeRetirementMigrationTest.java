@@ -153,6 +153,29 @@ class DeltaLakeRetirementMigrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  void aFailedPipelineDeleteStillRetiresTheServices(String dialect) {
+    try (Handle handle = open(dialect)) {
+      Database db = seed(new Database(handle, dialect));
+
+      List<UUID> attempted = new ArrayList<>();
+
+      // The retype commits before the delete, so a thrown delete is unrecoverable: its id is no
+      // longer in the database for a later run to find. The step therefore has to swallow the
+      // failure and keep going rather than propagate and skip every pipeline behind it.
+      DeltaLakeRetirementMigration.retire(
+          handle,
+          db.connectionType(),
+          pipeline -> {
+            attempted.add(pipeline);
+            throw new IllegalStateException("pipeline service unreachable");
+          });
+
+      assertEquals(List.of(UUID.fromString(DELTA_PIPELINE)), attempted);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
   void leavesOtherServicesUntouched(String dialect) {
     try (Handle handle = open(dialect)) {
       Database db = seed(new Database(handle, dialect));
