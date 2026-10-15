@@ -219,7 +219,8 @@ export const getAiAutomationsByService = async (
     // The list endpoint defaults to provider=user when omitted, which filters
     // out AutoPilot's provider=automation entries; request them explicitly.
     // Service names are unique only within a service type, so the type is sent
-    // too: without it, a name two types share is rejected.
+    // too: without it, a name two types share is rejected
+    // (ADR:openmetadata-collate/2026-10-15-an-autopilot-automation-name-carries-its-service-type-on-a-clash).
     params: {
       service: serviceFqn,
       serviceType,

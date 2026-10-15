@@ -65,6 +65,7 @@ import {
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import {
   getCountLabel,
+  getEntityTypeFromServiceCategory,
   shouldTestConnection,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -1761,13 +1762,19 @@ describe('ServiceDetailsPage', () => {
         serviceCategory: ServiceCategory.MESSAGING_SERVICES,
         tab: EntityTabs.INSIGHTS,
       });
+      (getEntityTypeFromServiceCategory as jest.Mock).mockImplementation(
+        (category: ServiceCategory) =>
+          category === ServiceCategory.MESSAGING_SERVICES
+            ? 'messagingService'
+            : 'database'
+      );
 
       await renderComponent();
 
       await waitFor(() => {
         expect(getAiAutomationsByService).toHaveBeenCalledWith(
           'test-service',
-          'database'
+          'messagingService'
         );
       });
     });
