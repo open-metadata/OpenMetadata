@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Card, Typography } from '@openmetadata/ui-core-components';
-import { Badge } from 'antd';
+import { Badge, Card, Typography } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,7 +46,9 @@ const SettingItemCard = ({
         <div className="setting-card-icon">
           <Icon component={data.icon} />
           {Boolean(data?.isBeta) && (
-            <Badge className="service-beta-tag" count={t('label.beta')} />
+            <Badge className="service-beta-tag" color="brand" size="sm">
+              {t('label.beta')}
+            </Badge>
           )}
         </div>
         <div className="setting-card-content">

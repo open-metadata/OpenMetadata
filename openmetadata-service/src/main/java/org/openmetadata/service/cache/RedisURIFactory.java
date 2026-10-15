@@ -22,10 +22,10 @@ import java.time.Duration;
  * <p>Accepts URL forms: {@code redis://…}/{@code rediss://…}, {@code host:port}, or bare {@code
  * host}. Adds password/SSL/database selection from config.
  */
-final class RedisURIFactory {
+public final class RedisURIFactory {
   private RedisURIFactory() {}
 
-  static RedisURI build(CacheConfig.Redis redis) {
+  public static RedisURI build(CacheConfig.Redis redis) {
     String url = redis.url;
     Duration connectTimeout = Duration.ofMillis(redis.connectTimeoutMs);
     RedisURI.Builder builder;

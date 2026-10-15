@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import jakarta.ws.rs.BadRequestException;
@@ -40,13 +39,13 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.apps.bundles.changeEvent.ConsumerKind;
-import org.openmetadata.service.events.scheduled.AlertJobs;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.AlertDefinitionPolicy;
-import org.openmetadata.service.events.subscription.DestinationValidation;
-import org.openmetadata.service.events.subscription.ledger.AlertRecord;
+import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
+import org.openmetadata.service.alerting.channel.DestinationValidation;
+import org.openmetadata.service.alerting.definition.AlertDefinitionPolicy;
+import org.openmetadata.service.events.consumer.Consumers;
+import org.openmetadata.service.events.consumer.ledger.AlertRecord;
+import org.openmetadata.service.events.consumer.schedule.AlertJobs;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -73,8 +72,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   public void setFields(
       EventSubscription entity, Fields fields, RelationIncludes relationIncludes) {
     if (fields.contains("statusDetails") && !entity.getDestinations().isEmpty()) {
-      entity.withDestinations(
-          new ArrayList<>(EventSubscriptionScheduler.getInstance().destinationsWithStatus(entity)));
+      entity.withDestinations(new ArrayList<>(AlertDiagnostics.destinationsWithStatus(entity)));
     }
     entity.setNotificationTemplate(templateOf(entity.getId()));
   }
@@ -183,7 +181,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
     // An update is validated by the updater, which knows what the alert looked like before.
     if (!update) {
-      requireLoadableConsumer(entity);
+      requireRegistered(entity);
       DestinationValidation.ofANewAlert(entity);
       AlertDefinitionPolicy.ofNew(entity).prepareNew(entity);
     }
@@ -202,17 +200,10 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
   }
 
-  // A save naming a consumer this server cannot load fails here, not at every tick.
-  private static void requireLoadableConsumer(EventSubscription alert) {
-    if (alert.getClassName() != null) {
-      try {
-        ConsumerKind.of(
-            Class.forName(alert.getClassName()).asSubclass(AbstractEventConsumer.class));
-      } catch (ClassNotFoundException | ClassCastException e) {
-        throw new BadRequestException("Consumer class cannot be loaded: " + alert.getClassName());
-      } catch (IllegalArgumentException e) {
-        throw new BadRequestException(e.getMessage());
-      }
+  // A save naming a consumer this server does not have fails here, not at every tick.
+  private static void requireRegistered(EventSubscription alert) {
+    if (alert.getClassName() != null && Consumers.find(alert.getClassName()).isEmpty()) {
+      throw new BadRequestException("No consumer is registered as " + alert.getClassName());
     }
   }
 
@@ -320,7 +311,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
                 recordChange(
                     "destinations",
                     original.getDestinations(),
-                    encryptWebhookSecretKey(updated.getDestinations()),
+                    DestinationSecrets.encrypt(updated.getDestinations()),
                     true,
                     objectMatch,
                     false));
