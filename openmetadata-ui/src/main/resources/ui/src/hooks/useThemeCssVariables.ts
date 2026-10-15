@@ -12,8 +12,8 @@
  */
 import { useEffect } from 'react';
 import { DEFAULT_THEME } from '../constants/Appearance.constants';
-import { useApplicationStore } from './useApplicationStore';
 import { generatePalette } from '../styles/colorPallet';
+import { useApplicationStore } from './useApplicationStore';
 
 // The LESS reads the brand and status colours through these variables
 // (`@primary-color: var(--ant-primary-color)`, `@success-color`, ...). The
@@ -39,6 +39,9 @@ export const useThemeCssVariables = () => {
       const color = customTheme?.[key as keyof typeof THEME_COLOR_VARIABLES];
       if (color) {
         document.documentElement.style.setProperty(variable, color);
+      } else {
+        // A cleared colour falls back to the stylesheet default again.
+        document.documentElement.style.removeProperty(variable);
       }
     });
   }, [customTheme]);

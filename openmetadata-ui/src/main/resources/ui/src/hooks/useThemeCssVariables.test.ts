@@ -58,4 +58,16 @@ describe('useThemeCssVariables', () => {
     expect(cssVar('--ant-primary-color')).toBe('#123456');
     expect(cssVar('--ant-success-color')).toBe('');
   });
+
+  it('drops a colour the theme no longer sets', () => {
+    mockTheme({ primaryColor: '#123456', successColor: '#00aa00' });
+    const { rerender } = renderHook(() => useThemeCssVariables());
+
+    expect(cssVar('--ant-success-color')).toBe('#00aa00');
+
+    mockTheme({ primaryColor: '#123456', successColor: '' });
+    rerender();
+
+    expect(cssVar('--ant-success-color')).toBe('');
+  });
 });
