@@ -12,8 +12,10 @@
  */
 import {
   Button,
+  Dialog,
   Dropdown,
-  SimpleModal,
+  Modal,
+  ModalOverlay,
 } from '@openmetadata/ui-core-components';
 import {
   AreaChart,
@@ -21,7 +23,6 @@ import {
   type ChartYAxisProps,
 } from '@openmetadata/ui-core-components/charts';
 import { DotsVertical } from '@openmetadata/ui-core-components/icons';
-import { Form } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, last, omit, toPairs } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -47,7 +48,6 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
-import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import CustomMetricForm from '../../../../DataQuality/CustomMetricForm/CustomMetricForm.component';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
@@ -86,7 +86,6 @@ const CustomMetricGraphs = ({
   customMetrics,
 }: CustomMetricGraphsProps) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<CustomMetric>();
   const {
     permissions,
     customMetric: tableDetails,
@@ -235,7 +234,6 @@ const CustomMetricGraphs = ({
                         setOpenMenuKey(isOpen ? key : null)
                       }>
                       <Button
-                        aria-label={t('label.more-action')}
                         color="secondary"
                         data-testid={`${key}-custom-metrics-menu`}
                         iconLeading={DotsVertical}
@@ -293,26 +291,42 @@ const CustomMetricGraphs = ({
         onDelete={handleDeleteClick}
       />
       {isEditModalVisible && !isUndefined(selectedMetrics) && (
-        <SimpleModal
-          isOpen
-          isDismissable={false}
-          isOkLoading={isActionLoading}
-          okText={t('label.save')}
-          title={t('label.edit-entity', { entity: selectedMetrics.name })}
-          width={650}
-          onCancel={handleModalCancel}
-          onOk={() => form.submit()}>
-          <DrawerPopupContainerProvider>
-            <CustomMetricForm
-              isEditMode
-              form={form}
-              initialValues={selectedMetrics}
-              isColumnMetric={!isUndefined(selectedMetrics.columnName)}
-              table={tableDetails}
-              onFinish={handleEditFormSubmit}
-            />
-          </DrawerPopupContainerProvider>
-        </SimpleModal>
+        <ModalOverlay
+          isOpen={isEditModalVisible}
+          onOpenChange={(open) => !open && handleModalCancel()}>
+          <Modal>
+            <Dialog
+              title={t('label.edit-entity', { entity: selectedMetrics.name })}
+              width={650}>
+              <Dialog.Content>
+                <CustomMetricForm
+                  isEditMode
+                  initialValues={selectedMetrics}
+                  isColumnMetric={!isUndefined(selectedMetrics.columnName)}
+                  table={tableDetails}
+                  onFinish={handleEditFormSubmit}
+                />
+              </Dialog.Content>
+              <Dialog.Footer>
+                <Button
+                  color="secondary"
+                  isDisabled={isActionLoading}
+                  size="md"
+                  onPress={handleModalCancel}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  form="custom-metric-form"
+                  isLoading={isActionLoading}
+                  size="md"
+                  type="submit">
+                  {t('label.save')}
+                </Button>
+              </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
       )}
     </div>
   );

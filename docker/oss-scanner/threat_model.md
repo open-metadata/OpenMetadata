@@ -6,6 +6,18 @@ The scanner reads this file before it starts. It covers the OpenMetadata **serve
 `docker/oss-scanner/Dockerfile` builds. For the general deployment guidance see
 [THREAT_MODEL.md](../../THREAT_MODEL.md).
 
+## Security reporting scope
+
+The scanner's private security reports must follow [SECURITY.md](../../SECURITY.md): only
+authentication vulnerabilities that let an unauthenticated attacker access OpenMetadata or its
+protected data are eligible. Reproduce the issue on a supported release with authentication enabled
+and the documented production security configuration in place.
+
+This scope replaces the earlier rubric that treated authenticated attack outcomes and authorization
+bypasses as reportable security findings. See
+ADR:2026-10-14-cve-reporting-covers-unauthenticated-access-only. The input surfaces and controls below
+remain relevant to understanding the server; they do not independently establish report eligibility.
+
 ## What the server does and where untrusted input enters
 
 OpenMetadata is a metadata platform for data discovery, lineage, quality and governance. The server
@@ -22,10 +34,10 @@ Untrusted input reaches the server through:
   and the others listed there), the SAML, OIDC and `/api/v1/auth/*` servlets, the MCP OAuth
   endpoints, and the static asset servlet.
 - **The socket.io push feed** at `/api/v1/push/feed`.
-- **Any authenticated user**, whatever their role. With the default basic authentication anyone who
-  can reach the server can sign up. They control every request body, query parameter and header,
-  including JSON Patch documents, CSV and YAML imports, search queries, and content the server
-  stores and later processes for other users.
+- **Any authenticated user**, whatever their role. Self-signup, when enabled, creates an
+  authenticated user; using that intended registration flow is not an authentication bypass. Users
+  control request bodies, query parameters and headers, including JSON Patch documents, CSV and YAML
+  imports, search queries, and content the server stores and later processes for other users.
 - **Metadata written by others**: names, descriptions, tags, lineage and sample data sent by
   ingestion bots or other users, which the server later renders, evaluates or forwards.
 - **Responses to outbound requests** the server makes: webhooks and alert destinations, OIDC
@@ -36,13 +48,16 @@ Untrusted input reaches the server through:
 ## Trust model
 
 - **Admins** are trusted to configure the server, its services, connections, workflows, apps and
-  policies. An admin-only issue matters only when it gives an admin something the product does not:
-  code execution on the server host, or secrets that the API is designed to mask.
+  policies. They supply or manage service connection details and know what their connected source
+  systems hold. Their connection tests, ingestion and integration operations are privileged
+  capabilities; outcomes requiring legitimate admin credentials are outside the reporting scope.
 - **Bots** (ingestion, profiler, usage, application bots) are trusted service accounts. By design they
-  receive unmasked connection secrets.
+  receive unmasked connection secrets. Users and bots explicitly delegated service-management
+  capabilities are trusted to perform them within their granted permissions.
 - **Every other user** must stay within what their roles and policies grant: RBAC rules and their
   conditions, ownership, teams and domains. By default the Organization policy lets every user view
-  all metadata (`ViewAll`), so reading metadata through that rule is not a finding.
+  all metadata (`ViewAll`), so reading metadata through that rule is expected. Authorization defects
+  affecting already authenticated users are product bugs, outside CVE and private advisory scope.
 - **Unauthenticated clients** are untrusted.
 - `conf/openmetadata.yaml` and the environment are trusted operator input.
 
@@ -70,8 +85,9 @@ Untrusted input reaches the server through:
 - Lower priority, and not built in this image: the UI (`openmetadata-ui`,
   `openmetadata-ui-core-components`), the Python ingestion framework (`ingestion/`) and
   `openmetadata-airflow-apis`, which run inside the operator's own infrastructure with credentials
-  the operator gives them, and the Kubernetes operator, SDKs and clients. Stored XSS is in scope
-  when the server accepts or returns content it is meant to sanitize.
+  the operator gives them, and the Kubernetes operator, SDKs and clients. Stored XSS or another
+  content-processing defect is eligible only if it independently meets the authentication reporting
+  scope above; accepting or returning unsanitized content alone is insufficient.
 - Out of scope: tests (`**/src/test/**`, `openmetadata-integration-tests`, Playwright), `examples/`,
   `scripts/`, `docker/` development and quickstart files, documentation, and CI workflows.
 
@@ -89,43 +105,61 @@ Untrusted input reaches the server through:
 - Write proofs of concept as JUnit 5 and Mockito tests beside the existing ones, which mock the
   database and search layers. `JwtFilterTest` and `DefaultAuthorizerTest` are good models; the
   module's other tests show how each area is set up.
-- When an issue needs a running server, give the exact HTTP requests against a default deployment
-  (`docker/docker-compose-quickstart`), stating the user and role that sends each one.
+- When an issue needs a running server, give the exact HTTP requests against a supported deployment
+  with production authentication configured and sample accounts and keys replaced, as described in
+  SECURITY.md. State every credential, role and configuration change used in the reproduction.
 
-## How we rate severity
+## How we rate eligible findings
 
-- **Critical**: code execution on the server; authentication bypass or token forgery that works
-  against a deployment configured with its own keys; reading connection secrets, bot tokens or
-  password hashes; SQL injection. All without authentication.
-- **High**: the same outcomes for any authenticated non-admin user, including self-signed-up users,
-  as well as escalation to admin or bot privileges, and SSRF that returns the responses of internal
-  services.
-- **Medium**: authorization bypasses that let a user read or change metadata their policies deny,
-  without escalation; blind SSRF; stored XSS reaching other users through data the server should
-  sanitize; open redirect or CSRF in login and SSO flows; a non-admin user crashing or hanging the
-  server.
-- **Low**: information disclosure without secrets (versions, stack traces, user enumeration),
-  denial of service that needs admin rights or very high request volumes, and admin-only issues that
-  do not reach the server host.
+Apply the reporting scope before assigning severity. A severe outcome does not make a finding that
+requires a legitimate authenticated account eligible for a CVE or private advisory.
 
-A finding that needs a non-default configuration is rated as above when that configuration is
-common in production (for example SSO through SAML or OIDC, or PostgreSQL instead of MySQL), and
-one level lower otherwise.
+- **Critical**: an authentication failure gives an unauthenticated attacker admin or bot access,
+  server code execution, SQL injection, or access to protected connection secrets, bot tokens or
+  password hashes.
+- **High**: an authentication failure gives an unauthenticated attacker access to protected metadata
+  or platform operations without one of the Critical outcomes above.
+
+Supported production authentication configurations, including SAML or OIDC, are eligible under the
+same rule. Disabled authentication, intentionally public features and unchanged test defaults do
+not meet that rule. Out-of-scope findings do not receive an advisory severity under this rubric;
+product bugs can be reported through the normal issue tracker with sensitive data removed.
 
 ## Please do not report
 
+- Findings requiring an existing legitimate user or bot credential, including an authenticated
+  non-admin or self-signed-up user obtaining server code execution, SQL injection, unmasked
+  connection secrets, bot tokens, password hashes, or escalation to admin or bot privileges. If a
+  report also alleges an authentication bypass, reproduce that bypass independently without
+  assuming a legitimate account or previously obtained access.
+- Policy or authorization defects affecting authenticated users: role, permission, ownership and
+  visibility bypasses, metadata access or modification denied by a policy, and feed author spoofing.
+- Expected administrator or delegated-operator capabilities, including service connections,
+  ingestion and outbound requests to configured destinations. SSRF claims, including access to
+  internal responses, must independently demonstrate an authentication failure giving an
+  unauthenticated attacker access to OpenMetadata or its protected data.
 - Known development defaults that production deployments are documented to replace: the initial
-  password of the default `admin` user, and the JWT key pair and Fernet key bundled in `conf/`. Do
-  report it if a documented production setting does not take effect, or if the server keeps
-  relying on one of these defaults after the operator has replaced it.
-- Vulnerabilities in third-party dependencies unless OpenMetadata code reaches them in an
-  exploitable way; we track dependency CVEs separately.
-- Missing rate limiting beyond the existing login lockout, missing security headers, clickjacking
-  and self-XSS, unless they combine into one of the outcomes above.
+  password of the default `admin` user, and the JWT key pair and Fernet key bundled in `conf/`, or
+  deployments with authentication disabled or omitted. A replaced production setting that does not
+  take effect is eligible only when it demonstrably permits unauthenticated protected access.
+- Intentionally enabled self-signup, public login configuration, JWKS public keys, OAuth client IDs
+  and other credential identifiers, without a demonstrated authentication failure.
+- Findings that assume database, filesystem or container access, or stolen credentials, without
+  demonstrating how an authentication vulnerability gives the attacker that access.
+- Dependency scan results, third-party CVE lists, static warnings or source snippets without a
+  working reproduction of unauthenticated protected access through OpenMetadata; dependency CVEs
+  are tracked separately.
+- Login failures, denial of service, username enumeration, missing rate limiting, missing security
+  headers, clickjacking, XSS, open redirects or CSRF without the authentication failure and protected
+  access required above.
 
 ## Reports and patches
 
+- Submit only eligible findings privately through the reporting procedure in SECURITY.md.
 - One report per root cause, listing every affected endpoint or class.
-- Say which role is needed and which configuration, if not the default.
+- State the affected supported version, production authentication configuration, every prerequisite,
+  and the expected and observed authentication behavior.
 - Include a reproducer (a unit test as described above, or HTTP requests) and a minimal patch against
-  `main` with a regression test. Match the surrounding code style.
+  `main` with a regression test. The reproducer must demonstrate protected access starting without
+  legitimate credentials; scanner output or a missing authorization call alone is insufficient.
+  Match the surrounding code style.
