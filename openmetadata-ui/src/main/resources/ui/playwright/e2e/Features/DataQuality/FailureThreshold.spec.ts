@@ -81,9 +81,11 @@ const expectRunDetails = async (
   );
 };
 
-// The options live in a react-aria popover that closes on any scroll around its
-// trigger, which can land right after it opens. Reopen it until the assertions
-// hold on a single open popover.
+// The options live in a react-aria popover that closes on any scroll of a
+// container around its trigger. Opening focuses the trigger, and when the
+// trigger sits partly below the drawer form's visible edge the form scrolls to
+// reveal it, which closes the popover again. Centre the trigger before opening,
+// and reopen until the assertions hold on one open popover.
 const expectListboxOptions = async (
   trigger: Locator,
   assertions: (listbox: Locator) => Promise<void>
