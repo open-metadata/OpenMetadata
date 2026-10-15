@@ -334,6 +334,7 @@ public class RdfOntologyProjectionIT {
       final OntologyExpression expression) {
     return new CreateOntologyAxiom()
         .withName(name)
+        .withDisplayName(name)
         .withDescription("Axiom projected into its own graph")
         .withGlossary(glossary.getFullyQualifiedName())
         .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
