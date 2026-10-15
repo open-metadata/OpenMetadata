@@ -1267,7 +1267,7 @@ decides per entity type when a run starts:
 
 An in-place batch records when it was read and writes guarded scripted upserts that replace the
 stored document unless its `sourceReadAt` is newer. Live entity writes stamp the time they read
-their content (`SearchVersionGuard`),
+their content ([`SearchVersionGuard`](../../openmetadata-service/src/main/java/org/openmetadata/service/search/SearchVersionGuard.java)),
 so the write that read later wins regardless of arrival order. Neither the entity version nor
 `updatedAt` can order writes: consolidating a change that undoes the previous one restores both.
 Time-series documents keep plain index writes and are stamped only so the cleanup can skip them.
