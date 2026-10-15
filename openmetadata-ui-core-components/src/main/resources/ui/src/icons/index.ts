@@ -467,6 +467,7 @@ export { WorkflowStart } from './WorkflowStart';
 export { WorkflowUndo } from './WorkflowUndo';
 export { XCircle } from './XCircle';
 export { XClose } from './XClose';
+export { X } from './X';
 export { ZapFast } from './ZapFast';
 export { Zap } from './Zap';
 export { ZoomIn } from './ZoomIn';

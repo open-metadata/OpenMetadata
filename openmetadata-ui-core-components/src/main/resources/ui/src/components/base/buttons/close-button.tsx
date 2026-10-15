@@ -1,4 +1,4 @@
-import { XClose as CloseIcon } from '../../../icons';
+import { X as CloseIcon } from '../../../icons';
 import {
   Button as AriaButton,
   type ButtonProps as AriaButtonProps,
