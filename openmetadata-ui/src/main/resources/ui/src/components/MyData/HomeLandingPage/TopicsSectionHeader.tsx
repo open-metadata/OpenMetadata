@@ -57,7 +57,7 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
   return (
     <div className="tw:mb-4 tw:flex tw:flex-wrap tw:items-end tw:justify-between tw:gap-4">
       <div>
-        <Typography size="text-md" weight="semibold">
+        <Typography size="text-sm" weight="semibold">
           {t('label.topics-to-catch-up-on')}
         </Typography>
         {/* `!` on the colour: Typography renders `.prose`, whose unlayered
@@ -76,7 +76,7 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
           data-testid="toggle-all-widgets"
           iconLeading={ChevronSelectorVertical}
           isDisabled={isToggleAllDisabled}
-          size="sm"
+          size="xs"
           onPress={onToggleAll}>
           {t(
             isEveryWidgetCollapsed ? 'label.expand-all' : 'label.collapse-all'
@@ -114,7 +114,7 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
             color="secondary"
             data-testid="customize-home-page"
             iconLeading={Settings01}
-            size="sm"
+            size="xs"
             onPress={onCustomize}>
             {t('label.customize')}
           </Button>

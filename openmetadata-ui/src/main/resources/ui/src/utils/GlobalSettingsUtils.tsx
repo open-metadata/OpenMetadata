@@ -24,6 +24,8 @@ import { getSettingPath } from './RouterUtils';
 export interface SettingMenuItem {
   key: string;
   icon: SvgComponent;
+  // Draws `icon` (a plain core glyph) on a tinted tile, for icons without a baked-in background.
+  iconColor?: 'blue';
   description: string;
   category?: string;
   label?: string;
