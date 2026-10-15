@@ -100,7 +100,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/Alerts/DestinationFormItem/DestinationFormItemFormBridge',
+  '../../components/Alerts/DestinationFormItem/DestinationFormItem.component',
   () =>
     jest
       .fn()

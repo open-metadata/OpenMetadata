@@ -469,38 +469,6 @@ export const ENTITY_REFERENCE_OPTIONS = [
   },
 ];
 
-export const VALIDATION_MESSAGES = {
-  required: i18n.t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
-  types: {
-    email: i18n.t('message.entity-is-not-valid', {
-      entity: '${label}',
-    }),
-  },
-  whitespace: i18n.t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
-  string: {
-    range: i18n.t('message.entity-size-in-between', {
-      entity: '${label}',
-      min: '${min}',
-      max: '${max}',
-    }),
-  },
-  number: {
-    range: i18n.t('message.entity-size-in-between', {
-      entity: '${label}',
-      min: '${min}',
-      max: '${max}',
-    }),
-    min: i18n.t('message.entity-size-less-than', {
-      entity: '${label}',
-      min: '${min}',
-    }),
-  },
-};
-
 export const ERROR_MESSAGE = {
   alreadyExist: 'already exists',
   mutuallyExclusive: 'mutually exclusive',

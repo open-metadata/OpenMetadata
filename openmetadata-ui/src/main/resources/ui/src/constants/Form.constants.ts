@@ -33,17 +33,10 @@ const NAME_SIZE_MESSAGE = sizeMessage('label.name');
 const NAME_PATTERN_MESSAGE = String(i18n.t('message.entity-name-validation'));
 const DISPLAY_NAME_SIZE_MESSAGE = sizeMessage('label.display-name');
 
-export const NAME_FIELD_RULES: EntityNameValidationRule[] = [
-  { required: true, message: NAME_REQUIRED_MESSAGE },
-  { min: 1, max: ENTITY_NAME_MAX_LENGTH, message: NAME_SIZE_MESSAGE },
-  { pattern: ENTITY_NAME_REGEX, message: NAME_PATTERN_MESSAGE },
-];
-
 export const DISPLAY_NAME_FIELD_RULES: EntityNameValidationRule[] = [
   { min: 1, max: ENTITY_NAME_MAX_LENGTH, message: DISPLAY_NAME_SIZE_MESSAGE },
 ];
 
-/** react-hook-form counterpart of NAME_FIELD_RULES. */
 export const NAME_FIELD_REGISTER_RULES = {
   required: NAME_REQUIRED_MESSAGE,
   maxLength: { value: ENTITY_NAME_MAX_LENGTH, message: NAME_SIZE_MESSAGE },
