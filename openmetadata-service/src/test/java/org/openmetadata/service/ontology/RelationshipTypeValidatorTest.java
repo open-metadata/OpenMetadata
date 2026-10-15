@@ -95,6 +95,8 @@ class RelationshipTypeValidatorTest {
   @Test
   void acceptsTransitiveWithAsymmetric() {
     // Transitive + asymmetric (a strict partial order) is satisfiable and not contradictory.
+    // RelationshipTypeGraphValidator still rejects it: OWL 2 DL allows asymmetry on simple roles
+    // only.
     RelationshipType relationshipType =
         relationshipType(UUID.randomUUID())
             .withCharacteristics(

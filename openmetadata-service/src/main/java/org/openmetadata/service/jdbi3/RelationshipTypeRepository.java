@@ -57,7 +57,8 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
             id ->
                 Entity.getCollectionDAO()
                     .relationshipTypeDAO()
-                    .findEntityById(id, Include.NON_DELETED));
+                    .findEntityById(id, Include.NON_DELETED),
+            resolver::list);
     eventPublisher = new OntologyChangeEventPublisher();
   }
 

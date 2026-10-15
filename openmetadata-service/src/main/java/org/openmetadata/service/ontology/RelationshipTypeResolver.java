@@ -23,6 +23,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.rdf.OwlEntityDeclarations;
 
 public final class RelationshipTypeResolver {
   private final CollectionDAO.RelationshipTypeDAO relationshipTypeDAO;
@@ -94,14 +95,47 @@ public final class RelationshipTypeResolver {
     return isTransitive;
   }
 
+  /**
+   * Whether OWL 2 DL treats the predicate's type as a simple role: neither it nor its inverse is
+   * transitive or defined by a property chain. A reserved type's characteristics are navigation
+   * hints that are never projected, so they do not count. See
+   * ADR:2026-10-14-relationship-types-reject-axioms-owl2-dl-cannot-express.
+   */
   public boolean isSimple(final URI predicate) {
     final RelationshipType relationshipType = findByPredicate(predicate);
     final boolean isSimple =
         relationshipType == null
-            || (!hasCharacteristic(relationshipType, RelationshipCharacteristic.TRANSITIVE)
-                && (relationshipType.getPropertyChain() == null
-                    || relationshipType.getPropertyChain().isEmpty()));
+            || (isOwnSimple(relationshipType) && isInverseSimple(relationshipType));
     return isSimple;
+  }
+
+  private boolean isInverseSimple(final RelationshipType relationshipType) {
+    final UUID inverseId =
+        relationshipType.getInverse() == null ? null : relationshipType.getInverse().getId();
+    boolean isSimple = true;
+    if (inverseId != null
+        && !inverseId.equals(relationshipType.getId())
+        && !isReserved(relationshipType)) {
+      try {
+        isSimple = isOwnSimple(relationshipTypeDAO.findEntityById(inverseId, Include.NON_DELETED));
+      } catch (EntityNotFoundException exception) {
+        isSimple = true;
+      }
+    }
+    return isSimple;
+  }
+
+  private static boolean isOwnSimple(final RelationshipType relationshipType) {
+    return isReserved(relationshipType)
+        || (!hasCharacteristic(relationshipType, RelationshipCharacteristic.TRANSITIVE)
+            && (relationshipType.getPropertyChain() == null
+                || relationshipType.getPropertyChain().isEmpty()));
+  }
+
+  private static boolean isReserved(final RelationshipType relationshipType) {
+    return relationshipType.getRdfPredicate() != null
+        && OwlEntityDeclarations.isReservedVocabulary(
+            relationshipType.getRdfPredicate().toString());
   }
 
   private static boolean hasCharacteristic(
