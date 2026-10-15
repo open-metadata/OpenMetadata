@@ -97,6 +97,7 @@ import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
+import { getTagTooltip } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
@@ -114,6 +115,7 @@ import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
+import { TagChipTooltip } from '../../Tag/TagChipTooltip/TagChipTooltip';
 import './data-asset-header.less';
 import {
   DataAssetHeaderInfo,
@@ -1069,14 +1071,17 @@ export const DataAssetsHeader = ({
             if (tier) {
               // The chip is a link to the tag, so it is not also a tier trigger.
               return (
-                <ClassificationTag
-                  color={tier.style?.color}
-                  data-testid="Tier"
-                  href={getTagRedirectLink(tier)}
-                  icon={tier.style?.iconURL}
-                  label={getTagName(tier)}
-                  size="sm"
-                />
+                <TagChipTooltip
+                  title={getTagTooltip(tier.tagFQN, tier.description)}>
+                  <ClassificationTag
+                    color={tier.style?.color}
+                    data-testid="Tier"
+                    href={getTagRedirectLink(tier)}
+                    icon={tier.style?.iconURL}
+                    label={getTagName(tier)}
+                    size="sm"
+                  />
+                </TagChipTooltip>
               );
             }
 

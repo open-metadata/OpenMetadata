@@ -313,7 +313,7 @@ test('KPI Widget', async ({ page, persona, kpiIds }) => {
     await waitForAllLoadersToDisappear(page);
 
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
-    await page.getByRole('menuitem', { name: 'KPIs' }).click();
+    await page.getByRole('link', { name: 'KPIs', exact: true }).click();
 
     await page.getByTestId('add-kpi-btn').click();
     const createdKpi = await addKpi(page, {
