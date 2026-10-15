@@ -511,11 +511,11 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
             limitParam,
             before,
             after);
+    // The persona page's cursors are already encoded; the (data, before, after, total) constructor
+    // would encode them again and hand out cursors that page to nothing.
     return new ResultList<>(
-        personas.getData().stream().map(PersonaResource::contextStatus).toList(),
-        personas.getPaging().getBefore(),
-        personas.getPaging().getAfter(),
-        personas.getPaging().getTotal());
+            personas.getData().stream().map(PersonaResource::contextStatus).toList())
+        .setPaging(personas.getPaging());
   }
 
   @Override

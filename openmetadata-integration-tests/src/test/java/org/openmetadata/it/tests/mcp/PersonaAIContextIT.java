@@ -717,13 +717,14 @@ class PersonaAIContextIT extends McpTestBase {
         .isEqualTo(personaPage.path("paging").path("total").asInt());
 
     String rawAfter = statusPage.path("paging").path("after").asText();
-    assertThat(rawAfter).isNotEmpty();
+    assertThat(rawAfter).isNotEmpty().isEqualTo(personaPage.path("paging").path("after").asText());
     String after = URLEncoder.encode(rawAfter, StandardCharsets.UTF_8);
     JsonNode nextStatus =
         OBJECT_MAPPER.readTree(
             getResponse("personas/aiContext/status?limit=1&after=" + after, authToken).body());
     JsonNode nextPersona =
         OBJECT_MAPPER.readTree(getResponse("personas?limit=1&after=" + after, authToken).body());
+    assertThat(nextStatus.path("data")).hasSize(1);
     assertThat(nextStatus.path("data").get(0).path("personaId").asText())
         .isEqualTo(nextPersona.path("data").get(0).path("id").asText());
   }
