@@ -42,6 +42,7 @@ jest.mock('../../../rest/assetAPI', () => ({
   }),
   deleteDriveFile: jest.fn(),
   restoreDriveFile: jest.fn(),
+  getContextFileById: jest.fn(),
 }));
 
 jest.mock('../../../utils/ContextCenterClassBase', () => ({

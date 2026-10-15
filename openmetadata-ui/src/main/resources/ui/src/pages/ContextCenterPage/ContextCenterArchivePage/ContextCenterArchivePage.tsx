@@ -25,6 +25,7 @@ import { useContextCenterPageLayout } from '../../../components/ContextCenter/Co
 import { ARCHIVE_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { Include } from '../../../generated/type/include';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -231,11 +232,13 @@ const ContextCenterArchivePage: FC = () => {
         queryClient,
         CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
         () =>
-          getContextFileById(deletedId).then(
+          // `Include.All` because every archive row is already soft-deleted —
+          // the endpoint's `non-deleted` default would 404 at once and make an
+          // un-purged file look gone. Only a 404 counts as landed; a transient
+          // error leaves it to the next attempt.
+          getContextFileById(deletedId, Include.All).then(
             () => false,
-            // Any error means we cannot confirm it is still there; the refetch
-            // after the loop settles the badge either way.
-            () => true
+            (err) => (err as AxiosError).response?.status === 404
           )
       );
     } catch (err) {

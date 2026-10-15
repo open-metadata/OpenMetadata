@@ -93,6 +93,30 @@ describe('reconcileCountAfterAsyncDelete', () => {
     expect(queryClient.getQueryData(KEY)).toBe(5);
   });
 
+  it('does not treat a transient error as the delete having landed', async () => {
+    // A 500 mid-poll must not end the wait — only the row's confirmed absence
+    // does. Ending early would refetch before the delete lands and pin the
+    // pre-delete total, which is the bug this helper exists to fix.
+    let polls = 0;
+    const queryClient = buildClient(() => (polls < 3 ? 5 : 4));
+    queryClient.setQueryData(KEY, 5);
+
+    await reconcileCountAfterAsyncDelete(
+      queryClient,
+      KEY,
+      async () => {
+        polls++;
+
+        // Probe fails twice, then the row is genuinely gone.
+        return polls >= 3;
+      },
+      { attempts: 5, intervalMs: 0 }
+    );
+
+    expect(polls).toBe(3);
+    expect(queryClient.getQueryData(KEY)).toBe(4);
+  });
+
   it('settles on the server total when a restore lands in the same window', async () => {
     // Badge cached at 10. A hard delete is pending and the user restores
     // another file mid-poll, so the server moves 10 → 9 → 8. A target frozen
