@@ -238,6 +238,34 @@ describe('MemoriesView', () => {
     );
   });
 
+  it('names each vote count for screen readers, not just its icon and number', () => {
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            outcomes: {
+              appliedCount: 12,
+              positiveCount: 3,
+              negativeCount: 1,
+              countedAt: 1778756959299,
+            },
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByText('label.helpful-vote-count:3')).toHaveClass(
+      'tw:sr-only'
+    );
+    expect(screen.getByText('label.unhelpful-vote-count:1')).toHaveClass(
+      'tw:sr-only'
+    );
+    expect(screen.getByText('3')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByText('1')).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('shows no vote or correction count that is zero', () => {
     render(
       <MemoriesView

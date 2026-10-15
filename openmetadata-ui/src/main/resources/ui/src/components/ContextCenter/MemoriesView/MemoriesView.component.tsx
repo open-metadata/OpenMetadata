@@ -220,24 +220,27 @@ const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({ memory }) => {
         {count === undefined ? '' : t('label.cited-n-times', { count })}
         {lastAt ? ` · ${t('label.last')} ${getShortRelativeTime(lastAt)}` : ''}
       </Typography>
+      {/* A Box has no role, so an aria-label on it is never read: the counts are named in text. */}
       {positiveCount > 0 && (
-        <Box
-          align="center"
-          aria-label={t('label.helpful-vote-count', { count: positiveCount })}
-          data-testid="memory-helpful-count"
-          gap={1}>
+        <Box align="center" data-testid="memory-helpful-count" gap={1}>
           <ThumbsUp aria-hidden size={14} />
-          <Typography size="text-xs">{positiveCount}</Typography>
+          <Typography size="text-xs">
+            <span aria-hidden>{positiveCount}</span>
+            <span className="tw:sr-only">
+              {t('label.helpful-vote-count', { count: positiveCount })}
+            </span>
+          </Typography>
         </Box>
       )}
       {negativeCount > 0 && (
-        <Box
-          align="center"
-          aria-label={t('label.unhelpful-vote-count', { count: negativeCount })}
-          data-testid="memory-unhelpful-count"
-          gap={1}>
+        <Box align="center" data-testid="memory-unhelpful-count" gap={1}>
           <ThumbsDown aria-hidden size={14} />
-          <Typography size="text-xs">{negativeCount}</Typography>
+          <Typography size="text-xs">
+            <span aria-hidden>{negativeCount}</span>
+            <span className="tw:sr-only">
+              {t('label.unhelpful-vote-count', { count: negativeCount })}
+            </span>
+          </Typography>
         </Box>
       )}
       {correctedCount > 0 && (
