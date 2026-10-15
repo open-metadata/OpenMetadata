@@ -245,6 +245,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       SharedEntities.initialize(SdkClients.adminClient());
       excludeGlossaryStatusFixturesFromApproval();
       startStallWatchdog();
+      // Tear down at JVM exit, not on session close: failsafe's rerun pass opens a second session
+      // in this JVM and needs the same server
+      // (ADR:2026-10-15-merge-queue-its-retry-a-failed-test-once).
+      Runtime.getRuntime().addShutdownHook(new Thread(this::cleanup, "it-bootstrap-teardown"));
 
     } catch (Exception e) {
       LOG.error("Failed to start test infrastructure", e);
@@ -295,15 +299,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
             DATABASE_CONTAINER.getJdbcUrl(),
             DATABASE_CONTAINER.getUsername(),
             DATABASE_CONTAINER.getPassword());
-  }
-
-  @Override
-  public void launcherSessionClosed(LauncherSession session) {
-    if (isEmbeddedBootstrapDisabled()) {
-      return;
-    }
-    LOG.info("=== TestSuiteBootstrap: Shutting down test infrastructure ===");
-    cleanup();
   }
 
   private static boolean isEmbeddedBootstrapDisabled() {
@@ -925,6 +920,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   private void cleanup() {
+    LOG.info("=== TestSuiteBootstrap: Shutting down test infrastructure ===");
     if (STALL_WATCHDOG != null) {
       STALL_WATCHDOG.close();
     }

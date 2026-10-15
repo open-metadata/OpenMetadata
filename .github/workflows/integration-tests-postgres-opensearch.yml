@@ -305,19 +305,32 @@ jobs:
           diagnostics="openmetadata-integration-tests/target/ci-diagnostics"
           mkdir -p "$diagnostics"
           maven_log="$diagnostics/maven.log"
+          # A dependency download that drops before any test runs is a network blip, not a
+          # result: retry it. Test failures are never retried here; failsafe re-runs those once
+          # (ADR:2026-10-15-merge-queue-its-retry-a-failed-test-once).
+          reports="openmetadata-integration-tests/target/failsafe-reports"
           set +e
-          timeout --signal=TERM --kill-after=60s 65m \
-            mvn --no-snapshot-updates verify -pl :openmetadata-integration-tests -Ppostgres-opensearch \
-              -DintegrationTests.lane="${IT_LANE}" \
-              -DintegrationTests.parallelStrategy=fixed \
-              -DintegrationTests.parallelism="${IT_PARALLELISM}" \
-              -DintegrationTests.maxPoolSize="${IT_MAX_POOL_SIZE}" \
-            2>&1 | tee "$maven_log"
-          pipeline_status=("${PIPESTATUS[@]}")
-          exit_code="${pipeline_status[0]}"
-          if (( exit_code == 0 && pipeline_status[1] != 0 )); then
-            exit_code="${pipeline_status[1]}"
-          fi
+          for attempt in 1 2 3; do
+            timeout --signal=TERM --kill-after=60s 65m \
+              mvn --no-snapshot-updates verify -pl :openmetadata-integration-tests -Ppostgres-opensearch \
+                -DintegrationTests.lane="${IT_LANE}" \
+                -DintegrationTests.parallelStrategy=fixed \
+                -DintegrationTests.parallelism="${IT_PARALLELISM}" \
+                -DintegrationTests.maxPoolSize="${IT_MAX_POOL_SIZE}" \
+                -DintegrationTests.rerunFailingTestsCount=1 \
+              2>&1 | tee "$maven_log"
+            pipeline_status=("${PIPESTATUS[@]}")
+            exit_code="${pipeline_status[0]}"
+            if (( exit_code == 0 && pipeline_status[1] != 0 )); then
+              exit_code="${pipeline_status[1]}"
+            fi
+            if (( exit_code == 0 || attempt == 3 )) || compgen -G "$reports/TEST-*.xml" > /dev/null \
+              || ! grep -qE 'Could not (resolve dependencies|transfer artifact|find artifact)' "$maven_log"; then
+              break
+            fi
+            echo "::warning::Dependency download failed before any test ran (attempt ${attempt}/3); retrying in 30s"
+            sleep 30
+          done
           set -e
 
           max_log_bytes=20971520
