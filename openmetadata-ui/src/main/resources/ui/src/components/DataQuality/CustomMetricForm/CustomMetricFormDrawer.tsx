@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Grid } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { omit } from 'lodash';
 import QueryString from 'qs';
@@ -187,8 +188,10 @@ const CustomMetricFormDrawer = ({
       // Columns scroll on their own: drop Content's padding, gap and stacking.
       body: { className: 'tw:flex-row tw:gap-0 tw:px-0 tw:md:px-0' },
       form: (
-        <>
-          <div className="drawer-form-content tw:min-w-95 tw:flex-1 tw:overflow-y-auto tw:px-4 tw:py-6 tw:md:px-6">
+        <Grid className="tw:size-full tw:min-h-0">
+          <Grid.Item
+            className="drawer-form-content tw:min-h-0 tw:overflow-y-auto tw:px-4 tw:py-6 tw:md:px-6"
+            span={14}>
             <CustomMetricForm
               form={form}
               isColumnMetric={isColumnMetric}
@@ -196,13 +199,14 @@ const CustomMetricFormDrawer = ({
               table={table}
               onFinish={submit}
             />
-          </div>
-          <div
-            className="tw:w-2/5 tw:shrink-0 tw:overflow-y-auto tw:border-l tw:border-secondary tw:bg-secondary tw:p-6"
-            data-testid="custom-metric-profile-preview">
+          </Grid.Item>
+          <Grid.Item
+            className="tw:min-h-0 tw:overflow-y-auto tw:border-l tw:border-secondary tw:bg-secondary tw:p-6"
+            data-testid="custom-metric-profile-preview"
+            span={10}>
             {profilePreview}
-          </div>
-        </>
+          </Grid.Item>
+        </Grid>
       ),
       submitLabel: isEditMode ? t('label.save') : t('label.create'),
       submitTestId: 'submit-button',

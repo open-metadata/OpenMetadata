@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from '@openmetadata/ui-core-components';
+import { Badge, Box, Card, Grid } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Column } from '../../../../generated/entity/data/container';
@@ -21,9 +21,10 @@ import TagsViewer from '../../../Tag/TagsViewer/TagsViewer';
 
 interface ColumnSummaryProps {
   column: Column;
+  className?: string;
 }
 
-const ColumnSummary: FC<ColumnSummaryProps> = ({ column }) => {
+const ColumnSummary: FC<ColumnSummaryProps> = ({ column, className }) => {
   const { t } = useTranslation();
 
   const { Classification, Glossary } = useMemo(() => {
@@ -31,39 +32,46 @@ const ColumnSummary: FC<ColumnSummaryProps> = ({ column }) => {
   }, [column.tags]);
 
   return (
-    <div className="tw:h-full tw:rounded-[10px] tw:border tw:border-border-secondary tw:bg-surface tw:shadow-none">
-      <div className="tw:flex tw:items-center tw:gap-3 tw:p-4">
-        <p className="tw:m-0 tw:text-md tw:font-medium tw:text-primary">
-          {getEntityName(column)}
-        </p>
-        <Badge className="tw:text-xs" color="gray" size="lg" type="color">
-          {column.dataType}
-        </Badge>
-      </div>
-      <hr className="tw:my-0 tw:h-0 tw:border-0 tw:border-t tw:border-border-secondary" />
-      <div className="tw:flex tw:flex-col tw:gap-3 tw:p-4">
-        <RichTextEditorPreviewerV1
-          className="text-grey-muted m-t-xs"
-          markdown={column.description ?? ''}
-          maxLength={184}
-        />
-        <hr className="tw:my-0 tw:h-px tw:border-t tw:border-dashed tw:border-secondary" />
-        <div className="tw:grid tw:grid-cols-12 tw:gap-4">
-          <div className="tw:col-span-2 tw:text-sm tw:text-secondary">
-            {t('label.glossary-term-plural')}
-          </div>
-          <div className="tw:col-span-10">
-            <TagsViewer sizeCap={3} tags={Glossary ?? []} />
-          </div>
-          <div className="tw:col-span-2 tw:text-sm tw:text-secondary">
-            {t('label.tag-plural')}
-          </div>
-          <div className="tw:col-span-10">
-            <TagsViewer sizeCap={3} tags={Classification ?? []} />
-          </div>
-        </div>
-      </div>
-    </div>
+    <Card className={className}>
+      <Card.Header
+        title={
+          <Box align="center" gap={3}>
+            {getEntityName(column)}
+            <Badge className="tw:text-xs" color="gray" size="lg" type="color">
+              {column.dataType}
+            </Badge>
+          </Box>
+        }
+      />
+      <Card.Content>
+        <Box direction="col" gap={3}>
+          <RichTextEditorPreviewerV1
+            className="text-grey-muted m-t-xs"
+            markdown={column.description ?? ''}
+            maxLength={184}
+          />
+          <hr className="tw:my-0 tw:h-px tw:border-t tw:border-dashed tw:border-secondary" />
+          <Grid rowGap="4">
+            <Grid.Item
+              className="tw:pr-2 tw:text-sm tw:text-secondary"
+              span={5}>
+              {t('label.glossary-term-plural')}
+            </Grid.Item>
+            <Grid.Item span={19}>
+              <TagsViewer sizeCap={3} tags={Glossary ?? []} />
+            </Grid.Item>
+            <Grid.Item
+              className="tw:pr-2 tw:text-sm tw:text-secondary"
+              span={5}>
+              {t('label.tag-plural')}
+            </Grid.Item>
+            <Grid.Item span={19}>
+              <TagsViewer sizeCap={3} tags={Classification ?? []} />
+            </Grid.Item>
+          </Grid>
+        </Box>
+      </Card.Content>
+    </Card>
   );
 };
 
