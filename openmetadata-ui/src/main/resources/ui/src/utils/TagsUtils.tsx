@@ -124,13 +124,17 @@ export const getTaglist = async (
 
 export const getTagTooltip = (fqn: string, description?: string) => (
   <div className="text-left p-xss">
-    <div className="m-b-xs">
-      <RichTextEditorPreviewerV1
-        enableSeeMoreVariant={false}
-        markdown={`**${fqn}**\n${description ?? ''}`}
-        textVariant="white"
-      />
-    </div>
+    {/* Not markdown: an HTML description makes the previewer skip markdown, leaving `**` literal. */}
+    <strong>{fqn}</strong>
+    {description && (
+      <div className="m-b-xs">
+        <RichTextEditorPreviewerV1
+          enableSeeMoreVariant={false}
+          markdown={description}
+          textVariant="white"
+        />
+      </div>
+    )}
   </div>
 );
 

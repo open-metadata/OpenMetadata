@@ -25,6 +25,7 @@
  */
 
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -36,8 +37,6 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
-import { Alert } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -84,6 +83,7 @@ import { getDefaultTaskFormSchema } from '../../utils/TaskFormSchemaUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import TaskFormBuilderSection from './components/TaskFormBuilderSection';
 import './task-form-settings.less';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 
 const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../components/Database/SchemaEditor/CodeEditor'))
@@ -864,10 +864,10 @@ const TaskFormSettingsPage = () => {
           <Alert
             showIcon
             className="task-form-settings-designer-pane__alert"
-            description="Use the builder for create forms, resolve forms, transition forms, and stage mappings. The raw JSON editors are still available under Advanced."
-            message="Design task forms visually"
-            type="info"
-          />
+            title={t('message.task-form-builder-title')}
+            variant="brand">
+            {t('message.task-form-builder-description')}
+          </Alert>
           <Tabs
             className="tw:gap-6"
             selectedKey={designerTab}

@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
-import { Box, Button } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Box,
+  Button,
+} from '@openmetadata/ui-core-components';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Collapse } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
@@ -30,6 +35,7 @@ import {
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import './sso-grouped-field-template.less';
 import { FieldGroup, PropertyMap } from './SSOGroupedFieldTemplate.interface';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 
 interface SSOFieldGroupingFlags {
   isAuthConfigRoot: boolean;
@@ -457,36 +463,36 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
       })}
 
       {!isEmpty(advancedProperties) && (
-        <Collapse
+        <Accordion
+          allowsMultipleExpanded
           className={classNames('sso-advanced-properties-collapse', {
             'm-t-sm': shouldApplyGrouping,
-          })}
-          expandIconPosition="end">
+          })}>
           {/* Advanced fields must stay mounted: transformErrors discards any error whose
               field is absent from the DOM, so destroying the collapsed panel silently
               swallowed both client and server validation errors for fields like
               tokenValidity instead of surfacing them. */}
-          <Collapse.Panel
-            forceRender
-            header={t('label.advanced-config')}
-            key="1">
-            <div
-              className={classNames({
-                'sso-field-group-box': shouldApplyGrouping,
-                'default-object-field': !shouldApplyGrouping,
-              })}>
-              {advancedProperties.map((element) => (
-                <div
-                  className={classNames('property-wrapper', {
-                    'additional-fields': schema.additionalProperties,
-                  })}
-                  key={element.content.key}>
-                  {element.content}
-                </div>
-              ))}
-            </div>
-          </Collapse.Panel>
-        </Collapse>
+          <AccordionItem id="1" key="1">
+            <AccordionHeader>{t('label.advanced-config')}</AccordionHeader>
+            <AccordionPanel>
+              <div
+                className={classNames({
+                  'sso-field-group-box': shouldApplyGrouping,
+                  'default-object-field': !shouldApplyGrouping,
+                })}>
+                {advancedProperties.map((element) => (
+                  <div
+                    className={classNames('property-wrapper', {
+                      'additional-fields': schema.additionalProperties,
+                    })}
+                    key={element.content.key}>
+                    {element.content}
+                  </div>
+                ))}
+              </div>
+            </AccordionPanel>
+          </AccordionItem>
+        </Accordion>
       )}
     </Fragment>
   );

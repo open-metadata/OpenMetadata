@@ -10,71 +10,76 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Pagination, PaginationProps } from 'antd';
-import { ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowRightOutlined } from '../../assets/svg/arrow-right.svg';
+
+import { PaginationCardWithControls } from '@openmetadata/ui-core-components';
+import { HTMLAttributes, useState } from 'react';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 
-// rc-pagination puts the click handler, focus and aria-disabled on its own <li>
-// and clones this element with `disabled`. It must stay non-interactive so the
-// click reaches the <li>: a react-aria Button would stop the event.
-const PageNavLabel = ({
-  children,
-  disabled,
+interface PaginationComponentProps
+  extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange'> {
+  current?: number;
+  total?: number;
+  pageSize?: number;
+  defaultCurrent?: number;
+  defaultPageSize?: number;
+  hideOnSinglePage?: boolean;
+  showSizeChanger?: boolean;
+  onChange?: (page: number, pageSize: number) => void;
+}
+
+const PaginationComponent = ({
+  current,
+  total = 0,
+  pageSize,
+  defaultCurrent = 1,
+  defaultPageSize = PAGE_SIZE_BASE,
+  hideOnSinglePage = true,
+  showSizeChanger,
+  onChange,
   ...props
-}: {
-  children: ReactNode;
-  disabled?: boolean;
-  'data-testid': string;
-}) => (
-  <Typography
-    {...props}
-    aria-disabled={disabled}
-    className="tw:inline-flex tw:items-center tw:gap-1 tw:px-2"
-    role="button">
-    {children}
-  </Typography>
-);
+}: PaginationComponentProps) => {
+  const [internalPage, setInternalPage] = useState(defaultCurrent);
+  const [internalPageSize, setInternalPageSize] = useState(defaultPageSize);
+  const currentPage = current ?? internalPage;
+  const currentPageSize = pageSize ?? internalPageSize;
+  // Ant Design takes a record count; core pagination takes a page count.
+  const totalPages = Math.max(1, Math.ceil(total / currentPageSize));
 
-const PaginationComponent = (props: PaginationProps) => {
-  const { t } = useTranslation();
-  const itemRender: PaginationProps['itemRender'] = (
-    _,
-    type,
-    originalElement
-  ) => {
-    if (type === 'prev') {
-      return (
-        <PageNavLabel data-testid="previous">
-          <ArrowRightOutlined className="tw:-mt-[3px] tw:rotate-180 tw:size-3.5 tw:shrink-0" />
-          {t('label.previous')}
-        </PageNavLabel>
-      );
-    }
-    if (type === 'next') {
-      return (
-        <PageNavLabel data-testid="next">
-          {t('label.next')}
-          <ArrowRightOutlined className="tw:size-3.5 tw:shrink-0" />
-        </PageNavLabel>
-      );
-    }
-
-    return originalElement;
+  const changePage = (nextPage: number) => {
+    setInternalPage(nextPage);
+    onChange?.(nextPage, currentPageSize);
   };
 
+  const changePageSize = (nextSize: number) => {
+    // Keep the current page unless a smaller page count makes it unavailable.
+    const nextPage = Math.min(
+      currentPage,
+      Math.max(1, Math.ceil(total / nextSize))
+    );
+    setInternalPageSize(nextSize);
+    setInternalPage(nextPage);
+    onChange?.(nextPage, nextSize);
+  };
+
+  if (hideOnSinglePage && totalPages <= 1) {
+    return null;
+  }
+
   return (
-    <Pagination
-      hideOnSinglePage
-      itemRender={itemRender}
-      pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+    <PaginationCardWithControls
       {...props}
+      page={currentPage}
+      pageSize={currentPageSize}
+      pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+      total={totalPages}
+      onPageChange={changePage}
+      onPageSizeChange={
+        showSizeChanger ?? total > 50 ? changePageSize : undefined
+      }
     />
   );
 };

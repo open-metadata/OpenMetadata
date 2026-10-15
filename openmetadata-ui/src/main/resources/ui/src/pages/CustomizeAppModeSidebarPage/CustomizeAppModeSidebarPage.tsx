@@ -60,7 +60,6 @@ import {
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { getPersonaDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import '../SettingsNavigationPage/settings-navigation-page.less';
 import {
   getSidebarHiddenKeys,
   getSidebarNavigationItems,

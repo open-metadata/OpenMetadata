@@ -12,17 +12,17 @@
  */
 
 import {
+  Alert,
   Box,
   Button,
   Grid,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
-import { Alert, Carousel } from 'antd';
 import { AxiosError } from 'axios';
-import { uniqueId } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AppScreenshots } from './AppScreenshots';
+
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CheckMarkIcon } from '../../../../assets/svg/ic-cloud-checkmark.svg';
@@ -44,6 +44,7 @@ import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogo from '../AppLogo/AppLogo.component';
 import './market-place-app-details.less';
+import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
 
 const MarketPlaceAppDetails = () => {
   const { t } = useTranslation();
@@ -70,10 +71,15 @@ const MarketPlaceAppDetails = () => {
       const imageSrc = imageModule.default;
 
       return (
-        <img alt={screenshotName} src={imageSrc} style={{ height: '320px' }} />
+        <img
+          alt={screenshotName}
+          key={screenshotName}
+          src={imageSrc}
+          style={{ height: '320px' }}
+        />
       );
     } catch (error) {
-      return <></>;
+      return <Fragment key={screenshotName} />;
     }
   };
 
@@ -192,8 +198,9 @@ const MarketPlaceAppDetails = () => {
 
         {isAppDisabled && (
           <Alert
-            className="m-t-md text-xs d-flex items-start p-xs"
-            message={
+            className="m-t-md"
+            showIcon={false}
+            title={
               isCacheWarmupDisabled ? (
                 <Typography>
                   {t('message.cache-service-not-configured-message')}
@@ -221,7 +228,7 @@ const MarketPlaceAppDetails = () => {
                 </>
               )
             }
-            type="info"
+            variant="brand"
           />
         )}
         <div className="m-t-md">
@@ -319,21 +326,7 @@ const MarketPlaceAppDetails = () => {
       </Grid>
       <Grid className="layout-row layout-grid">
         <Grid.Item className="layout-column" span={24}>
-          <Carousel
-            autoplay
-            dots
-            autoplaySpeed={3000}
-            className="p-x-md"
-            easing="ease-in-out">
-            {appScreenshots.map((data) => (
-              <div
-                className="app-slider-container"
-                data-testid="slider-container"
-                key={uniqueId()}>
-                {data}
-              </div>
-            ))}
-          </Carousel>
+          <AppScreenshots key={fqn} screenshots={appScreenshots} />
         </Grid.Item>
 
         <Grid.Item className="layout-column" span={24}>

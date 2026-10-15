@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Header } from 'antd/lib/layout/layout';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -28,7 +27,7 @@ export const LimitBanner = () => {
   const showBanner = bannerDetails && !(isTourOpen || isTourPage);
 
   return (
-    <Header
+    <header
       className={classNames('pricing-banner', {
         errored: bannerDetails?.type === 'danger',
       })}
@@ -49,6 +48,6 @@ export const LimitBanner = () => {
         className="tw:p-0 tw:cursor-pointer tw:size-3.5 tw:shrink-0 tw:text-quaternary"
         onClick={() => setBannerDetails(null)}
       />
-    </Header>
+    </header>
   );
 };

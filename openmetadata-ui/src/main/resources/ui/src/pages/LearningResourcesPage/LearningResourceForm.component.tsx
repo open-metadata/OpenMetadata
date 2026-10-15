@@ -15,12 +15,11 @@ import {
   Button,
   getField,
   HookForm,
+  SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
-import { Drawer } from 'antd';
 import { AxiosError } from 'axios';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useId, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
@@ -36,6 +35,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './learning-resource-form.less';
 import { LearningResourceFormProps } from './LearningResourceForm.interface';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 
 export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
   open,
@@ -82,6 +82,8 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
     }
   };
 
+  const drawerTitleId = useId();
+
   const drawerTitle = (
     <div className="drawer-title-container">
       <Typography className="drawer-title">
@@ -107,27 +109,36 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
   );
 
   return (
-    <Drawer
-      destroyOnClose
-      className="learning-resource-form-drawer"
-      closable={false}
+    <SlideoutMenu
+      isDismissable
+      aria-labelledby={drawerTitleId}
       data-testid="learning-resource-form-drawer"
-      footer={drawerFooter}
-      // A core Select closes on pointerup, so the click lands on the mask.
-      maskClosable={false}
-      open={open}
-      placement="right"
-      title={drawerTitle}
+      dialogClassName="learning-resource-form-drawer"
+      isOpen={open}
+      // Select popovers render in the top layer, outside the slideout.
+      shouldCloseOnInteractOutside={(element) =>
+        !element.closest('[data-react-aria-top-layer]')
+      }
       width={600}
-      onClose={onClose}>
-      <HookForm
-        className="learning-resource-form tw:flex tw:flex-col tw:gap-4"
-        form={form}
-        onSubmit={form.handleSubmit(handleSubmit)}>
-        {fields.map((field) => (
-          <Fragment key={field.name}>{getField(field)}</Fragment>
-        ))}
-      </HookForm>
-    </Drawer>
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose();
+        }
+      }}>
+      <SlideoutMenu.Header id={drawerTitleId} showCloseButton={false}>
+        {drawerTitle}
+      </SlideoutMenu.Header>
+      <SlideoutMenu.Content role="region">
+        <HookForm
+          className="learning-resource-form tw:flex tw:flex-col tw:gap-4"
+          form={form}
+          onSubmit={form.handleSubmit(handleSubmit)}>
+          {fields.map((field) => (
+            <Fragment key={field.name}>{getField(field)}</Fragment>
+          ))}
+        </HookForm>
+      </SlideoutMenu.Content>
+      <SlideoutMenu.Footer>{drawerFooter}</SlideoutMenu.Footer>
+    </SlideoutMenu>
   );
 };

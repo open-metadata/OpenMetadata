@@ -17,7 +17,7 @@ import {
   AlertTriangle,
   CheckCircle,
   InfoCircle,
-  XClose,
+  X,
 } from '../../../icons';
 import {
   Button,
@@ -105,7 +105,7 @@ export const Toast = ({ toast }: ToastProps) => {
           data-testid="alert-icon-close"
           slot="close"
           onPress={() => state.close(toast.key)}>
-          <XClose aria-hidden="true" className="tw:size-3.5" />
+          <X aria-hidden="true" className="tw:size-3.5" />
         </Button>
       )}
     </AriaToast>

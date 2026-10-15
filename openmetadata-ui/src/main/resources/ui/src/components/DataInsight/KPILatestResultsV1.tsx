@@ -14,6 +14,7 @@
 import {
   Box,
   Grid,
+  ProgressBar,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -22,11 +23,7 @@ import {
   hexToRgba,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import {
-  CheckCircle,
-  InfoCircle,
-} from '@openmetadata/ui-core-components/icons';
-import { Progress } from 'antd';
+
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +32,7 @@ import { UIKpiResult } from '../../interface/data-insight.interface';
 import { getKpiResultFeedback } from '../../utils/DataInsightUtils';
 import { getDaysRemaining } from '../../utils/date-time/DateTimeUtils';
 import './kpi-latest-results.less';
+import { CheckCircle, InfoCircle } from '@openmetadata/ui-core-components/icons';
 
 interface Props {
   kpiLatestResultsRecord: Record<string, UIKpiResult>;
@@ -141,12 +139,16 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                     </Tooltip>
                   ) : null}
                 </Box>
-                <Progress
-                  percent={Number(currentProgress)}
-                  showInfo={false}
-                  size="small"
-                  strokeColor={seriesColor}
-                />
+                <div>
+                  <ProgressBar
+                    className="tw:h-1.5"
+                    color={seriesColor}
+                    value={Math.min(
+                      100,
+                      Math.max(0, Number(currentProgress) || 0)
+                    )}
+                  />
+                </div>
                 <div className="d-flex justify-space-between">
                   <div className="flex-1">
                     <Typography className="text-xs">
