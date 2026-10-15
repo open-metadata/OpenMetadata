@@ -1,0 +1,5 @@
+# A cycle of three blank nodes and a cycle of six: every node has one p in and one p out, so
+# refinement gives all nine one colour although no symmetry maps a triangle node to a hexagon one.
+_:t1 <http://ex.org/p> _:t2 . _:t2 <http://ex.org/p> _:t3 . _:t3 <http://ex.org/p> _:t1 .
+_:h1 <http://ex.org/p> _:h2 . _:h2 <http://ex.org/p> _:h3 . _:h3 <http://ex.org/p> _:h4 .
+_:h4 <http://ex.org/p> _:h5 . _:h5 <http://ex.org/p> _:h6 . _:h6 <http://ex.org/p> _:h1 .

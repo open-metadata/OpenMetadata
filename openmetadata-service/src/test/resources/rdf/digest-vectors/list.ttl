@@ -1,0 +1,2 @@
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+[] a owl:AllDisjointClasses ; owl:members ( <http://ex.org/A> <http://ex.org/B> <http://ex.org/C> ) .

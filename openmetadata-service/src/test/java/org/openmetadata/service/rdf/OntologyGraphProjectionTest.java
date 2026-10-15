@@ -117,12 +117,12 @@ class OntologyGraphProjectionTest {
         axiom(
             URI.create(EX + "RetailCustomer"),
             union(named(EX + "Customer"), some(EX + "hasContact", named(EX + "EmailAddress"))));
-    replace(projection.graphs(List.of(axiom)));
+    replace(projection.replacements(List.of(axiom)));
     final String graph = axiomGraph(axiom);
     assertTrue(blankNodes(dataset.getNamedModel(graph)) > 0, "the union and restriction");
 
     axiom.setExpressions(List.of(named(EX + "Customer")));
-    replace(projection.graphs(List.of(axiom)));
+    replace(projection.replacements(List.of(axiom)));
 
     final Model replaced = dataset.getNamedModel(graph);
     assertTrue(replaced.isIsomorphicWith(graph(axiom)), "the graph is exactly the edited axiom");
@@ -135,14 +135,14 @@ class OntologyGraphProjectionTest {
   void deletingAnAxiomDropsItsGraph() {
     final OntologyAxiom axiom =
         axiom(URI.create(EX + "RetailCustomer"), some(EX + "hasContact", named(EX + "Email")));
-    replace(projection.graphs(List.of(axiom)));
+    replace(projection.replacements(List.of(axiom)));
     assertTrue(graphNames().contains(axiomGraph(axiom)));
 
-    replace(projection.graphs(List.of(axiom.withDeleted(true))));
+    replace(projection.replacements(List.of(axiom.withDeleted(true))));
     assertFalse(graphNames().contains(axiomGraph(axiom)));
 
     axiom.setDeleted(false);
-    replace(projection.graphs(List.of(axiom)));
+    replace(projection.replacements(List.of(axiom)));
     UpdateAction.parseExecute(
         RdfRepository.buildOntologyGraphDeleteUpdate(BASE, Entity.ONTOLOGY_AXIOM, axiom.getId()),
         dataset);
@@ -281,7 +281,7 @@ class OntologyGraphProjectionTest {
     final OntologyAxiom subclass =
         axiom(URI.create(EX + "RetailCustomer"), named(classIri(customer)));
 
-    replace(projection.graphs(List.of(party, customer, retailCustomer, subclass)));
+    replace(projection.replacements(List.of(party, customer, retailCustomer, subclass)));
 
     final String bridge =
         """
@@ -324,8 +324,8 @@ class OntologyGraphProjectionTest {
     return projection.graphs(List.of(axiom)).get(axiomGraph(axiom));
   }
 
-  private void replace(final Map<String, Model> graphs) {
-    OntologyGraphs.replaceUpdates(graphs, MAX_UPDATE_BYTES)
+  private void replace(final Map<String, OntologyGraphs.Replacement> graphs) {
+    OntologyGraphs.replaceUpdates(BASE, graphs, MAX_UPDATE_BYTES)
         .forEach(update -> UpdateAction.parseExecute(update, dataset));
   }
 

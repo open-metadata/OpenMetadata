@@ -1,0 +1,26 @@
+# Eight cycles of three blank nodes: distinguishing them takes more steps than the bound, so
+# the graph has no digest.
+_:c0n0 <http://ex.org/p> _:c0n1 .
+_:c0n1 <http://ex.org/p> _:c0n2 .
+_:c0n2 <http://ex.org/p> _:c0n0 .
+_:c1n0 <http://ex.org/p> _:c1n1 .
+_:c1n1 <http://ex.org/p> _:c1n2 .
+_:c1n2 <http://ex.org/p> _:c1n0 .
+_:c2n0 <http://ex.org/p> _:c2n1 .
+_:c2n1 <http://ex.org/p> _:c2n2 .
+_:c2n2 <http://ex.org/p> _:c2n0 .
+_:c3n0 <http://ex.org/p> _:c3n1 .
+_:c3n1 <http://ex.org/p> _:c3n2 .
+_:c3n2 <http://ex.org/p> _:c3n0 .
+_:c4n0 <http://ex.org/p> _:c4n1 .
+_:c4n1 <http://ex.org/p> _:c4n2 .
+_:c4n2 <http://ex.org/p> _:c4n0 .
+_:c5n0 <http://ex.org/p> _:c5n1 .
+_:c5n1 <http://ex.org/p> _:c5n2 .
+_:c5n2 <http://ex.org/p> _:c5n0 .
+_:c6n0 <http://ex.org/p> _:c6n1 .
+_:c6n1 <http://ex.org/p> _:c6n2 .
+_:c6n2 <http://ex.org/p> _:c6n0 .
+_:c7n0 <http://ex.org/p> _:c7n1 .
+_:c7n1 <http://ex.org/p> _:c7n2 .
+_:c7n2 <http://ex.org/p> _:c7n0 .

@@ -58,7 +58,8 @@ class OntologyGraphsTest {
     graphs.put(BASE + "graph/axiom/b", restriction("hasB"));
     final Dataset dataset = DatasetFactory.create();
 
-    final List<String> updates = OntologyGraphs.replaceUpdates(graphs, Long.MAX_VALUE);
+    final List<String> updates =
+        OntologyGraphs.replaceUpdates(BASE, withoutMembers(graphs), Long.MAX_VALUE);
     updates.forEach(update -> UpdateAction.parseExecute(update, dataset));
 
     assertEquals(1, updates.size());
@@ -81,24 +82,35 @@ class OntologyGraphsTest {
     graphs.put(BASE + "graph/axiom/b", restriction("hasB"));
     graphs.put(BASE + "graph/axiom/c", ModelFactory.createDefaultModel());
 
-    final List<String> updates = OntologyGraphs.replaceUpdates(graphs, 1);
+    final List<String> updates = OntologyGraphs.replaceUpdates(BASE, withoutMembers(graphs), 1);
 
     assertEquals(3, updates.size());
-    assertEquals("DROP SILENT GRAPH <" + BASE + "graph/axiom/c>", updates.get(2));
+    assertTrue(updates.get(2).startsWith("DROP SILENT GRAPH <" + BASE + "graph/axiom/c>"));
+    assertFalse(updates.get(2).contains("INSERT DATA"), "an empty graph inserts nothing");
   }
 
   @Test
   void anEmptyModelDropsTheGraph() {
     final String graph = BASE + "graph/axiom/a";
     final Dataset dataset = DatasetFactory.create();
-    OntologyGraphs.replaceUpdates(Map.of(graph, restriction("hasA")), Long.MAX_VALUE)
+    OntologyGraphs.replaceUpdates(
+            BASE, withoutMembers(Map.of(graph, restriction("hasA"))), Long.MAX_VALUE)
         .forEach(update -> UpdateAction.parseExecute(update, dataset));
     assertTrue(dataset.containsNamedModel(graph));
 
-    OntologyGraphs.replaceUpdates(Map.of(graph, ModelFactory.createDefaultModel()), Long.MAX_VALUE)
+    OntologyGraphs.replaceUpdates(
+            BASE, withoutMembers(Map.of(graph, ModelFactory.createDefaultModel())), Long.MAX_VALUE)
         .forEach(update -> UpdateAction.parseExecute(update, dataset));
 
     assertFalse(dataset.containsNamedModel(graph));
+  }
+
+  private static Map<String, OntologyGraphs.Replacement> withoutMembers(
+      final Map<String, Model> graphs) {
+    final Map<String, OntologyGraphs.Replacement> replacements = new LinkedHashMap<>();
+    graphs.forEach(
+        (graph, model) -> replacements.put(graph, new OntologyGraphs.Replacement(model, null)));
+    return replacements;
   }
 
   private static Model restriction(final String property) {

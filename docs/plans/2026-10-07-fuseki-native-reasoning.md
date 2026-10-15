@@ -882,8 +882,17 @@ reach the class IRI, so `?c rdfs:subClassOf* :Party . ?c om:mappedTo ?asset` wor
 IRIs too ([ADR](../decisions/2026-10-14-mapped-assets-are-reached-from-the-term-class-iri.md),
 items 4 and 5), and relationship types that OWL 2 DL cannot express are rejected when saved
 ([ADR](../decisions/2026-10-14-relationship-types-reject-axioms-owl2-dl-cannot-express.md)).
-Lifecycle activation, imports, versions and candidate checks remain (items 6 and 7).
-[rdf-ontology-contract.md](../rdf-ontology-contract.md) describes the projection.
+The third slice activates by lifecycle (items 6 and 7): every graph stays projected with a member
+record carrying its status and content digest, a glossary's closure is its Approved axiom and
+term graphs, the relationship-type graphs they use and its pinned imports, and activation
+publishes a content-addressed version manifest with `owl:imports` and `owl:versionIRI`, refusing
+missing imports, import cycles and incomplete projection
+([ADR](../decisions/2026-10-15-reasoning-closures-are-approved-graphs-pinned-by-a-content-manifest.md)).
+Draft and In Review axioms and terms, named directly or through an `ontologyChangeSet`, are
+published as a candidate closure with the `CHECK` request phase 4 will run
+([ADR](../decisions/2026-10-15-candidate-checks-add-draft-graphs-to-the-approved-closure.md)).
+The core-vocabulary imports (DCAT, PROV, SKOS) are not part of any closure.
+[rdf-ontology-contract.md](../rdf-ontology-contract.md) describes the projection and manifests.
 
 1. Apply the [semantic projection](#semantic-projection-into-jena) steps. Share per-axiom semantics
    between `rdf/OntologyExpressionRdfWriter.java`, `rdf/GlossaryOntologyExporter.java`, and

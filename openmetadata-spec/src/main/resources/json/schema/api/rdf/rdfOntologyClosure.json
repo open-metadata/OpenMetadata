@@ -1,0 +1,246 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/rdfOntologyClosure.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RdfOntologyClosure",
+  "description": "A glossary's ontology import closure as reasoning reads it: the ontology graphs of its Approved axioms and terms, the relationship-type graphs they use, and the pinned versions of the ontologies it imports. A version manifest in the RDF store pins each member graph with a digest of its triples; the closure digest identifies the whole closure.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.RdfOntologyClosure",
+  "definitions": {
+    "memberCounts": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfOntologyMemberCounts",
+      "description": "Ontology graphs that take part, by the kind of entity that owns them.",
+      "type": "object",
+      "properties": {
+        "axioms": {
+          "type": "integer",
+          "minimum": 0,
+          "existingJavaType": "java.lang.Long"
+        },
+        "terms": {
+          "type": "integer",
+          "minimum": 0,
+          "existingJavaType": "java.lang.Long"
+        },
+        "relationshipTypes": {
+          "type": "integer",
+          "minimum": 0,
+          "existingJavaType": "java.lang.Long"
+        }
+      },
+      "required": ["axioms", "terms", "relationshipTypes"],
+      "additionalProperties": false
+    },
+    "exclusionReason": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfOntologyExclusionReason",
+      "description": "Why a projected axiom or term graph is not part of production reasoning: its owner's lifecycle status is not Approved, or it has no status.",
+      "type": "string",
+      "enum": ["DRAFT", "IN_REVIEW", "REJECTED", "DEPRECATED", "ARCHIVED", "UNPROCESSED", "NO_STATUS"]
+    },
+    "exclusion": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfOntologyExclusion",
+      "description": "How many graphs of one entity type are left out for one reason.",
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "description": "ontologyAxiom or glossaryTerm.",
+          "type": "string"
+        },
+        "reason": {
+          "$ref": "#/definitions/exclusionReason"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "existingJavaType": "java.lang.Long"
+        }
+      },
+      "required": ["entityType", "reason", "count"],
+      "additionalProperties": false
+    },
+    "candidateOutcome": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfOntologyCandidateOutcome",
+      "description": "What a candidate check did with a requested entity. INCLUDED: its Draft or In Review graph joins the candidate closure. NOT_PROJECTED: the store holds no graph for it, for example a change set operation that was never applied. ALREADY_APPROVED: it is already a member of the Approved closure. NOT_A_CANDIDATE_STATUS: its status is neither Draft nor In Review. OUTSIDE_CLOSURE: it belongs to a glossary the closure does not import.",
+      "type": "string",
+      "enum": ["INCLUDED", "NOT_PROJECTED", "ALREADY_APPROVED", "NOT_A_CANDIDATE_STATUS", "OUTSIDE_CLOSURE"]
+    },
+    "candidate": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfOntologyCandidate",
+      "type": "object",
+      "properties": {
+        "entityId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "entityType": {
+          "description": "ontologyAxiom or glossaryTerm.",
+          "type": "string"
+        },
+        "graph": {
+          "description": "The entity's ontology graph, when the store holds one.",
+          "type": "string",
+          "format": "uri"
+        },
+        "status": {
+          "description": "The lifecycle status the store recorded with the graph.",
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/definitions/candidateOutcome"
+        }
+      },
+      "required": ["entityId", "outcome"],
+      "additionalProperties": false
+    },
+    "problemCode": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfOntologyClosureProblemCode",
+      "description": "MISSING_IMPORT: an imported glossary does not exist or is deleted. IMPORT_CYCLE: the imports form a cycle. INCOMPLETE_PROJECTION: the store holds a different number of Approved axiom or term graphs for a glossary than its metadata, so the projection has not caught up or needs a reindex. PROJECTION_NOT_READY: live projection is degraded, so the store may be missing writes. Any problem prevents activation.",
+      "type": "string",
+      "enum": ["MISSING_IMPORT", "IMPORT_CYCLE", "INCOMPLETE_PROJECTION", "PROJECTION_NOT_READY"]
+    },
+    "problem": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfOntologyClosureProblem",
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/definitions/problemCode"
+        },
+        "glossary": {
+          "description": "The glossary the problem concerns, when there is one.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false
+    },
+    "importedVersion": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfOntologyImportedVersion",
+      "description": "The pinned version of a directly imported ontology.",
+      "type": "object",
+      "properties": {
+        "glossary": {
+          "$ref": "../../type/entityReference.json"
+        },
+        "ontologyIri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "versionIri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "selection": {
+          "$ref": "rdfReasoningSnapshot.json#/definitions/ontologySelection"
+        },
+        "closureDigest": {
+          "$ref": "rdfReasoningSnapshot.json#/definitions/digest"
+        },
+        "manifestGraph": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["glossary", "ontologyIri", "versionIri", "selection", "closureDigest", "manifestGraph"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "glossary": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "ontologyIri": {
+      "description": "The glossary's ontology IRI: its ontologyConfiguration.baseIri, otherwise its entity IRI.",
+      "type": "string",
+      "format": "uri"
+    },
+    "versionIri": {
+      "description": "owl:versionIRI of this closure, derived from the closure digest.",
+      "type": "string",
+      "format": "uri"
+    },
+    "selection": {
+      "$ref": "rdfReasoningSnapshot.json#/definitions/ontologySelection"
+    },
+    "closureDigest": {
+      "description": "Digest of the closure: its ontology, selection, member graph digests and imported closure digests. It changes when, and only when, one of those does.",
+      "$ref": "rdfReasoningSnapshot.json#/definitions/digest"
+    },
+    "manifestGraph": {
+      "description": "The named graph that holds, or would hold, this version's manifest in the RDF store.",
+      "type": "string",
+      "format": "uri"
+    },
+    "memberCount": {
+      "description": "Graphs the manifest pins directly: the glossary's own members and the relationship-type graphs they use. Imported closures are pinned by their own manifests.",
+      "type": "integer",
+      "minimum": 0,
+      "existingJavaType": "java.lang.Long"
+    },
+    "included": {
+      "$ref": "#/definitions/memberCounts"
+    },
+    "excluded": {
+      "description": "The glossary's projected axiom and term graphs that take no part, by reason.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/exclusion"
+      }
+    },
+    "imports": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/importedVersion"
+      }
+    },
+    "candidates": {
+      "description": "For a candidate closure, the requested entities and what happened to each, up to 1000.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/candidate"
+      },
+      "maxItems": 1000
+    },
+    "candidateCount": {
+      "description": "For a candidate closure, how many requested entities joined it, across the whole import closure.",
+      "type": "integer",
+      "minimum": 0,
+      "existingJavaType": "java.lang.Long"
+    },
+    "problems": {
+      "description": "Problems in this closure or any closure it imports.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/problem"
+      }
+    },
+    "published": {
+      "description": "Whether the store holds this version's manifest.",
+      "type": "boolean"
+    },
+    "active": {
+      "description": "Whether this version is the glossary's active Approved version. Always false for a candidate.",
+      "type": "boolean"
+    },
+    "checkRequest": {
+      "description": "For a candidate closure, the consistency CHECK OpenMetadata submits to the store for it.",
+      "$ref": "rdfReasoningJobRequest.json"
+    }
+  },
+  "required": [
+    "glossary",
+    "ontologyIri",
+    "versionIri",
+    "selection",
+    "closureDigest",
+    "manifestGraph",
+    "memberCount",
+    "included",
+    "excluded",
+    "imports",
+    "problems",
+    "published",
+    "active"
+  ],
+  "additionalProperties": false
+}

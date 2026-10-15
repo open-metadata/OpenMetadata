@@ -1,0 +1,29 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/rdfOntologyReasoningStatus.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RdfOntologyReasoningStatus",
+  "description": "Which projected ontology graphs production reasoning takes, across every glossary. Production reasoning uses Approved axioms and Approved terms only, so a fresh deployment, whose axioms start in Draft, may include none.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.RdfOntologyReasoningStatus",
+  "properties": {
+    "included": {
+      "description": "Approved axiom and term graphs, and every relationship-type graph a closure may use.",
+      "$ref": "rdfOntologyClosure.json#/definitions/memberCounts"
+    },
+    "excluded": {
+      "description": "Axiom and term graphs left out, by reason.",
+      "type": "array",
+      "items": {
+        "$ref": "rdfOntologyClosure.json#/definitions/exclusion"
+      }
+    },
+    "activeOntologies": {
+      "description": "Glossaries with an active Approved version manifest.",
+      "type": "integer",
+      "minimum": 0,
+      "existingJavaType": "java.lang.Long"
+    }
+  },
+  "required": ["included", "excluded", "activeOntologies"],
+  "additionalProperties": false
+}
