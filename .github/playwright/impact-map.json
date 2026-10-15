@@ -549,6 +549,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/OntologyExplorerPage/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.interface.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useSparqlQueryLibrary.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**",
