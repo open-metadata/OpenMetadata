@@ -1053,7 +1053,7 @@ const DomainDetails = ({
                   <Dropdown.Root>
                     <Button
                       data-testid="domain-details-add-button"
-                      iconTrailing={<ChevronDown size={14} />}
+                      iconTrailing={ChevronDown}
                       size="sm">
                       {t('label.add')}
                     </Button>

@@ -74,7 +74,6 @@
   },
   "dependencies": {
     "@analytics/session-utils": "^0.2.4",
-    "@ant-design/icons": "^4.8.3",
     "@antv/g6": "^5.1.1",
     "@antv/g6-extension-react": "^0.2.6",
     "@apidevtools/json-schema-ref-parser": "^9.0.9",
