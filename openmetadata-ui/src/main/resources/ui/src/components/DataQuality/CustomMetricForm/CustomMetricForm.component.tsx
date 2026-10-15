@@ -30,8 +30,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { CustomMetricFormProps } from './CustomMetricForm.interface';
 
-const SchemaEditor = withSuspenseFallback(
-  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+const CodeEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/CodeEditor'))
 );
 
 const CustomMetricForm = ({
@@ -182,11 +182,11 @@ const CustomMetricForm = ({
           {({ field }) => (
             <Box data-testid="sql-editor-container" direction="col" gap={2}>
               <FormItemLabel required label={queryLabel} />
-              <SchemaEditor
-                className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
+              <CodeEditor
+                showCopyButton
+                className="custom-query-editor query-editor-h-200"
                 extensions={queryExtensions}
                 mode={{ name: CSMode.SQL }}
-                showCopyButton={false}
                 value={field.value}
                 onChange={field.onChange}
               />
