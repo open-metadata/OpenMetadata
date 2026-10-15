@@ -228,6 +228,7 @@ function ObservabilityAlertsTable({
                   <Table.Head
                     className={getAlertTableHeaderLayoutClassName(col.id)}
                     id={col.id}
+                    isRowHeader={col.id === ALERT_TABLE_COLUMN_IDS.NAME}
                     key={col.id}
                     label={col.name}
                   />
