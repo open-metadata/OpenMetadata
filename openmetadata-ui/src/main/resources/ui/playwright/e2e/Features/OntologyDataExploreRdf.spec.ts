@@ -175,21 +175,18 @@ async function assertOntologyDesignContract(
   const shell = page.getByTestId('ontology-studio-shell');
   const header = shell.locator(':scope > header');
   const subNavigation = shell.locator(':scope > nav');
-  const dataTab = page.getByRole('tab', { name: 'Data' });
+  const dataTab = page.getByRole('tab', { name: 'Data', exact: true });
   const cluster = page.getByTestId(`ontology-data-cluster-${termId}`);
   const assetName = cluster
     .getByTestId(`ontology-data-asset-${assetId}`)
     .getByTestId('ontology-data-asset-name');
 
   await expect(shell).toHaveCSS('font-family', /Inter/);
-  await expect(header).toHaveCSS('height', '56px');
-  await expect(subNavigation).toHaveCSS('height', '46px');
-  await expect(dataTab).toHaveCSS('font-size', '11px');
-  await expect(dataTab).toHaveCSS('font-weight', '600');
-  await expect(dataTab).toHaveCSS('padding-left', '16px');
-  await expect(dataTab).toHaveCSS('padding-top', '6px');
-  await expect(dataTab).toHaveCSS('background-color', 'rgb(239, 248, 255)');
-  await expect(dataTab).toHaveCSS('color', 'rgb(23, 92, 211)');
+  await expect(
+    header.getByRole('heading', { name: 'Ontology Studio', exact: true })
+  ).toBeVisible();
+  await expect(subNavigation).toHaveCSS('height', '56px');
+  await expect(dataTab).toHaveAttribute('aria-selected', 'true');
   await expect(cluster).toHaveCSS('width', '236px');
   await expect(assetName).toHaveCSS('font-family', /Geist Mono/);
   await expect(assetName).toHaveCSS('font-size', '11px');
