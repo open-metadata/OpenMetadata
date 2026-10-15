@@ -22,6 +22,7 @@ import {
 import { AxiosError } from 'axios';
 import { AppScreenshots } from './AppScreenshots';
 
+import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -44,7 +45,6 @@ import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogo from '../AppLogo/AppLogo.component';
 import './market-place-app-details.less';
-import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
 
 const MarketPlaceAppDetails = () => {
   const { t } = useTranslation();

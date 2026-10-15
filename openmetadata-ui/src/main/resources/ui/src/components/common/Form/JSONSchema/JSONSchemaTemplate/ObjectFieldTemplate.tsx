@@ -19,6 +19,7 @@ import {
   Box,
   Button,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
@@ -30,7 +31,6 @@ import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../../../constants/Services.constant';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import './object-field-template.less';
-import { Plus } from '@openmetadata/ui-core-components/icons';
 
 interface PropertyMap {
   advancedProperties: ObjectFieldTemplatePropertyType[];

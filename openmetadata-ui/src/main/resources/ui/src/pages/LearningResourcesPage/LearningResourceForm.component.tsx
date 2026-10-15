@@ -18,6 +18,7 @@ import {
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { Fragment, useEffect, useId, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -35,7 +36,6 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './learning-resource-form.less';
 import { LearningResourceFormProps } from './LearningResourceForm.interface';
-import { XClose } from '@openmetadata/ui-core-components/icons';
 
 export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
   open,

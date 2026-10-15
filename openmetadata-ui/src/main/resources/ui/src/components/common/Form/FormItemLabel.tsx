@@ -13,11 +13,11 @@
 
 import { Badge, Tooltip } from '@openmetadata/ui-core-components';
 
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { HelperTextType } from '../../../interface/FormUtils.interface';
 import { FormItemLabelProps } from './Form.interface';
-import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 
 const FormItemLabel = ({
   label,
