@@ -315,7 +315,7 @@ describe('ExploreSearchCard', () => {
     );
   });
 
-  it('centers the search and filters in a constrained column beside the Explore information', () => {
+  it('centers the search and filters in a column that grows with the header row', () => {
     render(<ExploreSearchCard />);
 
     const headerLayout = screen.getByTestId('explore-header-layout');
@@ -339,7 +339,7 @@ describe('ExploreSearchCard', () => {
       'tw:w-full',
       'tw:min-w-0',
       'tw:flex-1',
-      'tw:max-w-4xl',
+      'tw:max-w-[max(56rem,55%)]',
       'tw:mx-auto',
       'tw:px-12'
     );

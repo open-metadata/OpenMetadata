@@ -212,3 +212,5 @@ export type {
   OwnerChipProps,
   OwnerAvatarStackProps,
 } from './application/owner/owner.types';
+
+export * from './base/input/number-input';
