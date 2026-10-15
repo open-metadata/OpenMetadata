@@ -68,7 +68,11 @@ describe('LeftSidebar', () => {
       </BrowserRouter>
     );
 
-    await activate(user, screen.getByTestId('app-bar-item-logout'));
+    const logout = screen.getByTestId('app-bar-item-logout');
+
+    expect(logout.tagName).toBe('BUTTON');
+
+    await activate(user, logout);
 
     expect(await screen.findByTestId('confirm-logout')).toBeInTheDocument();
   });

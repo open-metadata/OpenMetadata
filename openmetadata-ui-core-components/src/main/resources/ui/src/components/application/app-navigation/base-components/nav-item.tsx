@@ -211,12 +211,27 @@ export const NavItemBase = ({
     );
   }
 
+  // An item with nowhere to go (e.g. Logout) is an action, so it is a button.
+  if (!href) {
+    return (
+      <button
+        className={cx(rootClassName, 'tw:text-left')}
+        data-testid={dataTestId}
+        type="button"
+        onClick={onClick}>
+        {iconElement}
+        {labelElement}
+        {badgeElement}
+      </button>
+    );
+  }
+
   return (
     <AriaLink
       aria-current={current ? 'page' : undefined}
       className={rootClassName}
       data-testid={dataTestId}
-      href={href!}
+      href={href}
       rel="noopener noreferrer"
       target={isExternal ? '_blank' : '_self'}
       onClick={onClick}>

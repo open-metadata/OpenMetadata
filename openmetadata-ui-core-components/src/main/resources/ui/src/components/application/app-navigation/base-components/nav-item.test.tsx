@@ -17,6 +17,13 @@ import { NavItemBase, type NavItemSize } from './nav-item';
 const Icon = () => <svg data-testid="nav-icon" />;
 
 describe('NavItemBase', () => {
+  it('renders an item without an href as a button, not a link', () => {
+    render(<NavItemBase type="link">Logout</NavItemBase>);
+
+    expect(screen.getByRole('button', { name: 'Logout' })).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
   it.each<[NavItemSize, string]>([
     ['sm', 'tw:pl-9'],
     ['md', 'tw:pl-10'],
