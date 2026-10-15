@@ -121,9 +121,9 @@ jest.mock('../../../DataQuality/CustomMetricForm/CustomMetricFormDrawer', () =>
       const { TableProfilerContext: ProfilerContext } = jest.requireActual(
         './TableProfilerProvider'
       );
-      const hasProfilerContext = Boolean(
-        jest.requireActual('react').useContext(ProfilerContext).permissions
-      );
+      const profilerContext = jest
+        .requireActual('react')
+        .useContext(ProfilerContext);
 
       return open ? (
         <div data-testid="custom-metric-drawer">
@@ -131,8 +131,18 @@ jest.mock('../../../DataQuality/CustomMetricForm/CustomMetricFormDrawer', () =>
             {String(isColumnMetric)}
           </span>
           <span data-testid="drawer-metric">{metric?.name ?? 'new'}</span>
-          <span data-testid="drawer-has-context">
-            {String(hasProfilerContext)}
+          <span data-testid="drawer-permissions">
+            {String(profilerContext.permissions)}
+          </span>
+          <span data-testid="drawer-profiling-enabled">
+            {String(profilerContext.isProfilingEnabled)}
+          </span>
+          <span data-testid="drawer-column-tests">
+            {String(
+              profilerContext.testCaseSummary?.[
+                'sample.db.schema.table.address_id'
+              ]?.total
+            )}
           </span>
           <button onClick={onClose}>close drawer</button>
         </div>
@@ -140,6 +150,22 @@ jest.mock('../../../DataQuality/CustomMetricForm/CustomMetricFormDrawer', () =>
     }
   )
 );
+jest.mock('../../../../rest/dataQualityDashboardAPI', () => ({
+  fetchTestCaseResultByTestSuiteId: jest.fn().mockResolvedValue({
+    data: [
+      {
+        document_count: '2',
+        entityFQN: 'sample.db.schema.table.address_id',
+        'testCaseResult.testCaseStatus': 'success',
+      },
+      {
+        document_count: '1',
+        entityFQN: 'sample.db.schema.table.address_id',
+        'testCaseResult.testCaseStatus': 'failed',
+      },
+    ],
+  }),
+}));
 jest.mock('../../../../constants/constants', () => ({
   PAGE_SIZE: 10,
   ROUTES: {
@@ -325,14 +351,17 @@ describe('TableProfilerProvider', () => {
         render(
           <TableProfilerProvider
             permissions={mockPermissions}
-            table={MOCK_TABLE}>
+            table={{
+              ...MOCK_TABLE,
+              testSuite: { id: 'suite-id', type: 'testSuite' },
+            }}>
             <DrawerOpener />
           </TableProfilerProvider>
         );
       });
     };
 
-    it('opens one shared drawer for adding and editing, outside the profiler context', async () => {
+    it('opens one shared drawer for adding and editing, with a read-only profiler context', async () => {
       await renderProvider();
 
       expect(
@@ -345,9 +374,18 @@ describe('TableProfilerProvider', () => {
         await screen.findByTestId('drawer-column-metric')
       ).toHaveTextContent('false');
       expect(screen.getByTestId('drawer-metric')).toHaveTextContent('new');
-      // The preview graphs inside must not see the profiler's edit permissions.
-      expect(screen.getByTestId('drawer-has-context')).toHaveTextContent(
+
+      // The preview reads the profiler's data (test summary, profiling state)…
+      await waitFor(() =>
+        expect(screen.getByTestId('drawer-column-tests')).toHaveTextContent('3')
+      );
+
+      expect(screen.getByTestId('drawer-profiling-enabled')).toHaveTextContent(
         'false'
+      );
+      // …but not its permissions, so its metric graphs offer no edit/delete.
+      expect(screen.getByTestId('drawer-permissions')).toHaveTextContent(
+        'undefined'
       );
 
       fireEvent.click(screen.getByText('edit column metric'));

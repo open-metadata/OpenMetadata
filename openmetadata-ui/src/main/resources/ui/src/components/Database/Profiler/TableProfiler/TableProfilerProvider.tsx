@@ -433,6 +433,11 @@ export const TableProfilerProvider = ({
     handleOpenCustomMetricDrawer,
   ]);
 
+  const readOnlyProfilerContext = useMemo(
+    () => ({ ...tableProfilerPropsData, permissions: undefined }),
+    [tableProfilerPropsData]
+  );
+
   return (
     <>
       <TableProfilerContext.Provider value={tableProfilerPropsData}>
@@ -453,17 +458,19 @@ export const TableProfilerProvider = ({
           onFormSubmit={onTestCaseSubmit}
         />
       </TableProfilerContext.Provider>
-      {/* Outside the provider on purpose: the profile preview inside the
-          drawer renders the custom metric graphs, which must stay read-only
-          instead of offering edit/delete actions that reopen this drawer. */}
-      <CustomMetricFormDrawer
-        isColumnMetric={customMetricDrawer?.isColumnMetric ?? false}
-        metric={customMetricDrawer?.metric}
-        open={!isUndefined(customMetricDrawer)}
-        table={customMetric ?? table}
-        onClose={handleCloseCustomMetricDrawer}
-        onSuccess={handleUpdateCustomMetrics}
-      />
+      {/* The profile preview inside the drawer reads the profiler's data but
+          gets no permissions, so its custom metric graphs offer no edit/delete
+          actions that would reopen this drawer. */}
+      <TableProfilerContext.Provider value={readOnlyProfilerContext}>
+        <CustomMetricFormDrawer
+          isColumnMetric={customMetricDrawer?.isColumnMetric ?? false}
+          metric={customMetricDrawer?.metric}
+          open={!isUndefined(customMetricDrawer)}
+          table={customMetric ?? table}
+          onClose={handleCloseCustomMetricDrawer}
+          onSuccess={handleUpdateCustomMetrics}
+        />
+      </TableProfilerContext.Provider>
     </>
   );
 };

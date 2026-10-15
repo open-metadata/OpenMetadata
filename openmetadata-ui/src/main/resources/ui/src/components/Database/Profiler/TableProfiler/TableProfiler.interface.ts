@@ -41,7 +41,8 @@ export interface TableProfilerProviderProps extends TableProfilerProps {
 export interface TableProfilerContextInterface {
   isTableDeleted?: boolean;
   testCaseSummary?: Record<string, TestCaseCountByStatus>;
-  permissions: OperationPermission;
+  /** Unset in read-only previews (the custom metric drawer), which hides edit actions. */
+  permissions?: OperationPermission;
   isTestsLoading: boolean;
   isProfilerDataLoading: boolean;
   tableProfiler?: Table;
