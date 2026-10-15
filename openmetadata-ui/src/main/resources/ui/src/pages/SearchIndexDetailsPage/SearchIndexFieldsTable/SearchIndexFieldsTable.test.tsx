@@ -146,7 +146,7 @@ jest.mock('../../../utils/TableUtils', () => ({
 jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest
     .fn()
-    .mockImplementation((_entityType, fqn) => `/searchIndex/${fqn}`),
+    .mockImplementation((entityType, fqn) => `/${entityType}/${fqn}`),
 }));
 
 describe('SearchIndexFieldsTable component', () => {
@@ -258,6 +258,8 @@ describe('SearchIndexFieldsTable component', () => {
       fireEvent.click(copyButtons[0]);
     });
 
-    expect(mockWriteText).toHaveBeenCalled();
+    expect(mockWriteText).toHaveBeenCalledWith(
+      `${window.location.origin}/searchIndex/${MOCK_SEARCH_INDEX_FIELDS[0].fullyQualifiedName}`
+    );
   });
 });

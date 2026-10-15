@@ -257,4 +257,56 @@ describe('MembersPanel hash navigation', () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId('create-user')).not.toBeInTheDocument();
   });
+
+  it.each([
+    ['#members/users', 'users-panel'],
+    ['#members/admins', 'users-panel'],
+    ['#members/online-users', 'online-users'],
+  ])('deep-links %s to its sub-page', (hash, testId) => {
+    renderAt(hash);
+
+    expect(screen.getByTestId(testId)).toBeInTheDocument();
+  });
+
+  const renderWithHeader = (hash: string) => {
+    globalThis.location.hash = hash;
+    const onHeaderChange = jest.fn();
+    render(
+      <MemoryRouter initialEntries={[`/settings${hash}`]}>
+        <MembersPanel onHeaderChange={onHeaderChange} />
+      </MemoryRouter>
+    );
+
+    return (crumbId: string) =>
+      act(() =>
+        onHeaderChange.mock.calls.at(-1)[0].onBreadcrumbAction(crumbId)
+      );
+  };
+
+  it.each(['#members/teams', '#members/users'])(
+    'returns from %s to the landing via the Members breadcrumb',
+    (hash) => {
+      const clickCrumb = renderWithHeader(hash);
+
+      clickCrumb('members');
+
+      expect(screen.getByTestId('members-landing')).toBeInTheDocument();
+    }
+  );
+
+  it('returns from a child team to the Organization via the breadcrumb', () => {
+    const clickCrumb = renderWithHeader('#members/teams/Engineering');
+
+    expect(screen.getByTestId('members-team-detail')).toHaveAttribute(
+      'data-fqn',
+      'Engineering'
+    );
+
+    clickCrumb('teams');
+
+    expect(screen.getByTestId('members-team-detail')).toHaveAttribute(
+      'data-fqn',
+      'Organization'
+    );
+  });
 });

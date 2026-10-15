@@ -13,7 +13,7 @@
 
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
-import { expect, test } from '../../support/fixtures/userPages';
+import { test } from '../../support/fixtures/userPages';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -83,40 +83,6 @@ test.describe('Glossary Term Assets Tab - Right Panel', () => {
     }
   });
 
-  test('Should open right panel when clicking asset in glossary term assets tab', async ({
-    adminPage,
-  }) => {
-    test.slow();
-    const fqn = getEntityFqn(tableEntity);
-    await navigateToGlossaryTermAssetsAndOpenPanel(
-      adminPage,
-      testGlossaryTerm,
-      fqn!
-    );
-    const rightPanel = new RightPanelPageObject(adminPage, tableEntity);
-    await rightPanel.waitForPanelLoaded();
-
-    await expect(rightPanel.getSummaryPanel()).toBeVisible();
-  });
-
-  test('Should display correct tabs for table entity in glossary term assets context', async ({
-    adminPage,
-  }) => {
-    test.slow();
-    const fqn = getEntityFqn(tableEntity);
-    await navigateToGlossaryTermAssetsAndOpenPanel(
-      adminPage,
-      testGlossaryTerm,
-      fqn!
-    );
-    const rightPanel = new RightPanelPageObject(adminPage, tableEntity);
-    rightPanel.setEntityConfig(tableEntity);
-    await rightPanel.waitForPanelLoaded();
-
-    const expectedTabs = rightPanel.getExpectedTabsForEntityType('Table');
-    await rightPanel.assertExpectedTabsVisible(expectedTabs);
-  });
-
   test('Should edit description from glossary term assets context', async ({
     adminPage,
   }) => {
@@ -137,46 +103,6 @@ test.describe('Glossary Term Assets Tab - Right Panel', () => {
     const description = `Glossary term asset description - ${uuid()}`;
     await overview.editDescription(description);
     await overview.shouldShowDescriptionWithText(description);
-  });
-
-  test('Should display entity name link in panel header in glossary term assets context', async ({
-    adminPage,
-  }) => {
-    test.slow();
-    const fqn = getEntityFqn(tableEntity);
-    await navigateToGlossaryTermAssetsAndOpenPanel(
-      adminPage,
-      testGlossaryTerm,
-      fqn!
-    );
-    const rightPanel = new RightPanelPageObject(adminPage, tableEntity);
-    await rightPanel.waitForPanelLoaded();
-
-    await expect(
-      rightPanel
-        .getSummaryPanel()
-        .getByTestId('entity-link')
-        .filter({ visible: true })
-    ).not.toHaveCount(0);
-  });
-
-  test('Should display overview tab content in glossary term assets context', async ({
-    adminPage,
-  }) => {
-    test.slow();
-    const fqn = getEntityFqn(tableEntity);
-    await navigateToGlossaryTermAssetsAndOpenPanel(
-      adminPage,
-      testGlossaryTerm,
-      fqn!
-    );
-    const rightPanel = new RightPanelPageObject(adminPage, tableEntity);
-    const overview = new OverviewPageObject(rightPanel);
-    await rightPanel.waitForPanelLoaded();
-
-    await overview.navigateToOverviewTab();
-    await overview.shouldBeVisible();
-    await overview.shouldShowDescriptionSection();
   });
 
   test('Should edit tags from glossary term assets context', async ({

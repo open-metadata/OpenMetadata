@@ -239,6 +239,58 @@ describe('getGlossaryTermDetailPageTabs', () => {
     });
   });
 
+  describe('ASSETS tab summary panel', () => {
+    type AssetsResizableProps = {
+      hideSecondPanel: boolean;
+      secondPanel: {
+        children: React.ReactElement<{
+          entityDetails: unknown;
+          panelPath: string;
+        }>;
+      };
+    };
+
+    const getAssetsResizableProps = (
+      previewAsset?: GlossaryTermDetailPageTabProps['previewAsset']
+    ) => {
+      const tabs = getGlossaryTermDetailPageTabs({
+        ...mockProps,
+        previewAsset,
+      });
+      const assetsTab = tabs.find((tab) => tab.key === EntityTabs.ASSETS);
+
+      return (assetsTab?.children as React.ReactElement<AssetsResizableProps>)
+        .props;
+    };
+
+    it('shows the summary panel for the previewed asset', () => {
+      const previewAsset = {
+        details: {
+          id: 'orders-id',
+          name: 'orders',
+          fullyQualifiedName: 'svc.db.schema.orders',
+          entityType: 'table',
+        },
+      };
+
+      const { hideSecondPanel, secondPanel } =
+        getAssetsResizableProps(previewAsset);
+
+      expect(hideSecondPanel).toBe(false);
+      expect(secondPanel.children.props.entityDetails).toBe(previewAsset);
+      expect(secondPanel.children.props.panelPath).toBe(
+        'glossary-term-assets-tab'
+      );
+    });
+
+    it('hides the summary panel when no asset is previewed', () => {
+      const { hideSecondPanel, secondPanel } = getAssetsResizableProps();
+
+      expect(hideSecondPanel).toBe(true);
+      expect(secondPanel.children).toBeFalsy();
+    });
+  });
+
   describe('version view', () => {
     it('returns only 1 tab when isVersionView is true', () => {
       const tabs = getGlossaryTermDetailPageTabs({

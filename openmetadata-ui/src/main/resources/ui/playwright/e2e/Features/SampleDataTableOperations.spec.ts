@@ -20,252 +20,29 @@ import {
 } from '../../utils/entity';
 import {
   addSampleDataViaApi,
-  buildReservedNameColumns,
   navigateToSampleDataTab,
-  RESERVED_SAMPLE_COLUMN_NAMES,
 } from '../../utils/sampleData';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
-test.describe('Sample Data Tab - Download and Delete Functionality', () => {
-  const tableWithData = new TableClass();
+test.describe('Sample Data Tab - Delete Functionality', () => {
   const tableForDelete = new TableClass();
-  const tableEmpty = new TableClass();
-  const tableWithReservedColumns = new TableClass();
 
-  test.beforeAll('Setup tables with sample data', async ({ browser }) => {
-    test.slow();
+  test.beforeAll('Setup table with sample data', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    tableWithReservedColumns.entity.columns = buildReservedNameColumns();
-
-    await tableWithData.create(apiContext);
     await tableForDelete.create(apiContext);
-    await tableEmpty.create(apiContext);
-    await tableWithReservedColumns.create(apiContext);
-
-    await addSampleDataViaApi(apiContext, tableWithData);
     await addSampleDataViaApi(apiContext, tableForDelete);
-    await addSampleDataViaApi(apiContext, tableWithReservedColumns);
 
     await afterAction();
   });
 
-  test.afterAll('Cleanup tables', async ({ browser }) => {
-    test.slow();
+  test.afterAll('Cleanup table', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    await tableWithData.delete(apiContext);
     await tableForDelete.delete(apiContext);
-    await tableEmpty.delete(apiContext);
-    await tableWithReservedColumns.delete(apiContext);
 
     await afterAction();
-  });
-
-  test('should display sample data tab with rows and columns', async ({
-    page,
-  }) => {
-    test.slow();
-
-    await test.step('Navigate to sample data tab', async () => {
-      await navigateToSampleDataTab(page, tableWithData);
-    });
-
-    await test.step('Verify sample data table renders with data', async () => {
-      await expect(page.getByTestId('sample-data')).toBeVisible();
-      await expect(page.getByTestId('row-limit-select')).toBeVisible();
-      await expect(page.getByTestId('sample-data-manage-button')).toBeVisible();
-    });
-
-    await test.step('Verify sample data rows are visible', async () => {
-      await expect(
-        page.getByTestId('sample-data-table').getByRole('row').nth(1)
-      ).toBeVisible();
-    });
-  });
-
-  test('should render sample data for columns with reserved names', async ({
-    page,
-  }) => {
-    test.slow();
-
-    await test.step('Navigate to sample data tab', async () => {
-      await navigateToSampleDataTab(page, tableWithReservedColumns);
-    });
-
-    await test.step('Verify the tab renders instead of crashing', async () => {
-      await expect(page.getByTestId('sample-data')).toBeVisible();
-      await expect(page.getByTestId('sample-data-table')).toBeVisible();
-    });
-
-    await test.step('Verify every reserved column header is rendered in order', async () => {
-      // A single ordered assertion covers both the contents and the order,
-      // and fails with the whole header row rather than one cell at a time.
-      await expect(
-        page.getByTestId('sample-data-table').locator('thead th')
-      ).toHaveText(
-        RESERVED_SAMPLE_COLUMN_NAMES.map((name) => new RegExp(name))
-      );
-    });
-
-    await test.step('Verify each cell value sits under its own column', async () => {
-      const rows = await page
-        .getByTestId('sample-data-table')
-        .locator('tbody tr')
-        .all();
-
-      // Assert the row's cells as one ordered list: the point of the check is
-      // that each value sits under its own column, which an ordered
-      // whole-row assertion states directly.
-      for (const rowIndex of [0, 2]) {
-        await expect(rows[rowIndex].locator('td')).toHaveText(
-          RESERVED_SAMPLE_COLUMN_NAMES.map(
-            (_, columnIndex) =>
-              new RegExp(`sample_value_${columnIndex}_${rowIndex}`)
-          )
-        );
-      }
-    });
-  });
-
-  test('should change row limit using the selector', async ({ page }) => {
-    test.slow();
-
-    await test.step('Navigate to sample data tab', async () => {
-      await navigateToSampleDataTab(page, tableWithData);
-    });
-
-    await test.step('Change row limit to 10', async () => {
-      await page.getByTestId('row-limit-select').click();
-
-      await expect(page.getByTestId('row-limit-option-10')).toBeVisible();
-      await page.getByTestId('row-limit-option-10').click();
-
-      await expect(
-        page.getByTestId('row-limit-select').getByRole('button')
-      ).toHaveText('10');
-    });
-
-    await test.step('Change row limit to 1000', async () => {
-      await page.getByTestId('row-limit-select').click();
-
-      await expect(page.getByTestId('row-limit-option-1000')).toBeVisible();
-      await page.getByTestId('row-limit-option-1000').click();
-
-      await expect(
-        page.getByTestId('row-limit-select').getByRole('button')
-      ).toHaveText('1000');
-    });
-
-    await test.step('Reset row limit back to 100', async () => {
-      await page.getByTestId('row-limit-select').click();
-
-      await expect(page.getByTestId('row-limit-option-100')).toBeVisible();
-      await page.getByTestId('row-limit-option-100').click();
-
-      await expect(
-        page.getByTestId('row-limit-select').getByRole('button')
-      ).toHaveText('100');
-    });
-  });
-
-  test('should show export and delete options in manage dropdown for admin', async ({
-    page,
-  }) => {
-    test.slow();
-
-    await test.step('Navigate to sample data tab', async () => {
-      await navigateToSampleDataTab(page, tableWithData);
-    });
-
-    await test.step('Open manage button dropdown', async () => {
-      await page.getByTestId('sample-data-manage-button').click();
-      await expect(page.getByTestId('export-button')).toBeVisible();
-    });
-
-    await test.step('Verify both export and delete options are present', async () => {
-      await expect(page.getByTestId('export-button')).toBeVisible();
-      await expect(page.getByTestId('delete-button')).toBeVisible();
-    });
-
-    await test.step('Close the dropdown', async () => {
-      await page.keyboard.press('Escape');
-      await expect(page.getByTestId('export-button')).not.toBeVisible();
-    });
-  });
-
-  test('should download sample data as CSV when export is clicked', async ({
-    page,
-  }) => {
-    test.slow();
-
-    await test.step('Navigate to sample data tab', async () => {
-      await navigateToSampleDataTab(page, tableWithData);
-    });
-
-    await test.step('Click export and verify download triggered', async () => {
-      await page.getByTestId('sample-data-manage-button').click();
-      await page.getByTestId('delete-button').waitFor({ state: 'visible' });
-      await expect(page.getByTestId('export-button')).toBeVisible();
-
-      const [download] = await Promise.all([
-        page.waitForEvent('download'),
-        page.getByTestId('export-button').click(),
-      ]);
-
-      expect(download.suggestedFilename()).toMatch(/sample_data_.*\.csv/);
-
-      const stream = await download.createReadStream();
-
-      if (stream) {
-        const chunks: Buffer[] = [];
-        for await (const chunk of stream) {
-          chunks.push(Buffer.from(chunk));
-        }
-        const csvContent = Buffer.concat(chunks).toString('utf-8');
-
-        // Verify CSV headers match the table column names
-        const expectedColumns = (
-          tableWithData.entityResponseData.columns ?? []
-        ).map((col) => col.name ?? '');
-
-        for (const col of expectedColumns) {
-          expect(csvContent).toContain(col);
-        }
-
-        // Verify sample data values are present (added via addSampleDataViaApi)
-        expect(csvContent).toContain('sample_value_0_0');
-      }
-    });
-  });
-
-  test('should open delete confirmation modal', async ({ page }) => {
-    test.slow();
-
-    await test.step('Navigate to sample data tab', async () => {
-      await navigateToSampleDataTab(page, tableWithData);
-    });
-
-    await test.step('Open delete modal via manage dropdown', async () => {
-      await page.getByTestId('sample-data-manage-button').click();
-      await expect(page.getByTestId('export-button')).toBeVisible();
-      await page.getByTestId('delete-button').click();
-
-      await expect(page.getByTestId('modal-header')).toBeVisible();
-    });
-
-    await test.step('Verify confirm button is enabled', async () => {
-      const confirmButton = page.getByTestId('confirm-button');
-      await expect(confirmButton).toBeVisible();
-      await expect(confirmButton).toBeEnabled();
-    });
-
-    await test.step('Close modal by clicking cancel', async () => {
-      await page.getByTestId('cancel-button').click();
-      await expect(page.getByTestId('modal-header')).not.toBeVisible();
-      await expect(page.getByTestId('sample-data')).toBeVisible();
-    });
   });
 
   test('should delete sample data and show empty state after confirmation', async ({
@@ -319,108 +96,6 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     await test.step('Verify empty state is shown after deletion', async () => {
       await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
       await expect(page.getByTestId('sample-data')).not.toBeVisible();
-    });
-  });
-
-  test('should cancel deletion and preserve sample data', async ({ page }) => {
-    test.slow();
-
-    await test.step('Navigate to sample data tab', async () => {
-      await navigateToSampleDataTab(page, tableWithData);
-      await expect(page.getByTestId('sample-data')).toBeVisible();
-    });
-
-    await test.step('Open delete modal and cancel', async () => {
-      await page.getByTestId('sample-data-manage-button').click();
-      await expect(page.getByTestId('export-button')).toBeVisible();
-      await page.getByTestId('delete-button').click();
-
-      await expect(page.getByTestId('modal-header')).toBeVisible();
-
-      await page.getByTestId('cancel-button').click();
-
-      await expect(page.getByTestId('modal-header')).not.toBeVisible();
-    });
-
-    await test.step('Verify sample data is still visible after cancellation', async () => {
-      await expect(page.getByTestId('sample-data')).toBeVisible();
-
-      await expect(
-        page.getByTestId('sample-data-table').getByRole('row').nth(1)
-      ).toBeVisible();
-    });
-  });
-
-  test('should show empty state for table without sample data', async ({
-    page,
-  }) => {
-    test.slow();
-
-    await test.step('Navigate to sample data tab for empty table', async () => {
-      await navigateToSampleDataTab(page, tableEmpty);
-    });
-
-    await test.step('Verify empty placeholder is shown instead of data table', async () => {
-      await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
-      await expect(page.getByTestId('sample-data')).not.toBeVisible();
-      await expect(page.getByTestId('row-limit-select')).not.toBeVisible();
-      await expect(
-        page.getByTestId('sample-data-manage-button')
-      ).not.toBeVisible();
-    });
-  });
-
-  test('should show only export option for data consumer without edit permissions', async ({
-    dataConsumerPage: page,
-  }) => {
-    test.slow();
-
-    await test.step('Navigate to sample data tab as data consumer', async () => {
-      await navigateToSampleDataTab(page, tableWithData);
-      await expect(page.getByTestId('sample-data')).toBeVisible();
-    });
-
-    await test.step('Open manage dropdown as data consumer', async () => {
-      await page.getByTestId('sample-data-manage-button').click();
-      await expect(page.getByTestId('export-button')).toBeVisible();
-    });
-
-    await test.step('Verify export is visible but delete is hidden', async () => {
-      await expect(page.getByTestId('export-button')).toBeVisible();
-      await expect(page.getByTestId('delete-button')).not.toBeVisible();
-    });
-  });
-
-  test('should persist row limit selection after switching tabs and returning', async ({
-    page,
-  }) => {
-    test.slow();
-
-    await test.step('Navigate to sample data tab', async () => {
-      await navigateToSampleDataTab(page, tableWithData);
-    });
-
-    await test.step('Change row limit to 10', async () => {
-      await page.getByTestId('row-limit-select').click();
-
-      await expect(page.getByTestId('row-limit-option-10')).toBeVisible();
-      await page.getByTestId('row-limit-option-10').click();
-
-      await expect(
-        page.getByTestId('row-limit-select').getByRole('button')
-      ).toHaveText('10');
-    });
-
-    await test.step('Switch to Schema tab and back to Sample Data', async () => {
-      await page.getByRole('tab', { name: 'Columns' }).click();
-      await waitForAllLoadersToDisappear(page);
-
-      await page.getByRole('tab', { name: 'Sample Data' }).click();
-      await waitForAllLoadersToDisappear(page);
-    });
-
-    await test.step('Verify row limit defaults back on tab re-entry', async () => {
-      await expect(page.getByTestId('row-limit-select')).toBeVisible();
     });
   });
 });

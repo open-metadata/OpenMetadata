@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   APIEndpoint,
@@ -18,6 +18,7 @@ import {
   Field,
 } from '../../../generated/entity/data/apiEndpoint';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
+import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import APIEndpointSchema from './APIEndpointSchema';
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
@@ -213,6 +214,38 @@ describe('APIEndpointSchema', () => {
 
     return column.render(field.tags, field, 0).props;
   };
+
+  it('copies the API endpoint field URL from the field name cell', async () => {
+    const mockWriteText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText: mockWriteText } });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+    });
+    const CopyLinkButtonMock = CopyLinkButton as jest.Mock;
+    const stub = CopyLinkButtonMock.getMockImplementation();
+    CopyLinkButtonMock.mockImplementation(
+      jest.requireActual('../../common/CopyLinkButton/CopyLinkButton').default
+    );
+
+    try {
+      renderApiEndpointSchema();
+      const { columns } =
+        MockedTable.mock.calls[MockedTable.mock.calls.length - 1][0];
+      const nameColumn = columns.find((c: { key: string }) => c.key === 'name');
+
+      render(nameColumn.render(mockFields[0].name, mockFields[0]));
+      fireEvent.click(screen.getByTestId('copy-field-link-button'));
+
+      await waitFor(() => {
+        expect(mockWriteText).toHaveBeenCalledWith(
+          `${window.location.origin}/apiEndpoint/${mockFields[0].fullyQualifiedName}`
+        );
+      });
+    } finally {
+      CopyLinkButtonMock.mockImplementation(stub);
+    }
+  });
 
   it('denies description edit when EditDescription is explicitly false, even with EditAll true', () => {
     renderApiEndpointSchema({}, { EditAll: true, EditDescription: false });

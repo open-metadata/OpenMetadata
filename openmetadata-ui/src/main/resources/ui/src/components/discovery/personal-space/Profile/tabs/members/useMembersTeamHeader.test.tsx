@@ -165,4 +165,23 @@ describe('useMembersTeamHeader', () => {
 
     expect(screen.queryByTestId('restore-team')).not.toBeInTheDocument();
   });
+
+  it('exports the Organization team from the actions menu', () => {
+    const params = buildParams({
+      team: {
+        name: 'Organization',
+        fullyQualifiedName: 'Organization',
+        teamType: TeamType.Organization,
+      } as Team,
+      isGroupType: false,
+      isOrgType: true,
+    });
+    render(<Harness {...params} />);
+
+    render(<>{lastPatch(params.onSetHeader).actions}</>);
+    fireEvent.click(screen.getByRole('button', { name: /open menu/i }));
+    fireEvent.click(screen.getByTestId('export-team'));
+
+    expect(params.onTeamExport).toHaveBeenCalled();
+  });
 });

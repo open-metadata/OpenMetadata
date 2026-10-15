@@ -150,7 +150,15 @@ describe('LearningResourceForm', () => {
       fireEvent.click(submitBtn);
     });
 
-    // Form validation should prevent API call
+    const nameInput = within(screen.getByTestId('name-input')).getByRole(
+      'textbox'
+    );
+
+    await waitFor(() => expect(nameInput).toBeInvalid());
+
+    expect(screen.getAllByText('label.field-required').length).toBeGreaterThan(
+      0
+    );
     expect(mockCreateLearningResource).not.toHaveBeenCalled();
   });
 

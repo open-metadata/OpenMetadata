@@ -108,6 +108,28 @@ describe('SampleDataTable with reserved column names', () => {
     );
   });
 
+  it('should render headers in column order with each value under its own column', async () => {
+    const { container } = await act(async () =>
+      render(<SampleDataTable {...mockProps} />)
+    );
+
+    const headers = Array.from(
+      container.querySelectorAll('thead th:not(.ant-table-cell-scrollbar)')
+    ).map((cell) => cell.textContent?.trim());
+
+    expect(headers).toEqual(SAMPLE_COLUMNS.map((name) => `${name}(string)`));
+
+    const bodyRows = container.querySelectorAll('tbody tr[data-row-key]');
+
+    SAMPLE_ROWS.forEach((row, rowIndex) => {
+      const cells = Array.from(bodyRows[rowIndex].querySelectorAll('td')).map(
+        (cell) => cell.textContent
+      );
+
+      expect(cells).toEqual(row);
+    });
+  });
+
   it('should give each row a distinct row key even when cell values repeat', async () => {
     const { container } = await act(async () =>
       render(<SampleDataTable {...mockProps} />)
@@ -130,9 +152,11 @@ describe('SampleDataTable with reserved column names', () => {
     fireEvent.click(screen.getByTestId('sample-data-manage-button'));
     fireEvent.click(screen.getByTestId('export-button-details-container'));
 
-    const csvContent = (downloadFile as jest.Mock).mock.calls[0][0] as string;
+    const [csvContent, fileName] = (downloadFile as jest.Mock).mock
+      .calls[0] as [string, string];
     const [header, ...dataLines] = csvContent.split('\n');
 
+    expect(fileName).toBe('sample_data_100_rows.csv');
     expect(header).toBe(SAMPLE_COLUMNS.join(','));
     expect(dataLines).toContain(SAMPLE_ROWS[0].join(','));
     expect(dataLines).toContain(SAMPLE_ROWS[1].join(','));

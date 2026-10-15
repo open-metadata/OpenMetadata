@@ -246,6 +246,11 @@ jest.mock('../../common/EntityTitleSection/EntityTitleSection', () => ({
           props.entityDetails?.displayName ??
           props.entityDetails?.name}
       </span>
+      {props.entityLink && (
+        <a data-testid="entity-link" href={props.entityLink}>
+          {props.entityDetails?.name}
+        </a>
+      )}
       {props.hasEditPermission &&
         props.entityType &&
         props.entityDetails?.id && (
@@ -1530,6 +1535,104 @@ describe('EntitySummaryPanel component tests', () => {
           expect.objectContaining({ enabled: true })
         );
       });
+    });
+  });
+
+  describe('Explore panel structure and tabs', () => {
+    it.each([
+      EntityType.TABLE_COLUMN,
+      EntityType.DATABASE,
+      EntityType.DATABASE_SCHEMA,
+      EntityType.DASHBOARD_DATA_MODEL,
+      EntityType.CONTAINER,
+      EntityType.SEARCH_INDEX,
+    ])('renders the panel with the entity title for %s', async (entityType) => {
+      const { container } = render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              id: `${entityType}-id`,
+              name: `${entityType}_name`,
+              fullyQualifiedName: `service.${entityType}_name`,
+              entityType,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+          panelPath="explore"
+        />
+      );
+
+      expect(
+        await screen.findByTestId('entity-display-name')
+      ).toHaveTextContent(`${entityType}_name`);
+      expect(screen.getByTestId('entity-summary-panel-container')).toHaveClass(
+        'explore'
+      );
+      expect(
+        container.querySelector('.summary-panel-container')
+      ).toBeInTheDocument();
+    });
+
+    it('selects each nav tab when it is clicked', async () => {
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+          panelPath="explore"
+        />
+      );
+
+      await screen.findByTestId('entity-title-section');
+
+      for (const tabId of [
+        'schema-tab',
+        'lineage-tab',
+        'data-quality-tab',
+        'custom-properties-tab',
+        'overview-tab',
+      ]) {
+        fireEvent.click(screen.getByTestId(tabId));
+
+        await waitFor(() =>
+          expect(screen.getByTestId(tabId)).toHaveAttribute(
+            'aria-selected',
+            'true'
+          )
+        );
+      }
+    });
+
+    it('opens a table from the glossary term assets tab on the overview with its link and description', async () => {
+      const { container } = render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+          panelPath="glossary-term-assets-tab"
+        />
+      );
+
+      expect(await screen.findByTestId('TableSummary')).toBeInTheDocument();
+      expect(screen.getByTestId('overview-tab')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(screen.getByTestId('entity-link')).toHaveAttribute(
+        'href',
+        '/entity/link'
+      );
+      expect(
+        container.querySelector('.overview-tab-content .description-section')
+      ).toBeInTheDocument();
     });
   });
 });

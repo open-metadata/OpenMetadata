@@ -83,6 +83,32 @@ describe('CopyLinkButton', () => {
     });
   });
 
+  it.each([
+    [EntityType.SEARCH_INDEX, 'es_svc.customer_index.name', '/searchIndex/'],
+    [
+      EntityType.API_ENDPOINT,
+      'api_svc.orders.create.requestSchema.id',
+      '/apiEndpoint/',
+    ],
+  ])(
+    'copies an absolute %s field URL built from the real route',
+    async (entityType, fieldFqn, expectedPath) => {
+      (getEntityDetailsPath as jest.Mock).mockImplementation(
+        jest.requireActual('../../../utils/RouterUtils').getEntityDetailsPath
+      );
+
+      render(<CopyLinkButton entityType={entityType} fieldFqn={fieldFqn} />);
+
+      fireEvent.click(screen.getByTestId('copy-field-link-button'));
+
+      await waitFor(() => {
+        expect(mockOnCopyToClipBoard).toHaveBeenCalledWith(
+          `${window.location.origin}${expectedPath}${fieldFqn}`
+        );
+      });
+    }
+  );
+
   it('should display copied message after copying', () => {
     (useClipboard as jest.Mock).mockReturnValue({
       onCopyToClipBoard: mockOnCopyToClipBoard,

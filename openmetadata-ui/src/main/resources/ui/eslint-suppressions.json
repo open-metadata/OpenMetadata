@@ -29,11 +29,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/AdvancedSearch.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
   "playwright/e2e/Features/BulkEditEntity.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 6
@@ -159,7 +154,7 @@
   },
   "playwright/e2e/Features/EntitySummaryPanel.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 1
     }
   },
   "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts": {
@@ -247,11 +242,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/Pagination.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
-    }
-  },
   "playwright/e2e/Features/Permissions/DataProductPermissions.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 4
@@ -280,11 +270,6 @@
   "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
-    }
-  },
-  "playwright/e2e/Features/SampleDataTableOperations.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
     }
   },
   "playwright/e2e/Features/SearchExport.spec.ts": {
@@ -494,11 +479,6 @@
       "count": 6
     }
   },
-  "playwright/e2e/Pages/ExploreTree.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 4
-    }
-  },
   "playwright/e2e/Pages/Glossary.spec.ts": {
     "om-playwright/justified-rule-disable": {
       "count": 1
@@ -659,7 +639,7 @@
   },
   "playwright/utils/common.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 3
     }
   },
   "playwright/utils/customProperty.ts": {
@@ -763,11 +743,6 @@
   "playwright/utils/sso-providers/keycloak-saml.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
-    }
-  },
-  "playwright/utils/sso.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 7
     }
   },
   "playwright/utils/task.ts": {

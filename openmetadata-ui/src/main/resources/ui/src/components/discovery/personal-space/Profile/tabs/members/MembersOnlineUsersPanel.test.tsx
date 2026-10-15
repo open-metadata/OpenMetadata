@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -63,11 +69,22 @@ jest.mock('../../../../../common/Table/TableV2', () =>
   jest.fn(
     ({
       'data-testid': testId,
+      columns,
       extraTableFilters,
     }: {
       'data-testid'?: string;
+      columns: { key: string; title: string }[];
       extraTableFilters?: React.ReactNode;
-    }) => <div data-testid={testId ?? 'table'}>{extraTableFilters}</div>
+    }) => (
+      <div data-testid={testId ?? 'table'}>
+        {columns.map((col) => (
+          <span key={col.key} role="columnheader">
+            {col.title}
+          </span>
+        ))}
+        {extraTableFilters}
+      </div>
+    )
   )
 );
 
@@ -99,5 +116,47 @@ describe('MembersOnlineUsersPanel', () => {
     await waitFor(() => {
       expect(mockGetOnlineUsers).toHaveBeenCalled();
     });
+  });
+
+  it('renders the username and last-activity columns', async () => {
+    renderPanel();
+
+    expect(
+      await screen.findByRole('columnheader', { name: 'label.username' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'label.last-activity' })
+    ).toBeInTheDocument();
+  });
+
+  it('defaults to the last 24 hours window', async () => {
+    renderPanel();
+
+    await waitFor(() =>
+      expect(mockGetOnlineUsers).toHaveBeenCalledWith(
+        expect.objectContaining({ timeWindow: 1440 })
+      )
+    );
+
+    expect(screen.getByTestId('time-window-select')).toHaveTextContent(
+      'label.last-24-hours'
+    );
+  });
+
+  it('refetches online users with the selected time window', async () => {
+    renderPanel();
+
+    fireEvent.click(
+      within(screen.getByTestId('time-window-select')).getByRole('button')
+    );
+    fireEvent.click(
+      await screen.findByRole('option', { name: 'label.last-hour' })
+    );
+
+    await waitFor(() =>
+      expect(mockGetOnlineUsers).toHaveBeenLastCalledWith(
+        expect.objectContaining({ timeWindow: 60 })
+      )
+    );
   });
 });

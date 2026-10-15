@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  APIRequestContext,
-  Browser,
-  BrowserContext,
-  Page,
-} from '@playwright/test';
+import { APIRequestContext, BrowserContext, Page } from '@playwright/test';
 import { okJson } from '../../utils/apiResponse';
 import {
   disableEtagConditionalReads,
@@ -97,17 +92,6 @@ export const deleteLandingPageAccount = async (
 const preparePage = async (page: Page) => {
   await installServerLoadReducers(page.context());
   await disableEtagConditionalReads(page);
-
-  return page;
-};
-
-/** A fresh page signed in as `account`, for a test-scoped account. */
-export const openLandingPageAccountPage = async (
-  browser: Browser,
-  account: LandingPageAccount
-) => {
-  const page = await preparePage(await browser.newPage());
-  await account.user.signIn(page);
 
   return page;
 };

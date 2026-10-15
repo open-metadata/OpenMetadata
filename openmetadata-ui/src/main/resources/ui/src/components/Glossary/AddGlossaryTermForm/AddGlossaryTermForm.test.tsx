@@ -150,6 +150,15 @@ describe('AddGlossaryTermForm', () => {
     expect(screen.getByLabelText('label.name')).toHaveValue('Revenue');
   });
 
+  it('blocks submit until name and description are filled', async () => {
+    renderWithQueryClient(<Harness />);
+
+    fireEvent.click(screen.getByText('submit'));
+
+    expect(await screen.findAllByText('label.field-required')).toHaveLength(2);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('adds, validates and removes references', async () => {
     renderWithQueryClient(<Harness />);
     fillRequired();

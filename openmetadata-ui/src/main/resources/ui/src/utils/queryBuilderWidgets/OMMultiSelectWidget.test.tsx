@@ -12,6 +12,8 @@
  */
 import type { MultiSelectWidgetProps } from '@react-awesome-query-builder/ui';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import { AdvancedSearchClassBase } from '../AdvancedSearchClassBase';
 import OMMultiSelectWidget from './OMMultiSelectWidget';
 
 // The real Autocomplete is react-aria driven and its overlay cannot be opened
@@ -211,5 +213,64 @@ describe('OMMultiSelectWidget – async options', () => {
     await waitFor(() => expect(optionLabels()).toHaveLength(3));
 
     expect(asyncFetch).toHaveBeenLastCalledWith('');
+  });
+});
+
+describe('OMMultiSelectWidget – enum custom property', () => {
+  const ENUM_VALUES = Array.from(
+    { length: 150 },
+    (_, i) => `enum_val_${String(i).padStart(3, '0')}`
+  );
+
+  const enumAsyncFetch = () => {
+    const subField = new AdvancedSearchClassBase().getCustomPropertiesSubFields(
+      {
+        name: 'enumCp',
+        type: 'enum',
+        customPropertyConfig: {
+          config: { values: ENUM_VALUES, multiSelect: true },
+        },
+      },
+      SearchOutputType.ElasticSearch
+    );
+    const settings = Array.isArray(subField)
+      ? undefined
+      : subField.dataObject.fieldSettings;
+
+    return settings && 'asyncFetch' in settings
+      ? settings.asyncFetch
+      : undefined;
+  };
+
+  it('loads the first page lazily and finds a later-page value by search', async () => {
+    render(
+      <OMMultiSelectWidget
+        {...({
+          ...baseProps,
+          useAsyncSearch: true,
+          listValues: undefined,
+          asyncFetch: enumAsyncFetch(),
+        } as unknown as MultiSelectWidgetProps)}
+      />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('options').children).toHaveLength(100)
+    );
+
+    expect(screen.getByText('enum_val_000')).toBeInTheDocument();
+    expect(screen.queryByText('enum_val_100')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'enum_val_100' },
+    });
+
+    await waitFor(() =>
+      expect(
+        Array.from(screen.getByTestId('options').children).map(
+          (child) => child.textContent
+        )
+      ).toEqual(['enum_val_100'])
+    );
   });
 });

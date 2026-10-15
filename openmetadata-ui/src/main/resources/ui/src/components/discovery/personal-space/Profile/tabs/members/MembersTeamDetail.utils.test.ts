@@ -10,13 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { fireEvent, render, screen } from '@testing-library/react';
+import { ReactElement } from 'react';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
+import { EntityReference } from '../../../../../../generated/entity/type';
 import {
   getAvailableTabs,
+  getChildTeamColumns,
+  getEntityRefColumns,
   getTabLabel,
   updateTeamsHierarchy,
   withTeamChildrenPlaceholder,
 } from './MembersTeamDetail.utils';
+import { profileHash } from './profileHash.utils';
 
 const team = (fqn: string, childrenCount = 0): Team =>
   ({ name: fqn, fullyQualifiedName: fqn, childrenCount } as Team);
@@ -85,5 +91,60 @@ describe('getTabLabel', () => {
     expect(getTabLabel('roles', t, { defaultRoles: [{}] } as Team, 0, 0)).toBe(
       'label.role-plural (1)'
     );
+  });
+
+  it('shows the asset count on the assets tab', () => {
+    expect(getTabLabel('assets', t, {} as Team, 0, 3)).toBe(
+      'label.asset-plural (3)'
+    );
+  });
+});
+
+describe('getChildTeamColumns', () => {
+  it('navigates a child team link to that team’s detail', () => {
+    const onNavigate = jest.fn();
+    const [nameColumn] = getChildTeamColumns((key) => key, onNavigate);
+    const child = {
+      name: 'finance',
+      displayName: 'Finance',
+      fullyQualifiedName: 'Organization.finance',
+    } as Team;
+
+    render(nameColumn.render?.(undefined, child, 0) as ReactElement);
+    fireEvent.click(screen.getByTestId('team-link-finance'));
+
+    expect(onNavigate).toHaveBeenCalledWith({
+      type: 'team-detail',
+      fqn: 'Organization.finance',
+      name: 'Finance',
+    });
+  });
+});
+
+describe('getEntityRefColumns', () => {
+  it.each([
+    ['role', profileHash.role],
+    ['policy', profileHash.policy],
+  ])('navigates a team %s to its access-control detail', (_, hashOf) => {
+    const goTo = jest.fn();
+    const ref = {
+      id: '1',
+      type: 'role',
+      name: 'DataSteward',
+      fullyQualifiedName: 'DataSteward',
+    } as EntityReference;
+    const [nameColumn] = getEntityRefColumns(
+      (key) => key,
+      false,
+      false,
+      goTo,
+      jest.fn(),
+      (r) => hashOf(r.fullyQualifiedName ?? '')
+    );
+
+    render(nameColumn.render?.(undefined, ref, 0) as ReactElement);
+    fireEvent.click(screen.getByRole('button', { name: 'DataSteward' }));
+
+    expect(goTo).toHaveBeenCalledWith(hashOf('DataSteward'));
   });
 });

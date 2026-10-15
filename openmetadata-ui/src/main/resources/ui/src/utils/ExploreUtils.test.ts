@@ -226,6 +226,33 @@ describe('Explore Utils', () => {
     );
   });
 
+  it.each(['glossaryTerm', 'tag', 'metric'])(
+    'round-trips a %s tree filter into a checked Data Assets option',
+    (entityType) => {
+      const must = getExploreQueryFilterMust([
+        {
+          key: EntityFields.ENTITY_TYPE,
+          label: EntityFields.ENTITY_TYPE,
+          value: [{ key: entityType, label: entityType }],
+        },
+      ]);
+
+      const selected = getSelectedValuesFromQuickFilter(
+        [
+          {
+            label: 'label.data-asset-plural',
+            key: EntityFields.ENTITY_TYPE_KEYWORD,
+          },
+        ],
+        { query: { bool: { must } } }
+      );
+
+      expect(
+        selected?.['label.data-asset-plural'].map((option) => option.key)
+      ).toEqual([entityType.toLowerCase()]);
+    }
+  );
+
   describe('getSubLevelHierarchyKey', () => {
     it('returns the correct bucket and queryFilter when isDatabaseHierarchy is true', () => {
       const result = getSubLevelHierarchyKey(

@@ -19,7 +19,6 @@ import {
   createTrackedUser,
   navigateToMembersPanel,
   openAdminsPanel,
-  openAiProfile,
   openUserProfile,
   openUsersPanel,
   searchUserRow,
@@ -293,20 +292,5 @@ test.describe('AI Profile Users', () => {
     await expect(page.getByTestId('domains')).toContainText(
       domain.responseData.displayName
     );
-  });
-
-  test('Non-admin can edit own name but not persona', async ({
-    dataConsumerPage,
-  }) => {
-    // Non-admins cannot reach Members; open their own profile directly.
-    await openAiProfile(dataConsumerPage);
-    await expect(
-      dataConsumerPage.getByTestId('profile-details-panel')
-    ).toBeVisible();
-
-    await expect(
-      dataConsumerPage.getByTestId('preferred-name-edit')
-    ).toBeVisible();
-    await expect(dataConsumerPage.getByTestId('persona-edit')).toBeHidden();
   });
 });

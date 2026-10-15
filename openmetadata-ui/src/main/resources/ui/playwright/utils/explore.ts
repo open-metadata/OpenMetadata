@@ -138,39 +138,6 @@ export const checkCheckboxStatus = async (
   await expect(row).toHaveAttribute('aria-checked', String(isChecked));
 };
 
-export const selectDataAssetFilter = async (
-  page: Page,
-  filterValue: string
-) => {
-  await page.getByRole('button', { name: 'Data Assets' }).click();
-  const dataAssetDropdownRequest = waitForAggregation(page, {
-    field: 'entityType.keyword',
-    value: filterValue,
-  });
-  await page
-    .getByTestId('drop-down-menu')
-    .getByTestId('search-input')
-    .fill(filterValue.toLowerCase());
-  await dataAssetDropdownRequest;
-  const filterRow = page
-    .getByTestId('drop-down-menu')
-    .getByTestId(filterValue.toLowerCase());
-  if ((await filterRow.getAttribute('aria-checked')) !== 'true') {
-    await filterRow.click();
-  }
-
-  // Staged mode commits + closes on Update; immediate-apply commits on check but
-  // leaves the dropdown open, and FilterSelect owns its own dismissal -- its
-  // pointerdown handler returns early for anything inside the trigger, so
-  // pressing the trigger again cannot close it. Escape is what it listens for.
-  const updateButton = page.getByTestId('update-btn');
-  if (await updateButton.isVisible().catch(() => false)) {
-    await updateButton.click();
-  } else {
-    await page.keyboard.press('Escape');
-  }
-};
-
 export const validateBucketsForIndex = async (page: Page, index: string) => {
   const { apiContext } = await getApiContext(page);
 
@@ -340,61 +307,6 @@ export const validateBucketsForIndexAndSort = async (
   const totalCount = response.hits.total.value ?? 0;
 
   expect(totalCount).toEqual(docCount);
-};
-
-export const selectSortOrder = async (page: Page, sortOrder: string) => {
-  await waitForAllLoadersToDisappear(page);
-  await page.getByTestId('sorting-dropdown-label').click();
-  await page.getByRole('menuitemradio', { name: sortOrder }).waitFor({
-    state: 'visible',
-  });
-  const nameFilter = page.waitForResponse(
-    `/api/v1/search/query?q=&index=dataAsset&*sort_field=displayName.keyword&sort_order=desc*`
-  );
-  await page.getByRole('menuitemradio', { name: sortOrder }).click();
-  await nameFilter;
-
-  await expect(page.getByTestId('sorting-dropdown-label')).toHaveText(
-    sortOrder
-  );
-
-  const ascSortOrder = page.waitForResponse(
-    `/api/v1/search/query?q=&index=dataAsset&*sort_field=displayName.keyword&sort_order=asc*`
-  );
-  await page.getByTestId('sort-order-button').click();
-  await ascSortOrder;
-  await waitForAllLoadersToDisappear(page);
-};
-
-export const verifyEntitiesAreSorted = async (page: Page) => {
-  // Wait for search results to be stable after sort
-  await page.getByTestId('search-results').waitFor({
-    state: 'visible',
-  });
-
-  const entityNames = (
-    await page
-      .locator(
-        '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]'
-      )
-      .allTextContents()
-  ).map((name) => name.trim());
-
-  // Elasticsearch keyword field with case-insensitive sorting
-  const sortedEntityNames = [...entityNames].sort((a, b) => {
-    const aLower = a.toLowerCase();
-    const bLower = b.toLowerCase();
-
-    if (aLower < bLower) {
-      return -1;
-    }
-    if (aLower > bLower) {
-      return 1;
-    }
-    return 0;
-  });
-
-  expect(entityNames).toEqual(sortedEntityNames);
 };
 
 export const navigateToExploreAndSelectEntity = async ({

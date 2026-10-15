@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { getSampleDataByTableId } from '../../../rest/tableAPI';
@@ -63,9 +63,12 @@ describe('Test SampleDataTable Component', () => {
       render(<SampleDataTable {...mockProps} />);
     });
 
-    const errorPlaceholder = screen.getByTestId('error-placeholder');
-
-    expect(errorPlaceholder).toBeInTheDocument();
+    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+    expect(screen.queryByTestId('sample-data')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('row-limit-select')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('sample-data-manage-button')
+    ).not.toBeInTheDocument();
   });
 
   it('Renders all the data that was sent to the component', async () => {
@@ -73,11 +76,12 @@ describe('Test SampleDataTable Component', () => {
       render(<SampleDataTable {...mockProps} />);
     });
 
-    const deleteButton = screen.getByTestId('sample-data-manage-button');
-    const table = screen.getByTestId('sample-data-table');
-
-    expect(deleteButton).toBeInTheDocument();
-    expect(table).toBeInTheDocument();
+    expect(screen.getByTestId('sample-data')).toBeInTheDocument();
+    expect(screen.getByTestId('row-limit-select')).toBeInTheDocument();
+    expect(screen.getByTestId('sample-data-manage-button')).toBeInTheDocument();
+    expect(screen.getByTestId('sample-data-table')).toBeInTheDocument();
+    expect(screen.getByText('address_id1')).toBeInTheDocument();
+    expect(screen.getByText('last_name3')).toBeInTheDocument();
   });
 
   it('Sample Data menu dropdown should not be present when not have permission', async () => {
@@ -124,6 +128,40 @@ describe('Test SampleDataTable Component', () => {
     const rowLimitSelect = screen.getByTestId('row-limit-select');
 
     expect(rowLimitSelect).toBeInTheDocument();
+  });
+
+  it('Should limit the rendered rows to the selected row limit', async () => {
+    const columns = ['id'];
+    const rows = Array.from({ length: 15 }, (_, index) => [`row-${index}`]);
+    (getSampleDataByTableId as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        columns: [{ name: 'id', dataType: 'STRING' }],
+        sampleData: { columns, rows },
+      })
+    );
+
+    const { container } = await act(async () =>
+      render(<SampleDataTable {...mockProps} />)
+    );
+
+    const getBodyRows = () =>
+      container.querySelectorAll('tbody tr[data-row-key]');
+
+    expect(getBodyRows()).toHaveLength(15);
+
+    const rowLimitSelect = screen.getByTestId('row-limit-select');
+
+    await act(async () => {
+      fireEvent.click(within(rowLimitSelect).getByRole('button'));
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('row-limit-option-10'));
+    });
+
+    expect(rowLimitSelect).toHaveTextContent('10');
+    expect(getBodyRows()).toHaveLength(10);
+    expect(screen.getByText('row-9')).toBeInTheDocument();
+    expect(screen.queryByText('row-10')).not.toBeInTheDocument();
   });
 
   it('Should render export button in dropdown', async () => {

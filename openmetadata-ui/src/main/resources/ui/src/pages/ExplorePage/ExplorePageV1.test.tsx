@@ -471,6 +471,20 @@ describe('ExplorePageV1', () => {
     expect(searchParams.get('currentPage')).toBe('1');
   });
 
+  it('searches with the sort field and order from the URL', async () => {
+    mockLocation.search = '?sort=displayName.keyword&sortOrder=asc';
+
+    render(<ExplorePageV1 {...mockProps} />);
+    await act(async () => undefined);
+
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sortField: 'displayName.keyword',
+        sortOrder: 'asc',
+      })
+    );
+  });
+
   describe('search count revalidation', () => {
     const resultsResponse = {
       hits: { hits: [], total: { value: 42 } },

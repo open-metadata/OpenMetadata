@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { EntityTabs } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { searchQuery } from '../../rest/searchAPI';
@@ -265,7 +265,14 @@ jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => ({
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+  return jest
+    .fn()
+    .mockImplementation(({ firstPanel, secondPanel, hideSecondPanel }) => (
+      <div>
+        {firstPanel?.children}
+        {!hideSecondPanel && secondPanel?.children}
+      </div>
+    ));
 });
 
 jest.mock(
@@ -283,7 +290,16 @@ jest.mock(
 jest.mock(
   '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component',
   () => {
-    return jest.fn().mockImplementation(() => <div>AssetsTabs</div>);
+    return jest
+      .fn()
+      .mockImplementation(({ onAssetClick }) => (
+        <button
+          onClick={() =>
+            onAssetClick({ details: { id: 'table-id', name: 'orders' } })
+          }>
+          AssetsTabs
+        </button>
+      ));
   }
 );
 
@@ -473,5 +489,22 @@ describe('TagPage', () => {
         screen.queryByTestId('data-classification-add-button')
       ).not.toBeInTheDocument();
     });
+  });
+
+  it('opens the summary panel only once an asset is clicked on the assets tab', async () => {
+    (useFqn as jest.Mock).mockReturnValue({ fqn: 'PII.NonSensitive' });
+    (useRequiredParams as jest.Mock).mockReturnValue({
+      tab: EntityTabs.ASSETS,
+    });
+
+    render(<TagPage />);
+
+    const assetsTab = await screen.findByText('AssetsTabs');
+
+    expect(screen.queryByText('EntitySummaryPanel')).not.toBeInTheDocument();
+
+    fireEvent.click(assetsTab);
+
+    expect(await screen.findByText('EntitySummaryPanel')).toBeInTheDocument();
   });
 });

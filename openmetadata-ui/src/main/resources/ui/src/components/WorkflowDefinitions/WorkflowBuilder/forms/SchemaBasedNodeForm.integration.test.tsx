@@ -21,6 +21,7 @@ import {
 } from '../../../../contexts/WorkflowModeContext';
 import { NodeSubType } from '../../../../generated/governance/workflows/elements/nodeSubType';
 import { SchemaBasedNodeForm } from './SchemaBasedNodeForm';
+import { TaskNodeFormRenderer } from './TaskNodeFormRenderer';
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const Input = (props: {
@@ -255,5 +256,29 @@ describe('SchemaBasedNodeForm name/description lock states (integration)', () =>
     );
 
     expect(screen.getByDisplayValue('Fallback Label')).toBeDisabled();
+  });
+});
+
+// The seeded RecognizerFeedbackReviewWorkflow's task nodes have no dedicated
+// form, so they must fall through to the locked schema-based form.
+describe('TaskNodeFormRenderer for the seeded RecognizerFeedbackReviewWorkflow', () => {
+  it.each([
+    NodeSubType.CreateRecognizerFeedbackApprovalTask,
+    NodeSubType.ApplyRecognizerFeedbackTask,
+    NodeSubType.RejectRecognizerFeedbackTask,
+  ])('renders %s with locked name and description in Edit mode', (subType) => {
+    renderInMode(
+      'edit',
+      <TaskNodeFormRenderer
+        node={makeNode(subType)}
+        onClose={jest.fn()}
+        onDelete={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('workflow-name-input')).toBeDisabled();
+    expect(screen.getByTestId('workflow-description-input')).toBeDisabled();
+    expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
   });
 });

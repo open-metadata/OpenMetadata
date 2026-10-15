@@ -47,7 +47,7 @@ jest.mock('../Common/TopicWidget/TopicCard', () => ({
     status,
     summary,
   }: {
-    action?: { label: string };
+    action?: { label: string; onPress: () => void };
     children?: React.ReactNode;
     isError?: boolean;
     meta?: React.ReactNode;
@@ -58,7 +58,11 @@ jest.mock('../Common/TopicWidget/TopicCard', () => ({
       <p data-testid="summary">{summary}</p>
       {status && <span data-testid="status">{status.label}</span>}
       {meta && <span data-testid="meta">{meta}</span>}
-      {action && <span data-testid="action">{action.label}</span>}
+      {action && (
+        <button data-testid="action" onClick={action.onPress}>
+          {action.label}
+        </button>
+      )}
       {isError && <span data-testid="card-error" />}
       {children}
     </section>
@@ -80,14 +84,21 @@ jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => ({
 
 const mockIsEmbeddedMode = jest.fn(() => false);
 
-jest.mock('../../../../utils/ConnectionsRouterClassBase', () => ({
-  __esModule: true,
-  default: {
-    getServiceDetailsPath: () => '/service',
-    getSettingsServicesPath: () => '/settings/services',
-    isEmbeddedMode: () => mockIsEmbeddedMode(),
-  },
-}));
+// Real paths; only the embedded-mode switch is driven by the tests.
+jest.mock('../../../../utils/ConnectionsRouterClassBase', () => {
+  const actual = jest.requireActual(
+    '../../../../utils/ConnectionsRouterClassBase'
+  ).default;
+
+  return {
+    __esModule: true,
+    default: {
+      getServiceDetailsPath: actual.getServiceDetailsPath.bind(actual),
+      getSettingsServicesPath: actual.getSettingsServicesPath.bind(actual),
+      isEmbeddedMode: () => mockIsEmbeddedMode(),
+    },
+  };
+});
 
 jest.mock('../../../../utils/ServiceUtilClassBase', () => ({
   __esModule: true,
@@ -159,6 +170,8 @@ describe('PlatformHealthWidget', () => {
       expect(screen.getByTestId('summary')).toHaveTextContent(
         'message.no-permission-to-view'
       );
+      expect(screen.queryByTestId('topic-stat-failing')).toBeNull();
+      expect(screen.queryByTestId('action')).toBeNull();
     });
   });
 
@@ -181,12 +194,65 @@ describe('PlatformHealthWidget', () => {
       );
     });
 
+    it('labels the healthy and not-run buckets and makes non-empty ones links', () => {
+      renderWidget();
+
+      expect(screen.getByTestId('topic-stat-healthy')).toHaveTextContent(
+        'message.count-healthy {"count":8}'
+      );
+      expect(screen.getByTestId('topic-stat-not-run')).toHaveTextContent(
+        'message.count-not-run-yet {"count":2}'
+      );
+
+      for (const chip of ['failing', 'healthy', 'not-run']) {
+        expect(screen.getByTestId(`topic-stat-${chip}`)).toBeEnabled();
+      }
+    });
+
+    it('disables the chip of an empty bucket', () => {
+      renderWidget({ pendingServices: 0 });
+
+      expect(screen.getByTestId('topic-stat-not-run')).toBeDisabled();
+    });
+
     it('shows at most three rows', () => {
       renderWidget();
 
       expect(
         screen.getByTestId('platform-health-rows').querySelectorAll('li')
       ).toHaveLength(3);
+    });
+
+    it('shows each row with its service name and its own error, in hook order', () => {
+      renderWidget({
+        failingServices: [
+          { ...failing('newest'), displayName: 'Newest', reason: 'Auth' },
+          { ...failing('older'), displayName: 'Older', reason: 'Timeout' },
+        ],
+      });
+
+      const rows = screen
+        .getByTestId('platform-health-rows')
+        .querySelectorAll('[data-testid^="failing-service-"]');
+
+      expect(
+        Array.from(rows, (row) => row.getAttribute('data-testid'))
+      ).toEqual(['failing-service-newest', 'failing-service-older']);
+      expect(rows[0]).toHaveTextContent('Newest');
+      expect(rows[0]).toHaveTextContent('Auth');
+      expect(rows[0]).not.toHaveTextContent('Timeout');
+    });
+
+    it("opens a failing service's Agents tab", () => {
+      renderWidget({
+        failingServices: [{ ...failing('svc-0'), fqn: 'snow flake' }],
+      });
+
+      fireEvent.click(screen.getByTestId('failing-service-svc-0'));
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/service/databaseServices/snow%20flake/agents'
+      );
     });
 
     it('reports when the data was read, not when the last failure ran', () => {
@@ -201,13 +267,22 @@ describe('PlatformHealthWidget', () => {
   describe('health links', () => {
     // Settings > Services ignores `health`, so classic mode must not promise a
     // filter the destination drops.
-    it('opens the unfiltered services list outside the connections surface', () => {
-      renderWidget();
+    it.each([
+      'topic-stat-failing',
+      'topic-stat-healthy',
+      'topic-stat-not-run',
+      'view-all-failing-services',
+      'action',
+    ])(
+      '%s opens the unfiltered services list outside the connections surface',
+      (testId) => {
+        renderWidget();
 
-      fireEvent.click(screen.getByTestId('topic-stat-failing'));
+        fireEvent.click(screen.getByTestId(testId));
 
-      expect(mockNavigate).toHaveBeenCalledWith('/settings/services');
-    });
+        expect(mockNavigate).toHaveBeenCalledWith('/settings/services');
+      }
+    );
 
     it('filters the connections listing by health where it is routed', () => {
       mockIsEmbeddedMode.mockReturnValueOnce(true);
