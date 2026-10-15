@@ -7613,18 +7613,15 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     String originalFqn = created.getFullyQualifiedName();
     String originalName = created.getName();
 
-    // Attempt to rename (Table.renameAllowed = false, so the name change must be silently rejected)
     Table patch = client.tables().get(created.getId().toString());
     patch.setName(originalName + "_rejected_rename");
 
     Table updated = patchEntity(created.getId().toString(), patch);
 
-    // The table's own name and FQN must be unchanged
     assertEquals(
         originalName, updated.getName(), "Table name must not change when rename is rejected");
     assertEquals(originalFqn, updated.getFullyQualifiedName(), "Table FQN must not change");
 
-    // Every column's FQN must still start with the original table FQN
     for (Column col : updated.getColumns()) {
       assertTrue(
           col.getFullyQualifiedName().startsWith(originalFqn + "."),
