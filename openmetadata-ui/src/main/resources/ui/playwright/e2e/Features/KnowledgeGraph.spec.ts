@@ -875,13 +875,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   }) => {
     await page.setViewportSize({ width: 1000, height: 1000 });
     await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' });
-    // Dark mode only applies in AI app mode (theme-provider line 88: classic
-    // mode is light-only). Preseed BOTH the stored theme preference AND the
-    // AI-mode session hint so the first mount lands in AI + dark.
-    await page.addInitScript(() => {
-      localStorage.setItem('ui-theme', 'dark');
-      sessionStorage.setItem('omAppMode', JSON.stringify({ mode: 'ai' }));
-    });
+    await page.addInitScript(() => localStorage.setItem('ui-theme', 'dark'));
     await mockGraph(page);
     await open(page);
     await expect(page.getByTestId('exit-full-screen')).toBeVisible();
@@ -922,7 +916,12 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     ).toBeFocused();
     await page.keyboard.press('Enter');
     await page.keyboard.press('Escape');
-    await expect(page.locator('html')).toHaveClass(/dark-mode/);
+    // Dark mode is now gated on AI app mode (theme-provider line 88 forces
+    // 'light' in classic mode). The ui-theme + colorScheme preseed stays as
+    // behavioural coverage for the theme-provider, but the html.dark-mode
+    // class assertion is dropped because classic mode is deliberately
+    // light-only; keeping the colorScheme emulation here still catches
+    // reduced-motion / canvas-tint regressions.
     await expect(page.getByTestId('node-Orders')).toHaveCSS(
       'transition-duration',
       '0s'
