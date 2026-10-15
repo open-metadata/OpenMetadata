@@ -2386,39 +2386,12 @@
               "minimum": 1
             },
             "producerThreads": {
-              "title": "Number of Producer Threads",
-              "description": "Number of producer threads to use for non-distributed RDF reindexing",
+              "title": "Number of Reader Threads",
+              "description": "Number of threads loading entities to index. Writes always go through one writer, because Fuseki accepts one write transaction at a time.",
               "type": "integer",
-              "default": 2,
-              "minimum": 1
-            },
-            "consumerThreads": {
-              "title": "Number of Consumer Threads",
-              "description": "Number of consumer threads to use for non-distributed RDF reindexing",
-              "type": "integer",
-              "default": 3,
-              "minimum": 1
-            },
-            "queueSize": {
-              "title": "Queue Size",
-              "description": "Queue size to use internally for non-distributed RDF reindexing.",
-              "type": "integer",
-              "default": 5000,
-              "minimum": 1
-            },
-            "useDistributedIndexing": {
-              "title": "Use Distributed Indexing",
-              "description": "Enable distributed RDF indexing across multiple servers with partition coordination and recovery.",
-              "type": "boolean",
-              "default": true
-            },
-            "partitionSize": {
-              "title": "Partition Size",
-              "description": "Number of entities per partition for distributed RDF indexing. Smaller values create more partitions for better distribution across servers.",
-              "type": "integer",
-              "default": 10000,
-              "minimum": 1000,
-              "maximum": 50000
+              "default": 4,
+              "minimum": 1,
+              "maximum": 10
             },
             "blueGreenRebuild": {
               "title": "Blue/Green Rebuild",
@@ -2451,12 +2424,12 @@
           "javaType": "org.openmetadata.schema.entity.applications.configuration.internal.RdfInferenceAppConfig",
           "properties": {
             "force": {
-              "description": "Materialize every enabled rule even when its durable dirty flag is clear.",
+              "description": "Recompute every rule even when no rule is dirty.",
               "type": "boolean",
               "default": false
             },
             "ruleName": {
-              "description": "Optional rule name for an on-demand single-rule run.",
+              "description": "Optional rule that must exist. The run still computes every rule, because rules read each other's conclusions.",
               "type": "string",
               "pattern": "^[a-z][a-z0-9-]{1,62}[a-z0-9]$"
             }

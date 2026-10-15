@@ -62,6 +62,23 @@ export interface IncidentTaskListParams
 export const MAX_BULK_INCIDENT_UPDATE_SIZE = 100;
 
 /**
+ * Transition ids the incident task accepts on `POST /tasks/{id}/resolve`. They
+ * are the workflow's own edge names, not the resolution status the transition
+ * produces, so they are spelled out once here rather than derived from
+ * {@link TestCaseResolutionStatusTypes}.
+ */
+export const INCIDENT_TRANSITION_ID = {
+  New: 'new',
+  Ack: 'ack',
+  Assign: 'assign',
+  Reassign: 'reassign',
+  Resolve: 'resolve',
+} as const;
+
+export type IncidentTransitionId =
+  (typeof INCIDENT_TRANSITION_ID)[keyof typeof INCIDENT_TRANSITION_ID];
+
+/**
  * Cursor returned by the server in `paging.before`/`paging.after`. It is opaque:
  * callers pass the value back verbatim as `offset` and never parse or compute
  * with it.
@@ -82,6 +99,9 @@ export type IncidentDateField = 'createdAt' | 'updatedAt';
 
 export type IncidentSortType = 'asc' | 'desc';
 
+/** What the groups are ordered by; `severity` descending is the worst first. */
+export type IncidentGroupSortField = 'incidentCount' | 'severity' | 'lastSeen';
+
 export type TestCaseIncidentStatusParams = ListParams & {
   startTs?: number;
   endTs?: number;
@@ -94,15 +114,25 @@ export type TestCaseIncidentStatusParams = ListParams & {
    * `/search/list` variant takes a numeric row offset.
    */
   offset?: number | IncidentCursor;
+  /** 1-based page, an alternative to `offset` that can jump to any page. */
+  page?: number;
   originEntityFQN?: string;
   domain?: string;
   /** Test definition of the incident's test case, by name or FQN. */
   testDefinition?: string;
   /** Direct owner (user or team name) of the incident's test case. */
   owner?: string;
+  /** Only incidents of test cases with no direct owner. */
+  unowned?: boolean;
+  /** Comma-separated current severities; `none` is no severity. */
+  severity?: string;
   sortField?: string;
   sortType?: IncidentSortType;
-  dateField?: 'timestamp' | 'updatedAt';
+  /**
+   * `/search/list` takes `timestamp`/`updatedAt`; the cursor-paginated listing
+   * takes the incident's own `createdAt`/`updatedAt`, as the groups do.
+   */
+  dateField?: 'timestamp' | IncidentDateField;
 };
 
 export type ListIncidentGroupsParams = {
@@ -110,6 +140,8 @@ export type ListIncidentGroupsParams = {
   groupBy: IncidentGroupBy;
   /** Repeatable filter on the current open status of the incidents. */
   status?: OpenIncidentStatus[];
+  /** Repeatable filter on the current severity; `none` is no severity. */
+  severity?: string[];
   assignee?: string;
   testCaseFQN?: string;
   domain?: string;
@@ -117,9 +149,12 @@ export type ListIncidentGroupsParams = {
   startTs?: number;
   endTs?: number;
   limit?: number;
-  /** Opaque cursor from a previous `paging.before`/`paging.after`. */
-  offset?: IncidentCursor;
+  /** 1-based page. */
+  page?: number;
   sortType?: IncidentSortType;
+  sortField?: IncidentGroupSortField;
+  /** Only the group with this key; see `getIncidentGroupFilterKey`. */
+  group?: string;
 };
 
 /**

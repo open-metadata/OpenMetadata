@@ -15,8 +15,12 @@ import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { EntityReference } from '../../../generated/entity/type';
+import { SearchIndex } from '../../../enums/search.enum';
 import { Paging } from '../../../generated/type/paging';
+import {
+  SearchHitBody,
+  TableSearchSource,
+} from '../../../interface/search.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
@@ -34,19 +38,18 @@ export const useAsyncDataAssetOptions = ({
   debounceTimeout,
 }: UseAsyncDataAssetOptionsParams) => {
   const isFetchingMore = useRef(false);
+  // Opening the list and typing both start a search; a slower earlier
+  // response must not overwrite the results of the latest one.
+  const latestRequest = useRef(0);
+  const loadedQuery = useRef<{
+    query: string;
+    fetcher: (query: string, page: number) => Promise<FetchOptionsResponse>;
+  }>();
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [options, setOptions] = useState<DataAssetOption[]>([]);
   const [searchText, setSearchText] = useState('');
-
-  // Stabilize queryFilter by value so inline object literals from callers don't
-  // cause fetchOptions/loadOptions to change identity on every render.
-
-  const stableQueryFilter = useMemo(
-    () => queryFilter,
-    [JSON.stringify(queryFilter)]
-  );
 
   const fetchOptions = useCallback(
     async (
@@ -58,18 +61,20 @@ export const useAsyncDataAssetOptions = ({
         pageNumber: page,
         pageSize: PAGE_SIZE,
         searchIndex,
-        queryFilter: stableQueryFilter ?? {
+        queryFilter: queryFilter ?? {
           query: { bool: { must_not: [{ match: { isBot: true } }] } },
         },
       });
 
-      const hits = response.hits.hits;
+      const hits = response.hits.hits as Array<
+        SearchHitBody<SearchIndex.TABLE, TableSearchSource>
+      >;
       const total = response.hits.total.value;
 
       const data = hits.map(({ _source }) => {
         const entityName = getEntityName(_source);
         const entityRef = getEntityReferenceFromEntity(
-          _source as EntityReference,
+          _source,
           _source.entityType as EntityType
         );
 
@@ -85,23 +90,43 @@ export const useAsyncDataAssetOptions = ({
 
       return { data, paging: { total } };
     },
-    [searchIndex, stableQueryFilter]
+    [searchIndex, queryFilter]
   );
 
   const loadOptions = useCallback(
     async (query: string) => {
-      setOptions([]);
+      // Reopening the list asks for the same query again; reuse what is shown.
+      const loaded = loadedQuery.current;
+      if (loaded?.query === query && loaded.fetcher === fetchOptions) {
+        // Drop any newer search still pending so it cannot replace these results.
+        ++latestRequest.current;
+        setIsLoading(false);
+        setSearchText(query);
+
+        return;
+      }
+      const request = ++latestRequest.current;
+      // Keep the current results on screen until the new ones arrive, so the
+      // list does not flash an empty state between searches.
       setIsLoading(true);
       try {
         const res = await fetchOptions(query, 1);
+        if (request !== latestRequest.current) {
+          return;
+        }
         setOptions(res.data);
         setSearchText(query);
         setPaging(res.paging);
         setCurrentPage(1);
+        loadedQuery.current = { query, fetcher: fetchOptions };
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (request === latestRequest.current) {
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setIsLoading(false);
+        if (request === latestRequest.current) {
+          setIsLoading(false);
+        }
       }
     },
     [fetchOptions]
@@ -116,11 +141,11 @@ export const useAsyncDataAssetOptions = ({
     if (!isOpen) {
       debouncedLoad.cancel();
     }
-
-    return () => {
-      debouncedLoad.cancel();
-    };
   }, [debouncedLoad, isOpen]);
+
+  // Separate from the effect above: its cleanup would also run when the list
+  // opens, cancelling the search typed into a closed combobox.
+  useEffect(() => () => debouncedLoad.cancel(), [debouncedLoad]);
 
   const handleSearchChange = useCallback(
     (value: string) => {
@@ -140,8 +165,12 @@ export const useAsyncDataAssetOptions = ({
         !isFetchingMore.current
       ) {
         isFetchingMore.current = true;
+        const request = latestRequest.current;
         try {
           const res = await fetchOptions(searchText, currentPage + 1);
+          if (request !== latestRequest.current) {
+            return;
+          }
           setOptions((prev) => [...prev, ...res.data]);
           setPaging(res.paging);
           setCurrentPage((prev) => prev + 1);

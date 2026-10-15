@@ -29,13 +29,15 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
   }
 
   @Override
-  public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+  public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
     updateEmbedding(entity);
   }
 
   @Override
   public void onEntityUpdated(
-      EntityInterface entity, ChangeDescription changeDescription, SubjectContext subjectContext) {
+      EntityInterface<?> entity,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext) {
     if (entity == null) {
       LOG.warn("Received null entity in onEntityUpdated");
       return;
@@ -52,7 +54,7 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
   }
 
   @Override
-  public void onEntityDeleted(EntityInterface entity, SubjectContext subjectContext) {
+  public void onEntityDeleted(EntityInterface<?> entity, SubjectContext subjectContext) {
     // Entity search doc is deleted by SearchIndexHandler; chunk docs live in the dedicated
     // chunk index and must be cleaned here or the deleted entity keeps matching KNN queries.
     deleteChunks(entity);
@@ -60,7 +62,7 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
 
   @Override
   public void onEntitySoftDeletedOrRestored(
-      EntityInterface entity, boolean isDeleted, SubjectContext subjectContext) {
+      EntityInterface<?> entity, boolean isDeleted, SubjectContext subjectContext) {
     // Chunk docs carry their own deleted flag, so mirror the transition: drop chunks on soft
     // delete, re-embed on restore. The entity search doc itself is handled by SearchIndexHandler.
     if (isDeleted) {
@@ -74,7 +76,7 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
    * Entity-doc embedding writes are partial merges, so an entity that stops being embeddable keeps
    * its stale {@code embedding} — and stays kNN-matchable — unless the field is removed explicitly.
    */
-  private void clearEntityEmbedding(EntityInterface entity) {
+  private void clearEntityEmbedding(EntityInterface<?> entity) {
     if (entity != null && entity.getId() != null && isSupported(entity)) {
       try {
         String entityIndexName = resolveEntityIndexName(extractEntityType(entity));
@@ -87,7 +89,7 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     }
   }
 
-  private void deleteChunks(EntityInterface entity) {
+  private void deleteChunks(EntityInterface<?> entity) {
     if (entity != null && entity.getId() != null && isSupported(entity)) {
       try {
         vectorService.deleteEntityChunks(entity.getId().toString());
@@ -97,12 +99,12 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     }
   }
 
-  private boolean isSupported(EntityInterface entity) {
+  private boolean isSupported(EntityInterface<?> entity) {
     String entityType = extractEntityType(entity);
     return entityType != null && isSupportedEntityType(entityType);
   }
 
-  private void updateEmbedding(EntityInterface entity) {
+  private void updateEmbedding(EntityInterface<?> entity) {
     if (entity == null) {
       LOG.warn("Received null entity in updateEmbedding");
       return;
@@ -142,7 +144,7 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     }
   }
 
-  private String extractEntityType(EntityInterface entity) {
+  private String extractEntityType(EntityInterface<?> entity) {
     try {
       return entity.getEntityReference().getType();
     } catch (Exception e) {

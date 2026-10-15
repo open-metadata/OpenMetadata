@@ -338,7 +338,7 @@ public class TestCaseResultResource
           securityContext,
           fields,
           searchListFilter,
-          "testCaseFQN.keyword",
+          TestCaseResultRepository.LATEST_PER_TEST_CASE,
           searchTerm,
           limit,
           offset,
@@ -513,7 +513,7 @@ public class TestCaseResultResource
         List.of(
             new AuthRequest(entityOperationContext, entityResourceContext),
             new AuthRequest(operationContext, resourceContext));
-    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ALL);
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
     return repository.deleteTestCaseResult(fqn, timestamp).toResponse();
   }
 

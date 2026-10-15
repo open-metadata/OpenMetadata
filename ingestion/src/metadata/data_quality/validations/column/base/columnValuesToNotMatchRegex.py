@@ -55,16 +55,11 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
 
         try:
             column: SQALikeColumn | Column = self.get_column()
-            not_match_count = self._run_results(
+            metric_values = self._run_results_with_row_count(
                 Metrics.notRegexCount,
                 column,
                 expression=test_params[self.FORBIDDEN_REGEX],
             )
-
-            metric_values = {Metrics.notRegexCount.name: not_match_count}
-
-            if self._needs_row_count():
-                metric_values[Metrics.rowCount.name] = self.get_row_count()
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
@@ -189,15 +184,13 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         Returns:
             str: Formatted result message
         """
-        not_match_count = metric_values[Metrics.notRegexCount.name]
-
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found {not_match_count} value(s) matching the forbidden regex pattern."
-            )
-        else:  # noqa: RET505
-            return f"Found {not_match_count} value(s) matching the forbidden regex pattern."
+        return self.format_violation_message(
+            violations=metric_values[Metrics.notRegexCount.name],
+            population=metric_values.get(Metrics.rowCount.name),
+            violation_noun="values matching the forbidden regex",
+            matched=self._matched(metric_values, test_params),
+            dimension_info=dimension_info,
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for not regex match test

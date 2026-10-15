@@ -12,6 +12,7 @@
  */
 import { expect, Locator, Page, Response } from '@playwright/test';
 import { clickOutside } from './common';
+import { clickUntilVisible } from './waitHelpers';
 
 // Drives the picker popover: portaled, and nothing is saved until Apply.
 
@@ -23,6 +24,8 @@ export type GlossaryTermRef = {
 
 // The popover's testid varies per instance; this class is set by the component.
 const POPOVER = '.glossary-term-picker-popover';
+// Long enough for the close transition, short enough to fall back quickly.
+const POPOVER_CLOSE_TIMEOUT = 3000;
 
 // Only the button and custom-trigger variants put a search box in the popover.
 const popoverSearchBox = (page: Page) => page.locator(POPOVER).locator('input');
@@ -69,16 +72,8 @@ export const searchGlossaryPicker = async (
   await box.fill(term);
 };
 
-// Opens the picker and waits for the treegrid to render.
-//
-// The picker uses TreeSelect's custom-trigger path (renderTrigger + onClick={toggle}),
-// so the trigger never carries `aria-expanded` — the popover's open state is only
-// observable via the treegrid appearing. Both attempts have a bounded timeout so a
-// genuine failure surfaces as "treegrid never rendered" instead of "browser closed"
-// from the enclosing 180s test timeout (which is what the old retry — an unbounded
-// waitFor after `force: true` — produced under merge-group shard load).
-//
-// Issue: https://github.com/open-metadata/OpenMetadata/issues/33640
+// Opens the picker. The trigger carries no `aria-expanded`, so the treegrid
+// rendering is the only observable open state. Issue: #33640
 export const openGlossaryPicker = async (
   page: Page,
   trigger: Locator,
@@ -87,22 +82,10 @@ export const openGlossaryPicker = async (
   await expect(trigger).toBeVisible();
   await expect(trigger).toBeEnabled();
 
-  const treeLocator = tree(page);
-
-  const clickAndAwaitOpen = async (clickOptions?: { force?: boolean }) => {
-    await trigger.click(clickOptions);
-    await treeLocator.waitFor({ state: 'visible', timeout: 5_000 });
-  };
-
-  try {
-    await clickAndAwaitOpen({ force: options?.force });
-  } catch {
-    // Retry: first click didn't open the popover (react-aria trigger race on
-    // slow shards); force is the last resort before we give up. The
-    // `no-force-option` rule pattern-matches literal `click({ force: true })`
-    // call sites — this one hides behind `clickAndAwaitOpen`, so no suppress.
-    await clickAndAwaitOpen({ force: true });
-  }
+  await clickUntilVisible(trigger, tree(page), {
+    force: options?.force ? 'always' : 'onRetry',
+    timeout: 15_000,
+  });
 };
 
 // Search results arrive nested and pre-expanded, so no manual expanding.
@@ -168,17 +151,35 @@ export const removeGlossaryTermChip = async (
 };
 
 // A form picker commits on click, so there is no Apply step to wait on.
+//
+// `dismissWith: 'escape'` is for pickers inside a dismissable drawer
+// (SlideoutMenu): an outside click lands on the drawer's backdrop and closes
+// the drawer too, while the picker's own document-level Escape handler only
+// closes the popover. Keep the default for modals that close on Escape.
 export const pickGlossaryTermInField = async (
   page: Page,
   trigger: Locator,
-  term: GlossaryTermRef
+  term: GlossaryTermRef,
+  { dismissWith = 'outside' }: { dismissWith?: 'outside' | 'escape' } = {}
 ) => {
   await openGlossaryPicker(page, trigger);
   await toggleGlossaryTermInPicker(page, term);
 
-  // Not Escape: these pickers sit in editors and drawers that close on it too.
-  await clickOutside(page);
-  await expect(page.locator(POPOVER)).not.toBeVisible();
+  const popover = page.locator(POPOVER);
+  const closedItself = await popover
+    .waitFor({ state: 'hidden', timeout: POPOVER_CLOSE_TIMEOUT })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!closedItself) {
+    if (dismissWith === 'escape') {
+      await page.keyboard.press('Escape');
+    } else {
+      await clickOutside(page);
+    }
+  }
+
+  await expect(popover).not.toBeVisible();
 };
 
 // Open, pick one term, apply — the whole flow for a single-term assignment.

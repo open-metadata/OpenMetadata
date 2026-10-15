@@ -11,9 +11,34 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { SOURCE_URL_PLACEHOLDERS } from '../../constants/Learning.constants';
+import { ResourceType } from '../../generated/entity/learning/learningResource';
 import { LearningResource } from '../../rest/learningResourceAPI';
 import { LearningResourceForm } from './LearningResourceForm.component';
+
+const getTextbox = (testId: string) =>
+  within(screen.getByTestId(testId)).getByRole('textbox');
+
+const pickOption = async (
+  user: ReturnType<typeof userEvent.setup>,
+  testId: string,
+  option: string
+) => {
+  const field = screen.getByTestId(testId);
+  await user.click(
+    within(field).queryByRole('button') ?? within(field).getByRole('combobox')
+  );
+  await user.click(await screen.findByRole('option', { name: option }));
+};
 
 const mockCreateLearningResource = jest.fn();
 const mockUpdateLearningResource = jest.fn();
@@ -95,7 +120,7 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} resource={mockResource} />);
     });
 
-    const nameInput = document.querySelector('#name') as HTMLInputElement;
+    const nameInput = getTextbox('name-input');
 
     expect(nameInput).toHaveValue('TestResource');
   });
@@ -158,7 +183,7 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} resource={mockResource} />);
     });
 
-    const nameInput = document.querySelector('#name') as HTMLInputElement;
+    const nameInput = getTextbox('name-input');
 
     expect(nameInput).toBeDisabled();
   });
@@ -168,7 +193,7 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} />);
     });
 
-    const nameInput = document.querySelector('#name') as HTMLInputElement;
+    const nameInput = getTextbox('name-input');
 
     expect(nameInput).not.toBeDisabled();
   });
@@ -193,5 +218,74 @@ describe('LearningResourceForm', () => {
     });
 
     expect(mockProps.onClose).toHaveBeenCalled();
+  });
+
+  it('should offer Video, Storylane, Link and PDF resource types', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<LearningResourceForm {...mockProps} />);
+
+    await user.click(
+      within(screen.getByTestId('resource-type-select')).getByRole('button')
+    );
+
+    for (const type of [
+      'label.video',
+      'label.storylane',
+      'label.link',
+      'label.pdf',
+    ]) {
+      expect(
+        await screen.findByRole('option', { name: type })
+      ).toBeInTheDocument();
+    }
+  });
+
+  it('should suggest a PDF URL once the PDF type is selected', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<LearningResourceForm {...mockProps} />);
+
+    await pickOption(user, 'resource-type-select', 'label.pdf');
+
+    expect(getTextbox('source-url-input')).toHaveAttribute(
+      'placeholder',
+      SOURCE_URL_PLACEHOLDERS[ResourceType.PDF]
+    );
+  });
+
+  it('should create a Link resource pointing at the entered URL', async () => {
+    const guideUrl = 'https://sharepoint.example.com/sites/data/guide';
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<LearningResourceForm {...mockProps} />);
+
+    fireEvent.change(getTextbox('name-input'), {
+      target: { value: 'DataSeekerGuide' },
+    });
+    fireEvent.change(getTextbox('description-input'), {
+      target: { value: 'Internal guidance for Data Seekers' },
+    });
+    fireEvent.change(getTextbox('source-url-input'), {
+      target: { value: guideUrl },
+    });
+    await pickOption(user, 'resource-type-select', 'label.link');
+    await pickOption(user, 'categories-select', 'Discovery');
+    await user.keyboard('{Escape}');
+    await pickOption(user, 'contexts-select', 'Domain');
+    await user.keyboard('{Escape}');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-resource'));
+    });
+
+    await waitFor(() => {
+      expect(mockCreateLearningResource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'DataSeekerGuide',
+          resourceType: ResourceType.Link,
+          categories: ['Discovery'],
+          contexts: [{ pageId: 'domain', componentId: undefined }],
+          source: { provider: undefined, url: guideUrl },
+        })
+      );
+    });
   });
 });

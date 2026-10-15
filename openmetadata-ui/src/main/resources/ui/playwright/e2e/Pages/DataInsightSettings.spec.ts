@@ -22,6 +22,7 @@ import {
   customFormatDateTime,
   getCurrentMillis,
   getEpochMillisForFutureDays,
+  pickDateInCorePicker,
 } from '../../utils/dateTime';
 import {
   expectScheduleFrequencySelected,
@@ -70,7 +71,10 @@ test.describe.serial(
       });
 
       // Click on deploy button
-      await page.click('.ant-modal-body [data-testid="deploy-button"]');
+      await page
+        .getByTestId('update-schedule-modal')
+        .getByTestId('deploy-button')
+        .click();
 
       await toastNotification(page, 'Schedule saved successfully');
 
@@ -124,16 +128,27 @@ test.describe.serial(
       await page.click('[data-testid="save-button"]');
 
       // Enable backfill configuration
-      await page.click('#root\\/backfillConfiguration\\/enabled');
+      // The switch input carries the field id but is visually hidden; click its label.
+      await page
+        .locator('label', {
+          has: page.locator('#root\\/backfillConfiguration\\/enabled'),
+        })
+        .click();
 
-      // Set start and end dates
-      const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
-      const endDate = customFormatDateTime(
-        getEpochMillisForFutureDays(5),
-        'yyyy-MM-dd'
+      // Set start and end dates in the design-system date pickers; the field id sits on the
+      // picker group, whose calendar button is the trigger.
+      const datePickerTrigger = (fieldId: string) =>
+        page.locator(`[id="${fieldId}"]`).getByRole('button');
+      await pickDateInCorePicker(
+        page,
+        datePickerTrigger('root/backfillConfiguration/startDate'),
+        customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd')
       );
-      await page.fill('#root\\/backfillConfiguration\\/startDate', startDate);
-      await page.fill('#root\\/backfillConfiguration\\/endDate', endDate);
+      await pickDateInCorePicker(
+        page,
+        datePickerTrigger('root/backfillConfiguration/endDate'),
+        customFormatDateTime(getEpochMillisForFutureDays(5), 'yyyy-MM-dd')
+      );
 
       // Submit the form
       await page.click('[data-testid="submit-btn"]');
@@ -183,7 +198,7 @@ test.describe.serial(
                 )
                 .then((res) => res.json());
 
-              return response.data[0].status;
+              return response.data?.[0]?.status;
             },
             {
               // Custom expect message for reporting, optional.
@@ -195,7 +210,7 @@ test.describe.serial(
           .toBe('success');
 
         // update page
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         // Click on the logs button
         await page.click('[data-testid="logs"]');

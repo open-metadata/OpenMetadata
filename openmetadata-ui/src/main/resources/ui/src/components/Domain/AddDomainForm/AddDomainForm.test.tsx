@@ -218,6 +218,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {field.label}
       </div>
     ),
+    FilterSelect: ({
+      'data-testid': testId,
+    }: {
+      'data-testid'?: string;
+      [key: string]: unknown;
+    }) => <div data-testid={testId} />,
     Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
     TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
   };
@@ -733,7 +739,7 @@ describe('transformDomainFormData', () => {
   it('maps a populated DOMAIN form into a CreateDomain payload', () => {
     const formData: DomainFormValues = {
       ...baseForm,
-      tags: [buildItem('PII.Sensitive', tagLabel)],
+      tags: [tagLabel],
       glossaryTerms: [glossaryTerm],
       owners: [buildItem('owner-1', ownerRef)],
       experts: [buildItem('expert-1', expertRef)],

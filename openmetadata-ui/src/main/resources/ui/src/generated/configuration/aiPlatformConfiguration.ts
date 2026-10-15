@@ -32,6 +32,10 @@ export interface AIPlatformConfiguration {
      */
     host: string;
     /**
+     * Product support knowledge-base availability.
+     */
+    knowledgeBase?: KnowledgeBaseConfiguration;
+    /**
      * Port for the AI Platform server
      */
     port: number;
@@ -93,4 +97,16 @@ export interface GrpcConfiguration {
      */
     streamDeadlineMinutes?: number;
     [property: string]: any;
+}
+
+/**
+ * Product support knowledge-base availability.
+ *
+ * Product support knowledge-base availability for this deployment.
+ */
+export interface KnowledgeBaseConfiguration {
+    /**
+     * Allow the product support worker and knowledge-base reads.
+     */
+    enabled?: boolean;
 }

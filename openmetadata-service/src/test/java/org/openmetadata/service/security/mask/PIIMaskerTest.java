@@ -84,6 +84,79 @@ class PIIMaskerTest {
   }
 
   @Test
+  void maskSampleDataIgnoresSensitiveColumnsTheSampleDoesNotInclude() {
+    String tableFqn = "service.db.schema.orders";
+    Column customer =
+        column(tableFqn, "customer", false)
+            .withChildren(List.of(column(tableFqn + ".customer", "email", true)));
+    List<Column> columns =
+        List.of(
+            column(tableFqn, "id", false),
+            column(tableFqn, "phone", true),
+            column(tableFqn, "amount", false),
+            customer);
+    TableData sampleData =
+        new TableData()
+            .withColumns(new ArrayList<>(List.of("amount", "phone")))
+            .withRows(new ArrayList<>(List.of(new ArrayList<>(List.of(100, "555-0100")))));
+
+    TableData masked =
+        PIIMasker.maskSampleData(sampleData, table(tableFqn, columns, false, List.of()), columns);
+
+    assertEquals(List.of("amount", "phone [MASKED]"), masked.getColumns());
+    assertEquals(List.of(100, PIIMasker.MASKED_VALUE), masked.getRows().getFirst());
+  }
+
+  @Test
+  void maskSampleDataMatchesSensitiveColumnsIgnoringCase() {
+    String tableFqn = "service.db.schema.orders";
+    List<Column> columns =
+        List.of(column(tableFqn, "email", true), column(tableFqn, "city", false));
+    TableData sampleData =
+        new TableData()
+            .withColumns(new ArrayList<>(List.of("EMAIL", "city")))
+            .withRows(
+                new ArrayList<>(List.of(new ArrayList<>(List.of("alice@example.com", "Paris")))));
+
+    TableData masked =
+        PIIMasker.maskSampleData(sampleData, table(tableFqn, columns, false, List.of()), columns);
+
+    assertEquals(List.of("EMAIL [MASKED]", "city"), masked.getColumns());
+    assertEquals(List.of(PIIMasker.MASKED_VALUE, "Paris"), masked.getRows().getFirst());
+  }
+
+  @Test
+  void maskSampleDataMasksEverySampledColumnOfASensitiveTable() {
+    String tableFqn = "service.db.schema.orders";
+    List<Column> columns = List.of(column(tableFqn, "email", false));
+    Table piiTable = table(tableFqn, columns, true, List.of());
+    TableData wider =
+        new TableData()
+            .withColumns(new ArrayList<>(List.of("email", "city")))
+            .withRows(new ArrayList<>(List.of(new ArrayList<>(List.of("secret", "Paris")))));
+
+    TableData masked = PIIMasker.maskSampleData(wider, piiTable, columns);
+
+    assertEquals(List.of("email [MASKED]", "city [MASKED]"), masked.getColumns());
+    assertEquals(
+        List.of(PIIMasker.MASKED_VALUE, PIIMasker.MASKED_VALUE), masked.getRows().getFirst());
+
+    List<Column> moreColumns =
+        List.of(column(tableFqn, "email", false), column(tableFqn, "city", false));
+    TableData narrower =
+        new TableData()
+            .withColumns(new ArrayList<>(List.of("email")))
+            .withRows(new ArrayList<>(List.of(new ArrayList<>(List.of("secret")))));
+
+    masked =
+        PIIMasker.maskSampleData(
+            narrower, table(tableFqn, moreColumns, true, List.of()), moreColumns);
+
+    assertEquals(List.of("email [MASKED]"), masked.getColumns());
+    assertEquals(List.of(PIIMasker.MASKED_VALUE), masked.getRows().getFirst());
+  }
+
+  @Test
   void sampleDataMaskingHandlesTopicsAndSearchIndexes() {
     Topic topic =
         new Topic()

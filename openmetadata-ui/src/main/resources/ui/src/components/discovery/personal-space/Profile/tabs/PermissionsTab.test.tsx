@@ -43,7 +43,9 @@ jest.mock('utils/RouterUtils', () => ({
   getTeamsWithFqnPath: () => '/team',
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  Policy: () => <span />,
+  Teams: () => <span />,
   UserCheck01: () => <span />,
   Lock01: () => <span />,
   ShieldTick: () => <span />,
@@ -54,6 +56,31 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  FeaturedIcon: () => <span data-testid="featured-icon" />,
+  Card: Object.assign(
+    ({
+      children,
+      className,
+      'data-testid': testId,
+    }: {
+      children?: ReactNode;
+      className?: string;
+      'data-testid'?: string;
+    }) => (
+      <div className={className} data-testid={testId}>
+        {children}
+      </div>
+    ),
+    {
+      Content: ({
+        children,
+        className,
+      }: {
+        children?: ReactNode;
+        className?: string;
+      }) => <div className={className}>{children}</div>,
+    }
+  ),
   Box: ({
     children,
     'data-testid': testId,

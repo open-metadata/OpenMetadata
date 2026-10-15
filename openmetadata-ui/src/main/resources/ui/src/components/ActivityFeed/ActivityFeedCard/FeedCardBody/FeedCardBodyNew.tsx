@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
@@ -144,19 +144,18 @@ const FeedCardBodyNew = ({
           editAction={
             <div className="d-flex justify-end gap-2 m-r-xss">
               <Button
-                className="border border-primary text-primary rounded-4"
+                color="secondary-brand"
                 data-testid="cancel-button"
-                size="small"
-                onClick={onEditCancel}>
+                size="xs"
+                onPress={onEditCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
-                className="rounded-4"
+                color="primary"
                 data-testid="save-button"
-                disabled={!message.length}
-                size="small"
-                type="primary"
-                onClick={handleSave}>
+                isDisabled={!message.length}
+                size="xs"
+                onPress={handleSave}>
                 {t('label.save')}
               </Button>
             </div>
@@ -172,13 +171,18 @@ const FeedCardBodyNew = ({
   }, [isEditPost, message, feedBodyStyleCardsRender]);
 
   return (
-    <div
+    <Card
       className={classNames(
-        showThread ? 'show-thread' : 'hide-thread',
-        isFeedWidget && 'feed-widget-body'
+        'tw:overflow-y-auto',
+        showThread
+          ? [
+              'tw:max-h-100',
+              isFeedWidget ? 'tw:mt-2.5 tw:px-4 tw:py-3' : 'tw:mt-5 tw:p-5',
+            ]
+          : 'tw:mt-0.5 tw:max-h-50 tw:p-5 tw:scrollbar-hide'
       )}>
       {feedBodyRender}
-    </div>
+    </Card>
   );
 };
 

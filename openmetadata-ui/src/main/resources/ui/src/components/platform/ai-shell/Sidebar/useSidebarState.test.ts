@@ -13,10 +13,12 @@
 
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
+import { SIDEBAR_COLLAPSED_STORAGE_KEY } from './appModeSidebar.constants';
 import {
-  SIDEBAR_COLLAPSED_STORAGE_KEY,
-  useMainCollapse,
-} from './useSidebarState';
+  readCompactSidebarPreference,
+  setCompactSidebarPreference,
+} from './sidebarPreference.utils';
+import { useMainCollapse } from './useSidebarState';
 
 const renderMain = (inSubMode = false, contextKey: string | null = null) =>
   renderHook(({ sub, key }) => useMainCollapse(sub, key), {
@@ -54,6 +56,32 @@ describe('useMainCollapse', () => {
       act(() => result.current[2](true));
 
       expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
+    });
+  });
+
+  describe('compact sidebar preference set from elsewhere', () => {
+    it('persists it and applies it to a mounted top-level sidebar', () => {
+      const { result } = renderMain(false);
+
+      expect(readCompactSidebarPreference()).toBe(false);
+
+      act(() => setCompactSidebarPreference(true));
+
+      expect(result.current[0]).toBe(true);
+      expect(readCompactSidebarPreference()).toBe(true);
+
+      act(() => setCompactSidebarPreference(false));
+
+      expect(result.current[0]).toBe(false);
+      expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('false');
+    });
+
+    it('keeps the icon rail inside a sub-context', () => {
+      const { result } = renderMain(true, 'governance');
+
+      act(() => setCompactSidebarPreference(false));
+
+      expect(result.current[0]).toBe(true);
     });
   });
 

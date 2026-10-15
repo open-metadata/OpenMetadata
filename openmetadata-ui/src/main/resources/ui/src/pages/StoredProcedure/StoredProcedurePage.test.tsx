@@ -15,7 +15,7 @@ import { act, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { getStoredProceduresByFqn } from '../../rest/storedProceduresAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';

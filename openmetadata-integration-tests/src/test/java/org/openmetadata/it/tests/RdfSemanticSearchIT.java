@@ -52,7 +52,6 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
-import org.openmetadata.service.rdf.RdfUpdater;
 
 /**
  * Integration tests for the RDF semantic-search endpoints exposed by {@code RdfResource}:
@@ -80,6 +79,8 @@ public class RdfSemanticSearchIT {
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
+  private static boolean enabledServerRdf;
+
   @BeforeAll
   static void enableRdf() {
     assumeTrue(
@@ -93,12 +94,12 @@ public class RdfSemanticSearchIT {
     rdfConfig.setUsername("admin");
     rdfConfig.setPassword("test-admin");
     rdfConfig.setDataset("openmetadata");
-    RdfUpdater.initialize(rdfConfig);
+    enabledServerRdf = RdfTestUtils.enableServerRdf(rdfConfig);
   }
 
   @AfterAll
   static void disableRdf() {
-    RdfUpdater.disable();
+    RdfTestUtils.disableServerRdf(enabledServerRdf);
   }
 
   @AfterEach

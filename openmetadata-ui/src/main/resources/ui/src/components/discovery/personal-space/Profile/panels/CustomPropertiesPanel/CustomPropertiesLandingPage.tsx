@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { getTypeByFQN } from '../../../../../../rest/metadataTypeAPI';
 import { getEntityIconWithBg } from '../../../../../../utils/Assets/AssetsUtils';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
@@ -149,6 +149,7 @@ const CustomPropertiesLandingPage: React.FC<
                   role="button"
                   size="md"
                   tabIndex={0}
+                  variant="muted"
                   onClick={() =>
                     !isCurrentLoading &&
                     handleCardClick(entityTypeName, item.key)
@@ -163,7 +164,7 @@ const CustomPropertiesLandingPage: React.FC<
                       )}
                       <Box className="tw:min-w-0" direction="col" gap={1}>
                         <Typography
-                          className="tw:text-primary-900"
+                          className="tw:text-primary"
                           size="text-sm"
                           weight="semibold">
                           {item.label}

@@ -24,7 +24,11 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, toastNotification } from '../../utils/common';
+import {
+  redirectToHomePage,
+  selectOptionWithRetry,
+  toastNotification,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   activateColumnLayer,
@@ -267,21 +271,19 @@ test.describe.serial(
       dataStewardPage,
     }) => {
       // Update setting to show pipeline as Edge
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.SETTINGS);
       await page.getByTestId('preferences').click();
       await page.getByTestId('preferences.lineageConfig').click();
 
-      await page.getByTestId('field-pipeline-view-mode').click();
-
-      await page.getByTitle('Edge').filter({ visible: true }).click();
+      await selectOptionWithRetry(
+        page.getByTestId('field-pipeline-view-mode').getByRole('button'),
+        page.getByRole('option', { name: 'Edge', exact: true })
+      );
       const lineageSettingUpdate = page.waitForResponse(
         '/api/v1/system/settings'
       );
       await page.getByTestId('save-button').click();
       await lineageSettingUpdate;
-
-      await redirectToHomePage(dataStewardPage);
 
       await table.visitEntityPage(dataStewardPage);
       await visitLineageTab(dataStewardPage);
@@ -312,13 +314,15 @@ test.describe.serial(
       ).toBeVisible({ timeout: 10000 });
 
       // update pipeline view mode to Node
-      await page.getByTestId('field-pipeline-view-mode').click();
-      await page.getByTitle('Node').filter({ visible: true }).click();
+      await selectOptionWithRetry(
+        page.getByTestId('field-pipeline-view-mode').getByRole('button'),
+        page.getByRole('option', { name: 'Node', exact: true })
+      );
       const settingsUpdate = page.waitForResponse('/api/v1/system/settings');
       await page.getByTestId('save-button').click();
       await settingsUpdate;
 
-      await dataStewardPage.reload();
+      await dataStewardPage.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(dataStewardPage);
 
       // Pipeline should be shown as Node and not as Edge

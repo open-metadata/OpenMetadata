@@ -15,7 +15,7 @@ import { Button, Tooltip } from '@openmetadata/ui-core-components';
 import {
   ChevronDown as ArrowDownIcon,
   ChevronUp as ArrowUpIcon,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { type RefObject } from 'react';
 import { Focusable } from 'react-aria-components';

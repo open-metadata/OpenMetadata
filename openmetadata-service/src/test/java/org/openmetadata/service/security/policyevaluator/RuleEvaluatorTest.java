@@ -53,6 +53,7 @@ import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.springframework.expression.EvaluationContext;
@@ -799,6 +800,42 @@ class RuleEvaluatorTest {
     // The entity-scoped context, which is what the fixed callers build, sees the truth.
     assertTrue(evaluateExpression("matchAnyTag('MCP.DEMO')"));
     assertFalse(evaluateExpression("!matchAnyTag('MCP.DEMO')"));
+  }
+
+  @Test
+  void test_isImpersonated() {
+    try {
+      assertFalse(evaluateExpression("isImpersonated()"));
+      assertFalse(evaluateExpression("impersonatedBy('McpApplicationBot')"));
+
+      ImpersonationContext.setImpersonatedBy("McpApplicationBot");
+      assertTrue(evaluateExpression("isImpersonated()"));
+      assertTrue(evaluateExpression("impersonatedBy('McpApplicationBot')"));
+      assertTrue(evaluateExpression("impersonatedBy('ingestion-bot', 'McpApplicationBot')"));
+      assertFalse(evaluateExpression("impersonatedBy('ingestion-bot')"));
+
+      // An application bot's entity name and its user name differ only in case, and either one can
+      // be what a policy author copies in, so a rule written with the user name must still fire.
+      assertTrue(evaluateExpression("impersonatedBy('mcpapplicationbot')"));
+    } finally {
+      ImpersonationContext.clear();
+    }
+  }
+
+  /**
+   * Policy authoring runs the same expression with no request behind it. The attribution must not
+   * leak into validation, otherwise saving a policy from an impersonated session evaluates
+   * differently than saving it from a normal one.
+   */
+  @Test
+  void test_isImpersonatedIsInertDuringValidation() {
+    try {
+      ImpersonationContext.setImpersonatedBy("McpApplicationBot");
+      CompiledRule.validateExpression("isImpersonated()", Boolean.class);
+      CompiledRule.validateExpression("!isImpersonated()", Boolean.class);
+    } finally {
+      ImpersonationContext.clear();
+    }
   }
 
   private Boolean evaluateExpression(String condition) {

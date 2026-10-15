@@ -331,7 +331,6 @@ export const ROUTES = {
 
   // Metric Entity
   METRICS: '/metrics',
-  ADD_METRIC: '/metrics/add-metric',
 
   // Entity Import
   ENTITY_IMPORT: `/bulk/import/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
@@ -342,6 +341,7 @@ export const ROUTES = {
 
   // Settings
   SETTINGS_SSO: '/settings/sso',
+  SETTINGS_DEFAULT_TIME_FORMAT: '/settings/default-time-format',
 };
 
 export const SOCKET_EVENTS = {
@@ -411,6 +411,8 @@ export const ENTITY_PATH = {
   agentExecutions: 'agentExecution',
   mcpExecutions: 'mcpExecution',
   promptTemplates: 'promptTemplate',
+  teams: 'team',
+  users: 'user',
 };
 
 export const CUSTOM_PROPERTIES_DOCS =
@@ -501,6 +503,7 @@ export const VALIDATION_MESSAGES = {
 
 export const ERROR_MESSAGE = {
   alreadyExist: 'already exists',
+  mutuallyExclusive: 'mutually exclusive',
 };
 
 export const ICON_DIMENSION = {

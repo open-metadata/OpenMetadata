@@ -21,6 +21,7 @@ import {
   BundleSuiteBulkAddRequestClass,
   Mode as BundleSuiteBulkAddMode,
 } from '../generated/api/tests/bundleSuiteBulkAddRequest';
+import type { BundleSuiteBulkRemoveRequest } from '../generated/api/tests/bundleSuiteBulkRemoveRequest';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
@@ -44,7 +45,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
+import { CSVImportAsyncResponse } from '../interface/entity/csv.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 
@@ -99,6 +100,11 @@ export type ListTestDefinitionsParams = ListParams & {
   supportedDataType?: string;
   enabled?: boolean;
   supportedService?: string;
+  /** Free-text match against the test definition name and display name. */
+  q?: string;
+  /** One of `displayName`, `entityType`, `testPlatforms`. */
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
 };
 
 export type ListTestCaseResultsParams = Omit<
@@ -249,10 +255,22 @@ export const addTestCaseToLogicalTestSuite = async (
   return response.data;
 };
 
+export type AddTestCaseListFilter = {
+  q?: string;
+  testCaseStatus?: string;
+  testCaseType?: string;
+  entityLink?: string;
+  includeAllTests?: boolean;
+  columnName?: string;
+};
+
 export type AddTestCaseListSubmitPayload = {
   selectAll: boolean;
   includeIds: string[];
   excludeIds: string[];
+  // Active search/filter carried with a `selectAll` request so the backend
+  // resolves "all" to the filtered subset shown in the UI, not every test case.
+  filter?: AddTestCaseListFilter;
 };
 
 export const addTestCasesToLogicalTestSuiteBulk = async (
@@ -265,7 +283,7 @@ export const addTestCasesToLogicalTestSuiteBulk = async (
       ? BundleSuiteBulkAddMode.All
       : BundleSuiteBulkAddMode.IDS,
     selection: payload.selectAll
-      ? { filter: { excludeIds: payload.excludeIds } }
+      ? { filter: { excludeIds: payload.excludeIds, ...payload.filter } }
       : { ids: payload.includeIds },
   };
   const response = await APIClient.put<
@@ -284,6 +302,19 @@ export const removeTestCaseFromTestSuite = async (
     AddTestCaseToLogicalTestSuiteType,
     AxiosResponse<TestCase>
   >(`${testCaseUrl}/logicalTestCases/${testSuiteId}/${testCaseId}`);
+
+  return response.data;
+};
+
+export const removeTestCasesFromTestSuiteBulk = async (
+  testSuiteId: string,
+  testCaseIds: string[]
+): Promise<TestSuite> => {
+  const request: BundleSuiteBulkRemoveRequest = { testSuiteId, testCaseIds };
+  const response = await APIClient.post<
+    BundleSuiteBulkRemoveRequest,
+    AxiosResponse<TestSuite>
+  >(`${testCaseUrl}/logicalTestCases/bulk/remove`, request);
 
   return response.data;
 };

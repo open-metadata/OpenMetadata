@@ -11,9 +11,15 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.dashboard.DomoDashboardConnection;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
+import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig__1;
+import org.openmetadata.schema.services.connections.database.microsoftFabric.CertificateAuthentication;
+import org.openmetadata.schema.services.connections.database.microsoftFabric.ClientSecretAuthentication;
+import org.openmetadata.schema.services.connections.drive.SftpConnection;
+import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
+import org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth;
 import org.openmetadata.schema.services.connections.mcp.McpConnection;
 import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.service.exception.EntityMaskException;
@@ -22,6 +28,10 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   private static final String TOKEN = "openmetadata-token";
   private static final String ALPHA_KEY = "alpha-api-key";
   private static final String BETA_KEY = "beta-api-key";
+  private static final String SFTP_PASSWORD = "openmetadata-sftp-secret";
+  private static final String FABRIC_CERTIFICATE = "fabric-certificate-pem";
+  private static final String FABRIC_PRIVATE_KEY = "fabric-private-key-pem";
+  private static final String FABRIC_PASSPHRASE = "fabric-key-passphrase";
 
   public PasswordEntityMaskerTest() {
     CONFIG.setMaskPasswordsAPI(true);
@@ -180,6 +190,54 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   }
 
   @Test
+  void testSftpPasswordIsMaskedAndRestored() {
+    SftpConnection original =
+        new SftpConnection()
+            .withHost("sftp.example.com")
+            .withAuthType(
+                new SftpBasicAuth().withUsername("sftp-user").withPassword(SFTP_PASSWORD));
+
+    SftpConnection masked =
+        (SftpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(original, "Sftp", ServiceType.DRIVE);
+    assertEquals(getMaskedPassword(), sftpPassword(masked));
+    assertEquals("sftp-user", sftpAuth(masked).getUsername());
+
+    SftpConnection restored =
+        (SftpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(masked, original, "Sftp", ServiceType.DRIVE);
+    assertEquals(SFTP_PASSWORD, sftpPassword(restored));
+  }
+
+  /** The config arrives from the database as a map, which is what used to defeat the masker. */
+  @Test
+  void testSftpPrivateKeyFromSerializedConfigIsMasked() {
+    Map<String, Object> serialized =
+        Map.of(
+            "host",
+            "sftp.example.com",
+            "authType",
+            Map.of("username", "sftp-user", "privateKey", SFTP_PASSWORD));
+
+    SftpConnection masked =
+        (SftpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(serialized, "Sftp", ServiceType.DRIVE);
+
+    assertEquals(getMaskedPassword(), ((SftpKeyAuth) masked.getAuthType()).getPrivateKey());
+  }
+
+  private SftpBasicAuth sftpAuth(SftpConnection connection) {
+    return (SftpBasicAuth) connection.getAuthType();
+  }
+
+  private String sftpPassword(SftpConnection connection) {
+    return sftpAuth(connection).getPassword();
+  }
+
+  @Test
   void testExceptionConnection() {
     Map<String, Object> mysqlConnectionObject =
         Map.of(
@@ -211,5 +269,65 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
     assertEquals(
         "Failed to unmask 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
         thrown.getMessage());
+  }
+
+  @Test
+  void testMicrosoftFabricClientSecretIsMaskedAndRestored() {
+    MicrosoftFabricConnection original =
+        fabricConnection(new ClientSecretAuthentication().withClientSecret(TOKEN));
+
+    MicrosoftFabricConnection masked = maskFabric(original);
+    assertEquals(
+        getMaskedPassword(), ((ClientSecretAuthentication) masked.getAuthType()).getClientSecret());
+
+    MicrosoftFabricConnection restored = unmaskFabric(masked, original);
+    assertEquals(TOKEN, ((ClientSecretAuthentication) restored.getAuthType()).getClientSecret());
+  }
+
+  @Test
+  void testMicrosoftFabricCertificateCredentialsAreMaskedAndRestored() {
+    MicrosoftFabricConnection original =
+        fabricConnection(
+            new CertificateAuthentication()
+                .withCertificate(FABRIC_CERTIFICATE)
+                .withPrivateKey(FABRIC_PRIVATE_KEY)
+                .withPrivateKeyPassphrase(FABRIC_PASSPHRASE));
+
+    MicrosoftFabricConnection masked = maskFabric(original);
+    assertEquals(
+        List.of(getMaskedPassword(), getMaskedPassword(), getMaskedPassword()),
+        certificateSecrets(masked));
+
+    MicrosoftFabricConnection restored = unmaskFabric(masked, original);
+    assertEquals(
+        List.of(FABRIC_CERTIFICATE, FABRIC_PRIVATE_KEY, FABRIC_PASSPHRASE),
+        certificateSecrets(restored));
+  }
+
+  private MicrosoftFabricConnection fabricConnection(Object authType) {
+    return new MicrosoftFabricConnection()
+        .withHostPort("workspace.datawarehouse.fabric.example.test")
+        .withClientId("fabric-client-id")
+        .withTenantId("fabric-tenant-id")
+        .withAuthType(authType);
+  }
+
+  private MicrosoftFabricConnection maskFabric(MicrosoftFabricConnection connection) {
+    return (MicrosoftFabricConnection)
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(connection, "MicrosoftFabric", ServiceType.DATABASE);
+  }
+
+  private MicrosoftFabricConnection unmaskFabric(
+      MicrosoftFabricConnection masked, MicrosoftFabricConnection original) {
+    return (MicrosoftFabricConnection)
+        EntityMaskerFactory.createEntityMasker()
+            .unmaskServiceConnectionConfig(
+                masked, original, "MicrosoftFabric", ServiceType.DATABASE);
+  }
+
+  private List<String> certificateSecrets(MicrosoftFabricConnection connection) {
+    CertificateAuthentication auth = (CertificateAuthentication) connection.getAuthType();
+    return List.of(auth.getCertificate(), auth.getPrivateKey(), auth.getPrivateKeyPassphrase());
   }
 }

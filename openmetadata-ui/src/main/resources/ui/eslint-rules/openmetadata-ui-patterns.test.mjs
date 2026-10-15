@@ -46,3 +46,99 @@ ruleTester.run(
     ],
   }
 );
+
+ruleTester.run(
+  'no-non-adaptive-palette',
+  uiPatternsPlugin.rules['no-non-adaptive-palette'],
+  {
+    valid: [
+      { code: "const a = 'tw:bg-surface tw:text-primary';" },
+      { code: "const a = 'tw:bg-utility-blue-50';" },
+      { code: "const a = 'tw:dark:bg-blue-500';" },
+      { code: "const a = 'tw:bg-primary';" },
+      { code: "const a = 'flex items-center';" },
+      { code: 'const a = `tw:bg-utility-blue-50`;' },
+      // Semantic tokens (no numeric shade) are fine.
+      { code: "const a = 'tw:bg-error-primary tw:text-brand-secondary';" },
+      // Non-color utilities with a numeric segment must not false-positive.
+      { code: "const a = 'tw:divide-x-2 tw:ring-offset-2 tw:border-t-2';" },
+    ],
+    invalid: [
+      {
+        code: "const a = 'tw:bg-blue-50';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      {
+        code: "const a = 'tw:text-gray-500 tw:bg-yellow-50';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      {
+        code: "const a = 'tw:hover:bg-brand-100';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      {
+        code: "const a = 'tw:border-gray-blue-200 tw:p-2';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      {
+        code: 'const a = `tw:bg-blue-50 ${x}`;',
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      // Non-utility family (no utility- ramp) — still flagged, report-only.
+      {
+        code: "const a = 'tw:bg-cyan-50 tw:text-teal-600';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      // Opacity modifier must not evade detection.
+      {
+        code: "const a = 'tw:bg-brand-900/20';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+    ],
+  }
+);
+
+ruleTester.run(
+  'no-nested-ellipsis-tooltip-trigger',
+  uiPatternsPlugin.rules['no-nested-ellipsis-tooltip-trigger'],
+  {
+    valid: [
+      // Not nested in anything interactive.
+      {
+        code: '<div><Typography ellipsis={{ tooltip: true }}>x</Typography></div>;',
+      },
+      // Opted into the span trigger.
+      {
+        code: '<Link to="/x"><Typography ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>x</Typography></Link>;',
+      },
+      // No tooltip means no trigger.
+      {
+        code: '<a href="/x"><Typography ellipsis={{ rows: 2 }}>x</Typography></a>;',
+      },
+      { code: '<a href="/x"><Typography ellipsis>x</Typography></a>;' },
+      // A clickable div is not an interactive element: no nested-button issue.
+      {
+        code: '<div onClick={f}><Typography ellipsis={{ tooltip: true }}>x</Typography></div>;',
+      },
+    ],
+    invalid: [
+      {
+        code: '<Link to="/x"><Typography ellipsis={{ tooltip: true }}>x</Typography></Link>;',
+        errors: [{ messageId: 'nestedTrigger', data: { ancestor: 'Link' } }],
+      },
+      {
+        code: '<Button><span><Typography ellipsis={{ tooltip: true, rows: 2 }}>x</Typography></span></Button>;',
+        errors: [{ messageId: 'nestedTrigger', data: { ancestor: 'Button' } }],
+      },
+      {
+        code: '<div role="button" onClick={f}><Typography ellipsis={{ tooltip: name }}>x</Typography></div>;',
+        errors: [{ messageId: 'nestedTrigger', data: { ancestor: 'div' } }],
+      },
+      // An explicit `false` is not an opt-out.
+      {
+        code: '<a href="/x"><Typography ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: false }}>x</Typography></a>;',
+        errors: [{ messageId: 'nestedTrigger', data: { ancestor: 'a' } }],
+      },
+    ],
+  }
+);

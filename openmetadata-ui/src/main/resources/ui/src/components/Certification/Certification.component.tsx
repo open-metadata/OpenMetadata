@@ -10,22 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Empty,
-  Popover,
-  Radio,
-  Space,
-  Spin,
-  Typography,
-} from 'antd';
+import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { isNil } from 'lodash';
 import {
   lazy,
-  ReactNode,
   Suspense,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -33,19 +24,22 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
-import { CERTIFICATION_CATEGORY } from '../../constants/constants';
+import {
+  CERTIFICATION_CATEGORY,
+  PAGE_SIZE_LARGE,
+} from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { Paging } from '../../generated/type/paging';
-import { getTags } from '../../rest/tagAPI';
+import { useDebouncedValue } from '../../hooks/common/useDebouncedValue';
+import { searchQuery } from '../../rest/searchAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { isImageUrl } from '../../utils/IconUtils';
-import { handleKeyboardActivation } from '../../utils/KeyboardUtil';
-import { stringToHTML } from '../../utils/StringUtils';
+import { getTermQuery } from '../../utils/SearchPureUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
-import Loader from '../common/Loader/Loader';
 import { CertificationProps } from './Certification.interface';
-import './certification.less';
 
 // Lazy-loaded from the dedicated `@openmetadata/ui-core-components/icon`
 // subpath (not the package root) so ICON_MAP's ~44 icon components — a plain
@@ -57,288 +51,228 @@ const Icon = lazy(() =>
   }))
 );
 
+const renderCertificationIcon = (certification: Tag) => {
+  const fallback = <CertificationIcon height={18} width={18} />;
+  const iconURL = certification.style?.iconURL;
+
+  return iconURL ? (
+    <Suspense fallback={fallback}>
+      <Icon
+        alt={getEntityName(certification)}
+        fallback={fallback}
+        iconValue={iconURL}
+        size={18}
+      />
+    </Suspense>
+  ) : (
+    fallback
+  );
+};
+
+const fetchCertificationPage = async (search: string, pageNumber: number) => {
+  const res = await searchQuery({
+    query: search
+      ? `*${getEncodedFqn(escapeESReservedCharacters(search))}*`
+      : '',
+    pageNumber,
+    pageSize: PAGE_SIZE_LARGE,
+    queryFilter: getTermQuery({
+      'classification.name.keyword': CERTIFICATION_CATEGORY,
+      disabled: 'false',
+    }),
+    searchIndex: SearchIndex.TAG,
+    sortField: 'name.keyword',
+    sortOrder: 'asc',
+  });
+
+  return {
+    tags: res.hits.hits.map(({ _source }) => _source as Tag),
+    total: res.hits.total.value,
+  };
+};
+
 const Certification = ({
   currentCertificate = '',
   children,
   onCertificationUpdate,
   popoverProps,
   onClose,
+  isDisabled,
+  'data-testid': testId,
+  'aria-labelledby': ariaLabelledBy,
+  className,
 }: CertificationProps) => {
   const { t } = useTranslation();
-  const popoverRef = useRef<{ close: () => void } | null>(null);
-  const [isLoadingCertificationData, setIsLoadingCertificationData] =
-    useState<boolean>(false);
-  const [hasContentLoading, setHasContentLoading] = useState<boolean>(false);
-  const [certifications, setCertifications] = useState<Array<Tag>>([]);
-  const [selectedCertification, setSelectedCertification] = useState<string>(
-    currentCertificate ?? ''
-  );
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [certifications, setCertifications] = useState<Tag[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [searchText, setSearchText] = useState('');
+  const debouncedSearchText = useDebouncedValue(searchText, 300);
+  // Clearing the search reloads the full list at once; only typing waits.
+  const effectiveSearchText = searchText ? debouncedSearchText : '';
+  // Keeps the selected certification's label once a later search no longer lists it.
+  const [selectedCertification, setSelectedCertification] = useState<Tag>();
+  const isOpen = popoverProps?.open ?? isPopupOpen;
+  const isFormField = isNil(children);
+  // A pick or clear closes the picker itself; only a dismissal calls onClose.
+  const isCommitRef = useRef(false);
+  // Drops responses for a search or page the user has already moved past.
+  const searchGeneration = useRef(0);
+  // Scroll fires several times before a re-render, so the guard can't wait for state.
+  const isFetchingMore = useRef(false);
+  const hasLoaded = useRef(false);
 
-  const getCertificationData = async (page = 1, append = false) => {
-    if (page === 1) {
-      setIsLoadingCertificationData(true);
-    } else {
-      setHasContentLoading(true);
-    }
-
-    try {
-      const response = await getTags({
-        parent: CERTIFICATION_CATEGORY,
-        limit: 50,
-        after: page > 1 ? paging.after : undefined,
-        disabled: false,
-      });
-
-      const { data, paging: newPaging } = response;
-
-      // Sort certifications with Gold, Silver, Bronze first (only for initial load)
-      const sortedData =
-        page === 1
-          ? [...data].sort((a, b) => {
-              const order: Record<string, number> = {
-                Gold: 0,
-                Silver: 1,
-                Bronze: 2,
-              };
-
-              const aName = getEntityName(a);
-              const bName = getEntityName(b);
-
-              const aOrder = order[aName] ?? 3;
-              const bOrder = order[bName] ?? 3;
-
-              return aOrder - bOrder;
-            })
-          : data;
-
-      if (append) {
-        setCertifications((prev) => [...prev, ...sortedData]);
-      } else {
-        setCertifications(sortedData);
-      }
-
-      setPaging(newPaging);
-      setCurrentPage(page);
-    } catch (err) {
+  const showFetchError = useCallback(
+    (err: unknown) =>
       showErrorToast(
         err as AxiosError,
         t('server.entity-fetch-error', {
           entity: t('label.certification-plural-lowercase'),
         })
-      );
-    } finally {
-      setIsLoadingCertificationData(false);
-      setHasContentLoading(false);
+      ),
+    [t]
+  );
+
+  // A form field also loads on mount, so its trigger can show the label.
+  useEffect(() => {
+    if (!isOpen && !(isFormField && !hasLoaded.current)) {
+      return;
     }
-  };
-
-  const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
-    const { currentTarget } = e;
-    const isAtBottom =
-      currentTarget.scrollTop + currentTarget.offsetHeight >=
-      currentTarget.scrollHeight - 1; // -1 for precision tolerance
-
-    if (isAtBottom && paging.after && !hasContentLoading) {
-      await getCertificationData(currentPage + 1, true);
-    }
-  };
-
-  const updateCertificationData = async (value?: string) => {
-    setIsLoadingCertificationData(true);
-    const certification = certifications.find(
-      (cert) => cert.fullyQualifiedName === value
-    );
-    await onCertificationUpdate?.(certification);
-    setIsLoadingCertificationData(false);
-    popoverRef.current?.close();
-  };
-
-  const certificationCardData = useMemo(() => {
-    if (certifications.length === 0 && !isLoadingCertificationData) {
-      return (
-        <Empty
-          description={t('label.no-entity-available', {
-            entity: t('label.certification-plural-lowercase'),
-          })}
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
-      );
-    }
-
-    return (
-      <div
-        className="h-max-100 overflow-y-auto overflow-x-hidden"
-        onScroll={handleScroll}>
-        <Radio.Group className="w-full" value={selectedCertification}>
-          {certifications.map((certificate) => {
-            const iconURL = certificate.style?.iconURL;
-            const title = getEntityName(certificate);
-            const { id, fullyQualifiedName, description } = certificate;
-
-            const isIcon = Boolean(iconURL) && !isImageUrl(iconURL as string);
-            const renderedIcon = iconURL ? (
-              <Suspense fallback={<CertificationIcon height={28} width={28} />}>
-                <Icon
-                  alt={title}
-                  fallback={<CertificationIcon height={28} width={28} />}
-                  iconValue={iconURL}
-                  size={28}
-                />
-              </Suspense>
-            ) : null;
-
-            let iconContent: ReactNode;
-            if (!renderedIcon) {
-              iconContent = (
-                <div className="certification-icon">
-                  <CertificationIcon height={28} width={28} />
-                </div>
-              );
-            } else if (isIcon) {
-              iconContent = (
-                <div className="certification-icon">{renderedIcon}</div>
-              );
-            } else {
-              iconContent = renderedIcon;
-            }
-
-            return (
-              <div
-                className="certification-card-item cursor-pointer"
-                key={id}
-                role="presentation"
-                style={{ cursor: 'pointer' }}
-                onClick={() => {
-                  setSelectedCertification(fullyQualifiedName ?? '');
-                }}>
-                <Radio
-                  className="certification-radio-top-right"
-                  data-testid={`radio-btn-${fullyQualifiedName}`}
-                  value={fullyQualifiedName}
-                />
-                <div className="certification-card-content">
-                  {iconContent}
-                  <div>
-                    <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-body">
-                      {title}
-                    </Typography.Paragraph>
-                    <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
-                      {stringToHTML(description)}
-                    </Typography.Paragraph>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </Radio.Group>
-        {hasContentLoading && (
-          <div className="flex justify-center p-2">
-            <Loader size="small" />
-          </div>
-        )}
-      </div>
-    );
-  }, [
-    certifications,
-    selectedCertification,
-    hasContentLoading,
-    handleScroll,
-    isLoadingCertificationData,
-    t,
-  ]);
-
-  const handleCloseCertification = async () => {
-    popoverRef.current?.close();
-    onClose?.();
-  };
-
-  const onOpenChange = (visible: boolean) => {
-    if (visible) {
-      getCertificationData(1);
-      setSelectedCertification(currentCertificate);
-      setCurrentPage(1);
-      setPaging({} as Paging);
-    } else {
-      setSelectedCertification('');
-      setCertifications([]);
-    }
-  };
+    const generation = ++searchGeneration.current;
+    setIsLoading(true);
+    setIsLoadingMore(false);
+    isFetchingMore.current = false;
+    fetchCertificationPage(effectiveSearchText, 1)
+      .then((res) => {
+        if (generation === searchGeneration.current) {
+          setCertifications(res.tags);
+          setTotal(res.total);
+          setPage(1);
+          hasLoaded.current = true;
+        }
+      })
+      .catch((err) => {
+        if (generation === searchGeneration.current) {
+          // Rows from the previous search must not read as this one's results.
+          setCertifications([]);
+          setTotal(0);
+          showFetchError(err);
+        }
+      })
+      .finally(() => {
+        if (generation === searchGeneration.current) {
+          setIsLoading(false);
+        }
+      });
+  }, [isOpen, isFormField, effectiveSearchText, showFetchError]);
 
   useEffect(() => {
-    if (popoverProps?.open) {
-      setSelectedCertification(currentCertificate);
-      setCurrentPage(1);
-      setPaging({} as Paging);
-      getCertificationData(1);
-    } else if (popoverProps?.open === false) {
-      setCertifications([]);
-      setSelectedCertification('');
+    const loaded = certifications.find(
+      (certification) => certification.fullyQualifiedName === currentCertificate
+    );
+    if (loaded) {
+      setSelectedCertification(loaded);
     }
-  }, [popoverProps?.open]);
+  }, [certifications, currentCertificate]);
+
+  const handleLoadMore = async () => {
+    if (isLoading || isFetchingMore.current || certifications.length >= total) {
+      return;
+    }
+    const generation = searchGeneration.current;
+    isFetchingMore.current = true;
+    setIsLoadingMore(true);
+    try {
+      const res = await fetchCertificationPage(effectiveSearchText, page + 1);
+      if (generation !== searchGeneration.current) {
+        return;
+      }
+      setCertifications((prev) => [...prev, ...res.tags]);
+      setTotal(res.total);
+      setPage((prev) => prev + 1);
+    } catch (err) {
+      if (generation === searchGeneration.current) {
+        showFetchError(err);
+      }
+    } finally {
+      if (generation === searchGeneration.current) {
+        isFetchingMore.current = false;
+        setIsLoadingMore(false);
+      }
+    }
+  };
+
+  const options = useMemo(() => {
+    // Sort certifications with Gold, Silver, Bronze first
+    const order: Record<string, number> = { Gold: 0, Silver: 1, Bronze: 2 };
+
+    return [...certifications]
+      .sort(
+        (a, b) =>
+          (order[getEntityName(a)] ?? 3) - (order[getEntityName(b)] ?? 3)
+      )
+      .map((certification) => ({
+        value: certification.fullyQualifiedName ?? '',
+        label: getEntityName(certification),
+        icon: renderCertificationIcon(certification),
+      }));
+  }, [certifications]);
+
+  const handleOpenChange = (open: boolean) => {
+    setIsPopupOpen(open);
+    setSearchText('');
+    popoverProps?.onOpenChange?.(open);
+    if (!open && !isCommitRef.current) {
+      onClose?.();
+    }
+    isCommitRef.current = false;
+  };
+
+  const handleChange = async ([value]: string[]) => {
+    isCommitRef.current = true;
+    await onCertificationUpdate?.(
+      certifications.find((cert) => cert.fullyQualifiedName === value)
+    );
+  };
+
+  const resolveLabel = (fqn: string) =>
+    selectedCertification?.fullyQualifiedName === fqn
+      ? getEntityName(selectedCertification)
+      : fqn;
 
   return (
-    <Popover
-      content={
-        <FocusTrapWithContainer active={popoverProps?.open || false}>
-          <Card
-            bordered={false}
-            className="certification-card"
-            data-testid="certification-cards"
-            title={
-              <Space className="w-full justify-between">
-                <div className="flex gap-2 items-center w-full">
-                  <CertificationIcon height={18} width={18} />
-                  <Typography.Text className="m-b-0 font-semibold text-sm">
-                    {t('label.edit-entity', {
-                      entity: t('label.certification'),
-                    })}
-                  </Typography.Text>
-                </div>
-                <Typography.Text
-                  className="m-b-0 font-semibold text-primary text-sm cursor-pointer"
-                  data-testid="clear-certification"
-                  tabIndex={0}
-                  onClick={() => updateCertificationData()}
-                  onKeyDown={handleKeyboardActivation(updateCertificationData)}>
-                  {t('label.clear')}
-                </Typography.Text>
-              </Space>
-            }>
-            <Spin
-              indicator={<Loader size="small" />}
-              spinning={isLoadingCertificationData}>
-              {certificationCardData}
-              <div className="flex justify-end text-lg gap-2 mt-4">
-                <Button
-                  data-testid="close-certification"
-                  type="default"
-                  onClick={handleCloseCertification}>
-                  <CloseOutlined />
-                </Button>
-                <Button
-                  data-testid="update-certification"
-                  type="primary"
-                  onClick={() =>
-                    updateCertificationData(selectedCertification)
-                  }>
-                  <CheckOutlined />
-                </Button>
-              </div>
-            </Spin>
-          </Card>
-        </FocusTrapWithContainer>
-      }
-      overlayClassName="certification-card-popover p-0"
-      placement="bottomRight"
-      ref={popoverRef}
-      showArrow={false}
-      trigger="click"
-      onOpenChange={onOpenChange}
-      {...popoverProps}>
-      {children}
-    </Popover>
+    <FilterSelect
+      hideCounts
+      searchable
+      showRadio
+      aria-labelledby={ariaLabelledBy}
+      className={className}
+      data-testid={testId}
+      emptyState={t('label.no-entity-available', {
+        entity: t('label.certification-plural-lowercase'),
+      })}
+      isDisabled={isDisabled}
+      isLoading={isLoading}
+      isLoadingMore={isLoadingMore}
+      isOpen={isOpen}
+      label={t('label.certification')}
+      options={options}
+      placeholder={t('label.select-field', {
+        field: t('label.certification'),
+      })}
+      resolveMissingLabel={resolveLabel}
+      selectedValues={currentCertificate ? [currentCertificate] : []}
+      selectionMode="single"
+      trigger={children}
+      triggerVariant="input"
+      onChange={handleChange}
+      onLoadMore={handleLoadMore}
+      onOpenChange={handleOpenChange}
+      onSearch={setSearchText}
+    />
   );
 };
 

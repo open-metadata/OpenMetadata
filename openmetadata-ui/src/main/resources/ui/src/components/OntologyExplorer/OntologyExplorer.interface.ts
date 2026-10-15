@@ -34,6 +34,8 @@ export interface OntologyExplorerProps {
   isEditMode?: boolean;
   surface?: OntologyStudioSurface;
   showHealth?: boolean;
+  /** Sub-bar element the concept search renders into; it floats on the canvas without one. */
+  searchSlot?: HTMLElement | null;
   globalGlossaryIds?: string[];
   onStatsChange?: (stats: string[]) => void;
   onLoadingChange?: (loading: boolean) => void;
@@ -92,8 +94,7 @@ export interface OntologyEdge {
 export type OntologyEdgeKind =
   | 'ontology'
   | 'assetBinding'
-  | 'semanticProjection'
-  | 'observedLineage';
+  | 'semanticProjection';
 
 export interface OntologyGraphData {
   nodes: OntologyNode[];

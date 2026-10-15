@@ -5,12 +5,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
+from bisect import bisect_left
 from collections import Counter
 from pathlib import Path
 from typing import Iterable
 from urllib.parse import parse_qs, urlsplit
-
 
 ACCESS_LOG = re.compile(
     r'"(?P<method>GET|POST|PUT|PATCH|DELETE|OPTIONS) '
@@ -32,6 +33,70 @@ STATIC_RESOURCE_SUFFIXES = {
     "woff": "font",
     "woff2": "font",
 }
+LATENCY_BUCKETS_MS = (10, 25, 50, 100, 250, 500, 1000, 2000, 5000, 10000, 30000, 60000)
+MAX_LATENCY_ROUTES = 256
+OTHER_ROUTE = "other routes"
+ENTITY_ID = re.compile(r"/[0-9a-fA-F]{8}-[0-9a-fA-F-]{27,}(?=/|$)")
+ENTITY_NAME = re.compile(r"(/name/)[^/]+")
+
+
+class LatencyHistogram:
+    def __init__(self) -> None:
+        self.counts = [0] * (len(LATENCY_BUCKETS_MS) + 1)
+        self.total_ms = 0
+        self.maximum_ms = 0
+
+    def add(self, duration_ms: int) -> None:
+        self.counts[bisect_left(LATENCY_BUCKETS_MS, duration_ms)] += 1
+        self.total_ms += duration_ms
+        self.maximum_ms = max(self.maximum_ms, duration_ms)
+
+    def payload(self) -> dict[str, object]:
+        samples = sum(self.counts)
+
+        def percentile_bound(percentile: float) -> int | None:
+            if not samples:
+                return None
+            rank = math.ceil(samples * percentile)
+            cumulative = 0
+            for index, count in enumerate(self.counts):
+                cumulative += count
+                if cumulative >= rank:
+                    return (
+                        LATENCY_BUCKETS_MS[index]
+                        if index < len(LATENCY_BUCKETS_MS)
+                        else self.maximum_ms
+                    )
+            return None
+
+        return {
+            "bucketUpperBoundsMs": list(LATENCY_BUCKETS_MS),
+            "bucketCounts": self.counts.copy(),
+            "samples": samples,
+            "sumMs": self.total_ms,
+            "meanMs": round(self.total_ms / samples, 2) if samples else None,
+            "maxMs": self.maximum_ms if samples else None,
+            "p95UpperBoundMs": percentile_bound(0.95),
+            "p99UpperBoundMs": percentile_bound(0.99),
+        }
+
+
+def merge_latency_histograms(payloads: Iterable[dict]) -> dict[str, object]:
+    combined = LatencyHistogram()
+    for payload in payloads:
+        if payload.get("bucketUpperBoundsMs") != list(LATENCY_BUCKETS_MS):
+            raise ValueError("Incompatible request-latency histogram buckets")
+        counts = payload.get("bucketCounts", [])
+        if (
+            len(counts) != len(combined.counts)
+            or any(not isinstance(count, int) or count < 0 for count in counts)
+            or sum(counts) != payload.get("samples")
+        ):
+            raise ValueError("Invalid request-latency histogram counts")
+        combined.counts = [left + right for left, right in zip(combined.counts, counts)]
+        combined.total_ms += payload["sumMs"]
+        combined.maximum_ms = max(combined.maximum_ms, payload.get("maxMs") or 0)
+    return combined.payload()
 
 
 def static_resource_type(path: str) -> str:
@@ -59,6 +124,8 @@ class RequestAccumulator:
         self.static_endpoints: Counter[str] = Counter()
         self.static_resource_types: Counter[str] = Counter()
         self.statuses: Counter[str] = Counter()
+        self.api_latency = LatencyHistogram()
+        self.api_endpoint_latency: dict[str, LatencyHistogram] = {}
 
     def add(self, line: str) -> None:
         match = ACCESS_LOG.search(line)
@@ -83,6 +150,16 @@ class RequestAccumulator:
         self.statuses[f"{kind}:{match['status']}"] += 1
         if kind == "api":
             self.api_endpoints[f"{match['method']} {path}"] += 1
+            duration_ms = int(match["duration"])
+            self.api_latency.add(duration_ms)
+            normalized_path = ENTITY_NAME.sub(r"\1:name", ENTITY_ID.sub("/:id", path))
+            route = f"{match['method']} {normalized_path}"
+            if route not in self.api_endpoint_latency:
+                if len(self.api_endpoint_latency) >= MAX_LATENCY_ROUTES - 1:
+                    route = OTHER_ROUTE
+                if route not in self.api_endpoint_latency:
+                    self.api_endpoint_latency[route] = LatencyHistogram()
+            self.api_endpoint_latency[route].add(duration_ms)
         else:
             self.static_endpoints[f"{match['method']} {path}"] += 1
             self.static_resource_types[static_resource_type(path)] += 1
@@ -101,6 +178,11 @@ class RequestAccumulator:
             + self.counters["staticRequests"],
             **dict(self.counters),
             "statuses": dict(sorted(self.statuses.items())),
+            "apiLatency": self.api_latency.payload(),
+            "apiEndpointLatency": {
+                route: histogram.payload()
+                for route, histogram in sorted(self.api_endpoint_latency.items())
+            },
             "apiEndpointCounts": dict(sorted(self.api_endpoints.items())),
             "topApiEndpoints": [
                 {"endpoint": endpoint, "requests": requests}

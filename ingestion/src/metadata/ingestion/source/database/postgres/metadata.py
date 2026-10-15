@@ -252,6 +252,7 @@ class PostgresSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
                         tag_name=row[1],
                         tag_description="Postgres Tag Value",
                         classification_description="Postgres Tag Name",
+                        entity_fqn=entity_fqn,
                     )
                     if tag:
                         self.attach_tag(entity_fqn=entity_fqn, tag=tag)

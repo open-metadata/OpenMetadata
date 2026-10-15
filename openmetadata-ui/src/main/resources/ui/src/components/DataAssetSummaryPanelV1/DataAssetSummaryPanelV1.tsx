@@ -19,12 +19,10 @@ import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
@@ -397,9 +395,10 @@ export const DataAssetSummaryPanelV1 = ({
     };
   }, [isColumnEntity, entityType, dataAsset.id, dataAsset.fullyQualifiedName]);
 
+  // An empty id disables the fetch: the tour's entity has no server-side change history.
   const { changeSummary } = useChangeSummary(
     changeSummaryEntityType,
-    changeSummaryEntityId,
+    isTourPage ? '' : changeSummaryEntityId,
     changeSummaryParams
   );
 
@@ -988,6 +987,7 @@ export const DataAssetSummaryPanelV1 = ({
     statusCounts,
     entityPermissions,
     changeSummary,
+    t,
   ]);
 
   useEffect(() => {

@@ -12,6 +12,13 @@
  */
 
 import { SearchIndex } from '../enums/search.enum';
+import {
+  LineageBand,
+  LineageLens,
+  LineageLevelKind,
+  LineageScene,
+  LineageSceneNode,
+} from '../generated/api/lineage/lineageScene';
 
 /* eslint-disable max-len */
 
@@ -49,15 +56,106 @@ export const mockFeedData = [
   },
 ];
 
-export const mockTablePermission = {
-  Create: true,
-  Delete: true,
-  ViewAll: true,
-  EditAll: true,
+const TOUR_LINEAGE_SCHEMA_ID = 'schema:be37a61e-fb10-4748-86ab-0714613a42ea';
+const TOUR_LINEAGE_SCHEMA_FQN = 'sample_data.ecommerce_db.shopify';
+
+const getTourLineageTableNode = (
+  id: string,
+  name: string,
+  isFocus = false
+): LineageSceneNode => ({
+  id: `table:${id}`,
+  fullyQualifiedName: `${TOUR_LINEAGE_SCHEMA_FQN}.${name}`,
+  entityType: 'table',
+  levelKind: LineageLevelKind.Table,
+  band: LineageBand.Asset,
+  serviceType: 'BigQuery',
+  label: name,
+  displayName: name,
+  parentId: TOUR_LINEAGE_SCHEMA_ID,
+  parentFqn: TOUR_LINEAGE_SCHEMA_FQN,
+  childrenCount: 0,
+  hiddenChildrenCount: 0,
+  counts: {},
+  fields: [],
+  isFocus,
+  isOrigin: isFocus,
+  isExpandable: false,
+  isGhost: !isFocus,
+});
+
+const getTourLineageEdge = (fromId: string, toId: string) => ({
+  id: `scene-edge:table:${fromId}->table:${toId}:${LineageBand.Asset}`,
+  from: `table:${fromId}`,
+  to: `table:${toId}`,
+  band: LineageBand.Asset,
+  isRollup: false,
+  weight: 1,
+  source: 'Manual',
+  underlyingEdgeIds: [`${fromId}--->${toId}`],
+});
+
+const TOUR_RAW_CUSTOMER_ID = '1983c7f1-52fd-4dc7-89b9-29a8fffcfd6f';
+const TOUR_DIM_ADDRESS_ID = '9d664bbd-8c9e-4068-9112-9ab0457d4c52';
+const TOUR_FACT_ORDER_ID = '6364831b-6860-4b8a-b4a1-5de1840cf4f9';
+
+// The table page's lineage tab renders a scene (`/lineage/scene`), not the
+// legacy `entityLineage` graph, so the tour needs its own scene to stay offline.
+export const mockLineageScene: LineageScene = {
+  lens: LineageLens.Service,
+  band: LineageBand.Asset,
+  focusFqn: `${TOUR_LINEAGE_SCHEMA_FQN}.dim_address`,
+  focusEntityType: 'table',
+  originFqn: `${TOUR_LINEAGE_SCHEMA_FQN}.dim_address`,
+  originEntityType: 'table',
+  breadcrumb: [
+    {
+      id: `lens:${LineageLens.Service}`,
+      label: LineageLens.Service,
+      levelKind: LineageLevelKind.Service,
+      band: LineageBand.Layer,
+    },
+    {
+      id: 'service:f24cd129-f864-45d9-8cce-46a9aecd6846',
+      label: 'sample_data',
+      fullyQualifiedName: 'sample_data',
+      entityType: 'databaseService',
+      levelKind: LineageLevelKind.Service,
+      band: LineageBand.Layer,
+    },
+    {
+      id: 'database:0dac7caf-8419-4a0b-a96e-345730b2c0f5',
+      label: 'ecommerce_db',
+      fullyQualifiedName: 'sample_data.ecommerce_db',
+      entityType: 'database',
+      levelKind: LineageLevelKind.Database,
+      band: LineageBand.Asset,
+    },
+    {
+      id: TOUR_LINEAGE_SCHEMA_ID,
+      label: 'shopify',
+      fullyQualifiedName: TOUR_LINEAGE_SCHEMA_FQN,
+      entityType: 'databaseSchema',
+      levelKind: LineageLevelKind.Schema,
+      band: LineageBand.Asset,
+    },
+  ],
+  nodes: [
+    getTourLineageTableNode(TOUR_RAW_CUSTOMER_ID, 'raw_customer'),
+    getTourLineageTableNode(TOUR_DIM_ADDRESS_ID, 'dim_address', true),
+    getTourLineageTableNode(TOUR_FACT_ORDER_ID, 'fact_order'),
+  ],
+  edges: [
+    getTourLineageEdge(TOUR_RAW_CUSTOMER_ID, TOUR_DIM_ADDRESS_ID),
+    getTourLineageEdge(TOUR_DIM_ADDRESS_ID, TOUR_FACT_ORDER_ID),
+  ],
+  hiddenNodeCount: 0,
+  sampled: false,
 };
 
 export const mockDatasetData = {
   datasetFQN: 'sample_data.ecommerce_db.shopify.dim_address',
+  lineageScene: mockLineageScene,
   tableProfile: {
     timestamp: '1682049950',
     columnCount: 12,

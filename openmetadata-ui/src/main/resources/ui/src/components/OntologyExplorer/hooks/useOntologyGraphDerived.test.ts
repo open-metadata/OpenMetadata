@@ -21,7 +21,6 @@ import {
 import {
   ASSET_NODE_TYPE,
   METRIC_NODE_TYPE,
-  OBSERVED_LINEAGE_EDGE_KIND,
   SEMANTIC_PROJECTION_EDGE_KIND,
 } from '../utils/graphBuilders';
 import {
@@ -139,10 +138,10 @@ describe('useOntologyGraphDerived filteredGraphData', () => {
           node({ id: 'term1' }),
         ],
         edges: [
-          edge('asset1', 'asset2', 'relatedTo', OBSERVED_LINEAGE_EDGE_KIND),
+          edge('asset1', 'asset2', 'relatedTo'),
           edge('asset1', 'asset2', 'requires', SEMANTIC_PROJECTION_EDGE_KIND),
           edge('asset1', 'asset2', 'relatedTo', SEMANTIC_PROJECTION_EDGE_KIND),
-          edge('metric1', 'asset1', 'metricFor', OBSERVED_LINEAGE_EDGE_KIND),
+          edge('metric1', 'asset1', 'metricFor'),
         ],
       },
     });
@@ -151,8 +150,8 @@ describe('useOntologyGraphDerived filteredGraphData', () => {
       edgeSignature
     );
 
-    expect(signatures).toContain('asset1->asset2:relatedTo:observedLineage');
-    expect(signatures).toContain('metric1->asset1:metricFor:observedLineage');
+    expect(signatures).toContain('asset1->asset2:relatedTo:');
+    expect(signatures).toContain('metric1->asset1:metricFor:');
     expect(signatures).toContain('asset1->asset2:relatedTo:semanticProjection');
     expect(signatures).not.toContain(
       'asset1->asset2:requires:semanticProjection'

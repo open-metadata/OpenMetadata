@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  isHttpUrl,
   isSsoTestLoginPopup,
   SSO_TEST_LOGIN_STORE_PREFIX,
 } from './SsoTestLoginPopup';
@@ -58,5 +59,17 @@ describe('isSsoTestLoginPopup', () => {
     window.location.hash = '#id_token=x';
 
     expect(isSsoTestLoginPopup()).toBe(false);
+  });
+});
+
+describe('isHttpUrl', () => {
+  it('accepts only web addresses the test popup may be sent to', () => {
+    expect(isHttpUrl('https://idp.example.com/authorize?x=1')).toBe(true);
+    expect(isHttpUrl('http://localhost:8080/sso')).toBe(true);
+    expect(isHttpUrl('javascript:alert(document.domain)')).toBe(false);
+    expect(isHttpUrl(' JavaScript:alert(1)')).toBe(false);
+    expect(isHttpUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
+    expect(isHttpUrl('/relative/path')).toBe(false);
+    expect(isHttpUrl(undefined)).toBe(false);
   });
 });

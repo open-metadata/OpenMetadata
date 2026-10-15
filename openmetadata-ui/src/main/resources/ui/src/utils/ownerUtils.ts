@@ -13,7 +13,7 @@
 import type { OwnerEntityReference } from '@openmetadata/ui-core-components';
 import { OwnerType } from '../enums/user.enum';
 import { EntityReference } from '../generated/entity/data/table';
-import { getTeamAndUserDetailsPath, getUserPath } from './RouterUtils';
+import { getTeamAndUserDetailsPath, getUserPath } from './RouterPaths';
 
 /**
  * Returns the appropriate path for an owner link based on owner type

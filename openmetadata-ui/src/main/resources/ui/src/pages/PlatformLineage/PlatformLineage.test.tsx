@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -94,8 +100,22 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   GridMock.Item = jest.fn(({ children }: GridProps) => <div>{children}</div>);
 
+  const CardMock = Object.assign(
+    ({ children }: GridProps) => <div>{children}</div>,
+    {
+      Content: ({ children }: GridProps) => <div>{children}</div>,
+    }
+  );
+
+  const SelectMock = Object.assign(jest.fn(), {
+    ComboBox: jest.fn(() => <div>Select</div>),
+    Item: ({ children }: GridProps) => <div>{children}</div>,
+  });
+
   return {
+    Card: CardMock,
     Grid: GridMock,
+    Select: SelectMock,
     Tooltip: jest
       .fn()
       .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -237,9 +257,8 @@ jest.mock('../../components/Lineage/Lineage.component', () => ({
   default: jest.fn(() => <div>Lineage</div>),
 }));
 
-jest.mock('../../context/LineageProvider/LineageProvider', () => ({
-  __esModule: true,
-  default: jest.fn(({ children }: { children: React.ReactNode }) => (
+jest.mock('../../components/Lineage/Lineage/Lineage', () => ({
+  Lineage: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
 }));
@@ -253,10 +272,15 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
 
 const mockLineage = require('../../components/Lineage/Lineage.component')
   .default as jest.Mock;
-const mockLineageProvider =
-  require('../../context/LineageProvider/LineageProvider').default as jest.Mock;
+const mockLineageWrapper = require('../../components/Lineage/Lineage/Lineage')
+  .Lineage as jest.Mock;
 const mockPageLayoutV1 = require('../../components/PageLayoutV1/PageLayoutV1')
   .default as jest.Mock;
+const mockEntitySuggestionOption =
+  require('../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component')
+    .default as jest.Mock;
+const mockSelect = require('@openmetadata/ui-core-components').Select
+  .ComboBox as jest.Mock;
 
 jest.mock('../../components/Entity/EntityLineage/LineageConfigModal', () => ({
   __esModule: true,
@@ -293,16 +317,6 @@ jest.mock(
   })
 );
 
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Select: jest.fn(() => <div>Select</div>),
-    Card: jest.fn(({ children }) => <div>{children}</div>),
-  };
-});
-
 jest.mock('../../assets/svg/ic-download.svg', () => ({
   ReactComponent: () => <div>DownloadIcon</div>,
 }));
@@ -311,7 +325,7 @@ jest.mock('../../assets/svg/ic-settings-gear.svg', () => ({
   ReactComponent: () => <div>SettingsIcon</div>,
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Expand05: () => <div>Expand05</div>,
   Home02: () => <div>Home02</div>,
   Minimize02: () => <div>Minimize02</div>,
@@ -344,8 +358,14 @@ describe('PlatformLineage Component Logic', () => {
     mockEscapeESReservedCharacters.mockImplementation(
       (val) => `escaped_${val}`
     );
+    // `jest.clearAllMocks` above clears calls but keeps implementations, so
+    // these have to be restored per test or one test's override leaks on.
+    mockSelect.mockImplementation(() => <div>Select</div>);
+    mockEntitySuggestionOption.mockImplementation(() => (
+      <div>EntitySuggestionOption</div>
+    ));
     mockLineage.mockImplementation(() => <div>Lineage</div>);
-    mockLineageProvider.mockImplementation(
+    mockLineageWrapper.mockImplementation(
       ({ children }: { children: React.ReactNode }) => <div>{children}</div>
     );
     mockPageLayoutV1.mockImplementation(
@@ -574,6 +594,92 @@ describe('PlatformLineage Component Logic', () => {
         },
         { timeout: 1000 }
       );
+    });
+
+    it('should keep the newest results when an older search answers late', async () => {
+      // `onFocus` starts a search for '' and typing starts another; both are in
+      // flight, and the empty one is the slower of the pair. Resolve them out
+      // of order and the list must still belong to the query the box holds.
+      // `onFocus` only searches when the box has no preset value, which is the
+      // state the platform lineage root page starts in.
+      mockFqn = '';
+      const resolvers: Array<(value: unknown) => void> = [];
+      mockSearchQuery.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvers.push(resolve);
+          })
+      );
+      mockEntitySuggestionOption.mockImplementation(
+        ({ entity }: { entity: { fullyQualifiedName?: string } }) => (
+          <div>{entity.fullyQualifiedName}</div>
+        )
+      );
+      mockLineage.mockImplementation(
+        ({ platformHeader }: { platformHeader: React.ReactNode }) => (
+          <div>{platformHeader}</div>
+        )
+      );
+      // The shared stub throws every prop away, so the component's own search
+      // wiring is unreachable from a test. Stand in for just the parts this
+      // one drives: focus, typing, and the option list it is handed.
+      mockSelect.mockImplementation(
+        ({
+          items,
+          children,
+          onFocus,
+          onInputChange,
+        }: {
+          items?: { id: string; label: string }[];
+          children: (item: { id: string; label: string }) => React.ReactNode;
+          onFocus?: () => void;
+          onInputChange?: (value: string) => void;
+        }) => (
+          <div>
+            <input
+              aria-label="Search entity"
+              data-testid="entity-search-input"
+              onChange={(event) => onInputChange?.(event.target.value)}
+              onFocus={() => onFocus?.()}
+            />
+            {items?.map((item) => (
+              <div key={item.id}>{children(item)}</div>
+            ))}
+          </div>
+        )
+      );
+
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      await waitFor(() => {
+        expect(mockLineage).toHaveBeenCalled();
+      });
+
+      const combobox = screen.getByTestId('entity-search-input');
+      fireEvent.focus(combobox);
+
+      await waitFor(() => expect(resolvers).toHaveLength(1), {
+        timeout: 3000,
+      });
+
+      fireEvent.change(combobox, { target: { value: 'dim_customer' } });
+
+      await waitFor(() => expect(resolvers).toHaveLength(2), {
+        timeout: 3000,
+      });
+
+      await act(async () => {
+        resolvers[1](MOCK_SEARCH_RESULTS);
+      });
+      await act(async () => {
+        resolvers[0](MOCK_EMPTY_SEARCH_RESULTS);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(MOCK_TABLE_ENTITY.fullyQualifiedName ?? '')
+        ).toBeInTheDocument();
+      });
     });
 
     it('should include lineage entity exclusion filter', async () => {
@@ -826,11 +932,11 @@ describe('PlatformLineage Component Logic', () => {
       });
     });
 
-    it('should wrap Lineage in LineageProvider', async () => {
+    it('should wrap Lineage in the Lineage provider component', async () => {
       render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
-        expect(mockLineageProvider).toHaveBeenCalled();
+        expect(mockLineageWrapper).toHaveBeenCalled();
         expect(mockLineage).toHaveBeenCalled();
       });
     });

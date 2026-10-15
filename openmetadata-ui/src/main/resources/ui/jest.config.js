@@ -75,6 +75,10 @@ module.exports = {
     // <ResizableTableContainer>" even though the container is right there.
     '^(react-aria-components|react-aria|react-stately|@react-aria/utils|@react-stately/utils)$':
       '<rootDir>/node_modules/$1',
+    // The charts entry loads ESM echarts/core; app tests use a props-capturing
+    // stand-in instead (see the mock for how to read the props).
+    '^@openmetadata/ui-core-components/charts$':
+      '<rootDir>/src/test/unit/mocks/coreCharts.mock.tsx',
     '\\.svg': '<rootDir>/src/test/unit/mocks/svg.mock.js', // Mock SVG imports
     '\\.(scss)$': 'identity-obj-proxy', // Mock style imports
     '\\.(jpg|JPG|gif|GIF|png|PNG|webp|WEBP|mp4|MP4|webm|WEBM|less|LESS|css|CSS)$':
@@ -114,7 +118,7 @@ module.exports = {
     '^react-dom/(.*)$': '<rootDir>/node_modules/react-dom/$1',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@azure/msal-react|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd/invariant|@react-dnd/asap|@react-dnd/shallowequal|@melloware/react-logviewer|@openmetadata/ui-core-components|nanoid|@rjsf/core|@rjsf/utils|@rjsf/validator-ajv8|uuid|elkjs))',
+    'node_modules/(?!(@azure/msal-react|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd/invariant|@react-dnd/asap|@react-dnd/shallowequal|@melloware/react-logviewer|@openmetadata/ui-core-components|nanoid|@rjsf/core|@rjsf/utils|@rjsf/validator-ajv8|uuid|elkjs|react-markdown|remark-.*|rehype-.*|unified|unist-util-.*|vfile.*|mdast-util-.*|micromark.*|hast-util-.*|property-information|space-separated-tokens|comma-separated-tokens|style-to-.*|html-url-attributes|decode-named-character-reference|character-entities.*|bail|is-plain-obj|trough|devlop|trim-lines|ccount|longest-streak|zwitch|markdown-table|escape-string-regexp|estree-util-is-identifier-name))',
   ],
 
   // TypeScript

@@ -1,7 +1,7 @@
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { Dot } from '@/components/foundations/dot-icon';
 import { cx } from '@/utils/cx';
-import { X as CloseX } from '@untitledui/icons';
+import { X as CloseX } from '../../../icons';
 import type {
   CSSProperties,
   HTMLAttributes,
@@ -589,6 +589,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     buttonTestId,
     children,
     isDisabled,
+    onButtonClick,
     onButtonKeyDown,
     tooltip,
     tooltipPlacement = 'top',
@@ -656,7 +657,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
         data-testid={buttonTestId}
         disabled={isDisabled}
         type="button"
-        onClick={props.onButtonClick}
+        onClick={onButtonClick}
         onKeyDown={onButtonKeyDown}>
         <Icon className="tw:size-3 tw:stroke-[3px] tw:transition-inherit-all" />
       </button>

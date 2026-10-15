@@ -16,11 +16,18 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
+import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -52,6 +59,9 @@ public interface EventSubscriptionDAOs {
     @SqlQuery("SELECT json FROM event_subscription_entity")
     List<String> listAllEventsSubscriptions();
 
+    @SqlQuery("SELECT id FROM event_subscription_entity")
+    List<String> listAllIds();
+
     @Override
     default boolean supportsSoftDelete() {
       return false;
@@ -80,22 +90,108 @@ public interface EventSubscriptionDAOs {
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO consumers_dlq(id, extension, json, source) "
-                + "VALUES (:id, :extension, :json, :source) "
-                + "ON DUPLICATE KEY UPDATE json = :json, source = :source",
+            "INSERT IGNORE INTO change_event_consumers(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, :json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO consumers_dlq(id, extension, json, source) "
-                + "VALUES (:id, :extension, (:json :: jsonb), :source) "
-                + "ON CONFLICT (id, extension) "
-                + "DO UPDATE SET json = EXCLUDED.json, source = EXCLUDED.source",
+            "INSERT INTO change_event_consumers(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) "
+                + "ON CONFLICT (id, extension) DO NOTHING",
         connectionType = POSTGRES)
-    void upsertFailedEvent(
+    int insertSubscriberExtensionIfAbsent(
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @BindJson("json") String json);
+
+    // MySQL compares a JSON column with a plain string parameter as strings, so the expected
+    // document is cast. Both engines then compare values, not text.
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE change_event_consumers SET json = :json "
+                + "WHERE id = :id AND extension = :extension AND json = CAST(:expected AS JSON)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE change_event_consumers SET json = (:json :: jsonb) "
+                + "WHERE id = :id AND extension = :extension AND json = (:expected :: jsonb)",
+        connectionType = POSTGRES)
+    int compareAndSetSubscriberExtension(
         @Bind("id") String id,
         @Bind("extension") String extension,
         @BindJson("json") String json,
-        @Bind("source") String source);
+        @BindJson("expected") String expected);
+
+    @SqlQuery("SELECT extension, json FROM change_event_consumers WHERE id = :id")
+    @RegisterRowMapper(SubscriberExtensionMapper.class)
+    List<SubscriberExtension> listSubscriberExtensions(@Bind("id") String id);
+
+    @SqlUpdate("DELETE FROM change_event_consumers WHERE id = :id AND extension = :extension")
+    int deleteSubscriberExtension(@Bind("id") String id, @Bind("extension") String extension);
+
+    @SqlQuery("SELECT DISTINCT id FROM change_event_consumers WHERE extension IN (<extensions>)")
+    List<String> listIdsHavingExtensions(@BindList("extensions") List<String> extensions);
+
+    // The database's clock, for comparisons with times another server stored.
+    @ConnectionAwareSqlQuery(
+        value = "SELECT CAST(UNIX_TIMESTAMP(NOW(3)) * 1000 AS UNSIGNED)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint",
+        connectionType = POSTGRES)
+    long databaseTimeMillis();
+
+    record SubscriberExtension(String extension, String json) {}
+
+    class SubscriberExtensionMapper implements RowMapper<SubscriberExtension> {
+      @Override
+      public SubscriberExtension map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new SubscriberExtension(rs.getString("extension"), rs.getString("json"));
+      }
+    }
+
+    /** One row of an alert's failed events: its key within the alert, the failure and its side. */
+    record FailedEventRow(String extension, String json, String source) {}
+
+    // An alert's failure rows in one batched write, as its delivered rows are. One row per key,
+    // the last, as writing them one after another would leave: Postgres rejects a rewritten
+    // multi-row INSERT that updates the same row twice.
+    default void batchUpsertFailedEvents(String alertId, List<FailedEventRow> rows) {
+      if (rows.isEmpty()) {
+        return;
+      }
+      List<FailedEventRow> lastOfEachKey =
+          pickByIndex(
+              rows, lastIndexOfEachKey(rows.stream().map(FailedEventRow::extension).toList()));
+      batchUpsertFailedEventsInternal(
+          Collections.nCopies(lastOfEachKey.size(), alertId),
+          lastOfEachKey.stream().map(FailedEventRow::extension).toList(),
+          lastOfEachKey.stream().map(FailedEventRow::json).toList(),
+          lastOfEachKey.stream().map(FailedEventRow::source).toList());
+    }
+
+    // VALUES(json), not :json: a placeholder in the update clause stops the MySQL driver from
+    // sending the batch as one statement.
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO consumers_dlq(id, extension, json, source) "
+                + "VALUES (:id, :extension, :json, :source) "
+                + "ON DUPLICATE KEY UPDATE json = VALUES(json), source = VALUES(source)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO consumers_dlq(id, extension, json, source) "
+                + "VALUES (:id, :extension, CAST(:json AS jsonb), :source) "
+                + "ON CONFLICT (id, extension) "
+                + "DO UPDATE SET json = EXCLUDED.json, source = EXCLUDED.source",
+        connectionType = POSTGRES)
+    void batchUpsertFailedEventsInternal(
+        @Bind("id") List<String> alertIds,
+        @Bind("extension") List<String> extensions,
+        @BindJson("json") List<String> jsonList,
+        @Bind("source") List<String> sources);
 
     // Batch insert for successful events - reduces connection pool contention
     // from N connections to 1 when processing multiple events.
@@ -123,9 +219,18 @@ public interface EventSubscriptionDAOs {
 
     static List<Integer> distinctLastIndexes(
         List<String> changeEventIds, List<String> eventSubscriptionIds) {
-      LinkedHashMap<String, Integer> lastIndexByKey = new LinkedHashMap<>();
+      List<String> keys = new ArrayList<>(changeEventIds.size());
       for (int i = 0; i < changeEventIds.size(); i++) {
-        lastIndexByKey.put(changeEventIds.get(i) + "|" + eventSubscriptionIds.get(i), i);
+        keys.add(changeEventIds.get(i) + "|" + eventSubscriptionIds.get(i));
+      }
+      return lastIndexOfEachKey(keys);
+    }
+
+    /** The index of the last occurrence of each key, in the order the keys first appear. */
+    static List<Integer> lastIndexOfEachKey(List<String> keys) {
+      LinkedHashMap<String, Integer> lastIndexByKey = new LinkedHashMap<>();
+      for (int i = 0; i < keys.size(); i++) {
+        lastIndexByKey.put(keys.get(i), i);
       }
       return new ArrayList<>(lastIndexByKey.values());
     }
@@ -161,6 +266,14 @@ public interface EventSubscriptionDAOs {
     @SqlQuery(
         "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
     long getSuccessfulRecordCount(@Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    // Events delivered through one channel and failed through another have a row in both tables.
+    @SqlQuery(
+        "SELECT COUNT(*) FROM consumers_dlq d JOIN successful_sent_change_events s "
+            + "ON s.event_subscription_id = d.id "
+            + "AND d.extension = CONCAT('eventSubscription.failedEvent-', s.change_event_id) "
+            + "WHERE d.id = :eventSubscriptionId")
+    long countEventsBothDeliveredAndFailed(@Bind("eventSubscriptionId") String eventSubscriptionId);
 
     @SqlQuery(
         "SELECT event_subscription_id FROM successful_sent_change_events "

@@ -11,8 +11,22 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Input } from '@openmetadata/ui-core-components';
-import { Edit03, Plus, SearchMd } from '@untitledui/icons';
+import {
+  Badge,
+  BadgeWithDot,
+  Button,
+  ButtonUtility,
+  Input,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  BookClosed,
+  ChevronRight,
+  Edit01,
+  LinkExternal01,
+  Search,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -23,19 +37,27 @@ import {
   ConceptMappingType,
 } from '../../generated/entity/data/glossaryTerm';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
-import { EntityReference } from '../../generated/entity/type';
-import {
-  getGlossaryTermAssets,
-  patchGlossaryTerm,
-} from '../../rest/glossaryAPI';
-import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
+import { patchGlossaryTerm } from '../../rest/glossaryAPI';
+import Fqn from '../../utils/Fqn';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useOntologyTermDetails } from './hooks/useOntologyTermDetails';
 import { OntologyConceptAttributes } from './OntologyConceptAttributes.component';
+import { OntologyConceptDataAssets } from './OntologyConceptDataAssets';
 import { OntologyConceptRealization } from './OntologyConceptRealization.component';
 import { COLOR_META_BY_HEX, RELATION_META } from './OntologyExplorer.constants';
 import { OntologyEdge, OntologyNode } from './OntologyExplorer.interface';
-import { isTermNode, isValidUUID } from './utils/graphBuilders';
+import {
+  InspectorAddButton,
+  InspectorEmptyText,
+  InspectorList,
+  InspectorRow,
+  InspectorSectionHeading,
+} from './OntologyInspectorSection';
+import {
+  isTermNode,
+  isValidUUID,
+  METRIC_NODE_TYPE,
+} from './utils/graphBuilders';
 import { getEffectiveRelationColor } from './utils/graphStyles';
 
 interface OntologyAuthoringInspectorProps {
@@ -49,7 +71,8 @@ interface OntologyAuthoringInspectorProps {
     toId: string,
     relationType: string
   ) => Promise<void>;
-  readonly onShowDataAssets: () => void;
+  readonly onAssetsChange?: () => void;
+  readonly onClose?: () => void;
   readonly onRequestEdit?: () => void;
   readonly onShowFullDetails?: () => void;
 }
@@ -60,11 +83,21 @@ interface InspectorRelation {
   readonly relationName: string;
 }
 
-const ASSET_PREVIEW_LIMIT = 3;
 const EXTERNAL_SCHEME_SUGGESTIONS = ['schema', 'wikidata', 'fibo', 'snomed'];
 const SearchInputIcon = ({ className }: { className?: string }) => (
-  <SearchMd aria-hidden="true" className={className} />
+  <Search aria-hidden="true" className={className} />
 );
+
+// Every FQN segment above the term, with the glossary's display name first.
+function getBreadcrumb(node: OntologyNode): string[] {
+  const parents = node.fullyQualifiedName
+    ? Fqn.split(node.fullyQualifiedName).slice(0, -1)
+    : [];
+
+  return parents.map((part, index) =>
+    index === 0 && node.group ? node.group : part
+  );
+}
 
 function toConceptSlug(label: string): string {
   return label.replace(/[^a-zA-Z0-9]/g, '');
@@ -81,56 +114,6 @@ const MAPPING_BADGE_COLORS: Record<
   [ConceptMappingType.SameAs]: 'success',
 };
 
-interface SectionHeadingProps {
-  readonly count: number;
-  readonly label: string;
-}
-
-const SectionHeading = ({ count, label }: SectionHeadingProps) => (
-  <div className="tw:mb-2.5 tw:flex tw:items-center tw:gap-2">
-    <h3 className="tw:m-0 tw:font-body tw:text-[13px] tw:leading-normal tw:font-semibold tw:text-primary">
-      {label}
-    </h3>
-    <span className="tw:rounded-full tw:border tw:border-secondary tw:bg-tertiary tw:px-2 tw:py-px tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-secondary">
-      {count}
-    </span>
-  </div>
-);
-
-interface AddButtonProps {
-  readonly isDisabled: boolean;
-  readonly isPrimary?: boolean;
-  readonly label: string;
-  readonly testId: string;
-  readonly onClick: () => void;
-}
-
-const AddButton = ({
-  isDisabled,
-  isPrimary = false,
-  label,
-  testId,
-  onClick,
-}: AddButtonProps) => (
-  <Button
-    noTextPadding
-    className={classNames(
-      'tw:mt-2 tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:rounded-[9px] tw:border tw:border-dashed tw:bg-primary tw:px-2.5 tw:py-[9px] tw:*:data-icon:size-3',
-      'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold',
-      isPrimary
-        ? 'tw:border-brand tw:text-brand-tertiary'
-        : 'tw:border-primary tw:text-secondary',
-      isDisabled && 'tw:cursor-not-allowed tw:opacity-50'
-    )}
-    color="tertiary"
-    data-testid={testId}
-    iconLeading={Plus}
-    isDisabled={isDisabled}
-    onClick={onClick}>
-    {label}
-  </Button>
-);
-
 const OntologyAuthoringInspector = ({
   edges,
   isEditable,
@@ -138,15 +121,14 @@ const OntologyAuthoringInspector = ({
   nodes,
   relationTypes,
   onCreateRelation,
-  onShowDataAssets,
+  onAssetsChange,
+  onClose,
   onRequestEdit,
   onShowFullDetails,
 }: OntologyAuthoringInspectorProps) => {
   const { t } = useTranslation();
   const termId = node.termId ?? node.id;
   const { setTermDetails, termDetails } = useOntologyTermDetails(termId);
-  const [assets, setAssets] = useState<EntityReference[]>([]);
-  const [assetTotal, setAssetTotal] = useState(node.assetCount ?? 0);
   const [isAddingRelationship, setIsAddingRelationship] = useState(false);
   const [selectedRelationType, setSelectedRelationType] = useState('');
   const [targetSearch, setTargetSearch] = useState('');
@@ -157,29 +139,6 @@ const OntologyAuthoringInspector = ({
   );
   const [mappingIri, setMappingIri] = useState('');
   const [isSavingMapping, setIsSavingMapping] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setAssets([]);
-    setAssetTotal(node.assetCount ?? 0);
-
-    if (!isValidUUID(termId)) {
-      return () => controller.abort();
-    }
-
-    getGlossaryTermAssets(termId, ASSET_PREVIEW_LIMIT, 0, controller.signal)
-      .then((response) => {
-        setAssets(response.data);
-        setAssetTotal(response.paging.total);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setAssets([]);
-        }
-      });
-
-    return () => controller.abort();
-  }, [node.assetCount, termId]);
 
   useEffect(() => {
     setIsAddingRelationship(false);
@@ -196,9 +155,13 @@ const OntologyAuthoringInspector = ({
       ),
     [relationTypes]
   );
-  const relations = useMemo<InspectorRelation[]>(
-    () =>
-      edges.flatMap((edge) => {
+  const relations = useMemo<InspectorRelation[]>(() => {
+    // Both edges of an inverse pair (partOf / hasPart) read as the same
+    // relationship from this node, so list it once.
+    const listed = new Set<string>();
+
+    return edges
+      .flatMap((edge) => {
         if (edge.from === node.id) {
           return [
             {
@@ -226,9 +189,21 @@ const OntologyAuthoringInspector = ({
         }
 
         return [];
-      }),
-    [edges, node.id, nodes, relationTypeMap]
-  );
+      })
+      .filter((relation) => {
+        const otherEnd =
+          relation.edge.from === node.id
+            ? relation.edge.to
+            : relation.edge.from;
+        const key = `${otherEnd}|${relation.relationName}`;
+        if (listed.has(key)) {
+          return false;
+        }
+        listed.add(key);
+
+        return true;
+      });
+  }, [edges, node.id, nodes, relationTypeMap]);
   const targetNodes = useMemo(() => {
     const normalizedSearch = targetSearch.trim().toLocaleLowerCase();
 
@@ -330,7 +305,7 @@ const OntologyAuthoringInspector = ({
     );
     const colorMeta = effectiveColor
       ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()] ?? {
-          background: 'var(--color-bg-secondary)',
+          background: 'var(--tw-color-bg-secondary)',
           color: effectiveColor,
         }
       : undefined;
@@ -340,31 +315,33 @@ const OntologyAuthoringInspector = ({
       t('label.term-not-available');
 
     return (
-      <div
-        className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-2.5 tw:py-2"
-        data-testid={`authoring-relation-${relation.edge.from}-${relation.edge.to}`}
+      <InspectorRow
         key={`${relation.edge.from}-${relation.edge.to}-${relation.relationName}`}
-        style={
-          colorMeta
-            ? ({
-                '--relation-bg': colorMeta.background,
-                '--relation-color': colorMeta.color,
-              } as React.CSSProperties)
-            : undefined
-        }>
+        testId={`authoring-relation-${relation.edge.from}-${relation.edge.to}`}>
         <span
           className={classNames(
-            'tw:max-w-[112px] tw:shrink-0 tw:truncate tw:rounded-md tw:px-2 tw:py-0.5 tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold',
+            'tw:max-w-40 tw:shrink-0 tw:truncate tw:rounded-full tw:px-2.5 tw:py-0.5 tw:text-sm tw:font-medium',
             colorMeta
               ? 'tw:bg-[var(--relation-bg)] tw:text-[var(--relation-color)]'
               : 'tw:bg-brand-primary tw:text-brand-secondary'
-          )}>
+          )}
+          style={
+            colorMeta
+              ? ({
+                  '--relation-bg': colorMeta.background,
+                  '--relation-color': colorMeta.color,
+                } as React.CSSProperties)
+              : undefined
+          }>
           {getRelationLabel(relation.relationName)}
         </span>
-        <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-body tw:text-xs tw:leading-normal tw:font-medium tw:text-primary">
+        <Typography
+          className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-primary"
+          size="text-sm"
+          weight="medium">
           {targetLabel}
-        </span>
-      </div>
+        </Typography>
+      </InspectorRow>
     );
   };
 
@@ -400,7 +377,7 @@ const OntologyAuthoringInspector = ({
 
   const renderRelationshipDraft = () => (
     <div
-      className="tw:mt-2 tw:flex tw:flex-col tw:gap-2.5 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-secondary tw:p-3"
+      className="tw:mt-3 tw:flex tw:flex-col tw:gap-2.5 tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:p-3"
       data-testid="authoring-relationship-draft">
       <span className="tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
         {selectedRelationType ? '2' : '1'} ·{' '}
@@ -476,7 +453,7 @@ const OntologyAuthoringInspector = ({
     const conceptSlug = toConceptSlug(node.originalLabel ?? node.label);
 
     return (
-      <div className="tw:mt-2 tw:flex tw:flex-col tw:gap-2.5 tw:rounded-[9px] tw:border tw:border-dashed tw:border-primary tw:bg-secondary tw:p-[11px]">
+      <div className="tw:mt-3 tw:flex tw:flex-col tw:gap-2.5 tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:p-3">
         <span className="tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
           {t('label.match-type')}
         </span>
@@ -553,33 +530,88 @@ const OntologyAuthoringInspector = ({
   };
 
   const renderHeaderActions = () => (
-    <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
-      {onShowFullDetails ? (
-        <Button
-          noTextPadding
-          className="tw:border-0 tw:bg-transparent tw:p-0 tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-brand-secondary"
-          color="tertiary"
-          data-testid="ontology-concept-full-details"
-          onClick={onShowFullDetails}>
-          {t('label.view-detail-plural')}
-        </Button>
-      ) : null}
+    <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
       {!isEditable && onRequestEdit ? (
         <Button
-          noTextPadding
-          className={classNames(
-            'tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md tw:border tw:border-secondary tw:bg-primary tw:px-2 tw:py-1',
-            'tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-secondary'
-          )}
-          color="tertiary"
+          className="tw:mr-1"
+          color="secondary"
           data-testid="ontology-concept-edit"
-          iconLeading={Edit03}
-          onClick={onRequestEdit}>
+          iconLeading={Edit01}
+          size="sm"
+          onPress={onRequestEdit}>
           {t('label.edit')}
         </Button>
       ) : null}
+      {onShowFullDetails ? (
+        <ButtonUtility
+          color="tertiary"
+          data-testid="ontology-concept-full-details"
+          icon={LinkExternal01}
+          size="sm"
+          tooltip={t('label.view-detail-plural')}
+          onClick={onShowFullDetails}
+        />
+      ) : null}
+      {onClose ? (
+        <ButtonUtility
+          color="tertiary"
+          data-testid="ontology-concept-inspector-close"
+          icon={XClose}
+          size="sm"
+          tooltip={t('label.close')}
+          onClick={onClose}
+        />
+      ) : null}
     </div>
   );
+
+  const renderHeader = () => {
+    const breadcrumb = getBreadcrumb(node);
+
+    return (
+      <header className="tw:flex tw:shrink-0 tw:items-start tw:gap-3 tw:border-b tw:border-secondary tw:px-6 tw:py-5">
+        <div className="tw:min-w-0 tw:flex-1">
+          {breadcrumb.length > 0 ? (
+            <div className="tw:mb-1 tw:flex tw:min-w-0 tw:items-center tw:gap-1.5 tw:text-fg-quaternary">
+              <BookClosed
+                aria-hidden="true"
+                className="tw:size-4 tw:shrink-0"
+              />
+              {breadcrumb.map((part, index) => (
+                <React.Fragment key={breadcrumb.slice(0, index + 1).join('/')}>
+                  {index > 0 ? (
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="tw:size-3.5 tw:shrink-0"
+                    />
+                  ) : null}
+                  <Typography
+                    className="tw:truncate"
+                    color="secondary"
+                    size="text-sm">
+                    {part}
+                  </Typography>
+                </React.Fragment>
+              ))}
+            </div>
+          ) : null}
+          <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+            <h2 className="tw:m-0 tw:truncate tw:text-lg tw:font-semibold tw:text-primary">
+              {node.originalLabel ?? node.label}
+            </h2>
+            <BadgeWithDot color="brand" size="sm" type="color">
+              {t(
+                node.type === METRIC_NODE_TYPE
+                  ? 'label.metric'
+                  : 'label.concept'
+              )}
+            </BadgeWithDot>
+          </div>
+        </div>
+        {renderHeaderActions()}
+      </header>
+    );
+  };
 
   const renderTermSections = () => {
     if (!isValidUUID(termId)) {
@@ -610,137 +642,87 @@ const OntologyAuthoringInspector = ({
 
   return (
     <aside
-      className="tw:z-4 tw:h-full tw:w-[300px] tw:shrink-0 tw:overflow-y-auto tw:border-l tw:border-secondary tw:bg-primary tw:p-[18px]"
+      className="tw:absolute tw:inset-y-0 tw:right-0 tw:z-20 tw:flex tw:w-[max(420px,40vw)] tw:max-w-full tw:flex-col tw:border-l tw:border-secondary tw:bg-overlay-surface tw:shadow-2xl"
       data-testid="ontology-authoring-inspector">
-      <div className="tw:mb-2 tw:flex tw:items-center tw:justify-between tw:gap-2">
-        <span className="tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.08em] tw:text-quaternary tw:uppercase">
-          {t('label.concept')}
-        </span>
-        {renderHeaderActions()}
+      {renderHeader()}
+      <div className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:gap-8 tw:overflow-y-auto tw:px-6 tw:py-6">
+        {renderTermSections()}
+
+        <section data-testid="authoring-relationships">
+          <InspectorSectionHeading
+            count={relations.length}
+            label={t('label.relationship-plural')}
+          />
+          {relations.length === 0 ? (
+            <InspectorEmptyText>
+              {t('message.no-concept-relationships')}
+            </InspectorEmptyText>
+          ) : (
+            <InspectorList>{relations.map(renderRelationRow)}</InspectorList>
+          )}
+          {isAddingRelationship ? (
+            renderRelationshipDraft()
+          ) : (
+            <InspectorAddButton
+              isDisabled={!isEditable}
+              label={t('label.add-entity', {
+                entity: t('label.relationship'),
+              })}
+              testId="authoring-add-relationship"
+              onClick={() => setIsAddingRelationship(true)}
+            />
+          )}
+        </section>
+
+        <section data-testid="authoring-mappings">
+          <InspectorSectionHeading
+            count={conceptMappings.length}
+            label={t('label.mapping-plural')}
+          />
+          {conceptMappings.length === 0 ? (
+            <InspectorEmptyText>
+              {t('message.no-concept-mappings')}
+            </InspectorEmptyText>
+          ) : (
+            <InspectorList>
+              {conceptMappings.map((mapping) => (
+                <InspectorRow
+                  key={`${mapping.mappingType}-${mapping.conceptIri}`}>
+                  <Badge
+                    color={MAPPING_BADGE_COLORS[mapping.mappingType]}
+                    size="sm"
+                    type="color">
+                    {mapping.mappingType}
+                  </Badge>
+                  <Typography
+                    className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-mono tw:text-secondary"
+                    size="text-xs">
+                    {mapping.conceptIri}
+                  </Typography>
+                </InspectorRow>
+              ))}
+            </InspectorList>
+          )}
+          {isAddingMapping ? (
+            renderMappingDraft()
+          ) : (
+            <InspectorAddButton
+              isDisabled={!isEditable || !isValidUUID(termId)}
+              label={t('label.add-mapping')}
+              testId="authoring-add-mapping"
+              onClick={() => setIsAddingMapping(true)}
+            />
+          )}
+        </section>
+
+        <OntologyConceptDataAssets
+          initialCount={node.assetCount}
+          isEditMode={isEditable}
+          term={termDetails}
+          termId={termId}
+          onAssetsChange={onAssetsChange}
+        />
       </div>
-      <h2 className="tw:m-0 tw:font-body tw:text-[17px] tw:leading-[1.25] tw:font-bold tw:text-primary">
-        {node.originalLabel ?? node.label}
-      </h2>
-      <p className="tw:mb-3 tw:mt-[3px] tw:truncate tw:font-mono tw:text-[11px] tw:leading-normal tw:font-normal tw:text-quaternary">
-        {node.fullyQualifiedName}
-      </p>
-
-      {renderTermSections()}
-
-      <div className="tw:my-[15px] tw:h-px tw:bg-secondary" />
-      <section data-testid="authoring-relationships">
-        <SectionHeading
-          count={relations.length}
-          label={t('label.relationship-plural')}
-        />
-        <div className="tw:flex tw:flex-col tw:gap-1.5">
-          {relations.map(renderRelationRow)}
-        </div>
-        {isAddingRelationship ? (
-          renderRelationshipDraft()
-        ) : (
-          <AddButton
-            isPrimary
-            isDisabled={!isEditable}
-            label={t('label.add-entity', {
-              entity: t('label.relationship'),
-            })}
-            testId="authoring-add-relationship"
-            onClick={() => setIsAddingRelationship(true)}
-          />
-        )}
-      </section>
-
-      <div className="tw:my-[15px] tw:h-px tw:bg-secondary" />
-      <section data-testid="authoring-mappings">
-        <SectionHeading
-          count={conceptMappings.length}
-          label={t('label.mapping-plural')}
-        />
-        <div className="tw:flex tw:flex-col tw:gap-1.5">
-          {conceptMappings.map((mapping) => (
-            <div
-              className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-2.5 tw:py-2"
-              key={`${mapping.mappingType}-${mapping.conceptIri}`}>
-              <Badge
-                color={MAPPING_BADGE_COLORS[mapping.mappingType]}
-                size="sm"
-                type="color">
-                {mapping.mappingType}
-              </Badge>
-              <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-mono tw:text-[11px] tw:leading-normal tw:text-secondary">
-                {mapping.conceptIri}
-              </span>
-            </div>
-          ))}
-        </div>
-        {isAddingMapping ? (
-          renderMappingDraft()
-        ) : (
-          <AddButton
-            isDisabled={!isEditable || !isValidUUID(termId)}
-            label={t('label.add-mapping')}
-            testId="authoring-add-mapping"
-            onClick={() => setIsAddingMapping(true)}
-          />
-        )}
-      </section>
-
-      <div className="tw:my-[15px] tw:h-px tw:bg-secondary" />
-      <section data-testid="authoring-data-assets">
-        <SectionHeading
-          count={assetTotal}
-          label={t('label.data-asset-plural')}
-        />
-        <div className="tw:flex tw:flex-col tw:gap-[7px]">
-          {assets.map((asset) => {
-            const assetName =
-              asset.displayName ??
-              asset.name ??
-              asset.fullyQualifiedName ??
-              asset.id;
-
-            return (
-              <div
-                className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-2.5 tw:py-2"
-                data-testid={`authoring-asset-${asset.id}`}
-                key={asset.id}>
-                <img
-                  alt={asset.type}
-                  className="tw:size-3.5 tw:shrink-0 tw:object-contain"
-                  height={14}
-                  src={serviceUtilClassBase.getServiceTypeLogo({
-                    entityType: asset.type,
-                  })}
-                  width={14}
-                />
-                <div className="tw:min-w-0 tw:flex-1">
-                  <div className="tw:truncate tw:font-mono tw:text-xs tw:leading-normal tw:font-medium tw:text-primary">
-                    {assetName}
-                  </div>
-                  <div className="tw:truncate tw:font-body tw:text-[10px] tw:leading-normal tw:font-normal tw:text-quaternary">
-                    {asset.type}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        {assetTotal > assets.length ? (
-          <Button
-            noTextPadding
-            className={classNames(
-              'tw:mt-2 tw:w-full tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-2.5 tw:py-2',
-              'tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-brand-tertiary'
-            )}
-            color="tertiary"
-            data-testid="authoring-more-assets"
-            onClick={onShowDataAssets}>
-            +{assetTotal - assets.length} {t('label.more-lowercase')}{' '}
-            {t('label.data-asset-lowercase-plural')}
-          </Button>
-        ) : null}
-      </section>
     </aside>
   );
 };

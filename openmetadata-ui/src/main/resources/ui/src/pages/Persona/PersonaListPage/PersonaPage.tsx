@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Skeleton } from 'antd';
-import Card from 'antd/lib/card/Card';
+import {
+  Button,
+  Card,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -155,7 +158,6 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
         {errorPlaceHolder}
         {Boolean(addEditPersona) && (
           <AddEditPersonaForm
-            persona={addEditPersona}
             onCancel={handlePersonalAddEditCancel}
             onSave={handlePersonaAddEditSave}
           />
@@ -184,8 +186,8 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
             </div>
             <div>
               <Button
+                color="primary"
                 data-testid="add-persona-button"
-                type="primary"
                 onClick={handleAddNewPersona}>
                 {t('label.add-entity', { entity: t('label.persona') })}
               </Button>
@@ -204,7 +206,9 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
                     data-testid="skeleton-card-loader"
                     key={key}>
                     <Card>
-                      <Skeleton active paragraph title />
+                      <Card.Content>
+                        <SkeletonParagraph />
+                      </Card.Content>
                     </Card>
                   </div>
                 ))
@@ -233,7 +237,6 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
 
         {Boolean(addEditPersona) && (
           <AddEditPersonaForm
-            persona={addEditPersona}
             onCancel={handlePersonalAddEditCancel}
             onSave={handlePersonaAddEditSave}
           />

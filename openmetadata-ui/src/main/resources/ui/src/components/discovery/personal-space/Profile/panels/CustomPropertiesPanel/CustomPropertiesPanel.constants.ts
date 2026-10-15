@@ -18,16 +18,6 @@ export const CRUMB = {
   ACTION: 'action',
 } as const;
 
-export const getTableColumns = (
-  t: (key: string) => string
-): { id: string; name: string; width?: number }[] => [
-  { id: 'name', name: t('label.name') },
-  { id: 'type', name: t('label.type') },
-  { id: 'config', name: t('label.config') },
-  { id: 'description', name: t('label.description') },
-  { id: 'actions', name: t('label.action-plural') },
-];
-
 export const GROUP_DATABASE_STORAGE = 'DATABASE & STORAGE';
 export const GROUP_DASHBOARDS_REPORTING = 'DASHBOARDS & REPORTING';
 export const GROUP_PIPELINES_ML = 'PIPELINES & ML';
@@ -75,3 +65,10 @@ export const GROUP_LABEL_KEYS: Record<string, string> = {
   [GROUP_API]: 'label.api-uppercase',
   [GROUP_GOVERNANCE]: 'label.governance',
 };
+
+/**
+ * Column name the earlier table-type custom property editor used as its
+ * internal row key and stripped on save. It stays reserved so a user column
+ * never takes that name and loses its data to an older client.
+ */
+export const RESERVED_TABLE_COLUMN_NAMES = ['__row_id__'];

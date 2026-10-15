@@ -28,7 +28,7 @@ describe('WorkflowSerializer', () => {
     expect(WORKFLOW_EDGE_THEME).toEqual({
       customBackground: 'var(--om-color-bg-brand, #EFF8FF)',
       customLabel: 'var(--om-color-fg-brand, #1570EF)',
-      edge: 'var(--om-color-border-primary)',
+      edge: 'var(--om-color-border-hover)',
       labelBorder: 'var(--om-color-bg-primary, #FFFFFF)',
       negativeBackground: 'var(--om-color-bg-error, #FEF3F2)',
       negativeLabel: 'var(--om-color-fg-error, #D92D20)',
@@ -85,10 +85,10 @@ describe('WorkflowSerializer', () => {
           }),
           labelStyle: expect.objectContaining({ color: labelColor }),
           markerEnd: expect.objectContaining({
-            color: 'var(--om-color-border-primary)',
+            color: 'var(--om-color-border-hover)',
           }),
           style: expect.objectContaining({
-            stroke: 'var(--om-color-border-primary)',
+            stroke: 'var(--om-color-border-hover)',
           }),
         })
       );

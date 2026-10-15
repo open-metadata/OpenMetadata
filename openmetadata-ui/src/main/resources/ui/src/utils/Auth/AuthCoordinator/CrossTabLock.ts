@@ -29,6 +29,15 @@ export class LockTimeoutError extends Error {
 // bounded time (Greptile P1 r4043885089).
 const DEFAULT_WAIT_TIMEOUT_MS = 60_000;
 
+// How long a `done` broadcast is retained in the class-level ring so a
+// runExclusive slot that opens shortly after the broadcast still sees
+// it. Sized to cover HANDOFF_GRACE_MS (250 ms — see
+// `raceForFollowerOutcome`) plus a comfortable buffer for postMessage
+// propagation and event-loop scheduling. Kept small so a truly
+// separate refresh cycle happening seconds later isn't muddled with
+// an old broadcast.
+const DONE_RETAIN_MS = 750;
+
 export type LockDoneMessage = { type: 'done'; payload?: unknown };
 export type LockFailedMessage = { type: 'failed'; reason?: string };
 export type LockMessage = LockDoneMessage | LockFailedMessage;
@@ -53,9 +62,33 @@ interface MessageListener {
 
 export class CrossTabLock {
   private readonly channel: BroadcastChannel;
+  // Most-recent `done` broadcast, retained for `DONE_RETAIN_MS`.
+  // Primes per-slot listeners on attach so a runExclusive that opens
+  // shortly AFTER a `done` was broadcast (e.g. a third follower entering
+  // during the previous follower's HANDOFF_GRACE_MS hold) still sees the
+  // mint and takes the follower-with-done path instead of racing the
+  // grace to a synthetic `failed` and retrying with a duplicate
+  // renewer call. Only tracks `done` (a `failed` shouldn't stop a
+  // subsequent legitimate refresh attempt).
+  private recentDone: { message: LockDoneMessage; at: number } | null = null;
+  // Timestamp of the last `recentDone` this coordinator consumed via
+  // the runExclusive shortcut. Prevents a caller who ALREADY applied
+  // the mint (and had it rejected by the server) from re-consuming
+  // the SAME broadcast on the forced retry — that would hand back
+  // the just-known-bad token without ever calling `renewer()` again
+  // (greptile P1 r4083354131). A NEW `done` broadcast from any tab
+  // bumps `recentDone.at` and unblocks the shortcut for the next
+  // legitimate cross-tab scenario.
+  private consumedRecentDoneAt: number | null = null;
 
   constructor(private readonly lockName: string, channelName: string) {
     this.channel = new BroadcastChannel(channelName);
+    this.channel.addEventListener('message', (event: MessageEvent) => {
+      const data = event.data as LockMessage | undefined;
+      if (data?.type === 'done') {
+        this.recentDone = { message: data, at: Date.now() };
+      }
+    });
   }
 
   // Runs `work` under an exclusive cross-tab lock. The optional `publish`
@@ -96,8 +129,25 @@ export class CrossTabLock {
     // `done` posted between our probe returning `null` and the follower
     // wait starting is not lost — see the docblock on `MessageListener`.
     const listener = this.attachMessageListener();
+
+    // Short-circuit the lock dance when the listener is already
+    // holding a fresh `done` — either from the class-level ring
+    // (seeded synchronously in attachMessageListener) or from a
+    // broadcast that arrived during the microtask between attach and
+    // this check. attachMessageListener refuses to replay a broadcast
+    // this coordinator already consumed (greptile P1 r4083354131), so
+    // by the time we reach here, `primed` is EITHER a first-look
+    // ring entry OR a fresh handler-set message — both worth taking
+    // without touching the lock (rotating-refresh IdPs would consume
+    // the just-rotated refresh token if we ran `work` needlessly).
+    const primed = this.takePrimedDone(listener);
+    if (primed) {
+      return { role: 'follower', message: primed };
+    }
+
     let acquired = false;
     let leaderValue: T | undefined;
+    let workSucceeded = false;
     try {
       await locks.request(
         this.lockName,
@@ -109,14 +159,30 @@ export class CrossTabLock {
           acquired = true;
           try {
             leaderValue = await work();
+            workSucceeded = true;
             if (publish) {
               await publish(leaderValue);
             }
           } catch (err) {
-            this.channel.postMessage({
-              type: 'failed',
-              reason: err instanceof Error ? err.message : String(err),
-            } as LockFailedMessage);
+            // Distinguish work-threw from publish-threw. When publish
+            // threw AFTER work succeeded, the leader still holds a
+            // valid value in memory — broadcast `done` so followers
+            // apply it instead of re-running `work` (rotating-refresh
+            // IdPs would consume the just-rotated refresh token and
+            // invalidate this leader's session). When work itself
+            // threw, no value exists to hand over — broadcast `failed`
+            // so followers retry.
+            if (workSucceeded) {
+              this.channel.postMessage({
+                type: 'done',
+                payload: leaderValue,
+              } as LockDoneMessage);
+            } else {
+              this.channel.postMessage({
+                type: 'failed',
+                reason: err instanceof Error ? err.message : String(err),
+              } as LockFailedMessage);
+            }
 
             throw err;
           }
@@ -136,6 +202,7 @@ export class CrossTabLock {
     // was in flight, honor it directly and skip the leader-death race.
     const buffered = listener.received();
     if (buffered) {
+      this.markConsumedIfFromRing(buffered);
       listener.cancel();
 
       return { role: 'follower', message: buffered };
@@ -153,6 +220,25 @@ export class CrossTabLock {
     this.channel.postMessage({ type: 'done', payload } as LockDoneMessage);
   }
 
+  // Global (non-scoped) subscription to `done` broadcasts on the shared
+  // channel — lets a passive tab observe sibling refreshes without
+  // running its own runExclusive cycle. Used by AuthCoordinator to
+  // keep its sync `lastMintedToken` in sync with tokens minted by
+  // sibling tabs so the cycle circuit-breaker can distinguish
+  // "still-rejected current token" (real refresh loop) from
+  // "in-flight straggler carrying a pre-refresh token" across tabs.
+  onDoneBroadcast(cb: (payload: unknown) => void): () => void {
+    const handler = (event: MessageEvent) => {
+      const data = event.data as LockMessage | undefined;
+      if (data?.type === 'done') {
+        cb(data.payload);
+      }
+    };
+    this.channel.addEventListener('message', handler);
+
+    return () => this.channel.removeEventListener('message', handler);
+  }
+
   notifyFailed(reason?: string): void {
     this.channel.postMessage({ type: 'failed', reason } as LockFailedMessage);
   }
@@ -168,8 +254,42 @@ export class CrossTabLock {
   // a subscriber calls `onMessage`. Followers drain the buffer immediately
   // after they discover they didn't win the `ifAvailable:true` probe so a
   // broadcast that arrived during the probe window isn't lost.
+  //
+  // Seeded from the class-level `recentDone` ring so a runExclusive slot
+  // that opens shortly after a broadcast (during the previous follower's
+  // HANDOFF_GRACE_MS hold) doesn't miss the mint.
+  // Short-circuit helper: return a primed `done` and mark the ring
+  // entry as consumed so a forced retry against the same broadcast
+  // falls through to a real refresh (greptile P1 r4083354131).
+  private takePrimedDone(listener: MessageListener): LockDoneMessage | null {
+    const primed = listener.received();
+    if (primed?.type !== 'done') {
+      return null;
+    }
+    this.markConsumedIfFromRing(primed);
+    listener.cancel();
+
+    return primed;
+  }
+
+  private markConsumedIfFromRing(message: LockMessage): void {
+    if (message.type === 'done' && this.recentDone?.message === message) {
+      this.consumedRecentDoneAt = this.recentDone.at;
+    }
+  }
+
   private attachMessageListener(): MessageListener {
-    let buffered: LockMessage | undefined;
+    // Seed from the class-level ring UNLESS this coordinator already
+    // consumed the same broadcast — otherwise the follower path's
+    // `listener.received()` check below would hand the stale mint
+    // back on a forced retry (greptile P1 r4083354131).
+    const canReplay =
+      this.recentDone &&
+      Date.now() - this.recentDone.at < DONE_RETAIN_MS &&
+      this.recentDone.at !== this.consumedRecentDoneAt;
+    let buffered: LockMessage | undefined = canReplay
+      ? this.recentDone?.message
+      : undefined;
     let subscriber: ((message: LockMessage) => void) | undefined;
     const handler = (event: MessageEvent) => {
       const data = event.data as LockMessage | undefined;

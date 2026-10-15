@@ -61,7 +61,10 @@ from metadata.ingestion.source.connections import (
     create_connection,
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.column_type_parser import (
+    NUMERIC_TYPES_SUPPORTING_PRECISION,
+    ColumnTypeParser,
+)
 from metadata.ingestion.source.database.custom_property_extension_mixin import (
     CustomPropertyExtensionMixin,
 )
@@ -75,6 +78,7 @@ from metadata.ingestion.source.database.glue.models import (
     GlueTable,
     StorageDetails,
     TablePage,
+    TableParameters,
 )
 from metadata.ingestion.source.database.glue.utils import get_schema_definition
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
@@ -325,6 +329,11 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
                         # iceberg tables need to pass a key/value pair in the DDL `'table_type'='ICEBERG'`
                         # https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html
                         table_type = TableType.Iceberg
+                    elif table.TableType != "VIRTUAL_VIEW" and self._is_delta_table(parameters):
+                        # Kept after the Iceberg check so a UniForm table carrying both markers
+                        # stays Iceberg. Athena DDL writes table_type=DELTA, Spark and the crawler
+                        # write spark.sql.sources.provider=delta; producers disagree on case.
+                        table_type = TableType.DeltaLake
                     elif table.TableType == "EXTERNAL_TABLE":
                         table_type = TableType.External
                     elif table.TableType == "VIRTUAL_VIEW":
@@ -355,10 +364,7 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         database_name = self.context.get().database
         schema_name = self.context.get().database_schema
         if storage_descriptor.Location:
-            # s3a doesn't occur as a path in containers, so it needs to be replaced for lineage to work
-            self.external_location_map[(database_name, schema_name, table_name)] = storage_descriptor.Location.replace(
-                "s3a://", "s3://"
-            )
+            self.external_location_map[(database_name, schema_name, table_name)] = storage_descriptor.Location
         try:
             columns = self.get_columns(storage_descriptor)
             # An Iceberg view is typed Iceberg rather than View, so keying off the Glue type
@@ -421,16 +427,21 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
     def _get_column_object(self, column: GlueColumn) -> Column:
         if column.Type.lower().startswith("union"):
             column.Type = column.Type.replace(" ", "")
-        parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+        parsed = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
             column.Type.lower()
         )
-        if isinstance(parsed_string, list):
-            parsed_string = {}
-            parsed_string["dataTypeDisplay"] = str(column.Type)
-            parsed_string["dataType"] = "UNION"
+        # A union parses to a list of its member types, which has no single dataType to report.
+        parsed_string: dict[str, Any] = (
+            {"dataTypeDisplay": str(column.Type), "dataType": "UNION"}
+            if isinstance(parsed, list)
+            else cast("dict[str, Any]", parsed)
+        )
         parsed_string["name"] = truncate_column_name(column.Name)
         parsed_string["displayName"] = column.Name
-        parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+        # A numeric carries precision and scale instead, so defaulting a length here would
+        # put a meaningless 1 on every decimal column.
+        if parsed_string.get("dataType") not in NUMERIC_TYPES_SUPPORTING_PRECISION:
+            parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
         parsed_string["description"] = column.Comment
         return Column(**parsed_string)
 
@@ -456,81 +467,40 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
             seen_column_names.add(column_name)
             yield column
 
-    # pylint: disable=too-many-locals
     def _iter_columns(self, column_data: StorageDetails) -> Iterable[Column]:
         """
         Yield the raw Glue columns, regular ones first and partition keys last.
+
+        Iceberg keeps a dropped field in the table schema flagged current=false, so emitting
+        every column would resurrect it. GetTables already carries that flag on each column,
+        which is why this needs neither a per-table GetTable nor a glue:GetTable grant.
+        Only regular columns can carry it: Glue rejects parameters on a partition key, and
+        Iceberg writes every field, partition sources included, to StorageDescriptor.Columns.
         """
-        # Check if this is an Iceberg table
         table = self.context.get().table_data
-        is_iceberg = table.Parameters and table.Parameters.table_type == "ICEBERG"
-
-        if is_iceberg:
-            # For Iceberg tables, get the full table metadata from Glue to access column parameters
-            try:
-                schema_name = self.context.get().database_schema
-                table_name = table.Name
-
-                # Get full table metadata from Glue API, from the schema's own catalog
-                get_table_args = {"DatabaseName": schema_name, "Name": table_name}
-                catalog_id = self.schema_catalog_id_map.get(schema_name)
-                if catalog_id:
-                    get_table_args["CatalogId"] = catalog_id
-                response = self.glue.get_table(**get_table_args)
-
-                table_info = response["Table"]
-
-                # Filter out non-current Iceberg columns
-                storage_descriptor = table_info.get("StorageDescriptor", {})
-                glue_columns = storage_descriptor.get("Columns", [])
-
-                for glue_col in glue_columns:
-                    col_name = glue_col["Name"]
-                    col_type = glue_col["Type"]
-                    col_comment = glue_col.get("Comment")
-                    col_parameters = glue_col.get("Parameters", {})
-
-                    # Check if this is a non-current Iceberg column
-                    iceberg_current = col_parameters.get("iceberg.field.current", "true")
-                    is_current = iceberg_current != "false"
-
-                    if is_current:
-                        # Create a GlueColumn object for processing
-                        column_obj = GlueColumn(Name=col_name, Type=col_type, Comment=col_comment)
-                        yield self._get_column_object(column_obj)
-
-                # Process partition columns
-                partition_keys = table_info.get("PartitionKeys", [])
-                for glue_col in partition_keys:
-                    col_name = glue_col["Name"]
-                    col_type = glue_col["Type"]
-                    col_comment = glue_col.get("Comment")
-                    col_parameters = glue_col.get("Parameters", {})
-
-                    # Check if this is a non-current Iceberg column
-                    iceberg_current = col_parameters.get("iceberg.field.current", "true")
-                    is_current = iceberg_current != "false"
-
-                    if is_current:
-                        # Create a GlueColumn object for processing
-                        column_obj = GlueColumn(Name=col_name, Type=col_type, Comment=col_comment)
-                        yield self._get_column_object(column_obj)
-
-                return  # noqa: TRY300
-
-            except Exception as e:
-                # If we can't get Glue metadata, fall back to the original method
-                # This ensures backward compatibility
-                logger.warning(f"Failed to get Glue metadata for Iceberg table {table.Name}: {e}")
-
-        # For non-Iceberg tables or if Glue access fails, use the original method
-        # process table regular columns info
-        for column in column_data.Columns:
+        is_iceberg = bool(table.Parameters and table.Parameters.table_type == "ICEBERG")
+        # Glue sends an explicit null rather than an empty list for a table with neither.
+        for column in column_data.Columns or []:
+            if is_iceberg and not column.is_current_iceberg_field():
+                logger.debug("Table [%s]: dropping retired Iceberg column [%s].", table.Name, column.Name)
+                continue
+            yield self._get_column_object(column)
+        for column in table.PartitionKeys or []:
             yield self._get_column_object(column)
 
-        # process table partition columns info
-        for column in self.context.get().table_data.PartitionKeys:
-            yield self._get_column_object(column)
+    @staticmethod
+    def _is_delta_table(parameters: TableParameters | None) -> bool:
+        """A Glue Delta table is marked by table_type=DELTA (Athena DDL) or
+        spark.sql.sources.provider=delta (Spark/crawler). Producers disagree on case, so both
+        keys are compared case-insensitively. The provider key is dotted, so it is only reachable
+        through the extra-allowed dump, not attribute access."""
+        if not parameters:
+            return False
+        values = parameters.model_dump()
+        return any(
+            isinstance(values.get(key), str) and values[key].lower() == "delta"
+            for key in ("table_type", "spark.sql.sources.provider")
+        )
 
     @classmethod
     def get_format(cls, storage: StorageDetails) -> FileFormat | None:

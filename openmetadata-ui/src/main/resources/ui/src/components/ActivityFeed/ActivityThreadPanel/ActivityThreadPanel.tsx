@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { Drawer, Tabs } from 'antd';
+import { Tabs } from '@openmetadata/ui-core-components';
+import { Drawer } from 'antd';
 import classNames from 'classnames';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PanelTab } from '../../../constants/Feeds.constants';
+import { useVisitedTabs } from '../../../hooks/useVisitedTabs';
 import { ActivityThreadPanelProp } from './ActivityThreadPanel.interface';
 import ActivityThreadPanelBody from './ActivityThreadPanelBody';
 
@@ -27,10 +29,12 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   initialView = 'conversations',
 }) => {
   const { t } = useTranslation();
-  const { TabPane } = Tabs;
   const [activeTab, setActiveTab] = useState<PanelTab>(
     initialView === 'conversations' ? PanelTab.CONVERSATIONS : PanelTab.TASKS
   );
+
+  // Keeps an unsent conversation or task draft when switching tabs.
+  const visitedTabs = useVisitedTabs(activeTab);
 
   const onTabChange = (key: string) => {
     setActiveTab(key as PanelTab);
@@ -55,25 +59,35 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
       onClose={onCancel}>
       <div id="thread-panel">
         <Tabs
-          activeKey={activeTab}
-          className="ant-tabs-custom-line ant-tabs-custom-threadpanel"
-          onChange={onTabChange}>
-          <TabPane key={PanelTab.TASKS} tab={t('label.task-plural')}>
+          className="tw:gap-4"
+          selectedKey={activeTab}
+          onSelectionChange={(key) => onTabChange(String(key))}>
+          <Tabs.List className="tw:gap-8 tw:px-4" size="sm" type="underline">
+            <Tabs.Item id={PanelTab.TASKS}>{t('label.task-plural')}</Tabs.Item>
+            <Tabs.Item id={PanelTab.CONVERSATIONS}>
+              {t('label.conversation-plural')}
+            </Tabs.Item>
+          </Tabs.List>
+          <Tabs.Panel
+            className="tw:data-inert:hidden"
+            id={PanelTab.TASKS}
+            shouldForceMount={visitedTabs.has(PanelTab.TASKS)}>
             <ActivityThreadPanelBody
               threadLink={threadLink}
               view="tasks"
               onCancel={onCancel}
             />
-          </TabPane>
-          <TabPane
-            key={PanelTab.CONVERSATIONS}
-            tab={t('label.conversation-plural')}>
+          </Tabs.Panel>
+          <Tabs.Panel
+            className="tw:data-inert:hidden"
+            id={PanelTab.CONVERSATIONS}
+            shouldForceMount={visitedTabs.has(PanelTab.CONVERSATIONS)}>
             <ActivityThreadPanelBody
               threadLink={threadLink}
               view="conversations"
               onCancel={onCancel}
             />
-          </TabPane>
+          </Tabs.Panel>
         </Tabs>
       </div>
     </Drawer>

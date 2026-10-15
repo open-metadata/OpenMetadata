@@ -12,8 +12,8 @@
  */
 
 import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
+import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { ReactNode } from 'react';
-import { CurveType } from 'recharts/types/shape/Curve';
 import type { TestCaseDeletionMode } from '../../../../constants/DataQuality.constants';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Thread } from '../../../../generated/entity/feed/thread';
@@ -30,8 +30,8 @@ export type MetricChartType = {
     title: string;
     dataKey: string;
     stackId?: string;
-    color: string;
-    fill?: string;
+    /** Chart colour that carries meaning, e.g. a delete; else the next palette colour. */
+    status?: ChartStatus;
     latestValue?: string | number;
     extra?: string;
   }[];
@@ -44,7 +44,6 @@ export interface ProfilerDetailsCardProps {
   name: string;
   title?: string;
   tickFormatter?: string;
-  curveType?: CurveType;
   isLoading?: boolean;
   noDataPlaceholderText?: ReactNode;
   children?: ReactNode;
@@ -79,7 +78,6 @@ export interface DataQualityTabProps {
   tableHeader?: ReactNode;
   removeTableBorder?: boolean;
   enableBulkActions?: boolean;
-  editVariant?: 'drawer' | 'modal';
   hasActiveFilters?: boolean;
   emptyStateAction?: EmptyPlaceholderAction;
   // Per-entity permissions keyed by test-case id, supplied by the list API when
@@ -108,7 +106,8 @@ export type TestCaseChartDataType = {
   information: { label: string; color: string }[];
   data: Record<
     string,
-    string | number | undefined | Task | Thread | number[]
+    // string[] carries the keys a run's placed values sit under.
+    string | number | undefined | Task | Thread | number[] | string[]
   >[];
 };
 

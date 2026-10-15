@@ -24,7 +24,7 @@ class FakeDagModel:
         return SimpleNamespace(get_task_instances=lambda: [SimpleNamespace(task_id="task", try_number=1)])
 
 
-def raise_dag_not_found(dag_id):
+def raise_dag_not_found(dag_id, session=None):
     raise DagNotFound(dag_id)
 
 
@@ -53,7 +53,7 @@ def test_unsupported_task_log_reader_is_logged(monkeypatch, caplog):
 def test_partial_dag_deletion_is_logged(monkeypatch, tmp_path, caplog):
     monkeypatch.setattr(delete, "AIRFLOW_DAGS_FOLDER", str(tmp_path / "dags"))
     monkeypatch.setattr(delete, "DAG_GENERATED_CONFIGS", str(tmp_path / "configs"))
-    monkeypatch.setattr(delete, "delete_dag", raise_dag_not_found)
+    monkeypatch.setattr(delete, "airflow_delete_dag", raise_dag_not_found)
 
     with (
         Flask(__name__).app_context(),

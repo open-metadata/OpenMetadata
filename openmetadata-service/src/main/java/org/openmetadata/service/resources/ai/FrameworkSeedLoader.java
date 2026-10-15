@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.ai.AIFrameworkControl;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
@@ -78,8 +79,7 @@ final class FrameworkSeedLoader {
       framework.setFullyQualifiedName(frameworkFqn);
       framework.setUpdatedBy(ADMIN_USER_NAME);
       framework.setUpdatedAt(System.currentTimeMillis());
-      saved = frameworkRepository.create(null, framework);
-      LOG.info("Seeded AI governance framework '{}'", saved.getName());
+      saved = createOrReuse(frameworkRepository, framework, frameworkFqn);
     } else {
       saved = existing;
       LOG.debug("Framework '{}' already initialized", saved.getName());
@@ -110,7 +110,38 @@ final class FrameworkSeedLoader {
       control.setId(UUID.randomUUID());
       control.setUpdatedBy(ADMIN_USER_NAME);
       control.setUpdatedAt(System.currentTimeMillis());
-      controlRepository.create(null, control);
+      try {
+        controlRepository.create(null, control);
+      } catch (UnableToExecuteStatementException e) {
+        // A concurrent seeder (e.g. another replica on startup) can insert the same control
+        // between the existence check above and this create, tripping the fqnHash unique
+        // constraint. Only swallow it if the row is now present; otherwise rethrow so a real
+        // failure still reaches loadFromResources and keeps the seed gate retryable.
+        if (controlRepository.findByNameOrNull(fqn, Include.ALL) == null) {
+          throw e;
+        }
+        LOG.debug("Control '{}' was concurrently seeded by another instance", fqn);
+      }
+    }
+  }
+
+  static AIGovernanceFramework createOrReuse(
+      AIGovernanceFrameworkRepository frameworkRepository,
+      AIGovernanceFramework framework,
+      String frameworkFqn) {
+    try {
+      AIGovernanceFramework saved = frameworkRepository.create(null, framework);
+      LOG.info("Seeded AI governance framework '{}'", saved.getName());
+      return saved;
+    } catch (UnableToExecuteStatementException e) {
+      // Same concurrent-seed race as seedControls: reuse the framework another instance wrote
+      // so we still fall through to seed its controls, but rethrow a genuine failure.
+      AIGovernanceFramework raced = frameworkRepository.findByNameOrNull(frameworkFqn, Include.ALL);
+      if (raced == null) {
+        throw e;
+      }
+      LOG.debug("Framework '{}' was concurrently seeded by another instance", frameworkFqn);
+      return raced;
     }
   }
 

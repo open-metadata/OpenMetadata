@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -48,6 +49,7 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
@@ -56,6 +58,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionBinding;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPlan;
@@ -80,12 +83,26 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 @Slf4j
 public class TaskWorkflowHandler {
 
+  static final int DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS = 6;
+  static final long DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS = 50L;
+  static final long DEFAULT_RUNTIME_TASK_READINESS_WAIT_MILLIS =
+      (DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS - 1) * DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS;
+
   /** Suggestion payload {@code source} marking a suggestion an agent produced. */
   private static final String AGENT_SUGGESTION_SOURCE = "Agent";
 
   private static TaskWorkflowHandler instance;
+  private final int runtimeTaskReadinessAttempts;
+  private final long runtimeTaskReadinessDelayMillis;
 
-  private TaskWorkflowHandler() {}
+  private TaskWorkflowHandler() {
+    this(DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS, DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS);
+  }
+
+  TaskWorkflowHandler(int runtimeTaskReadinessAttempts, long runtimeTaskReadinessDelayMillis) {
+    this.runtimeTaskReadinessAttempts = Math.max(1, runtimeTaskReadinessAttempts);
+    this.runtimeTaskReadinessDelayMillis = Math.max(0L, runtimeTaskReadinessDelayMillis);
+  }
 
   public static synchronized TaskWorkflowHandler getInstance() {
     if (instance == null) {
@@ -160,6 +177,13 @@ public class TaskWorkflowHandler {
     }
   }
 
+  private static boolean isMetricApprovalTask(Task task) {
+    return task != null
+        && task.getType() == TaskEntityType.RequestApproval
+        && task.getAbout() != null
+        && Entity.METRIC.equals(task.getAbout().getType());
+  }
+
   /**
    * Resolve a task that is managed by a Flowable workflow.
    */
@@ -176,6 +200,18 @@ public class TaskWorkflowHandler {
     WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     List<EntityReference> payloadAssignees = extractAssigneesFromPayload(resolvedPayload);
+    boolean requiresRuntimeTaskReadiness = isMetricApprovalTask(task);
+
+    if (requiresRuntimeTaskReadiness && TaskRepository.isTerminalStatus(task.getStatus())) {
+      throw new IllegalStateException(
+          String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
+    }
+    if (requiresRuntimeTaskReadiness && !awaitActiveRuntimeTask(workflowHandler, taskId)) {
+      throw new IllegalStateException(
+          String.format(
+              "Flowable runtime task for workflow-managed task '%s' is unavailable; retry the resolution",
+              taskId));
+    }
 
     if (payloadAssignees != null && !payloadAssignees.isEmpty()) {
       task = persistWorkflowAssignees(taskRepository, task, payloadAssignees, user);
@@ -219,12 +255,15 @@ public class TaskWorkflowHandler {
 
     if (!workflowSuccess) {
       if (!workflowHandler.hasActiveRuntimeTask(taskId)) {
-        // Report M1: two clients racing the same task, or a stale resolve arriving after
-        // Flowable already advanced past this node. Return a 409 CONFLICT via a typed
-        // WebServiceException so the caller learns the state changed under them — the
-        // generic exception mapper would otherwise surface these as 500s. Kept narrow
-        // (only these two resolve-race sites) so unrelated IllegalStateException bugs
-        // still surface as 500.
+        // Workflow-managed Metric tasks must not bypass their approval workflow when the runtime
+        // task disappears between the readiness check and resolution.
+        if (requiresRuntimeTaskReadiness) {
+          throw TaskStateConflictException.of(
+              String.format(
+                  "Flowable runtime task for workflow-managed Metric task '%s' disappeared while resolving transition '%s'; the task was not finalized",
+                  taskId,
+                  transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
+        }
         if (resolutionType == null) {
           throw TaskStateConflictException.of(
               String.format(
@@ -271,6 +310,29 @@ public class TaskWorkflowHandler {
     // Task threshold met, apply resolution
     return applyTaskResolution(
         task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
+  }
+
+  private boolean awaitActiveRuntimeTask(WorkflowHandler workflowHandler, UUID taskId) {
+    boolean isActive = workflowHandler.hasActiveRuntimeTask(taskId);
+    int attempt = 1;
+    while (!isActive && attempt < runtimeTaskReadinessAttempts && waitForRuntimeTaskRetry(taskId)) {
+      isActive = workflowHandler.hasActiveRuntimeTask(taskId);
+      attempt++;
+    }
+    return isActive;
+  }
+
+  private boolean waitForRuntimeTaskRetry(UUID taskId) {
+    boolean completed = true;
+    try {
+      TimeUnit.MILLISECONDS.sleep(runtimeTaskReadinessDelayMillis);
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      completed = false;
+      LOG.warn(
+          "[TaskWorkflowHandler] Interrupted while waiting for Flowable runtime task '{}'", taskId);
+    }
+    return completed;
   }
 
   private Task persistWorkflowAssignees(
@@ -348,8 +410,11 @@ public class TaskWorkflowHandler {
       addResolutionComment(task, taskRepository, newValue, user);
     }
 
-    // Only positive resolutions should mutate the target entity.
-    if (approved && task.getAbout() != null) {
+    // A memory conflict review decides on rejection too, and a refused decision must fail the
+    // resolution. Other types mutate the target entity only on positive resolutions.
+    if (MemoryConflictResolution.decides(task)) {
+      MemoryConflictResolution.decide(task, resolutionType, comment, user, resolvedPayload);
+    } else if (approved && task.getAbout() != null) {
       applyEntityChanges(task, approved, newValue, resolvedPayload, user);
     } else {
       LOG.info(
@@ -513,7 +578,7 @@ public class TaskWorkflowHandler {
     }
 
     try {
-      EntityInterface entity = Entity.getEntity(aboutRef, "*", Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(aboutRef, "*", Include.ALL);
       EntityRepository<?> repository = Entity.getEntityRepository(aboutRef.getType());
 
       List<TaskExecutionAction> actions =
@@ -538,7 +603,7 @@ public class TaskWorkflowHandler {
   private void executeConfiguredActions(
       List<TaskExecutionAction> actions,
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -563,7 +628,7 @@ public class TaskWorkflowHandler {
 
   private void applyDescriptionAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String newValue,
@@ -621,7 +686,7 @@ public class TaskWorkflowHandler {
 
   private void applyMergeTagsAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String newValue,
@@ -681,13 +746,21 @@ public class TaskWorkflowHandler {
   }
 
   private void patchEntityTags(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       List<TagLabel> tagsToAdd,
       List<TagLabel> tagsToRemove) {
+    patchEntityTags(entity, repository, user, mergeTags(entity.getTags(), tagsToAdd, tagsToRemove));
+  }
+
+  private void patchEntityTags(
+      EntityInterface<?> entity,
+      EntityRepository<?> repository,
+      String user,
+      List<TagLabel> updatedTags) {
     String originalJson = JsonUtils.pojoToJson(entity);
-    entity.setTags(mergeTags(entity.getTags(), tagsToAdd, tagsToRemove));
+    entity.setTags(updatedTags);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
     if (patch != null && !patch.toJsonArray().isEmpty()) {
       PatchResponse<?> response = repository.patch(null, entity.getId(), user, patch, null, null);
@@ -697,7 +770,7 @@ public class TaskWorkflowHandler {
 
   @SuppressWarnings("unchecked")
   private boolean patchFieldTags(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String fieldPath,
@@ -744,7 +817,7 @@ public class TaskWorkflowHandler {
       return;
     }
     Object patchedEntity = response.entity();
-    if (!(patchedEntity instanceof EntityInterface entityInterface)) {
+    if (!(patchedEntity instanceof EntityInterface<?> entityInterface)) {
       return;
     }
     try {
@@ -782,7 +855,7 @@ public class TaskWorkflowHandler {
     return merged;
   }
 
-  private String resolveTagTargetFqn(EntityInterface entity, String fieldPath) {
+  private String resolveTagTargetFqn(EntityInterface<?> entity, String fieldPath) {
     if (fieldPath == null || fieldPath.isEmpty() || "tags".equals(fieldPath)) {
       return entity.getFullyQualifiedName();
     }
@@ -875,7 +948,7 @@ public class TaskWorkflowHandler {
 
   private void applyReplaceOwnersAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -912,7 +985,7 @@ public class TaskWorkflowHandler {
 
   private void applyApplyTierAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -929,9 +1002,9 @@ public class TaskWorkflowHandler {
         return;
       }
 
-      String targetFqn = entity.getFullyQualifiedName();
-      repository.applyTags(List.of(newTier), targetFqn);
-      RdfUpdater.updateEntity(entity);
+      List<TagLabel> updatedTags =
+          TagLabelUtil.mergeTagsWithIncomingPrecedence(entity.getTags(), List.of(newTier));
+      patchEntityTags(entity, repository, user, updatedTags);
       LOG.info(
           "[TaskWorkflowHandler] Applied TierUpdate for entity '{}': tier={}",
           entity.getName(),
@@ -943,7 +1016,7 @@ public class TaskWorkflowHandler {
 
   private void applyReplaceDomainsAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -979,7 +1052,11 @@ public class TaskWorkflowHandler {
   }
 
   private void applyPatchEntityFieldAction(
-      Task task, EntityInterface entity, String user, Object payload, TaskExecutionAction action) {
+      Task task,
+      EntityInterface<?> entity,
+      String user,
+      Object payload,
+      TaskExecutionAction action) {
     if (action.entityField() == null) {
       LOG.warn(
           "[TaskWorkflowHandler] Missing entity field binding for patchEntityField action on task '{}'",
@@ -997,7 +1074,7 @@ public class TaskWorkflowHandler {
           entity.getEntityReference().getType(),
           user,
           action.entityField(),
-          value == null ? null : String.valueOf(value),
+          value == null || value instanceof String ? (String) value : JsonUtils.pojoToJson(value),
           true,
           WorkflowEventConsumer.GOVERNANCE_BOT);
     } catch (Exception e) {
@@ -1030,7 +1107,7 @@ public class TaskWorkflowHandler {
   private void applySuggestion(
       Task task,
       Object payload,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user) {
     if (payload == null) return;
@@ -1100,7 +1177,7 @@ public class TaskWorkflowHandler {
   }
 
   private void applyEntityLevelTags(
-      EntityInterface entity, EntityRepository<?> repository, String user, List<TagLabel> tags) {
+      EntityInterface<?> entity, EntityRepository<?> repository, String user, List<TagLabel> tags) {
     String originalJson = JsonUtils.pojoToJson(entity);
     List<TagLabel> mergedTags =
         org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence(

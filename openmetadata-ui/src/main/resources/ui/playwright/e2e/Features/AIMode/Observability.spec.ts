@@ -14,7 +14,12 @@
 import { expect, test } from '@playwright/test';
 import { AlertClass } from '../../../support/entity/AlertClass';
 import { TableClass } from '../../../support/entity/TableClass';
-import { getApiContext, toastNotification, uuid } from '../../../utils/common';
+import {
+  getApiContext,
+  selectOptionWithRetry,
+  toastNotification,
+  uuid,
+} from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { enableAiAppMode, redirectToAiModeHomePage } from '../../Utils/appMode';
 
@@ -34,6 +39,7 @@ test.describe('AI mode Observability', () => {
     // Wait for React to mount and process the <Navigate> redirect
     await page.waitForURL('**/observability/data-quality**', {
       timeout: 15000,
+      waitUntil: 'domcontentloaded',
     });
 
     await expect(page).toHaveURL(/\/observability\/data-quality/);
@@ -71,8 +77,10 @@ test.describe('AI mode Observability', () => {
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('ask-sidebar')).toBeVisible();
-        // eslint-disable-next-line om-playwright/no-positional-locator -- the module label also renders in the AI sidebar nav, so the page body copy is the second match; this only asserts the page painted, not which node
-        await expect(page.getByText(expectedText).first()).toBeVisible();
+
+        await expect(
+          page.getByText(expectedText).filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     }
   });
@@ -128,9 +136,13 @@ test.describe('AI mode Observability', () => {
           .locator('input')
           .fill(testDefinitionName);
 
-        // Entity type is a react-aria Select: click the field, pick the option.
-        await page.locator('[id="root/entityType"]').click();
-        await page.getByRole('option', { exact: true, name: 'TABLE' }).click();
+        // Entity type is a react-aria Select below the fold of the modal body. A bare click
+        // auto-scrolls it into view, and that scroll event lands after the listbox opens, so
+        // react-aria closes the popover on scroll. The helper scrolls and settles first.
+        await selectOptionWithRetry(
+          page.locator('[id="root/entityType"]'),
+          page.getByRole('option', { exact: true, name: 'TABLE' })
+        );
 
         // supportedDataTypes is required while the default OpenMetadata
         // platform is selected. Select two values to guard its multi-select
@@ -462,8 +474,9 @@ test.describe('AI mode Observability', () => {
     });
     await waitForAllLoadersToDisappear(page);
 
-    // eslint-disable-next-line om-playwright/no-positional-locator -- the label also renders in the AI sidebar nav; this only asserts the alerts page painted
-    await expect(page.getByText('Observability Alert').first()).toBeVisible();
+    await expect(
+      page.getByText('Observability Alert').filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(page.getByTestId('breadcrumb')).toBeVisible();
     await expect(page.getByTestId('breadcrumb').getByLabel('Home')).toHaveCount(
       0

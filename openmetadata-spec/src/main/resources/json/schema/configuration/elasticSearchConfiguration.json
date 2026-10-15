@@ -64,6 +64,11 @@
       "type": "integer",
       "default": 60
     },
+    "requestCompressionEnabled": {
+      "description": "Enable gzip compression for HTTP request bodies sent to Elasticsearch.",
+      "type": "boolean",
+      "default": true
+    },
     "keepAliveTimeoutSecs": {
       "description": "Keep Alive Timeout in Seconds",
       "type": "integer"

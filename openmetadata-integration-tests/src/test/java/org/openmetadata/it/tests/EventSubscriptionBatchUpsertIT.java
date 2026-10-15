@@ -14,14 +14,17 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
+import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO.FailedEventRow;
 
 /**
  * Regression test for {@code EventSubscriptionDAO.batchUpsertSuccessfulChangeEvents}.
@@ -82,5 +85,36 @@ public class EventSubscriptionBatchUpsertIT {
     } finally {
       dao().deleteSuccessfulChangeEventBySubscriptionId(subscriptionId);
     }
+  }
+
+  // An alert's failure rows go in one batch. A key that appears twice keeps its last row, as
+  // writing them one after another would, and Postgres does not reject the batch.
+  @Test
+  void failureRowsInOneBatchKeepTheLastPerKey() {
+    String alertId = UUID.randomUUID().toString();
+    long timestamp = System.currentTimeMillis();
+    try {
+      assertDoesNotThrow(
+          () ->
+              dao()
+                  .batchUpsertFailedEvents(
+                      alertId,
+                      List.of(
+                          failure("failedEvent-a", "first", timestamp),
+                          failure("failedEvent-b", "other", timestamp),
+                          failure("failedEvent-a", "last", timestamp))));
+      List<FailedEventResponse> rows =
+          Entity.getCollectionDAO().changeEventDAO().listFailedEventsById(alertId, 10, 0);
+      assertEquals(2, rows.size());
+      assertTrue(rows.stream().anyMatch(row -> "last".equals(row.getReason())));
+      assertTrue(rows.stream().noneMatch(row -> "first".equals(row.getReason())));
+    } finally {
+      dao().deleteFailedRecordsBySubscriptionId(alertId);
+    }
+  }
+
+  private static FailedEventRow failure(String key, String reason, long timestamp) {
+    return new FailedEventRow(
+        key, "{\"reason\":\"" + reason + "\",\"timestamp\":" + timestamp + "}", "SUBSCRIBER");
   }
 }

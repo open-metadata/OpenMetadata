@@ -1,6 +1,7 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.pipeline.PrefectConnection;
 import org.openmetadata.schema.services.connections.pipeline.prefect.CloudAuth;
 import org.openmetadata.schema.services.connections.pipeline.prefect.ServerAuth;
@@ -14,6 +15,8 @@ public class PrefectConnectionClassConverter extends ClassConverter {
   private static final List<Class<?>> AUTH_TYPE_CLASSES =
       List.of(CloudAuth.class, ServerAuth.class);
 
+  private static final List<Class<?>> SSL_SOURCE_CLASSES = List.of(ValidateSSLClientConfig.class);
+
   public PrefectConnectionClassConverter() {
     super(PrefectConnection.class);
   }
@@ -25,6 +28,8 @@ public class PrefectConnectionClassConverter extends ClassConverter {
 
     tryToConvert(prefectConnection.getAuthType(), AUTH_TYPE_CLASSES)
         .ifPresent(prefectConnection::setAuthType);
+
+    convertProperty(prefectConnection, "sslConfig", SSL_SOURCE_CLASSES);
 
     return prefectConnection;
   }

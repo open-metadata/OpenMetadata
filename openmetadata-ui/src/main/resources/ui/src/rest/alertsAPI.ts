@@ -14,6 +14,8 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { AlertCapabilities } from '../generated/events/api/alertCapabilities';
+import { AlertCapabilitiesRequest } from '../generated/events/api/alertCapabilitiesRequest';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
 import { Destination } from '../generated/events/api/testEventSubscriptionDestination';
 import {
@@ -39,6 +41,7 @@ interface ListAlertsRequestParams {
   after?: string;
   include?: string;
   limit?: number;
+  fields?: string;
 }
 
 export const getAlertsFromId = async (
@@ -60,7 +63,7 @@ export const getAlertsFromId = async (
 
 export const getAlertsFromName = async (
   name: string,
-  params?: Pick<ListAlertsRequestParams, 'include'>
+  params?: Pick<ListAlertsRequestParams, 'include' | 'fields'>
 ) => {
   const response = await axiosClient.get<EventSubscription>(
     `${BASE_URL}/name/${getEncodedFqn(name)}`,
@@ -120,6 +123,20 @@ export const deleteAlert = async (id: string) => {
 
 export const getFilterFunctions = async () => {
   const response = await axiosClient.get<Function[]>(`${BASE_URL}/functions`);
+
+  return response.data;
+};
+
+/**
+ * What a selection of sources supports.
+ */
+export const getAlertCapabilities = async (
+  request: AlertCapabilitiesRequest
+) => {
+  const response = await axiosClient.post<AlertCapabilities>(
+    `${BASE_URL}/capabilities`,
+    request
+  );
 
   return response.data;
 };
