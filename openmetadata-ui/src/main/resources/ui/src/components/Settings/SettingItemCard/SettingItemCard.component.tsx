@@ -45,7 +45,11 @@ const SettingItemCard = ({
       onClick={handleOnClick}>
       <Card.Content className="tw:flex tw:items-center tw:gap-4">
         <div className="setting-card-icon">
-          <SettingIcon className="tw:size-[90px] tw:shrink-0" />
+          {/* antd's <Icon> wrapper carried `vertical-align: -0.125em` from
+              `.anticon`. A bare <svg> is baseline-aligned inline, which makes
+              the icon box 2px taller and shifts every settings card down the
+              page, so keep that alignment here. */}
+          <SettingIcon className="tw:size-[90px] tw:shrink-0 tw:align-[-0.125em]" />
           {Boolean(data?.isBeta) && (
             <Badge className="service-beta-tag" color="brand" size="sm">
               {t('label.beta')}
