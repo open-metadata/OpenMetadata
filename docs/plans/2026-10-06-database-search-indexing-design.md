@@ -1211,7 +1211,7 @@ Search:
   missing one, or one the cluster auto-created on a write, is confirmed again after a minute, then
   the templates are recreated and a forced rebuild runs for those types only.
 
-RDF (`RdfRepairJob`,
+RDF ([`RdfRepairJob`](../../openmetadata-service/src/main/java/org/openmetadata/service/rdf/repair/RdfRepairJob.java),
 lock `RDF_REPAIR_LOCK` in `rdf_reindex_lock`):
 
 - **Projection check.** A full RdfIndexApp rebuild starts when the projection was never built (no

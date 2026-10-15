@@ -20,7 +20,8 @@ wrong for up to a week.
 - The RDF repair runs on the same schedule as the search repair (`ScheduledRepairJob`: every 15
   minutes, one server at a time), holding `RDF_REPAIR_LOCK` in `rdf_reindex_lock`, with its window
   in `projection_repair_state`. It waits while RDF is off or unreachable, while an RDF rebuild runs,
-  and while the oldest queued live write is younger than a minute.
+  and while the oldest queued live write has waited more than a minute (`SETTLE`): entities still
+  queued would look stale and be queued twice.
 - A pass refreshes, through the live-write queue, every entity whose row changed after its
   projection's `dct:modified`, or that has no projection. Once a day it removes projected entities
   whose rows are gone, listing a type only when the store holds more of its entities than the table

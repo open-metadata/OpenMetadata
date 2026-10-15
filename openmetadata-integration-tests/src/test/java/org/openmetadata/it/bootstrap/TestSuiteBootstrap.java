@@ -285,7 +285,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
             patch);
   }
 
-  /** Leaves a wedged lane a thread dump and the database's lock picture to be diagnosed from. */
   /**
    * Builds the RDF projection before any test runs. On a fresh install the scheduled RDF repair
    * starts that build a few minutes after startup; here it would land in the middle of the tests
@@ -316,6 +315,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return status == AppRunRecord.Status.SUCCESS || status == AppRunRecord.Status.COMPLETED;
   }
 
+  /** Leaves a wedged lane a thread dump and the database's lock picture to be diagnosed from. */
   private static void startStallWatchdog() {
     STALL_WATCHDOG =
         ServerStallWatchdog.forEmbeddedServer(
