@@ -6,7 +6,6 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getU
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -18,12 +17,16 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.search.SearchDocumentBuilder;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 
 @Slf4j
 public class OpenSearchEntitiesProcessor
     implements Processor<List<BulkOperation>, ResultList<? extends EntityInterface<?>>> {
+  private static final SearchDocumentBuilder DOCUMENT_BUILDER =
+      new SearchDocumentBuilder(Entity::buildSearchIndex);
+
   private final StepStats stats = new StepStats();
 
   public OpenSearchEntitiesProcessor(int total) {
@@ -83,10 +86,7 @@ public class OpenSearchEntitiesProcessor
   public static BulkOperation getUpdateOperation(String entityType, EntityInterface<?> entity) {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
     String indexName = indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
-    String doc =
-        JsonUtils.pojoToJson(
-            Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity))
-                .buildSearchIndexDoc());
+    String doc = JsonUtils.pojoToJson(DOCUMENT_BUILDER.build(entityType, entity));
 
     return BulkOperation.of(
         b ->

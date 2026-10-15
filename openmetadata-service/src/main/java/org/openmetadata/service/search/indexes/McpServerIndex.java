@@ -4,7 +4,7 @@ import java.util.Map;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.service.Entity;
 
-public class McpServerIndex implements TaggableIndex, LineageIndex {
+public class McpServerIndex implements DataAssetIndex {
   final McpServer mcpServer;
 
   public McpServerIndex(McpServer mcpServer) {

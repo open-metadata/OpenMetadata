@@ -5,7 +5,7 @@ import java.util.Set;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.service.Entity;
 
-public record APICollectionIndex(APICollection apiCollection) implements TaggableIndex {
+public record APICollectionIndex(APICollection apiCollection) implements DataAssetIndex {
 
   @Override
   public Object getEntity() {

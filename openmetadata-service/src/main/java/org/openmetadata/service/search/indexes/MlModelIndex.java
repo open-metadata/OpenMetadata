@@ -1,6 +1,9 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.service.Entity;
 
@@ -24,6 +27,13 @@ public class MlModelIndex implements DataAssetIndex {
   @Override
   public Object getIndexServiceType() {
     return mlModel.getServiceType();
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    final Set<String> fields = new HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    fields.add("usageSummary");
+    return Collections.unmodifiableSet(fields);
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {

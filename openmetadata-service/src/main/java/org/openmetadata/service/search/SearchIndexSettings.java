@@ -45,6 +45,7 @@ public final class SearchIndexSettings {
   private static final String LIMIT = "limit";
   private static final String TYPE = "type";
   private static final String PROPERTIES = "properties";
+  private static final String MAPPINGS = "mappings";
   private static final String FIELDS = "fields";
   private static final String IGNORE_ABOVE = "ignore_above";
   private static final String IGNORE_MALFORMED = "ignore_malformed";
@@ -66,6 +67,28 @@ public final class SearchIndexSettings {
           "boolean");
 
   private SearchIndexSettings() {}
+
+  /**
+   * The mapping an index is built from: the bundled one, hardened, with the read time every
+   * guarded write stamps declared up front. Declared, its type and the index's field count do not
+   * depend on which write happened to reach the index first.
+   */
+  public static String forIndexCreation(String indexMappingContent, SearchFieldLimits limits) {
+    return declareSourceReadAt(harden(indexMappingContent, limits));
+  }
+
+  private static String declareSourceReadAt(String content) {
+    String result = content;
+    if (content != null && !content.isEmpty()) {
+      ObjectNode root = (ObjectNode) JsonUtils.readTree(content);
+      if (root.path(MAPPINGS).get(PROPERTIES) instanceof ObjectNode properties
+          && !properties.has(SearchVersionGuard.SOURCE_READ_AT)) {
+        properties.putObject(SearchVersionGuard.SOURCE_READ_AT).put(TYPE, "long");
+        result = JsonUtils.pojoToJson(root);
+      }
+    }
+    return result;
+  }
 
   public static String harden(String indexMappingContent, SearchFieldLimits limits) {
     String result = indexMappingContent;
@@ -91,7 +114,7 @@ public final class SearchIndexSettings {
   }
 
   private static void hardenFields(ObjectNode root, SearchFieldLimits limits) {
-    JsonNode mappings = root.get("mappings");
+    JsonNode mappings = root.get(MAPPINGS);
     if (mappings instanceof ObjectNode mappingsNode
         && mappingsNode.get(PROPERTIES) instanceof ObjectNode properties) {
       hardenProperties(properties, limits);

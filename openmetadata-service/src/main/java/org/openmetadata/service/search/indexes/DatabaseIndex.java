@@ -5,7 +5,7 @@ import java.util.Set;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.service.Entity;
 
-public record DatabaseIndex(Database database) implements TaggableIndex {
+public record DatabaseIndex(Database database) implements TaggableIndex, ServiceBackedIndex {
 
   @Override
   public Object getEntity() {

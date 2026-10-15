@@ -16,7 +16,7 @@ import java.util.Map;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
 import org.openmetadata.service.Entity;
 
-public class AiGovernanceFrameworkIndex implements TaggableIndex {
+public class AiGovernanceFrameworkIndex implements TaggableIndex, LineageIndex {
   final AIGovernanceFramework framework;
 
   public AiGovernanceFrameworkIndex(AIGovernanceFramework framework) {

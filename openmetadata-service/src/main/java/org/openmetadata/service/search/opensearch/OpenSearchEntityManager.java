@@ -51,6 +51,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchDocumentBuilder;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchPropagationLimits;
@@ -92,6 +93,9 @@ import os.org.opensearch.client.opensearch.core.search.Hit;
  */
 @Slf4j
 public class OpenSearchEntityManager implements EntityManagementClient {
+  private static final SearchDocumentBuilder DOCUMENT_BUILDER =
+      new SearchDocumentBuilder(Entity::buildSearchIndex);
+
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
   private final OpenSearchAsyncClient asyncClient;
@@ -366,7 +370,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   }
 
   @Override
-  public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt)
+  public void softDeleteOrRestoreEntity(
+      String indexName, String docId, String scriptTxt, Map<String, Object> params)
       throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot soft delete/restore entity.");
@@ -390,7 +395,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                                 os.org.opensearch.client.opensearch._types
                                                     .BuiltinScriptLanguage.Painless))
                                     .source(scriptTxt)
-                                    .params(Map.of()))),
+                                    .params(convertToJsonDataMap(params)))),
         Map.class);
     LOG.info(
         "Successfully soft deleted/restored entity in OpenSearch for index: {}, docId: {}",
@@ -450,6 +455,16 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   @Override
   public void updateEntity(
       String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
+    updateEntity(indexName, docId, doc, scriptTxt, null);
+  }
+
+  @Override
+  public void updateEntity(
+      String indexName,
+      String docId,
+      Map<String, Object> doc,
+      String scriptTxt,
+      String entityType) {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot update entity.");
       return;
@@ -1600,10 +1615,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityRef.getType());
       String indexName = indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
 
-      String doc =
-          JsonUtils.pojoToJson(
-              Objects.requireNonNull(Entity.buildSearchIndex(entityRef.getType(), entity))
-                  .buildSearchIndexDoc());
+      String doc = JsonUtils.pojoToJson(DOCUMENT_BUILDER.build(entityRef.getType(), entity));
 
       operations.add(
           BulkOperation.of(

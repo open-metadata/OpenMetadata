@@ -139,6 +139,20 @@ public interface BulkSink {
   String RELATIONSHIP_REVISIONS_CONTEXT_KEY = "relationshipRevisions";
 
   /**
+   * Key whose {@code true} value makes the sink replace the relationship field of every test case
+   * and logical suite in the batch with its value at the entity's relationship revision, whatever
+   * the entity's last change was. A rebuild from the database writes this after the document.
+   */
+  String FENCED_RELATIONSHIPS_CONTEXT_KEY = "fencedRelationships";
+
+  /**
+   * Key for the epoch millis at which a batch bound for the live index was read. Its presence makes
+   * the sink write version-guarded upserts, so a document a live write refreshed after the read
+   * keeps the newer content.
+   */
+  String SOURCE_READ_AT_CONTEXT_KEY = "sourceReadAt";
+
+  /**
    * Key for passing a {@code Map<UUID, DocBuildContext>} through context data. Producers (the
    * reindex worker / retry worker / bulk update path) prepare per-entity doc-build context —
    * pre-fetched lineage today, additional batch-fetched fields in the future — and stuff it under

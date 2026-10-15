@@ -14,6 +14,8 @@ package org.openmetadata.service.search.scripts;
 
 import java.util.Collections;
 import java.util.Map;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.service.search.SearchVersionGuard;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
 
 /**
@@ -27,16 +29,45 @@ import org.openmetadata.service.search.capability.EntityIndexCapability;
  * Consumers that read {@code _source.deleted} as a boolean (the UI does) accept both forms today
  * but a stricter parser would not.
  */
-public record SoftDeleteScript(boolean deleted) implements IndexUpdateScript {
+public record SoftDeleteScript(boolean deleted, Double version, Long updatedAt, Long sourceReadAt)
+    implements IndexUpdateScript {
+
+  /** For descendants: their documents carry their own read times, so the write is not ordered. */
+  public SoftDeleteScript(boolean deleted) {
+    this(deleted, null, null, null);
+  }
+
+  /** The entity's own delete or restore, ordered against its other writes when it is prepared. */
+  public static SoftDeleteScript forEntity(boolean deleted, EntityInterface<?> entity) {
+    return forEntity(deleted, entity, System.currentTimeMillis());
+  }
+
+  public static SoftDeleteScript forEntity(
+      boolean deleted, EntityInterface<?> entity, long readAt) {
+    return new SoftDeleteScript(deleted, entity.getVersion(), entity.getUpdatedAt(), readAt);
+  }
 
   @Override
   public String painless() {
-    return "ctx._source.put('deleted', " + deleted + ")";
+    String update = "ctx._source.put('deleted', " + deleted + ")";
+    return isOrdered() ? SearchVersionGuard.guard(update) : update;
   }
 
   @Override
   public Map<String, Object> params() {
-    return Collections.emptyMap();
+    return isOrdered()
+        ? Map.of(
+            SearchVersionGuard.VERSION,
+            version,
+            SearchVersionGuard.UPDATED_AT,
+            updatedAt,
+            SearchVersionGuard.SOURCE_READ_AT,
+            sourceReadAt)
+        : Collections.emptyMap();
+  }
+
+  private boolean isOrdered() {
+    return version != null && updatedAt != null && sourceReadAt != null;
   }
 
   @Override

@@ -6,14 +6,12 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
-import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
@@ -54,12 +52,11 @@ import static org.openmetadata.service.search.SearchConstants.PARENT_ID;
 import static org.openmetadata.service.search.SearchConstants.SEARCH_SOURCE;
 import static org.openmetadata.service.search.SearchConstants.SERVICE_ID;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
-import static org.openmetadata.service.search.SearchConstants.TEST_SUITES;
+import static org.openmetadata.service.search.SearchDocumentUpdates.getEffectiveChangeDescription;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -142,7 +139,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
@@ -163,9 +159,7 @@ import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
-import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
-import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
@@ -251,116 +245,6 @@ public class SearchRepository {
     public void run() {
       esWrite.run();
     }
-  }
-
-  public record ScriptedPartialUpdate(
-      String script, Map<String, Object> parameters, boolean scriptedUpsert) {
-    public ScriptedPartialUpdate(String script, Map<String, Object> parameters) {
-      this(script, parameters, false);
-    }
-
-    /**
-     * Converts null document fields into explicit removals for the relationship-preserving
-     * scripted-upsert contract. Omitting a null parameter leaves the old value untouched in the
-     * existing search document.
-     */
-    public Map<String, Object> parametersForIndexing() {
-      if (!scriptedUpsert || parameters.values().stream().noneMatch(Objects::isNull)) {
-        return parameters;
-      }
-
-      Map<String, Object> normalizedParameters = new LinkedHashMap<>();
-      Set<String> fieldsToRemove = new TreeSet<>();
-      Object configuredRemovals = parameters.get("fieldsToRemove");
-      if (configuredRemovals instanceof Iterable<?> removals) {
-        for (Object field : removals) {
-          if (field != null) {
-            fieldsToRemove.add(field.toString());
-          }
-        }
-      }
-      parameters.forEach(
-          (field, value) -> {
-            if ("fieldsToRemove".equals(field)) {
-              return;
-            }
-            if (value == null) {
-              fieldsToRemove.add(field);
-            } else {
-              normalizedParameters.put(field, value);
-            }
-          });
-      if (!fieldsToRemove.isEmpty()) {
-        normalizedParameters.put("fieldsToRemove", List.copyOf(fieldsToRemove));
-      }
-      return normalizedParameters;
-    }
-  }
-
-  private record RelationshipRevisionSpec(
-      String relationshipField,
-      String revisionField,
-      String replacementScript,
-      String documentUpdateScript) {}
-
-  private static RelationshipRevisionSpec relationshipRevisionSpec(
-      String relationshipField, String revisionField) {
-    String replacementScript =
-        """
-        if (ctx._source.%2$s == null || params.%2$s >= ctx._source.%2$s) {
-          ctx._source.%1$s = params.%1$s;
-          ctx._source.%2$s = params.%2$s;
-        }
-        """
-            .formatted(relationshipField, revisionField);
-    String documentUpdateScript =
-        """
-        def preserveRelationship = ctx._source.containsKey('%1$s') || ctx._source.containsKey('%2$s');
-        for (k in params.keySet()) {
-          if (k != 'fieldsToRemove' && (!preserveRelationship || (k != '%1$s' && k != '%2$s'))) {
-            ctx._source.put(k, params.get(k));
-          }
-        }
-        if (params.containsKey('fieldsToRemove')) {
-          for (field in params.fieldsToRemove) {
-            if (!preserveRelationship || (field != '%1$s' && field != '%2$s')) {
-              ctx._source.remove(field);
-            }
-          }
-        }
-        """
-            .formatted(relationshipField, revisionField);
-    return new RelationshipRevisionSpec(
-        relationshipField, revisionField, replacementScript, documentUpdateScript);
-  }
-
-  private static RelationshipRevisionSpec relationshipRevisionSpec(EntityInterface<?> entity) {
-    if (entity == null || entity.getEntityReference() == null) {
-      return null;
-    }
-    String entityType = entity.getEntityReference().getType();
-    if (Entity.TEST_CASE.equals(entityType)) {
-      return TEST_CASE_RELATIONSHIP_REVISION;
-    }
-    if (Entity.TEST_SUITE.equals(entityType)
-        && entity instanceof TestSuite testSuite
-        && Boolean.FALSE.equals(testSuite.getBasic())) {
-      return TEST_SUITE_RELATIONSHIP_REVISION;
-    }
-    return null;
-  }
-
-  public static void applyRelationshipRevision(
-      EntityInterface<?> entity, Map<String, Object> document, Long relationshipRevision) {
-    if (relationshipRevision == null) {
-      return;
-    }
-    RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
-    if (revisionSpec == null) {
-      throw new IllegalArgumentException(
-          "Relationship revisions can only update test cases and logical test suites");
-    }
-    document.put(revisionSpec.revisionField(), relationshipRevision);
   }
 
   /**
@@ -474,6 +358,14 @@ public class SearchRepository {
 
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
+  @Getter
+  private final SearchDocumentBuilder documentBuilder =
+      new SearchDocumentBuilder((type, entity) -> searchIndexFactory.buildIndex(type, entity));
+
+  @Getter
+  private final SearchProjectionFields projectionFields =
+      new SearchProjectionFields(() -> searchIndexFactory, Entity::getOnlySupportedFields);
+
   private static final Set<String> SERVICE_ENTITY_SET =
       Set.of(
           Entity.DATABASE_SERVICE,
@@ -491,30 +383,6 @@ public class SearchRepository {
       Set.of(Entity.DATABASE_SERVICE, Entity.DATABASE, Entity.DATABASE_SCHEMA, Entity.TABLE);
 
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
-
-  /**
-   * Fields currently supported by {@link #getScriptWithParams(EntityInterface, Map, ChangeDescription)}.
-   *
-   * <p>When a non-versioned update touches any other field, we must fall back to full document
-   * indexing to avoid stale search documents.
-   */
-  private static final Set<String> PARTIAL_SCRIPT_SUPPORTED_FIELDS =
-      Set.of(
-          FIELD_DESCRIPTION,
-          FIELD_FOLLOWERS,
-          FIELD_USAGE_SUMMARY,
-          "extension",
-          "queryUsedIn",
-          "votes",
-          "pipelineStatus");
-
-  private static final String TESTS = "tests";
-  private static final String TEST_SUITES_REVISION = "testSuitesRevision";
-  private static final String TESTS_REVISION = "testsRevision";
-  private static final RelationshipRevisionSpec TEST_CASE_RELATIONSHIP_REVISION =
-      relationshipRevisionSpec(TEST_SUITES, TEST_SUITES_REVISION);
-  private static final RelationshipRevisionSpec TEST_SUITE_RELATIONSHIP_REVISION =
-      relationshipRevisionSpec(TESTS, TESTS_REVISION);
 
   @Getter private final ElasticSearchConfiguration searchConfiguration;
   @Getter private final int maxDBConnections;
@@ -1355,7 +1223,8 @@ public class SearchRepository {
                     indexMapping.getIndexMappingFile(), language.toLowerCase(Locale.ROOT)))) {
       if (in != null) {
         result =
-            SearchIndexSettings.harden(new String(in.readAllBytes()), SearchFieldLimits.active());
+            SearchIndexSettings.forIndexCreation(
+                new String(in.readAllBytes()), SearchFieldLimits.active());
       }
     } catch (Exception e) {
       LOG.error("Failed to read index Mapping file due to ", e);
@@ -1392,10 +1261,16 @@ public class SearchRepository {
       return;
     }
     try {
-      IndexMapping indexMapping = entityIndexMap.get(entityType);
-      SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
-      String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
-      searchClient.createEntity(getWriteIndexName(indexMapping), entityId, doc);
+      // Guarded like an update: a create queued before a newer write of the same entity, applied
+      // after it, must not put the older state back.
+      final SearchDocumentUpdate document =
+          SearchVersionGuard.apply(documentBuilder.prepareDocumentUpdate(entity, null), entity);
+      searchClient.updateEntity(
+          getWriteIndexName(entityIndexMap.get(entityType)),
+          entityId,
+          document.parametersForIndexing(),
+          document.script(),
+          entityType);
 
       if (Entity.TABLE.equals(entityType)) {
         indexTableColumns((Table) entity);
@@ -1466,8 +1341,7 @@ public class SearchRepository {
 
     for (Column column : flattenedColumns) {
       try {
-        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
-        String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
+        String doc = JsonUtils.pojoToJson(documentBuilder.buildColumn(column, table));
         String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
         docs.add(Collections.singletonMap(columnId, doc));
       } catch (Exception e) {
@@ -1733,8 +1607,7 @@ public class SearchRepository {
             if (!Entity.isSearchIndexable(entity)) {
               continue;
             }
-            SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
-            String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
+            String doc = JsonUtils.pojoToJson(documentBuilder.build(entityType, entity));
             docs.add(Collections.singletonMap(entity.getId().toString(), doc));
           } catch (Exception ie) {
             LOG.error(
@@ -1780,8 +1653,7 @@ public class SearchRepository {
       List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
       for (Column column : flattenedColumns) {
         try {
-          ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
-          String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
+          String doc = JsonUtils.pojoToJson(documentBuilder.buildColumn(column, table));
           String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
           allColumnDocs.add(Collections.singletonMap(columnId, doc));
 
@@ -1831,9 +1703,19 @@ public class SearchRepository {
       Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
       try {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
-        SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
-        String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
-        searchClient.createTimeSeriesEntity(getWriteIndexName(indexMapping), entityId, doc);
+        if (entity instanceof ReportData) {
+          // Report data indexes are built by the Data Insights app and carry no read time.
+          searchClient.createTimeSeriesEntity(
+              getWriteIndexName(indexMapping),
+              entityId,
+              JsonUtils.pojoToJson(documentBuilder.build(entityType, entity)));
+        } else {
+          writeTimeSeriesDocument(
+              getWriteIndexName(indexMapping),
+              entityId,
+              documentBuilder.build(entityType, entity),
+              entityType);
+        }
       } catch (Exception ie) {
         SearchIndexRetryQueue.enqueue(
             entityId,
@@ -1853,6 +1735,22 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * Writes a time-series document stamped with when its record was read, unless the stored one
+   * was read later, so a rebuild that read the record earlier cannot put back older content.
+   */
+  private void writeTimeSeriesDocument(
+      String index, String documentId, Map<String, Object> document, String entityType) {
+    Map<String, Object> stamped = new HashMap<>(document);
+    stamped.put(SearchVersionGuard.SOURCE_READ_AT, SearchVersionGuard.readTime());
+    searchClient.updateEntity(
+        index,
+        documentId,
+        stamped,
+        SearchVersionGuard.guardReadTime(DEFAULT_UPDATE_SCRIPT),
+        entityType);
+  }
+
   public void updateTimeSeriesEntity(EntityTimeSeriesInterface entityTimeSeries) {
     if (entityTimeSeries != null) {
       String entityType = entityTimeSeries.getEntityReference().getType();
@@ -1860,11 +1758,11 @@ public class SearchRepository {
       Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
       try {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
-        SearchIndex elasticSearchIndex =
-            searchIndexFactory.buildIndex(entityType, entityTimeSeries);
-        Map<String, Object> doc = elasticSearchIndex.buildSearchIndexDoc();
-        searchClient.updateEntity(
-            getWriteIndexName(indexMapping), entityId, doc, DEFAULT_UPDATE_SCRIPT);
+        writeTimeSeriesDocument(
+            getWriteIndexName(indexMapping),
+            entityId,
+            documentBuilder.build(entityType, entityTimeSeries),
+            entityType);
       } catch (RuntimeException e) {
         SearchIndexRetryQueue.enqueue(
             entityId,
@@ -1943,61 +1841,15 @@ public class SearchRepository {
 
     try {
       IndexMapping indexMapping = entityIndexMap.get(entityType);
-      String scriptTxt = DEFAULT_UPDATE_SCRIPT;
-      Map<String, Object> doc = new HashMap<>();
-
       ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
-
-      if (relationshipRevision != null) {
-        RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
-        if (revisionSpec == null) {
-          throw new IllegalArgumentException(
-              "Relationship revisions can only update test cases and logical test suites");
-        }
-        SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
-        doc =
-            new HashMap<>(
-                searchIndex.buildSearchIndexDoc(
-                    DocBuildContext.withRelationshipRevision(relationshipRevision)));
-        doc =
-            SearchIndexUtils.stripDocMapIfOversized(
-                doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
-        applyRelationshipRevision(entity, doc, relationshipRevision);
-        scriptTxt = revisionSpec.replacementScript();
-      } else {
-        boolean isNonVersionedUpdate =
-            changeDescription != null
-                && entity.getChangeDescription() != null
-                && Objects.equals(
-                    entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
-        ScriptedPartialUpdate partialUpdate =
-            buildScriptedPartialUpdate(entity, changeDescription, isNonVersionedUpdate);
-        if (partialUpdate != null) {
-          scriptTxt = partialUpdate.script();
-          doc = partialUpdate.parameters();
-        } else {
-          if (isNonVersionedUpdate && changeDescription != null) {
-            LOG.debug(
-                "Falling back to full document indexing for non-versioned update. entityType={}, entityId={}, changedFields={}",
-                entityType,
-                entityId,
-                getChangedFieldNames(changeDescription));
-          }
-          SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
-          doc = searchIndex.buildSearchIndexDoc();
-          doc =
-              SearchIndexUtils.stripDocMapIfOversized(
-                  doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
-          ScriptedPartialUpdate relationshipDocumentUpdate =
-              buildRelationshipDocumentUpdate(entity, doc);
-          if (relationshipDocumentUpdate != null) {
-            scriptTxt = relationshipDocumentUpdate.script();
-            doc = relationshipDocumentUpdate.parametersForIndexing();
-          }
-        }
-      }
-
-      searchClient.updateEntity(getWriteIndexName(indexMapping), entityId, doc, scriptTxt);
+      final SearchDocumentUpdate update =
+          SearchVersionGuard.apply(prepareLiveUpdate(entity, relationshipRevision), entity);
+      searchClient.updateEntity(
+          getWriteIndexName(indexMapping),
+          entityId,
+          update.parametersForIndexing(),
+          update.script(),
+          entityType);
 
       if (Entity.TABLE.equals(entityType)) {
         try {
@@ -2068,9 +1920,7 @@ public class SearchRepository {
       String indexName = routeToStagedIfActive(getIndexOrAliasName("pipeline_status_search_index"));
       List<Map<String, String>> docsAndIds = new ArrayList<>();
       for (PipelineStatus pipelineStatus : pipelineStatuses) {
-        PipelineExecutionIndex pipelineExecutionIndex =
-            new PipelineExecutionIndex(pipeline, pipelineStatus);
-        Map<String, Object> doc = pipelineExecutionIndex.buildSearchIndexDoc();
+        Map<String, Object> doc = documentBuilder.buildPipelineExecution(pipeline, pipelineStatus);
         String docId = PipelineExecutionIndex.getDocumentId(pipeline, pipelineStatus);
         String docJson = JsonUtils.pojoToJson(doc);
         docsAndIds.add(Map.of(docId, docJson));
@@ -2090,6 +1940,11 @@ public class SearchRepository {
     }
   }
 
+  private SearchDocumentUpdate prepareLiveUpdate(
+      final EntityInterface<?> entity, final Long relationshipRevision) {
+    return documentBuilder.prepareUpdate(entity, relationshipRevision);
+  }
+
   public void updateEntity(EntityReference entityReference) {
     if (deferSearchWrite(
         new DeferredSearchWrite(
@@ -2107,7 +1962,7 @@ public class SearchRepository {
     // set is the same one the reindex pipeline uses, so live updates and reindex stay
     // consistent and bounded.
     String fields =
-        String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
+        String.join(",", getProjectionFields().forEntityType(entityReference.getType()));
     EntityInterface<?> entity =
         entityRepository.get(
             null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
@@ -2180,7 +2035,7 @@ public class SearchRepository {
     for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
       final EntityRepository<?> entityRepository = Entity.getEntityRepository(entry.getKey());
       final String fieldNames =
-          String.join(",", searchIndexFactory.getReindexFieldsFor(entry.getKey()));
+          String.join(",", getProjectionFields().forEntityType(entry.getKey()));
       final EntityUtil.Fields fields = entityRepository.getOnlySupportedFields(fieldNames);
       final List<UUID> ids = entry.getValue();
       for (int start = 0; start < ids.size(); start += REFERENCE_REINDEX_BATCH_SIZE) {
@@ -2334,10 +2189,15 @@ public class SearchRepository {
         Map<String, Object> contextData = new HashMap<>();
         contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
         contextData.put(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY, true);
+        // Guarded like an in-place rebuild: a live write that read the row later keeps its content.
+        contextData.put(BulkSink.SOURCE_READ_AT_CONTEXT_KEY, SearchVersionGuard.readTime());
         if (!relationshipRevisions.isEmpty()) {
           contextData.put(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, relationshipRevisions);
         }
-        ReindexingUtil.populateDocBuildContext(contextData, entityType, typeEntities);
+        contextData.put(
+            BulkSink.DOC_BUILD_CONTEXT_KEY,
+            SearchDocumentContextLoader.forCatalog()
+                .load(entityType, typeEntities, relationshipRevisions));
         bulkWriteAttempted = true;
         bulkSink.write(typeEntities, contextData);
         bulkWriteReturned = true;
@@ -3735,11 +3595,11 @@ public class SearchRepository {
       return;
     }
     IndexMapping indexMapping = entityIndexMap.get(entityType);
-    SoftDeleteScript script = new SoftDeleteScript(delete);
+    SoftDeleteScript script = SoftDeleteScript.forEntity(delete, entity);
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
     try {
       searchClient.softDeleteOrRestoreEntity(
-          getWriteIndexName(indexMapping), entityId, script.painless());
+          getWriteIndexName(indexMapping), entityId, script.painless(), script.params());
       softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
       reindexQueriesForDomainSource(entityType, entity.getId(), entity.getFullyQualifiedName());
 
@@ -3955,191 +3815,6 @@ public class SearchRepository {
         targets,
         script.painless(),
         List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString())));
-  }
-
-  public String getScriptWithParams(
-      EntityInterface<?> entity,
-      Map<String, Object> fieldAddParams,
-      ChangeDescription changeDescription) {
-    List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
-    StringBuilder scriptTxt = new StringBuilder();
-    fieldAddParams.put("updatedAt", entity.getUpdatedAt());
-    scriptTxt.append("ctx._source.updatedAt=params.updatedAt;");
-    for (FieldChange fieldChange : fieldsAdded) {
-      if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
-        @SuppressWarnings("unchecked")
-        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
-        List<String> newFollowers = new ArrayList<>();
-        for (EntityReference follower : entityReferences) {
-          newFollowers.add(follower.getId().toString());
-        }
-        fieldAddParams.put(fieldChange.getName(), newFollowers);
-        scriptTxt.append("ctx._source.followers.addAll(params.followers);");
-      }
-      if (fieldChange.getName().equalsIgnoreCase("extension")) {
-        String entityType = entity.getEntityReference().getType();
-        List<Map<String, Object>> customPropertiesTyped =
-            SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType);
-        fieldAddParams.put("customPropertiesTyped", customPropertiesTyped);
-        fieldAddParams.put("extension", entity.getExtension());
-        scriptTxt.append("ctx._source.customPropertiesTyped = params.customPropertiesTyped;");
-        scriptTxt.append("ctx._source.extension = params.extension;");
-      }
-      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
-        fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
-        scriptTxt.append("ctx._source.description = params.description;");
-      }
-    }
-
-    for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
-      if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
-        @SuppressWarnings("unchecked")
-        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getOldValue();
-        for (EntityReference follower : entityReferences) {
-          fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
-        }
-        scriptTxt.append(
-            "ctx._source.followers.removeAll(Collections.singleton(params.followers));");
-      }
-      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
-        scriptTxt.append("ctx._source.description = null;");
-      }
-    }
-
-    for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
-      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
-        fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
-        scriptTxt.append("ctx._source.description = params.description;");
-      }
-      if (fieldChange.getName().equalsIgnoreCase(FIELD_USAGE_SUMMARY)) {
-        UsageDetails usageSummary = (UsageDetails) fieldChange.getNewValue();
-        fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
-        scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
-      }
-      if (entity.getEntityReference().getType().equals(QUERY)
-          && fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
-        fieldAddParams.put(
-            fieldChange.getName(),
-            JsonUtils.convertValue(
-                fieldChange.getNewValue(),
-                new TypeReference<List<LinkedHashMap<String, String>>>() {}));
-        fieldAddParams.put(FIELD_DOMAINS, buildEntityRefListWithDisplayName(entity.getDomains()));
-        scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
-        scriptTxt.append("ctx._source.domains = params.domains;");
-      }
-      if (fieldChange.getName().equalsIgnoreCase("votes")) {
-        Map<String, Object> doc = JsonUtils.getMap(entity);
-        fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
-        scriptTxt.append("ctx._source.votes = params.votes;");
-      }
-      if (fieldChange.getName().equalsIgnoreCase("pipelineStatus")) {
-        scriptTxt.append(
-            "if (ctx._source.containsKey('pipelineStatus')) { ctx._source.pipelineStatus = params.newPipelineStatus; } else { ctx._source['pipelineStatus'] = params.newPipelineStatus;}");
-        Map<String, Object> doc = JsonUtils.getMap(entity);
-        fieldAddParams.put("newPipelineStatus", doc.get("pipelineStatus"));
-      }
-      if (fieldChange.getName().equalsIgnoreCase("extension")) {
-        String entityType = entity.getEntityReference().getType();
-        List<Map<String, Object>> customPropertiesTyped =
-            SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType);
-        fieldAddParams.put("customPropertiesTyped", customPropertiesTyped);
-        fieldAddParams.put("extension", entity.getExtension());
-        scriptTxt.append("ctx._source.customPropertiesTyped = params.customPropertiesTyped;");
-        scriptTxt.append("ctx._source.extension = params.extension;");
-      }
-    }
-    return scriptTxt.toString();
-  }
-
-  public ScriptedPartialUpdate buildBulkScriptedPartialUpdate(EntityInterface<?> entity) {
-    return buildBulkScriptedPartialUpdate(entity, null);
-  }
-
-  public ScriptedPartialUpdate buildRelationshipDocumentUpdate(
-      EntityInterface<?> entity, Map<String, Object> document) {
-    RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
-    if (revisionSpec == null || document == null) {
-      return null;
-    }
-    return new ScriptedPartialUpdate(
-        revisionSpec.documentUpdateScript(), new HashMap<>(document), true);
-  }
-
-  public ScriptedPartialUpdate buildBulkScriptedPartialUpdate(
-      EntityInterface<?> entity, Long relationshipRevision) {
-    RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
-    if (revisionSpec == null || relationshipRevision == null) {
-      return null;
-    }
-    ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
-    if (changeDescription != null) {
-      if (!Set.of(revisionSpec.relationshipField()).equals(getChangedFieldNames(changeDescription))
-          || !hasRelationshipReplacement(changeDescription, revisionSpec.relationshipField())) {
-        return null;
-      }
-      boolean isNonVersionedUpdate =
-          entity.getChangeDescription() != null
-              && Objects.equals(
-                  entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
-      if (!isNonVersionedUpdate) {
-        return null;
-      }
-    }
-    Map<String, Object> parameters = new HashMap<>();
-    Object relationships = JsonUtils.getMap(entity).get(revisionSpec.relationshipField());
-    parameters.put(
-        revisionSpec.relationshipField(), relationships == null ? List.of() : relationships);
-    parameters.put(revisionSpec.revisionField(), relationshipRevision);
-    return new ScriptedPartialUpdate(revisionSpec.replacementScript(), parameters);
-  }
-
-  private ScriptedPartialUpdate buildScriptedPartialUpdate(
-      EntityInterface<?> entity,
-      ChangeDescription changeDescription,
-      boolean isNonVersionedUpdate) {
-    if (!isNonVersionedUpdate || !canUseScriptedPartialUpdate(changeDescription)) {
-      return null;
-    }
-    Map<String, Object> parameters = new HashMap<>();
-    String script = getScriptWithParams(entity, parameters, changeDescription);
-    return new ScriptedPartialUpdate(script, parameters);
-  }
-
-  private ChangeDescription getEffectiveChangeDescription(EntityInterface<?> entity) {
-    ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
-    return !isNullOrEmptyChangeDescription(incrementalChangeDescription)
-        ? incrementalChangeDescription
-        : entity.getChangeDescription();
-  }
-
-  private boolean canUseScriptedPartialUpdate(ChangeDescription changeDescription) {
-    Set<String> changedFieldNames = getChangedFieldNames(changeDescription);
-    return !changedFieldNames.isEmpty()
-        && changedFieldNames.stream().allMatch(PARTIAL_SCRIPT_SUPPORTED_FIELDS::contains)
-        && !hasRelationshipReplacement(changeDescription, TEST_SUITES)
-        && !hasRelationshipReplacement(changeDescription, TESTS);
-  }
-
-  private boolean hasRelationshipReplacement(
-      ChangeDescription changeDescription, String relationshipField) {
-    return changeDescription != null
-        && listOrEmpty(changeDescription.getFieldsUpdated()).stream()
-            .anyMatch(fieldChange -> relationshipField.equals(fieldChange.getName()));
-  }
-
-  private Set<String> getChangedFieldNames(ChangeDescription changeDescription) {
-    if (changeDescription == null) {
-      return Collections.emptySet();
-    }
-
-    Set<String> changedFields = new HashSet<>();
-    listOrEmpty(changeDescription.getFieldsAdded())
-        .forEach(fieldChange -> changedFields.add(fieldChange.getName()));
-    listOrEmpty(changeDescription.getFieldsUpdated())
-        .forEach(fieldChange -> changedFields.add(fieldChange.getName()));
-    listOrEmpty(changeDescription.getFieldsDeleted())
-        .forEach(fieldChange -> changedFields.add(fieldChange.getName()));
-    return changedFields;
   }
 
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {

@@ -38,12 +38,12 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableConstraint.RelationshipType;
-import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.SearchDocumentFields;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.slf4j.Logger;
@@ -199,24 +199,10 @@ public interface SearchIndex {
         entity.getEntityStatus() != null
             ? entity.getEntityStatus().toString()
             : org.openmetadata.schema.type.EntityStatus.UNPROCESSED.value());
-    if (entity.getVotes() != null) {
-      int upVotes = entity.getVotes().getUpVotes() != null ? entity.getVotes().getUpVotes() : 0;
-      int downVotes =
-          entity.getVotes().getDownVotes() != null ? entity.getVotes().getDownVotes() : 0;
-      doc.put("totalVotes", Math.max(upVotes - downVotes, 0));
-      Map<String, Object> votesMap = new HashMap<>();
-      votesMap.put("upVotes", upVotes);
-      votesMap.put("downVotes", downVotes);
-      doc.put("votes", votesMap);
-    } else {
-      doc.put("totalVotes", 0);
-    }
-
-    doc.put("descriptionStatus", getDescriptionStatus(entity));
-
-    Map<String, ChangeSummary> changeSummaryMap = SearchIndexUtils.getChangeSummaryMap(entity);
+    SearchDocumentFields.populateVotes(doc, entity.getVotes());
+    doc.put(SearchDocumentFields.DESCRIPTION_STATUS, getDescriptionStatus(entity));
     doc.put(
-        "descriptionSources", SearchIndexUtils.processDescriptionSources(entity, changeSummaryMap));
+        SearchDocumentFields.DESCRIPTION_SOURCES, SearchDocumentFields.descriptionSources(entity));
     // tagSources/tierSources only for entities that support tags (TaggableIndex sets tier)
     if (this instanceof TaggableIndex) {
       SearchIndexUtils.TagAndTierSources tagAndTierSources =
@@ -272,7 +258,7 @@ public interface SearchIndex {
   }
 
   default String getDescriptionStatus(EntityInterface<?> entity) {
-    return nullOrEmpty(entity.getDescription()) ? "INCOMPLETE" : "COMPLETE";
+    return SearchDocumentFields.descriptionStatus(entity);
   }
 
   static List<EsLineageData> getLineageData(EntityReference entity) {
