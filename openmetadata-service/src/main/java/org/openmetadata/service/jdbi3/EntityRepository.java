@@ -65,6 +65,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.populateTagLabel;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
@@ -95,12 +96,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.TokenBuffer;
-import com.github.benmanes.caffeine.cache.CacheLoader;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.cache.Weigher;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.networknt.schema.Error;
 import com.networknt.schema.Schema;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -109,6 +111,7 @@ import io.micrometer.core.instrument.Timer;
 import jakarta.json.JsonPatch;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -158,6 +161,7 @@ import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -176,6 +180,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.CreationAudited;
@@ -234,6 +239,7 @@ import org.openmetadata.service.cache.CachedRelationshipDao;
 import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.cache.NotFoundCache;
 import org.openmetadata.service.config.CacheConfiguration;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -241,8 +247,12 @@ import org.openmetadata.service.exception.EntityLockedException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.EntityLifecycle;
+import org.openmetadata.service.governance.approval.ApprovalGate;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
+import org.openmetadata.service.governance.approval.ApprovedApplication;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
+import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.StageOwnership;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -350,10 +360,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private static final int STRING_OBJECT_OVERHEAD_BYTES = 40;
 
-  // A Caffeine load holds its hash bin for the whole Redis/DB read, and a write to any key in that
-  // bin waits for it. Pre-size the table so cold-start loads rarely share a bin.
-  private static final int ENTITY_CACHE_INITIAL_CAPACITY = 4_096;
-
   // Conservative upper-bound weight for a String: length() * 2 (UTF-16 worst-case) + 40 (header).
   // On Java 21 with compact strings, LATIN1 content uses fewer bytes, so this overestimates
   // slightly — which is intentional for memory capping. Zero allocation, single field read.
@@ -368,8 +374,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
 
   // Per-entity write-epoch counters. Writers increment; loaders capture at start and re-check
-  // at end. Mismatch means a write raced the load — loader throws LoaderRaceException so the
-  // cache skips its stale return value. Bounded so memory tracks the L1 working set.
+  // at end. Mismatch means a write raced the load — loader throws LoaderRaceException so Guava
+  // skips caching its stale return value. Bounded so memory tracks the L1 working set.
   private static final Cache<Pair<String, UUID>, AtomicLong> WRITE_EPOCH_BY_ID =
       CacheBuilder.newBuilder().maximumSize(200_000).expireAfterAccess(5, TimeUnit.MINUTES).build();
 
@@ -394,6 +400,31 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   @VisibleForTesting
   static long readEpochByName(String entityType, String fqn) {
     return readEpochByName(cacheNameKey(entityType, fqn));
+  }
+
+  /**
+   * Loads a cache miss without {@code cache.get(key)}: Guava runs the loader's Redis and database
+   * reads inside a per-entry {@code synchronized}, which on JDK 21 pins a virtual thread to its
+   * carrier. Writers bump the epoch before evicting, so re-checking it after the put drops a copy
+   * that raced a write. Failures come back wrapped, as {@code LoadingCache.get} throws them. See
+   * ADR:2026-10-14-cache-misses-that-do-io-load-outside-the-cache-lock.
+   */
+  @VisibleForTesting
+  static <K> String loadOutsideCacheLock(
+      Cache<K, String> cache, K key, CacheLoader<K, String> loader, ToLongFunction<K> epoch)
+      throws ExecutionException {
+    try {
+      long startEpoch = epoch.applyAsLong(key);
+      String json = loader.load(key);
+      cache.put(key, json);
+      if (epoch.applyAsLong(key) != startEpoch) {
+        cache.invalidate(key);
+        throw new LoaderRaceException("Concurrent write while caching %s".formatted(key));
+      }
+      return json;
+    } catch (Exception e) {
+      throw new ExecutionException(e);
+    }
   }
 
   private static void bumpWriteEpoch(String entityType, UUID id, String fqn) {
@@ -437,7 +468,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /**
    * Canonical {@link #CACHE_WITH_NAME} key. User FQNs are lowercased at the DB layer
-   * ({@code UserDAO.findEntityByName}), so the L1 cache must use the same normalization —
+   * ({@code UserDAO.findEntityByName}), so the Guava cache must use the same normalization —
    * otherwise {@code Alice@x.com} and {@code alice@x.com} produce two split entries and
    * invalidations written against the lowercased canonical form miss the mixed-case entry,
    * serving stale data until TTL.
@@ -468,28 +499,26 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private static LoadingCache<Pair<String, String>, String> buildEntityNameCache(
       long maxWeightBytes, int ttlSeconds) {
-    return entityCacheBuilder(maxWeightBytes, ttlSeconds).build(new EntityLoaderWithName());
+    return CacheBuilder.newBuilder()
+        .maximumWeight(maxWeightBytes)
+        .weigher(
+            (Weigher<Pair<String, String>, String>)
+                (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
+        .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
+        .recordStats()
+        .build(new EntityLoaderWithName());
   }
 
   private static LoadingCache<Pair<String, UUID>, String> buildEntityIdCache(
       long maxWeightBytes, int ttlSeconds) {
-    return entityCacheBuilder(maxWeightBytes, ttlSeconds).build(new EntityLoaderWithId());
-  }
-
-  /**
-   * Caffeine, not Guava: Caffeine's {@code invalidate} waits for an in-flight load of the key and
-   * then discards what it loaded, whereas Guava's is a no-op for an entry that is still loading. A
-   * reader that loaded the pre-commit row could otherwise store it after the writer's post-commit
-   * eviction and serve it until {@link EntityCacheRepair} ran.
-   */
-  @VisibleForTesting
-  static Caffeine<Object, String> entityCacheBuilder(long maxWeightBytes, int ttlSeconds) {
-    return Caffeine.newBuilder()
-        .initialCapacity(ENTITY_CACHE_INITIAL_CAPACITY)
+    return CacheBuilder.newBuilder()
         .maximumWeight(maxWeightBytes)
-        .<Object, String>weigher((key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
+        .weigher(
+            (Weigher<Pair<String, UUID>, String>)
+                (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
         .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
-        .recordStats();
+        .recordStats()
+        .build(new EntityLoaderWithId());
   }
 
   private static final int DEFAULT_FIELD_FETCH_POOL_SIZE =
@@ -526,12 +555,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     setFieldFetchPoolSize(DEFAULT_FIELD_FETCH_POOL_SIZE);
   }
 
-  private static final Cache<String, Integer> COUNT_CACHE =
+  private static final LoadingCache<String, Integer> COUNT_CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(500)
           .expireAfterWrite(5, TimeUnit.MINUTES)
           .recordStats()
-          .build();
+          .build(
+              new CacheLoader<String, Integer>() {
+                @Override
+                public Integer load(String key) {
+                  throw new UnsupportedOperationException("Use get() method with a custom loader");
+                }
+              });
 
   private final String collectionPath;
   @Getter public final Class<T> entityClass;
@@ -1594,6 +1629,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   // An entity saved before it had a stage can take any stage of its lifecycle
+  /** Rejects (400) a stage change the type's lifecycle has no move for. */
+  public final void validateEntityStatusMove(String from, String to) {
+    if (supportsEntityStatus && !Objects.equals(from, to)) {
+      requireMoveInLifecycle(from, to);
+    }
+  }
+
   private void requireMoveInLifecycle(String from, String to) {
     if (from == null) {
       requireStageInLifecycle(to);
@@ -1944,64 +1986,81 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return entity;
     }
 
-    // Hot path. Check L1 cache FIRST — an L1 hit serves the entity with zero Redis
+    // Hot path. Check L1 Guava cache FIRST — an L1 hit serves the entity with zero Redis
     // traffic. Only on L1 miss do we consult the negative cache (one Redis GET) to avoid
     // the much more expensive cache-loader + Redis-L2 + DB round trip. The earlier shape
     // — check NotFoundCache unconditionally — was a hot-path regression for every L1 hit.
-    ImmutablePair<String, UUID> cacheKey = new ImmutablePair<>(entityType, id);
-    String cachedJson = CACHE_WITH_ID.getIfPresent(cacheKey);
-    if (cachedJson == null) {
-      // L1 miss. Consult the negative cache so we can short-circuit before invoking the
-      // loader (which would do DB + optional Redis-L2 work).
-      if (include == NON_DELETED
+    try {
+      ImmutablePair<String, UUID> cacheKey = new ImmutablePair<>(entityType, id);
+      String cachedJson = CACHE_WITH_ID.getIfPresent(cacheKey);
+      if (cachedJson == null) {
+        // L1 miss. Consult the negative cache so we can short-circuit before invoking the
+        // loader (which would do DB + optional Redis-L2 work).
+        if (include == NON_DELETED
+            && notFoundCache != null
+            && notFoundCache.isMarkedNotFoundById(entityType, id)) {
+          throw new EntityNotFoundException(entityNotFound(entityType, id));
+        }
+        try (var ignored = phase("cacheGet")) {
+          cachedJson =
+              loadOutsideCacheLock(
+                  CACHE_WITH_ID,
+                  cacheKey,
+                  new EntityLoaderWithId(),
+                  EntityRepository::readEpochById);
+        }
+      } else if (include == NON_DELETED
           && notFoundCache != null
+          && readEpochById(cacheKey) != 0L
           && notFoundCache.isMarkedNotFoundById(entityType, id)) {
+        // Stale L1 from a racing loader after a delete — marker says gone, evict and 404.
+        // Epoch gate skips the Redis GET on keys no writer has touched.
+        CACHE_WITH_ID.invalidate(cacheKey);
         throw new EntityNotFoundException(entityNotFound(entityType, id));
       }
-      try (var ignored = phase("cacheGet")) {
-        cachedJson = CACHE_WITH_ID.get(cacheKey);
-      } catch (LoaderRaceException e) {
+      T entity;
+      try (var ignored = phase("cacheCopy")) {
+        entity = JsonUtils.readValue(cachedJson, entityClass);
+      }
+
+      // Validate the entity retrieved from cache
+      if (entity != null && entity.getId() == null) {
+        LOG.error(
+            "CRITICAL: Entity from cache has null ID! Type: {}, Expected ID: {}", entityType, id);
+        CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+        entity = dao.findEntityById(id, include);
+        if (entity == null) {
+          throw new EntityNotFoundException(entityNotFound(entityType, id));
+        }
+      }
+
+      if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
+          || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
+        throw new EntityNotFoundException(entityNotFound(entityType, id));
+      }
+      return entity;
+    } catch (ExecutionException | UncheckedExecutionException e) {
+      // The Guava loader can fail for several reasons; only the "entity truly doesn't exist"
+      // case is safe to negative-cache. Transient DB errors (JDBI timeout, connection reset)
+      // and structural errors (invalid-but-existing entity, JSON deserialization) would
+      // otherwise turn a brief blip into a 30s 404 storm, and would mask the real error from
+      // the caller. We only populate the negative cache on EntityNotFoundException; other
+      // causes are rethrown unchanged.
+      Throwable cause = e.getCause();
+      if (cause instanceof LoaderRaceException) {
         return find(id, include, false);
-      } catch (EntityNotFoundException notFound) {
-        // Only the loader's "entity truly doesn't exist" is safe to negative-cache. Transient DB
-        // errors (JDBI timeout, connection reset) and structural errors (invalid-but-existing
-        // entity, JSON deserialization) propagate unchanged: caching them would turn a brief
-        // blip into a 30s 404 storm and mask the real error from the caller.
+      }
+      if (cause instanceof EntityNotFoundException notFound) {
         if (include == NON_DELETED && notFoundCache != null) {
           notFoundCache.markNotFoundById(entityType, id);
         }
         throw notFound;
       }
-    } else if (include == NON_DELETED
-        && notFoundCache != null
-        && readEpochById(cacheKey) != 0L
-        && notFoundCache.isMarkedNotFoundById(entityType, id)) {
-      // Stale L1 from a racing loader after a delete — marker says gone, evict and 404.
-      // Epoch gate skips the Redis GET on keys no writer has touched.
-      CACHE_WITH_ID.invalidate(cacheKey);
-      throw new EntityNotFoundException(entityNotFound(entityType, id));
-    }
-    T entity;
-    try (var ignored = phase("cacheCopy")) {
-      entity = JsonUtils.readValue(cachedJson, entityClass);
-    }
-
-    // Validate the entity retrieved from cache
-    if (entity != null && entity.getId() == null) {
-      LOG.error(
-          "CRITICAL: Entity from cache has null ID! Type: {}, Expected ID: {}", entityType, id);
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
-      entity = dao.findEntityById(id, include);
-      if (entity == null) {
-        throw new EntityNotFoundException(entityNotFound(entityType, id));
+      if (cause instanceof RuntimeException re) {
+        throw re;
       }
+      throw new RuntimeException(cause != null ? cause : e);
     }
-
-    if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
-        || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
-      throw new EntityNotFoundException(entityNotFound(entityType, id));
-    }
-    return entity;
   }
 
   public final List<T> find(List<UUID> ids, Include include) {
@@ -2583,45 +2642,60 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return entity;
     }
 
-    // Hot path — L1 first, NotFoundCache only on L1 miss. Same shape as find(UUID,…).
-    Pair<String, String> cacheKey = cacheNameKey(entityType, fqn);
-    // cacheNameKey lowercases USER FQNs; use the canonical form on both marker reads and
-    // writes so mixed-case lookups observe markers set by canonical-form writes.
-    String canonicalFqn = cacheKey.getRight();
-    String cachedJson = CACHE_WITH_NAME.getIfPresent(cacheKey);
-    if (cachedJson == null) {
-      if (include == NON_DELETED
+    // Hot path — L1 Guava first, NotFoundCache only on L1 miss. Same shape as find(UUID,…).
+    try {
+      Pair<String, String> cacheKey = cacheNameKey(entityType, fqn);
+      // cacheNameKey lowercases USER FQNs; use the canonical form on both marker reads and
+      // writes so mixed-case lookups observe markers set by canonical-form writes.
+      String canonicalFqn = cacheKey.getRight();
+      String cachedJson = CACHE_WITH_NAME.getIfPresent(cacheKey);
+      if (cachedJson == null) {
+        if (include == NON_DELETED
+            && notFoundCache != null
+            && notFoundCache.isMarkedNotFoundByName(entityType, canonicalFqn)) {
+          throw new EntityNotFoundException(entityNotFound(entityType, fqn));
+        }
+        try (var ignored = phase("cacheGet")) {
+          cachedJson =
+              loadOutsideCacheLock(
+                  CACHE_WITH_NAME,
+                  cacheKey,
+                  new EntityLoaderWithName(),
+                  EntityRepository::readEpochByName);
+        }
+      } else if (include == NON_DELETED
           && notFoundCache != null
+          && readEpochByName(cacheKey) != 0L
           && notFoundCache.isMarkedNotFoundByName(entityType, canonicalFqn)) {
+        // Stale L1 from a racing loader after a delete — marker says gone, evict and 404.
+        CACHE_WITH_NAME.invalidate(cacheKey);
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
-      try (var ignored = phase("cacheGet")) {
-        cachedJson = CACHE_WITH_NAME.get(cacheKey);
-      } catch (LoaderRaceException e) {
+      T entity;
+      try (var ignored = phase("cacheCopy")) {
+        entity = JsonUtils.readValue(cachedJson, entityClass);
+      }
+      if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
+          || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
+        throw new EntityNotFoundException(entityNotFound(entityType, fqn));
+      }
+      return entity;
+    } catch (ExecutionException | UncheckedExecutionException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof LoaderRaceException) {
         return findByName(fqn, include, false);
-      } catch (EntityNotFoundException notFound) {
+      }
+      if (cause instanceof EntityNotFoundException notFound) {
         if (include == NON_DELETED && notFoundCache != null) {
-          notFoundCache.markNotFoundByName(entityType, canonicalFqn);
+          notFoundCache.markNotFoundByName(entityType, cacheNameKey(entityType, fqn).getRight());
         }
         throw notFound;
       }
-    } else if (include == NON_DELETED
-        && notFoundCache != null
-        && readEpochByName(cacheKey) != 0L
-        && notFoundCache.isMarkedNotFoundByName(entityType, canonicalFqn)) {
-      // Stale L1 from a racing loader after a delete — marker says gone, evict and 404.
-      CACHE_WITH_NAME.invalidate(cacheKey);
-      throw new EntityNotFoundException(entityNotFound(entityType, fqn));
+      if (cause instanceof RuntimeException re) {
+        throw re;
+      }
+      throw new RuntimeException(cause != null ? cause : e);
     }
-    T entity;
-    try (var ignored = phase("cacheCopy")) {
-      entity = JsonUtils.readValue(cachedJson, entityClass);
-    }
-    if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
-        || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
-      throw new EntityNotFoundException(entityNotFound(entityType, fqn));
-    }
-    return entity;
   }
 
   public List<T> findByNames(List<String> entityFQNs, Include include) {
@@ -3562,7 +3636,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     for (T entity : entities) {
       List<TagLabel> nonDerivedTags =
           listOrEmpty(entity.getTags()).stream()
-              .filter(t -> !t.getLabelType().equals(TagLabel.LabelType.DERIVED))
+              .filter(t -> !TagLabelUtil.isSystemGenerated(t))
               .toList();
       if (nonDerivedTags.isEmpty()) {
         continue;
@@ -3639,7 +3713,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * bulk {@code UPDATE ... WHERE fqnHash LIKE 'oldPrefix.%'} so downstream reads don't see the
    * stale (pre-rename) FQN on the children.
    *
-   * <p>Publishes pub/sub for each descendant so peer OM instances drop their L1 entries too.
+   * <p>Publishes pub/sub for each descendant so peer OM instances drop their Guava entries too.
    *
    * <p>Returns the enumerated {@code (id, oldFqn)} pairs so the caller can pass them to {@link
    * #finishInvalidateCacheForRenameCascade} once the rename-related DB statements have run —
@@ -3725,7 +3799,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   private static void dropDescendantCacheEntries(
       String entityType, List<EntityDAO.EntityIdFqnPair> affected) {
     // Rename cascades run inside the rename flush transaction. Route each descendant through
-    // invalidateCacheForEntity so the L1 eviction stays inline while the Redis-L2
+    // invalidateCacheForEntity so the Guava-L1 eviction stays inline (cheap) while the Redis-L2
     // round trip is deferred to the post-commit drain when a flush scope is open — never issued
     // while the pooled connection is held. The previous per-row pub/sub reason label was
     // informational only (remote listeners evict L1 regardless), so the unified path is equivalent.
@@ -3738,7 +3812,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * When a cache-deferral scope is open on the calling thread, {@link #invalidateCacheForEntity}
    * records the Redis-L2 invalidation key here instead of issuing the (blocking, syncCommands)
    * Redis round trip inline. The flush opens a scope before its DB transaction so no Redis call
-   * runs while a pooled connection is held — only the local L1 invalidate stays inline
+   * runs while a pooled connection is held — only the cheap local Guava-L1 invalidate stays inline
    * — then drains the de-duplicated keys after commit, on the request thread, preserving
    * read-your-write. {@code null} means "no scope active" and the Redis-L2 work runs inline.
    */
@@ -3823,13 +3897,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * DEL: evicted one entity at a time, a restored database read fresh while its schemas still served
    * their soft-deleted copies. The write epochs move before that DEL so a loader holding the
    * pre-commit row cannot write it back afterwards, and L1 is evicted after it because a reader in
-   * the window re-populated L1 from the stale Redis entry. The repair is re-armed from the commit:
-   * the one armed inside the transaction may already have fired.
+   * the window re-populated L1 from the stale Redis entry. They move again before the L1 eviction:
+   * a reader that took its epoch after the first move and fetched the stale entry before the DEL
+   * would otherwise pass its re-check after putting that entry into L1. The repair is re-armed
+   * from the commit: the one armed inside the transaction may already have fired.
    */
   private static void evictCommittedWrites(List<CacheInvalidationKey> writes) {
     writes.forEach(write -> bumpWriteEpoch(write.entityType, write.id, write.fqn));
     evictRedisEntityKeys(writes.stream().map(CacheInvalidationKey::toEntityKey).toList());
     for (CacheInvalidationKey write : writes) {
+      bumpWriteEpoch(write.entityType, write.id, write.fqn);
       evictLocalCopies(write.entityType, write.id, write.fqn);
       invalidateDerivedRedisL2(write.entityType, write.id);
       publishRefChange(write.entityType, write.id, write.fqn);
@@ -3849,7 +3926,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * {@link #invalidateCache(EntityInterface)} but doesn't require the full entity POJO — the
    * {@code (type, id, fqn)} triple is enough to drop every cached variant.
    *
-   * <p>The L1 eviction always runs inline. The Redis-L2 portion (base/by-name
+   * <p>The Guava-L1 eviction always runs inline (local, cheap). The Redis-L2 portion (base/by-name
    * hash, relationship, bundle, lineage, pub/sub) issues a blocking {@code syncCommands} round
    * trip, so when a deferral scope is active (a flush is holding a pooled DB connection) it is
    * recorded and replayed post-commit on the request thread instead — never inside the handle.
@@ -3859,7 +3936,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return;
     }
     bumpWriteEpoch(entityType, id, fqn);
-    // L1 eviction waits for any in-flight load before discarding its result.
+    // Guava L1 always cleared inline — local map eviction, not a network round trip.
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     EntityCacheRepair.scheduleRepair(entityType, id, fqn, null);
     if (fqn != null) {
@@ -4121,7 +4198,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /**
    * Invoked by {@link org.openmetadata.service.cache.CacheInvalidationPubSub} when another OM
-   * instance signals an entity change. Evicts this instance's per-process L1 caches so the next
+   * instance signals an entity change. Evicts this instance's per-process Guava caches so the next
    * read pulls fresh data. Does not touch Redis — the writer already invalidated shared keys
    * before publishing.
    */
@@ -4149,7 +4226,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   protected void invalidateCache(T entity) {
     try {
-      // L1 eviction stays inline. The Redis L2 round trip does not:
+      // Guava L1 is a local map eviction, so it stays inline. The Redis L2 round trip does not:
       // deferOrInvalidateRedisL2 holds it until the transaction commits when a scope is open.
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
@@ -4595,6 +4672,28 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     updated.setUpdatedAt(System.currentTimeMillis());
     // Always set impersonatedBy to clear it when null (regular user operations)
     updated.setImpersonatedBy(impersonatedBy);
+    // A PUT body carries a fresh id; the stored asset keeps its own, as EntityUpdater applies it.
+    updated.setId(original.getId());
+    Optional<StagedChange> staged =
+        ApprovalGate.admit(original, updated, updatedBy, impersonatedBy, Edit.put());
+    return staged
+        .map(change -> stagedPutResponse(uriInfo, original, change))
+        .orElseGet(
+            () -> putAndStore(uriInfo, original, updated, requireCurrentVersion, patchedFields));
+  }
+
+  private PutResponse<T> stagedPutResponse(UriInfo uriInfo, T original, StagedChange change) {
+    UUID requestId = ChangeRequestService.submit(change).getId();
+    return new PutResponse<>(Status.ACCEPTED, withHref(uriInfo, original), ENTITY_NO_CHANGE)
+        .withPendingChangeRequestId(requestId);
+  }
+
+  private PutResponse<T> putAndStore(
+      UriInfo uriInfo,
+      T original,
+      T updated,
+      boolean requireCurrentVersion,
+      Set<String> patchedFields) {
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       try (var ignored = phase("putRestoreEntity")) {
@@ -4643,6 +4742,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     updated.setUpdatedAt(System.currentTimeMillis());
     // Always set impersonatedBy to clear it when null (regular user operations)
     updated.setImpersonatedBy(impersonatedBy);
+    // A PUT body carries a fresh id; the stored asset keeps its own, as EntityUpdater applies it.
+    updated.setId(original.getId());
+    Optional<StagedChange> staged =
+        ApprovalGate.admit(original, updated, updatedBy, impersonatedBy, Edit.importUpdate());
+    return staged
+        .map(change -> stagedPutResponse(uriInfo, original, change))
+        .orElseGet(() -> putForImportAndStore(uriInfo, original, updated));
+  }
+
+  private PutResponse<T> putForImportAndStore(UriInfo uriInfo, T original, T updated) {
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       try (var ignored = phase("putRestoreEntityImport")) {
@@ -4725,7 +4834,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         uriInfo,
         changeSource,
         useOptimisticLocking,
-        impersonatedBy);
+        impersonatedBy,
+        null);
   }
 
   /**
@@ -4787,7 +4897,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         uriInfo,
         changeSource,
         useOptimisticLocking,
-        impersonatedBy);
+        impersonatedBy,
+        null);
   }
 
   private PatchResponse<T> patchCommonWithOptimisticLocking(
@@ -4798,7 +4909,49 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       UriInfo uriInfo,
       ChangeSource changeSource,
       boolean useOptimisticLocking,
-      String impersonatedBy) {
+      String impersonatedBy,
+      ApprovedApplication approval) {
+    T updated = preparePatched(original, patch, user);
+    // Always set impersonatedBy to the passed value (which can be null)
+    // This ensures that when regular users make changes (impersonatedBy=null),
+    // any existing impersonatedBy value is cleared, preventing it from persisting
+    updated.setImpersonatedBy(impersonatedBy);
+    Optional<StagedChange> staged =
+        admitOrVerify(original, updated, user, impersonatedBy, approval, patchedFieldNames);
+    return staged
+        .map(change -> stagedPatchResponse(uriInfo, original, change))
+        .orElseGet(
+            () ->
+                patchAndStore(
+                    original,
+                    updated,
+                    patchedFieldNames,
+                    uriInfo,
+                    changeSource,
+                    useOptimisticLocking,
+                    approval != null));
+  }
+
+  /**
+   * What approval gating would decide for a PATCH by {@code user}, computed on the same prepared
+   * entity a real PATCH admits, without storing anything.
+   */
+  public final Optional<StagedChange> previewPatch(UUID id, String user, JsonPatch patch) {
+    T original = get(null, id, patchFields, NON_DELETED, false);
+    return ApprovalGate.preview(
+        original,
+        preparePatched(original, patch, user),
+        user,
+        Edit.patch(JsonUtils.extractPatchedFields(patch)));
+  }
+
+  /** Runs the preparation and validation a PATCH by {@code user} would, without storing anything. */
+  public final void validatePatch(UUID id, String user, JsonPatch patch) {
+    T original = get(null, id, patchFields, NON_DELETED, false);
+    preparePatched(original, patch, user);
+  }
+
+  private T preparePatched(T original, JsonPatch patch, String user) {
     T updated;
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);
@@ -4834,22 +4987,79 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try (var ignored = phase("patchRestoreAttributes")) {
       restorePatchAttributes(original, updated);
     }
+    return updated;
+  }
 
-    // Always set impersonatedBy to the passed value (which can be null)
-    // This ensures that when regular users make changes (impersonatedBy=null),
-    // any existing impersonatedBy value is cleared, preventing it from persisting
-    updated.setImpersonatedBy(impersonatedBy);
+  private Optional<StagedChange> admitOrVerify(
+      T original,
+      T updated,
+      String user,
+      String impersonatedBy,
+      ApprovedApplication approval,
+      Set<String> patchedFieldNames) {
+    Optional<StagedChange> staged = Optional.empty();
+    if (approval == null) {
+      staged =
+          ApprovalGate.admit(
+              original, updated, user, impersonatedBy, Edit.patch(patchedFieldNames));
+    } else {
+      ApprovalGate.verifyApproved(approval, original);
+    }
+    return staged;
+  }
 
+  private PatchResponse<T> stagedPatchResponse(UriInfo uriInfo, T original, StagedChange change) {
+    UUID requestId = ChangeRequestService.submit(change).getId();
+    return new PatchResponse<>(
+        Status.ACCEPTED, withHref(uriInfo, original), ENTITY_NO_CHANGE, requestId);
+  }
+
+  /**
+   * Publishes an approved change request revision as its requester, in the caller's transaction.
+   * The gate re-verifies the request is Approved for this revision inside the same transaction, so
+   * no caller-supplied flag can bypass admission.
+   */
+  public final PatchResponse<T> applyApprovedChange(ApprovedApplication approval, JsonPatch patch) {
+    T original = get(null, approval.entityId(), patchFields, NON_DELETED, false);
+    PatchResponse<T> response =
+        patchCommonWithOptimisticLocking(
+            original,
+            patch,
+            JsonUtils.extractPatchedFields(patch),
+            approval.requestedBy(),
+            null,
+            null,
+            false,
+            null,
+            approval);
+    createAndInsertChangeEvent(
+        original,
+        response.entity(),
+        response.entity().getChangeDescription(),
+        response.changeType());
+    return response;
+  }
+
+  private PatchResponse<T> patchAndStore(
+      T original,
+      T updated,
+      Set<String> patchedFieldNames,
+      UriInfo uriInfo,
+      ChangeSource changeSource,
+      boolean useOptimisticLocking,
+      boolean approvedChange) {
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater;
     try (var ignored = phase("patchEntityUpdate")) {
       if (useOptimisticLocking) {
         entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource, true);
         entityUpdater.setPatchedFields(patchedFieldNames);
+        entityUpdater.setApprovedChange(approvedChange);
         entityUpdater.updateWithOptimisticLocking();
       } else {
         entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource);
         entityUpdater.setPatchedFields(patchedFieldNames);
+        entityUpdater.setApprovedChange(approvedChange);
         entityUpdater.update();
       }
     }
@@ -5037,6 +5247,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   protected void postDelete(T entity, boolean hardDelete) {
+    // A bulk hard-delete cascade cancels the change requests of each chunk in one query; an entity
+    // without an id was never stored, so it has none.
+    if (!isInHardDeleteCascade() && entity.getId() != null) {
+      ChangeRequestService.cancelForDeletedEntities(List.of(entity.getId()));
+    }
     // Delete from RDF only on hard delete
     if (hardDelete) {
       RdfUpdater.deleteEntity(entity.getEntityReference());
@@ -5592,7 +5807,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * LineageUtil#beginLineageDeferral()}, and the Redis-L2 cache invalidation issued by {@code
    * addRelationship}/{@code deleteRelationship}/{@code invalidateCacheForEntity} via {@link
    * #beginCacheInvalidationDeferral()} — both drained post-commit on the request thread. Only the
-   * local L1 eviction stays inline. The writer's Redis eviction likewise happens
+   * cheap local Guava-L1 eviction stays inline. The writer's Redis eviction likewise happens
    * post-commit on the request thread (read-your-write safe).
    *
    * <p>The {@link RdfTagUpdater#beginDeferral()} scope opened/drained alongside these is now
@@ -5999,6 +6214,31 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           "experts",
           "reviewers",
           "certification");
+
+  /** The top-level fields stored in the entity's own row, which a PUT or an import rewrites. */
+  public Set<String> getStoredFieldNames(UUID id) {
+    Set<String> names = new HashSet<>();
+    String json = dao.findById(dao.getTableName(), id, dao.getCondition(ALL));
+    if (json != null) {
+      JsonUtils.readTree(json).fieldNames().forEachRemaining(names::add);
+    }
+    return names;
+  }
+
+  /** Relationship fields a human PUT replaces with what it sends, so leaving one out clears it. */
+  public Set<String> getRelationsReplacedByPut() {
+    return Set.of(FIELD_REVIEWERS, FIELD_EXPERTS, FIELD_DATA_PRODUCTS, FIELD_CERTIFICATION);
+  }
+
+  /** Stored fields a human PUT keeps when it leaves them out. */
+  public Set<String> getFieldsKeptByPut() {
+    return Set.of(FIELD_STYLE, FIELD_LIFE_CYCLE, FIELD_ENTITY_STATUS, FIELD_EXTENSION);
+  }
+
+  /** Relationship fields a CSV import replaces with the row's values. */
+  public Set<String> getRelationsReplacedByImport() {
+    return Set.of(FIELD_TAGS, FIELD_OWNERS, FIELD_DOMAINS, FIELD_REVIEWERS, FIELD_DATA_PRODUCTS);
+  }
 
   protected List<String> getFieldsStrippedFromStorageJson() {
     return Collections.emptyList();
@@ -6789,7 +7029,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   @Transaction
   public final void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+      if (!TagLabelUtil.isSystemGenerated(tagLabel)) {
         daoCollection
             .tagUsageDAO()
             .applyTag(
@@ -6817,7 +7057,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Filter out DERIVED tags as they are system-generated
     List<TagLabel> nonDerivedTags =
         tagLabels.stream()
-            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .filter(tag -> !TagLabelUtil.isSystemGenerated(tag))
             .collect(Collectors.toList());
 
     if (!nonDerivedTags.isEmpty()) {
@@ -6836,7 +7076,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Filter out DERIVED tags as they are system-generated
     List<TagLabel> nonDerivedTags =
         tagLabels.stream()
-            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .filter(tag -> !TagLabelUtil.isSystemGenerated(tag))
             .collect(Collectors.toList());
 
     if (!nonDerivedTags.isEmpty()) {
@@ -7766,6 +8006,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         // skip the per-entity dispatch; the root entity's own deleteFromSearch (fired by the
         // top-level delete()) still runs and triggers the covering cascade.
         boolean skipPerEntitySearch = descendantsCoveredByAncestorCascade;
+        ChangeRequestService.cancelForDeletedEntities(
+            entities.stream().map(EntityInterface::getId).toList());
         for (T entity : entities) {
           postDelete(entity, true);
           if (!skipPerEntitySearch) {
@@ -8960,17 +9202,26 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return;
     }
     List<TagLabel> inherited = inheritedTagLabels(parent.getTags());
-    if (inherited.isEmpty()) {
-      return;
+    if (!inherited.isEmpty()) {
+      entity.setTags(mergeInheritedTags(entity.getTags(), inherited));
     }
-    List<TagLabel> merged = new ArrayList<>(listOrEmpty(entity.getTags()));
+  }
+
+  /**
+   * Adds labels inherited from a parent to an asset's own. Shared by entity inheritance and by the
+   * glossary terms a field inherits from its entity ({@code Entity#populateEntityFieldTags}), so the
+   * two follow the same rules.
+   */
+  public static List<TagLabel> mergeInheritedTags(
+      List<TagLabel> ownTags, List<TagLabel> inherited) {
+    List<TagLabel> merged = new ArrayList<>(listOrEmpty(ownTags));
     Set<String> existing =
         merged.stream().map(TagLabel::getTagFQN).collect(Collectors.toCollection(HashSet::new));
     Set<String> ownParents =
         merged.stream()
             .map(tag -> FullyQualifiedName.getParentFQN(tag.getTagFQN()))
             .collect(Collectors.toSet());
-    for (TagLabel tag : inherited) {
+    for (TagLabel tag : listOrEmpty(inherited)) {
       // The asset's own label wins; an inherited duplicate would otherwise shadow it as read-only.
       if (existing.contains(tag.getTagFQN()) || conflictsWithOwnTag(tag, ownParents)) {
         continue;
@@ -8978,7 +9229,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       existing.add(tag.getTagFQN());
       merged.add(tag);
     }
-    entity.setTags(merged);
+    return merged;
   }
 
   /**
@@ -9001,7 +9252,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /** Copies so the parent's own labels are not mutated, and marks the copies as derived. */
-  private static List<TagLabel> inheritedTagLabels(List<TagLabel> tags) {
+  public static List<TagLabel> inheritedTagLabels(List<TagLabel> tags) {
     if (nullOrEmpty(tags)) {
       return Collections.emptyList();
     }
@@ -9228,7 +9479,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // asset's cached entity JSON is now stale — a follow-up read served from Redis would
       // still show the old domain. Drop the asset's cache so the next read reloads from DB
       // and re-derives the inherited view. Same is true for the by-name cache and the
-      // shared per-pod L1 caches; invalidateCacheForEntity does all of them.
+      // shared per-pod Guava caches; invalidateCacheForEntity does all of them.
       invalidateCacheForEntity(ref.getType(), ref.getId(), ref.getFullyQualifiedName());
 
       success.add(new BulkResponse().withRequest(ref));
@@ -9589,7 +9840,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     for (Column column : listOrEmpty(columns)) {
       validateTags(column.getTags());
       column.setTags(addDerivedTags(column.getTags()));
-      checkMutuallyExclusive(column.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(column.getTags());
       if (column.getChildren() != null) {
         validateColumnTags(column.getChildren());
       }
@@ -9679,6 +9930,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     private final ChangeSource changeSource;
     @Setter private boolean useOptimisticLocking;
     @Setter private Set<String> patchedFields;
+
+    // Set when the update applies a change request a reviewer approved: its stage change was
+    // decided by the review, so only the lifecycle's moves still apply to it.
+    @Setter private boolean approvedChange;
 
     // When set (bulk path with overrideMetadata=true), bot updates are allowed to overwrite
     // user-curated metadata that PUT-as-bot would otherwise preserve (description, displayName).
@@ -10067,6 +10322,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       try (var ignored = phase("entityUpdatePostUpdate")) {
         postUpdate(original, updated);
       }
+      ChangeRequestService.afterEntityChanged(entityType, updated.getId());
       try (var ignored = phase("entityUpdateDeferredReact")) {
         runDeferredReactOperations();
       }
@@ -10420,7 +10676,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     private void validateEntityStatusChange(String from, String to) {
-      EntityRepository.this.validateEntityStatusChange(original, updated, from, to);
+      if (approvedChange) {
+        requireMoveInLifecycle(from, to);
+      } else {
+        EntityRepository.this.validateEntityStatusChange(original, updated, from, to);
+      }
     }
 
     private void updateOwners() {
@@ -10524,7 +10784,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         // For PUT, we don't delete any existing tags
         // Merge the tags for validation and recording purposes
         EntityUtil.mergeTags(updatedTags, origTags);
-        checkMutuallyExclusive(updatedTags);
+        checkMutuallyExclusiveForUserAppliedTags(updatedTags);
       } else {
         // PATCH and an explicit PUT override replace tags.
         if (operation.isPut()) {
@@ -10547,7 +10807,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             addedTags.add(updatedTag);
           }
         }
-        checkMutuallyExclusive(updatedTags);
+        checkMutuallyExclusiveForUserAppliedTags(updatedTags);
       }
 
       // Filter out certification tags — handled exclusively by updateCertification()
@@ -10630,9 +10890,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       if (nullOrEmpty(tags)) {
         return Collections.emptyList();
       }
-      return tags.stream()
-          .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
-          .toList();
+      return tags.stream().filter(tag -> !TagLabelUtil.isSystemGenerated(tag)).toList();
     }
 
     protected final void applyTagsAddInFlush(List<TagLabel> tagLabels, String targetFqn) {
@@ -11585,10 +11843,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // Bump the write-epoch BEFORE invalidating so any in-flight loader sees the new epoch
       // when it does its end-of-load check. Pair with the loader-side race guard in
       // EntityLoaderWithId / EntityLoaderWithName. Cheap (per-entity AtomicLong increment).
-      bumpWriteEpoch(entityType, id, fqn);
-      if (originalFqn != null && !originalFqn.equals(fqn)) {
-        bumpWriteEpoch(entityType, null, originalFqn);
-      }
+      bumpWriteEpochs(id, fqn);
 
       // Drop the Redis entries so the next read misses, goes to the DB, and loads the committed
       // row. A stale base hash field would otherwise serve old values, including old owners and
@@ -11624,7 +11879,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
       // Evict L1 only once Redis has dropped the old JSON. Evicting it first let a concurrent
       // read, in the gap before the Redis delete above, reload the pre-commit copy from Redis
-      // into L1, where it outlived this write until EntityCacheRepair ran.
+      // into L1, where it outlived this write until EntityCacheRepair ran. A read that fetched
+      // that copy before the delete can still put it after this eviction, and it took its epoch
+      // after the first bump, so bump again: its re-check after the put then drops the copy.
+      bumpWriteEpochs(id, fqn);
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
       // A rename leaves the old FQN pointing at the now-stale entity; drop that key too so
@@ -11643,6 +11901,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         if (originalFqn != null && !originalFqn.equals(fqn)) {
           pubsub.publish(entityType, id, originalFqn, "rename-old");
         }
+      }
+    }
+
+    private void bumpWriteEpochs(UUID id, String fqn) {
+      bumpWriteEpoch(entityType, id, fqn);
+      if (originalFqn != null && !originalFqn.equals(fqn)) {
+        bumpWriteEpoch(entityType, null, originalFqn);
       }
     }
 
@@ -12078,11 +12343,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
-  static class EntityLoaderWithName implements CacheLoader<Pair<String, String>, String> {
+  static class EntityLoaderWithName extends CacheLoader<Pair<String, String>, String> {
     @Override
     public @NonNull String load(@NotNull Pair<String, String> fqnPair) {
-      // Race guard — epoch mismatch means a writer ran during the load; throw so the cache skips
-      // storing the now-stale value and find() re-reads via the bypass path.
+      // Race guard — epoch mismatch means a writer ran during the load; throw so Guava skips
+      // caching the now-stale value and find() re-reads via the bypass path.
       long startEpoch = readEpochByName(fqnPair);
       String json = loadInternal(fqnPair, startEpoch);
       if (readEpochByName(fqnPair) != startEpoch) {
@@ -12199,7 +12464,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
-  static class EntityLoaderWithId implements CacheLoader<Pair<String, UUID>, String> {
+  static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, String> {
     @Override
     public @NonNull String load(@NotNull Pair<String, UUID> idPair) {
       // See EntityLoaderWithName.load for the race-guard rationale.
@@ -13549,6 +13814,46 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
+  /**
+   * Has each field inherit its entity's glossary terms, as {@link Entity#populateEntityFieldTags}
+   * does on a single read, so a list returns the same field tags as a get. Expects the fields' tags
+   * to be loaded already. The entities' own tags are read here rather than taken from the entities:
+   * the bulk field fetchers run in no fixed order, so the tags fetcher may not have run yet, and a
+   * list may not ask for {@code tags} at all.
+   */
+  protected <F extends FieldInterface> void inheritEntityTermsOnFields(
+      List<T> entities, Function<T, List<F>> fieldExtractor) {
+    List<String> entityFqns =
+        listOrEmpty(entities).stream().map(EntityInterface::getFullyQualifiedName).toList();
+    inheritEntityTermsOnFields(entities, fieldExtractor, batchFetchTags(entityFqns));
+  }
+
+  /**
+   * {@link #inheritEntityTermsOnFields(List, Function)} for a caller that has just read the
+   * entities' own tags with {@link #batchFetchTags}, keyed by entity FQN.
+   */
+  protected static <E extends EntityInterface<?>, F extends FieldInterface>
+      void inheritEntityTermsOnFields(
+          List<E> entities,
+          Function<E, List<F>> fieldExtractor,
+          Map<String, List<TagLabel>> ownTagsByEntityFqn) {
+    for (E entity : listOrEmpty(entities)) {
+      inheritEntityTerms(
+          ownTagsByEntityFqn.get(entity.getFullyQualifiedName()), fieldExtractor.apply(entity));
+    }
+  }
+
+  /** One entity's step of {@link #inheritEntityTermsOnFields}. Package-private for tests. */
+  static <F extends FieldInterface> void inheritEntityTerms(
+      List<TagLabel> entityTags, List<F> fields) {
+    List<TagLabel> inheritedTerms = Entity.inheritedParentTerms(entityTags);
+    if (!inheritedTerms.isEmpty() && fields != null) {
+      for (F field : EntityUtil.getFlattenedEntityField(fields)) {
+        field.setTags(mergeInheritedTags(field.getTags(), inheritedTerms));
+      }
+    }
+  }
+
   protected List<UUID> entityListToUUID(List<T> entities) {
     return entities.stream().map(EntityInterface<?>::getId).toList();
   }
@@ -14160,6 +14465,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
+    int pendingApproval =
+        stageGatedBulkUpdates(
+            updateEntities,
+            existingByFqn,
+            userName,
+            overrideMetadata,
+            successRequests,
+            failedRequests);
+
     // Batch update existing entities
     bulkUpdateEntities(
         uriInfo,
@@ -14176,6 +14490,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     result.setNumberOfRowsProcessed(entities.size());
     result.setNumberOfRowsPassed(successRequests.size());
     result.setNumberOfRowsFailed(failedRequests.size());
+    result.setNumberOfRowsPendingApproval(pendingApproval);
     result.setSuccessRequest(successRequests);
     result.setFailedRequest(failedRequests);
 
@@ -14211,6 +14526,82 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         totalDurationNanos / 1_000_000);
 
     return result;
+  }
+
+  /**
+   * Bulk updates that change a field gated by an approval workflow are submitted as change requests
+   * instead of being written. Each is removed from {@code updateEntities} and reported as a
+   * successful item carrying its change request id. An update that cannot be admitted or submitted
+   * is removed and reported as a failed item, so it never stops the rest of the bulk request.
+   * Returns how many were staged.
+   */
+  private int stageGatedBulkUpdates(
+      List<T> updateEntities,
+      Map<String, T> existingByFqn,
+      String userName,
+      boolean overrideMetadata,
+      List<BulkResponse> successRequests,
+      List<BulkResponse> failedRequests) {
+    int staged = 0;
+    if (ApprovalGate.mayHold(entityType, userName)) {
+      Map<String, T> publishedByFqn = publishedWithPutFields(updateEntities, existingByFqn);
+      Iterator<T> candidates = updateEntities.iterator();
+      while (candidates.hasNext()) {
+        T entity = candidates.next();
+        T published = publishedByFqn.get(entity.getFullyQualifiedName());
+        entity.setId(published.getId());
+        try {
+          Optional<StagedChange> change =
+              ApprovalGate.admit(published, entity, userName, null, Edit.bulkPut(overrideMetadata));
+          if (change.isPresent()) {
+            candidates.remove();
+            successRequests.add(pendingApprovalResponse(entity, change.get()));
+            staged++;
+          }
+        } catch (WebApplicationException e) {
+          candidates.remove();
+          failedRequests.add(failedBulkItem(entity, e.getResponse().getStatus(), e.getMessage()));
+        } catch (IllegalArgumentException e) {
+          // The entity updater rejects the same invalid update this way, and the bulk write
+          // reports it as a failed item.
+          candidates.remove();
+          failedRequests.add(
+              failedBulkItem(entity, Status.BAD_REQUEST.getStatusCode(), e.getMessage()));
+        }
+      }
+    }
+    return staged;
+  }
+
+  private BulkResponse failedBulkItem(T entity, int status, String message) {
+    return new BulkResponse()
+        .withRequest(entity.getFullyQualifiedName())
+        .withStatus(status)
+        .withMessage(message);
+  }
+
+  // The pre-fetched originals carry no relationship fields and are hydrated later by the bulk
+  // update itself; copies are hydrated in one batch with the fields a PUT compares, so each change
+  // request records the published values it is based on.
+  private Map<String, T> publishedWithPutFields(
+      List<T> updateEntities, Map<String, T> existingByFqn) {
+    Map<String, T> publishedByFqn = new LinkedHashMap<>();
+    for (T entity : updateEntities) {
+      publishedByFqn.computeIfAbsent(
+          entity.getFullyQualifiedName(),
+          fqn -> JsonUtils.deepCopy(existingByFqn.get(fqn), entityClass));
+    }
+    setFieldsInBulk(getPutFields(), new ArrayList<>(publishedByFqn.values()));
+    return publishedByFqn;
+  }
+
+  private BulkResponse pendingApprovalResponse(T entity, StagedChange change) {
+    UUID requestId = ChangeRequestService.submit(change).getId();
+    return new BulkResponse()
+        .withRequest(entity.getFullyQualifiedName())
+        .withStatus(Status.OK.getStatusCode())
+        .withMessage(
+            "%s: change request %s".formatted(EntityCsv.ENTITY_PENDING_APPROVAL, requestId));
   }
 
   public Optional<BulkOperationResult> getBulkJobStatus(String jobId) {
@@ -14289,7 +14680,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
 
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(userName, eventType, entity);
+          ChangeEvents.createChangeEventForEntity(userName, eventType, entity);
 
       if (changeEvent.getEntity() != null) {
         Object entityObject = changeEvent.getEntity();

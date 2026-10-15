@@ -15,6 +15,7 @@ import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import {
   Box,
   Grid,
+  ProgressBar,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -23,7 +24,7 @@ import {
   hexToRgba,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Progress } from 'antd';
+
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -138,12 +139,16 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                     </Tooltip>
                   ) : null}
                 </Box>
-                <Progress
-                  percent={Number(currentProgress)}
-                  showInfo={false}
-                  size="small"
-                  strokeColor={seriesColor}
-                />
+                <div>
+                  <ProgressBar
+                    className="tw:h-1.5"
+                    color={seriesColor}
+                    value={Math.min(
+                      100,
+                      Math.max(0, Number(currentProgress) || 0)
+                    )}
+                  />
+                </div>
                 <div className="d-flex justify-space-between">
                   <div className="flex-1">
                     <Typography className="text-xs">

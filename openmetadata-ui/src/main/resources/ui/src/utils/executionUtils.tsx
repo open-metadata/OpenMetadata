@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Tooltip } from '@openmetadata/ui-core-components';
-import { DataNode } from 'antd/lib/tree';
 import { groupBy, isUndefined, map, toLower } from 'lodash';
 import React from 'react';
 import { MenuOptions } from '../constants/execution.constants';
@@ -23,6 +22,7 @@ import {
   Task,
   TaskStatus,
 } from '../generated/entity/data/pipeline';
+import { TreeNode } from '../interface/tree.interface';
 import { getLayoutGutter } from './common/layout.utils';
 import { formatDateTime, formatDuration } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
@@ -150,7 +150,7 @@ export const buildCompleteTree = (
   key: string,
   parentKey: string
 ) => {
-  let node: DataNode;
+  let node: TreeNode;
 
   const nodeKey: string = parentKey + '-' + key;
 
@@ -197,8 +197,8 @@ export const getTreeData = (
   viewData: Record<string, ViewDataInterface[]>
 ) => {
   const icon = <div className="tree-view-dot" />;
-  const treeDataList: DataNode[] = [];
-  const treeLabelList: DataNode[] = [];
+  const treeDataList: TreeNode[] = [];
+  const treeLabelList: TreeNode[] = [];
 
   // map execution element to task name
   const viewElements = map(

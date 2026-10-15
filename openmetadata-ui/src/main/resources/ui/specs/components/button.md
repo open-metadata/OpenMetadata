@@ -54,7 +54,7 @@ optional **leading/trailing icon**, **focus ring**.
 | `size` | `sm`, `md`, `lg` |
 | `isDisabled` | boolean |
 | `isLoading` | boolean |
-| leading / trailing icon | `@untitledui/icons` component |
+| leading / trailing icon | `@openmetadata/ui-core-components/icons` component |
 
 ## States
 

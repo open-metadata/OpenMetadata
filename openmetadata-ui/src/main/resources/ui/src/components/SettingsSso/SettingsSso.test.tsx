@@ -21,7 +21,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from '../../generated/settings/settings';
 import {
   ConfigSourceMode,
@@ -502,6 +502,83 @@ describe('SettingsSso', () => {
       });
 
       expect(screen.getByTestId('sso-configuration-form')).toBeInTheDocument();
+    });
+  });
+
+  describe('Browser history', () => {
+    const LocationProbe = () => {
+      const location = useLocation();
+      const navigate = useNavigate();
+
+      return (
+        <>
+          <span data-testid="current-url">
+            {location.pathname + location.search}
+          </span>
+          <button data-testid="history-back" onClick={() => navigate(-1)}>
+            Back
+          </button>
+        </>
+      );
+    };
+
+    const renderFromSettings = () =>
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter
+            initialEntries={['/settings', '/settings/sso']}
+            initialIndex={1}>
+            <SettingsSso />
+            <LocationProbe />
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
+
+    it('should replace the SSO entry with the configured provider, so back returns to settings', async () => {
+      mockGetSecurityConfiguration.mockResolvedValue({
+        data: {
+          ...mockSecurityConfig,
+          authenticationConfiguration: {
+            ...mockSecurityConfig.authenticationConfiguration,
+            provider: AuthProvider.Okta,
+          },
+        },
+      } as unknown as GetSecurityConfigResponse);
+
+      renderFromSettings();
+
+      await waitFor(() =>
+        expect(screen.getByTestId('current-url')).toHaveTextContent(
+          `/settings/sso?provider=${AuthProvider.Okta}`
+        )
+      );
+
+      fireEvent.click(screen.getByTestId('history-back'));
+
+      expect(screen.getByTestId('current-url')).toHaveTextContent(
+        /^\/settings$/
+      );
+    });
+
+    it('should stay on the SSO page offering providers when only basic auth is configured', async () => {
+      mockGetSecurityConfiguration.mockResolvedValue({
+        data: {
+          ...mockSecurityConfig,
+          authenticationConfiguration: {
+            ...mockSecurityConfig.authenticationConfiguration,
+            provider: AuthProvider.Basic,
+          },
+        },
+      } as unknown as GetSecurityConfigResponse);
+
+      renderFromSettings();
+
+      expect(
+        await screen.findByTestId('provider-selector')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('current-url')).toHaveTextContent(
+        /^\/settings\/sso$/
+      );
     });
   });
 

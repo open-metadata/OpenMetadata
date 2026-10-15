@@ -66,6 +66,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -119,6 +120,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       return Response.status(Response.Status.BAD_REQUEST).entity(result).build();
     }
     return Response.ok().entity(result).build();
+  }
+
+  // An asset write can hold assets for approval; a failed one still answers 400.
+  private Response buildBulkAssetsResponse(BulkOperationResult result, boolean dryRun) {
+    return result.getStatus() == ApiStatus.FAILURE
+        ? buildBulkOperationResponse(result)
+        : ApprovalGate.bulkResponse(result, dryRun);
   }
 
   private void validatePortFields(String fieldsParam) {
@@ -408,8 +416,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(
-        repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()),
+        Boolean.TRUE.equals(request.getDryRun()));
   }
 
   @PUT
@@ -445,8 +454,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(
-        repository.bulkRemoveAssets(name, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkRemoveAssets(name, request, securityContext.getUserPrincipal().getName()),
+        Boolean.TRUE.equals(request.getDryRun()));
   }
 
   @PUT
