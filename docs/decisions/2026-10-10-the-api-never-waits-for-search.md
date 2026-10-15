@@ -32,6 +32,10 @@ nor recorded what they missed.
 - Writes do not force a refresh. Writes by query refresh their targets first, wait for their task
   and retry version conflicts up to three attempts; what is still undone is recorded as a repair
   scope that the retry worker rebuilds from the database.
+- The waits are bounded. A fan-out waits at most 2 minutes for the writes queued before it, then
+  runs anyway; a document it overtook is corrected by its entity's next write or a repair. A write
+  by query waits at most 30 minutes for its task, then cancels it and records the scope. A repair
+  pass rebuilds at most 10,000 documents, in pages of 500, and leaves the rest for the next pass.
 
 ## Consequences
 
