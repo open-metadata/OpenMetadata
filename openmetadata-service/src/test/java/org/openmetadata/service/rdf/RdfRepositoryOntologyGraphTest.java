@@ -100,12 +100,19 @@ class RdfRepositoryOntologyGraphTest {
     replay(RdfLiveWrite.EntityUpdate.capture(current));
     final String graph = BASE + "graph/axiom/" + current.getId();
     assertTrue(dataset.containsNamedModel(graph));
+    assertTrue(hasMemberRecord(graph), "the graph is written with its member record");
 
     replay(new RdfLiveWrite.EntityDelete(Entity.ONTOLOGY_AXIOM, current.getId()));
 
     assertFalse(dataset.containsNamedModel(graph));
+    assertFalse(hasMemberRecord(graph), "a hard delete removes the member record too");
     final Model knowledge = dataset.getNamedModel(KNOWLEDGE);
     assertFalse(knowledge.contains(knowledge.createResource(entityIri()), null));
+  }
+
+  private boolean hasMemberRecord(final String graph) {
+    final Model members = dataset.getNamedModel(OntologyGraphs.membersGraph(BASE));
+    return members.contains(members.createResource(graph), null);
   }
 
   private String entityIri() {

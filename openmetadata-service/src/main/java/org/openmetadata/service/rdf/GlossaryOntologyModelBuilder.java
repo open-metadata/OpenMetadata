@@ -110,15 +110,7 @@ final class GlossaryOntologyModelBuilder {
   }
 
   private String glossaryIri(final Glossary glossary) {
-    final URI configuredIri =
-        glossary.getOntologyConfiguration() == null
-            ? null
-            : glossary.getOntologyConfiguration().getBaseIri();
-    final String iri =
-        configuredIri == null
-            ? publicBaseUri.resolve("entity/glossary/" + glossary.getId()).toString()
-            : configuredIri.toString();
-    return iri;
+    return GlossaryOntologyIri.of(glossary, publicBaseUri);
   }
 
   private void addTermSemantics(

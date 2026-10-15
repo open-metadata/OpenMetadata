@@ -77,22 +77,47 @@ final class OntologyGraphProjection {
    */
   Map<String, Model> graphs(final List<? extends EntityInterface<?>> entities) {
     final Map<String, Model> graphs = new LinkedHashMap<>();
+    replacements(entities)
+        .forEach((graph, replacement) -> graphs.put(graph, replacement.content()));
+    return graphs;
+  }
+
+  /**
+   * The graphs to replace, each with the member record that describes it; a deleted owner has an
+   * empty graph and no record, so replacing removes both.
+   */
+  Map<String, OntologyGraphs.Replacement> replacements(
+      final List<? extends EntityInterface<?>> entities) {
+    final Map<String, OntologyGraphs.Replacement> graphs = new LinkedHashMap<>();
     final BatchSources batch = new BatchSources();
     final List<RelationshipType> changedTypes = new ArrayList<>();
     for (final EntityInterface<?> entity : entities) {
       switch (entity) {
-        case OntologyAxiom axiom -> graphs.put(
-            graphIri(Entity.ONTOLOGY_AXIOM, axiom.getId()), axiomGraph(axiom, batch));
-        case GlossaryTerm term -> graphs.put(
-            graphIri(Entity.GLOSSARY_TERM, term.getId()), termGraph(term, batch));
+        case OntologyAxiom axiom -> put(
+            graphs, Entity.ONTOLOGY_AXIOM, axiom, axiomGraph(axiom, batch));
+        case GlossaryTerm term -> put(graphs, Entity.GLOSSARY_TERM, term, termGraph(term, batch));
         case RelationshipType type -> changedTypes.add(type);
         default -> {}
       }
     }
     if (!changedTypes.isEmpty()) {
-      relationshipTypeGraphs(changedTypes, batch.relationshipTypes()).forEach(graphs::put);
+      relationshipTypeGraphs(changedTypes, batch.relationshipTypes())
+          .forEach((type, graph) -> put(graphs, Entity.RELATIONSHIP_TYPE, type, graph));
     }
     return graphs;
+  }
+
+  private void put(
+      final Map<String, OntologyGraphs.Replacement> graphs,
+      final String entityType,
+      final EntityInterface<?> owner,
+      final Model content) {
+    final String graph = graphIri(entityType, owner.getId());
+    final OntologyGraphMember member =
+        Boolean.TRUE.equals(owner.getDeleted())
+            ? null
+            : OntologyGraphMember.of(graph, owner, content, baseUri);
+    graphs.put(graph, new OntologyGraphs.Replacement(content, member));
   }
 
   private String graphIri(final String entityType, final UUID id) {
@@ -120,7 +145,7 @@ final class OntologyGraphProjection {
     return GlossaryTermClassGraph.build(term, parent, baseUri);
   }
 
-  private Map<String, Model> relationshipTypeGraphs(
+  private Map<RelationshipType, Model> relationshipTypeGraphs(
       final List<RelationshipType> changed, final List<RelationshipType> active) {
     final Map<UUID, RelationshipType> types = new LinkedHashMap<>();
     active.forEach(type -> types.put(type.getId(), type));
@@ -131,17 +156,14 @@ final class OntologyGraphProjection {
     changed.forEach(type -> changedIds.add(type.getId()));
     final RelationshipTypeRdfWriter writer =
         new RelationshipTypeRdfWriter(List.copyOf(types.values()));
-    final Map<String, Model> graphs = new LinkedHashMap<>();
+    final Map<RelationshipType, Model> graphs = new LinkedHashMap<>();
     for (final RelationshipType type : changed) {
-      graphs.put(graphIri(Entity.RELATIONSHIP_TYPE, type.getId()), typeGraph(writer, type));
+      graphs.put(type, typeGraph(writer, type));
     }
     types.values().stream()
         .filter(type -> !changedIds.contains(type.getId()))
         .filter(type -> references(type).anyMatch(changedIds::contains))
-        .forEach(
-            type ->
-                graphs.put(
-                    graphIri(Entity.RELATIONSHIP_TYPE, type.getId()), typeGraph(writer, type)));
+        .forEach(type -> graphs.put(type, typeGraph(writer, type)));
     return graphs;
   }
 

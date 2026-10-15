@@ -290,6 +290,11 @@ public class RdfRepository {
     return isEnabled() && storageService.supportsDatasetManagement();
   }
 
+  /** Identity of the serving dataset, or null when this repository manages no datasets. */
+  public UUID servingGeneration() {
+    return datasetManager == null ? null : datasetManager.servingGeneration();
+  }
+
   /** Dataset named in the configured endpoint — what serving used before blue/green existed. */
   public String configuredDatasetName() {
     return datasetNames.base();
@@ -727,10 +732,23 @@ public class RdfRepository {
               + entityReference.getId();
 
       storageService.executeSparqlUpdate(buildEntityDeleteUpdate(entityUri));
-      // A separate request: Fuseki answers 400 to one request holding two pattern DELETEs.
+      // Separate requests: Fuseki answers 400 to one request holding two pattern DELETEs.
+      final String baseUri = config.getBaseUri().toString();
+      final Optional<String> ownedGraph =
+          OntologyGraphs.graphIri(baseUri, entityReference.getType(), entityReference.getId());
+      if (ownedGraph.isPresent()) {
+        storageService.executeSparqlUpdate(
+            OntologyGraphs.replaceUpdates(
+                    baseUri,
+                    Map.of(
+                        ownedGraph.get(),
+                        new OntologyGraphs.Replacement(ModelFactory.createDefaultModel(), null)),
+                    Long.MAX_VALUE)
+                .getFirst());
+      }
       storageService.executeSparqlUpdate(
           buildOntologyGraphDeleteUpdate(
-              config.getBaseUri().toString(), entityReference.getType(), entityReference.getId()));
+              baseUri, entityReference.getType(), entityReference.getId()));
       LOG.debug("Deleted entity {} from RDF store", entityReference.getId());
     } catch (RuntimeException e) {
       RdfProjectionHealth.markDegraded(e);
@@ -748,20 +766,22 @@ public class RdfRepository {
     if (!isEnabled() || entities == null || entities.isEmpty()) {
       return;
     }
-    final Map<String, Model> graphs =
+    final Map<String, OntologyGraphs.Replacement> graphs =
         new OntologyGraphProjection(config.getBaseUri(), projectionLoaders.ontologySources())
-            .graphs(entities);
+            .replacements(entities);
     try {
       for (final String update :
           OntologyGraphs.replaceUpdates(
-              graphs, RdfStorageInterface.resolveMaxUpdatePayloadBytes(config))) {
+              config.getBaseUri().toString(),
+              graphs,
+              RdfStorageInterface.resolveMaxUpdatePayloadBytes(config))) {
         storageService.executeSparqlUpdate(update);
       }
     } catch (RuntimeException e) {
       RdfProjectionHealth.markDegraded(e);
       throw e;
     } finally {
-      graphs.values().forEach(Model::close);
+      graphs.values().forEach(graph -> graph.content().close());
     }
   }
 
