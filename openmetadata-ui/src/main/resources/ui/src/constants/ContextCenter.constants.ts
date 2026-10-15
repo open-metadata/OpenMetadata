@@ -153,12 +153,6 @@ export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
   [ContextMemoryStatus.Invalidated]: 'label.invalidated',
 };
 
-export const FILTER_TABS = [
-  { id: 'all', label: 'label.all' },
-  { id: 'created-by-me', label: 'label.created-by-me' },
-  { id: 'needs-review', label: 'label.needs-review' },
-] as const;
-
 // utility-gray-blue-50 resolves to gray-blue-950 in dark, which reads as a
 // black hole on a gray-800 card, so dark swaps to the translucent active fill.
 export const PANEL_ICON_BOX_CLASS =
