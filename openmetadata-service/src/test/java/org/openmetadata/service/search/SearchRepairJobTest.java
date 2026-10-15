@@ -103,6 +103,35 @@ class SearchRepairJobTest {
   }
 
   @Test
+  void aLockTheDatabaseCannotGrantSkipsOnlyThatPass() throws Exception {
+    repairState.stored = new RepairState(LAST_PASS_UNTIL, NOW);
+    when(locks.tryAcquireLock(anyString(), anyString(), anyString(), anyLong(), anyLong()))
+        .thenThrow(new IllegalStateException("connection refused"))
+        .thenReturn(true);
+    final List<long[]> windows = recordWindows();
+
+    assertFalse(job.runPassNow(false, SearchRepairJob.SETTLE));
+    assertTrue(windows.isEmpty());
+
+    assertTrue(job.runPassNow(false, SearchRepairJob.SETTLE));
+    assertEquals(1, windows.size());
+  }
+
+  @Test
+  void aLockThatCannotBeReleasedStillRecordsThePass() throws Exception {
+    repairState.stored = new RepairState(LAST_PASS_UNTIL, NOW);
+    doThrow(new IllegalStateException("connection refused"))
+        .when(locks)
+        .releaseLock(anyString(), anyString());
+    recordWindows();
+
+    assertTrue(job.runPassNow(false, SearchRepairJob.SETTLE));
+
+    final long until = NOW - SearchRepairJob.SETTLE.toMillis();
+    assertEquals(new RepairState(until, NOW), repairState.stored);
+  }
+
+  @Test
   void anIndexCheckThatFailsDoesNotHoldBackTheRepair() throws Exception {
     repairState.stored = new RepairState(LAST_PASS_UNTIL, NOW);
     doThrow(new IOException("aliases unreadable")).when(indexCheck).repairUnusableIndexes();

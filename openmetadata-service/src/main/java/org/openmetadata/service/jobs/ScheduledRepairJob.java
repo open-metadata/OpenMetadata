@@ -126,8 +126,7 @@ public abstract class ScheduledRepairJob implements Managed {
    */
   public boolean runPassNow(final boolean sweepNow, final Duration settle) {
     final String passId = UUID.randomUUID().toString();
-    final long now = clock.getAsLong();
-    final boolean first = lock.tryAcquire(passId, serverId, now, now + LOCK_TTL.toMillis());
+    final boolean first = acquire(passId);
     if (first) {
       try {
         runPass(passId, sweepNow, settle);
@@ -137,10 +136,32 @@ public abstract class ScheduledRepairJob implements Managed {
       } catch (Exception e) {
         LOG.error("{} pass failed; the next pass checks its window again", name, e);
       } finally {
-        lock.release(passId);
+        release(passId);
       }
     }
     return first;
+  }
+
+  /**
+   * A database error taking the lock skips only this pass. Thrown from the scheduled task, it would
+   * cancel the schedule and end the repairs on this server until it restarts.
+   */
+  private boolean acquire(final String passId) {
+    final long now = clock.getAsLong();
+    try {
+      return lock.tryAcquire(passId, serverId, now, now + LOCK_TTL.toMillis());
+    } catch (RuntimeException e) {
+      LOG.error("{} could not take its lock; the next pass tries again", name, e);
+      return false;
+    }
+  }
+
+  private void release(final String passId) {
+    try {
+      lock.release(passId);
+    } catch (RuntimeException e) {
+      LOG.warn("{} could not release its lock, which lapses within {}", name, LOCK_TTL, e);
+    }
   }
 
   /** One pass; the window it checked is recorded only once every step has finished. */
