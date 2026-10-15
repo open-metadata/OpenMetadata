@@ -12,6 +12,7 @@
  */
 
 import {
+  act,
   fireEvent,
   getByText,
   render,
@@ -716,6 +717,43 @@ describe('Test GlossaryTermTab component', () => {
         50,
         undefined
       );
+    });
+
+    it('should not let a first-level page in flight overwrite the expanded tree', async () => {
+      let resolveFirstLevel!: (value: unknown) => void;
+      mockGetFirstLevelGlossaryTermsPaginated.mockReturnValue(
+        new Promise((resolve) => {
+          resolveFirstLevel = resolve;
+        })
+      );
+      const staleFirstLevelPage = [mockedGlossaryTerms[1]];
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() =>
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalled()
+      );
+
+      fireEvent.click(screen.getByTestId('expand-collapse-all-button'));
+
+      await waitFor(() =>
+        expect(mockSetGlossaryChildTerms).toHaveBeenLastCalledWith(
+          mockedGlossaryTerms
+        )
+      );
+
+      await act(async () => {
+        resolveFirstLevel({ data: staleFirstLevelPage, paging: {} });
+      });
+
+      expect(mockSetGlossaryChildTerms).not.toHaveBeenCalledWith(
+        staleFirstLevelPage
+      );
+      expect(
+        screen.getByTestId('expand-collapse-all-button')
+      ).toHaveTextContent('label.collapse-all');
     });
   });
 
