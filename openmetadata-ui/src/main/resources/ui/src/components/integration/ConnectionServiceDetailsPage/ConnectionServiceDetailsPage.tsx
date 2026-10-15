@@ -598,7 +598,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   // As Context Center articles: the service's version route shows that version beside the
   // version history, and closing it returns here.
   const handleVersionClick = useCallback(() => {
-    navigate(
+    void navigate(
       getServiceVersionPath(
         serviceCategory ?? '',
         decodedFqn,
@@ -645,7 +645,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   // The service is gone (or, soft-deleted, out of the default list): land on the list it was in
   // rather than on whatever page came before.
   const afterServiceDeleteAction = useCallback(() => {
-    navigate(getServiceListPath(serviceCategory));
+    void navigate(getServiceListPath(serviceCategory));
   }, [navigate, serviceCategory]);
 
   // Both are keyed on the route's service, so moving to another service reloads it.

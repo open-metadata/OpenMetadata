@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Tooltip,
-  TooltipTrigger,
-} from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from '@openmetadata/ui-core-components';
 import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 
@@ -32,17 +28,15 @@ export const HeaderVersionButton = ({
 
   return (
     <Tooltip title={t('label.version-plural')}>
-      <TooltipTrigger>
-        <Button
-          className="tw:p-1.5"
-          color="secondary"
-          data-testid="version-btn"
-          iconLeading={RefreshCcw01}
-          size="sm"
-          onClick={onClick}>
-          {version}
-        </Button>
-      </TooltipTrigger>
+      <Button
+        className="tw:p-1.5"
+        color="secondary"
+        data-testid="version-btn"
+        iconLeading={RefreshCcw01}
+        size="sm"
+        onClick={onClick}>
+        {version}
+      </Button>
     </Tooltip>
   );
 };
