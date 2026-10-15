@@ -206,6 +206,10 @@ public class AppScheduler {
 
   public void scheduleApplication(App application) {
     try {
+      if (isUnscheduled(application)) {
+        removeRecurringRun(application);
+        return;
+      }
       if (scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP)) != null) {
         LOG.info(
             "Job already exists for the application {}, rescheduling it", application.getName());
@@ -226,6 +230,21 @@ public class AppScheduler {
     } catch (Exception ex) {
       LOG.error("Failed in setting up job Scheduler for Data Reporting", ex);
       throw new UnhandledServerException("Failed in scheduling Job for the Application", ex);
+    }
+  }
+
+  private static boolean isUnscheduled(App application) {
+    return application.getAppSchedule() != null
+        && ScheduleTimeline.NONE.equals(application.getAppSchedule().getScheduleTimeline());
+  }
+
+  /**
+   * An app moved to on-demand runs keeps no recurring job, which would otherwise fire on its old
+   * schedule. An on-demand run in progress is left alone.
+   */
+  private void removeRecurringRun(App application) throws SchedulerException {
+    if (scheduler.deleteJob(new JobKey(application.getName(), APPS_JOB_GROUP))) {
+      LOG.info("Removed the recurring schedule of application {}", application.getName());
     }
   }
 

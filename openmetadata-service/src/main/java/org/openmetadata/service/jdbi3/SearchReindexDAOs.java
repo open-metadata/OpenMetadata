@@ -59,6 +59,43 @@ public interface SearchReindexDAOs {
   @CreateSqlObject
   SearchIndexWriteRouteDAO searchIndexWriteRouteDAO();
 
+  @CreateSqlObject
+  ProjectionRepairStateDAO projectionRepairStateDAO();
+
+  /** Where each scheduled repair left off; one row per repair. */
+  interface ProjectionRepairStateDAO {
+    record RepairState(long changedSince, long sweptAt) {}
+
+    @SqlQuery("SELECT changedSince, sweptAt FROM projection_repair_state WHERE name = :name")
+    @RegisterRowMapper(RepairStateMapper.class)
+    RepairState find(@Bind("name") String name);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO projection_repair_state (name, changedSince, sweptAt) "
+                + "VALUES (:name, :changedSince, :sweptAt) "
+                + "ON DUPLICATE KEY UPDATE changedSince = :changedSince, sweptAt = :sweptAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO projection_repair_state (name, changedSince, sweptAt) "
+                + "VALUES (:name, :changedSince, :sweptAt) "
+                + "ON CONFLICT (name) DO UPDATE SET changedSince = EXCLUDED.changedSince, "
+                + "sweptAt = EXCLUDED.sweptAt",
+        connectionType = POSTGRES)
+    void upsert(
+        @Bind("name") String name,
+        @Bind("changedSince") long changedSince,
+        @Bind("sweptAt") long sweptAt);
+
+    class RepairStateMapper implements RowMapper<RepairState> {
+      @Override
+      public RepairState map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new RepairState(rs.getLong("changedSince"), rs.getLong("sweptAt"));
+      }
+    }
+  }
+
   /** DAO for distributed search index jobs */
   interface SearchIndexJobDAO {
 

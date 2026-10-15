@@ -214,6 +214,28 @@ public class TestSupportSearchResource {
     return Response.ok(Map.of("applied", applied)).build();
   }
 
+  @POST
+  @Path("/repair")
+  @Operation(
+      operationId = "testSupportRunSearchRepair",
+      summary = "Run a scheduled search repair pass now",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "{\"ran\": boolean}; false while another pass holds the repair lock")
+      })
+  public Response runSearchRepair(
+      @Context SecurityContext securityContext,
+      @QueryParam("sweep") @DefaultValue("false") boolean sweep,
+      @QueryParam("settleSeconds") @DefaultValue("60") int settleSeconds) {
+    authorizer.authorizeAdmin(securityContext);
+    final boolean ran =
+        Entity.getSearchRepository()
+            .getRepairJob()
+            .runPassNow(sweep, Duration.ofSeconds(Math.max(0, settleSeconds)));
+    return Response.ok(Map.of("ran", ran)).build();
+  }
+
   private Response engineGet(SecurityContext securityContext, String enginePath)
       throws IOException {
     return forward(securityContext, "GET", enginePath, null);
