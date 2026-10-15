@@ -33,6 +33,13 @@ import {
 import { patchGlossaryTerm } from '../../rest/glossaryAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import {
+  InspectorAddButton,
+  InspectorEmptyText,
+  InspectorList,
+  InspectorRow,
+  InspectorSectionHeading,
+} from './OntologyInspectorSection';
 
 export interface OntologyConceptRealizationProps {
   readonly termId?: string;
@@ -188,22 +195,17 @@ export const OntologyConceptRealization: React.FC<
     [persist, realizations]
   );
 
-  const renderRealization = (realization: AssetRealization) => {
+  const renderRealizationContent = (realization: AssetRealization) => {
     const role = realization.role ?? RealizationRole.PrimaryStore;
 
     return (
-      <div
-        className={classNames(
-          'tw:flex tw:items-center tw:gap-2 tw:border tw:border-secondary tw:bg-secondary',
-          isInspector
-            ? 'tw:rounded-lg tw:px-2.5 tw:py-2'
-            : 'tw:rounded-lg tw:p-3'
-        )}
-        data-testid={`concept-realization-${realization.asset.name}`}
-        key={realization.asset.id}>
-        <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-mono tw:text-xs tw:leading-normal tw:font-medium tw:text-primary">
+      <>
+        <Typography
+          className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-primary"
+          size="text-sm"
+          weight="medium">
           {realization.asset.displayName ?? realization.asset.name}
-        </span>
+        </Typography>
         <Badge color="gray" size="sm" type="color">
           {realization.asset.type}
         </Badge>
@@ -212,6 +214,7 @@ export const OntologyConceptRealization: React.FC<
         </Badge>
         {canAuthor ? (
           <ButtonUtility
+            color="tertiary"
             data-testid={`remove-realization-${realization.asset.name}`}
             icon={XClose}
             isDisabled={isSaving}
@@ -220,9 +223,25 @@ export const OntologyConceptRealization: React.FC<
             onClick={() => handleRemove(realization.asset.id)}
           />
         ) : null}
-      </div>
+      </>
     );
   };
+
+  const renderRealization = (realization: AssetRealization) =>
+    isInspector ? (
+      <InspectorRow
+        key={realization.asset.id}
+        testId={`concept-realization-${realization.asset.name}`}>
+        {renderRealizationContent(realization)}
+      </InspectorRow>
+    ) : (
+      <div
+        className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:p-3"
+        data-testid={`concept-realization-${realization.asset.name}`}
+        key={realization.asset.id}>
+        {renderRealizationContent(realization)}
+      </div>
+    );
 
   const renderAddForm = () => (
     <div
@@ -284,12 +303,38 @@ export const OntologyConceptRealization: React.FC<
     </div>
   );
 
-  return (
-    <div
-      className={classNames(
-        'tw:flex tw:flex-col',
-        isInspector ? 'tw:gap-1.5' : 'tw:gap-2'
+  const addLabel = t('label.add-entity', { entity: t('label.realized-in') });
+
+  const renderInspectorSection = () => (
+    <section data-testid="ontology-realizations">
+      <InspectorSectionHeading
+        count={realizations.length}
+        label={t('label.realized-in')}
+      />
+      {realizations.length === 0 ? (
+        <InspectorEmptyText>
+          {t('message.no-concept-realization')}
+        </InspectorEmptyText>
+      ) : (
+        <InspectorList>{realizations.map(renderRealization)}</InspectorList>
       )}
+      {canAuthor && isAdding ? (
+        <div className="tw:mt-3">{renderAddForm()}</div>
+      ) : null}
+      {canAuthor && !isAdding ? (
+        <InspectorAddButton
+          isDisabled={false}
+          label={addLabel}
+          testId="add-realization"
+          onClick={() => setIsAdding(true)}
+        />
+      ) : null}
+    </section>
+  );
+
+  const renderDefaultSection = () => (
+    <div
+      className="tw:flex tw:flex-col tw:gap-2"
       data-testid="ontology-realizations">
       <div className="tw:mb-1 tw:flex tw:items-center tw:gap-2">
         <Typography as="h3" size="text-sm" weight="semibold">
@@ -318,9 +363,11 @@ export const OntologyConceptRealization: React.FC<
           data-testid="add-realization"
           iconLeading={Plus}
           onClick={() => setIsAdding(true)}>
-          {t('label.add-entity', { entity: t('label.realized-in') })}
+          {addLabel}
         </Button>
       )}
     </div>
   );
+
+  return isInspector ? renderInspectorSection() : renderDefaultSection();
 };
