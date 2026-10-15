@@ -37,20 +37,20 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
         className="layout-space layout-space-horizontal w-full justify-between"
         gap={2}
         itemClassName="layout-space-item">
-        <Typography
+        <span
           className={classNames('control-label', {
             'font-medium text-base-color text-md': !schema.additionalProperties,
           })}
           id={`${idSchema.$id}__title`}>
           {title}
-        </Typography>
+        </span>
 
         {schema.additionalProperties && (
           <ButtonUtility
             data-testid={`add-item-${title}`}
             icon={Plus}
             id={`${idSchema.$id}`}
-            tooltip={t('label.add')}
+            tooltip={t('label.add-entity', { entity: title })}
             onClick={() => {
               onAddClick(schema)();
             }}

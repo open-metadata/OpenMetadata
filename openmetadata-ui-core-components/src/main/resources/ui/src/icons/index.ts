@@ -471,6 +471,7 @@ export { ZapFast } from './ZapFast';
 export { Zap } from './Zap';
 export { ZoomIn } from './ZoomIn';
 export { ZoomOut } from './ZoomOut';
+export { AnnouncementColored } from './AnnouncementColored';
 export { AppLayout } from './AppLayout';
 export { AppMicrosoftTeams } from './AppMicrosoftTeams';
 export { AppSlack } from './AppSlack';

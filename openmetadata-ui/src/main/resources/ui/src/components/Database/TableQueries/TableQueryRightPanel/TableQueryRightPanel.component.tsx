@@ -19,7 +19,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
-import { Drawer } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -82,15 +81,7 @@ const TableQueryRightPanel = ({
   };
 
   return (
-    <Drawer
-      destroyOnClose
-      open
-      className="query-right-panel"
-      closable={false}
-      getContainer={false}
-      mask={false}
-      title={null}
-      width="100%">
+    <Box className="query-right-panel tw:h-full tw:w-full" direction="col">
       {isLoading ? (
         <Loader />
       ) : (
@@ -252,7 +243,7 @@ const TableQueryRightPanel = ({
           </Grid.Item>
         </Grid>
       )}
-    </Drawer>
+    </Box>
   );
 };
 

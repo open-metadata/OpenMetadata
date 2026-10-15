@@ -12,13 +12,13 @@
  */
 
 import {
+  Box,
   ButtonUtility,
   Skeleton,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
-
 import { isUndefined } from 'lodash';
 import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,44 +51,51 @@ function ObservabilityAlertActions({
     return <Typography className="p-l-xs">{NO_DATA_PLACEHOLDER}</Typography>;
   }
 
+  const editButton = (
+    <ButtonUtility
+      aria-label={t('label.edit')}
+      data-testid={`alert-edit-${record.name}`}
+      href={
+        onEditAlert
+          ? undefined
+          : observabilityRouterClassBase.getObservabilityAlertsEditPath(
+              record.fullyQualifiedName ?? ''
+            )
+      }
+      icon={Edit01}
+      size="md"
+      onClick={
+        onEditAlert
+          ? (event: MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onEditAlert(record);
+            }
+          : undefined
+      }
+    />
+  );
+
   return (
-    <div className="d-flex items-center">
+    <Box align="center">
       {alertPermission.edit && (
         <Tooltip arrow placement="bottom" title={t('label.edit')}>
-          {onEditAlert ? (
-            <ButtonUtility
-              data-testid={`alert-edit-${record.name}`}
-              icon={Edit01}
-              size="md"
-              onClick={(event: MouseEvent) => {
-                event.stopPropagation();
-                onEditAlert(record);
-              }}
-            />
-          ) : (
-            <ButtonUtility
-              data-testid={`alert-edit-${record.name}`}
-              href={observabilityRouterClassBase.getObservabilityAlertsEditPath(
-                record.fullyQualifiedName ?? ''
-              )}
-              icon={Edit01}
-              size="md"
-            />
-          )}
+          {editButton}
         </Tooltip>
       )}
       {alertPermission.delete && (
         <Tooltip arrow placement="bottom" title={t('label.delete')}>
           <ButtonUtility
+            aria-label={t('label.delete')}
             data-testid={`alert-delete-${record.name}`}
             icon={Trash01}
             isDisabled={record.provider === ProviderType.System}
             size="md"
-            onClick={() => onSelectAlert(record)}
+            onPress={() => onSelectAlert(record)}
           />
         </Tooltip>
       )}
-    </div>
+    </Box>
   );
 }
 

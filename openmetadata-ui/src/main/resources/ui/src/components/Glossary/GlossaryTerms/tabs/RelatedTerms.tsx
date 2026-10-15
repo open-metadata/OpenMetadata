@@ -388,7 +388,9 @@ const RelatedTerms = () => {
           (relatedTerm: TermRelation) =>
             !addedRelatedTerms.some(
               (addedRelatedTerm: TermRelation) =>
-                addedRelatedTerm.term?.id === relatedTerm.term?.id
+                addedRelatedTerm.term?.id === relatedTerm.term?.id &&
+                (addedRelatedTerm.relationType ?? 'relatedTo') ===
+                  (relatedTerm.relationType ?? 'relatedTo')
             )
         )
       : [];

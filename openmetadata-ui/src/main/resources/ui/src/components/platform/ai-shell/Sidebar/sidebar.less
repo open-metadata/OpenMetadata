@@ -1329,6 +1329,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     flex: 1;
+    // Flex items default to min-width: auto, which stops the ellipsis and lets
+    // long names push the panel into horizontal scroll.
+    min-width: 0;
   }
 
   // Trailing count pill — Figma 3405:13544.

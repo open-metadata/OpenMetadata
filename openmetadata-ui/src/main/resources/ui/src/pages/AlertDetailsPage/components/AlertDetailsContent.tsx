@@ -24,7 +24,6 @@ import {
   RefreshCcw02,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
-
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
@@ -32,7 +31,6 @@ import Description from '../../../components/common/EntityDescription/Descriptio
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
@@ -213,17 +211,17 @@ function AlertDetailsContent({
             ))}
           </Tabs>
         </Box>
-        <DeleteModal
-          entityTitle={getEntityName(alertDetails)}
-          isDeleting={isDeleting}
-          message={t('message.permanently-delete-common-message', {
-            entity: getEntityName(alertDetails)?.toLowerCase?.() ?? '',
-          })}
-          open={showDeleteModal}
-          onCancel={hideDeleteModal}
-          onDelete={handleAlertHardDelete}
-        />
       </Card.Content>
+      <DeleteModal
+        entityTitle={getEntityName(alertDetails)}
+        isDeleting={isDeleting}
+        message={t('message.permanently-delete-common-message', {
+          entity: getEntityName(alertDetails)?.toLowerCase?.() ?? '',
+        })}
+        open={showDeleteModal}
+        onCancel={hideDeleteModal}
+        onDelete={handleAlertHardDelete}
+      />
     </Card>
   );
 }

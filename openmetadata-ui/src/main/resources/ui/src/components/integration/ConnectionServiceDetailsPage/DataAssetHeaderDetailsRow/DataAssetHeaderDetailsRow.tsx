@@ -132,6 +132,7 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
               data-testid="edit-domain-button"
               icon={Edit01}
               size="sm"
+              tooltip={t('label.edit-entity', { entity: t('label.domain') })}
               type="button"
             />
           </DomainSelectableList>
@@ -171,6 +172,9 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
               data-testid="edit-owner-button"
               icon={Edit01}
               size="sm"
+              tooltip={t('label.edit-entity', {
+                entity: t('label.owner-plural'),
+              })}
               type="button"
             />
           </UserTeamSelectableList>
@@ -206,6 +210,7 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
               data-testid="edit-tier-button"
               icon={Edit01}
               size="sm"
+              tooltip={t('label.edit-entity', { entity: t('label.tier') })}
               type="button"
               onClick={() => setTierPopoverOpen(true)}
             />

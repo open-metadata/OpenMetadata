@@ -19,7 +19,6 @@ import {
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
-
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -172,7 +171,7 @@ const DataQualityPage = () => {
         gap={4}>
         <Card>
           <Card.Content>
-            <div className="tw:flex">
+            <Box>
               <div className="tw:w-2/3">
                 <PageHeader
                   data={{
@@ -183,7 +182,7 @@ const DataQualityPage = () => {
                 />
               </div>
 
-              <div className="d-flex justify-end tw:w-1/3">
+              <Box className="tw:w-1/3" justify="end">
                 {activeTab === DataQualityPageTabs.TEST_SUITES &&
                   testSuitePermission?.Create && (
                     <Button
@@ -233,8 +232,8 @@ const DataQualityPage = () => {
                       </Dropdown.Popover>
                     </Dropdown.Root>
                   )}
-              </div>
-            </div>
+              </Box>
+            </Box>
           </Card.Content>
         </Card>
         <Tabs

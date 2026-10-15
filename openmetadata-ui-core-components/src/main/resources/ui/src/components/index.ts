@@ -64,6 +64,7 @@ export * from './base/form/hook-form';
 export * from './base/grid/grid';
 export * from './base/input/hint-text';
 export * from './base/input/input';
+export * from './base/input/number-input';
 export * from './base/input/input-group';
 export * from './base/input/label';
 export * from './base/input/password-input';
@@ -211,3 +212,5 @@ export type {
   OwnerChipProps,
   OwnerAvatarStackProps,
 } from './application/owner/owner.types';
+
+export * from './base/input/number-input';

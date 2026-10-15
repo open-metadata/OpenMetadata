@@ -12,7 +12,6 @@
  */
 import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
-import { Header } from 'antd/lib/layout/layout';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -29,7 +28,7 @@ export const LimitBanner = () => {
   const showBanner = bannerDetails && !(isTourOpen || isTourPage);
 
   return (
-    <Header
+    <header
       className={classNames('pricing-banner', {
         errored: bannerDetails?.type === 'danger',
       })}
@@ -52,6 +51,6 @@ export const LimitBanner = () => {
         tooltip={t('label.close')}
         onClick={() => setBannerDetails(null)}
       />
-    </Header>
+    </header>
   );
 };

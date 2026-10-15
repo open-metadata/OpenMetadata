@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  BadgeWithDot,
   Button,
   ButtonUtility,
   Popover,
@@ -19,7 +20,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
-import { Badge } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -287,11 +287,11 @@ const ProfileSectionUserDetailsCard = ({
         {userEmailRender}
         {onlineStatus && (
           <div className="m-t-sm">
-            <Badge
-              data-testid="user-online-status"
-              status={onlineStatus.status}
-              text={onlineStatus.text}
-            />
+            <span data-testid="user-online-status">
+              <BadgeWithDot color="success" size="sm">
+                {onlineStatus.text}
+              </BadgeWithDot>
+            </span>
           </div>
         )}
       </div>

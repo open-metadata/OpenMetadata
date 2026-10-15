@@ -332,7 +332,7 @@ export const getEntityIconWithBg = (
       {Icon && (
         <Icon
           className={classNames(
-            style?.iconClass ?? 'tw:text-utility-gray-500',
+            style?.iconClass ?? 'tw:text-quaternary',
             iconClassName
           )}
           height={size}

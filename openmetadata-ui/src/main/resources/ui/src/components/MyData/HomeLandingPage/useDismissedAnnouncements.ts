@@ -12,18 +12,33 @@
  */
 import { useCallback, useState } from 'react';
 
-const STORAGE_KEY_PREFIX = 'om-home-dismissed-announcements';
+/**
+ * Each Home surface keeps its own list, because each prunes against what *it*
+ * shows: the rail lists asset announcements, the critical banner system ones,
+ * and a shared list would let one prune the other's dismissals away.
+ */
+export enum DismissedAnnouncementsScope {
+  Rail = 'om-home-dismissed-announcements',
+  CriticalBanner = 'om-home-dismissed-critical-announcements',
+}
 
-export const getDismissedAnnouncementsStorageKey = (userId: string) =>
-  `${STORAGE_KEY_PREFIX}:${userId}`;
+export const getDismissedAnnouncementsStorageKey = (
+  userId: string,
+  scope = DismissedAnnouncementsScope.Rail
+) => `${scope}:${userId}`;
 
-const readDismissed = (userId: string | undefined): Set<string> => {
+const readDismissed = (
+  userId: string | undefined,
+  scope: DismissedAnnouncementsScope
+): Set<string> => {
   if (!userId) {
     return new Set();
   }
   try {
     const parsed: unknown = JSON.parse(
-      localStorage.getItem(getDismissedAnnouncementsStorageKey(userId)) ?? '[]'
+      localStorage.getItem(
+        getDismissedAnnouncementsStorageKey(userId, scope)
+      ) ?? '[]'
     );
 
     return new Set(
@@ -36,11 +51,15 @@ const readDismissed = (userId: string | undefined): Set<string> => {
   }
 };
 
-const writeDismissed = (userId: string | undefined, ids: Set<string>) => {
+const writeDismissed = (
+  userId: string | undefined,
+  scope: DismissedAnnouncementsScope,
+  ids: Set<string>
+) => {
   if (!userId) {
     return;
   }
-  const key = getDismissedAnnouncementsStorageKey(userId);
+  const key = getDismissedAnnouncementsStorageKey(userId, scope);
   try {
     if (ids.size === 0) {
       localStorage.removeItem(key);
@@ -59,52 +78,61 @@ interface DismissedState {
 }
 
 /**
- * Announcements the user has dismissed from the Home rail, remembered per user
- * in `localStorage`.
+ * Announcements the user has dismissed from a Home surface, remembered per user
+ * and per surface (`scope`) in `localStorage`.
  *
  * The announcements API has no per-user dismiss, so this is browser-local: a
  * dismissal holds across visits on this browser, not across devices. Keyed by
  * user id so a shared browser does not hand one user's dismissals to the next.
  *
  * `prune` drops ids the server no longer returns as live — expired or deleted
- * announcements can never reappear in the rail, so keeping their ids would
+ * announcements can never reappear on the surface, so keeping their ids would
  * only grow the stored list for good.
  */
-export const useDismissedAnnouncements = (userId: string | undefined) => {
+export const useDismissedAnnouncements = (
+  userId: string | undefined,
+  scope = DismissedAnnouncementsScope.Rail
+) => {
   const [state, setState] = useState<DismissedState>(() => ({
     userId,
-    ids: readDismissed(userId),
+    ids: readDismissed(userId, scope),
   }));
 
   // Re-read when the signed-in user changes. Adjusted during render rather
   // than in an effect so the previous user's set is never painted.
   let current = state;
   if (state.userId !== userId) {
-    current = { userId, ids: readDismissed(userId) };
+    current = { userId, ids: readDismissed(userId, scope) };
     setState(current);
   }
 
-  const dismiss = useCallback((id: string) => {
-    setState((prev) => {
-      const ids = new Set(prev.ids).add(id);
-      writeDismissed(prev.userId, ids);
+  const dismiss = useCallback(
+    (id: string) => {
+      setState((prev) => {
+        const ids = new Set(prev.ids).add(id);
+        writeDismissed(prev.userId, scope, ids);
 
-      return { ...prev, ids };
-    });
-  }, []);
+        return { ...prev, ids };
+      });
+    },
+    [scope]
+  );
 
-  const prune = useCallback((liveIds: string[]) => {
-    const live = new Set(liveIds);
-    setState((prev) => {
-      const ids = new Set([...prev.ids].filter((id) => live.has(id)));
-      if (ids.size === prev.ids.size) {
-        return prev;
-      }
-      writeDismissed(prev.userId, ids);
+  const prune = useCallback(
+    (liveIds: string[]) => {
+      const live = new Set(liveIds);
+      setState((prev) => {
+        const ids = new Set([...prev.ids].filter((id) => live.has(id)));
+        if (ids.size === prev.ids.size) {
+          return prev;
+        }
+        writeDismissed(prev.userId, scope, ids);
 
-      return { ...prev, ids };
-    });
-  }, []);
+        return { ...prev, ids };
+      });
+    },
+    [scope]
+  );
 
   return { dismissedIds: current.ids, dismiss, prune };
 };

@@ -514,7 +514,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
         <ButtonUtility
           className={classNames({
-            'tw:*:data-icon:text-utility-brand-600':
+            'tw:*:data-icon:text-fg-warning-primary':
               voteStatus === QueryVoteType.votedDown,
           })}
           data-testid="downvote-btn"

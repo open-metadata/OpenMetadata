@@ -216,7 +216,11 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
           {/* `h-10` matches the control height, so the button sits level with the row's first line. */}
           <Box align="center" className="tw:h-10">
             <ButtonUtility
-              color="tertiary-destructive"
+              color={
+                preset.delRuleColor === 'secondary'
+                  ? 'secondary'
+                  : 'tertiary-destructive'
+              }
               data-testid={preset.testIds.delRule}
               icon={XClose}
               size="md"

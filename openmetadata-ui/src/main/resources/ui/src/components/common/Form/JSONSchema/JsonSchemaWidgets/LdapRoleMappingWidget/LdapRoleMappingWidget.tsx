@@ -12,24 +12,32 @@
  */
 
 import {
+  Autocomplete,
   Box,
   Button,
   ButtonUtility,
   Card,
   Grid,
+  Input,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { WidgetProps } from '@rjsf/utils';
-import { Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  Key,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import './ldap-role-mapping-widget.less';
 
 interface RoleMappingEntry {
   id: string;
@@ -85,7 +93,6 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
   const [searchResults, setSearchResults] = useState<Map<string, RoleOption[]>>(
     new Map()
   );
-  const [isLoadingRoles, setIsLoadingRoles] = useState(false);
   const [errors, setErrors] = useState<MappingError>({});
 
   const idCounterRef = useRef(0);
@@ -138,7 +145,6 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
 
   useEffect(() => {
     const fetchRoles = async () => {
-      setIsLoadingRoles(true);
       try {
         const results = await searchRoles('');
         const roleOptions: RoleOption[] = results.map((role) => ({
@@ -148,8 +154,6 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
         setAvailableRoles(roleOptions);
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoadingRoles(false);
       }
     };
 
@@ -277,6 +281,25 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
     };
   }, [debouncedSearchRoles]);
 
+  const getRoleItems = (mappingId: string) =>
+    (searchResults.get(mappingId) ?? availableRoles).map((role) => ({
+      id: role.value,
+      label: role.label,
+    }));
+
+  const getSelectedRoleItems = (mapping: RoleMappingEntry) => {
+    const knownRoles = [
+      ...availableRoles,
+      ...(searchResults.get(mapping.id) ?? []),
+    ];
+
+    return mapping.roles.map((roleName) => ({
+      id: roleName,
+      label:
+        knownRoles.find((role) => role.value === roleName)?.label ?? roleName,
+    }));
+  };
+
   return (
     <div className="ldap-role-mapping-widget" data-testid={id}>
       <Box
@@ -313,14 +336,14 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
             <Grid gap="2">
               <Grid.Item span={11}>
                 <Input
-                  className="form-control"
-                  data-testid={`ldap-group-input-${mapping.id}`}
-                  disabled={disabled || readonly}
+                  aria-label={t('label.ldap-group-dn')}
+                  inputDataTestId={`ldap-group-input-${mapping.id}`}
+                  isDisabled={disabled || readonly}
+                  isInvalid={Boolean(errors[mapping.id])}
                   placeholder={t('message.ldap-group-dn-placeholder')}
-                  status={errors[mapping.id] ? 'error' : undefined}
                   value={mapping.ldapGroup}
-                  onChange={(e) =>
-                    handleLdapGroupChange(mapping.id, e.target.value)
+                  onChange={(ldapGroup) =>
+                    handleLdapGroupChange(mapping.id, ldapGroup)
                   }
                 />
                 {errors[mapping.id] && (
@@ -334,22 +357,35 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
               </Grid.Item>
 
               <Grid.Item span={12}>
-                <Select
-                  showSearch
-                  className="w-full"
+                <Autocomplete
+                  aria-label={t('label.openmetadata-role-plural')}
                   data-testid={`roles-select-${mapping.id}`}
-                  disabled={disabled || readonly}
-                  filterOption={false}
-                  loading={isLoadingRoles}
-                  mode="multiple"
-                  options={searchResults.get(mapping.id) ?? availableRoles}
+                  filterOption={() => true}
+                  isDisabled={disabled || readonly}
+                  items={getRoleItems(mapping.id)}
                   placeholder={t('label.select-field', {
                     field: t('label.role-plural'),
                   })}
-                  value={mapping.roles}
-                  onChange={(roles) => handleRolesChange(mapping.id, roles)}
-                  onSearch={(val) => debouncedSearchRoles(mapping.id, val)}
-                />
+                  selectedItems={getSelectedRoleItems(mapping)}
+                  onItemCleared={(key: Key) =>
+                    handleRolesChange(
+                      mapping.id,
+                      mapping.roles.filter((role) => role !== key)
+                    )
+                  }
+                  onItemInserted={(key: Key) =>
+                    handleRolesChange(mapping.id, [
+                      ...mapping.roles,
+                      String(key),
+                    ])
+                  }
+                  onSearchChange={(val) =>
+                    debouncedSearchRoles(mapping.id, val)
+                  }>
+                  {(item) => (
+                    <Autocomplete.Item id={item.id} label={item.label} />
+                  )}
+                </Autocomplete>
               </Grid.Item>
 
               <Grid.Item className="tw:flex tw:items-center" span={1}>

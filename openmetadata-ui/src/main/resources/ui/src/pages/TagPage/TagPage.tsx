@@ -623,7 +623,7 @@ const TagPage = () => {
           />
         ),
         key: EntityTabs.OVERVIEW,
-        children: <GenericTab type={PageType.Tag} variant="flat" />,
+        children: <GenericTab type={PageType.Tag} />,
       },
       {
         label: (

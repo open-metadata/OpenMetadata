@@ -281,7 +281,7 @@ const FailedTestCaseSampleData = ({
           weight="bold">
           {t('label.sample-data')}
         </Typography>
-        <div className="d-flex gap-4">
+        <Box gap={4}>
           {testCaseData?.inspectionQuery && !isVersionPage && (
             <Button
               color="primary"
@@ -289,7 +289,8 @@ const FailedTestCaseSampleData = ({
               href={observabilityRouterClassBase.getTestCaseDetailPagePath(
                 testCaseData?.fullyQualifiedName ?? '',
                 TestCasePageTabs.SQL_QUERY
-              )}>
+              )}
+              size="md">
               {t('label.explore-with-query')}
             </Button>
           )}
@@ -305,7 +306,7 @@ const FailedTestCaseSampleData = ({
               onOpenChange={setShowActions}
             />
           )}
-        </div>
+        </Box>
       </Box>
       <div className="tw:overflow-x-auto tw:border tw:border-border-secondary tw:rounded-[10px]">
         <Table

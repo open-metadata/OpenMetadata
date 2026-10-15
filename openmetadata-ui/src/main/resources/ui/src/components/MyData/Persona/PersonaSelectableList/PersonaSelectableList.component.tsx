@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Autocomplete,
   Box,
   ButtonUtility,
   Popover,
@@ -18,10 +19,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
-import { RefSelectProps, Select } from 'antd';
-import classNames from 'classnames';
 import { debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../assets/svg/ic-popover-close.svg';
@@ -33,8 +32,6 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { getAllPersonas, searchPersonas } from '../../../../rest/PersonaAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
-import { normalizeToArray } from '../../../../utils/ObjectUtils';
-import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
 
 export const PersonaListItemRenderer = (props: EntityReference) => {
@@ -58,15 +55,6 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
   );
 };
 
-const renderMaxTagPlaceholder = (
-  count: number,
-  t: ReturnType<typeof useTranslation>['t']
-) => (
-  <Typography className="max-tag-text">
-    {t('label.plus-count-more', { count })}
-  </Typography>
-);
-
 export const PersonaSelectableList = ({
   hasPermission,
   selectedPersonas = [],
@@ -78,43 +66,9 @@ export const PersonaSelectableList = ({
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
   const [isSaving, setIsSaving] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [currentlySelectedPersonas, setCurrentlySelectedPersonas] = useState<
     EntityReference[]
   >([]);
-  const [popoverHeight, setPopoverHeight] = useState<number>(
-    isDefaultPersona ? 116 : 156
-  );
-  const dropdownRef = useRef<RefSelectProps | null>(null);
-
-  useEffect(() => {
-    setIsDropdownOpen(popupVisible);
-  }, [popupVisible]);
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const dropdown = document.querySelector(
-        '.persona-custom-dropdown-class'
-      ) as HTMLElement;
-
-      if (dropdown) {
-        setPopoverHeight(
-          dropdown.scrollHeight + (isDefaultPersona ? 116 : 156)
-        );
-      }
-    });
-
-    const dropdown = document.querySelector('.persona-custom-dropdown-class');
-    if (dropdown) {
-      observer.observe(dropdown, {
-        attributes: true,
-        childList: true,
-        subtree: true,
-      });
-    }
-
-    return () => observer.disconnect();
-  }, [isDropdownOpen, isDefaultPersona]);
 
   const [selectOptions, setSelectOptions] = useState<EntityReference[]>([]);
   // Server-side search replaces selectOptions per query, so the selected FQNs are
@@ -203,9 +157,28 @@ export const PersonaSelectableList = ({
 
   useEffect(() => {
     if (popupVisible) {
+      setCurrentlySelectedPersonas(selectedPersonas);
       loadOptions();
     }
   }, [popupVisible, loadOptions]);
+
+  const autocompleteItems = useMemo(
+    () =>
+      selectOptions.map((persona) => ({
+        id: persona.fullyQualifiedName ?? '',
+        label: getEntityName(persona),
+      })),
+    [selectOptions]
+  );
+
+  const selectedItems = useMemo(
+    () =>
+      currentlySelectedPersonas.map((persona) => ({
+        id: persona.fullyQualifiedName ?? '',
+        label: getEntityName(persona),
+      })),
+    [currentlySelectedPersonas]
+  );
 
   const handlePersonaUpdate = () => {
     setIsSaving(true);
@@ -223,12 +196,17 @@ export const PersonaSelectableList = ({
     }
   };
 
-  const handleChange = useCallback((selected: string | string[]) => {
-    const selectedFqns = normalizeToArray(selected);
-    const selectedPersonasList = selectedFqns
-      .map((fqn) => personaByFqnRef.current.get(fqn))
-      .filter((persona): persona is EntityReference => Boolean(persona));
-    setCurrentlySelectedPersonas(selectedPersonasList);
+  const handleItemInserted = useCallback((key: Key) => {
+    const persona = personaByFqnRef.current.get(String(key));
+    if (persona) {
+      setCurrentlySelectedPersonas((prev) => [...prev, persona]);
+    }
+  }, []);
+
+  const handleItemCleared = useCallback((key: Key) => {
+    setCurrentlySelectedPersonas((prev) =>
+      prev.filter((persona) => persona.fullyQualifiedName !== key)
+    );
   }, []);
 
   if (!hasPermission) {
@@ -253,11 +231,9 @@ export const PersonaSelectableList = ({
         containerClassName="tw:w-95 tw:p-5"
         data-testid="persona-popover"
         placement="bottom start">
-        <div
+        <Box
           className="user-profile-edit-popover-card relative"
-          style={{
-            height: `${popoverHeight}px`,
-          }}>
+          direction="col">
           <div className="d-flex justify-start items-center gap-2 m-b-sm">
             <div className="d-flex flex-start items-center">
               <PersonaIcon height={16} />
@@ -270,50 +246,38 @@ export const PersonaSelectableList = ({
             </Typography>
           </div>
 
-          <div className="border" id="area" style={{ borderRadius: '5px' }}>
-            <Select
-              allowClear
-              showSearch
-              className={classNames('profile-edit-popover', {
-                'single-select': isDefaultPersona,
-              })}
+          <Box className="tw:mb-3" direction="col">
+            <Autocomplete
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- the list opens with the popover, as before
+              autoFocus
+              aria-label={
+                isDefaultPersona
+                  ? t('label.default-persona')
+                  : t('label.persona')
+              }
               data-testid={`${
                 isDefaultPersona ? 'default-' : ''
               }persona-select-list`}
-              defaultValue={selectedPersonas.map(
-                (persona) => persona.fullyQualifiedName as string
+              filterOption={() => true}
+              items={autocompleteItems}
+              maxVisibleItems={3}
+              multiple={!isDefaultPersona}
+              placeholder={t('label.select-entity', {
+                entity: t('label.persona'),
+              })}
+              selectedItems={selectedItems}
+              onItemCleared={handleItemCleared}
+              onItemInserted={handleItemInserted}
+              onSearchChange={handleSearch}>
+              {(item) => (
+                <Autocomplete.Item
+                  data-testid={`persona-option-${item.label}`}
+                  id={item.id}
+                  label={item.label}
+                />
               )}
-              dropdownStyle={{
-                maxHeight: 'fit-content',
-                overflow: 'auto',
-              }}
-              filterOption={false}
-              getPopupContainer={(trigger) =>
-                trigger.parentElement ?? document.body
-              }
-              maxTagCount={3}
-              maxTagPlaceholder={(omittedValues) =>
-                renderMaxTagPlaceholder(omittedValues.length, t)
-              }
-              mode={isDefaultPersona ? undefined : 'multiple'}
-              open={isDropdownOpen}
-              options={selectOptions?.map((persona) => ({
-                label: getEntityName(persona),
-                value: persona.fullyQualifiedName,
-              }))}
-              placeholder="Please select"
-              popupClassName="persona-custom-dropdown-class"
-              ref={dropdownRef}
-              style={{ width: '100%' }}
-              tagRender={TagRenderer}
-              virtual={false}
-              onChange={handleChange}
-              onDropdownVisibleChange={(open) => {
-                setIsDropdownOpen(open);
-              }}
-              onSearch={handleSearch}
-            />
-          </div>
+            </Autocomplete>
+          </Box>
 
           <div className="flex justify-end gap-2">
             <ButtonUtility
@@ -334,7 +298,7 @@ export const PersonaSelectableList = ({
               onClick={handlePersonaUpdate}
             />
           </div>
-        </div>
+        </Box>
       </Popover>
     </PopoverTrigger>
   );

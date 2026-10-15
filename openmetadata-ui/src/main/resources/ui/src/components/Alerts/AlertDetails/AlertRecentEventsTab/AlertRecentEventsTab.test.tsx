@@ -18,12 +18,14 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Status } from '../../../../generated/events/api/typedEvent';
 import {
   mockAlertDetails,
   MOCK_TYPED_EVENT_LIST_RESPONSE,
 } from '../../../../mocks/Alerts.mock';
 import { getAlertEventsFromId } from '../../../../rest/alertsAPI';
+import { getChangeEventDataFromTypedEvent } from '../../../../utils/Alerts/AlertsUtilPure';
 import { NextPreviousWithOffsetProps } from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset.interface';
 import AlertRecentEventsTab from './AlertRecentEventsTab';
 
@@ -142,6 +144,38 @@ describe('AlertRecentEventsTab', () => {
     expect(screen.getByTestId('recent-events-list')).toBeInTheDocument();
   });
 
+  it('expands events by keyboard and allows multiple event details to stay open', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const [firstEvent, secondEvent] = MOCK_TYPED_EVENT_LIST_RESPONSE.data;
+    const firstId =
+      getChangeEventDataFromTypedEvent(firstEvent).changeEventData.id;
+    const secondId =
+      getChangeEventDataFromTypedEvent(secondEvent).changeEventData.id;
+
+    if (!firstId || !secondId) {
+      throw new Error('Event fixtures must include IDs');
+    }
+
+    await act(async () => {
+      render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
+    });
+    const firstHeader = screen.getByRole('button', {
+      name: new RegExp(firstId),
+    });
+    act(() => firstHeader.focus());
+
+    await user.keyboard('{Enter}');
+
+    expect(screen.getByTestId(`event-details-${firstId}`)).toBeVisible();
+
+    await user.click(
+      screen.getByRole('button', { name: new RegExp(secondId) })
+    );
+
+    expect(screen.getByTestId(`event-details-${firstId}`)).toBeVisible();
+    expect(screen.getByTestId(`event-details-${secondId}`)).toBeVisible();
+  });
+
   it('should handle filter change', async () => {
     await act(async () => {
       render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
@@ -155,6 +189,9 @@ describe('AlertRecentEventsTab', () => {
 
     expect(await screen.findByTestId('applied-filter-text')).toHaveTextContent(
       ': label.successful'
+    );
+    expect(filterButton).toHaveAccessibleName(
+      'label.filter-plural : label.successful'
     );
   });
 

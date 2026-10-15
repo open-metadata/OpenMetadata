@@ -13,7 +13,10 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { useDataProducts } from '../../../../hooks/useDataProducts';
-import { OverviewFilter } from '../../../../hooks/useDomainOverview';
+import {
+  OverviewFilter,
+  OverviewOrder,
+} from '../../../../hooks/useDomainOverview';
 import { FilterButtonOption } from '../Common/TopicWidget/FilterButton';
 import DataProductsOverviewWidget from './DataProductsOverviewWidget';
 
@@ -44,6 +47,7 @@ jest.mock('../../../../hooks/useDataProducts', () => ({
 // Plain, not virtual: only the enum is read, and the hook module is real.
 jest.mock('../../../../hooks/useDomainOverview', () => ({
   OverviewFilter: { ALL: 'all', EMPTY: 'empty', NO_OWNER: 'noOwner' },
+  OverviewOrder: { NAME: 'name', RECENTLY_UPDATED: 'recentlyUpdated' },
 }));
 
 // The real control is a popover listbox; here each option is a button so a
@@ -209,11 +213,32 @@ describe('DataProductsOverviewWidget buckets', () => {
   it('queries the selected bucket instead of filtering the page', () => {
     renderWidget();
 
-    expect(useDataProducts).toHaveBeenLastCalledWith(OverviewFilter.ALL);
+    expect(useDataProducts).toHaveBeenLastCalledWith(
+      OverviewFilter.ALL,
+      OverviewOrder.NAME
+    );
 
     fireEvent.click(screen.getByTestId('data-products-filter-empty'));
 
-    expect(useDataProducts).toHaveBeenLastCalledWith(OverviewFilter.EMPTY);
+    expect(useDataProducts).toHaveBeenLastCalledWith(
+      OverviewFilter.EMPTY,
+      OverviewOrder.NAME
+    );
+  });
+
+  // Recency is on the search document, so the server pages by it; otherwise a
+  // product edited today but named late in the alphabet never reaches the page.
+  it('asks the server for the most recently updated page', () => {
+    renderWidget();
+
+    fireEvent.click(
+      screen.getByTestId('data-product-sort-filter-recentlyUpdated')
+    );
+
+    expect(useDataProducts).toHaveBeenLastCalledWith(
+      OverviewFilter.ALL,
+      OverviewOrder.RECENTLY_UPDATED
+    );
   });
 
   it('shows the estate-wide count on each chip', () => {

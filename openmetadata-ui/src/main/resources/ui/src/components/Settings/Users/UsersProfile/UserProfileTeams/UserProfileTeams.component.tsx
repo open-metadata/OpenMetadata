@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   ButtonUtility,
   Divider,
   Popover,
@@ -43,7 +44,6 @@ const UserProfileTeams = ({
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
   const [selectedTeams, setSelectedTeams] = useState<EntityReference[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const [popoverHeight, setPopoverHeight] = useState<number>(156);
   const teamsSelectableRef = useRef<HTMLDivElement | null>(null);
 
   const handleTeamsSave = async () => {
@@ -91,29 +91,6 @@ const UserProfileTeams = ({
     setIsDropdownOpen(visible);
   };
 
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const dropdown = document.querySelector(
-        '.teams-custom-dropdown-class'
-      ) as HTMLElement;
-
-      if (dropdown) {
-        setPopoverHeight(dropdown.scrollHeight + 156);
-      }
-    });
-
-    const dropdown = document.querySelector('.teams-custom-dropdown-class');
-    if (dropdown) {
-      observer.observe(dropdown, {
-        attributes: true,
-        childList: true,
-        subtree: true,
-      });
-    }
-
-    return () => observer.disconnect();
-  }, [isDropdownOpen]);
-
   return (
     <div
       className="d-flex flex-col w-full  p-[20px] user-profile-card"
@@ -142,21 +119,18 @@ const UserProfileTeams = ({
                 className="profile-edit-popover-card"
                 containerClassName="tw:w-95 tw:p-5"
                 placement="top end">
-                <div
-                  className="user-profile-edit-popover-card relative"
+                {/* The team tree opens in its own overlay, so the card keeps a fixed height. */}
+                <Box
+                  className="tw:h-39"
                   data-testid="profile-teams-edit-popover"
-                  style={{
-                    height: `${popoverHeight}px`,
-                  }}>
-                  <div className="d-flex justify-start items-center gap-2 m-b-sm">
-                    <div className="d-flex flex-start items-center">
-                      <IconTeamsGrey height={16} />
-                    </div>
-
-                    <Typography className="user-profile-edit-popover-card-title">
+                  direction="col"
+                  gap={3}>
+                  <Box align="center" gap={2}>
+                    <IconTeamsGrey height={16} />
+                    <Typography size="text-sm" weight="semibold">
                       {t('label.team-plural')}
                     </Typography>
-                  </div>
+                  </Box>
 
                   <div
                     className="border p-2 bg-gray-100 rounded-md"
@@ -173,16 +147,11 @@ const UserProfileTeams = ({
                     />
                   </div>
 
-                  <div className="flex justify-end gap-2 mt-4">
+                  <Box className="tw:mt-auto" gap={2} justify="end">
                     <ButtonUtility
                       data-testid="teams-edit-close-btn"
                       icon={ClosePopoverIcon}
                       size="md"
-                      style={{
-                        position: 'absolute',
-                        bottom: '0px',
-                        right: '38px',
-                      }}
                       tooltip={t('label.cancel')}
                       onClick={handleCloseEditTeam}
                     />
@@ -191,12 +160,11 @@ const UserProfileTeams = ({
                       icon={SavePopoverIcon}
                       isDisabled={isLoading}
                       size="md"
-                      style={{ position: 'absolute', bottom: '0px' }}
                       tooltip={t('label.save')}
                       onClick={handleTeamsSave}
                     />
-                  </div>
-                </div>
+                  </Box>
+                </Box>
               </Popover>
             </PopoverTrigger>
           )}

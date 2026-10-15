@@ -23,7 +23,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FieldProps } from '@rjsf/utils';
-import { Form } from 'antd';
 import { isNil } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -171,7 +170,7 @@ const DynamicSampleConfig = ({
 
   return (
     <div className="m-t-sm">
-      <Form.Item className="m-t-md" colon={false}>
+      <div className="tw:mt-4">
         <div className="flex items-center gap-2">
           <Toggle
             aria-label={t('label.smart-sampling')}
@@ -191,7 +190,7 @@ const DynamicSampleConfig = ({
             ({t('message.smart-sampling-hint')})
           </Typography>
         </div>
-      </Form.Item>
+      </div>
       {!(config.smartSampling ?? true) && (
         <>
           <Typography

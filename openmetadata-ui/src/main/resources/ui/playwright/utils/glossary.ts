@@ -1855,7 +1855,17 @@ export const setupGlossaryDenyPermissionTest = async (
 };
 
 export const performExpandAll = async (page: Page) => {
-  const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
+  // Match only the expand-tree fetch (?glossary= / ?parent=). A bare
+  // glossaryTerms glob also matches the tab's first-level ?directChildrenOf=
+  // fetch, so the wait could resolve before the tree request was even sent.
+  const termRes = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname.endsWith('/api/v1/glossaryTerms') &&
+      (url.searchParams.has('glossary') || url.searchParams.has('parent'))
+    );
+  });
   await page.getByTestId('expand-collapse-all-button').click();
   await termRes;
 

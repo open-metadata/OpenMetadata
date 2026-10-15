@@ -165,7 +165,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
           data-testid="edit-workflow-title-button"
           icon={Edit01}
           size="sm"
-          tooltip={t('label.edit')}
+          tooltip={t('label.edit-entity', { entity: t('label.workflow') })}
           onClick={handleOpenEditModal}
         />
       ),

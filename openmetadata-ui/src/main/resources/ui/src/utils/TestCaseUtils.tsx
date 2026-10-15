@@ -17,10 +17,10 @@ import {
   Edit01,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { lowerCase } from 'lodash';
 import type { ReactElement, ReactNode } from 'react';
 import { NavigateFunction } from 'react-router-dom';
+import { ManageMenuItem as ItemType } from '../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageMenuItem } from '../components/common/ManageMenuButton/ManageMenuButton.component';
 import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';

@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Select } from '@openmetadata/ui-core-components';
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
-import { Select } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TeamType } from '../../../generated/entity/teams/team';
@@ -30,10 +29,6 @@ function TeamTypeSelect({
   const { t } = useTranslation();
   const [value, setValue] = useState<TeamType>(teamType);
 
-  const handleSelect = (type: TeamType) => {
-    setValue(type);
-  };
-
   const handleCancel = () => {
     handleShowTypeSelector(false);
   };
@@ -44,13 +39,13 @@ function TeamTypeSelect({
 
   const options = useMemo(() => {
     const options = getTeamOptionsFromType(parentTeamType).map((type) => ({
+      id: type,
       label: type,
-      value: type,
     }));
 
     return showGroupOption
       ? options
-      : options.filter((opt) => opt.value !== TeamType.Group);
+      : options.filter((opt) => opt.id !== TeamType.Group);
   }, [parentTeamType, showGroupOption]);
 
   // Editing the team type must not toggle its parent collapsible panel.
@@ -64,11 +59,13 @@ function TeamTypeSelect({
       itemClassName="layout-space-item"
       onClick={(e) => e.stopPropagation()}>
       <Select
-        defaultActiveFirstOption
-        options={options}
-        value={value}
-        onSelect={handleSelect}
-      />
+        aria-label={t('label.team-type')}
+        className="tw:w-40"
+        items={options}
+        selectedKey={value}
+        onSelectionChange={(key) => key && setValue(key as TeamType)}>
+        {(item) => <Select.Item id={item.id} label={item.label} />}
+      </Select>
       <Box
         inline
         align="center"

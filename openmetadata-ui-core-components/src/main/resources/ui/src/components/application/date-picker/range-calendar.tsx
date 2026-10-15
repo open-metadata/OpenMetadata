@@ -66,10 +66,12 @@ const RangeCalendarTitle = ({ part }: { part: 'start' | 'end' }) => {
 
 const MobilePresetButton = ({
   value,
+  onSelect,
   children,
   ...props
 }: HTMLAttributes<HTMLButtonElement> & {
   value: { start: DateValue; end: DateValue };
+  onSelect?: () => void;
 }) => {
   const context = useContext(RangeCalendarStateContext);
 
@@ -82,6 +84,8 @@ const MobilePresetButton = ({
       onClick={() => {
         context?.setValue(value);
         context?.setFocusedDate(value.start as CalendarDate);
+        // After setValue: its change clears any selected preset upstream.
+        onSelect?.();
       }}>
       {children}
     </Button>
@@ -96,9 +100,15 @@ interface RangeCalendarProps extends AriaRangeCalendarProps<DateValue> {
     string,
     { label: string; value: { start: DateValue; end: DateValue } }
   >;
+  /** Called with the preset's key when a preset is picked. */
+  onPresetSelect?: (key: string) => void;
 }
 
-export const RangeCalendar = ({ presets, ...props }: RangeCalendarProps) => {
+export const RangeCalendar = ({
+  presets,
+  onPresetSelect,
+  ...props
+}: RangeCalendarProps) => {
   const isDesktop = useBreakpoint('md');
   const context = useSlottedContext(RangeCalendarContext);
 
@@ -138,8 +148,11 @@ export const RangeCalendar = ({ presets, ...props }: RangeCalendarProps) => {
 
           {!isDesktop && presets && (
             <div className="tw:mt-1 tw:flex tw:justify-between tw:gap-3 tw:px-2 tw:md:hidden">
-              {Object.values(presets).map((preset) => (
-                <MobilePresetButton key={preset.label} value={preset.value}>
+              {Object.entries(presets).map(([key, preset]) => (
+                <MobilePresetButton
+                  key={key}
+                  value={preset.value}
+                  onSelect={() => onPresetSelect?.(key)}>
                   {preset.label}
                 </MobilePresetButton>
               ))}

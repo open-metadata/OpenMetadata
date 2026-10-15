@@ -14,6 +14,9 @@ import {
   Box,
   ButtonUtility,
   Divider,
+  FormField,
+  HookForm,
+  Input,
   Owner,
   Tooltip,
   Typography,
@@ -24,10 +27,10 @@ import {
   InfoCircle,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
@@ -63,6 +66,9 @@ const TeamsInfo = ({
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
+  const emailForm = useForm<{ email: string }>({
+    defaultValues: { email: '' },
+  });
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -197,67 +203,66 @@ const TeamsInfo = ({
               onClick={(e: MouseEvent) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();
+                emailForm.reset({ email: email ?? '' });
                 setIsEmailEdit(true);
               }}
             />
           )}
         </div>
         {isEmailEdit ? (
-          <Form
-            initialValues={{ email }}
-            //  Used onClick stop click propagation event anywhere in the form to parent
-            //  TeamsDetailV1 collapsible panel
-            onClick={(e) => e.stopPropagation()}
-            onFinish={onEmailSave}>
-            <Box
-              inline
-              align="baseline"
-              className="layout-space layout-space-horizontal"
-              gap={2}
-              itemClassName="layout-space-item">
-              <Form.Item
-                className="m-b-0"
-                name="email"
-                rules={[
-                  {
-                    pattern: EMAIL_REG_EX,
-                    type: 'email',
-                    message: t('message.field-text-is-invalid', {
-                      fieldText: t('label.email'),
-                    }),
-                  },
-                ]}>
-                <Input
-                  className="w-48"
-                  data-testid="email-input"
-                  placeholder={t('label.enter-entity', {
-                    entity: t('label.email-lowercase'),
-                  })}
-                />
-              </Form.Item>
-              <Box
-                inline
-                align="center"
-                className="layout-space layout-space-horizontal"
-                gap={1}
-                itemClassName="layout-space-item">
-                <ButtonUtility
-                  data-testid="cancel-edit-email"
-                  icon={XClose}
-                  isDisabled={isLoading}
-                  tooltip={t('label.cancel')}
-                  onClick={() => setIsEmailEdit(false)}
-                />
-                <ButtonUtility
-                  data-testid="save-edit-email"
-                  icon={Check}
-                  isDisabled={isLoading}
-                  tooltip={t('label.save')}
-                  type="submit"
-                />
+          // Stops clicks reaching the parent TeamsDetailV1 collapsible panel.
+          <div role="presentation" onClick={(e) => e.stopPropagation()}>
+            <HookForm
+              form={emailForm}
+              onSubmit={emailForm.handleSubmit(onEmailSave)}>
+              <Box align="start" gap={2}>
+                <FormField
+                  control={emailForm.control}
+                  name="email"
+                  rules={{
+                    pattern: {
+                      value: EMAIL_REG_EX,
+                      message: t('message.field-text-is-invalid', {
+                        fieldText: t('label.email'),
+                      }),
+                    },
+                  }}>
+                  {({ field, fieldState }) => (
+                    <Input
+                      aria-label={t('label.email')}
+                      className="tw:w-48"
+                      hint={fieldState.error?.message}
+                      inputDataTestId="email-input"
+                      isInvalid={fieldState.invalid}
+                      placeholder={t('label.enter-entity', {
+                        entity: t('label.email-lowercase'),
+                      })}
+                      size="sm"
+                      value={field.value}
+                      onBlur={field.onBlur}
+                      onChange={field.onChange}
+                    />
+                  )}
+                </FormField>
+                <Box align="center" gap={1}>
+                  <ButtonUtility
+                    data-testid="cancel-edit-email"
+                    icon={XClose}
+                    isDisabled={isLoading}
+                    tooltip={t('label.cancel')}
+                    onClick={() => setIsEmailEdit(false)}
+                  />
+                  <ButtonUtility
+                    data-testid="save-edit-email"
+                    icon={Check}
+                    isDisabled={isLoading}
+                    tooltip={t('label.save')}
+                    type="submit"
+                  />
+                </Box>
               </Box>
-            </Box>
-          </Form>
+            </HookForm>
+          </div>
         ) : (
           <Box
             inline
@@ -275,7 +280,15 @@ const TeamsInfo = ({
         )}
       </Box>
     ),
-    [email, isEmailEdit, hasEditPermission, isLoading]
+    [
+      email,
+      isEmailEdit,
+      hasEditPermission,
+      isLoading,
+      emailForm,
+      onEmailSave,
+      t,
+    ]
   );
 
   const teamTypeElement = useMemo(() => {

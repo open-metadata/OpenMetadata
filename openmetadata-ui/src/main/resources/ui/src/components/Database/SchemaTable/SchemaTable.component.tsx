@@ -17,11 +17,11 @@ import {
   Dropdown,
   Grid,
   Label,
+  Select,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
-import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
@@ -122,6 +122,8 @@ const ModalWithMarkdownEditor = withSuspenseFallback(
     )
   )
 );
+
+const NO_CONSTRAINT_KEY = 'none';
 
 const SchemaTable = () => {
   const { t } = useTranslation();
@@ -911,18 +913,30 @@ const SchemaTable = () => {
         })}
       </Label>
       <Select
-        allowClear
+        aria-label={t('label.entity-type-plural', {
+          entity: t('label.constraint'),
+        })}
         data-testid="constraint-type-select"
-        getPopupContainer={(triggerNode) => triggerNode.parentElement}
-        options={constraintOptionsTranslated}
         placeholder={t('label.select-entity', {
           entity: t('label.entity-type-plural', {
             entity: t('label.constraint'),
           }),
         })}
-        value={editConstraint}
-        onChange={(value) => setEditConstraint(value)}
-      />
+        selectedKey={editConstraint ?? null}
+        onSelectionChange={(key) =>
+          setEditConstraint(
+            key === NO_CONSTRAINT_KEY ? undefined : (key as Constraint)
+          )
+        }>
+        <Select.Item id={NO_CONSTRAINT_KEY} label={t('label.none')} />
+        {constraintOptionsTranslated.map((option) => (
+          <Select.Item
+            id={option.value}
+            key={option.value}
+            label={option.label}
+          />
+        ))}
+      </Select>
     </div>
   );
 

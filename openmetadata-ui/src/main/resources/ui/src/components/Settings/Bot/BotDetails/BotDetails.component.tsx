@@ -16,10 +16,10 @@ import {
   ButtonUtility,
   Card,
   Grid,
+  Input,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Check, Edit01, XClose } from '@openmetadata/ui-core-components/icons';
-import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -56,7 +56,6 @@ const BotDetails: FC<BotsDetailProps> = ({
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
-  const [isRolesLoading, setIsRolesLoading] = useState(false);
   const selectedRolesRef = useRef<string[]>([]);
   const { getResourceLimit, config } = useLimitStore();
 
@@ -89,8 +88,6 @@ const BotDetails: FC<BotsDetailProps> = ({
   };
 
   const fetchRoles = useCallback(async (query = '') => {
-    setIsRolesLoading(true);
-
     try {
       const data = await searchRoles(query);
       setRoles((prevRoles) => {
@@ -102,8 +99,6 @@ const BotDetails: FC<BotsDetailProps> = ({
       });
     } catch (err) {
       showErrorToast(err as AxiosError);
-    } finally {
-      setIsRolesLoading(false);
     }
   }, []);
 
@@ -111,10 +106,6 @@ const BotDetails: FC<BotsDetailProps> = ({
     () => debounce(fetchRoles, 300),
     [fetchRoles]
   );
-
-  const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDisplayName(e.target.value);
-  };
 
   const handleDisplayNameChange = () => {
     if (displayName !== botData.displayName) {
@@ -151,12 +142,13 @@ const BotDetails: FC<BotsDetailProps> = ({
                     {isDisplayNameEdit ? (
                       <>
                         <Input
-                          data-testid="displayName"
+                          aria-label={t('label.display-name')}
                           id="displayName"
+                          inputDataTestId="displayName"
                           name="displayName"
                           placeholder={t('label.display-name')}
                           value={displayName}
-                          onChange={onDisplayNameChange}
+                          onChange={setDisplayName}
                         />
                         <div className="flex justify-end" data-testid="buttons">
                           <ButtonUtility
@@ -235,7 +227,6 @@ const BotDetails: FC<BotsDetailProps> = ({
         </Grid.Item>
         <Grid.Item className="layout-column" span={24}>
           <RolesCard
-            isRolesLoading={isRolesLoading}
             roles={roles}
             searchRolesOptions={debouncedFetchRoles}
             selectedRoles={selectedRoles}

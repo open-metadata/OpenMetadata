@@ -12,6 +12,7 @@
  */
 
 import {
+  Avatar,
   Box,
   Button,
   Grid,
@@ -27,8 +28,6 @@ import {
   Restore,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
-import { Avatar } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
@@ -99,6 +98,7 @@ import {
 } from '../../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../../../common/EntityDescription/Description';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
+import { ManageMenuItem as ItemType } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -1044,9 +1044,16 @@ const TeamDetailsV1 = ({
           {!isOrganization && <TitleBreadcrumb titleLinks={slashedTeamName} />}
           <div className="d-flex items-center justify-between p-t-xs">
             <div className="d-flex items-center gap-2 flex-1 w-min-0">
-              <Avatar className="teams-profile" size={40}>
-                <IconTeams className="text-primary" width={20} />
-              </Avatar>
+              <Avatar
+                className="teams-profile"
+                contrastBorder={false}
+                placeholder={
+                  <>
+                    <IconTeams className="text-primary" width={20} />
+                  </>
+                }
+                size="md"
+              />
 
               <TeamsHeadingLabel
                 currentTeam={currentTeam}
