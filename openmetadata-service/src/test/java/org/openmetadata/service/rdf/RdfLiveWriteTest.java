@@ -36,6 +36,7 @@ import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.update.UpdateAction;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -238,6 +239,66 @@ class RdfLiveWriteTest {
     replayDeadLetter(RdfLiveWrite.RelationshipChange.capture(containsEdge(), false), true);
 
     assertFalse(dataset.getNamedModel(GRAPH).isEmpty());
+  }
+
+  @Test
+  void bothEdgesOfARelationshipStoredOnceForBothDirectionsAreApplied() {
+    final UUID first = UUID.randomUUID();
+    final UUID second = UUID.randomUUID();
+    final boolean firstIsSmaller = first.compareTo(second) < 0;
+    final UUID smaller = firstIsSmaller ? first : second;
+    final UUID larger = firstIsSmaller ? second : first;
+
+    replayAgainstRow(
+        RdfLiveWrite.RelationshipChange.capture(relatedMetrics(first, second), false, true),
+        smaller,
+        larger);
+    replayAgainstRow(
+        RdfLiveWrite.RelationshipChange.capture(relatedMetrics(second, first), false, true),
+        smaller,
+        larger);
+
+    final Model graph = dataset.getNamedModel(GRAPH);
+    assertTrue(graph.contains(metric(graph, first), null, metric(graph, second)));
+    assertTrue(graph.contains(metric(graph, second), null, metric(graph, first)));
+  }
+
+  @Test
+  void aRelationshipChangeQueuedBeforeAnUpgradeReadsAsOneDirection() {
+    final String queued =
+        "{\"operation\":\"relationship\",\"relationshipJson\":\"{}\",\"remove\":true}";
+
+    assertEquals(
+        new RdfLiveWrite.RelationshipChange("{}", true, false),
+        JsonUtils.readValue(queued, RdfLiveWrite.class));
+  }
+
+  private static EntityRelationship relatedMetrics(final UUID fromId, final UUID toId) {
+    return new EntityRelationship()
+        .withFromId(fromId)
+        .withToId(toId)
+        .withFromEntity(Entity.METRIC)
+        .withToEntity(Entity.METRIC)
+        .withRelationshipType(Relationship.RELATED_TO);
+  }
+
+  private static Resource metric(final Model graph, final UUID id) {
+    return graph.createResource(BASE + "entity/metric/" + id);
+  }
+
+  /** Replays {@code command} against a database holding one row, {@code fromId} to {@code toId}. */
+  private void replayAgainstRow(final RdfLiveWrite command, final UUID fromId, final UUID toId) {
+    final CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    final CollectionDAO.EntityRelationshipDAO relationships =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationships);
+    when(relationships.existsRelationship(
+            fromId, toId, Entity.METRIC, Entity.METRIC, Relationship.RELATED_TO.ordinal()))
+        .thenReturn(1);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      JsonUtils.readValue(JsonUtils.pojoToJson(command), RdfLiveWrite.class).replay(repository);
+    }
   }
 
   private static EntityRelationship containsEdge() {
