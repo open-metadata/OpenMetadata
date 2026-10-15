@@ -1315,20 +1315,11 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       .getByRole('button', { name: 'Close', exact: true })
       .click();
     await details.getByRole('tab', { name: 'Gaps', exact: true }).click();
-    const coverage = details.getByRole('button', {
-      name: /Show on canvas/,
-    });
-    await coverage.click();
-    await page
-      .getByRole('option', { name: 'Highlight mapping gaps', exact: true })
-      .click();
-    await expect(page.locator('.kg-node-group.kg-node-gap')).toHaveCount(1);
-    await expect(page.locator('[data-edge-id]')).toHaveCount(324);
-    await coverage.click();
-    await page.getByRole('option', { name: 'Not mapped', exact: true }).click();
-    await expect(page.getByTestId('graph-status')).toContainText(
-      '316 entities'
-    );
+    // Post-R7 Gaps rework: the details table filters to unmapped-only rows and
+    // the former coverage-mode toggle (Show on canvas → Highlight mapping gaps
+    // / Not mapped) is gone — the Gaps tab is self-sufficient now. Just assert
+    // the drawer still has rows, then close it.
+    await expect(details.getByRole('row')).not.toHaveCount(0);
     await details.getByRole('button', { name: 'Close', exact: true }).click();
     // Filters tray + Clear-Filters button are gone with the toolbar refactor;
     // the preceding coverage-mode toggles never persist, so level/entity
