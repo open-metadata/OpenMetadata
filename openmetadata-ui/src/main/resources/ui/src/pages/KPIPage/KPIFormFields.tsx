@@ -28,19 +28,16 @@ import { useTranslation } from 'react-i18next';
 import { KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import {
   dateValueToMillis,
-  millisToDateValue,
+  millisToPickerDateValue,
+  PickerDateValue,
 } from '../../utils/date-time/calendarDate.utils';
 import { KPIMetricTypeOptions } from '../../utils/KPI/KPIUtils';
 import { KPIFormValues } from './KPIPage.interface';
 
-// Core resolves its own @internationalized/date copy, so its DateValue is a
-// distinct nominal type from the app's; convert at the picker boundary.
-type CoreDateValue = Parameters<typeof DatePicker>[0]['value'];
-
 const toPickerValue = (value: DateTime | null) =>
-  millisToDateValue(value?.toMillis()) as CoreDateValue;
+  millisToPickerDateValue(value?.toMillis());
 
-const fromPickerValue = (value: CoreDateValue) =>
+const fromPickerValue = (value: PickerDateValue | null | undefined) =>
   value ? DateTime.fromMillis(dateValueToMillis(value)) : null;
 
 interface KPIFormFieldsProps {

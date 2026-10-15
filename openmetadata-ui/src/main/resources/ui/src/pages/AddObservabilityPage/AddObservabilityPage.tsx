@@ -40,7 +40,7 @@ function AddObservabilityPage({
   if (alert?.provider === ProviderType.System) {
     return (
       <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography as="p" className="tw-max-w-md tw:mb-0">
+        <Typography as="p" className="tw:max-w-md">
           {t('message.system-alert-edit-message')}
         </Typography>
       </ErrorPlaceHolder>

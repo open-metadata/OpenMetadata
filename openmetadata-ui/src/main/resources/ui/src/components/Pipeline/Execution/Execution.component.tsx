@@ -16,11 +16,9 @@ import {
   Button,
   ButtonGroup,
   ButtonGroupItem,
-  ButtonUtility,
   Dropdown,
   Grid,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { map } from 'lodash';
 import { Key, useCallback, useEffect, useState } from 'react';
@@ -43,7 +41,7 @@ import {
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import DqDateRangeFilter from '../../observability/DataQuality/Dashboard/DqDateRangeFilter';
+import DateRangeFilter from '../../common/DateRangeFilter/DateRangeFilter';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';
 
@@ -171,27 +169,15 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                 </Dropdown.Popover>
               </Dropdown.Root>
               {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
-                <Box
-                  inline
-                  align="center"
-                  data-testid="data-range-picker"
-                  gap={2}>
-                  <DqDateRangeFilter
+                <div data-testid="data-range-picker">
+                  <DateRangeFilter
                     endTs={datesSelected ? endTime : undefined}
                     size="sm"
                     startTs={datesSelected ? startTime : undefined}
                     onApply={onDateChange}
+                    onClear={() => onDateChange()}
                   />
-                  {datesSelected && (
-                    <ButtonUtility
-                      aria-label={t('label.clear')}
-                      color="tertiary"
-                      data-testid="clear-date-filter"
-                      icon={<XClose size={14} />}
-                      onClick={() => onDateChange()}
-                    />
-                  )}
-                </Box>
+                </div>
               ) : null}
             </Box>
           </Box>

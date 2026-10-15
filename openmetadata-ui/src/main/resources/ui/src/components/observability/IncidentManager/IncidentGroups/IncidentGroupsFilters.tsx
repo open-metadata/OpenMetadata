@@ -38,9 +38,9 @@ import { getUserByName } from '../../../../rest/userAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
+import DateRangeFilter from '../../../common/DateRangeFilter/DateRangeFilter';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useIncidentFilterOptions } from '../../../IncidentManager/useIncidentFilterOptions';
-import DqDateRangeFilter from '../../DataQuality/Dashboard/DqDateRangeFilter';
 import {
   CLEARED_INCIDENT_GROUP_FILTERS,
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
@@ -294,7 +294,7 @@ const IncidentGroupsFilters = ({
         />
       </FilterField>
       <FilterField label={t('label.date-range')}>
-        <DqDateRangeFilter
+        <DateRangeFilter
           fullWidth
           endTs={filters.endTs}
           startTs={filters.startTs}

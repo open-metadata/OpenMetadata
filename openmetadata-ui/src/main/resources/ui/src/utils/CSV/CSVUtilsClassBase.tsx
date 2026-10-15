@@ -35,7 +35,7 @@ import {
   Tag01,
   Type01,
 } from '@openmetadata/ui-core-components/icons';
-import { isEmpty, startCase, toString } from 'lodash';
+import { isEmpty, startCase, toString, uniq } from 'lodash';
 import {
   CSSProperties,
   FocusEvent,
@@ -1482,7 +1482,7 @@ const InlineCustomPropertiesEditor = ({
     const handleInserted = (key: Key) =>
       handleUpdateDraft(
         customProperty.name,
-        isMultiSelect ? [...selectedValues, String(key)] : [String(key)]
+        isMultiSelect ? uniq([...selectedValues, String(key)]) : [String(key)]
       );
 
     const handleCleared = (key: Key) =>
@@ -2053,7 +2053,8 @@ const renderGridEnumSelect = ({
     popoverClassName="react-grid-select-dropdown"
     selectedKey={value || null}
     size="sm"
-    onSelectionChange={(key) => onChange(String(key))}>
+    // A cleared selection reports null; keep the cell empty rather than "null".
+    onSelectionChange={(key) => onChange(key === null ? '' : String(key))}>
     {(item) => <Select.Item id={item.id} label={item.label} />}
   </Select>
 );
@@ -2735,7 +2736,12 @@ const getCsvMultiSelectEditor: CSVEditorFactory = ({
             onItemCleared={(key) =>
               handleChange(selected.filter((item) => item !== String(key)))
             }
-            onItemInserted={(key) => handleChange([...selected, String(key)])}>
+            onItemInserted={(key) => {
+              const value = String(key).trim();
+              if (value) {
+                handleChange(uniq([...selected, value]));
+              }
+            }}>
             {null}
           </Autocomplete>
         </InlineEdit>

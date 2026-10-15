@@ -23,22 +23,19 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../../assets/svg/calendar.svg';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
 import {
-  dateValueToMillis,
-  millisToDateValue,
+  dateValueToEndOfDayMillis,
+  millisToPickerDateValue,
+  PickerDateValue,
 } from '../../../utils/date-time/calendarDate.utils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
-import DqDateRangeFilter from '../../observability/DataQuality/Dashboard/DqDateRangeFilter';
+import DateRangeFilter from '../../common/DateRangeFilter/DateRangeFilter';
 import {
   LineageTimeFilterProps,
   LineageTimePresetKey,
 } from './LineageTimeFilter.interface';
-
-// Core resolves its own @internationalized/date copy, so its DateValue is a
-// distinct nominal type from the app's; stage the picker value with core's own.
-type CoreDateValue = Parameters<typeof DatePicker>[0]['value'];
 
 const PRESET_DAYS: Record<
   Exclude<
@@ -62,7 +59,7 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
   const { i18n, t } = useTranslation();
   const [showCustomRange, setShowCustomRange] = useState<boolean>(false);
   const [showPointInTime, setShowPointInTime] = useState<boolean>(false);
-  const [pointValue, setPointValue] = useState<CoreDateValue>(null);
+  const [pointValue, setPointValue] = useState<PickerDateValue | null>(null);
 
   const matchedPresetDays = useMemo<number | null>(() => {
     if (startTime === undefined || endTime === undefined) {
@@ -126,9 +123,7 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
         return;
       }
       if (key === LineageTimePresetKey.PointInTime) {
-        setPointValue(
-          (isPointInTime ? millisToDateValue(endTime) : null) as CoreDateValue
-        );
+        setPointValue(isPointInTime ? millisToPickerDateValue(endTime) : null);
         setShowPointInTime(true);
 
         return;
@@ -155,7 +150,7 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
       // The date-only value resolves to midnight; include the whole day.
       onChange({
         startTime: undefined,
-        endTime: dateValueToMillis(pointValue.add({ days: 1 })) - 1,
+        endTime: dateValueToEndOfDayMillis(pointValue),
       });
     }
   }, [onChange, pointValue]);
@@ -245,7 +240,7 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
       </Dropdown.Root>
       {showCustomRange && (
         <span data-testid="lineage-time-filter-range">
-          <DqDateRangeFilter
+          <DateRangeFilter
             isOpen
             endTs={endTime}
             size="sm"

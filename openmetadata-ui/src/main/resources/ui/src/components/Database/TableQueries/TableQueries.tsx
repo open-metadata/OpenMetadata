@@ -18,12 +18,10 @@ import {
 import {
   Box,
   Button,
-  ButtonUtility,
   Grid,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -72,12 +70,12 @@ import {
 } from '../../../utils/Query/QueryUtils';
 import { getAddQueryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DateRangeFilter from '../../common/DateRangeFilter/DateRangeFilter';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SortingDropDown from '../../Explore/SortingDropDown';
-import DqDateRangeFilter from '../../observability/DataQuality/Dashboard/DqDateRangeFilter';
 import PaginationComponent from '../../PaginationComponent/PaginationComponent';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import QueryCard from './QueryCard';
@@ -623,21 +621,13 @@ const TableQueries: FC<TableQueriesProp> = ({
                         data-testid="data-range-picker"
                         gap={2}>
                         <Typography>{t('label.created-date')}</Typography>
-                        <DqDateRangeFilter
+                        <DateRangeFilter
                           endTs={queryDateFilter?.endTs}
                           size="sm"
                           startTs={queryDateFilter?.startTs}
                           onApply={onDateChange}
+                          onClear={() => onDateChange()}
                         />
-                        {queryDateFilter && (
-                          <ButtonUtility
-                            aria-label={t('label.clear')}
-                            color="tertiary"
-                            data-testid="clear-date-filter"
-                            icon={<XClose size={14} />}
-                            onClick={() => onDateChange()}
-                          />
-                        )}
                       </Box>
                     </Box>
 

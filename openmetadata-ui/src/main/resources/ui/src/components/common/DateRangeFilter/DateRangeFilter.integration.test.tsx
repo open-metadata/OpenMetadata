@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import DqDateRangeFilter from './DqDateRangeFilter';
+import DateRangeFilter from './DateRangeFilter';
 
 const START_TS = new Date('2024-01-15T00:00:00Z').getTime();
 const END_TS = new Date('2024-01-20T00:00:00Z').getTime();
@@ -24,11 +24,11 @@ const END_TS = new Date('2024-01-20T00:00:00Z').getTime();
  * production callers (`DqFilterBar`, `IncidentGroupsFilters`, `TestSummary`)
  * mount it.
  */
-describe('DqDateRangeFilter integration', () => {
+describe('DateRangeFilter integration', () => {
   it('uncontrolled: reverts abandoned selection to the committed range after Escape close', () => {
     const onApply = jest.fn();
     render(
-      <DqDateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
+      <DateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
     );
 
     const trigger = screen.getByRole('button', { name: /date range/i });
@@ -57,7 +57,7 @@ describe('DqDateRangeFilter integration', () => {
   it('uncontrolled: reverts abandoned selection to the committed range after Dismiss close', () => {
     const onApply = jest.fn();
     render(
-      <DqDateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
+      <DateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
     );
 
     const trigger = screen.getByRole('button', { name: /date range/i });
@@ -84,7 +84,7 @@ describe('DqDateRangeFilter integration', () => {
   it('uncontrolled: Cancel then close reverts to the committed range', () => {
     const onApply = jest.fn();
     render(
-      <DqDateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
+      <DateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
     );
 
     const trigger = screen.getByRole('button', { name: /date range/i });

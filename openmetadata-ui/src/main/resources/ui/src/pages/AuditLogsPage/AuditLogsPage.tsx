@@ -64,16 +64,15 @@ import {
 } from '../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../utils/AuditLogUtils';
 import {
+  dateValueToEndOfDayMillis,
   dateValueToMillis,
-  millisToDateValue,
+  millisToPickerDateValue,
 } from '../../utils/date-time/calendarDate.utils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../utils/DatePickerMenuUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './AuditLogsPage.less';
 
-// Core resolves its own @internationalized/date copy, so its DateValue is a
-// distinct nominal type from the app's; type picker state with core's own.
 type CorePickerProps = Parameters<typeof DateRangePicker>[0];
 
 // Fallback cadence for the export modal when the completion websocket event is
@@ -393,8 +392,7 @@ const AuditLogsPage = () => {
     try {
       const response = await exportAuditLogs({
         startTs: dateValueToMillis(exportDateRange.start),
-        // The date-only end value resolves to midnight; include the whole day.
-        endTs: dateValueToMillis(exportDateRange.end.add({ days: 1 })) - 1,
+        endTs: dateValueToEndOfDayMillis(exportDateRange.end),
         q: searchTerm || undefined,
         ...filterParams,
       });
@@ -635,9 +633,7 @@ const AuditLogsPage = () => {
               fullWidth
               data-testid="export-date-range-picker"
               isDisabled={isExporting}
-              maxValue={
-                millisToDateValue(Date.now()) as CorePickerProps['maxValue']
-              }
+              maxValue={millisToPickerDateValue(Date.now())}
               value={exportDateRange}
               onChange={setExportDateRange}
             />

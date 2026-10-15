@@ -10,17 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DateRangePicker } from '@openmetadata/ui-core-components';
-import { useEffect, useState } from 'react';
-import type { DateValue } from 'react-aria-components';
 import {
+  Box,
+  ButtonUtility,
+  DateRangePicker,
+} from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  dateValueToEndOfDayMillis,
   dateValueToMillis,
-  millisToDateValue,
-} from '../../../../utils/date-time/calendarDate.utils';
+  millisToPickerDateValue,
+  PickerDateValue,
+} from '../../../utils/date-time/calendarDate.utils';
 
-type PickerRange = { start: DateValue; end: DateValue } | null;
+type PickerRange = { start: PickerDateValue; end: PickerDateValue } | null;
 
-export interface DqDateRangeFilterProps {
+export interface DateRangeFilterProps {
   startTs?: number;
   endTs?: number;
   /** `sm` matches the trigger to the sm filter inputs. */
@@ -32,6 +39,8 @@ export interface DqDateRangeFilterProps {
   onOpenChange?: (open: boolean) => void;
   /** Commit handler — compatible with the hook's `onDateRangeChange`. */
   onApply: (range: { startTs: number; endTs: number }) => void;
+  /** Shows a clear button while a range is set; called when it is pressed. */
+  onClear?: () => void;
 }
 
 /**
@@ -39,7 +48,7 @@ export interface DqDateRangeFilterProps {
  * `@internationalized/date` values, to the dashboard's epoch-millis
  * `DateRangeObject`. Selection is staged locally and committed on Apply.
  */
-export const DqDateRangeFilter = ({
+export const DateRangeFilter = ({
   startTs,
   endTs,
   size = 'md',
@@ -47,10 +56,12 @@ export const DqDateRangeFilter = ({
   isOpen,
   onOpenChange,
   onApply,
-}: DqDateRangeFilterProps) => {
+  onClear,
+}: DateRangeFilterProps) => {
+  const { t } = useTranslation();
   const buildValue = (): PickerRange => {
-    const start = millisToDateValue(startTs);
-    const end = millisToDateValue(endTs);
+    const start = millisToPickerDateValue(startTs);
+    const end = millisToPickerDateValue(endTs);
 
     return start && end ? { start, end } : null;
   };
@@ -59,8 +70,8 @@ export const DqDateRangeFilter = ({
 
   // Re-sync the staged value when the committed range changes upstream.
   useEffect(() => {
-    const start = millisToDateValue(startTs);
-    const end = millisToDateValue(endTs);
+    const start = millisToPickerDateValue(startTs);
+    const end = millisToPickerDateValue(endTs);
     setValue(start && end ? { start, end } : null);
   }, [startTs, endTs]);
 
@@ -89,11 +100,9 @@ export const DqDateRangeFilter = ({
 
   const handleApply = () => {
     if (value?.start && value?.end) {
-      // Commit the end boundary as the last millisecond of the selected day —
-      // the date-only value resolves to midnight, which would exclude the end day.
       onApply({
         startTs: dateValueToMillis(value.start),
-        endTs: dateValueToMillis(value.end.add({ days: 1 })) - 1,
+        endTs: dateValueToEndOfDayMillis(value.end),
       });
     }
   };
@@ -102,7 +111,7 @@ export const DqDateRangeFilter = ({
     setValue(buildValue());
   };
 
-  return (
+  const picker = (
     <DateRangePicker
       fullWidth={fullWidth}
       isOpen={isOpen}
@@ -114,6 +123,25 @@ export const DqDateRangeFilter = ({
       onOpenChange={handleOpenChange}
     />
   );
+
+  if (!onClear) {
+    return picker;
+  }
+
+  return (
+    <Box inline align="center" gap={2}>
+      {picker}
+      {startTs !== undefined && endTs !== undefined && (
+        <ButtonUtility
+          aria-label={t('label.clear')}
+          color="tertiary"
+          data-testid="clear-date-filter"
+          icon={<XClose size={14} />}
+          onClick={onClear}
+        />
+      )}
+    </Box>
+  );
 };
 
-export default DqDateRangeFilter;
+export default DateRangeFilter;
