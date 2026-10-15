@@ -185,7 +185,6 @@ const ConnectionsPage: React.FC = () => {
               <Input
                 fontSize="sm"
                 icon={Search}
-                iconClassName="tw:size-[18px]!"
                 inputClassName="tw:h-11! tw:py-0! tw:text-[15px]!"
                 inputDataTestId="search-connections-input"
                 placeholder={t('label.search-entity', {

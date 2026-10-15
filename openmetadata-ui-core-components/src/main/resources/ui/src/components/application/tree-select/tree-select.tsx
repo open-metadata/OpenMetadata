@@ -1229,7 +1229,7 @@ export const TreeSelect = <T = unknown,>({
             openTrigger();
             inputRef.current?.focus();
           }}>
-          <Search className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
+          <Search className="tw:shrink-0 tw:text-fg-quaternary" size={20} />
 
           {renderSelectedItem
             ? visibleNodes.map((node) => (

@@ -344,7 +344,6 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
                 autoFocus
                 className="tw:w-full"
                 icon={Search}
-                iconClassName="tw:size-3.5"
                 inputClassName="tw:text-xs tw:placeholder:text-xs"
                 placeholder={
                   placeholder ??

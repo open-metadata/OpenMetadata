@@ -40,7 +40,8 @@ export const styles = sortCx({
   },
   // Heights and icon frames follow the Figma "Icons in buttons" spec
   // (ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec). The
-  // visible icon→label gap is `gap-*` plus the label's `px-0.5`. Icons draw in
+  // visible icon→label gap is `gap-*` plus the label's `px-0.5`; unboxed links
+  // drop that padding, so `linkRoot` is one 2px step wider. Icons draw in
   // the middle 16 of 20 units, so the spec's fixed 2px frame padding needs
   // svg padding on smaller frames: 18 → 0.25px (14px glyph), 16 → 0.5px (12px).
   sizes: {
@@ -51,7 +52,7 @@ export const styles = sortCx({
         'tw:in-data-input-wrapper:px-2.5 tw:in-data-input-wrapper:py-1.5 tw:in-data-input-wrapper:data-icon-only:p-1.5',
         'tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px] tw:*:data-[icon=trailing]:size-4 tw:*:data-[icon=trailing]:p-[0.5px]',
       ].join(' '),
-      linkRoot: 'tw:gap-0',
+      linkRoot: 'tw:gap-0.5',
     },
     // X-Small — 32px.
     sm: {
@@ -59,7 +60,7 @@ export const styles = sortCx({
         'tw:gap-0.5 tw:rounded-lg tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-1.5',
         'tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
       ].join(' '),
-      linkRoot: 'tw:gap-0.5',
+      linkRoot: 'tw:gap-1',
     },
     // Small — 36px.
     md: {
@@ -68,7 +69,7 @@ export const styles = sortCx({
         'tw:in-data-input-wrapper:px-3.5 tw:in-data-input-wrapper:py-2.5 tw:in-data-input-wrapper:data-icon-only:p-2.5',
         'tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
       ].join(' '),
-      linkRoot: 'tw:gap-0.5',
+      linkRoot: 'tw:gap-1',
     },
     // Medium — 40px.
     lg: {
@@ -77,12 +78,12 @@ export const styles = sortCx({
         'tw:in-data-input-wrapper:gap-1.5 tw:in-data-input-wrapper:px-4 tw:in-data-input-wrapper:text-md tw:in-data-input-wrapper:data-icon-only:p-3',
         'tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
       ].join(' '),
-      linkRoot: 'tw:gap-1',
+      linkRoot: 'tw:gap-1.5',
     },
     // Large — 44px.
     xl: {
       root: 'tw:gap-1 tw:rounded-lg tw:px-4 tw:py-2.5 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3 tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
-      linkRoot: 'tw:gap-1',
+      linkRoot: 'tw:gap-1.5',
     },
   },
 

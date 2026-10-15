@@ -175,7 +175,7 @@ const WhatsNewAlert = () => {
                 <ButtonUtility
                   className="whats-new-alert-close"
                   icon={CloseIcon}
-                  size="lg"
+                  size="md"
                   tooltip={t('label.close')}
                   onClick={handleCancel}
                 />
