@@ -1251,7 +1251,7 @@ both MySQL 8 and Postgres, scales better under multiple workers.
 
 Until the projection manager owns generations, the indexing app avoids the riskiest step of a
 rebuild, promoting a staged index, whenever the live index can be reused.
-`ReindexModePlanner`
+[`ReindexModePlanner`](../../openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/ReindexModePlanner.java)
 decides per entity type when a run starts:
 
 - **In place** when the live index exists, `index_mapping_versions` records it as built from the
@@ -1274,14 +1274,14 @@ Time-series documents keep plain index writes and are stamped only so the cleanu
 Every index is created with `sourceReadAt` declared as a `long`.
 
 After the scan, the coordinator removes documents whose rows are gone
-(`InPlaceIndexSweep`).
+([`InPlaceIndexSweep`](../../openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/InPlaceIndexSweep.java)).
 It scrolls the documents read before the run started, or never stamped, that were not updated
 since; looks their ids up in the entity table 1,000 at a time; and deletes the missing ones with
 their vector chunks. Report-data indexes have no id column and are not swept. Configured live index
 settings are reapplied. A failed cleanup reports the run as completed with errors.
 
 New-index runs keep the staged flow, but its write routing is now shared
-(`StagedIndexRoutes`).
+([`StagedIndexRoutes`](../../openmetadata-service/src/main/java/org/openmetadata/service/search/StagedIndexRoutes.java)).
 The coordinator records each staged index in `search_index_write_route` with a 30-second lease that
 it renews every second. Every server reads the table every second and sends its live writes, child
 propagation, lineage, embedding and untargeted bulk writes to the serving index and there (both
@@ -1310,7 +1310,7 @@ Known limits of this interim scheme:
   inserted during a run can still push a partition's last rows past its count, and time-series
   types still page by offset; since 2026-10-11 a new index is checked against the database by id
   before promotion and the rows it misses are written
-  (`StagedIndexCompleteness`).
+  ([`StagedIndexCompleteness`](../../openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/StagedIndexCompleteness.java)).
 - `timeSeriesMaxDays` no longer shrinks an index: older documents stay, because their rows exist.
 - Test cases and logical test suites keep their relationship-preserving merge, so a field removed
   from their documents stays until a forced rebuild.
