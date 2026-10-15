@@ -46,6 +46,7 @@ import {
   visitGlossaryPage,
   waitForAntdPopupToSettle,
 } from '../../utils/common';
+import { switchNavbarDomain } from '../../utils/domain';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -117,6 +118,7 @@ import {
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
+import { loginAsIsolatedAdmin } from '../../utils/isolatedDomainUser';
 import { TaskDetails, waitForTaskResolveResponse } from '../../utils/task';
 import { performUserLogin } from '../../utils/user';
 
@@ -2074,8 +2076,9 @@ test.describe('Glossary tests', () => {
     test.slow(true);
 
     const { afterAction, apiContext } = await performAdminLogin(browser);
+    // Picks a navbar domain, which is saved per user: use a throwaway admin so it can't leak.
     const { page: page1, afterAction: afterActionUser1 } =
-      await performUserLogin(browser, adminUser);
+      await loginAsIsolatedAdmin(browser);
     const domain = new Domain();
     const glossary = new Glossary();
 
@@ -2098,9 +2101,10 @@ test.describe('Glossary tests', () => {
           .fill(domain.data.name);
         await searchDomain;
 
-        await page1.getByTestId(`tree-node-"${domain.data.name}"`).click();
-
-        await waitForAllLoadersToDisappear(page1);
+        // The pick saves on the user and reloads; wait for both before filling the form.
+        await switchNavbarDomain(page1, () =>
+          page1.getByTestId(`tree-node-"${domain.data.name}"`).click()
+        );
       });
 
       await test.step('Open Add Glossary form', async () => {
