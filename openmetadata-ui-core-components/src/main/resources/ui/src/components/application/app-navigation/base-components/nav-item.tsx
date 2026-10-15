@@ -27,12 +27,13 @@ const solidStyles = sortCx({
     'tw:bg-brand-solid_hover tw:hover:bg-brand-solid_hover tw:dark:bg-brand-solid_hover tw:dark:hover:bg-brand-solid_hover',
   groupOpen:
     'tw:in-open:rounded-b-none tw:in-open:bg-brand-solid_hover tw:in-open:hover:bg-brand-solid_hover tw:dark:in-open:bg-brand-solid_hover',
-  label: 'tw:group-hover:text-brand-secondary',
+  // Rest label and icon share one mid-gray, as in the pre-migration classic sidebar.
+  label: 'tw:text-tertiary tw:group-hover:text-brand-secondary',
   labelSelected:
     'tw:text-primary_on-brand tw:group-hover:text-primary_on-brand',
   labelOpen:
     'tw:in-open:text-primary_on-brand tw:in-open:group-hover:text-primary_on-brand',
-  icon: 'tw:group-hover:text-fg-brand-secondary_alt',
+  icon: 'tw:text-fg-tertiary tw:group-hover:text-fg-brand-secondary_alt',
   iconSelected: 'tw:text-fg-white tw:group-hover:text-fg-white',
   iconOpen: 'tw:in-open:text-fg-white tw:in-open:group-hover:text-fg-white',
 });

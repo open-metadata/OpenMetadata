@@ -68,6 +68,8 @@ describe('NavItemBase', () => {
     expect(screen.getByRole('link', { name: 'Resting' })).toHaveClass(
       'tw:bg-transparent'
     );
+    expect(screen.getByText('Resting')).toHaveClass('tw:text-tertiary');
+    expect(screen.getByText('Current')).toHaveClass('tw:text-primary_on-brand');
 
     expect(screen.getByRole('link', { name: 'Current' })).toHaveClass(
       'tw:bg-brand-solid'
