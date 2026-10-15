@@ -18,11 +18,11 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { split } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as LineArrowRight } from '../../../assets/svg/line-arrow-right.svg';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -54,7 +54,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
       <div className="tw:flex tw:justify-end tw:px-4 tw:pt-4">
         <ButtonUtility
           data-testid="welcome-screen-close-btn"
-          icon={CloseIcon}
+          icon={XClose}
           size="lg"
           tooltip={t('label.close')}
           onClick={onClose}

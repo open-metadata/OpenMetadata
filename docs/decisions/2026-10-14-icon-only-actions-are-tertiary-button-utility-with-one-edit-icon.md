@@ -1,7 +1,7 @@
 # Icon-only actions are a tertiary ButtonUtility, and editing has one icon
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial)
+- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned)
 - **Deciders:** Rohit Jain
 - **Guard:** `openmetadata-ui-core-components/.../components/base/buttons/button.test.tsx` (tertiary default, ref, disabled tooltip); `reviewer`
 - **Related:** ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec, open-metadata/OpenMetadata#35348
@@ -36,3 +36,20 @@ Call sites no longer choose icon sizes or colours, so one change to `ButtonUtili
 icon action. The `EditIconButton` family, `WidgetActionButton`, `LineageNodeRemoveButton` and
 `Modals/CloseIcon` are gone; their call sites name `ButtonUtility` directly. A bordered or filled
 icon-only button needs a new record.
+
+## Amendment: sizes follow the icon's role (v2, 2026-10-15)
+This replaces the `size` clause of the Decision. An icon-only action's `size` follows what its icon
+does, so the default icon is 16px:
+- `lg` (32px box, 16px icon in a 20 frame): an action that stands on its own. Table-row, card and
+  list-row actions (including the Context Center Documents, Memories and Archive rows), toolbar and
+  canvas controls, page-header actions (vote, follow, copy, more), close, collapse and accordion
+  toggles.
+- `sm` (24px box, 14px icon in an 18 frame): an action tied to a label or section. Edit and add
+  beside a section title, header widgets that pair an icon with a label (Domain, Owner, Tier), and
+  inline ✓ / × beside an input.
+- `xs` (20px box, 12px icon in a 16 frame): arrow and navigation actions only. Row and tree
+  expanders, chip remove and input clear.
+
+`md` (28px box) draws the same 14px icon as `sm` with more padding, so no role uses it; pick `sm`
+or `lg`. Tables with icon actions gain 4px of row height. Icons rendered outside a button keep
+their own sizes; this record does not cover them.
