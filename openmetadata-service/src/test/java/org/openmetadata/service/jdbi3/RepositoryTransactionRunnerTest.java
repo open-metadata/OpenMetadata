@@ -165,6 +165,56 @@ class RepositoryTransactionRunnerTest {
   }
 
   @Test
+  void effectsOfAFlushInsideACallerOwnedTransactionWaitForItsCommit() throws SQLException {
+    final List<String> published = new ArrayList<>();
+    doAnswer(
+            invocation -> {
+              published.add("commit");
+              return null;
+            })
+        .when(connection)
+        .commit();
+    jdbi.useTransaction(
+        handle -> {
+          runner.run(() -> deferSearch(() -> published.add("search")));
+          published.add("caller's next write");
+        });
+    assertEquals(List.of("caller's next write", "commit", "search"), published);
+    assertFalse(SearchRepository.isSearchWriteDeferralActive());
+  }
+
+  @Test
+  void effectsOfAFlushInsideACallerOwnedTransactionAreDroppedWhenItRollsBack() {
+    final List<String> published = new ArrayList<>();
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            jdbi.useTransaction(
+                handle -> {
+                  runner.run(() -> deferSearch(() -> published.add("search")));
+                  throw new IllegalStateException("the caller fails after the flush");
+                }));
+    PostCommitActionQueue.runOrDefer(() -> published.add("next request"));
+    assertEquals(List.of("next request"), published);
+    assertFalse(SearchRepository.isSearchWriteDeferralActive());
+  }
+
+  @Test
+  void aCallerTransactionThatCannotRollBackStillReleasesTheRequestThread() throws SQLException {
+    final List<String> published = new ArrayList<>();
+    doThrow(new SQLException("connection lost", "08S01")).when(connection).commit();
+    doThrow(new SQLException("connection lost", "08S01")).when(connection).rollback();
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            jdbi.useTransaction(
+                handle -> runner.run(() -> deferSearch(() -> published.add("search")))));
+    PostCommitActionQueue.runOrDefer(() -> published.add("next request"));
+    assertEquals(List.of("next request"), published);
+    assertFalse(SearchRepository.isSearchWriteDeferralActive());
+  }
+
+  @Test
   void aNestedFlushJoinsTheOpenTransaction() throws SQLException {
     runner.run(() -> runner.run(() -> {}));
 

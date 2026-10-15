@@ -1,6 +1,7 @@
 # Reliable database-to-search and RDF projection
 
-Status: accepted direction; implementation in progress. Baseline code examined at `9d5f2d3f77c`.
+Status: accepted direction; implemented for 2.2 by the stacked PRs #35570–#35577, merged in
+order. Baseline code examined at `9d5f2d3f77c`.
 Implementation steps and measured verification are tracked in the
 [implementation plan](2026-10-06-database-projection-implementation.md). The end-to-end durability
 and performance guarantees below remain release gates, not claims about the current implementation.
@@ -228,7 +229,7 @@ bound, and only the leading hash prefix changes.
 Capture runs that single statement unchanged and buffers one `EntityPrefixMutation` (entity
 type, old prefix, new prefix). Every row the statement changes is under the new prefix when the
 transaction commits, so expansion enumerates the members from committed state with
-[`EntityPrefixMembers`](../../openmetadata-service/src/main/java/org/openmetadata/service/projection/EntityPrefixMembers.java),
+`EntityPrefixMembers`,
 one keyset index range per page. Each member's former locator is derived from the fact. Rows that
 were already under the new prefix are included; the set is a superset and expansion refreshes by
 ID. The cases that seemed to need per-descendant facts are covered by other facts:
@@ -258,7 +259,7 @@ and a slow-producer/crash test. Until then it is a coverage gap, not a substitut
 of `captureInTransaction`. A process timeout or stale heartbeat alone is not that proof.
 
 The initial implementation of this boundary is
-[`EntityMutationCapture`](../../openmetadata-service/src/main/java/org/openmetadata/service/projection/EntityMutationCapture.java),
+`EntityMutationCapture`,
 registered explicitly on JDBI in integration tests. It decorates standard `EntityDAO` row writes,
 uses the SQL object's supplied handle and wraps an autocommit call in `Handle.inTransaction`.
 `ProjectionJournal` captures facts and independent target obligations there; batch calls preserve
@@ -267,7 +268,7 @@ pending: the other persistence families, removed dependency membership, delivery
 latency gates are not covered merely by this entity-row implementation.
 
 Relationship capture now uses the same journal through
-[`RelationshipMutationCapture`](../../openmetadata-service/src/main/java/org/openmetadata/service/projection/RelationshipMutationCapture.java).
+`RelationshipMutationCapture`.
 `MutationFacts` distinguishes entity facts from relationship batches. A batch retains stable
 endpoint/type pairs, relation and subtype, ontology relationship/type IDs, and old/new lineage
 pipeline IDs in `metadata_projection_relationship`. Both consumers page the same immutable
@@ -304,7 +305,7 @@ the caller's connection, and a failed rollback during commit leaves the connecti
 the transaction owner receives the original error, such as a deadlock, and retries the whole unit.
 
 Tag association capture now uses
-[`TagUsageMutationCapture`](../../openmetadata-service/src/main/java/org/openmetadata/service/projection/TagUsageMutationCapture.java)
+`TagUsageMutationCapture`
 and the same transaction/journal contract. The `2.2.0` schema retains source, tag FQN/hash and
 target hash in `metadata_projection_tag_usage`. Captured writes include point/batch applications,
 all current-schema deletion selectors, exact renames and prefix rewrites. Destructive operations
@@ -313,7 +314,7 @@ both old and new association locators. Tag prefix SQL is now declared with bound
 `TagUsageDAO`, and its compound root/child rename is transactional. The legacy pre-1.1 hash
 migration references a removed column and remains outside current-schema capture.
 
-[`ProjectionOwnerLookup`](../../openmetadata-service/src/main/java/org/openmetadata/service/projection/ProjectionOwnerLookup.java)
+`ProjectionOwnerLookup`
 resolves candidate IDs from the owning repository's declared catalog table and retained entity
 mutation history. A source declaration specifies whether descendant hashes represent owned
 fields; the lookup does not infer this from a fixed FQN depth. It uses the existing FQN hashing
@@ -1182,17 +1183,17 @@ moves installs still on a shipped cron (search Sunday 00:30, RDF Saturday 00:00)
 keeping a schedule an operator chose. A full reindex is for upgrades and emergencies; a search
 reindex writes through its own connection pool so it does not queue behind API writes. Live writes
 keep both projections current, and a repair pass per projection catches what they missed. Both
-passes share [`ScheduledRepairJob`](../../openmetadata-service/src/main/java/org/openmetadata/service/jobs/ScheduledRepairJob.java):
+passes share `ScheduledRepairJob`:
 one server runs each pass under a lock row, the window and last sweep live in
 `projection_repair_state`, and a type whose table has no `updatedAt` column is set aside instead
 of failing every pass.
 
 Search:
 
-- **Single runner.** [`SearchRepairJob`](../../openmetadata-service/src/main/java/org/openmetadata/service/search/SearchRepairJob.java)
+- **Single runner.** `SearchRepairJob`
   runs every 15 minutes on every server, but a pass needs the `SEARCH_REPAIR_LOCK` row in
   `search_reindex_lock`, so one server runs it at a time. A pass is skipped while a reindex runs.
-- **Changed rows.** [`ChangedDocumentsRepair`](../../openmetadata-service/src/main/java/org/openmetadata/service/search/ChangedDocumentsRepair.java)
+- **Changed rows.** `ChangedDocumentsRepair`
   pages each type's rows changed since the last pass by `(updatedAt, id)`, reads their documents'
   `sourceReadAt`, and rebuilds the documents that are missing or older than the row. A changed
   parent also rebuilds children read before the change, which closes the cross-server ordering
@@ -1204,13 +1205,13 @@ Search:
   three attempts, failures, timeout) records its target indexes and query; the retry worker
   rewrites the matching documents not rewritten since. A cascade that reaches the 5,000-document
   cap records the rest the same way.
-- **Index check.** [`SearchIndexCheck`](../../openmetadata-service/src/main/java/org/openmetadata/service/search/SearchIndexCheck.java)
+- **Index check.** `SearchIndexCheck`
   confirms that every type's index exists and carries its short alias, reading the aliases of the
   named serving indexes only, so a search role limited to OpenMetadata's indexes can run it. A
   missing one, or one the cluster auto-created on a write, is confirmed again after a minute, then
   the templates are recreated and a forced rebuild runs for those types only.
 
-RDF ([`RdfRepairJob`](../../openmetadata-service/src/main/java/org/openmetadata/service/rdf/repair/RdfRepairJob.java),
+RDF (`RdfRepairJob`,
 lock `RDF_REPAIR_LOCK` in `rdf_reindex_lock`):
 
 - **Projection check.** A full RdfIndexApp rebuild starts when the projection was never built (no
@@ -1250,7 +1251,7 @@ both MySQL 8 and Postgres, scales better under multiple workers.
 
 Until the projection manager owns generations, the indexing app avoids the riskiest step of a
 rebuild, promoting a staged index, whenever the live index can be reused.
-[`ReindexModePlanner`](../../openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/ReindexModePlanner.java)
+`ReindexModePlanner`
 decides per entity type when a run starts:
 
 - **In place** when the live index exists, `index_mapping_versions` records it as built from the
@@ -1266,21 +1267,21 @@ decides per entity type when a run starts:
 
 An in-place batch records when it was read and writes guarded scripted upserts that replace the
 stored document unless its `sourceReadAt` is newer. Live entity writes stamp the time they read
-their content ([`SearchVersionGuard`](../../openmetadata-service/src/main/java/org/openmetadata/service/search/SearchVersionGuard.java)),
+their content (`SearchVersionGuard`),
 so the write that read later wins regardless of arrival order. Neither the entity version nor
 `updatedAt` can order writes: consolidating a change that undoes the previous one restores both.
 Time-series documents keep plain index writes and are stamped only so the cleanup can skip them.
 Every index is created with `sourceReadAt` declared as a `long`.
 
 After the scan, the coordinator removes documents whose rows are gone
-([`InPlaceIndexSweep`](../../openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/InPlaceIndexSweep.java)).
+(`InPlaceIndexSweep`).
 It scrolls the documents read before the run started, or never stamped, that were not updated
 since; looks their ids up in the entity table 1,000 at a time; and deletes the missing ones with
 their vector chunks. Report-data indexes have no id column and are not swept. Configured live index
 settings are reapplied. A failed cleanup reports the run as completed with errors.
 
 New-index runs keep the staged flow, but its write routing is now shared
-([`StagedIndexRoutes`](../../openmetadata-service/src/main/java/org/openmetadata/service/search/StagedIndexRoutes.java)).
+(`StagedIndexRoutes`).
 The coordinator records each staged index in `search_index_write_route` with a 30-second lease that
 it renews every second. Every server reads the table every second and sends its live writes, child
 propagation, lineage, embedding and untargeted bulk writes to the serving index and there (both
@@ -1309,7 +1310,7 @@ Known limits of this interim scheme:
   inserted during a run can still push a partition's last rows past its count, and time-series
   types still page by offset; since 2026-10-11 a new index is checked against the database by id
   before promotion and the rows it misses are written
-  ([`StagedIndexCompleteness`](../../openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/StagedIndexCompleteness.java)).
+  (`StagedIndexCompleteness`).
 - `timeSeriesMaxDays` no longer shrinks an index: older documents stay, because their rows exist.
 - Test cases and logical test suites keep their relationship-preserving merge, so a field removed
   from their documents stays until a forced rebuild.
