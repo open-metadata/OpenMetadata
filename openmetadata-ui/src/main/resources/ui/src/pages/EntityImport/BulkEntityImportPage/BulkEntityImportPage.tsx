@@ -573,7 +573,7 @@ const BulkEntityImportPage = () => {
       );
       pendingImportWebsocketResponsesRef.current.clear();
       if (pendingResponse) {
-        void handleImportWebsocketResponseRef.current?.(pendingResponse);
+        handleImportWebsocketResponseRef.current?.(pendingResponse);
       }
     },
     [appendActiveImportLogLine]
@@ -1091,7 +1091,7 @@ const BulkEntityImportPage = () => {
   );
 
   const handleImportWebsocketResponse = useCallback(
-    async (websocketResponse: CSVImportAsyncWebsocketResponse) => {
+    (websocketResponse: CSVImportAsyncWebsocketResponse) => {
       if (!websocketResponse.jobId) {
         return;
       }
@@ -1122,7 +1122,7 @@ const BulkEntityImportPage = () => {
         });
 
         if (websocketResponse.status === 'COMPLETED') {
-          await handleCompletedWebsocketJob(activeImportJob, websocketResponse);
+          void handleCompletedWebsocketJob(activeImportJob, websocketResponse);
         }
 
         if (websocketResponse.status === 'FAILED') {
@@ -1202,7 +1202,7 @@ const BulkEntityImportPage = () => {
             importResponse
           ) as CSVImportAsyncWebsocketResponse;
 
-          void handleImportWebsocketResponse(importResponseData);
+          handleImportWebsocketResponse(importResponseData);
         }
       });
     }
