@@ -693,6 +693,10 @@
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDataEstate.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useKpiProgress.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDataQualitySummary.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/dataQualityFilters.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/dataQualityFilters.test.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataQualitySummary.test.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/mocks/MyDataPage.mock.tsx",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useCuratedAssets.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDataProducts.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDomainOverview.ts",
@@ -736,7 +740,7 @@
       "_comment": "Metric page, custom-metric page, bulk-edit grid, and the CSV import/export machinery all funnel through this cluster. MetricBulkImportExportEdit + BulkImport + ClassificationImportExport have been ejecting PRs from the merge queue because none of them named these paths — PR CI skipped them entirely and the queue was the first place they ran. The two playwright helpers are included so a wait/selector fix in importUtils.ts also routes back to the specs that consume it.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/MetricsPage/**",
-        "openmetadata-ui/src/main/resources/ui/src/pages/AddCustomMetricPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/CustomMetricForm/**",
         "openmetadata-ui/src/main/resources/ui/src/components/Metric/**",
         "openmetadata-ui/src/main/resources/ui/src/components/BulkEditEntity/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/metricsAPI.ts",
@@ -1016,6 +1020,34 @@
       "sources": ["openmetadata-ui/src/main/resources/ui/eslint-suppressions.json"],
       "projects": [],
       "specs": []
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Suggestions/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/EntityRouter*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/withSuggestions*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/entity/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/queries/mlModelQuery.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/queries/entityDetailQueryKeys.test.ts",
+        "openmetadata-ui/src/main/resources/ui/src/pages/APIEndpointPage/APIEndpointPage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ContainerPage/ContainerPage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/DashboardDetailsPage/DashboardDetailsPage.component.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/DirectoryDetailsPage/DirectoryDetailsPage*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/FileDetailsPage/FileDetailsPage*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/MlModelPage/MlModelPage.component*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/PipelineDetails/PipelineDetailsPage.component*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/SearchIndexDetailsPage/SearchIndexDetailsPage*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/SpreadsheetDetailsPage/SpreadsheetDetailsPage*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/TableDetailsPageV1/TableDetailsPageV1*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/TopicDetails/TopicDetailsPage.component*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/WorksheetDetailsPage/WorksheetDetailsPage*.tsx"
+      ],
+      "projects": ["Basic"],
+      "specs": [
+        "playwright/e2e/Features/EntitySuggestions.spec.ts",
+        "playwright/e2e/Features/SuggestionsSliderPermissions.spec.ts",
+        "playwright/e2e/Features/TagsSuggestion.spec.ts"
+      ]
     }
   ]
 }
