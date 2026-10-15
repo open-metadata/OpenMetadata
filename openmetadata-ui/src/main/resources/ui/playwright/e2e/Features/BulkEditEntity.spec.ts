@@ -811,9 +811,7 @@ test.describe('Bulk Edit Entity', () => {
     });
 
     await afterAction();
-    // The setup context has idled past the server's 60s keep-alive timeout by
-    // now; a DELETE on its pooled socket dies with "socket hang up" and is not
-    // retried (non-idempotent), so clean up on a fresh connection.
+    // Fresh context: the setup one idled past the server keep-alive and its DELETE hangs up.
     const cleanup = await getApiContext(page);
     await glossary.delete(cleanup.apiContext);
     await cleanup.afterAction();

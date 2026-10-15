@@ -1293,9 +1293,7 @@ test.describe('Glossary tests', () => {
     const glossary1 = new Glossary();
     try {
       await glossary1.create(apiContext);
-      // Open the glossary by FQN: when it sorts first, /glossary auto-selects it
-      // and redirects in an effect that can re-run after the request-tags click
-      // and replace that navigation.
+      // Open by FQN so the /glossary auto-select redirect cannot replace the request-tags navigation.
       await page.goto(
         `/glossary/${encodeURIComponent(
           glossary1.responseData.fullyQualifiedName

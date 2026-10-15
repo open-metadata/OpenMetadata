@@ -771,8 +771,7 @@ export const addAssetToGlossaryTerm = async (
     ).toContainText(visibleName);
   }
 
-  // Callers tear down the term right after this returns; an in-flight add that
-  // lands after the term is deleted leaves an orphan tag_usage row.
+  // Wait for the add so callers' teardown cannot delete the term mid-request.
   const addAssetsResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/assets/add') &&
@@ -1207,8 +1206,7 @@ export const getOnlyRelationRow = async (page: Page) => {
   return rows;
 };
 
-// Row ids are Date.now() values, so find the added row as the one id that was
-// not there before the click.
+// Row ids are Date.now() values, so the added row is the one with a new id.
 export const addRelationRow = async (page: Page) => {
   const rows = getRelationRows(page);
   const readIds = () =>
@@ -1225,10 +1223,7 @@ export const addRelationRow = async (page: Page) => {
   return page.getByTestId(added);
 };
 
-// Later rows sit at the viewport's bottom edge; a scroll there closes the
-// non-modal Select popover mid-click, so centre-and-retry the pick. A click on
-// the repositioning popover can also land on the neighbouring option (CI saved
-// "Antonym" for "See Also"), so retry until the trigger shows it.
+// Re-pick until the trigger shows the label: the non-modal popover closes on scroll or misclicks a neighbour.
 export const selectRelationType = async (
   page: Page,
   row: Locator,

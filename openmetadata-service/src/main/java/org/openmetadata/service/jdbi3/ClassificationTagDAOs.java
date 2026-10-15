@@ -735,9 +735,7 @@ public interface ClassificationTagDAOs {
                 .withAppliedBy(r.getString("appliedBy"))
                 .withMetadata(JsonUtils.readValue(r.getString("metadata"), TagLabelMetadata.class));
         TagLabel.TagSource source = TagLabel.TagSource.values()[r.getInt("source")];
-        // json is null when the LEFT JOIN finds no tag/term row: a tag_usage row can outlive its
-        // term when a bulk asset add races the term's hard delete. Return the label unenriched
-        // (as applyTagCommonFieldsGracefully does) so the asset stays readable and deletable.
+        // json is null when the tag/term was deleted (orphan tag_usage row); keep the label as-is.
         if (source == TagLabel.TagSource.CLASSIFICATION) {
           Tag tag = JsonUtils.readValue(r.getString("json"), Tag.class);
           if (tag != null) {
