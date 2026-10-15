@@ -31,9 +31,15 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -54,6 +60,7 @@ class RedisCacheProviderUnconfirmedWritesTest {
   private static final Duration TTL = Duration.ofMinutes(5);
   private static final int FAILURES_TO_OPEN_BREAKER = 5;
   private static final int MAX_HEALTH_CHECKS = 10;
+  private static final int RECOVERY_HEALTH_CHECKS = 3;
 
   @Container
   static final GenericContainer<?> REDIS =
@@ -169,7 +176,7 @@ class RedisCacheProviderUnconfirmedWritesTest {
       requestThread.start();
       Awaitility.await()
           .atMost(Duration.ofSeconds(5))
-          .until(() -> requestThread.getState() == Thread.State.BLOCKED || request.isDone());
+          .until(() -> waitsForStateLock(requestThread) || request.isDone());
       assertTrue(request.isDone(), "healthy requests must complete before cleanup is released");
       assertEquals(Optional.of("hash-value"), request.get(5, TimeUnit.SECONDS));
       assertEquals("written-value", redis.get("om-test:write"));
@@ -283,7 +290,7 @@ class RedisCacheProviderUnconfirmedWritesTest {
               writer.start();
               Awaitility.await()
                   .atMost(Duration.ofSeconds(5))
-                  .until(() -> writer.getState() == Thread.State.BLOCKED || write.isDone());
+                  .until(() -> waitsForStateLock(writer) || write.isDone());
               assertFalse(provider.available());
               assertEquals(Optional.empty(), provider.get(key));
               return connection.async().unlink(key);
@@ -303,6 +310,83 @@ class RedisCacheProviderUnconfirmedWritesTest {
 
     assertTrue(provider.available(), "healthy Redis must recover despite continuous writes");
     assertEquals(Optional.of("fresh"), provider.get(key));
+  }
+
+  @Test
+  void recoversOnTheThirdHealthCheckWhileWritesKeepArriving() throws Exception {
+    openBreaker();
+    AtomicBoolean writing = new AtomicBoolean(true);
+    AtomicLong attempts = new AtomicLong();
+    Thread writer =
+        new Thread(
+            () -> {
+              while (writing.get()) {
+                provider.trySet("om-test:steady:" + attempts.incrementAndGet() % 1_000, "v", TTL);
+              }
+            });
+    writer.start();
+    try {
+      for (int check = 0; check < RECOVERY_HEALTH_CHECKS; check++) {
+        long attemptsBeforeCheck = attempts.get();
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(5))
+            .until(() -> attempts.get() > attemptsBeforeCheck + 1_000);
+        provider.healthCheck();
+      }
+      assertTrue(provider.available(), "steady writes must not hold off recovery");
+    } finally {
+      writing.set(false);
+      writer.join();
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void writesWaitingForRecoveryCleanupDoNotHoldCarrierThreads() throws Exception {
+    String trackedKey = "om-test:tracked";
+    openBreaker();
+    provider.set(trackedKey, "during-outage", TTL);
+    CountDownLatch cleanupStarted = new CountDownLatch(1);
+    CountDownLatch finishCleanup = new CountDownLatch(1);
+    RedisAsyncCommands<String, String> commands =
+        mock(RedisAsyncCommands.class, delegatesTo(connection.async()));
+    doAnswer(
+            invocation -> {
+              cleanupStarted.countDown();
+              finishCleanup.await(1, TimeUnit.MINUTES);
+              return connection.async().unlink(trackedKey);
+            })
+        .when(commands)
+        .unlink(trackedKey);
+    Field asyncCommands = RedisCacheProvider.class.getDeclaredField("asyncCommands");
+    asyncCommands.setAccessible(true);
+    asyncCommands.set(provider, commands);
+    Thread healthCheck = new Thread(provider::healthCheck);
+    healthCheck.start();
+    assertTrue(cleanupStarted.await(5, TimeUnit.SECONDS));
+
+    // More writers than the virtual-thread scheduler has carriers: a writer that waits for the
+    // cleanup while keeping its carrier leaves the rest unable to start.
+    int writers = Runtime.getRuntime().availableProcessors() * 4;
+    AtomicInteger started = new AtomicInteger();
+    try (ExecutorService virtualThreads = Executors.newVirtualThreadPerTaskExecutor()) {
+      for (int writer = 0; writer < writers; writer++) {
+        String key = "om-test:virtual-writer:" + writer;
+        virtualThreads.submit(
+            () -> {
+              started.incrementAndGet();
+              return provider.trySet(key, "fresh", TTL);
+            });
+      }
+      try {
+        Awaitility.await("every writer starts while the cleanup holds the lock")
+            .atMost(Duration.ofSeconds(5))
+            .until(() -> started.get() == writers);
+      } finally {
+        finishCleanup.countDown();
+      }
+    }
+    healthCheck.join();
   }
 
   @Test
@@ -349,6 +433,21 @@ class RedisCacheProviderUnconfirmedWritesTest {
     assertTrue(provider.tryHset("om-test:e:table:3", Map.of("base", "fresh"), TTL));
     assertTrue(provider.trySet("om-test:en:table:3", "fresh", TTL));
     assertFalse(provider.tryHset("om-test:e:table:4", Map.of("base", "fresh"), TTL));
+  }
+
+  private boolean waitsForStateLock(Thread thread) throws ReflectiveOperationException {
+    Field stateLock = RedisCacheProvider.class.getDeclaredField("stateLock");
+    stateLock.setAccessible(true);
+    return ((ReentrantLock) stateLock.get(provider)).hasQueuedThread(thread);
+  }
+
+  private void openBreaker() {
+    pauseRedis();
+    for (int failure = 0; failure < FAILURES_TO_OPEN_BREAKER; failure++) {
+      provider.get("om-test:probe");
+    }
+    unpauseRedisIfPaused();
+    assertFalse(provider.available());
   }
 
   private void recover() {
