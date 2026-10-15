@@ -146,9 +146,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CustomPropertyReferences;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.QueryRepository;
@@ -343,18 +345,27 @@ public class SearchRepository {
   private Map<String, IndexMapping> aliasIndexMap;
 
   /**
-   * Staged index names being populated by an in-flight reindex, keyed by the canonical index name
-   * the alias normally points at (e.g. {@code openmetadata_table_search_index}). While an entry
-   * is present, every live write that resolves through {@link #getWriteIndexName(IndexMapping)}
-   * targets the staged index directly — so the writes survive the final alias swap that would
-   * otherwise promote a pre-snapshot index and drop the old one that held them.
+   * Staged index names being populated by an in-flight reindex on any server, keyed by the
+   * canonical index name the alias normally points at (e.g. {@code openmetadata_table_search_index}).
+   * While a route is present, every live write goes to the serving index and to the staged one
+   * (see {@link RebuildAwareEntityManagement}): the serving index stays current during the rebuild,
+   * the staged index holds the writes when it is promoted, and a discarded staged index loses
+   * nothing.
    *
    * <p>Keying by canonical index name lets any write site route correctly even if it does not
    * have the entity type in scope (deletes by FQN prefix, script updates, child propagation, …).
    */
-  private final Map<String, String> activeStagedIndices = new ConcurrentHashMap<>();
+  @Getter
+  private final StagedIndexRoutes stagedIndexRoutes =
+      new StagedIndexRoutes(
+          () -> {
+            final CollectionDAO collectionDAO = Entity.getCollectionDAO();
+            return collectionDAO == null ? null : collectionDAO.searchIndexWriteRouteDAO();
+          },
+          () -> ServerIdentityResolver.getInstance().getServerId(),
+          System::currentTimeMillis);
 
-  private final String language;
+  @Getter private final String language;
 
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
@@ -433,7 +444,7 @@ public class SearchRepository {
       // Displace any stale handler bound to a previous SearchRepository instance. Test suites and
       // app bootstrap construct SearchRepository more than once and replace the singleton via
       // Entity.setSearchRepository(...); without this the dispatcher keeps delivering events to
-      // the first instance and state maintained on the current instance (e.g. activeStagedIndices
+      // the first instance and state maintained on the current instance (e.g. stagedIndexRoutes
       // used for reindex write-routing) is never consulted. Replace rather than unregister then
       // register, so no concurrent entity write can slip through an unhandled window.
       dispatcher.replaceHandler(searchHandler);
@@ -964,7 +975,7 @@ public class SearchRepository {
           entityType);
       return;
     }
-    activeStagedIndices.put(canonical, stagedIndex);
+    stagedIndexRoutes.register(canonical, stagedIndex);
     LOG.info(
         "Routing live writes for canonical index '{}' (entity '{}') to staged index '{}' until reindex promotes it",
         canonical,
@@ -981,7 +992,7 @@ public class SearchRepository {
     if (canonical == null) {
       return;
     }
-    if (activeStagedIndices.remove(canonical, stagedIndex)) {
+    if (stagedIndexRoutes.unregister(canonical, stagedIndex)) {
       LOG.info(
           "Cleared staged-index routing for canonical index '{}' (entity '{}', was '{}')",
           canonical,
@@ -990,39 +1001,47 @@ public class SearchRepository {
     }
   }
 
+  /** Blocks until every server has seen this server's last staged-index routing change. */
+  public void awaitWriteRoutePropagation() throws InterruptedException {
+    stagedIndexRoutes.awaitPropagation();
+  }
+
   private String canonicalIndexFor(String entityType) {
     IndexMapping mapping = entityIndexMap.get(entityType);
     return mapping != null ? mapping.getIndexName(clusterAlias) : null;
   }
 
   /**
-   * Centralized resolution of the index name a live write should target. Every write path that
-   * ultimately calls {@link IndexMapping#getIndexName(String)} should route through this method
-   * so it transparently picks up the staged index when a reindex is in flight. Returns the
-   * canonical index name when nothing is staged.
+   * The serving index a live write to this mapping names. The search client also sends it to the
+   * staged index of a rebuild in progress ({@link #getDocumentWriteTargets(String)}).
    */
   public String getWriteIndexName(IndexMapping indexMapping) {
-    if (indexMapping == null) {
-      return null;
-    }
-    String canonical = indexMapping.getIndexName(clusterAlias);
-    return routeToStagedIfActive(canonical);
+    return indexMapping == null ? null : indexMapping.getIndexName(clusterAlias);
   }
 
   /**
-   * Centralized routing for writes that already hold a resolved canonical index name — i.e. the
-   * value of {@link IndexMapping#getIndexName(String)}, NOT a short alias such as the result of
-   * {@link IndexMapping#getAlias(String)} or any of the parent aliases. If a reindex has
-   * registered a staged index for {@code canonicalIndexName}, returns the staged name; otherwise
-   * returns {@code canonicalIndexName} unchanged. Pass non-canonical aliases through unchanged
-   * since the routing map only knows about canonical names.
+   * @deprecated Live writes name the serving index and reach a staged rebuild through the search
+   *     client; this returns {@code canonicalIndexName} unchanged.
    */
+  @Deprecated(forRemoval = true)
   public String routeToStagedIfActive(String canonicalIndexName) {
-    if (canonicalIndexName == null) {
-      return null;
-    }
-    String staged = activeStagedIndices.get(canonicalIndexName);
-    return staged != null ? staged : canonicalIndexName;
+    return canonicalIndexName;
+  }
+
+  /**
+   * Where a write of one document to {@code index} goes: the index itself and, while a rebuild
+   * stages a replacement for exactly that index, the staged index too.
+   */
+  public List<String> getDocumentWriteTargets(String index) {
+    List<String> targets = new ArrayList<>();
+    targets.add(index);
+    stagedIndexRoutes.stagedIndexFor(index).ifPresent(targets::add);
+    return targets;
+  }
+
+  /** Whether a rebuild is staging a replacement for the serving index {@code canonicalIndexName}. */
+  public boolean isRebuilding(String canonicalIndexName) {
+    return stagedIndexRoutes.stagedIndexFor(canonicalIndexName).isPresent();
   }
 
   /**
@@ -1055,19 +1074,24 @@ public class SearchRepository {
    */
   public List<String> getWriteFanoutTargets(String aliasOrIndex) {
     if (aliasOrIndex == null) {
-      return new ArrayList<>(activeStagedIndices.values());
+      return new ArrayList<>(stagedIndexRoutes.stagedIndexes());
     }
     List<String> targets = new ArrayList<>();
     targets.add(aliasOrIndex);
     if (isKnownCanonicalIndex(aliasOrIndex)) {
-      String staged = activeStagedIndices.get(aliasOrIndex);
-      if (staged != null) {
-        targets.add(staged);
-      }
-    } else {
-      targets.addAll(activeStagedIndices.values());
+      stagedIndexRoutes.stagedIndexFor(aliasOrIndex).ifPresent(targets::add);
+    } else if (!stagedIndexRoutes.stagedIndexes().contains(aliasOrIndex)) {
+      targets.addAll(stagedIndexRoutes.stagedIndexes());
     }
     return targets;
+  }
+
+  /** {@link #getWriteFanoutTargets(String)} for each of {@code aliasesOrIndices}, without repeats. */
+  public List<String> getWriteFanoutTargets(List<String> aliasesOrIndices) {
+    return aliasesOrIndices.stream()
+        .flatMap(aliasOrIndex -> getWriteFanoutTargets(aliasOrIndex).stream())
+        .distinct()
+        .toList();
   }
 
   private boolean isKnownCanonicalIndex(String name) {
@@ -1842,14 +1866,13 @@ public class SearchRepository {
     try {
       IndexMapping indexMapping = entityIndexMap.get(entityType);
       ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
+      final String writeIndex = getWriteIndexName(indexMapping);
+      // A staged index being rebuilt may not hold the document yet, so it needs all of it.
       final SearchDocumentUpdate update =
-          SearchVersionGuard.apply(prepareLiveUpdate(entity, relationshipRevision), entity);
+          SearchVersionGuard.apply(
+              prepareLiveUpdate(entity, relationshipRevision, isRebuilding(writeIndex)), entity);
       searchClient.updateEntity(
-          getWriteIndexName(indexMapping),
-          entityId,
-          update.parametersForIndexing(),
-          update.script(),
-          entityType);
+          writeIndex, entityId, update.parametersForIndexing(), update.script(), entityType);
 
       if (Entity.TABLE.equals(entityType)) {
         try {
@@ -1917,7 +1940,7 @@ public class SearchRepository {
   public void bulkIndexPipelineExecutions(
       Pipeline pipeline, List<PipelineStatus> pipelineStatuses) {
     try {
-      String indexName = routeToStagedIfActive(getIndexOrAliasName("pipeline_status_search_index"));
+      String indexName = getIndexOrAliasName("pipeline_status_search_index");
       List<Map<String, String>> docsAndIds = new ArrayList<>();
       for (PipelineStatus pipelineStatus : pipelineStatuses) {
         Map<String, Object> doc = documentBuilder.buildPipelineExecution(pipeline, pipelineStatus);
@@ -1941,8 +1964,20 @@ public class SearchRepository {
   }
 
   private SearchDocumentUpdate prepareLiveUpdate(
-      final EntityInterface<?> entity, final Long relationshipRevision) {
-    return documentBuilder.prepareUpdate(entity, relationshipRevision);
+      final EntityInterface<?> entity, final Long relationshipRevision, final boolean staged) {
+    final SearchDocumentUpdate update = documentBuilder.prepareUpdate(entity, relationshipRevision);
+    if (staged && !update.scriptedUpsert()) {
+      final String entityType = entity.getEntityReference().getType();
+      final EntityInterface<?> current =
+          Entity.getEntity(
+              entityType,
+              entity.getId(),
+              String.join(",", getProjectionFields().forEntityType(entityType)),
+              Include.ALL,
+              false);
+      return documentBuilder.prepareDocumentUpdate(current, relationshipRevision);
+    }
+    return update;
   }
 
   public void updateEntity(EntityReference entityReference) {

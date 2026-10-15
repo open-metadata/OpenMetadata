@@ -490,6 +490,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             new SearchIndexRetryWorker(
                 jdbi.onDemand(CollectionDAO.class), Entity.getSearchRepository()));
 
+    // A reindex on any server routes this server's live writes to the indexes it is building.
+    environment.lifecycle().manage(Entity.getSearchRepository().getStagedIndexRoutes());
+
     // Register Distributed Job Participant for distributed search indexing
     registerDistributedJobParticipant(environment, jdbi);
 

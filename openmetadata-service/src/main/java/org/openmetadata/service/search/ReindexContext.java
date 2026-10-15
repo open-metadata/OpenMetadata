@@ -15,6 +15,7 @@ public class ReindexContext {
   private final Map<String, Set<String>> existingAliasesByEntity = new HashMap<>();
   private final Map<String, String> canonicalAliasByEntity = new HashMap<>();
   private final Map<String, List<String>> parentAliasesByEntity = new HashMap<>();
+  private final Map<String, String> inPlaceIndexByEntity = new HashMap<>();
 
   /**
    * Reserved pseudo-entity key carrying the staged vector-chunk generation through the SAME
@@ -87,8 +88,26 @@ public class ReindexContext {
     return parentAliasesByEntity.getOrDefault(entity, List.of());
   }
 
+  /** Rewrites {@code entity} in its live index, which promotion never replaces. */
+  public void addInPlace(String entity, String liveIndex) {
+    inPlaceIndexByEntity.put(entity, liveIndex);
+  }
+
+  public Optional<String> getInPlaceIndex(String entity) {
+    return Optional.ofNullable(inPlaceIndexByEntity.get(entity));
+  }
+
+  public Set<String> getInPlaceEntities() {
+    return Collections.unmodifiableSet(new HashSet<>(inPlaceIndexByEntity.keySet()));
+  }
+
+  public Map<String, String> getInPlaceIndexMapping() {
+    return new HashMap<>(inPlaceIndexByEntity);
+  }
+
+  /** True when the run writes nowhere: no staged index and no live index rewritten in place. */
   public boolean isEmpty() {
-    return stagedIndexByEntity.isEmpty();
+    return stagedIndexByEntity.isEmpty() && inPlaceIndexByEntity.isEmpty();
   }
 
   /**
@@ -108,9 +127,18 @@ public class ReindexContext {
    * @return A ReindexContext with only staged index information
    */
   public static ReindexContext fromStagedIndexMapping(Map<String, String> stagedIndexMapping) {
+    return fromIndexMappings(stagedIndexMapping, null);
+  }
+
+  /** Rebuilds a participant's targets from the job's staged and in-place mappings. */
+  public static ReindexContext fromIndexMappings(
+      Map<String, String> stagedIndexMapping, Map<String, String> inPlaceIndexMapping) {
     ReindexContext context = new ReindexContext();
     if (stagedIndexMapping != null) {
       context.stagedIndexByEntity.putAll(stagedIndexMapping);
+    }
+    if (inPlaceIndexMapping != null) {
+      context.inPlaceIndexByEntity.putAll(inPlaceIndexMapping);
     }
     return context;
   }

@@ -68,18 +68,36 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       return context;
     }
 
-    for (String entityType : indexesToRecreate(entities, searchRepository)) {
-      IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
-      if (indexMapping == null) {
-        LOG.warn(
-            "No index mapping found for entityType '{}'. Skipping index recreation.", entityType);
-        continue;
-      }
+    try {
+      for (String entityType : indexesToRecreate(entities, searchRepository)) {
+        IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
+        if (indexMapping == null) {
+          LOG.warn(
+              "No index mapping found for entityType '{}'. Skipping index recreation.", entityType);
+          continue;
+        }
 
-      recreateIndexFromMapping(context, indexMapping, entityType);
+        recreateIndexFromMapping(context, indexMapping, entityType);
+      }
+    } catch (RuntimeException e) {
+      discardStagedIndexes(searchRepository, context);
+      throw e;
     }
 
     return context;
+  }
+
+  /**
+   * A recreate that fails part way discards the indexes it already staged; its caller never sees
+   * them, so nothing would finalize them and their write routes would be renewed forever.
+   */
+  private static void discardStagedIndexes(
+      SearchRepository searchRepository, ReindexContext context) {
+    context
+        .getStagedIndexMapping()
+        .forEach(
+            (entityType, stagedIndex) ->
+                discardStagedIndex(searchRepository, entityType, stagedIndex));
   }
 
   /**
@@ -118,12 +136,12 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       return false;
     }
 
-    // Always-promote: partial data is better than no data. When reindex failed but the staged
-    // index has documents, promote it. Only delete if truly empty. The exception is a column index
-    // whose indexing was turned off while this reindex ran: promoting it would bring it back.
+    // A column index whose indexing was turned off while this reindex ran is never promoted:
+    // promoting it would bring it back.
     boolean shouldPromote =
         !isDisabledColumnIndex(searchRepository, entityType)
-            && shouldPromoteStagedIndex(searchClient, stagedIndex, entityType, reindexSuccess);
+            && shouldPromoteStagedIndex(
+                searchClient, stagedIndex, canonicalIndex, entityType, reindexSuccess);
 
     if (shouldPromote) {
       // Restore live serving settings on the staged index before alias swap. The bulk-build
@@ -224,25 +242,39 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       // indexing is off). This is an intentional terminal state, not a retryable promotion
       // failure, so report success.
       promoted = true;
-      try {
-        if (searchClient.indexExists(stagedIndex)) {
-          searchClient.deleteIndexWithBackoff(stagedIndex);
-          LOG.info(
-              "Deleted staged index '{}' after unsuccessful reindex for entity '{}'.",
-              stagedIndex,
-              entityType);
-        }
-      } catch (Exception ex) {
-        LOG.warn(
-            "Failed to delete staged index '{}' for entity '{}' after failure.",
-            stagedIndex,
-            entityType,
-            ex);
-      } finally {
-        searchRepository.unregisterStagedIndex(entityType, stagedIndex);
-      }
+      discardStagedIndex(searchRepository, entityType, stagedIndex);
     }
     return promoted;
+  }
+
+  /**
+   * Drops a staged index that will not be promoted. Every server stops writing to it first: a write
+   * that reached it after the delete would recreate it as a bare index.
+   */
+  private static void discardStagedIndex(
+      SearchRepository searchRepository, String entityType, String stagedIndex) {
+    searchRepository.unregisterStagedIndex(entityType, stagedIndex);
+    SearchClient searchClient = searchRepository.getSearchClient();
+    try {
+      searchRepository.awaitWriteRoutePropagation();
+      if (searchClient.indexExists(stagedIndex)) {
+        searchClient.deleteIndexWithBackoff(stagedIndex);
+        LOG.info(
+            "Deleted staged index '{}' after unsuccessful reindex for entity '{}'.",
+            stagedIndex,
+            entityType);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.warn(
+          "Interrupted before deleting staged index '{}'; it is left for cleanup", stagedIndex);
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to delete staged index '{}' for entity '{}' after failure.",
+          stagedIndex,
+          entityType,
+          ex);
+    }
   }
 
   private static boolean isDisabledColumnIndex(
@@ -252,50 +284,76 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
   /**
    * Decides whether a staged index should be promoted after a reindex. A successful reindex always
-   * promotes. A failed reindex promotes only if the staged index actually received documents
-   * ("partial data > no data").
+   * promotes. A failed one never replaces an index users are searching that has documents: a
+   * search outage or failed batches would otherwise swap a complete index for a partial one. With
+   * nothing being served, a failed reindex still promotes the documents it built ("partial data >
+   * no data").
    *
-   * <p>The emptiness check uses {@code indexing.index_total} (via {@link
+   * <p>The staged emptiness check uses {@code indexing.index_total} (via {@link
    * SearchClient#getIndexedDocumentCount}) rather than {@code docs.count}. The bulk reindex writes
    * documents with {@code refresh=false} to a staged index whose {@code refresh_interval} is
    * disabled for the build, so {@code docs.count} reads 0 until a refresh — and the staged index
    * must NOT be refreshed before promotion. {@code index_total} increments on every write
    * regardless of refresh, so it reflects the successfully-built documents without touching the
-   * staged index. Using {@code docs.count} here would read 0 for a fully-built index and delete it,
-   * turning a single bad record into total data loss.
+   * staged index.
    *
-   * @return {@code true} to promote (success, received documents, or count indeterminate);
-   *     {@code false} only when the staged index is confirmed to have received zero documents.
+   * @return {@code true} to promote
    */
   private boolean shouldPromoteStagedIndex(
-      SearchClient searchClient, String stagedIndex, String entityType, boolean reindexSuccess) {
-    boolean shouldPromote = reindexSuccess;
-    if (!reindexSuccess) {
-      long indexedDocs = searchClient.getIndexedDocumentCount(stagedIndex);
-      if (indexedDocs > 0) {
-        LOG.info(
-            "Reindex failed for entity '{}' but staged index '{}' received {} documents. "
-                + "Promoting partial data (partial data > no data).",
-            entityType,
-            stagedIndex,
-            indexedDocs);
-        shouldPromote = true;
-      } else if (indexedDocs < 0) {
-        LOG.warn(
-            "Could not determine indexed-doc count for staged index '{}' (entity '{}'). "
-                + "Promoting to avoid data loss.",
-            stagedIndex,
-            entityType);
-        shouldPromote = true;
-      } else {
-        LOG.info(
-            "Reindex failed for entity '{}' and staged index '{}' received 0 documents. "
-                + "Deleting empty staged index.",
-            entityType,
-            stagedIndex);
-      }
+      SearchClient searchClient,
+      String stagedIndex,
+      String canonicalIndex,
+      String entityType,
+      boolean reindexSuccess) {
+    return reindexSuccess
+        || (stagedIndexReceivedDocuments(searchClient, stagedIndex, entityType)
+            && nothingIsServed(searchClient, canonicalIndex, entityType, stagedIndex));
+  }
+
+  private static boolean nothingIsServed(
+      SearchClient searchClient, String canonicalIndex, String entityType, String stagedIndex) {
+    final boolean served = servesDocuments(searchClient, canonicalIndex);
+    if (served) {
+      LOG.warn(
+          "Reindex failed for entity '{}'; keeping the index users search and discarding staged "
+              + "index '{}'.",
+          entityType,
+          stagedIndex);
+    } else {
+      LOG.info(
+          "Reindex failed for entity '{}' and nothing is served; promoting partial staged index "
+              + "'{}'.",
+          entityType,
+          stagedIndex);
     }
-    return shouldPromote;
+    return !served;
+  }
+
+  /**
+   * Whether the index users search for this entity holds documents. An unreadable count counts as
+   * documents, so a failed reindex never replaces an index it could not inspect.
+   */
+  private static boolean servesDocuments(SearchClient searchClient, String canonicalIndex) {
+    final Set<String> aliased = searchClient.getIndicesByAlias(canonicalIndex);
+    final Set<String> serving =
+        aliased.isEmpty() && searchClient.indexExists(canonicalIndex)
+            ? Set.of(canonicalIndex)
+            : aliased;
+    return serving.stream().anyMatch(index -> searchClient.getDocumentCount(index) != 0);
+  }
+
+  private static boolean stagedIndexReceivedDocuments(
+      SearchClient searchClient, String stagedIndex, String entityType) {
+    final long indexedDocs = searchClient.getIndexedDocumentCount(stagedIndex);
+    if (indexedDocs == 0) {
+      LOG.info(
+          "Reindex failed for entity '{}' and staged index '{}' received 0 documents. "
+              + "Deleting empty staged index.",
+          entityType,
+          stagedIndex);
+    }
+    // An unreadable count (-1) is treated as documents, so data is never deleted on a guess.
+    return indexedDocs != 0;
   }
 
   /**
@@ -321,28 +379,12 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       return false;
     }
 
-    // Always-promote: check doc count when reindex failed
     boolean shouldPromote =
-        shouldPromoteStagedIndex(searchClient, stagedIndex, entityType, reindexSuccess);
+        shouldPromoteStagedIndex(
+            searchClient, stagedIndex, canonicalIndex, entityType, reindexSuccess);
 
     if (!shouldPromote) {
-      try {
-        if (searchClient.indexExists(stagedIndex)) {
-          searchClient.deleteIndexWithBackoff(stagedIndex);
-          LOG.info(
-              "Deleted staged index '{}' after unsuccessful reindex for entity '{}'.",
-              stagedIndex,
-              entityType);
-        }
-      } catch (Exception ex) {
-        LOG.warn(
-            "Failed to delete staged index '{}' for entity '{}' after failure.",
-            stagedIndex,
-            entityType,
-            ex);
-      } finally {
-        searchRepository.unregisterStagedIndex(entityType, stagedIndex);
-      }
+      discardStagedIndex(searchRepository, entityType, stagedIndex);
       // Nothing to promote (empty staged index intentionally discarded) — terminal, not retryable.
       return true;
     }
@@ -671,6 +713,18 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         entityType,
         json);
     searchClient.updateIndexSettings(stagedIndex, json);
+  }
+
+  /**
+   * A live index rewritten in place keeps its settings. Only the ones an operator configured are
+   * applied, so a configuration change still reaches the index without building a new one.
+   */
+  public void applyConfiguredLiveSettings(String liveIndex, String entityType) {
+    String json = buildRevertJson(resolveLiveSettings(entityType), null);
+    if (json != null) {
+      LOG.info("Applying configured live settings to index '{}': {}", liveIndex, json);
+      Entity.getSearchRepository().getSearchClient().updateIndexSettings(liveIndex, json);
+    }
   }
 
   /**

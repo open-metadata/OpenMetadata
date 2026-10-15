@@ -137,6 +137,7 @@ import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.search.StagedIndexRoutes;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.fitness.FitnessVerdict;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
@@ -2134,11 +2135,18 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // Trigger Application. Clear any on-demand job left behind by a previous run that died
     // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
-    AppScheduler.getInstance().deleteOnDemandJob(app);
-    AppScheduler.getInstance()
-        .triggerOnDemandApplication(app, JsonUtils.getMap(config), ADMIN_USER_NAME);
-
-    int result = waitAndReturnReindexingAppStatus(app, currentTime, progressMonitor);
+    // The run executes in this process, so this process must renew the write routes it registers.
+    StagedIndexRoutes writeRoutes = Entity.getSearchRepository().getStagedIndexRoutes();
+    writeRoutes.start();
+    int result;
+    try {
+      AppScheduler.getInstance().deleteOnDemandJob(app);
+      AppScheduler.getInstance()
+          .triggerOnDemandApplication(app, JsonUtils.getMap(config), ADMIN_USER_NAME);
+      result = waitAndReturnReindexingAppStatus(app, currentTime, progressMonitor);
+    } finally {
+      writeRoutes.stop();
+    }
 
     // Update mapping versions after successful reindexing
     if (result == 0 && shouldUpdateVersions && versionTracker != null) {

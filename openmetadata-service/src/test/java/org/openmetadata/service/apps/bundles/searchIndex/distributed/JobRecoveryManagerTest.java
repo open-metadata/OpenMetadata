@@ -825,6 +825,7 @@ class JobRecoveryManagerTest {
         System.currentTimeMillis(),
         null,
         0,
-        0L); // claimableAt
+        0L,
+        null); // claimableAt
   }
 }

@@ -107,3 +107,53 @@ CREATE TABLE IF NOT EXISTS metadata_projection_extension (
     INDEX projection_extension_page (mutationId, id),
     FOREIGN KEY (mutationId) REFERENCES metadata_projection_mutation(id)
 );
+
+-- Search reindex: entity types rewritten in their live index rather than a staged one, so every
+-- server taking part in the job writes those types in place.
+SET @search_index_job_in_place_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'search_index_job'
+        AND column_name = 'inPlaceIndexMapping'
+    ),
+    'SELECT 1',
+    'ALTER TABLE search_index_job ADD COLUMN inPlaceIndexMapping JSON DEFAULT NULL'
+  )
+);
+PREPARE search_index_job_in_place_stmt FROM @search_index_job_in_place_ddl;
+EXECUTE search_index_job_in_place_stmt;
+DEALLOCATE PREPARE search_index_job_in_place_stmt;
+
+-- Search reindex: the keyset cursor each partition starts after, recorded when the job is created.
+-- Every server claiming the partition starts at that row; finding it again with OFFSET skips rows
+-- once earlier rows are deleted during the run.
+SET @search_index_partition_start_cursor_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'search_index_partition'
+        AND column_name = 'startCursor'
+    ),
+    'SELECT 1',
+    'ALTER TABLE search_index_partition ADD COLUMN startCursor TEXT DEFAULT NULL'
+  )
+);
+PREPARE search_index_partition_start_cursor_stmt FROM @search_index_partition_start_cursor_ddl;
+EXECUTE search_index_partition_start_cursor_stmt;
+DEALLOCATE PREPARE search_index_partition_start_cursor_stmt;
+
+-- Search reindex: where live writes for an entity index go while a reindex builds its replacement.
+-- Every server reads these rows, so a write handled by any of them reaches the index being built.
+-- A row whose owner stops renewing it lapses at leaseExpiresAt.
+CREATE TABLE IF NOT EXISTS search_index_write_route (
+    canonicalIndex VARCHAR(255) NOT NULL,
+    stagedIndex VARCHAR(255) NOT NULL,
+    ownerId VARCHAR(255) NOT NULL,
+    leaseExpiresAt BIGINT NOT NULL,
+    PRIMARY KEY (canonicalIndex)
+);

@@ -493,6 +493,37 @@ class IndexMappingVersionTrackerTest {
   }
 
   @Test
+  void switchingTheSearchLanguageIsReportedAsDrift() throws IOException {
+    try (var loaderMock = mockStatic(IndexMappingLoader.class)) {
+      loaderMock.when(IndexMappingLoader::getInstance).thenReturn(indexMappingLoader);
+      when(indexMappingLoader.getIndexMapping())
+          .thenReturn(
+              buildMappingsFromPairs("table", "/elasticsearch/%s/table_index_mapping.json"));
+      new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester", "en")
+          .updateMappingVersions();
+      verify(indexMappingVersionDAO)
+          .upsertIndexMappingVersion(
+              eq("table"), hashCaptor.capture(), anyString(), anyString(), anyLong(), anyString());
+      when(indexMappingVersionDAO.getAllMappingVersions())
+          .thenReturn(
+              List.of(
+                  new IndexMappingVersionDAO.IndexMappingVersion("table", hashCaptor.getValue())));
+
+      // A reindex with no drift rewrites the live index in place and would keep the old analyzers.
+      assertEquals(
+          IndexMappingVersionTracker.MappingDriftState.CURRENT,
+          new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester", "en")
+              .computeDrift()
+              .get("table"));
+      assertEquals(
+          IndexMappingVersionTracker.MappingDriftState.STALE,
+          new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester", "jp")
+              .computeDrift()
+              .get("table"));
+    }
+  }
+
+  @Test
   void updateMappingVersionsForSubsetStampsOnlyGivenEntities() throws IOException {
     Map<String, IndexMapping> mappings =
         buildMappingsFromPairs(

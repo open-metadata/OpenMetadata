@@ -25,6 +25,12 @@ public final class ReindexHelpers {
 
   public static final String SEARCH_INDEX_APP = "SearchIndexingApplication";
 
+  /**
+   * Run config that rebuilds every index into a new one and promotes it. Without it a run rewrites
+   * each unchanged live index in place, so no alias moves and no staged index is created.
+   */
+  public static final Map<String, Object> FORCED_REBUILD = Map.of("force", true);
+
   private static final Logger LOG = LoggerFactory.getLogger(ReindexHelpers.class);
   private static final Set<String> TERMINAL_STATUSES =
       Set.of("success", "failed", "completed", "stopped", "activeError");
@@ -173,6 +179,16 @@ public final class ReindexHelpers {
     return run;
   }
 
+  /** Like {@link #triggerSearchIndexAndWait(ServerHandle)}, but rebuilds every index anew. */
+  public static AppRunRecord triggerForcedSearchIndexAndWait(final ServerHandle server) {
+    final long triggeredAtMillis = System.currentTimeMillis();
+    triggerSearchIndexWithConfigWhenIdle(server, FORCED_REBUILD, reindexTimeout());
+    final AppRunRecord run =
+        waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, reindexTimeout());
+    logIfNotSuccess(run);
+    return run;
+  }
+
   /**
    * Fires the plain trigger, retrying until the server accepts it. OM's app-execution lock can
    * linger briefly after the previous run flips to terminal (notably the {@code beforeEach}
@@ -195,7 +211,7 @@ public final class ReindexHelpers {
 
   /**
    * Rebuilds every index from scratch and blocks until the fresh run reaches a terminal status.
-   * Unlike {@link #triggerSearchIndexAndWait}, this passes {@code recreateIndex=true} so dropped
+   * Unlike {@link #triggerSearchIndexAndWait}, this passes {@link #FORCED_REBUILD} so dropped
    * indices are recreated and read aliases are re-promoted — the only reliable way to restore a
    * baseline after a test has dropped indices or left an alias unswapped (e.g. a stopped recreate
    * run). Used by {@code SearchClusterResetExtension}.
@@ -216,7 +232,7 @@ public final class ReindexHelpers {
         backOff(BASELINE_RECREATE_BACKOFF);
       }
       final long triggeredAtMillis = System.currentTimeMillis();
-      triggerSearchIndexWithConfigWhenIdle(server, Map.of("recreateIndex", true), reindexTimeout());
+      triggerSearchIndexWithConfigWhenIdle(server, FORCED_REBUILD, reindexTimeout());
       run = waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
       logBaselineRecreateAttempt(run, attempt);
     }

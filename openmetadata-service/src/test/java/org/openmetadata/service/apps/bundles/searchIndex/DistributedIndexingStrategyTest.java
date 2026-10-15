@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -37,6 +39,7 @@ import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexModePlanner.Mode;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexExecutor;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.EntityCompletionTracker;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
@@ -75,7 +78,17 @@ class DistributedIndexingStrategyTest {
             APP_ID,
             1234L,
             "admin",
-            stopSignal);
+            stopSignal) {
+          // The search cluster is stubbed, so plan what every run did before in-place rewrites.
+          @Override
+          ReindexTargets planTargets(Set<String> requestedTypes, boolean forceRecreate) {
+            return new ReindexTargets(
+                searchRepository,
+                requestedTypes,
+                requestedTypes.stream()
+                    .collect(Collectors.toMap(Function.identity(), type -> Mode.NEW_INDEX)));
+          }
+        };
   }
 
   @Test

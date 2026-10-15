@@ -67,7 +67,7 @@ public class SearchIndexPromotionIT {
   }
 
   @Test
-  void tableOnlyRerunPromotesNewStagedIndex(TestNamespace ns) {
+  void forcedTableOnlyRerunPromotesNewStagedIndex(TestNamespace ns) {
     assumeFalse(
         TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
 
@@ -103,6 +103,8 @@ public class SearchIndexPromotionIT {
     Map<String, Object> config = new HashMap<>();
     config.put("entities", List.of(TABLE_ENTITY));
     config.put("batchSize", 100);
+    // Without force an unchanged table index is rewritten in place instead of replaced.
+    config.put("force", true);
 
     Awaitility.await("Trigger table-only " + APP_NAME)
         .atMost(Duration.ofMinutes(2))

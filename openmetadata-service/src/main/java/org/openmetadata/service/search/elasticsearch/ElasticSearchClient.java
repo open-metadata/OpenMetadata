@@ -23,6 +23,7 @@ import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.elasticsearch.nodes.NodesStatsResponse;
 import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import es.co.elastic.clients.transport.ElasticsearchTransport;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5ClientBuilder;
@@ -77,6 +78,8 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.search.EntityManagementClient;
+import org.openmetadata.service.search.RebuildAwareEntityManagement;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -98,6 +101,8 @@ public class ElasticSearchClient implements SearchClient {
   // New Java API client support for migration
   @Getter protected final ElasticsearchClient newClient;
   private final Rest5Client lowLevelClient;
+  private final ElasticSearchConfiguration configuration;
+  private volatile ElasticsearchTransport bulkTransport;
 
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final QueryBuilderFactory queryBuilderFactory;
@@ -114,7 +119,7 @@ public class ElasticSearchClient implements SearchClient {
   private volatile ESLineageGraphBuilder lineageGraphBuilder;
   private final ESEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
   private final ElasticSearchIndexManager indexManager;
-  private final ElasticSearchEntityManager entityManager;
+  private final EntityManagementClient entityManager;
   private final ElasticSearchGenericManager genericManager;
   private final ElasticSearchAggregationManager aggregationManager;
   private final ElasticSearchDataInsightAggregatorManager dataInsightAggregatorManager;
@@ -155,6 +160,7 @@ public class ElasticSearchClient implements SearchClient {
 
   // Update the constructor to accept NLQService
   public ElasticSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
+    this.configuration = config;
     this.lowLevelClient = getLowLevelRestClient(config);
     this.newClient = createElasticSearchNewClient(lowLevelClient);
     clusterAlias = config != null ? config.getClusterAlias() : "";
@@ -166,12 +172,33 @@ public class ElasticSearchClient implements SearchClient {
     entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(newClient);
     this.nlqService = nlqService;
     indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
-    entityManager = new ElasticSearchEntityManager(newClient);
+    entityManager = RebuildAwareEntityManagement.around(new ElasticSearchEntityManager(newClient));
     genericManager = new ElasticSearchGenericManager(newClient);
     aggregationManager = new ElasticSearchAggregationManager(newClient, rbacConditionEvaluator);
     dataInsightAggregatorManager = new ElasticSearchDataInsightAggregatorManager(newClient);
     searchManager =
         new ElasticSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
+  }
+
+  /**
+   * The transport bulk writes use: a connection pool of its own, so a reindex queueing bulk
+   * requests never makes user searches and live writes wait for a connection.
+   */
+  public ElasticsearchTransport getBulkTransport() {
+    ElasticsearchTransport transport = bulkTransport;
+    if (transport == null) {
+      synchronized (this) {
+        transport = bulkTransport;
+        if (transport == null) {
+          transport =
+              new MeteredElasticsearchTransport(
+                  new Rest5ClientTransport(
+                      getLowLevelRestClient(configuration), new JacksonJsonpMapper()));
+          bulkTransport = transport;
+        }
+      }
+    }
+    return transport;
   }
 
   private ElasticsearchClient createElasticSearchNewClient(Rest5Client lowLevelClient) {
@@ -672,7 +699,8 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
+      throws IOException {
     entityManager.createEntities(indexName, docsAndIds);
   }
 

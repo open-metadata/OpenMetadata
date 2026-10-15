@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.VersionUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.IndexMappingHashException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IndexMappingVersionDAO;
@@ -27,6 +29,7 @@ import org.openmetadata.service.jdbi3.IndexMappingVersionDAO;
 public class IndexMappingVersionTracker {
   public static final String SYSTEM_UPDATED_BY = "system";
   private static final String VERSION_RESOURCE_PATH = "/catalog/VERSION";
+  private static final String DEFAULT_LANGUAGE = "en";
 
   // Server version and mappers are immutable for the process lifetime; resolve once instead of
   // re-reading /catalog/VERSION and re-allocating an ObjectMapper on every per-entity stamp.
@@ -39,12 +42,25 @@ public class IndexMappingVersionTracker {
   private final String updatedBy;
   private final String version;
   private final CollectionDAO daoCollection;
+  private final String language;
 
   public IndexMappingVersionTracker(CollectionDAO daoCollection, String version, String updatedBy) {
+    this(daoCollection, version, updatedBy, configuredLanguage());
+  }
+
+  IndexMappingVersionTracker(
+      CollectionDAO daoCollection, String version, String updatedBy, String language) {
     this.daoCollection = daoCollection;
     this.indexMappingVersionDAO = daoCollection.indexMappingVersionDAO();
     this.version = version;
     this.updatedBy = updatedBy;
+    this.language = language.toLowerCase(Locale.ROOT);
+  }
+
+  private static String configuredLanguage() {
+    final SearchRepository searchRepository = Entity.getSearchRepository();
+    final String configured = searchRepository == null ? null : searchRepository.getLanguage();
+    return configured == null ? DEFAULT_LANGUAGE : configured;
   }
 
   public static IndexMappingVersionTracker create(CollectionDAO daoCollection) {
@@ -205,11 +221,13 @@ public class IndexMappingVersionTracker {
   private record MappingEntry(String hash, JsonNode json) {}
 
   /**
-   * Drift is computed against the field-safety-hardened bundled mapping (all languages) each index is
-   * actually built from — the same {@link SearchIndexSettings#harden} pass {@code
-   * SearchRepository.readIndexMapping} applies at index-creation time — so both a shipped mapping
-   * change and a change to the configured {@link SearchFieldLimits} surface as a reindex-required
-   * drift until the entity is reindexed. {@link IndexMappingLoader} is the source of truth for entity
+   * Drift is computed against the field-safety-hardened bundled mapping each index is actually
+   * built from — the configured language's file, through the same {@link SearchIndexSettings#harden}
+   * pass {@code SearchRepository.readIndexMapping} applies at index-creation time — so a shipped
+   * mapping change, a change to the configured {@link SearchFieldLimits} and a switch of the
+   * search language all surface as a reindex-required drift until the entity is reindexed. A reindex
+   * that finds no drift rewrites the live index in place, so a change this hash misses would never
+   * reach the index. {@link IndexMappingLoader} is the source of truth for entity
    * types and file paths, covering camelCase types (e.g. {@code glossaryTerm}) without hand-built
    * paths.
    */
@@ -252,21 +270,14 @@ public class IndexMappingVersionTracker {
   private JsonNode loadMappingForEntity(String entityType, IndexMapping indexMapping) {
     JsonNode result = null;
     try {
-      Map<String, JsonNode> allLanguageMappings = new HashMap<>();
-      String[] languages = {"en", "jp", "ru", "zh"};
-      for (String lang : languages) {
-        String mappingPath = "/" + indexMapping.getIndexMappingFile(lang);
-        try (var stream = getClass().getResourceAsStream(mappingPath)) {
-          if (stream != null) {
-            String mappingContent = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            String hardened =
-                SearchIndexSettings.harden(mappingContent, SearchFieldLimits.active());
-            allLanguageMappings.put(lang, MAPPER.readTree(hardened));
-          }
+      String mappingPath = "/" + indexMapping.getIndexMappingFile(language);
+      try (var stream = getClass().getResourceAsStream(mappingPath)) {
+        if (stream != null) {
+          String mappingContent = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+          String hardened =
+              SearchIndexSettings.forIndexCreation(mappingContent, SearchFieldLimits.active());
+          result = MAPPER.valueToTree(Map.of(language, MAPPER.readTree(hardened)));
         }
-      }
-      if (!allLanguageMappings.isEmpty()) {
-        result = MAPPER.valueToTree(allLanguageMappings);
       }
     } catch (Exception e) {
       LOG.debug("Could not load mapping for entity: {}", entityType, e);

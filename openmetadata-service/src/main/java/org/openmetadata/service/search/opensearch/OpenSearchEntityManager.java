@@ -422,7 +422,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     UpdateByQueryResponse response =
         client.updateByQuery(
             u ->
-                u.index(indexNames)
+                u.index(Entity.getSearchRepository().getWriteFanoutTargets(indexNames))
                     .query(q -> q.bool(boolQueryBuilder.build()))
                     .script(
                         s ->
@@ -529,7 +529,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
     try {
       submitChildUpdate(
-          List.of(Entity.getSearchRepository().getIndexOrAliasName(indexName)),
+          Entity.getSearchRepository()
+              .getWriteFanoutTargets(Entity.getSearchRepository().getIndexOrAliasName(indexName)),
           fieldAndValue,
           updates);
       LOG.info("Successfully submitted child update in OpenSearch for index: {}", indexName);
@@ -550,7 +551,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       LOG.error("OpenSearch client is not available. Cannot update children for indices.");
       return;
     }
-    submitChildUpdate(indexNames, fieldAndValue, updates);
+    submitChildUpdate(
+        Entity.getSearchRepository().getWriteFanoutTargets(indexNames), fieldAndValue, updates);
     LOG.info("Successfully submitted child update in OpenSearch for indices: {}", indexNames);
   }
 
@@ -622,7 +624,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
     client.updateByQuery(
         u ->
-            u.index(indexNames)
+            u.index(Entity.getSearchRepository().getWriteFanoutTargets(indexNames))
                 .query(anyOfFieldQuery(field, values))
                 .conflicts(Conflicts.Proceed)
                 .script(

@@ -57,6 +57,9 @@ public interface SearchReindexDAOs {
   @CreateSqlObject
   SearchIndexServerStatsDAO searchIndexServerStatsDAO();
 
+  @CreateSqlObject
+  SearchIndexWriteRouteDAO searchIndexWriteRouteDAO();
+
   /** DAO for distributed search index jobs */
   interface SearchIndexJobDAO {
 
@@ -177,6 +180,19 @@ public interface SearchReindexDAOs {
         @BindJson("stagedIndexMapping") String stagedIndexMapping,
         @Bind("updatedAt") long updatedAt);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE search_index_job SET inPlaceIndexMapping = :inPlaceIndexMapping, updatedAt = :updatedAt WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE search_index_job SET inPlaceIndexMapping = :inPlaceIndexMapping::jsonb, updatedAt = :updatedAt WHERE id = :id",
+        connectionType = POSTGRES)
+    void updateInPlaceIndexMapping(
+        @Bind("id") String id,
+        @BindJson("inPlaceIndexMapping") String inPlaceIndexMapping,
+        @Bind("updatedAt") long updatedAt);
+
     @SqlUpdate("UPDATE search_index_job SET updatedAt = :updatedAt WHERE id = :id")
     void touchJob(@Bind("id") String id, @Bind("updatedAt") long updatedAt);
 
@@ -202,7 +218,8 @@ public interface SearchReindexDAOs {
             rs.getLong("updatedAt"),
             rs.getString("errorMessage"),
             (Long) rs.getObject("registrationDeadline"),
-            (Integer) rs.getObject("registeredServerCount"));
+            (Integer) rs.getObject("registeredServerCount"),
+            rs.getString("inPlaceIndexMapping"));
       }
     }
 
@@ -225,7 +242,51 @@ public interface SearchReindexDAOs {
         long updatedAt,
         String errorMessage,
         Long registrationDeadline,
-        Integer registeredServerCount) {}
+        Integer registeredServerCount,
+        String inPlaceIndexMapping) {
+
+      /** A job that rebuilds every entity type into a staged index. */
+      public SearchIndexJobRecord(
+          String id,
+          String status,
+          String jobConfiguration,
+          String targetIndexPrefix,
+          String stagedIndexMapping,
+          long totalRecords,
+          long processedRecords,
+          long successRecords,
+          long failedRecords,
+          String stats,
+          String createdBy,
+          long createdAt,
+          Long startedAt,
+          Long completedAt,
+          long updatedAt,
+          String errorMessage,
+          Long registrationDeadline,
+          Integer registeredServerCount) {
+        this(
+            id,
+            status,
+            jobConfiguration,
+            targetIndexPrefix,
+            stagedIndexMapping,
+            totalRecords,
+            processedRecords,
+            successRecords,
+            failedRecords,
+            stats,
+            createdBy,
+            createdAt,
+            startedAt,
+            completedAt,
+            updatedAt,
+            errorMessage,
+            registrationDeadline,
+            registeredServerCount,
+            null);
+      }
+    }
   }
 
   /** DAO for distributed search index partitions */
@@ -234,16 +295,16 @@ public interface SearchReindexDAOs {
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_partition (id, jobId, entityType, partitionIndex, rangeStart, rangeEnd, "
-                + "estimatedCount, workUnits, priority, status, processingCursor, claimableAt) "
+                + "estimatedCount, workUnits, priority, status, processingCursor, claimableAt, startCursor) "
                 + "VALUES (:id, :jobId, :entityType, :partitionIndex, :rangeStart, :rangeEnd, "
-                + ":estimatedCount, :workUnits, :priority, :status, :cursor, :claimableAt)",
+                + ":estimatedCount, :workUnits, :priority, :status, :cursor, :claimableAt, :startCursor)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_partition (id, jobId, entityType, partitionIndex, rangeStart, rangeEnd, "
-                + "estimatedCount, workUnits, priority, status, processingCursor, claimableAt) "
+                + "estimatedCount, workUnits, priority, status, processingCursor, claimableAt, startCursor) "
                 + "VALUES (:id, :jobId, :entityType, :partitionIndex, :rangeStart, :rangeEnd, "
-                + ":estimatedCount, :workUnits, :priority, :status, :cursor, :claimableAt)",
+                + ":estimatedCount, :workUnits, :priority, :status, :cursor, :claimableAt, :startCursor)",
         connectionType = POSTGRES)
     void insert(
         @Bind("id") String id,
@@ -257,7 +318,8 @@ public interface SearchReindexDAOs {
         @Bind("priority") int priority,
         @Bind("status") String status,
         @Bind("cursor") long cursor,
-        @Bind("claimableAt") long claimableAt);
+        @Bind("claimableAt") long claimableAt,
+        @Bind("startCursor") String startCursor);
 
     @SqlUpdate(
         "UPDATE search_index_partition SET status = :status, processingCursor = :cursor, "
@@ -540,7 +602,8 @@ public interface SearchReindexDAOs {
             (Long) rs.getObject("lastUpdateAt"),
             rs.getString("lastError"),
             rs.getInt("retryCount"),
-            rs.getLong("claimableAt"));
+            rs.getLong("claimableAt"),
+            rs.getString("startCursor"));
       }
     }
 
@@ -600,7 +663,8 @@ public interface SearchReindexDAOs {
         Long lastUpdateAt,
         String lastError,
         int retryCount,
-        long claimableAt) {}
+        long claimableAt,
+        String startCursor) {}
 
     /** Record for entity stats aggregation */
     record EntityStatsRecord(
@@ -707,6 +771,60 @@ public interface SearchReindexDAOs {
         "SELECT DISTINCT assignedServer FROM search_index_partition "
             + "WHERE jobId = :jobId AND assignedServer IS NOT NULL")
     List<String> getAssignedServers(@Bind("jobId") String jobId);
+  }
+
+  /** Where live writes for an entity index go while a reindex builds its replacement. */
+  interface SearchIndexWriteRouteDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO search_index_write_route "
+                + "(canonicalIndex, stagedIndex, ownerId, leaseExpiresAt) "
+                + "VALUES (:canonicalIndex, :stagedIndex, :ownerId, :leaseExpiresAt) "
+                + "ON DUPLICATE KEY UPDATE stagedIndex = :stagedIndex, ownerId = :ownerId, "
+                + "leaseExpiresAt = :leaseExpiresAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO search_index_write_route "
+                + "(canonicalIndex, stagedIndex, ownerId, leaseExpiresAt) "
+                + "VALUES (:canonicalIndex, :stagedIndex, :ownerId, :leaseExpiresAt) "
+                + "ON CONFLICT (canonicalIndex) DO UPDATE SET stagedIndex = EXCLUDED.stagedIndex, "
+                + "ownerId = EXCLUDED.ownerId, leaseExpiresAt = EXCLUDED.leaseExpiresAt",
+        connectionType = POSTGRES)
+    void upsert(
+        @Bind("canonicalIndex") String canonicalIndex,
+        @Bind("stagedIndex") String stagedIndex,
+        @Bind("ownerId") String ownerId,
+        @Bind("leaseExpiresAt") long leaseExpiresAt);
+
+    /** Staged index names carry their run's start time, so no other run's route is renewed. */
+    @SqlUpdate(
+        "UPDATE search_index_write_route SET leaseExpiresAt = :leaseExpiresAt "
+            + "WHERE stagedIndex IN (<stagedIndexes>)")
+    int renew(
+        @BindList("stagedIndexes") List<String> stagedIndexes,
+        @Bind("leaseExpiresAt") long leaseExpiresAt);
+
+    @SqlUpdate(
+        "DELETE FROM search_index_write_route "
+            + "WHERE canonicalIndex = :canonicalIndex AND stagedIndex = :stagedIndex")
+    int delete(
+        @Bind("canonicalIndex") String canonicalIndex, @Bind("stagedIndex") String stagedIndex);
+
+    @SqlQuery(
+        "SELECT canonicalIndex, stagedIndex FROM search_index_write_route "
+            + "WHERE leaseExpiresAt > :now")
+    @RegisterRowMapper(WriteRouteMapper.class)
+    List<WriteRoute> listLive(@Bind("now") long now);
+
+    record WriteRoute(String canonicalIndex, String stagedIndex) {}
+
+    class WriteRouteMapper implements RowMapper<WriteRoute> {
+      @Override
+      public WriteRoute map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new WriteRoute(rs.getString("canonicalIndex"), rs.getString("stagedIndex"));
+      }
+    }
   }
 
   /** DAO for distributed reindex lock */

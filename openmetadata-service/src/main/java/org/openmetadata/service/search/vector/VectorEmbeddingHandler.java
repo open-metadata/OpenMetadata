@@ -137,7 +137,8 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
       if (mapping == null) {
         return null;
       }
-      return mapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+      // A reindex building this entity's next index must also receive its embedding.
+      return Entity.getSearchRepository().getWriteIndexName(mapping);
     } catch (Exception e) {
       LOG.warn("Failed to resolve index name for entity type {}: {}", entityType, e.getMessage());
       return null;

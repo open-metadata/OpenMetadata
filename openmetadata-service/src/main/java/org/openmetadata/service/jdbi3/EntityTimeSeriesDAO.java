@@ -394,6 +394,24 @@ public interface EntityTimeSeriesDAO {
     return getById(getTimeSeriesTableName(), id.toString());
   }
 
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>)")
+  List<String> findExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
+  /** The given ids that still have a row; one query for a whole batch. */
+  default List<String> findExistingIds(List<String> ids) {
+    return findExistingIds(getTimeSeriesTableName(), ids);
+  }
+
+  /** One page of ids of records at or after {@code startTs}, after {@code afterId}, in id order. */
+  @SqlQuery(
+      "SELECT id FROM <table> WHERE id > :afterId AND timestamp >= :startTs "
+          + "ORDER BY id LIMIT :limit")
+  List<String> listIdsAfter(
+      @Define("table") String table,
+      @Bind("afterId") String afterId,
+      @Bind("startTs") long startTs,
+      @Bind("limit") int limit);
+
   @SqlQuery("SELECT EXISTS (SELECT 1 FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @Bind("id") String id);
 

@@ -1266,6 +1266,15 @@ public class DistributedSearchIndexExecutor {
     coordinator.updateStagedIndexMapping(currentJob.getId(), stagedIndexMapping);
   }
 
+  /** Publishes the entity types participants rewrite in their live index. */
+  public void updateInPlaceIndexMapping(Map<String, String> inPlaceIndexMapping) {
+    if (currentJob == null) {
+      LOG.warn("Cannot update in-place index mapping - no current job");
+      return;
+    }
+    coordinator.updateInPlaceIndexMapping(currentJob.getId(), inPlaceIndexMapping);
+  }
+
   /**
    * Initialize the entity completion tracker with partition counts and promotion callback.
    */
@@ -1312,9 +1321,16 @@ public class DistributedSearchIndexExecutor {
   }
 
   /**
-   * Promote a single entity's index when all its partitions complete.
+   * Promote a single entity's index when all its partitions complete. An entity with failed
+   * records is left to the end-of-job finalizer, which judges its success ratio from the job's
+   * stats before deciding whether its staged index may replace the one users search.
    */
   private boolean promoteEntityIndex(String entityType, boolean success) {
+    if (!success) {
+      LOG.debug(
+          "Deferring promotion of '{}' with failed records to the job's finalizer", entityType);
+      return false;
+    }
     if (indexPromotionHandler == null || stagedIndexContext == null) {
       LOG.warn(
           "Cannot promote index for entity '{}' - no index promotion handler or staged context",

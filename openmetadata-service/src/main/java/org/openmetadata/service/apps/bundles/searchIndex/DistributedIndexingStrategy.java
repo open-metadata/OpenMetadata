@@ -28,6 +28,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.DefaultRecreateHandler;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.SearchDocumentRebuilder;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -94,9 +95,23 @@ public class DistributedIndexingStrategy {
 
   private ExecutionResult doExecute(
       ReindexingConfiguration config, ReindexingJobContext context, long startTime) {
-
     this.config = config;
-    Set<String> entityTypes = SearchIndexEntityTypes.normalizeEntityTypes(config.entities());
+    // CLI --force sets force; it rebuilds every index instead of rewriting live ones in place.
+    ReindexTargets targets =
+        planTargets(SearchIndexEntityTypes.normalizeEntityTypes(config.entities()), config.force());
+    return targets.typesToRead().isEmpty()
+        ? ExecutionResult.fromStats(
+            initializeTotalRecords(Set.of()), ExecutionResult.Status.COMPLETED, startTime)
+        : reindex(targets, startTime);
+  }
+
+  /** Which indexes the run rewrites in place and which it rebuilds into new ones. */
+  ReindexTargets planTargets(Set<String> requestedTypes, boolean forceRecreate) {
+    return ReindexTargets.plan(collectionDAO, searchRepository, requestedTypes, forceRecreate);
+  }
+
+  private ExecutionResult reindex(ReindexTargets targets, long startTime) {
+    Set<String> entityTypes = targets.typesToRead();
     LOG.info("Starting distributed reindexing for entities: {}", entityTypes);
 
     Stats stats = initializeTotalRecords(entityTypes);
@@ -125,73 +140,142 @@ public class DistributedIndexingStrategy {
     if (stagedIndexHandler instanceof DefaultRecreateHandler defaultHandler) {
       defaultHandler.withJobData(jobData);
     }
-    ReindexContext stagedIndexContext = stagedIndexHandler.reCreateIndexes(entityTypes);
-    if (stagedIndexContext == null || stagedIndexContext.isEmpty()) {
-      throw new IllegalStateException(
-          "Staged index preparation did not produce any target indexes");
-    }
-    distributedExecutor.updateStagedIndexMapping(stagedIndexContext.getStagedIndexMapping());
+    ReindexContext stagedIndexContext = targets.prepare(stagedIndexHandler);
+    boolean finalized = false;
+    try {
+      awaitWriteRoutes(stagedIndexContext);
+      distributedExecutor.updateStagedIndexMapping(stagedIndexContext.getStagedIndexMapping());
+      distributedExecutor.updateInPlaceIndexMapping(stagedIndexContext.getInPlaceIndexMapping());
 
-    distributedExecutor.setAppContext(appId, appStartTime);
-    distributedExecutor.execute(searchIndexSink, stagedIndexContext, config);
+      distributedExecutor.setAppContext(appId, appStartTime);
+      distributedExecutor.execute(searchIndexSink, stagedIndexContext, config);
 
-    monitorDistributedJob(distributedJob.getId());
+      monitorDistributedJob(distributedJob.getId());
 
-    flushAndAwaitSink();
+      flushAndAwaitSink();
+      fillMissingDocuments(stagedIndexContext);
 
-    SearchIndexJob finalJob = distributedExecutor.getJobWithFreshStats();
-    Map<String, Object> metadata = new HashMap<>();
+      SearchIndexJob finalJob = distributedExecutor.getJobWithFreshStats();
+      Map<String, Object> metadata = new HashMap<>();
 
-    if (finalJob != null) {
-      StepStats sinkStats = searchIndexSink != null ? searchIndexSink.getStats() : null;
-      updateStatsFromDistributedJob(stats, finalJob, sinkStats);
+      if (finalJob != null) {
+        StepStats sinkStats = searchIndexSink != null ? searchIndexSink.getStats() : null;
+        updateStatsFromDistributedJob(stats, finalJob, sinkStats);
 
-      if (searchIndexSink != null) {
-        StepStats sinkVectorStats = searchIndexSink.getVectorStats();
-        if (sinkVectorStats != null && sinkVectorStats.getTotalRecords() > 0) {
-          stats.setVectorStats(sinkVectorStats);
+        if (searchIndexSink != null) {
+          StepStats sinkVectorStats = searchIndexSink.getVectorStats();
+          if (sinkVectorStats != null && sinkVectorStats.getTotalRecords() > 0) {
+            stats.setVectorStats(sinkVectorStats);
+          }
+        }
+
+        if (finalJob.getServerStats() != null && !finalJob.getServerStats().isEmpty()) {
+          metadata.put("serverStats", finalJob.getServerStats());
+          metadata.put("serverCount", finalJob.getServerStats().size());
+          metadata.put("distributedJobId", finalJob.getId().toString());
         }
       }
 
-      if (finalJob.getServerStats() != null && !finalJob.getServerStats().isEmpty()) {
-        metadata.put("serverStats", finalJob.getServerStats());
-        metadata.put("serverCount", finalJob.getServerStats().size());
-        metadata.put("distributedJobId", finalJob.getId().toString());
+      currentStats.set(stats);
+
+      // Batches are read after startTime, so a document read before it was not rewritten by this
+      // run.
+      boolean inPlaceFinished =
+          isStopped() || targets.finishInPlace(stagedIndexHandler, stagedIndexContext, startTime);
+      boolean allPromoted =
+          finalizeAllEntityReindex(
+                  stagedIndexHandler,
+                  stagedIndexContext,
+                  !isStopped() && !hasIncompleteProcessing(stats))
+              && inPlaceFinished;
+      finalized = true;
+
+      // Promotion sweep is done; flip the job from PROMOTING to its terminal status. The job stayed
+      // non-terminal until now, so the pod was not torn down mid-promotion.
+      distributedExecutor.markPromotionComplete(distributedJob.getId(), allPromoted);
+
+      ExecutionResult.Status resultStatus = determineStatus(stats);
+      if (!allPromoted && resultStatus == ExecutionResult.Status.COMPLETED) {
+        LOG.error(
+            "Reindex finished but a staged index could not be promoted or an index rewritten in "
+                + "place could not be cleaned up; reporting COMPLETED_WITH_ERRORS so the indexes "
+                + "are not treated as a clean rebuild");
+        resultStatus = ExecutionResult.Status.COMPLETED_WITH_ERRORS;
+      }
+
+      StatsReconciler.reconcile(stats);
+
+      return ExecutionResult.builder()
+          .status(resultStatus)
+          .totalRecords(stats.getJobStats().getTotalRecords())
+          .successRecords(stats.getJobStats().getSuccessRecords())
+          .failedRecords(stats.getJobStats().getFailedRecords())
+          .startTime(startTime)
+          .endTime(System.currentTimeMillis())
+          .finalStats(stats)
+          .metadata(metadata)
+          .build();
+    } finally {
+      if (!finalized) {
+        discardAfterFailure(stagedIndexHandler, stagedIndexContext);
       }
     }
+  }
 
-    currentStats.set(stats);
-
-    boolean allPromoted =
-        finalizeAllEntityReindex(
-            stagedIndexHandler,
-            stagedIndexContext,
-            !isStopped() && !hasIncompleteProcessing(stats));
-
-    // Promotion sweep is done; flip the job from PROMOTING to its terminal status. The job stayed
-    // non-terminal until now, so the pod was not torn down mid-promotion.
-    distributedExecutor.markPromotionComplete(distributedJob.getId(), allPromoted);
-
-    ExecutionResult.Status resultStatus = determineStatus(stats);
-    if (!allPromoted && resultStatus == ExecutionResult.Status.COMPLETED) {
-      LOG.error(
-          "Reindex finished but one or more staged indexes could not be promoted; reporting "
-              + "COMPLETED_WITH_ERRORS so the stale indexes are not treated as a clean rebuild");
-      resultStatus = ExecutionResult.Status.COMPLETED_WITH_ERRORS;
+  /** Rows the partitions did not reach are written to each new index before it is promoted. */
+  private void fillMissingDocuments(ReindexContext stagedIndexContext) {
+    if (isStopped()) {
+      return;
     }
+    StagedIndexCompleteness completeness =
+        new StagedIndexCompleteness(
+            searchRepository, new SearchDocumentRebuilder(searchRepository));
+    for (Map.Entry<String, String> staged : stagedIndexContext.getStagedIndexMapping().entrySet()) {
+      String entityType = staged.getKey();
+      if (hasRowsToCheck(entityType)) {
+        try {
+          completeness.fillMissing(
+              entityType, staged.getValue(), config.getTimeSeriesStartTs(entityType));
+        } catch (Exception e) {
+          LOG.warn("Could not check {} for rows the run did not write", staged.getValue(), e);
+        }
+      }
+    }
+  }
 
-    StatsReconciler.reconcile(stats);
+  /** Column documents and data insight reports are not rows; some types have no repository. */
+  private static boolean hasRowsToCheck(String entityType) {
+    return !Entity.TABLE_COLUMN.equals(entityType)
+        && !SearchIndexEntityTypes.isDataInsightEntity(entityType)
+        && Entity.hasEntityRepository(entityType);
+  }
 
-    return ExecutionResult.builder()
-        .status(resultStatus)
-        .totalRecords(stats.getJobStats().getTotalRecords())
-        .successRecords(stats.getJobStats().getSuccessRecords())
-        .failedRecords(stats.getJobStats().getFailedRecords())
-        .startTime(startTime)
-        .endTime(System.currentTimeMillis())
-        .finalStats(stats)
-        .metadata(metadata)
-        .build();
+  /**
+   * A run that fails before it finalizes discards what it staged. Otherwise its server would keep
+   * renewing the write routes, and every server would keep writing to an index nothing promotes.
+   */
+  private void discardAfterFailure(
+      RecreateIndexHandler stagedIndexHandler, ReindexContext stagedIndexContext) {
+    try {
+      finalizeAllEntityReindex(stagedIndexHandler, stagedIndexContext, false);
+    } catch (RuntimeException e) {
+      LOG.error("Could not discard the indexes a failed reindex staged", e);
+    }
+  }
+
+  /**
+   * A live write that misses a new index after its row was read is lost when the index is
+   * promoted, so every server must be sending writes there before the first row is read.
+   */
+  private void awaitWriteRoutes(ReindexContext stagedIndexContext) {
+    if (!stagedIndexContext.getEntities().isEmpty()) {
+      try {
+        searchRepository.awaitWriteRoutePropagation();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException("Interrupted before every server routed its writes", e);
+      }
+    }
   }
 
   private void flushAndAwaitSink() {

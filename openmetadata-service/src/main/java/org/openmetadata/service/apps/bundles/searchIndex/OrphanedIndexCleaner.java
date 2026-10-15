@@ -17,8 +17,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
@@ -52,6 +54,25 @@ public class OrphanedIndexCleaner {
 
   public record CleanupResult(int found, int deleted, int failed, List<String> deletedIndices) {}
 
+  private final Supplier<Set<String>> stagedIndexesInUse;
+
+  public OrphanedIndexCleaner() {
+    this(OrphanedIndexCleaner::liveStagedIndexes);
+  }
+
+  /**
+   * @param stagedIndexesInUse staged indexes some server's run still routes live writes to; they
+   *     carry no alias until promoted, yet are not orphans
+   */
+  OrphanedIndexCleaner(final Supplier<Set<String>> stagedIndexesInUse) {
+    this.stagedIndexesInUse = stagedIndexesInUse;
+  }
+
+  private static Set<String> liveStagedIndexes() {
+    final SearchRepository repository = Entity.getSearchRepository();
+    return repository == null ? Set.of() : repository.getStagedIndexRoutes().stagedIndexes();
+  }
+
   public List<OrphanedIndex> findOrphanedRebuildIndices(SearchClient client) {
     List<OrphanedIndex> orphaned = new ArrayList<>();
 
@@ -61,11 +82,16 @@ public class OrphanedIndexCleaner {
       LOG.info("Found {} rebuild indices to check for orphans", allRebuildIndices.size());
 
       long now = System.currentTimeMillis();
+      Set<String> inUse = stagedIndexesInUse.get();
 
       for (String indexName : allRebuildIndices) {
         try {
           if (!isOldEnough(indexName, now)) {
             LOG.debug("Index {} is too recent, skipping", indexName);
+            continue;
+          }
+          if (inUse.contains(indexName)) {
+            LOG.debug("Index {} is still being rebuilt, skipping", indexName);
             continue;
           }
 
