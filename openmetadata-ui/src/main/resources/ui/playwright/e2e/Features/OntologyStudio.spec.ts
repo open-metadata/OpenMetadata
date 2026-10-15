@@ -231,6 +231,11 @@ test.describe('Ontology Studio', () => {
       await expect(
         page.getByTestId('ontology-authoring-inspector')
       ).toContainText(conceptName);
+      // The concept drawer is modal, like the Domain and Data Product drawers.
+      await page.getByTestId('ontology-concept-inspector-close').click();
+      await expect(
+        page.getByTestId('ontology-authoring-inspector')
+      ).not.toBeVisible();
 
       await page.getByTestId('submode-tab-model').click();
       await expect(

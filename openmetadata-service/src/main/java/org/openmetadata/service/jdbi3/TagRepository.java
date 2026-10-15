@@ -23,6 +23,7 @@ import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.ownTagsWith;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
@@ -557,6 +558,8 @@ public class TagRepository extends EntityRepository<Tag> {
         invalidateCacheAfterTagMutation(asset.getEntityReference());
 
         searchRepository.updateEntity(ref);
+        // updateEntity clears the change description, so the child fan-out never fires from here.
+        searchRepository.propagateTagChangeToChildren(asset, List.of(tagLabel), List.of());
         RdfUpdater.updateEntity(asset);
       }
     }
@@ -613,9 +616,7 @@ public class TagRepository extends EntityRepository<Tag> {
         false);
 
     if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
-      List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
-      columnTags.add(tagLabel);
-      applyTags(getUniqueTags(columnTags), columnFqn);
+      applyTags(ownTagsWith(targetColumn.getTags(), tagLabel), columnFqn);
       invalidateCacheAfterTagMutation(table.getEntityReference());
       searchRepository.updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);
@@ -699,11 +700,23 @@ public class TagRepository extends EntityRepository<Tag> {
       if (!dryRun) {
         // Update ES
         searchRepository.updateEntity(ref);
+        searchRepository.propagateTagChangeToChildren(asset, List.of(), List.of(removedLabel(tag)));
         RdfUpdater.updateEntity(asset);
       }
     }
 
     return result.withSuccessRequest(success);
+  }
+
+  /**
+   * The label the child-doc cascade removes. The delete script matches on the FQN and only touches
+   * the child's DERIVED copies, so a child's own label of the same term is left alone.
+   */
+  private static TagLabel removedLabel(Tag tag) {
+    return new TagLabel()
+        .withTagFQN(tag.getFullyQualifiedName())
+        .withSource(TagSource.CLASSIFICATION)
+        .withLabelType(TagLabel.LabelType.DERIVED);
   }
 
   /**

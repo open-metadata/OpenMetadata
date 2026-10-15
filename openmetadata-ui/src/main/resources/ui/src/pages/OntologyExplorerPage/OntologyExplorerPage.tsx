@@ -413,6 +413,8 @@ const OntologyExplorerPage: React.FC = () => {
   const [pendingGlossaryName, setPendingGlossaryName] = useState<string>();
   const [explorerRevision, setExplorerRevision] = useState(0);
   const [generatedQuery, setGeneratedQuery] = useState<string>();
+  const [queryConsoleKey, setQueryConsoleKey] = useState(0);
+  const [isNewQueryRequested, setIsNewQueryRequested] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [searchSlot, setSearchSlot] = useState<HTMLDivElement | null>(null);
   const [conceptDraft, setConceptDraft] = useState<{
@@ -630,7 +632,7 @@ const OntologyExplorerPage: React.FC = () => {
             data-testid="ontology-glossary-menu-trigger"
             iconLeading={Globe01}
             iconTrailing={ChevronDown}
-            size="sm">
+            size="xs">
             {selectedGlossaryLabel}
           </Button>
           <Dropdown.Popover className="tw:w-60" placement="bottom left">
@@ -711,7 +713,7 @@ const OntologyExplorerPage: React.FC = () => {
           color="primary"
           data-testid="ontology-edit-ontology"
           iconTrailing={ArrowRight}
-          size="sm"
+          size="xs"
           onPress={() => handleModeChange('edit')}>
           {t('label.edit-entity', { entity: t('label.ontology') })}
         </Button>
@@ -725,7 +727,7 @@ const OntologyExplorerPage: React.FC = () => {
           data-testid="ontology-add-concept"
           iconLeading={Plus}
           isDisabled={Boolean(conceptDraft)}
-          size="sm"
+          size="xs"
           onPress={() => {
             const defaultGlossaryId = graphLeaseGlossary?.id;
             setAuthoringGlossaryId(defaultGlossaryId);
@@ -735,6 +737,24 @@ const OntologyExplorerPage: React.FC = () => {
             });
           }}>
           {t('label.add-entity', { entity: t('label.concept') })}
+        </Button>
+      );
+    }
+
+    if (mode === 'query' && isRdfEnabled) {
+      return (
+        <Button
+          color="primary"
+          data-testid="ontology-new-query"
+          iconLeading={Plus}
+          size="xs"
+          onPress={() => {
+            setGeneratedQuery(undefined);
+            setIsNewQueryRequested(true);
+            setQuerySurface('console');
+            setQueryConsoleKey((key) => key + 1);
+          }}>
+          {t('label.new-entity', { entity: t('label.query') })}
         </Button>
       );
     }
@@ -760,7 +780,7 @@ const OntologyExplorerPage: React.FC = () => {
               color="secondary"
               data-testid="ontology-library-trigger"
               iconLeading={Grid01}
-              size="sm"
+              size="xs"
               onPress={() => setIsLibraryOpen(true)}>
               {t('label.library')}
             </Button>
@@ -879,10 +899,13 @@ const OntologyExplorerPage: React.FC = () => {
         <div className="tw:min-h-0 tw:min-w-0 tw:flex-1 tw:overflow-auto">
           {querySurface === 'console' ? (
             <OntologyStudioQueryConsole
+              createQueryOnMount={isNewQueryRequested}
               graphData={graphData}
               initialQuery={generatedQuery}
+              key={queryConsoleKey}
               relationTypes={relationTypes}
               selectedGlossaryIds={selectedGlossaryIds}
+              onQueryCreated={() => setIsNewQueryRequested(false)}
             />
           ) : (
             <OntologyVisualQueryBuilder

@@ -180,7 +180,11 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/notificationAlert.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/dqtests/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/events/**",
-        "openmetadata-service/src/main/java/org/openmetadata/service/events/subscription/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/alerting/definition/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/alerting/matching/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/alerting/channel/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/alerting/delivery/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/events/consumer/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestCase*.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestSuiteRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestDefinitionRepository.java",
@@ -545,6 +549,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/OntologyExplorerPage/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.interface.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useSparqlQueryLibrary.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**",
@@ -861,6 +866,38 @@
       ]
     },
     {
+      "_comment": "System announcements: Settings > Notifications > Announcements (list, form, routed pages) and its AI-mode settings-modal section.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/announcements/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/platform/settings/SystemAnnouncementsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/platform/settings/SystemAnnouncementFormPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/platform/useSystemAnnouncements*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/platform/systemAnnouncements.utils*",
+        "openmetadata-ui/src/main/resources/ui/src/constants/platform/systemAnnouncements.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/nativeNotificationSections.ts",
+        "openmetadata-ui-core-components/src/main/resources/ui/icons-custom/announcement-colored.svg",
+        "openmetadata-ui-core-components/src/main/resources/ui/src/icons/AnnouncementColored.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Announcement pieces shared by system announcements and asset announcements: the REST client, the add/edit modal and its date field, and the drawer list with its delete dialog.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/rest/announcementsAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/AnnouncementModal/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Announcement/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
+        "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
+        "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts"
+      ]
+    },
+    {
       "_comment": "Shared shell of the AI-mode settings modal: the nav registry, its ids and the section/row layout every panel renders. A change here can move or restyle any panel, so every modal spec runs.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.tsx",
@@ -979,6 +1016,34 @@
       "sources": ["openmetadata-ui/src/main/resources/ui/eslint-suppressions.json"],
       "projects": [],
       "specs": []
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Suggestions/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/EntityRouter*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/withSuggestions*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/entity/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/queries/mlModelQuery.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/queries/entityDetailQueryKeys.test.ts",
+        "openmetadata-ui/src/main/resources/ui/src/pages/APIEndpointPage/APIEndpointPage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ContainerPage/ContainerPage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/DashboardDetailsPage/DashboardDetailsPage.component.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/DirectoryDetailsPage/DirectoryDetailsPage*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/FileDetailsPage/FileDetailsPage*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/MlModelPage/MlModelPage.component*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/PipelineDetails/PipelineDetailsPage.component*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/SearchIndexDetailsPage/SearchIndexDetailsPage*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/SpreadsheetDetailsPage/SpreadsheetDetailsPage*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/TableDetailsPageV1/TableDetailsPageV1*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/TopicDetails/TopicDetailsPage.component*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/WorksheetDetailsPage/WorksheetDetailsPage*.tsx"
+      ],
+      "projects": ["Basic"],
+      "specs": [
+        "playwright/e2e/Features/EntitySuggestions.spec.ts",
+        "playwright/e2e/Features/SuggestionsSliderPermissions.spec.ts",
+        "playwright/e2e/Features/TagsSuggestion.spec.ts"
+      ]
     }
   ]
 }

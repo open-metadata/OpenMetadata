@@ -436,7 +436,7 @@ test.describe('AI mode Observability', () => {
   });
 
   test.describe('Alerts Navigation', () => {
-    test('Add Alert button should open modal within AI mode', async ({
+    test('Add Alert button should open drawer within AI mode', async ({
       page,
     }) => {
       await page.goto('/observability/alerts', {
@@ -459,7 +459,7 @@ test.describe('AI mode Observability', () => {
       await expect(dialog.getByTestId('alert-name-input')).toBeVisible();
       await expect(dialog.getByTestId('source-select')).toBeVisible();
 
-      // The modal opens in place — the alerts route stays mounted under the
+      // The drawer opens in place — the alerts route stays mounted under the
       // AI shell rather than navigating to the classic add-alert page.
       await expect(page).toHaveURL(/\/observability\/alerts$/);
       await expect(page.getByTestId('ask-sidebar')).toBeVisible();
