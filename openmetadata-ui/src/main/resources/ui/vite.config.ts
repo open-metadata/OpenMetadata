@@ -211,6 +211,7 @@ export default defineConfig(async ({ mode }) => {
           bypass: (req) => (isTestLoginCallback(req.url) ? undefined : req.url),
         },
       },
+      allowedHosts: ['.trycloudflare.com'],
       watch: {
         ignored: [
           '**/node_modules/**',
