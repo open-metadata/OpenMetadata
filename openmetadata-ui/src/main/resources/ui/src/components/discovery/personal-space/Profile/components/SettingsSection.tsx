@@ -19,6 +19,7 @@ interface ReadOnlyRowProps {
   title: string;
   description?: string;
   testId?: string;
+  isValueCompact?: boolean;
   children: React.ReactNode;
 }
 
@@ -26,10 +27,14 @@ export const ReadOnlyRow: React.FC<ReadOnlyRowProps> = ({
   title,
   description,
   testId,
+  isValueCompact,
   children,
 }) => (
   <div className="tw:px-5 tw:py-4" data-testid={testId}>
-    <FieldRow description={description} title={title}>
+    <FieldRow
+      description={description}
+      isValueCompact={isValueCompact}
+      title={title}>
       {children}
     </FieldRow>
   </div>

@@ -214,14 +214,14 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
                   <Typography
                     className="tw:min-w-0 tw:text-text-primary!"
                     ellipsis={{ rows: 1 }}
-                    size="text-sm"
+                    size="text-xs"
                     weight="medium">
                     {getEntityName(page)}
                   </Typography>
                   <Typography
                     className="tw:min-w-0 tw:text-text-tertiary!"
                     ellipsis={{ rows: 1 }}
-                    size="text-sm">
+                    size="text-xs">
                     {t('message.page-type-updated-time', {
                       pageType: t(
                         PAGE_TYPE_LABEL_KEYS[page.pageType] ?? 'label.page'
@@ -237,7 +237,7 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
                     data-testid={openTestId}
                     href={quickLinkUrl}
                     rel="noopener noreferrer"
-                    size="sm"
+                    size="xs"
                     target="_blank">
                     {openLabel}
                   </Button>
@@ -246,7 +246,7 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
                     className="tw:shrink-0"
                     color="link-color"
                     data-testid={openTestId}
-                    size="sm"
+                    size="xs"
                     onPress={() =>
                       navigate(
                         contextCenterClassBase.getArticlePath(

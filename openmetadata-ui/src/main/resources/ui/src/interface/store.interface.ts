@@ -97,7 +97,15 @@ export interface DomainStore {
   activeDomain: string;
   activeDomainEntityRef?: EntityReference;
   isDomainRestricted: boolean;
-  updateActiveDomain: (domain: EntityReference) => void;
+  updateActiveDomain: (domain?: EntityReference) => void;
   setUserDomains: (userDomainsArr: EntityReference[]) => void;
   setDomainRestriction: (restricted: boolean) => void;
+}
+
+export interface ApprovalEnforcedEntityTypesStore {
+  // Undefined until read; a failed read leaves it undefined so the next caller reads again.
+  entityTypes?: string[];
+  isLoading: boolean;
+  fetchEntityTypes: () => Promise<void>;
+  invalidate: () => void;
 }

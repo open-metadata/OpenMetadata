@@ -95,6 +95,10 @@ const mockGetServicesData = [
   },
 ];
 
+jest.mock('../../common/DomainFilterChip/DomainFilterChip.component', () => ({
+  DomainFilterChip: () => null,
+}));
+
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: jest.fn().mockReturnValue({
