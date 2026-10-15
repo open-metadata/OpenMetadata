@@ -26,6 +26,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -726,7 +727,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id,
-      @Valid MemoryOutcomes outcomes) {
+      @Valid @NotNull MemoryOutcomes outcomes) {
     authorizer.authorizeAdminOrBot(securityContext);
     repository.get(uriInfo, id, getFields(""), Include.NON_DELETED, false);
     if (outcomes.getCountedAt() == null) {

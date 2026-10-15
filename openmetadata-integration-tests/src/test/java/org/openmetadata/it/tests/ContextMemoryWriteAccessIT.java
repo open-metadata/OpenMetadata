@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -368,6 +369,16 @@ public class ContextMemoryWriteAccessIT {
               assertTrue(source.at("/pinned").asBoolean());
               assertEquals(12, source.at("/outcomes/appliedCount").asInt());
             });
+  }
+
+  @Test
+  void recordingOutcomesWithoutABodyIsABadRequest(TestNamespace ns) {
+    ContextMemory created = adminMemories().create(preference(ns, "outcomes-no-body"));
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> recordOutcomes(SdkClients.adminClient(), created.getId(), null));
+    assertNull(adminMemories().get(created.getId().toString()).getOutcomes());
   }
 
   private static MemoryOutcomes outcomes(int applied, long countedAt) {
