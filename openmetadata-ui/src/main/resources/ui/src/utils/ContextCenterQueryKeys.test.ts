@@ -17,16 +17,13 @@ import { reconcileCountAfterAsyncDelete } from './ContextCenterQueryKeys';
 const KEY = ['test-count'];
 
 // jest.config enables fake timers globally; this helper's whole job is to wait
-// between refetches, so it needs a clock that actually advances. `intervalMs: 0`
-// keeps the real waits at a tick.
+// between polls, so it needs a clock that advances. `intervalMs: 0` keeps the
+// real waits at a tick.
 beforeAll(() => jest.useRealTimers());
 
 afterAll(() => jest.useFakeTimers());
 
-/**
- * A client whose query for KEY resolves to whatever the server "currently"
- * reports, so a test can make the background deletion land after N refetches.
- */
+/** A client whose query for KEY resolves to whatever the server now reports. */
 const buildClient = (serverTotal: () => number) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
@@ -37,182 +34,110 @@ const buildClient = (serverTotal: () => number) => {
 };
 
 describe('reconcileCountAfterAsyncDelete', () => {
-  it('drops the count immediately so the badge does not lag the 202', async () => {
-    const queryClient = buildClient(() => 5);
+  it('waits for the row to disappear before trusting the count', async () => {
+    // The server still reports the pre-delete total until the 3rd poll, when
+    // the background delete lands and the row is gone.
+    let polls = 0;
+    const queryClient = buildClient(() => (polls < 3 ? 5 : 4));
     queryClient.setQueryData(KEY, 5);
 
-    const pending = reconcileCountAfterAsyncDelete(queryClient, KEY, {
-      attempts: 1,
-      intervalMs: 0,
-    });
-
-    // Optimistic value is applied synchronously, before any refetch.
-    expect(queryClient.getQueryData(KEY)).toBe(4);
-
-    await pending;
-  });
-
-  it('keeps polling while the server still reports the pre-delete total', async () => {
-    let refetches = 0;
-    // The background delete lands only on the 3rd refetch.
-    const queryClient = buildClient(() => (++refetches < 3 ? 5 : 4));
-    queryClient.setQueryData(KEY, 5);
-
-    await reconcileCountAfterAsyncDelete(queryClient, KEY, {
-      attempts: 5,
-      intervalMs: 0,
-    });
-
-    expect(refetches).toBe(3);
-    expect(queryClient.getQueryData(KEY)).toBe(4);
-  });
-
-  it('stops at the first refetch once the server agrees', async () => {
-    let refetches = 0;
-    const queryClient = buildClient(() => {
-      refetches++;
-
-      return 4;
-    });
-    queryClient.setQueryData(KEY, 5);
-
-    await reconcileCountAfterAsyncDelete(queryClient, KEY, {
-      attempts: 5,
-      intervalMs: 0,
-    });
-
-    expect(refetches).toBe(1);
-  });
-
-  it('gives up after the configured attempts instead of polling forever', async () => {
-    let refetches = 0;
-    // Deletion never lands — the loop must still terminate.
-    const queryClient = buildClient(() => {
-      refetches++;
-
-      return 5;
-    });
-    queryClient.setQueryData(KEY, 5);
-
-    await reconcileCountAfterAsyncDelete(queryClient, KEY, {
-      attempts: 3,
-      intervalMs: 0,
-    });
-
-    expect(refetches).toBe(3);
-  });
-
-  it('keeps the optimistic value when the budget runs out', async () => {
-    // Deletion never lands, so every refetch returns the pre-delete total.
-    // Leaving that in the cache would restore the staleness this helper fixes.
-    const queryClient = buildClient(() => 5);
-    queryClient.setQueryData(KEY, 5);
-
-    await reconcileCountAfterAsyncDelete(queryClient, KEY, {
-      attempts: 2,
-      intervalMs: 0,
-    });
-
-    expect(queryClient.getQueryData(KEY)).toBe(4);
-  });
-
-  it('does not let a concurrent delete chain off a polluted cache value', async () => {
-    // The server is slow: it keeps reporting 5 while two deletes are in
-    // flight. Each refetch writes that 5 back, so a second call reading the
-    // cache naively would target 4 instead of 3.
-    const queryClient = buildClient(() => 5);
-    queryClient.setQueryData(KEY, 5);
-
-    const first = reconcileCountAfterAsyncDelete(queryClient, KEY, {
-      attempts: 3,
-      intervalMs: 0,
-    });
-    const second = reconcileCountAfterAsyncDelete(queryClient, KEY, {
-      attempts: 3,
-      intervalMs: 0,
-    });
-    await Promise.all([first, second]);
-
-    // Two accepted deletions against a server still reporting 5.
-    expect(queryClient.getQueryData(KEY)).toBe(3);
-  });
-
-  it('never writes the badge below the target, even mid-poll', async () => {
-    // Three deletes from a cached 10 → absolute target 7. The server applies
-    // only one and sits at 9. Subtracting all three in-flight deletions from
-    // the server's 9 would write 6, below the target and below the truth.
-    // Sample every write, not just the end state: the final write would mask
-    // a bad intermediate one.
-    const queryClient = buildClient(() => 9);
-    queryClient.setQueryData(KEY, 10);
-
-    const seen: number[] = [];
-    const unsubscribe = queryClient.getQueryCache().subscribe(() => {
-      const v = queryClient.getQueryData<number>(KEY);
-      if (v !== undefined) {
-        seen.push(v);
-      }
-    });
-
-    await Promise.all(
-      [1, 2, 3].map(() =>
-        reconcileCountAfterAsyncDelete(queryClient, KEY, {
-          attempts: 2,
-          intervalMs: 0,
-        })
-      )
+    await reconcileCountAfterAsyncDelete(
+      queryClient,
+      KEY,
+      async () => ++polls >= 3,
+      { attempts: 5, intervalMs: 0 }
     );
-    unsubscribe();
 
-    // Every value this helper wrote is the target or the server's own figure —
-    // never an over-subtracted one below both.
-    expect(Math.min(...seen)).toBeGreaterThanOrEqual(7);
-    expect(queryClient.getQueryData(KEY)).toBe(7);
+    expect(polls).toBe(3);
+    expect(queryClient.getQueryData(KEY)).toBe(4);
   });
 
-  it('accounts for a delete that finished before the next one started', async () => {
-    // A and B poll together against a cached 10. A's deletion lands (server 9)
-    // and A exits, so only B is still polling when C starts. C must target 7,
-    // not 8 — forgetting A would leave the badge one too high for good.
+  it('stops polling as soon as the row is gone', async () => {
+    let polls = 0;
+    const queryClient = buildClient(() => 4);
+    queryClient.setQueryData(KEY, 5);
+
+    await reconcileCountAfterAsyncDelete(
+      queryClient,
+      KEY,
+      async () => {
+        polls++;
+
+        return true;
+      },
+      { attempts: 5, intervalMs: 0 }
+    );
+
+    expect(polls).toBe(1);
+  });
+
+  it('refetches once even when the delete never lands', async () => {
+    // The budget runs out with the row still present. The badge must end up on
+    // the server's own figure rather than a number computed in advance.
+    let polls = 0;
+    const queryClient = buildClient(() => 5);
+    queryClient.setQueryData(KEY, 5);
+
+    await reconcileCountAfterAsyncDelete(
+      queryClient,
+      KEY,
+      async () => {
+        polls++;
+
+        return false;
+      },
+      { attempts: 3, intervalMs: 0 }
+    );
+
+    expect(polls).toBe(3);
+    expect(queryClient.getQueryData(KEY)).toBe(5);
+  });
+
+  it('settles on the server total when a restore lands in the same window', async () => {
+    // Badge cached at 10. A hard delete is pending and the user restores
+    // another file mid-poll, so the server moves 10 → 9 → 8. A target frozen
+    // at 9 would stop early and pin the badge one too high; polling the row's
+    // absence lets the final refetch read the truth.
     let serverTotal = 10;
     const queryClient = buildClient(() => serverTotal);
     queryClient.setQueryData(KEY, 10);
 
-    const a = reconcileCountAfterAsyncDelete(queryClient, KEY, {
-      attempts: 1,
-      intervalMs: 0,
-    });
-    const b = reconcileCountAfterAsyncDelete(queryClient, KEY, {
-      attempts: 4,
-      intervalMs: 0,
-    });
+    let polls = 0;
+    await reconcileCountAfterAsyncDelete(
+      queryClient,
+      KEY,
+      async () => {
+        polls++;
+        // Restore lands first, then the background hard delete.
+        serverTotal = polls === 1 ? 9 : 8;
 
-    serverTotal = 9;
-    await a;
+        return polls >= 2;
+      },
+      { attempts: 5, intervalMs: 0 }
+    );
 
-    const c = reconcileCountAfterAsyncDelete(queryClient, KEY, {
-      attempts: 4,
-      intervalMs: 0,
-    });
-    await Promise.all([b, c]);
-
-    expect(queryClient.getQueryData(KEY)).toBe(7);
+    expect(queryClient.getQueryData(KEY)).toBe(8);
   });
 
-  it('does nothing when no count is cached — there is no badge to correct', async () => {
-    let refetches = 0;
-    const queryClient = buildClient(() => {
-      refetches++;
+  it('does not cap the badge when a soft delete raises the count mid-poll', async () => {
+    // The reverse case: another document is archived while the hard delete is
+    // pending, so the server total rises. Nothing may clamp it back down.
+    let serverTotal = 5;
+    const queryClient = buildClient(() => serverTotal);
+    queryClient.setQueryData(KEY, 5);
 
-      return 7;
-    });
+    await reconcileCountAfterAsyncDelete(
+      queryClient,
+      KEY,
+      async () => {
+        // One archived (+1), the hard delete landed (-1), plus another archive.
+        serverTotal = 6;
 
-    await reconcileCountAfterAsyncDelete(queryClient, KEY, {
-      attempts: 3,
-      intervalMs: 0,
-    });
+        return true;
+      },
+      { attempts: 5, intervalMs: 0 }
+    );
 
-    expect(refetches).toBe(0);
-    expect(queryClient.getQueryData(KEY)).toBeUndefined();
+    expect(queryClient.getQueryData(KEY)).toBe(6);
   });
 });

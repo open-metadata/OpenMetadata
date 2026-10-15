@@ -31,6 +31,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { queryClient } from '../../../queryClient';
 import {
   deleteDriveFile,
+  getContextFileById,
   listArchivedContextFiles,
   restoreDriveFile,
 } from '../../../rest/assetAPI';
@@ -221,13 +222,21 @@ const ContextCenterArchivePage: FC = () => {
         ...prev,
         total: Math.max(0, prev.total - 1),
       }));
+      const deletedId = itemToDelete.id;
       setItemToDelete(undefined);
-      // A 202 finishes on a background thread, so the count is converged, not
-      // invalidated once. Not awaited — holding `isDeleting` through the poll
-      // would spin the modal button for seconds.
+      // A 202 finishes on a background thread, so the count is converged once
+      // the row is actually gone, not invalidated on the response. Not awaited
+      // — holding `isDeleting` through the poll would spin the modal button.
       reconcileCountAfterAsyncDelete(
         queryClient,
-        CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY
+        CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+        () =>
+          getContextFileById(deletedId).then(
+            () => false,
+            // Any error means we cannot confirm it is still there; the refetch
+            // after the loop settles the badge either way.
+            () => true
+          )
       );
     } catch (err) {
       showErrorToast(err as AxiosError);

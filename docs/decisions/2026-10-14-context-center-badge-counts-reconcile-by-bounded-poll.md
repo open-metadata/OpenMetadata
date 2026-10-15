@@ -25,9 +25,9 @@ teardown handling for a single call site — the only caller that passes `hardDe
 
 ## Decision
 
-`reconcileCountAfterAsyncDelete` drops the count optimistically, then polls
-**`attempts = 5` × `intervalMs = 1000` (~5s)** until the server agrees, and keeps the corrected
-figure if it never does.
+`reconcileCountAfterAsyncDelete` polls the **deleted entity's own absence** —
+`getContextFileById` until it stops resolving — for **`attempts = 5` × `intervalMs = 1000`
+(~5s)**, then refetches the count once and keeps whatever the server reports.
 
 Three choices inside that are easy to undo by accident:
 
@@ -37,19 +37,20 @@ Three choices inside that are easy to undo by accident:
 - **The budget is sized against the backend, not a happy path.** An earlier ~2s window (5 × 400ms)
   let a parallel Playwright run slip past it and leave the badge stale for good. Early exit means
   a fast delete still settles on the first poll, so the ceiling costs nothing when unneeded.
-- **The target is absolute, and the server's figure is clamped to it.** Per key the reconcile
-  holds `{ baseline, started }` — the count before the first concurrent delete, and how many have
-  been accepted since — so the target is `baseline - started` and each write is
-  `min(serverTotal, target)`. Subtracting the in-flight count from whatever the server last
-  reported looks equivalent but is not: it assumes *none* of those deletions has landed, so once
-  one has it is counted twice and the badge ends up one too **low** — the same permanent staleness
-  in the other direction. Clamping lets an already-applied deletion simply not count again.
+- **The completion signal is the row's absence, never a precomputed count.** An earlier version
+  targeted `baseline - started` — the count cached when the first delete started, minus the
+  deletes accepted since. Anything else moving the archive count inside the window skewed it, and
+  this page's own restore handler invalidates that very key: a restore mid-window let the poll
+  meet its target early and exit, pinning the badge one too **high** once the background delete
+  landed. A soft-delete in the window broke it the other way, with the clamp holding the badge one
+  too **low**. Asking whether *this* row is gone cannot be confused by a concurrent change, and
+  leaving the final number to the server removes the baseline bookkeeping and the clamp entirely.
 
 ## Consequences
 
-If the background delete outlives the budget the badge keeps the corrected figure, which is right
-whenever the accepted deletion eventually lands and wrong only if it fails outright — a case that
-already had no UI signal.
+If the background delete outlives the budget the badge takes the server's current figure, which is
+simply the count before that deletion lands. It is a transient over-count rather than the permanent
+staleness this fixes: the key is refetched by any later create, delete or restore on the page.
 
 Switch to the `DELETE_ENTITY_CHANNEL` socket event once a second Context Center surface needs the
 same polling; at that point the subscription cost is amortised and the budget stops being a guess.
