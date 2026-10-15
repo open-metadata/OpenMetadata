@@ -98,7 +98,7 @@ export const getStructLevel = (
 };
 
 // A struct is a level, not a field, so a choice of one lands inside it.
-/** An operator such as "Is set" takes no value, so its rule has no value column. */
+/** An operator such as "Is set" takes no value, so its rule asks for none. */
 export const operatorTakesNoValue = (
   config: { operators?: Record<string, unknown> },
   field: string | null,

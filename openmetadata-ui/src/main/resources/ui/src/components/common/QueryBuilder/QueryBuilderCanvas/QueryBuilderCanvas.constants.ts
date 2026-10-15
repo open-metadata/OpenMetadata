@@ -20,22 +20,11 @@ export const QUERY_BUILDER_COLUMN_RATIOS = '60fr 41fr 100fr';
 // Narrowest a control in a drilled row may get before the row rewraps.
 const QUERY_BUILDER_DRILL_CONTROL_MIN_WIDTH = 150;
 
-// Field / Operator, for an operator such as "Is set" that takes no value.
-const QUERY_BUILDER_VALUELESS_COLUMN_RATIOS = '60fr 41fr';
-
 // The row's columns for a rule showing `fieldCells` Field controls.
-export const getQueryBuilderColumnRatios = (
-  fieldCells: number,
-  hasValueColumn = true
-): string => {
-  if (fieldCells > 1) {
-    return `repeat(auto-fit, minmax(${QUERY_BUILDER_DRILL_CONTROL_MIN_WIDTH}px, 1fr))`;
-  }
-
-  return hasValueColumn
-    ? QUERY_BUILDER_COLUMN_RATIOS
-    : QUERY_BUILDER_VALUELESS_COLUMN_RATIOS;
-};
+export const getQueryBuilderColumnRatios = (fieldCells: number): string =>
+  fieldCells > 1
+    ? `repeat(auto-fit, minmax(${QUERY_BUILDER_DRILL_CONTROL_MIN_WIDTH}px, 1fr))`
+    : QUERY_BUILDER_COLUMN_RATIOS;
 
 // Base testid of a row's Field control.
 export const QUERY_BUILDER_FIELD_TEST_ID = 'advanced-search-field-select';

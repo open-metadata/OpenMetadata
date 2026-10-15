@@ -302,8 +302,8 @@ describe('QueryBuilderRuleRow', () => {
     ).toBeInTheDocument();
   });
 
-  it('should drop the value column for an operator that declares no value slot', () => {
-    // "Is set" takes no value, so an empty, disabled value box would only mislead.
+  it('should say no value is needed for an operator that declares no value slot', () => {
+    // "Is set" takes no value, so the column says so instead of showing an empty, disabled box.
     renderRow(
       { properties: { field: 'name', operator: '==' } },
       {
@@ -315,9 +315,9 @@ describe('QueryBuilderRuleRow', () => {
     );
 
     expect(screen.queryByTestId('value-widget')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('advanced-search-value')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('advanced-search-value')).toHaveTextContent(
+      'label.no-value-needed'
+    );
   });
 
   it('should render no widget when the named one is not registered', () => {

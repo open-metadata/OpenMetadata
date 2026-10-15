@@ -35,8 +35,4 @@ describe('getQueryBuilderColumnRatios', () => {
     // Without it a drilled rule in a narrow panel renders `Operato`.
     expect(getQueryBuilderColumnRatios(3)).toContain('150px');
   });
-
-  it('gives the value column space to an operator that takes no value', () => {
-    expect(getQueryBuilderColumnRatios(1, false)).toBe('60fr 41fr');
-  });
 });

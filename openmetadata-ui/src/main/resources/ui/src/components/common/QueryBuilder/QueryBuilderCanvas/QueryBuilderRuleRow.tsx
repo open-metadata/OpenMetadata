@@ -70,7 +70,7 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
     );
   }, [config, field]);
 
-  const hasValueColumn = !operatorTakesNoValue(config, field, operator);
+  const takesNoValue = operatorTakesNoValue(config, field, operator);
 
   // Delegate the value cell to the widget the config already names for this field/operator pair.
   const valueCells = useMemo(() => {
@@ -135,8 +135,7 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
         className="tw:grid tw:min-w-0 tw:flex-1 tw:gap-3.5"
         style={{
           gridTemplateColumns: getQueryBuilderColumnRatios(
-            fieldControls.length,
-            hasValueColumn
+            fieldControls.length
           ),
         }}>
         {/* Each level is a grid child of its own, so a row too narrow for all
@@ -174,7 +173,7 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
           onChange={(key) => actions.setOperator(path, key)}
         />
 
-        {hasValueColumn && <QueryBuilderValueCell cells={valueCells} />}
+        <QueryBuilderValueCell cells={valueCells} takesNoValue={takesNoValue} />
       </div>
 
       {canRemoveRule && !readonly && (

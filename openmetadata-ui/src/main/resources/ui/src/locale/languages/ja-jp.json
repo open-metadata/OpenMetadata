@@ -2160,6 +2160,7 @@
     "no-teams-or-users": "チームまたはユーザーがいません",
     "no-tests-run": "テスト未実行",
     "no-tolerance": "許容なし",
+    "no-value-needed": "値は不要",
     "no-value-yet": "まだ値がありません",
     "node": "ノード",
     "node-color": "ノードの色",
