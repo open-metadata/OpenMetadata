@@ -241,7 +241,9 @@
       <!-- okhttp 5 ships its classes in okhttp-jvm; the plain okhttp artifact is an empty jar in
            Maven. Depend on okhttp-jvm, and let this BOM hold every okhttp3 artifact (including the
            ones slack, feign, fabric8 and client-java pull in) on one version, so okhttp 4 and 5
-           never share the classpath. https://github.com/lysine-dev/okhttp#maven-and-jvm-projects -->
+           never share the classpath. okio is not pinned: it resolves to the okio okhttp-jvm declares
+           (3.18.1 for 5.5.0). Keep it at or above that; older okio lacks classes okhttp 5 calls.
+           https://github.com/lysine-dev/okhttp#maven-and-jvm-projects -->
       <dependency>
         <groupId>com.squareup.okhttp3</groupId>
         <artifactId>okhttp-bom</artifactId>
