@@ -34,7 +34,7 @@ import {
   StopCircle,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import type { RcFile } from 'antd/lib/upload';
+
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, startCase } from 'lodash';
 import { unparse } from 'papaparse';
@@ -827,7 +827,7 @@ const BulkEntityImportPage = () => {
   );
 
   const handleLoadData = useCallback(
-    (e: ProgressEvent<FileReader>, file?: RcFile) => {
+    (e: ProgressEvent<FileReader>, file?: File) => {
       const result = String(e.target?.result ?? '');
 
       setSelectedCsvFile({

@@ -219,7 +219,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         state: 'visible',
       });
       await page.click('[data-testid="import-button-title"]');
-      const fileInput = page.getByTestId('upload-file-widget');
+      const fileInput = page.getByTestId('upload-file-input');
       await fileInput?.setInputFiles([
         'downloads/' + dbService.entity.name + '.csv',
       ]);
