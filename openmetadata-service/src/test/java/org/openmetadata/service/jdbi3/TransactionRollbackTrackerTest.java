@@ -47,6 +47,24 @@ class TransactionRollbackTrackerTest {
   }
 
   @Test
+  void cleanupFailureCannotReplaceTheOriginalReplayableRollback() {
+    final SQLException original = deadlock();
+    final var failure =
+        assertThrows(
+            TransactionException.class,
+            () ->
+                TransactionRollbackTracker.runAttempt(
+                    () -> {
+                      TransactionRollbackTracker.recordRollback(original);
+                      TransactionRollbackTracker.recordRollback(
+                          new SQLException("Savepoint no longer exists"));
+                      return "caught and continued";
+                    }));
+    assertSame(original, failure.getCause());
+    assertTrue(DeadlockRetry.isDeadlock(failure));
+  }
+
+  @Test
   void aRollbackOutsideAnAttemptIsNotCarriedIntoTheNextOne() {
     TransactionRollbackTracker.recordRollback(deadlock());
 

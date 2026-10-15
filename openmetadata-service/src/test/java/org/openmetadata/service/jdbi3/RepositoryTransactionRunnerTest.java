@@ -12,12 +12,17 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.openmetadata.service.jdbi3.EntityRepository.exitRetryableBoundary;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -28,39 +33,24 @@ import javax.sql.DataSource;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.entity.data.Pipeline;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.jdbi.OMSqlLogger;
 
-/**
- * Which transaction boundary owns the {@link DeadlockRetry}, exercised through the production entry
- * point {@link EntityRepository#flushInOneTransaction(Runnable)}. Every assertion here is on
- * observable behaviour — how many times a flush body runs, and how many transactions get committed —
- * so removing the production guard or its {@code finally} fails the suite.
- *
- * <p>JDBI joins a nested {@code inTransaction} to the handle already bound to the thread rather than
- * opening a savepoint, so nested boundaries share one database transaction. A deadlock rolls that
- * whole transaction back, so only the outermost boundary may retry — an inner retry would replay its
- * own body against a transaction the database has already discarded and commit a fragment of the
- * unit of work. Nesting is reachable in production: a hard delete runs {@code entitySpecificCleanup}
- * inside its boundary, and those hooks cascade into full entity deletes of their own.
- *
- * <p>The only mock is the JDBC boundary — a {@link DataSource} handing out a {@link Connection} that
- * records commits. Everything above it is the real repository code path.
- */
-class RetryableBoundaryTest {
+/** Exercises whole-transaction retry using real JDBI and a mocked JDBC connection. */
+class RepositoryTransactionRunnerTest {
 
   /** Matches {@code DeadlockRetry}'s configured {@code maxAttempts}. */
   private static final int MAX_ATTEMPTS = 4;
 
-  private Jdbi previousJdbi;
+  private Jdbi jdbi;
+  private CollectionDAO transactionRoot;
   private Connection connection;
-  private BoundaryRepo repo;
+  private RepositoryTransactionRunner runner;
 
   /** Production exception shape: a runtime exception wrapping the MySQL deadlock (errno 1213). */
   private static RuntimeException deadlock() {
@@ -70,80 +60,45 @@ class RetryableBoundaryTest {
     return new RuntimeException("### Error updating database", sql);
   }
 
-  /** A repository with no persistence of its own — only the transaction boundary is under test. */
-  private static class BoundaryRepo extends EntityRepository<Pipeline> {
-    BoundaryRepo(CollectionDAO.PipelineDAO dao) {
-      super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "", "");
-    }
-
-    /** Test-side entry into the inherited production boundary. */
-    void runFlush(Runnable body) {
-      flushInOneTransaction(body);
-    }
-
-    /** Runs {@code body} in a boundary and counts how many times the body was replayed. */
-    int countFlushAttempts(Runnable body) {
-      AtomicInteger attempts = new AtomicInteger();
-      assertThrows(
-          RuntimeException.class,
-          () ->
-              runFlush(
-                  () -> {
-                    attempts.incrementAndGet();
-                    body.run();
-                  }));
-      return attempts.get();
-    }
-
-    @Override
-    protected void setFields(Pipeline entity, Fields fields, RelationIncludes includes) {}
-
-    @Override
-    protected void clearFields(Pipeline entity, Fields fields) {}
-
-    @Override
-    protected void prepare(Pipeline entity, boolean update) {}
-
-    @Override
-    protected void storeEntity(Pipeline entity, boolean update) {}
-
-    @Override
-    protected void storeRelationships(Pipeline entity) {}
-  }
-
   @BeforeEach
   void setUp() throws SQLException {
-    CollectionDAO daoCollection = mock(CollectionDAO.class);
-    when(daoCollection.relationshipDAO())
-        .thenReturn(mock(CollectionDAO.EntityRelationshipDAO.class));
-    Entity.setCollectionDAO(daoCollection);
-
     connection = mock(Connection.class);
-    when(connection.getAutoCommit()).thenReturn(true);
-    DataSource dataSource = mock(DataSource.class);
+    // JDBI reads transaction state from the connection's auto-commit flag. Every thread shares this
+    // mock, but a real pool gives each thread its own connection, so the flag is kept per thread.
+    final ThreadLocal<Boolean> autoCommit = ThreadLocal.withInitial(() -> true);
+    when(connection.getAutoCommit()).thenAnswer(call -> autoCommit.get());
+    doAnswer(
+            call -> {
+              autoCommit.set(call.getArgument(0));
+              return null;
+            })
+        .when(connection)
+        .setAutoCommit(anyBoolean());
+    final DataSource dataSource = mock(DataSource.class);
     when(dataSource.getConnection()).thenReturn(connection);
-
-    previousJdbi = Entity.getJdbi();
-    // SqlObjectPlugin mirrors the production Jdbi built in JdbiUtils: the boundary attaches
-    // CollectionDAO to the transaction's handle, and attach() needs the SQL-object extension.
-    Entity.setJdbi(Jdbi.create(dataSource).installPlugin(new SqlObjectPlugin()));
-    repo = new BoundaryRepo(mock(CollectionDAO.PipelineDAO.class));
+    jdbi = Jdbi.create(dataSource).installPlugin(new SqlObjectPlugin());
+    transactionRoot = jdbi.onDemand(CollectionDAO.class);
+    runner = new RepositoryTransactionRunner(transactionRoot);
   }
 
-  @AfterEach
-  void tearDown() {
-    Entity.setJdbi(previousJdbi);
-    Entity.setCollectionDAO(null);
-    // Hygiene only, never an assertion: a boundary stranded by a failing test would otherwise
-    // cascade into confusing failures on the next test to run on this thread.
-    exitRetryableBoundary(true);
+  private int countFlushAttempts(final Runnable body) {
+    final AtomicInteger attempts = new AtomicInteger();
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            runner.run(
+                () -> {
+                  attempts.incrementAndGet();
+                  body.run();
+                }));
+    return attempts.get();
   }
 
   @Test
   void aFlushThatDeadlocksIsRetried() {
     assertEquals(
         MAX_ATTEMPTS,
-        repo.countFlushAttempts(
+        countFlushAttempts(
             () -> {
               throw deadlock();
             }),
@@ -154,7 +109,7 @@ class RetryableBoundaryTest {
   void aFlushThatFailsForAnotherReasonIsNotRetried() {
     assertEquals(
         1,
-        repo.countFlushAttempts(
+        countFlushAttempts(
             () -> {
               throw new IllegalStateException("not a deadlock");
             }),
@@ -168,9 +123,9 @@ class RetryableBoundaryTest {
     assertThrows(
         RuntimeException.class,
         () ->
-            repo.runFlush(
+            runner.run(
                 () ->
-                    repo.runFlush(
+                    runner.run(
                         () -> {
                           innerRuns.incrementAndGet();
                           throw deadlock();
@@ -186,17 +141,146 @@ class RetryableBoundaryTest {
   }
 
   @Test
+  void aFlushInsideACallerOwnedTransactionLeavesTheRetryToItsOwner() {
+    final AtomicInteger runs = new AtomicInteger();
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            jdbi.useTransaction(
+                handle ->
+                    runner.run(
+                        () -> {
+                          runs.incrementAndGet();
+                          throw deadlock();
+                        })));
+    // The deadlock rolled back the caller's earlier writes too. Replaying only this unit would
+    // commit it alone, so the caller, which owns the transaction, decides whether to retry.
+    assertEquals(1, runs.get());
+  }
+
+  @Test
+  void aFlushInsideACallerOwnedTransactionCommitsOnlyWithIt() throws SQLException {
+    jdbi.useTransaction(handle -> runner.run(() -> {}));
+    verify(connection).commit();
+  }
+
+  @Test
   void aNestedFlushJoinsTheOpenTransaction() throws SQLException {
-    repo.runFlush(() -> repo.runFlush(() -> {}));
+    runner.run(() -> runner.run(() -> {}));
 
     // One commit for the whole unit of work: the nested boundary joined the transaction already
     // open instead of committing independently of it.
     verify(connection).commit();
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void bothBoundariesExposeTheRetainedDaoHandle(boolean flush) {
+
+    final Runnable assertion =
+        () ->
+            transactionRoot.useHandle(
+                handle ->
+                    assertSame(
+                        handle,
+                        RepositoryTransactionContext.requireCurrentDAO().getHandle(),
+                        "Capture and repository writes must share the physical transaction"));
+    if (flush) {
+      runner.run(assertion);
+    } else {
+      runner.execute(
+          () -> {
+            assertion.run();
+            return null;
+          });
+    }
+  }
+
+  @Test
+  void publishesSearchAndRdfSubmissionOnlyAfterCommit() throws SQLException {
+    final List<String> published = new ArrayList<>();
+    doAnswer(
+            invocation -> {
+              published.add("commit");
+              return null;
+            })
+        .when(connection)
+        .commit();
+    runner.run(
+        () -> {
+          deferSearch(() -> published.add("search"));
+          PostCommitActionQueue.runOrDefer(
+              () -> {
+                assertNull(RepositoryTransactionContext.currentDAO());
+                published.add("rdf submission");
+              });
+          assertEquals(List.of(), published);
+        });
+    assertEquals(List.of("commit", "search", "rdf submission"), published);
+    assertFalse(SearchRepository.isSearchWriteDeferralActive());
+  }
+
+  @Test
+  void retryDiscardsEffectsFromTheFailedAttempt() {
+    final AtomicInteger attempts = new AtomicInteger();
+    final List<Integer> published = new ArrayList<>();
+    runner.run(
+        () -> {
+          final int attempt = attempts.incrementAndGet();
+          deferSearch(() -> published.add(attempt));
+          PostCommitActionQueue.runOrDefer(() -> published.add(attempt));
+          if (attempt == 1) {
+            throw deadlock();
+          }
+        });
+    assertEquals(List.of(2, 2), published);
+    assertNull(RepositoryTransactionContext.currentDAO());
+  }
+
+  @Test
+  void failedCommitDiscardsEffectsAndRestoresTheRequestThread() throws SQLException {
+    final List<String> published = new ArrayList<>();
+    doThrow(new SQLException("commit failed", "HY000")).when(connection).commit();
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            runner.run(
+                () -> {
+                  deferSearch(() -> published.add("search"));
+                  PostCommitActionQueue.runOrDefer(() -> published.add("rdf submission"));
+                }));
+    PostCommitActionQueue.runOrDefer(() -> published.add("next request"));
+    assertEquals(List.of("next request"), published);
+    assertFalse(SearchRepository.isSearchWriteDeferralActive());
+    assertNull(RepositoryTransactionContext.currentDAO());
+  }
+
+  @Test
+  void publicationCanOpenAnIndependentTransaction() throws SQLException {
+    final List<String> published = new ArrayList<>();
+    final String result =
+        runner.execute(
+            () -> {
+              PostCommitActionQueue.runOrDefer(
+                  () ->
+                      runner.run(
+                          () ->
+                              PostCommitActionQueue.runOrDefer(
+                                  () -> published.add("nested publication"))));
+              return "committed";
+            });
+    assertEquals("committed", result);
+    assertEquals(List.of("nested publication"), published);
+    verify(connection, times(2)).commit();
+  }
+
+  private static void deferSearch(final Runnable effect) {
+    SearchRepository.deferOrRunSearchWrite(effect, "test", null, null, null);
+  }
+
   @Test
   void aFailedFlushLeavesTheNextFlushRetryable() {
-    repo.countFlushAttempts(
+    countFlushAttempts(
         () -> {
           throw new IllegalStateException("flush blew up");
         });
@@ -205,7 +289,7 @@ class RetryableBoundaryTest {
     // its retry — every later write on this pooled request thread would go unprotected.
     assertEquals(
         MAX_ATTEMPTS,
-        repo.countFlushAttempts(
+        countFlushAttempts(
             () -> {
               throw deadlock();
             }),
@@ -217,7 +301,7 @@ class RetryableBoundaryTest {
     AtomicInteger attemptsOnWorker = new AtomicInteger();
     List<Throwable> failures = new ArrayList<>();
 
-    repo.runFlush(
+    runner.run(
         () -> {
           // A worker thread checks out its own connection, so it owns its own transaction and must
           // keep its own retry even though the request thread is inside a boundary.
@@ -226,7 +310,7 @@ class RetryableBoundaryTest {
                   () -> {
                     try {
                       attemptsOnWorker.set(
-                          repo.countFlushAttempts(
+                          countFlushAttempts(
                               () -> {
                                 throw deadlock();
                               }));
@@ -246,7 +330,7 @@ class RetryableBoundaryTest {
   void aFlushThatSwallowsADeadlockIsReplayedWholeInsteadOfCommittedInPart() throws SQLException {
     AtomicInteger attempts = new AtomicInteger();
 
-    repo.runFlush(
+    runner.run(
         () -> {
           if (attempts.incrementAndGet() == 1) {
             loseDeadlockAndCarryOn();
@@ -261,10 +345,10 @@ class RetryableBoundaryTest {
   void aNestedFlushThatSwallowsADeadlockReplaysTheOwningUnit() {
     AtomicInteger outerAttempts = new AtomicInteger();
 
-    repo.runFlush(
+    runner.run(
         () -> {
           boolean firstAttempt = outerAttempts.incrementAndGet() == 1;
-          repo.runFlush(
+          runner.run(
               () -> {
                 if (firstAttempt) {
                   loseDeadlockAndCarryOn();
@@ -279,7 +363,7 @@ class RetryableBoundaryTest {
   void aFlushThatSwallowsALockWaitTimeoutCommitsWithoutReplay() throws SQLException {
     AtomicInteger attempts = new AtomicInteger();
 
-    repo.runFlush(
+    runner.run(
         () -> {
           attempts.incrementAndGet();
           failStatementAndCarryOn(

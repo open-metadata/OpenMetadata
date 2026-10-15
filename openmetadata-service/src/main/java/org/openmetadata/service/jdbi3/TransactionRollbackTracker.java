@@ -34,7 +34,7 @@ public final class TransactionRollbackTracker {
   /** Called by the SQL logger when a statement's error rolled back the whole transaction. */
   public static void recordRollback(final SQLException rollback) {
     final Attempt attempt = CURRENT.get();
-    if (attempt != null) {
+    if (attempt != null && attempt.rollback == null) {
       attempt.rollback = rollback;
     }
   }
