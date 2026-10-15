@@ -20,6 +20,14 @@ import { useTranslation } from 'react-i18next';
 import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
 import './setting-item-card.style.less';
 
+// Sized and tinted to match the 90px tiles baked into the legacy colored SVGs.
+const ICON_TILE_COLORS: Record<
+  NonNullable<SettingMenuItem['iconColor']>,
+  string
+> = {
+  blue: 'tw:bg-utility-blue-50 tw:text-utility-blue-700',
+};
+
 interface SettingMenuItemProps {
   data: SettingMenuItem;
   onClick: (key: string) => void;
@@ -44,7 +52,17 @@ const SettingItemCard = ({
       onClick={handleOnClick}>
       <Card.Content className="tw:flex tw:items-center tw:gap-4">
         <div className="setting-card-icon">
-          <Icon component={data.icon} />
+          {data.iconColor ? (
+            <div
+              className={classNames(
+                'tw:flex tw:size-22.5 tw:items-center tw:justify-center tw:rounded-[28px]',
+                ICON_TILE_COLORS[data.iconColor]
+              )}>
+              <data.icon className="tw:size-8" />
+            </div>
+          ) : (
+            <Icon component={data.icon} />
+          )}
           {Boolean(data?.isBeta) && (
             <Badge className="service-beta-tag" color="brand" size="sm">
               {t('label.beta')}

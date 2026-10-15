@@ -13,39 +13,47 @@
 import {
   Box,
   Button,
+  Card,
   RadioButton,
   RadioGroup,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import PageHeader from '../../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
+import { TIME_FORMAT_OPTIONS } from '../../../components/discovery/personal-space/Profile/tabs/platform-settings/TimeFormatSettings.constants';
+import { DefaultTimeFormat } from '../../../generated/api/configuration/appConfiguration';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getAppConfiguration,
   patchAppConfiguration,
 } from '../../../rest/settingConfigAPI';
+import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-
-interface TimeFormatOption {
-  value: string;
-  labelKey: string;
-}
-
-const OPTIONS: TimeFormatOption[] = [
-  { value: '12h', labelKey: 'label.12-hour-format' },
-  { value: '24h', labelKey: 'label.24-hour-format' },
-];
 
 const DefaultTimeFormatPage: React.FC = () => {
   const { t } = useTranslation();
   const setTimeFormat = useApplicationStore((state) => state.setTimeFormat);
   const pageTitle = t('label.default-time-format');
-  const [initialValue, setInitialValue] = useState<string>('12h');
-  const [currentValue, setCurrentValue] = useState<string>('12h');
+  const [initialValue, setInitialValue] = useState<DefaultTimeFormat>(
+    DefaultTimeFormat.The12H
+  );
+  const [currentValue, setCurrentValue] = useState<DefaultTimeFormat>(
+    DefaultTimeFormat.The12H
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const breadcrumbs = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.PREFERENCES,
+        pageTitle
+      ),
+    [pageTitle]
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -54,7 +62,7 @@ const DefaultTimeFormatPage: React.FC = () => {
         if (!isMounted) {
           return;
         }
-        const initial = (config?.defaultTimeFormat as '12h' | '24h') || '12h';
+        const initial = config?.defaultTimeFormat ?? DefaultTimeFormat.The12H;
         setInitialValue(initial);
         setCurrentValue(initial);
       })
@@ -77,7 +85,7 @@ const DefaultTimeFormatPage: React.FC = () => {
     try {
       await patchAppConfiguration({ defaultTimeFormat: currentValue });
       setInitialValue(currentValue);
-      setTimeFormat(currentValue as '12h' | '24h');
+      setTimeFormat(currentValue);
       showSuccessToast(
         t('server.entity-updated-success', { entity: pageTitle })
       );
@@ -89,58 +97,49 @@ const DefaultTimeFormatPage: React.FC = () => {
   };
 
   return (
-    <Box
-      className="tw:p-6"
-      data-testid="default-time-format-page"
-      direction="col">
-      <DocumentTitle title={pageTitle} />
-
-      {/* Wrapper for Title - forces spacing below */}
-      <div className="tw:mb-8">
-        <Typography as="h1" className="tw:text-2xl tw:font-semibold">
-          {pageTitle}
-        </Typography>
-      </div>
-
-      {/* Wrapper for Description - forces spacing below */}
-      <div className="tw:mb-10">
-        <Typography as="p" className="tw:text-secondary tw:max-w-2xl">
-          {t('message.default-time-format-description')}
-        </Typography>
-      </div>
-
-      {/* Wrapper for Radio Group - forces spacing below */}
-      <div className="tw:mb-8">
-        <RadioGroup
-          aria-label={pageTitle}
-          data-testid="time-format-radio-group"
-          value={currentValue}
-          onChange={setCurrentValue}>
-          {OPTIONS.map((option) => (
-            // Wrapper for individual Radio Button - forces spacing between options
-            <div className="tw:mb-4" key={option.value}>
-              <RadioButton
-                data-testid={`time-format-option-${option.value}`}
-                label={t(option.labelKey)}
-                value={option.value}
-              />
-            </div>
-          ))}
-        </RadioGroup>
-      </div>
-
-      {/* Wrapper for Save Button - forces spacing above */}
-      <div className="tw:mt-4">
-        <Button
-          color="primary"
-          data-testid="save-time-format-settings"
-          isDisabled={!isDirty || isLoading || isSaving}
-          isLoading={isSaving}
-          onPress={handleSave}>
-          {t('label.save')}
-        </Button>
-      </div>
-    </Box>
+    <PageLayoutV1 pageTitle={pageTitle}>
+      <Box
+        className="page-container m-x-auto"
+        data-testid="default-time-format-page"
+        direction="col"
+        gap={4}>
+        <TitleBreadcrumb titleLinks={breadcrumbs} />
+        <PageHeader
+          data={{
+            header: pageTitle,
+            subHeader: t('message.default-time-format-description'),
+          }}
+        />
+        <Card>
+          <Card.Content>
+            <RadioGroup
+              aria-label={pageTitle}
+              data-testid="time-format-radio-group"
+              value={currentValue}
+              onChange={(value) => setCurrentValue(value as DefaultTimeFormat)}>
+              {TIME_FORMAT_OPTIONS.map((option) => (
+                <RadioButton
+                  data-testid={`time-format-option-${option.value}`}
+                  key={option.value}
+                  label={t(option.labelKey)}
+                  value={option.value}
+                />
+              ))}
+            </RadioGroup>
+          </Card.Content>
+          <Card.Footer>
+            <Button
+              color="primary"
+              data-testid="save-time-format-settings"
+              isDisabled={!isDirty || isLoading || isSaving}
+              isLoading={isSaving}
+              onPress={handleSave}>
+              {t('label.save')}
+            </Button>
+          </Card.Footer>
+        </Card>
+      </Box>
+    </PageLayoutV1>
   );
 };
 
