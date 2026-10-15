@@ -468,6 +468,33 @@ describe('CSV utils ClassBase', () => {
       expect(editor).toBeDefined();
     });
 
+    it('should commit the picked metric enum value and close the cell', async () => {
+      const editor = csvUtils.getEditor(
+        'metricType',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      render(
+        <>
+          {editor({
+            row: { metricType: 'COUNT' },
+            column: { key: 'metricType' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      fireEvent.click(await screen.findByRole('option', { name: 'SUM' }));
+
+      expect(onRowChange).toHaveBeenCalledWith({ metricType: 'SUM' }, true);
+      expect(onClose).toHaveBeenCalledWith(true);
+    });
+
     it('should return editor for code column', () => {
       const editor = csvUtils.getEditor(
         'code',
@@ -950,14 +977,11 @@ describe('CSV utils ClassBase', () => {
 
       expect(await screen.findByText('Status')).toBeInTheDocument();
       expect(screen.getByText('Markets')).toBeInTheDocument();
-      expect(
-        document.querySelectorAll('.bulk-edit-custom-property-enum-select')
-      ).toHaveLength(2);
-      expect(
-        document.querySelectorAll(
-          '.bulk-edit-custom-property-enum-select.ant-select-multiple'
-        )
-      ).toHaveLength(1);
+      expect(screen.getByTestId('status-enum-select')).toBeInTheDocument();
+      expect(screen.getByTestId('markets-enum-select')).toBeInTheDocument();
+      // A multi-select enum shows each stored value as a chip.
+      expect(screen.getByText('US')).toBeInTheDocument();
+      expect(screen.getByText('EU')).toBeInTheDocument();
       expect(
         document.querySelector('.bulk-edit-custom-property-option')
       ).not.toBeInTheDocument();

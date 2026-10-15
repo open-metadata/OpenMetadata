@@ -12,9 +12,11 @@
  */
 
 import {
+  Autocomplete,
   Box,
   ButtonUtility,
   Divider,
+  Select,
   TextArea,
 } from '@openmetadata/ui-core-components';
 import {
@@ -22,7 +24,6 @@ import {
   Bold01,
   BookOpen02,
   Check,
-  ChevronDown,
   Code01,
   Cube01,
   Globe02,
@@ -34,11 +35,11 @@ import {
   Tag01,
   Type01,
 } from '@openmetadata/ui-core-components/icons';
-import Select from 'antd/lib/select';
 import { isEmpty, startCase, toString } from 'lodash';
 import {
   CSSProperties,
   FocusEvent,
+  Key,
   KeyboardEvent,
   lazy,
   MouseEvent,
@@ -1476,37 +1477,33 @@ const InlineCustomPropertiesEditor = ({
     );
     const selectedValues = getCustomPropertyEnumValues(propertyValue);
     const isMultiSelect = isCustomPropertyEnumMultiSelect(customProperty);
-    const options = enumValues.map((option) => ({
-      label: option,
-      value: option,
-    }));
+    const items = enumValues.map((option) => ({ id: option, label: option }));
 
-    const handleEnumChange = (selectedValue?: string | string[]) => {
-      let nextValue: string[];
-      if (Array.isArray(selectedValue)) {
-        nextValue = selectedValue;
-      } else if (selectedValue) {
-        nextValue = [selectedValue];
-      } else {
-        nextValue = [];
-      }
-      handleUpdateDraft(customProperty.name, nextValue);
-    };
+    const handleInserted = (key: Key) =>
+      handleUpdateDraft(
+        customProperty.name,
+        isMultiSelect ? [...selectedValues, String(key)] : [String(key)]
+      );
+
+    const handleCleared = (key: Key) =>
+      handleUpdateDraft(
+        customProperty.name,
+        selectedValues.filter((value) => value !== String(key))
+      );
 
     return (
-      <Select
-        allowClear
-        showSearch
+      <Autocomplete
+        aria-label={getEntityName(customProperty)}
         className="bulk-edit-custom-property-enum-select"
-        getPopupContainer={() => document.body}
-        mode={isMultiSelect ? 'multiple' : undefined}
-        optionFilterProp="label"
-        options={options}
+        data-testid={`${customProperty.name}-enum-select`}
+        items={items}
+        multiple={isMultiSelect}
         placeholder={t('label.enum-value-plural')}
-        popupClassName="bulk-edit-custom-property-select-dropdown"
-        value={isMultiSelect ? selectedValues : selectedValues[0]}
-        onChange={handleEnumChange}
-      />
+        selectedItems={items.filter((item) => selectedValues.includes(item.id))}
+        onItemCleared={handleCleared}
+        onItemInserted={handleInserted}>
+        {(item) => <Autocomplete.Item id={item.id} label={item.label} />}
+      </Autocomplete>
     );
   };
 
@@ -2029,6 +2026,38 @@ interface CSVEditorContext {
 
 type CSVEditorFactory = (ctx: CSVEditorContext) => CSVCellEditor;
 
+// Grid enum cells open their list straight away, like the inline editors
+// beside them; the popover keeps the grid's custom-editor class so the
+// grid's key handling leaves typing inside the list alone.
+const renderGridEnumSelect = ({
+  ariaLabel,
+  options = [],
+  testId,
+  value,
+  onChange,
+}: {
+  ariaLabel: string;
+  options?: Array<{ label: string; value: string }>;
+  testId: string;
+  value: string;
+  onChange: (value: string) => void;
+}) => (
+  <Select
+    // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
+    autoFocus
+    defaultOpen
+    aria-label={ariaLabel}
+    className="react-grid-select-dropdown"
+    data-testid={testId}
+    items={options.map((option) => ({ id: option.value, label: option.label }))}
+    popoverClassName="react-grid-select-dropdown"
+    selectedKey={value || null}
+    size="sm"
+    onSelectionChange={(key) => onChange(String(key))}>
+    {(item) => <Select.Item id={item.id} label={item.label} />}
+  </Select>
+);
+
 const getCsvOwnerEditor: CSVEditorFactory = ({
   column,
   entityType,
@@ -2371,28 +2400,16 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
 
       return (
         <KeyDownStopPropagationWrapper>
-          <Select
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
-            autoFocus
-            open
-            className="react-grid-select-dropdown bulk-edit-enum-select"
-            data-testid={`${column.key}-select`}
-            dropdownMatchSelectWidth={false}
-            dropdownStyle={{ minWidth: 220 }}
-            getPopupContainer={() => document.body}
-            menuItemSelectedIcon={<Check size={16} />}
-            optionFilterProp="label"
-            options={
+          {renderGridEnumSelect({
+            ariaLabel: startCase(column.key),
+            options:
               entityBulkEditConfigClassBase.getEnumColumnOptions(entityType)[
                 column.key
-              ]
-            }
-            popupClassName="bulk-edit-enum-select-dropdown"
-            size="small"
-            suffixIcon={<ChevronDown size={16} />}
-            value={value || undefined}
-            onChange={handleChange}
-          />
+              ],
+            testId: `${column.key}-select`,
+            value,
+            onChange: handleChange,
+          })}
         </KeyDownStopPropagationWrapper>
       );
     };
@@ -2657,17 +2674,13 @@ const getCsvEntityTypeEditor: CSVEditorFactory =
         <InlineEdit
           onCancel={() => onClose(false)}
           onSave={() => onClose(true)}>
-          <Select
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
-            autoFocus
-            open
-            data-testid="entity-type-select"
-            options={translatedEntityTypeOptions()}
-            size="small"
-            style={{ width: '155px' }}
-            value={value}
-            onChange={handleChange}
-          />
+          {renderGridEnumSelect({
+            ariaLabel: startCase(column.key),
+            options: translatedEntityTypeOptions(),
+            testId: 'entity-type-select',
+            value: String(value ?? ''),
+            onChange: handleChange,
+          })}
         </InlineEdit>
       </KeyDownStopPropagationWrapper>
     );
@@ -2705,20 +2718,26 @@ const getCsvMultiSelectEditor: CSVEditorFactory = ({
         <InlineEdit
           onCancel={() => onClose(false)}
           onSave={() => onClose(true)}>
-          <Select
+          <Autocomplete
+            allowsCreation
             // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
             autoFocus
-            open
+            hideDropdown
+            multiple
+            aria-label={startCase(column.key)}
             className="react-grid-select-dropdown"
-            getPopupContainer={() => document.body}
-            mode="tags"
+            icon={null}
+            items={[]}
             placeholder={t('label.add-entity', {
               entity: startCase(column.key),
             })}
-            size="small"
-            value={selected}
-            onChange={handleChange}
-          />
+            selectedItems={selected.map((item) => ({ id: item, label: item }))}
+            onItemCleared={(key) =>
+              handleChange(selected.filter((item) => item !== String(key)))
+            }
+            onItemInserted={(key) => handleChange([...selected, String(key)])}>
+            {null}
+          </Autocomplete>
         </InlineEdit>
       </KeyDownStopPropagationWrapper>
     );
@@ -2775,28 +2794,16 @@ const getCsvEnumEditor: CSVEditorFactory =
 
     return (
       <KeyDownStopPropagationWrapper>
-        <Select
-          // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
-          autoFocus
-          open
-          className="react-grid-select-dropdown bulk-edit-enum-select"
-          data-testid={`${column.key}-select`}
-          dropdownMatchSelectWidth={false}
-          dropdownStyle={{ minWidth: 240 }}
-          getPopupContainer={() => document.body}
-          menuItemSelectedIcon={<Check size={16} />}
-          optionFilterProp="label"
-          options={
+        {renderGridEnumSelect({
+          ariaLabel: startCase(column.key),
+          options:
             entityBulkEditConfigClassBase.getEnumColumnOptions(entityType)[
               column.key
-            ]
-          }
-          popupClassName="bulk-edit-enum-select-dropdown"
-          size="small"
-          suffixIcon={<ChevronDown size={16} />}
-          value={value || undefined}
-          onChange={handleChange}
-        />
+            ],
+          testId: `${column.key}-select`,
+          value: String(value ?? ''),
+          onChange: handleChange,
+        })}
       </KeyDownStopPropagationWrapper>
     );
   };

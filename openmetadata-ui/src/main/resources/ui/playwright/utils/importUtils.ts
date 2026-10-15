@@ -576,8 +576,8 @@ export const fillUserAndTeamOwnerDetails = async (
 export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
-  await page.getByTestId('entity-type-select').click();
-  await page.getByTitle(entityType, { exact: true }).nth(0).click();
+  // The editor opens its list as soon as the cell does.
+  await page.getByRole('option', { name: entityType, exact: true }).click();
   await clickInlineSave(page);
 };
 
