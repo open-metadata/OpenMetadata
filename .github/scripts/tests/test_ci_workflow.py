@@ -68,6 +68,23 @@ def test_called_workflows_get_the_permissions_their_jobs_declare(jobs):
                 )
 
 
+def test_every_paths_filter_can_list_a_prs_files(jobs):
+    # On pull_request, dorny/paths-filter lists the PR's files through the API, which
+    # needs pull-requests: read; without it the filter fails and every job behind it is
+    # skipped. A called workflow's jobs get no more than the calling job grants.
+    workflow_permissions = yaml.safe_load(WORKFLOW.read_text()).get("permissions") or {}
+    for name, job in jobs.items():
+        uses = str(job.get("uses", ""))
+        if uses.startswith("./.github/workflows/"):
+            text = (WORKFLOW.parent / uses.rsplit("/", 1)[-1]).read_text()
+        else:
+            text = yaml.safe_dump(job.get("steps") or [])
+        if "dorny/paths-filter" not in text:
+            continue
+        granted = (job.get("permissions") or workflow_permissions).get("pull-requests", "none")
+        assert LEVELS[granted] >= LEVELS["read"], f"{name} reaches dorny/paths-filter without pull-requests: read"
+
+
 def concurrency_groups(workflow):
     blocks = [workflow.get("concurrency")] + [job.get("concurrency") for job in workflow["jobs"].values()]
     return [block["group"] if isinstance(block, dict) else block for block in blocks if block]

@@ -391,6 +391,10 @@ jobs:
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.plan.outputs.run == 'true' && needs.plan.outputs.draft != 'true' && needs.plan.outputs.python == 'true' }}
     uses: ./.github/workflows/py-tests-shared.yml
     secrets: inherit
+    # Its paths filter lists a PR's files through the API.
+    permissions:
+      contents: read
+      pull-requests: read
     with:
       compose-args: "-m no-ui -s true -i false"
       artifact-prefix: py
