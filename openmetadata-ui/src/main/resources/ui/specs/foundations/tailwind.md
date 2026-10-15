@@ -57,7 +57,7 @@ eslint rule. Full rationale: [../../docs/colors.md §2.3.1](../../docs/colors.md
 | --- | --- |
 | No arbitrary color/spacing/radius (`tw:bg-[#hex]`, `tw:p-[8px]`) | `yarn tw-audit` (error) |
 | No raw hex / `rgb()` in JSX / chart / SVG / `style={{}}` | `yarn tw-audit` (warning + token hint) |
-| No new `antd` import / new `.less` file | `yarn tw-guard` (error) |
+| No new `antd` import / new `.less` file / new `assets/svg/` raw-SVG file or import | `yarn tw-guard` (error) |
 | No `tw:ring-*` | eslint `no-restricted-syntax` (error) |
 
 ## Cross-references

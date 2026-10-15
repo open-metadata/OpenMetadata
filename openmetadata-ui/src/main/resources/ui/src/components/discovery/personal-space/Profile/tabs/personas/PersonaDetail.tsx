@@ -424,52 +424,54 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
       data-testid="persona-detail-container"
       direction="col"
       gap={4}>
-      <Card className="tw:flex tw:flex-col tw:gap-2 tw:mb-2 tw:p-3">
-        <Box align="center" direction="row" gap={2}>
-          <Typography className="tw:text-primary" weight="medium">
-            {t('label.description')}
-          </Typography>
-          {canEditDescription && !isEditingDesc && (
-            <ButtonUtility
-              color="tertiary"
-              data-testid="edit-persona-description-btn"
-              icon={Edit}
-              size="xs"
-              tooltip={String(
-                t('label.edit-entity', { entity: t('label.description') })
-              )}
-              tooltipPlacement="right"
-              onPress={() => setIsEditingDesc(true)}
-            />
-          )}
-        </Box>
-        {isEditingDesc ? (
-          <Box direction="col" gap={2}>
-            <RichTextEditor
-              className="new-form-style"
-              initialValue={persona.description ?? ''}
-              ref={descEditorRef}
-            />
-            <Box direction="row" gap={2} justify="end">
-              <Button
+      <Card className="tw:mb-2" size="sm" variant="muted">
+        <Card.Content className="tw:flex tw:flex-col tw:gap-2">
+          <Box align="center" direction="row" gap={2}>
+            <Typography className="tw:text-primary" weight="medium">
+              {t('label.description')}
+            </Typography>
+            {canEditDescription && !isEditingDesc && (
+              <ButtonUtility
                 color="tertiary"
-                isDisabled={isSavingDesc}
-                size="sm"
-                onPress={() => setIsEditingDesc(false)}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                isLoading={isSavingDesc}
-                size="sm"
-                onPress={handleSaveDescription}>
-                {t('label.save')}
-              </Button>
-            </Box>
+                data-testid="edit-persona-description-btn"
+                icon={Edit}
+                size="xs"
+                tooltip={String(
+                  t('label.edit-entity', { entity: t('label.description') })
+                )}
+                tooltipPlacement="right"
+                onPress={() => setIsEditingDesc(true)}
+              />
+            )}
           </Box>
-        ) : (
-          descriptionPreview
-        )}
+          {isEditingDesc ? (
+            <Box direction="col" gap={2}>
+              <RichTextEditor
+                className="new-form-style"
+                initialValue={persona.description ?? ''}
+                ref={descEditorRef}
+              />
+              <Box direction="row" gap={2} justify="end">
+                <Button
+                  color="tertiary"
+                  isDisabled={isSavingDesc}
+                  size="sm"
+                  onPress={() => setIsEditingDesc(false)}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  isLoading={isSavingDesc}
+                  size="sm"
+                  onPress={handleSaveDescription}>
+                  {t('label.save')}
+                </Button>
+              </Box>
+            </Box>
+          ) : (
+            descriptionPreview
+          )}
+        </Card.Content>
       </Card>
 
       <Tabs

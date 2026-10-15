@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
-import { SimpleModal } from '@openmetadata/ui-core-components';
-import { Form, Input } from 'antd';
+import {
+  Box,
+  FormField,
+  HookForm,
+  PasswordInput,
+  SimpleModal,
+} from '@openmetadata/ui-core-components';
 import React from 'react';
+import { RegisterOptions, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { passwordRegex } from '../../../constants/regex.constants';
 import { ChangePasswordRequest } from '../../../generated/auth/changePasswordRequest';
 
@@ -27,6 +32,8 @@ interface ChangePasswordFormProps {
   isLoading: boolean;
 }
 
+type PasswordField = 'oldPassword' | 'newPassword' | 'confirmPassword';
+
 const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
   visible,
   onCancel,
@@ -35,8 +42,37 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
   isLoading,
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
-  const newPassword = Form.useWatch('newPassword', form);
+  // Unregister unmounted fields so a hidden old-password field is not sent.
+  const form = useForm<ChangePasswordRequest>({ shouldUnregister: true });
+  const handleSave = form.handleSubmit((data) => onSave(data));
+
+  const renderPasswordField = (
+    name: PasswordField,
+    label: string,
+    placeholder: string,
+    testId: string,
+    rules: RegisterOptions<ChangePasswordRequest, PasswordField>
+  ) => (
+    <FormField control={form.control} name={name} rules={rules}>
+      {({ field, fieldState }) => (
+        <PasswordInput
+          autoComplete="off"
+          hint={fieldState.error?.message}
+          inputDataTestId={testId}
+          isInvalid={fieldState.invalid}
+          isRequired={Boolean(rules.required)}
+          label={label}
+          placeholder={placeholder}
+          value={field.value ?? ''}
+          onBlur={field.onBlur}
+          onChange={field.onChange}
+        />
+      )}
+    </FormField>
+  );
+
+  const requiredRule = (label: string) =>
+    t('message.field-text-is-required', { fieldText: label });
 
   return (
     <SimpleModal
@@ -51,77 +87,46 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
       })}
       width={500}
       onCancel={() => {
-        form.resetFields();
+        form.reset();
         onCancel();
       }}
-      onOk={form.submit}>
-      <Form
-        form={form}
-        id="change-password-form"
-        layout="vertical"
-        name="change-password-form"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={onSave}>
-        {isLoggedInUser && (
-          <Form.Item
-            data-testid="oldPassword"
-            label={t('label.old-password')}
-            name="oldPassword"
-            rules={[
-              {
-                required: true,
-              },
-            ]}>
-            <Input.Password
-              autoComplete="off"
-              data-testid="input-oldPassword"
-              placeholder={t('label.enter-type-password', {
-                type: t('label.old'),
-              })}
-            />
-          </Form.Item>
-        )}
-        <Form.Item
-          label={t('label.new-password')}
-          name="newPassword"
-          rules={[
+      onOk={handleSave}>
+      <HookForm form={form} id="change-password-form" onSubmit={handleSave}>
+        <Box direction="col" gap={4}>
+          {isLoggedInUser &&
+            renderPasswordField(
+              'oldPassword',
+              t('label.old-password'),
+              t('label.enter-type-password', { type: t('label.old') }),
+              'input-oldPassword',
+              { required: requiredRule(t('label.old-password')) }
+            )}
+          {renderPasswordField(
+            'newPassword',
+            t('label.new-password'),
+            t('label.enter-type-password', { type: t('label.new') }),
+            'input-newPassword',
             {
-              required: true,
-            },
+              required: requiredRule(t('label.new-password')),
+              // passwordRegex is global, so a shared instance keeps lastIndex
+              // between tests; test against a fresh copy.
+              validate: (value) =>
+                new RegExp(passwordRegex.source).test(value ?? '') ||
+                t('message.password-error-message'),
+            }
+          )}
+          {renderPasswordField(
+            'confirmPassword',
+            t('label.confirm-new-password'),
+            t('label.confirm-new-password'),
+            'input-confirm-newPassword',
             {
-              pattern: passwordRegex,
-              message: t('message.password-error-message'),
-            },
-          ]}>
-          <Input.Password
-            autoComplete="off"
-            data-testid="input-newPassword"
-            placeholder={t('label.enter-type-password', {
-              type: t('label.new'),
-            })}
-          />
-        </Form.Item>
-        <Form.Item
-          label={t('label.confirm-new-password')}
-          name="confirmPassword"
-          rules={[
-            {
-              validator: (_, value) => {
-                if (value !== newPassword) {
-                  return Promise.reject(t('label.password-not-match'));
-                }
-
-                return Promise.resolve();
-              },
-            },
-          ]}>
-          <Input.Password
-            autoComplete="off"
-            data-testid="input-confirm-newPassword"
-            placeholder={t('label.confirm-new-password')}
-          />
-        </Form.Item>
-      </Form>
+              validate: (value, values) =>
+                value === values.newPassword || t('label.password-not-match'),
+            }
+          )}
+        </Box>
+      </HookForm>
     </SimpleModal>
   );
 };

@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.events;
 
-import static org.openmetadata.service.formatter.util.FormatterUtil.createChangeEventForEntity;
-import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEventFromResponseContext;
+import static org.openmetadata.service.events.ChangeEvents.createChangeEventForEntity;
+import static org.openmetadata.service.events.ChangeEvents.getChangeEventFromResponseContext;
 
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
