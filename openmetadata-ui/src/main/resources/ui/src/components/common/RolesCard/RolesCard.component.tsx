@@ -12,10 +12,14 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Box, Button, Card } from '@openmetadata/ui-core-components';
-import { Select } from 'antd';
-import { isArray, isNil, toLower } from 'lodash';
-import { useState } from 'react';
+import {
+  Autocomplete,
+  Box,
+  Button,
+  Card,
+} from '@openmetadata/ui-core-components';
+import { isArray, toLower } from 'lodash';
+import { Key, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { useAuth } from '../../../hooks/authHooks';
@@ -31,7 +35,6 @@ const RolesCard = ({
   selectedRoles,
   setSelectedRoles,
   searchRolesOptions,
-  isRolesLoading,
 }: RolesComponentProps) => {
   const [isRolesEdit, setIsRolesEdit] = useState(false);
 
@@ -60,27 +63,31 @@ const RolesCard = ({
     setIsRolesEdit(false);
   };
 
-  const handleOnRolesChange = (selectedOptions: string[]) => {
-    if (isNil(selectedOptions)) {
-      setSelectedRoles([]);
-    } else {
-      setSelectedRoles(selectedOptions);
-    }
-  };
-
   const userRolesOption = isArray(roles)
     ? roles.map((role) => ({
+        id: role.id,
         label: getEntityName(role),
-        value: role.id,
       }))
     : [];
 
   if (!userData.isAdmin) {
     userRolesOption.push({
+      id: toLower(TERM_ADMIN),
       label: TERM_ADMIN,
-      value: toLower(TERM_ADMIN),
     });
   }
+
+  const selectedRoleItems = selectedRoles.map((roleId) => {
+    const role = roles.find((r) => r.id === roleId);
+
+    return { id: roleId, label: role ? getEntityName(role) : TERM_ADMIN };
+  });
+
+  const handleRoleInserted = (key: Key) =>
+    setSelectedRoles([...selectedRoles, String(key)]);
+
+  const handleRoleCleared = (key: Key) =>
+    setSelectedRoles(selectedRoles.filter((roleId) => roleId !== key));
 
   if (isAdminUser) {
     return (
@@ -111,20 +118,20 @@ const RolesCard = ({
                 direction="col"
                 gap={2}
                 itemClassName="layout-space-item">
-                <Select
-                  showSearch
-                  aria-label="Select roles"
-                  className="w-full"
-                  defaultValue={selectedRoles}
-                  filterOption={false}
+                <Autocomplete
+                  aria-label={t('label.role-plural')}
+                  filterOption={() => true}
                   id="select-role"
-                  loading={isRolesLoading}
-                  mode="multiple"
-                  options={userRolesOption}
+                  items={userRolesOption}
                   placeholder={`${t('label.role-plural')}...`}
-                  onChange={handleOnRolesChange}
-                  onSearch={searchRolesOptions}
-                />
+                  selectedItems={selectedRoleItems}
+                  onItemCleared={handleRoleCleared}
+                  onItemInserted={handleRoleInserted}
+                  onSearchChange={searchRolesOptions}>
+                  {(item) => (
+                    <Autocomplete.Item id={item.id} label={item.label} />
+                  )}
+                </Autocomplete>
                 <div className="flex justify-end" data-testid="buttons">
                   <Button
                     aria-label={t('label.cancel')}

@@ -29,7 +29,12 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
-import { useMemo, type Dispatch, type SetStateAction } from 'react';
+import {
+  useMemo,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 import { ReactComponent as IcCheckCircle } from '../assets/svg/ic-check-circle.svg';
 import { ReactComponent as IcTcFail } from '../assets/svg/ic-tc-fail.svg';
 import { ReactComponent as IcTcQueued } from '../assets/svg/ic-tc-queued.svg';
@@ -318,6 +323,7 @@ function renderColoredLines(
 
 export function ConnectionStatusBanner(
   props: Readonly<{
+    action?: ReactNode;
     gateResult: TestConnectionStepResult | undefined;
     isFailed: boolean;
     isSuccessful: boolean;
@@ -330,6 +336,7 @@ export function ConnectionStatusBanner(
   }>
 ) {
   const {
+    action,
     gateResult,
     isFailed,
     isSuccessful,
@@ -375,9 +382,10 @@ export function ConnectionStatusBanner(
           height={18}
           width={18}
         />
-        <span className="tw:text-sm tw:font-semibold tw:leading-5 tw:text-fg-warning-primary">
+        <span className="tw:flex-1 tw:text-sm tw:font-semibold tw:leading-5 tw:text-fg-warning-primary">
           {statusText}
         </span>
+        {action}
       </div>
     );
   }
@@ -416,6 +424,7 @@ export function ConnectionStatusBanner(
             {`${progressPercent}%`}
           </span>
         )}
+        {isFailed && !isTestingConnection && action}
       </div>
     </div>
   );

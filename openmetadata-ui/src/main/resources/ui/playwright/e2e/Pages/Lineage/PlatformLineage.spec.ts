@@ -21,7 +21,6 @@ import {
   getDefaultAdminAPIContext,
   redirectToHomePage,
   uuid,
-  waitForAntdPopupToSettle,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -99,14 +98,13 @@ test.describe('Entity Lineage tab', () => {
           req.url().includes('/api/v1/search/query') &&
           req.url().includes('deleted=false')
       );
-      await page.fill(
-        '[data-testid="search-entity-select"] .ant-select-selection-search-input',
-        table.entity.name
-      );
+      await page
+        .getByTestId('search-entity-select')
+        .getByRole('combobox')
+        .fill(table.entity.name);
       await searchRequest;
 
-      await page.locator('.ant-select-dropdown').waitFor();
-      await waitForAntdPopupToSettle(page);
+      await page.getByRole('listbox').waitFor();
 
       const nodeFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
       const dbFqn = get(
@@ -142,12 +140,11 @@ test.describe('Entity Lineage tab', () => {
       await page.getByTestId('search-entity-select').waitFor();
       await page.click('[data-testid="search-entity-select"]');
 
-      await page.fill(
-        '[data-testid="search-entity-select"] .ant-select-selection-search-input',
-        db
-      );
+      await page
+        .getByTestId('search-entity-select')
+        .getByRole('combobox')
+        .fill(db);
       await page.getByTestId(`node-suggestion-${dbFqn}`).waitFor();
-      await waitForAntdPopupToSettle(page);
       const databaseSceneResponse = waitForResponseWithStatus(
         page,
         (response) =>

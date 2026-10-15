@@ -159,6 +159,7 @@ import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -235,6 +236,7 @@ import org.openmetadata.service.cache.CachedRelationshipDao;
 import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.cache.NotFoundCache;
 import org.openmetadata.service.config.CacheConfiguration;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -242,7 +244,6 @@ import org.openmetadata.service.exception.EntityLockedException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.StageOwnership;
@@ -391,6 +392,31 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   @VisibleForTesting
   static long readEpochByName(String entityType, String fqn) {
     return readEpochByName(cacheNameKey(entityType, fqn));
+  }
+
+  /**
+   * Loads a cache miss without {@code cache.get(key)}: Guava runs the loader's Redis and database
+   * reads inside a per-entry {@code synchronized}, which on JDK 21 pins a virtual thread to its
+   * carrier. Writers bump the epoch before evicting, so re-checking it after the put drops a copy
+   * that raced a write. Failures come back wrapped, as {@code LoadingCache.get} throws them. See
+   * ADR:2026-10-14-cache-misses-that-do-io-load-outside-the-cache-lock.
+   */
+  @VisibleForTesting
+  static <K> String loadOutsideCacheLock(
+      Cache<K, String> cache, K key, CacheLoader<K, String> loader, ToLongFunction<K> epoch)
+      throws ExecutionException {
+    try {
+      long startEpoch = epoch.applyAsLong(key);
+      String json = loader.load(key);
+      cache.put(key, json);
+      if (epoch.applyAsLong(key) != startEpoch) {
+        cache.invalidate(key);
+        throw new LoaderRaceException("Concurrent write while caching %s".formatted(key));
+      }
+      return json;
+    } catch (Exception e) {
+      throw new ExecutionException(e);
+    }
   }
 
   private static void bumpWriteEpoch(String entityType, UUID id, String fqn) {
@@ -1961,7 +1987,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           throw new EntityNotFoundException(entityNotFound(entityType, id));
         }
         try (var ignored = phase("cacheGet")) {
-          cachedJson = CACHE_WITH_ID.get(cacheKey);
+          cachedJson =
+              loadOutsideCacheLock(
+                  CACHE_WITH_ID,
+                  cacheKey,
+                  new EntityLoaderWithId(),
+                  EntityRepository::readEpochById);
         }
       } else if (include == NON_DELETED
           && notFoundCache != null
@@ -2257,6 +2288,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         // Previously getCertification() fired a second query (getCertTagsInternalBatch) and
         // batchFetchTags() discarded the cert rows it had already loaded.
         fetchAndPutTagsWithCertification(entity, bundle);
+      }
+    }
+
+    // Back-fill certification for warmer-seeded entries. The bundle warmer caches
+    // tagsLoaded=true but certificationLoaded=false and strips the Certification.* tag, deferring
+    // cert to the lazy read path; when tags come from cache the full tag-fetch above is skipped,
+    // so without this the cache entry never upgrades and getCertification() repeats its
+    // getCertTagsInternalBatch query (plus a per-hit Redis SET) on every hit indefinitely. This
+    // fires once on the first warmer-seeded hit only — matching the warmer's documented "one
+    // getCertTagsInternalBatch query until the bundle cache back-fills it" contract — after
+    // which buildBundleDto flips certificationLoaded=true and later hits take the fast path.
+    if (supportsCertification
+        && readPlan.shouldLoadTags()
+        && tagsFilledFromCache
+        && !certificationFilledFromCache) {
+      try (var ignored = phase("readBundleFetchCertificationOnly")) {
+        fetchAndPutCertificationOnly(entity, bundle);
       }
     }
 
@@ -2593,7 +2641,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           throw new EntityNotFoundException(entityNotFound(entityType, fqn));
         }
         try (var ignored = phase("cacheGet")) {
-          cachedJson = CACHE_WITH_NAME.get(cacheKey);
+          cachedJson =
+              loadOutsideCacheLock(
+                  CACHE_WITH_NAME,
+                  cacheKey,
+                  new EntityLoaderWithName(),
+                  EntityRepository::readEpochByName);
         }
       } else if (include == NON_DELETED
           && notFoundCache != null
@@ -6898,6 +6951,31 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (supportsCertification) {
       bundle.putCertification(entity.getId(), certification);
     }
+  }
+
+  /**
+   * Lean, cert-only variant of {@link #fetchAndPutTagsWithCertification} used to back-fill the
+   * certification slot of a warmer-seeded {@link ReadBundle} entry whose tags were served from
+   * cache. Issues the single {@code getCertTagsInternalBatch} query the warmer javadoc budgets and
+   * stores the result (or an explicit null) via {@link ReadBundle#putCertification} so {@link
+   * #buildBundleDto} can mark {@code certificationLoaded=true} on the write-back.
+   */
+  private void fetchAndPutCertificationOnly(EntityInterface entity, ReadBundle bundle) {
+    String certClassification = getCertificationClassification();
+    AssetCertification certification = null;
+    if (certClassification != null) {
+      List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> certTags =
+          daoCollection
+              .tagUsageDAO()
+              .getCertTagsInternalBatch(
+                  TagLabel.TagSource.CLASSIFICATION.ordinal(),
+                  List.of(entity.getFullyQualifiedName()),
+                  FullyQualifiedName.buildHash(certClassification) + ".%");
+      if (!nullOrEmpty(certTags)) {
+        certification = buildCertificationFromCertTag(certTags.get(0).toTagLabel());
+      }
+    }
+    bundle.putCertification(entity.getId(), certification);
   }
 
   private static AssetCertification buildCertificationFromCertTag(TagLabel tagLabel) {
@@ -14268,7 +14346,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
 
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(userName, eventType, entity);
+          ChangeEvents.createChangeEventForEntity(userName, eventType, entity);
 
       if (changeEvent.getEntity() != null) {
         Object entityObject = changeEvent.getEntity();

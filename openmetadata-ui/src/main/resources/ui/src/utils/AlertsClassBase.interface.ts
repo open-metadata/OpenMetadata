@@ -46,7 +46,10 @@ export interface ModifiedCreateEventSubscription
   notificationTemplate?:
     | string
     | CreateEventSubscription['notificationTemplate'];
-  customNotificationTemplateData?: NotificationTemplate;
+  customNotificationTemplateData?: Pick<
+    NotificationTemplate,
+    'displayName' | 'templateSubject' | 'templateBody'
+  >;
   destinations: ModifiedDestination[];
   timeout: number;
   readTimeout: number;
