@@ -102,9 +102,12 @@ final class OntologyGraphProjection {
   private Model axiomGraph(final OntologyAxiom axiom, final BatchSources batch) {
     final Model model = ModelFactory.createDefaultModel();
     if (!Boolean.TRUE.equals(axiom.getDeleted())) {
-      final Set<String> attributeIris =
-          axiom.getGlossary() == null ? Set.of() : batch.attributeIris(axiom.getGlossary());
-      new OntologyExpressionRdfWriter(attributeIris::contains).write(model, axiom);
+      // Listing the glossary's attributes reads every term in it, so it waits until the writer
+      // asks about a restriction's property; most axioms have none.
+      final EntityReference glossary = axiom.getGlossary();
+      new OntologyExpressionRdfWriter(
+              iri -> glossary != null && batch.attributeIris(glossary).contains(iri))
+          .write(model, axiom);
     }
     return model;
   }
