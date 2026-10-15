@@ -285,13 +285,17 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
     });
 
   // react-hook-form applies defaultValues only on the first render; re-seed the
-  // form whenever the target entity reference changes (edit a different
-  // definition, create↔edit, or a same-id refetch) so a persistently mounted
-  // form never shows stale values. Callers pass a stable `initialValues` ref per
-  // selection, so this does not loop.
+  // form on every open and whenever the target entity reference changes (edit a
+  // different definition, create↔edit, or a same-id refetch) so a persistently
+  // mounted form never shows stale values. Seeding on open, before the fields
+  // mount, matters for the drawer: its fields stay mounted while it slides out
+  // and re-register their last value, undoing a reset made on close. Callers
+  // pass a stable `initialValues` ref per selection, so this does not loop.
   useEffect(() => {
-    form.reset(buildFormDefaults(initialValues));
-  }, [initialValues, form]);
+    if (open) {
+      form.reset(buildFormDefaults(initialValues));
+    }
+  }, [open, initialValues, form]);
 
   useEffect(() => {
     if (open) {

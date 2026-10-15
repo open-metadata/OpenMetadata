@@ -42,30 +42,34 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 const NAME_DOC = 'Provide the unique technical name for the test definition.';
 
+type MockForm = { setValue: (name: string, value: unknown) => void };
+
+let mockLatestForm: MockForm | undefined;
+
 jest.mock('./TestDefinitionFormBody', () => ({
   __esModule: true,
-  default: ({
-    form,
-  }: {
-    form: { setValue: (name: string, value: unknown) => void };
-  }) => (
-    <div data-testid="form-body">
-      {getField({
-        name: 'name',
-        label: 'Name',
-        type: FieldTypes.TEXT,
-        required: false,
-        id: 'root/name',
-        doc: NAME_DOC,
-      })}
-      <button
-        data-testid="set-display-name"
-        type="button"
-        onClick={() => form.setValue('displayName', 'Updated Display Name')}>
-        set-display-name
-      </button>
-    </div>
-  ),
+  default: ({ form }: { form: MockForm }) => {
+    mockLatestForm = form;
+
+    return (
+      <div data-testid="form-body">
+        {getField({
+          name: 'name',
+          label: 'Name',
+          type: FieldTypes.TEXT,
+          required: false,
+          id: 'root/name',
+          doc: NAME_DOC,
+        })}
+        <button
+          data-testid="set-display-name"
+          type="button"
+          onClick={() => form.setValue('displayName', 'Updated Display Name')}>
+          set-display-name
+        </button>
+      </div>
+    );
+  },
 }));
 
 // The real previewer wraps a lazy TipTap editor that does not render in jsdom;
@@ -114,6 +118,40 @@ describe('TestDefinitionForm wrapper', () => {
     expect(
       await screen.findByRole('switch', { name: 'label.show-hint' })
     ).toBeChecked();
+  });
+
+  it('opens Add empty after an edit closes, even if a closing field writes its old value back', async () => {
+    const { rerender } = render(
+      <TestDefinitionForm
+        open
+        initialValues={mockInitialValues}
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
+
+    expect(screen.getByLabelText('Name')).toHaveValue(mockInitialValues.name);
+
+    rerender(
+      <TestDefinitionForm
+        open={false}
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
+    // The drawer's fields stay mounted while it slides out and re-register
+    // their last value. jsdom unmounts them at once, so write it directly.
+    act(() => mockLatestForm?.setValue('name', mockInitialValues.name));
+
+    rerender(
+      <TestDefinitionForm
+        open
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
+
+    expect(await screen.findByLabelText('Name')).toHaveValue('');
   });
 
   it('shows the focused field doc in the Form Hint until Show Hint is off', async () => {
