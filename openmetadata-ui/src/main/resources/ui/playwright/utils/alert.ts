@@ -31,7 +31,6 @@ import { TableClass } from '../support/entity/TableClass';
 import { UserClass } from '../support/user/UserClass';
 import { okJson } from './apiResponse';
 import {
-  chooseSelectOption,
   clickOutside,
   fillDescriptionBox,
   getApiContext,
@@ -788,15 +787,19 @@ export const addPipelineStatusUpdatesAction = async ({
   // Ensure no dropdowns are visible before starting
   await ensureNoDropdownVisible(page);
 
-  // Select pipeline status action. The trigger row sits at the bottom of the
-  // form, where a one-shot open-then-click let a scroll close the popover and
-  // the click waited out the test on a detached option.
-  await chooseSelectOption(
-    page.getByTestId(`trigger-select-${filterNumber}`),
-    page
-      .getByRole('listbox')
-      .getByTestId('Get Pipeline Status Updates-filter-option')
-  );
+  // Select pipeline status action
+  await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
+
+  // CRITICAL: Verify EXACTLY one dropdown is visible
+  await expect(page.getByRole('listbox')).toHaveCount(1);
+
+  // Use :visible selector chain pattern for dropdown option
+  const pipelineStatusOption = page
+    .getByRole('listbox')
+    .getByTestId('Get Pipeline Status Updates-filter-option');
+  await expect(pipelineStatusOption).toBeVisible();
+  await expect(pipelineStatusOption).toBeEnabled();
+  await pipelineStatusOption.click();
 
   // Verify trigger dropdown closed before next interaction
   await expect(page.getByRole('listbox')).toHaveCount(0);
