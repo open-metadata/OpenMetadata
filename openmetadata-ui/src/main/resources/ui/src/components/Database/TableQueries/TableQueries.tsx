@@ -31,7 +31,6 @@ import Qs from 'qs';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import DqDateRangeFilter from '../../observability/DataQuality/Dashboard/DqDateRangeFilter';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -78,6 +77,7 @@ import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelect
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SortingDropDown from '../../Explore/SortingDropDown';
+import DqDateRangeFilter from '../../observability/DataQuality/Dashboard/DqDateRangeFilter';
 import PaginationComponent from '../../PaginationComponent/PaginationComponent';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import QueryCard from './QueryCard';
