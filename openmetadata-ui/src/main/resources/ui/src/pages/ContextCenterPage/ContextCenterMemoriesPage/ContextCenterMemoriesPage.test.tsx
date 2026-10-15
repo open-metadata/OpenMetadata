@@ -340,7 +340,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
             q: 'missing glossary fact',
             assets: 'asset-1',
             author: 'user-1',
-            sortBy: 'usageCount',
+            sortBy: 'appliedCount',
           })
         );
       });

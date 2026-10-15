@@ -811,6 +811,17 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
         updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
       }
+      keepStoredTelemetry(original, updated);
+    }
+
+    /**
+     * The row keeps its stored usage and outcome counters whatever a write sends, so the entity
+     * this write returns and indexes carries them too, never a value the request supplied.
+     */
+    private static void keepStoredTelemetry(ContextMemory original, ContextMemory updated) {
+      updated.setUsageCount(original.getUsageCount());
+      updated.setLastUsedAt(original.getLastUsedAt());
+      updated.setOutcomes(original.getOutcomes());
     }
 
     @Override
@@ -901,8 +912,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       updateSourceEntityRelationship();
       updateContentClock();
 
-      // usageCount and lastUsedAt are AI-retrieval telemetry, intentionally excluded from
-      // version history so routine retrieval does not churn the entity version.
+      // usageCount, lastUsedAt and outcomes are AI-retrieval telemetry, intentionally excluded
+      // from version history so routine retrieval does not churn the entity version.
     }
 
     private void updateContentClock() {

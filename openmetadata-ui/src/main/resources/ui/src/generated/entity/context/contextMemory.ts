@@ -79,9 +79,9 @@ export interface ContextMemory {
     incrementalChangeDescription?: ChangeDescription;
     /**
      * Server-owned timestamp of the latest change to memory content or its subject. Review,
-     * lifecycle, pin, tag, share and usage writes preserve it. Legacy memories fall back to
-     * updatedAt until their next write. Used for knowledge recency independently of the audit
-     * timestamp.
+     * lifecycle, pin, tag, share, usage and outcome writes preserve it. Legacy memories fall
+     * back to updatedAt until their next write. Used for knowledge recency independently of the
+     * audit timestamp.
      */
     lastContentUpdatedAt?: number;
     /**
@@ -102,6 +102,11 @@ export interface ContextMemory {
      * Stable system name for the memory.
      */
     name: string;
+    /**
+     * Outcome counters of the answers this memory was applied to. Only the outcome write sets
+     * them; metadata writes keep the stored values.
+     */
+    outcomes?: MemoryOutcomes;
     /**
      * Owners of this memory.
      */
@@ -469,6 +474,46 @@ export enum MemoryType {
     Preference = "Preference",
     Runbook = "Runbook",
     UseCase = "UseCase",
+}
+
+/**
+ * Outcome counters of the answers this memory was applied to. Only the outcome write sets
+ * them; metadata writes keep the stored values.
+ *
+ * What happened to the answers this memory was applied to, recounted from their outcomes by
+ * the service that records them. Server telemetry: only the outcome write sets it, metadata
+ * writes preserve it, and it never changes the version.
+ */
+export interface MemoryOutcomes {
+    /**
+     * Saved answers this memory was applied to.
+     */
+    appliedCount?: number;
+    /**
+     * Memories captured from answers it was applied to that correct it.
+     */
+    correctedCount?: number;
+    /**
+     * When these counts were computed.
+     */
+    countedAt?: number;
+    /**
+     * When it was last applied to a saved answer.
+     */
+    lastAppliedAt?: number;
+    /**
+     * When a captured memory last corrected it.
+     */
+    lastCorrectedAt?: number;
+    /**
+     * Answers it was applied to whose voters' latest vote is unhelpful, one per voter and
+     * answer.
+     */
+    negativeCount?: number;
+    /**
+     * Answers it was applied to whose voters' latest vote is helpful, one per voter and answer.
+     */
+    positiveCount?: number;
 }
 
 /**

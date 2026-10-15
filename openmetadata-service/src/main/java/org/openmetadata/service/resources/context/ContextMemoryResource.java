@@ -26,6 +26,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -38,12 +39,14 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -55,6 +58,7 @@ import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -62,6 +66,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.outcome.MemoryOutcomeWriter;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -85,6 +90,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   public static final String COLLECTION_PATH = "v1/contextCenter/memories/";
   public static final String FIELDS =
       "owners,tags,domains,primaryEntity,relatedEntities,derivedEntities";
+  static final String STALE_RECOUNT = "A later recount of this memory's outcomes is already stored";
+  static final String COUNTED_AT_REQUIRED = "countedAt is required: it orders the recounts";
+  static final String COUNTED_AT_AHEAD = "countedAt %d is ahead of the server clock";
+  static final Duration COUNTED_AT_CLOCK_SKEW = Duration.ofMinutes(1);
   private static final String PIN_UPDATE_FIELDS =
       FIELDS + ",rootMemory,parentMemory,sourceEntity,sourceFile";
 
@@ -164,7 +173,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Memory author as user name or user UUID") @QueryParam("author")
           String author,
       @Parameter(description = "Filter by pinned state") @QueryParam("pinned") Boolean pinned,
-      @Parameter(description = "Sort field: updatedAt, usageCount, updatedBy") @QueryParam("sortBy")
+      @Parameter(description = "Sort field: updatedAt, appliedCount, usageCount, updatedBy")
+          @QueryParam("sortBy")
           String sortBy,
       @Parameter(description = "Sort order: asc or desc") @QueryParam("sortOrder") String sortOrder,
       @Parameter(description = "Offset for search-backed pagination") @Min(0) @QueryParam("offset")
@@ -268,8 +278,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     if (statuses != null) {
       searchListFilter.withMemoryStatuses(statuses);
     }
-    SearchSortFilter searchSortFilter =
-        new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null);
+    SearchSortFilter searchSortFilter = searchSort(sortBy, sortOrder);
     EntityUtil.Fields fields = getFields(fieldsParam);
     // shareConfig visibility, the conservative anchor rule and the selected statuses are enforced
     // at query time by ContextMemorySearchVisibility (see
@@ -397,11 +406,23 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     }
     return switch (sortBy) {
       case "updatedAt" -> "updatedAt";
+      case "appliedCount" -> "outcomes.appliedCount";
       case "usageCount" -> "usageCount";
       case "updatedBy" -> "updatedBy.keyword";
       default -> throw new BadRequestException(
-          "Unsupported sortBy value '" + sortBy + "'. Allowed: updatedAt, usageCount, updatedBy.");
+          "Unsupported sortBy value '"
+              + sortBy
+              + "'. Allowed: updatedAt, appliedCount, usageCount, updatedBy.");
     };
+  }
+
+  /**
+   * Only memories a recount reached carry outcomes, so the others tie on the applied count; their
+   * recorded usage orders them as it did before outcomes existed.
+   */
+  static SearchSortFilter searchSort(String sortBy, String sortOrder) {
+    return new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null)
+        .thenBy("appliedCount".equals(sortBy) ? "usageCount" : null);
   }
 
   private static String resolveSortOrder(String sortOrder) {
@@ -690,6 +711,61 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @PathParam("id")
           UUID id) {
     return setPinned(uriInfo, securityContext, id, false);
+  }
+
+  @PUT
+  @Path("/{id}/outcomes")
+  @Operation(
+      operationId = "recordContextMemoryOutcomes",
+      summary = "Record a memory's outcome counters",
+      description =
+          "Set the outcome counters of a context memory to the values of one recount. Only admins"
+              + " and bots may write them; countedAt is required and may not be ahead of the"
+              + " server clock; the version and timestamps are unchanged, and a recount older than"
+              + " the stored one is rejected with 409.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The memory with its new counters",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContextMemory.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "countedAt is missing or ahead of the server clock, or a count is negative"),
+        @ApiResponse(responseCode = "404", description = "Memory not found"),
+        @ApiResponse(responseCode = "409", description = "A later recount is already stored")
+      })
+  public ContextMemory recordOutcomes(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid @NotNull MemoryOutcomes outcomes) {
+    authorizer.authorizeAdminOrBot(securityContext);
+    requireRecountTime(outcomes, System.currentTimeMillis());
+    repository.get(uriInfo, id, getFields(""), Include.NON_DELETED, false);
+    if (!MemoryOutcomeWriter.write(id, outcomes)) {
+      throw new WebApplicationException(STALE_RECOUNT, Response.Status.CONFLICT);
+    }
+    return addHref(uriInfo, repository.get(uriInfo, id, getFields(""), Include.NON_DELETED, false));
+  }
+
+  /**
+   * The stored countedAt refuses every older recount, so a write must say when it counted, and a
+   * time ahead of this server would outrank every later recount and freeze the counts.
+   */
+  static void requireRecountTime(MemoryOutcomes outcomes, long now) {
+    Long countedAt = outcomes.getCountedAt();
+    if (countedAt == null) {
+      throw new BadRequestException(COUNTED_AT_REQUIRED);
+    }
+    if (countedAt > now + COUNTED_AT_CLOCK_SKEW.toMillis()) {
+      throw new BadRequestException(String.format(COUNTED_AT_AHEAD, countedAt));
+    }
   }
 
   private Response setPinned(
