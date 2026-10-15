@@ -528,9 +528,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         searchRepository.getDocumentBuilder().buildPipelineExecution(pipeline, pipelineStatus);
     String docId = PipelineExecutionIndex.getDocumentId(pipeline, pipelineStatus);
     String docJson = JsonUtils.pojoToJson(doc);
-    String indexName =
-        searchRepository.routeToStagedIfActive(
-            searchRepository.getIndexOrAliasName("pipeline_status_search_index"));
+    String indexName = searchRepository.getIndexOrAliasName("pipeline_status_search_index");
 
     searchRepository.getSearchClient().createEntity(indexName, docId, docJson);
 

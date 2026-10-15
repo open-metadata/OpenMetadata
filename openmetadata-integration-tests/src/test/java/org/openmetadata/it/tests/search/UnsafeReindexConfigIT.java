@@ -76,7 +76,7 @@ class UnsafeReindexConfigIT {
 
     final Map<String, Object> aggressiveConfig =
         Map.of(
-            "recreateIndex", true,
+            "force", true,
             "batchSize", 1,
             "maxConcurrentRequests", 50,
             "consumerThreads", 5,

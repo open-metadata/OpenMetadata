@@ -19,6 +19,7 @@ import es.co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import es.co.elastic.clients.util.ObjectBuilder;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -26,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
@@ -112,31 +114,45 @@ class ElasticSearchBulkProcessorTest {
   }
 
   @Test
-  void addFailsFastWhenCircuitBreakerIsOpenAndReportsDroppedRecords() throws Exception {
-    try (ProcessorHarness harness = newHarness(2, 1)) {
+  void aBatchWaitsOutAnOpenBreakerAndIsWrittenOnceRequestsAreAllowed() throws Exception {
+    try (ProcessorHarness harness = newHarness(1, 1)) {
       StageStatsTracker tableTracker = mock(StageStatsTracker.class);
-      StageStatsTracker mlModelTracker = mock(StageStatsTracker.class);
-      BulkSink.FailureCallback failureCallback = mock(BulkSink.FailureCallback.class);
-
-      when(harness.circuitBreaker.allowRequest()).thenReturn(false);
+      BulkResponse response = successResponse();
+      when(harness.circuitBreaker.allowRequest()).thenReturn(false, false, true);
       when(harness.circuitBreaker.getState()).thenReturn(BulkCircuitBreaker.State.OPEN);
-      harness.processor.setFailureCallback(failureCallback);
+      when(harness.asyncClient.bulk(anyBulkRequestBuilder()))
+          .thenReturn(CompletableFuture.completedFuture(response));
 
       harness.processor.add(
           indexOperation("table_search_index", "doc-1"), "doc-1", "table", tableTracker, 1L);
-      harness.processor.add(
-          deleteOperation("mlmodel_search_index_rebuild_12", "doc-2"),
-          "doc-2",
-          null,
-          mlModelTracker,
-          1L);
 
-      assertEquals(2, harness.totalSubmitted.get());
-      assertEquals(0, harness.totalSuccess.get());
-      assertEquals(2, harness.totalFailed.get());
-      assertEquals(1, harness.statsUpdates.get());
-      verify(tableTracker).recordSink(StatsResult.FAILED);
-      verify(mlModelTracker).recordSink(StatsResult.FAILED);
+      Awaitility.await("the held batch is written once the breaker lets requests through")
+          .atMost(Duration.ofSeconds(10))
+          .until(() -> harness.totalSuccess.get() == 1);
+      assertEquals(0, harness.totalFailed.get());
+      verify(tableTracker).recordSink(StatsResult.SUCCESS);
+    }
+  }
+
+  @Test
+  void aBatchStillBlockedAfterTheOutageBudgetIsReportedAsFailed() throws Exception {
+    try (ProcessorHarness harness = newHarness(1, 1)) {
+      BulkSink.FailureCallback failureCallback = mock(BulkSink.FailureCallback.class);
+      when(harness.circuitBreaker.allowRequest()).thenReturn(false);
+      harness.processor.setFailureCallback(failureCallback);
+      Method executeBulk =
+          ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod(
+              "executeBulkWithRetry", List.class, long.class, int.class, int.class);
+      executeBulk.setAccessible(true);
+
+      executeBulk.invoke(
+          harness.processor,
+          List.of(indexOperation("table_search_index", "doc-1")),
+          7L,
+          1,
+          BulkOutageRetry.ATTEMPTS);
+
+      assertEquals(1, harness.totalFailed.get());
       verify(failureCallback)
           .onFailure(
               "table",
@@ -144,16 +160,7 @@ class ElasticSearchBulkProcessorTest {
               null,
               "Circuit breaker OPEN",
               IndexingFailureRecorder.FailureStage.SINK);
-      verify(failureCallback)
-          .onFailure(
-              "mlmodel",
-              "doc-2",
-              null,
-              "Circuit breaker OPEN",
-              IndexingFailureRecorder.FailureStage.SINK);
       verifyNoInteractions(harness.asyncClient);
-      assertTrue(getEntityTypeMap(harness.processor).isEmpty());
-      assertTrue(getTrackerMap(harness.processor).isEmpty());
     }
   }
 

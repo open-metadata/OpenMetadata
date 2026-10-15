@@ -113,3 +113,23 @@ CREATE TABLE IF NOT EXISTS metadata_projection_extension (
     entityId VARCHAR(36) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS projection_extension_page ON metadata_projection_extension(mutationId, id);
+
+-- Search reindex: entity types rewritten in their live index rather than a staged one, so every
+-- server taking part in the job writes those types in place.
+ALTER TABLE search_index_job ADD COLUMN IF NOT EXISTS inPlaceIndexMapping JSONB NULL;
+
+-- Search reindex: the keyset cursor each partition starts after, recorded when the job is created.
+-- Every server claiming the partition starts at that row; finding it again with OFFSET skips rows
+-- once earlier rows are deleted during the run.
+ALTER TABLE search_index_partition ADD COLUMN IF NOT EXISTS startCursor TEXT NULL;
+
+-- Search reindex: where live writes for an entity index go while a reindex builds its replacement.
+-- Every server reads these rows, so a write handled by any of them reaches the index being built.
+-- A row whose owner stops renewing it lapses at leaseExpiresAt.
+CREATE TABLE IF NOT EXISTS search_index_write_route (
+    canonicalIndex VARCHAR(255) NOT NULL,
+    stagedIndex VARCHAR(255) NOT NULL,
+    ownerId VARCHAR(255) NOT NULL,
+    leaseExpiresAt BIGINT NOT NULL,
+    PRIMARY KEY (canonicalIndex)
+);

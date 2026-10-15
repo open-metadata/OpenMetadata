@@ -90,6 +90,7 @@ class PartitionWorkerTest {
   private PartitionWorker worker;
 
   private static final int BATCH_SIZE = 100;
+  private static final long READ_AT = 1_700_000_000_000L;
   private static final String TEST_SERVER_ID = "test-server-1";
 
   @BeforeEach
@@ -323,7 +324,6 @@ class PartitionWorkerTest {
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
-      when(coordinator.getPartitionStartCursor(jobId, "table", 5L)).thenReturn(null);
       when(repository.getReindexFilter()).thenReturn(reindexFilter);
       when(repository.getCursorAtOffset(reindexFilter, 4)).thenReturn("cursor-4");
 
@@ -355,15 +355,13 @@ class PartitionWorkerTest {
   }
 
   /**
-   * Bug 2 regression: precomputed cursor on the coordinator must short-circuit the
-   * OFFSET-based fallback. Without this, every PartitionWorker pays SQL OFFSET cost at the
-   * partition start (O(rangeStart) per partition, O(N²) across all partitions for a job).
-   * With it, workers hit the cache in O(1) and the slow path is never invoked. Cache key
-   * includes jobId so cursors precomputed for an earlier job on this server cannot
-   * falsely match a later job initialized elsewhere.
+   * The start cursor recorded on the partition row must short-circuit the OFFSET-based fallback,
+   * on whichever server claims the partition. Otherwise a worker pays SQL OFFSET cost at the
+   * partition start (O(rangeStart) per partition, O(N²) across all partitions for a job), and
+   * starts past rows when earlier rows were deleted since the job was created.
    */
   @Test
-  void initializeKeysetCursorHitsPrecomputedCacheAndSkipsOffsetFallback() throws Exception {
+  void initializeKeysetCursorStartsAtTheCursorStoredOnThePartition() throws Exception {
     @SuppressWarnings("unchecked")
     EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
 
@@ -381,12 +379,11 @@ class PartitionWorkerTest {
             .priority(50)
             .status(PartitionStatus.PENDING)
             .cursor(10000)
+            .startCursor("precomputed-10k")
             .build();
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
-      when(coordinator.getPartitionStartCursor(jobId, "table", 10000L))
-          .thenReturn("precomputed-10k");
 
       Object cursor =
           invokePrivate(
@@ -397,7 +394,6 @@ class PartitionWorkerTest {
               10000L);
 
       assertEquals("precomputed-10k", cursor);
-      verify(coordinator).getPartitionStartCursor(jobId, "table", 10000L);
       verify(repository, never()).getCursorAtOffset(any(ListFilter.class), anyInt());
     }
   }
@@ -415,14 +411,37 @@ class PartitionWorkerTest {
             invokePrivate(
                 stagedWorker,
                 "createContextData",
-                new Class<?>[] {String.class, StageStatsTracker.class},
+                new Class<?>[] {String.class, StageStatsTracker.class, long.class},
                 "table",
-                statsTracker);
+                statsTracker,
+                READ_AT);
 
     assertEquals("table", contextData.get("entityType"));
     assertEquals(statsTracker, contextData.get(BulkSink.STATS_TRACKER_CONTEXT_KEY));
     assertEquals(stagedIndexContext, contextData.get("recreateContext"));
     assertEquals("table_staging", contextData.get("targetIndex"));
+    assertFalse(contextData.containsKey(BulkSink.SOURCE_READ_AT_CONTEXT_KEY));
+  }
+
+  @Test
+  void createContextDataGuardsWritesToALiveIndexWithTheBatchReadTime() throws Exception {
+    when(stagedIndexContext.getStagedIndex(Entity.DASHBOARD)).thenReturn(Optional.empty());
+    when(stagedIndexContext.getInPlaceIndex(Entity.DASHBOARD))
+        .thenReturn(Optional.of("dashboard_search_index"));
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> contextData =
+        (Map<String, Object>)
+            invokePrivate(
+                worker,
+                "createContextData",
+                new Class<?>[] {String.class, StageStatsTracker.class, long.class},
+                Entity.DASHBOARD,
+                null,
+                READ_AT);
+
+    assertEquals("dashboard_search_index", contextData.get("targetIndex"));
+    assertEquals(READ_AT, contextData.get(BulkSink.SOURCE_READ_AT_CONTEXT_KEY));
   }
 
   @Test
@@ -436,9 +455,10 @@ class PartitionWorkerTest {
             invokePrivate(
                 worker,
                 "createContextData",
-                new Class<?>[] {String.class, StageStatsTracker.class},
+                new Class<?>[] {String.class, StageStatsTracker.class, long.class},
                 SearchIndexEntityTypes.QUERY_COST_RESULT,
-                null);
+                null,
+                READ_AT);
 
     assertEquals(Entity.QUERY_COST_RECORD, contextData.get("entityType"));
     assertEquals("query_cost_record_staging", contextData.get("targetIndex"));

@@ -91,7 +91,7 @@ class ReindexStopUnderLoadIT {
         Map.of(
             "batchSize", 50,
             "consumerThreads", 2,
-            "recreateIndex", true),
+            "force", true),
         Duration.ofSeconds(20));
     ReindexHelpers.waitForRunStartedSince(
         server, ReindexHelpers.SEARCH_INDEX_APP, triggeredAt, Duration.ofSeconds(20));

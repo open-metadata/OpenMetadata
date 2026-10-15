@@ -1382,6 +1382,99 @@ class DefaultRecreateHandlerTest {
     }
   }
 
+  @Nested
+  @DisplayName("A failed rebuild and the index users search")
+  class FailedRebuildTests {
+    private static final String SERVING = "table_search_index_rebuild_old";
+    private static final String PARTIAL_REBUILD = "table_search_index_rebuild_new";
+
+    @Test
+    @DisplayName("Promotion keeps the serving index when a failed rebuild would replace documents")
+    void promotionKeepsTheServingIndexWhenTheRebuildFailed() {
+      final AliasState aliasState = servingTablesAndAPartialRebuild();
+      final SearchClient client = aliasState.toMock();
+      lenient().when(client.getIndexedDocumentCount(PARTIAL_REBUILD)).thenReturn(7L);
+      when(client.getDocumentCount(SERVING)).thenReturn(1_000L);
+
+      final SearchRepository repo = tables(client);
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        new DefaultRecreateHandler().promoteEntityIndex(partialRebuild(), false);
+      }
+
+      assertTrue(aliasState.deletedIndices.contains(PARTIAL_REBUILD));
+      assertTrue(aliasState.indexAliases.get(SERVING).contains("table_search_index"));
+    }
+
+    @Test
+    @DisplayName("Finalizing keeps the serving index when a failed rebuild would replace documents")
+    void finalizingKeepsTheServingIndexWhenTheRebuildFailed() {
+      final AliasState aliasState = servingTablesAndAPartialRebuild();
+      final SearchClient client = aliasState.toMock();
+      lenient().when(client.getIndexedDocumentCount(PARTIAL_REBUILD)).thenReturn(7L);
+      when(client.getDocumentCount(SERVING)).thenReturn(1_000L);
+
+      final SearchRepository repo = tables(client);
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        new DefaultRecreateHandler().finalizeReindex(partialRebuild(), false);
+      }
+
+      assertTrue(aliasState.deletedIndices.contains(PARTIAL_REBUILD));
+      assertTrue(aliasState.indexAliases.get(SERVING).contains("table_search_index"));
+    }
+
+    @Test
+    @DisplayName("An unreadable serving count is treated as documents worth keeping")
+    void anUnknownServingCountKeepsTheServingIndex() {
+      final AliasState aliasState = servingTablesAndAPartialRebuild();
+      final SearchClient client = aliasState.toMock();
+      lenient().when(client.getIndexedDocumentCount(PARTIAL_REBUILD)).thenReturn(7L);
+      when(client.getDocumentCount(SERVING)).thenReturn(-1L);
+
+      final SearchRepository repo = tables(client);
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        new DefaultRecreateHandler().promoteEntityIndex(partialRebuild(), false);
+      }
+
+      assertTrue(aliasState.deletedIndices.contains(PARTIAL_REBUILD));
+      assertTrue(aliasState.indexAliases.get(SERVING).contains("table_search_index"));
+    }
+
+    private static AliasState servingTablesAndAPartialRebuild() {
+      final AliasState aliasState = new AliasState();
+      aliasState.put(SERVING, Set.of("table_search_index", "table", "all"));
+      aliasState.put(PARTIAL_REBUILD, new HashSet<>());
+      return aliasState;
+    }
+
+    private static SearchRepository tables(final SearchClient client) {
+      final SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      lenient().when(repo.getClusterAlias()).thenReturn("");
+      lenient()
+          .when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+      return repo;
+    }
+
+    private static EntityReindexContext partialRebuild() {
+      return EntityReindexContext.builder()
+          .entityType("table")
+          .canonicalIndex("table_search_index")
+          .activeIndex(SERVING)
+          .stagedIndex(PARTIAL_REBUILD)
+          .build();
+    }
+  }
+
   private static class AliasState {
     final Map<String, Set<String>> indexAliases = new HashMap<>();
     final Set<String> deletedIndices = new HashSet<>();

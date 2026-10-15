@@ -25,7 +25,7 @@ import org.openmetadata.service.search.SearchRepository;
 
 class OrphanedIndexCleanerTest {
 
-  private final OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
+  private final OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner(Set::of);
   private final SearchClient searchClient = mock(SearchClient.class);
 
   @Test
@@ -60,6 +60,22 @@ class OrphanedIndexCleanerTest {
     assertEquals(2, orphaned.size());
     assertTrue(orphaned.stream().anyMatch(index -> index.indexName().equals(oldOrphan)));
     assertTrue(orphaned.stream().anyMatch(index -> index.indexName().equals(invalidTimestamp)));
+  }
+
+  @Test
+  void aStagedIndexARunStillWritesToIsNotAnOrphan() {
+    long oldTimestamp = System.currentTimeMillis() - (31L * 60 * 1000);
+    String stillRebuilding = "table_rebuild_" + oldTimestamp;
+    String abandoned = "user_rebuild_" + oldTimestamp;
+    when(searchClient.listIndicesByPrefix("")).thenReturn(Set.of(stillRebuilding, abandoned));
+    when(searchClient.getAliases(stillRebuilding)).thenReturn(Set.of());
+    when(searchClient.getAliases(abandoned)).thenReturn(Set.of());
+
+    List<OrphanedIndexCleaner.OrphanedIndex> orphaned =
+        new OrphanedIndexCleaner(() -> Set.of(stillRebuilding))
+            .findOrphanedRebuildIndices(searchClient);
+
+    assertEquals(List.of(abandoned), orphaned.stream().map(index -> index.indexName()).toList());
   }
 
   @Test

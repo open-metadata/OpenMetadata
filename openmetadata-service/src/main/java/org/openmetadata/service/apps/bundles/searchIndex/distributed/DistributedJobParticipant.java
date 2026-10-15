@@ -495,18 +495,21 @@ public class DistributedJobParticipant implements Managed {
   }
 
   private Optional<ReindexContext> buildStagedIndexContext(SearchIndexJob job) {
-    if (job.getStagedIndexMapping() == null || job.getStagedIndexMapping().isEmpty()) {
+    final ReindexContext targets =
+        ReindexContext.fromIndexMappings(job.getStagedIndexMapping(), job.getInPlaceIndexMapping());
+    if (targets.isEmpty()) {
       LOG.warn(
-          "Skipping distributed reindex job {} on server {} because staged index mapping is missing",
+          "Skipping distributed reindex job {} on server {} because it has no index targets",
           job.getId(),
           serverId);
       return Optional.empty();
     }
     LOG.info(
-        "Participant using staged index mapping from job {}: {}",
+        "Participant using index targets from job {}: staged={}, inPlace={}",
         job.getId(),
-        job.getStagedIndexMapping());
-    return Optional.of(ReindexContext.fromStagedIndexMapping(job.getStagedIndexMapping()));
+        job.getStagedIndexMapping(),
+        job.getInPlaceIndexMapping());
+    return Optional.of(targets);
   }
 
   /** Check if currently participating in a job. */

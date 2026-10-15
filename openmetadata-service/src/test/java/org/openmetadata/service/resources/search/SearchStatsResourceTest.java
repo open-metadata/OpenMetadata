@@ -43,6 +43,7 @@ import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.StagedIndexRoutes;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 
@@ -104,6 +105,8 @@ class SearchStatsResourceTest {
 
       when(mockSearchRepository.getSearchClient()).thenReturn(mockSearchClient);
       when(mockSearchRepository.getEntityIndexMap()).thenReturn(indexMap);
+      when(mockSearchRepository.getStagedIndexRoutes())
+          .thenReturn(new StagedIndexRoutes(() -> null, () -> "stats", System::currentTimeMillis));
 
       when(mockSearchClient.getAllIndexStats())
           .thenReturn(

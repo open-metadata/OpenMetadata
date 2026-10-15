@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -498,6 +499,8 @@ public class PartitionWorker {
       String entityType, String keysetCursor, int batchSize, StageStatsTracker statsTracker)
       throws SearchIndexException {
 
+    // Taken before the read, so a live write prepared after it outranks this batch's content.
+    final long readAt = System.currentTimeMillis();
     long readStartNanos = System.nanoTime();
     ResultList<?> resultList = readEntitiesKeyset(entityType, keysetCursor, batchSize);
     long readDurationNanos = System.nanoTime() - readStartNanos;
@@ -533,7 +536,7 @@ public class PartitionWorker {
       return new BatchResult(0, readErrorCount, warningsCount, nextCursor);
     }
 
-    Map<String, Object> contextData = createContextData(entityType, statsTracker);
+    Map<String, Object> contextData = createContextData(entityType, statsTracker, readAt);
 
     long readMs = readDurationNanos / 1_000_000L;
     try {
@@ -667,16 +670,12 @@ public class PartitionWorker {
     if (SearchIndexEntityTypes.isTimeSeriesEntity(entityType)) {
       return RestUtil.encodeCursor(String.valueOf(offset));
     }
-    // Fast path: coordinator precomputed boundary cursors for every partition's
-    // rangeStart at job initialization (single keyset walk per entity type, O(N) total).
-    // Only the partition's first call lands on a known rangeStart value; mid-partition
-    // recomputes (after batch failure) won't hit this path and fall through to the
-    // OFFSET-based fallback below. Cache lookup is scoped by jobId to avoid stale hits
-    // from a previous job that ran on the same server.
-    String precomputed =
-        coordinator.getPartitionStartCursor(partition.getJobId(), entityType, offset);
-    if (precomputed != null) {
-      return precomputed;
+    // Fast path: the partition row carries the cursor the coordinator recorded at its rangeStart
+    // when the job was created (single keyset walk per entity type, O(N) total), whichever server
+    // claims it. Only the partition's first call lands on rangeStart; mid-partition recomputes
+    // (after a batch failure) fall through to the OFFSET-based fallback below.
+    if (offset == partition.getRangeStart() && partition.getStartCursor() != null) {
+      return partition.getStartCursor();
     }
     int cursorOffset = toCursorOffset(entityType, offset);
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
@@ -732,9 +731,11 @@ public class PartitionWorker {
    *
    * @param entityType The entity type
    * @param statsTracker Optional stats tracker for vector stats
+   * @param readAt When the batch was read from the database
    * @return Context data map
    */
-  private Map<String, Object> createContextData(String entityType, StageStatsTracker statsTracker) {
+  private Map<String, Object> createContextData(
+      String entityType, StageStatsTracker statsTracker, long readAt) {
     String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
     Map<String, Object> contextData = new java.util.HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, normalizedEntityType);
@@ -748,17 +749,32 @@ public class PartitionWorker {
           "Staged index context is required for distributed reindexing");
     }
 
-    String targetIndex =
-        stagedIndexContext
-            .getStagedIndex(normalizedEntityType)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "No staged index configured for entity type: " + normalizedEntityType));
     contextData.put(STAGED_CONTEXT_KEY, stagedIndexContext);
-    contextData.put(TARGET_INDEX_KEY, targetIndex);
+    putWriteTarget(contextData, normalizedEntityType, readAt);
 
     return contextData;
+  }
+
+  /**
+   * A staged index takes plain writes. A live index rewritten in place takes writes guarded by the
+   * batch's read time, so they cannot replace a document a live write refreshed since.
+   */
+  private void putWriteTarget(
+      final Map<String, Object> contextData, final String entityType, final long readAt) {
+    final Optional<String> stagedIndex = stagedIndexContext.getStagedIndex(entityType);
+    if (stagedIndex.isPresent()) {
+      contextData.put(TARGET_INDEX_KEY, stagedIndex.get());
+    } else {
+      contextData.put(TARGET_INDEX_KEY, requireInPlaceIndex(entityType));
+      contextData.put(BulkSink.SOURCE_READ_AT_CONTEXT_KEY, readAt);
+    }
+  }
+
+  private String requireInPlaceIndex(final String entityType) {
+    return stagedIndexContext
+        .getInPlaceIndex(entityType)
+        .orElseThrow(
+            () -> new IllegalStateException("No index configured for entity type: " + entityType));
   }
 
   /**

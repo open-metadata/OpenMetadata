@@ -99,6 +99,12 @@ public class SearchIndexPartition {
   /** Timestamp when this partition becomes claimable (for staggered release) */
   private long claimableAt;
 
+  /**
+   * Keyset cursor of the row before {@code rangeStart} when the job was created, so every server
+   * starts this partition at the same row. Null for a first partition and for time-series types.
+   */
+  private String startCursor;
+
   /** Calculate progress percentage */
   public double getProgressPercent() {
     long total = rangeEnd - rangeStart;

@@ -509,11 +509,11 @@ class DistributedSearchIndexExecutorTest {
     setField("indexPromotionHandler", defaultHandler);
 
     invokePrivate(
-        "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "table", false);
+        "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "table", true);
 
     ArgumentCaptor<EntityReindexContext> contextCaptor =
         ArgumentCaptor.forClass(EntityReindexContext.class);
-    verify(defaultHandler).promoteEntityIndex(contextCaptor.capture(), eq(false));
+    verify(defaultHandler).promoteEntityIndex(contextCaptor.capture(), eq(true));
     assertEquals("table", contextCaptor.getValue().getEntityType());
     assertEquals("staged_table", contextCaptor.getValue().getStagedIndex());
     assertTrue(contextCaptor.getValue().getParentAliases().contains("table_parent"));
@@ -527,6 +527,20 @@ class DistributedSearchIndexExecutorTest {
     invokePrivate(
         "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "topic", true);
     verifyNoMoreInteractions(genericHandler);
+  }
+
+  @Test
+  void anEntityWithFailedRecordsWaitsForTheJobFinalizer() throws Exception {
+    DefaultRecreateHandler defaultHandler = mock(DefaultRecreateHandler.class);
+    setField("stagedIndexContext", mock(ReindexContext.class));
+    setField("indexPromotionHandler", defaultHandler);
+
+    Object promoted =
+        invokePrivate(
+            "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "table", false);
+
+    assertEquals(false, promoted);
+    verifyNoInteractions(defaultHandler);
   }
 
   @Test

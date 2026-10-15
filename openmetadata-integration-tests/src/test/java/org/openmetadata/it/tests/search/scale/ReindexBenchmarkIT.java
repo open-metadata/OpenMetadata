@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Function;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -29,8 +30,9 @@ import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.service.Entity;
 
 /**
- * Reindex throughput benchmark — seeds 10k tables, runs reindex three times
- * (discarding the first as warm-up), and emits per-run metrics to
+ * Reindex throughput benchmark — seeds 10k tables, runs a forced rebuild three times
+ * (discarding the first as warm-up), then the default reindex, which rewrites the now current
+ * live indexes in place, and emits per-mode metrics to
  * {@code target/benchmark/reindex-benchmark.json}.
  *
  * <p>Tagged {@code @scale} so it's excluded from PR runs; the nightly workflow
@@ -83,26 +85,15 @@ class ReindexBenchmarkIT {
     final int warmupRuns = ingestMode ? WARMUP_RUNS : 0;
     final int measuredRuns = ingestMode ? MEASURED_RUNS : 1;
 
-    long totalMs = 0;
-    long totalDocs = 0;
-    long peakHeap = 0;
-    for (int i = 0; i < warmupRuns + measuredRuns; i++) {
-      final long start = System.currentTimeMillis();
-      final AppRunRecord run = ReindexHelpers.triggerSearchIndexAndWait(server);
-      assertThat(run.getStatus().value()).isIn("success", "completed");
-      final long elapsed = System.currentTimeMillis() - start;
-      final long docs = search.count(tableAlias);
-      final long heap = usedHeap();
-      if (i >= warmupRuns) {
-        totalMs += elapsed;
-        totalDocs += docs;
-        peakHeap = Math.max(peakHeap, heap);
-      }
-    }
-
-    final double avgMs = totalMs / (double) measuredRuns;
-    final long avgDocs = totalDocs / measuredRuns;
-    final double throughput = avgDocs * 1000.0 / Math.max(1.0, avgMs);
+    // The forced runs keep the series comparable with earlier baselines and leave every index
+    // recorded as current, so the default runs that follow rewrite them in place.
+    final RunTimes rebuilds =
+        measure(warmupRuns, measuredRuns, ReindexHelpers::triggerForcedSearchIndexAndWait);
+    final RunTimes inPlace = measure(0, measuredRuns, ReindexHelpers::triggerSearchIndexAndWait);
+    final double avgMs = rebuilds.avgMs();
+    final long avgDocs = rebuilds.avgDocs();
+    final double throughput = rebuilds.throughput();
+    final long peakHeap = Math.max(rebuilds.peakHeap(), inPlace.peakHeap());
 
     final Map<String, Object> metrics = new LinkedHashMap<>();
     metrics.put("seed_tables", SEED_TABLES);
@@ -112,12 +103,41 @@ class ReindexBenchmarkIT {
     metrics.put("avg_doc_count", avgDocs);
     metrics.put("throughput_docs_per_sec", throughput);
     metrics.put("peak_heap_mb", peakHeap / (1024L * 1024L));
+    metrics.put("in_place_avg_total_ms", inPlace.avgMs());
+    metrics.put("in_place_throughput_docs_per_sec", inPlace.throughput());
 
     writeMetrics(metrics, "reindex-benchmark.json");
 
     // Throughput (recorded to JSON) is the regression signal. No hard wall-clock cap: reindex time
     // is environment- and cohort-size-dependent (especially in static mode), so it flakes.
     assertThat(throughput).as("throughput must be non-zero").isGreaterThan(0);
+  }
+
+  private record RunTimes(double avgMs, long avgDocs, long peakHeap) {
+    double throughput() {
+      return avgDocs * 1000.0 / Math.max(1.0, avgMs);
+    }
+  }
+
+  private static RunTimes measure(
+      final int warmupRuns,
+      final int measuredRuns,
+      final Function<ServerHandle, AppRunRecord> reindex) {
+    long totalMs = 0;
+    long totalDocs = 0;
+    long peakHeap = 0;
+    for (int i = 0; i < warmupRuns + measuredRuns; i++) {
+      final long start = System.currentTimeMillis();
+      final AppRunRecord run = reindex.apply(server);
+      assertThat(run.getStatus().value()).isIn("success", "completed");
+      final long elapsed = System.currentTimeMillis() - start;
+      if (i >= warmupRuns) {
+        totalMs += elapsed;
+        totalDocs += search.count(tableAlias);
+        peakHeap = Math.max(peakHeap, usedHeap());
+      }
+    }
+    return new RunTimes(totalMs / (double) measuredRuns, totalDocs / measuredRuns, peakHeap);
   }
 
   private static long usedHeap() {

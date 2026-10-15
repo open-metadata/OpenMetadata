@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -76,6 +75,8 @@ import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 public class ElasticSearchBulkSink implements BulkSink {
   private final SearchDocumentBuilder documentBuilder =
       new SearchDocumentBuilder(Entity::buildSearchIndex);
+
+  private static final int TOO_MANY_REQUESTS = 429;
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
@@ -311,10 +312,11 @@ public class ElasticSearchBulkSink implements BulkSink {
           entityType,
           entities.size());
     }
-    String indexName =
-        (String)
-            contextData.getOrDefault(
-                TARGET_INDEX_KEY, indexMapping.getIndexName(searchRepository.getClusterAlias()));
+    if (!contextData.containsKey(TARGET_INDEX_KEY)) {
+      writeToLiveTargets(entities, contextData, searchRepository.getWriteIndexName(indexMapping));
+      return;
+    }
+    String indexName = (String) contextData.get(TARGET_INDEX_KEY);
 
     try {
       long processStartNanos = System.nanoTime();
@@ -412,6 +414,19 @@ public class ElasticSearchBulkSink implements BulkSink {
               .withMessage(e.getMessage());
 
       throw new SearchIndexException(error);
+    }
+  }
+
+  /**
+   * A write outside a reindex reaches the serving index and, while a rebuild stages a replacement
+   * for it, the staged index too, like every live write.
+   */
+  private void writeToLiveTargets(
+      List<?> entities, Map<String, Object> contextData, String servingIndex) throws Exception {
+    for (String target : searchRepository.getDocumentWriteTargets(servingIndex)) {
+      Map<String, Object> targeted = new HashMap<>(contextData);
+      targeted.put(TARGET_INDEX_KEY, target);
+      write(entities, targeted);
     }
   }
 
@@ -853,14 +868,11 @@ public class ElasticSearchBulkSink implements BulkSink {
       return;
     }
 
-    String columnIndexName;
-    if (reindexContext != null) {
-      Optional<String> stagedIndex = reindexContext.getStagedIndex(Entity.TABLE_COLUMN);
-      columnIndexName =
-          stagedIndex.orElse(columnIndexMapping.getIndexName(searchRepository.getClusterAlias()));
-    } else {
-      columnIndexName = columnIndexMapping.getIndexName(searchRepository.getClusterAlias());
-    }
+    String servingColumnIndex = columnIndexMapping.getIndexName(searchRepository.getClusterAlias());
+    List<String> columnIndexNames =
+        reindexContext != null
+            ? List.of(reindexContext.getStagedIndex(Entity.TABLE_COLUMN).orElse(servingColumnIndex))
+            : searchRepository.getDocumentWriteTargets(servingColumnIndex);
     List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
 
     for (Column column : flattenedColumns) {
@@ -869,17 +881,19 @@ public class ElasticSearchBulkSink implements BulkSink {
         String json = JsonUtils.pojoToJson(searchIndexDoc);
         String docId = searchIndexDoc.get("id").toString();
 
-        BulkOperation operation =
-            BulkOperation.of(
-                op ->
-                    op.index(
-                        idx ->
-                            idx.index(columnIndexName)
-                                .id(docId)
-                                .document(EsUtils.toJsonData(json))));
         long estimatedSize =
             (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
-        columnBulkProcessor.add(operation, docId, Entity.TABLE_COLUMN, null, estimatedSize);
+        for (String columnIndexName : columnIndexNames) {
+          BulkOperation operation =
+              BulkOperation.of(
+                  op ->
+                      op.index(
+                          idx ->
+                              idx.index(columnIndexName)
+                                  .id(docId)
+                                  .document(EsUtils.toJsonData(json))));
+          columnBulkProcessor.add(operation, docId, Entity.TABLE_COLUMN, null, estimatedSize);
+        }
       } catch (Exception e) {
         columnBuildFailed.incrementAndGet();
         LOG.error(
@@ -1238,7 +1252,7 @@ public class ElasticSearchBulkSink implements BulkSink {
         AtomicLong totalWarnings,
         Runnable statsUpdater,
         BulkCircuitBreaker circuitBreaker) {
-      this.asyncClient = new ElasticsearchAsyncClient(client.getNewClient()._transport());
+      this.asyncClient = new ElasticsearchAsyncClient(client.getBulkTransport());
       this.bulkActions = bulkActions;
       this.maxPayloadSizeBytes = maxPayloadSizeBytes;
       this.concurrentRequestSemaphore = new Semaphore(concurrentRequests);
@@ -1399,8 +1413,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       // OpenSearchBulkSink.flushInternal so both backends behave the same way.
       boolean acquired;
       try {
-        acquired =
-            concurrentRequestSemaphore.tryAcquire(semaphoreAcquireTimeoutSeconds, TimeUnit.SECONDS);
+        acquired = acquireRequestSlot();
       } catch (InterruptedException e) {
         LOG.error("Interrupted while waiting for semaphore", e);
         Thread.currentThread().interrupt();
@@ -1429,7 +1442,12 @@ public class ElasticSearchBulkSink implements BulkSink {
 
     private void executeBulkWithRetry(
         List<BulkOperation> operations, long executionId, int numberOfActions, int attemptNumber) {
-      if (!circuitBreaker.allowRequest()) {
+      final boolean allowed = circuitBreaker.allowRequest();
+      if (!allowed && BulkOutageRetry.canRetry(attemptNumber)) {
+        scheduleOutageRetry(operations, executionId, numberOfActions, attemptNumber);
+        return;
+      }
+      if (!allowed) {
         LOG.warn(
             "Circuit breaker OPEN - fail-fast for bulk request {} with {} actions",
             executionId,
@@ -1477,7 +1495,9 @@ public class ElasticSearchBulkSink implements BulkSink {
                         operations, executionId, numberOfActions, attemptNumber, error);
               } else if (response.errors()) {
                 circuitBreaker.recordSuccess();
-                handlePartialFailure(response, executionId, numberOfActions);
+                retryScheduled =
+                    handleRejectedItems(response, operations, executionId, attemptNumber);
+                handlePartialFailure(response, executionId, numberOfActions, retryScheduled);
               } else {
                 circuitBreaker.recordSuccess();
                 totalSuccess.addAndGet(numberOfActions);
@@ -1540,9 +1560,15 @@ public class ElasticSearchBulkSink implements BulkSink {
         int numberOfActions,
         int attemptNumber,
         Throwable error) {
-      if (shouldRetry(attemptNumber, error)
-          && circuitBreaker.getState() != BulkCircuitBreaker.State.OPEN) {
-        long backoffTime = calculateBackoff(attemptNumber);
+      final boolean outage =
+          BulkOutageRetry.isOutage(error) && BulkOutageRetry.canRetry(attemptNumber);
+      if (outage
+          || (shouldRetry(attemptNumber, error)
+              && circuitBreaker.getState() != BulkCircuitBreaker.State.OPEN)) {
+        long backoffTime =
+            outage
+                ? BulkOutageRetry.delayMillis(attemptNumber, initialBackoffMillis)
+                : calculateBackoff(attemptNumber);
         LOG.warn(
             "Bulk request {} failed (attempt {}), retrying in {}ms: {}",
             executionId,
@@ -1599,11 +1625,41 @@ public class ElasticSearchBulkSink implements BulkSink {
       statsUpdater.run();
     }
 
+    /**
+     * Holds the documents the engine rejected because its write queue was full (429) for another
+     * attempt after the outage backoff, instead of counting them failed. Returns whether a retry
+     * was scheduled; it then keeps this request's slot.
+     */
+    private boolean handleRejectedItems(
+        BulkResponse response, List<BulkOperation> operations, long executionId, int attempt) {
+      List<BulkOperation> rejected = new ArrayList<>();
+      List<BulkResponseItem> items = response.items();
+      for (int position = 0; position < items.size() && position < operations.size(); position++) {
+        if (items.get(position).status() == TOO_MANY_REQUESTS) {
+          rejected.add(operations.get(position));
+        }
+      }
+      boolean retry = !rejected.isEmpty() && BulkOutageRetry.canRetry(attempt);
+      if (retry) {
+        LOG.warn(
+            "Search rejected {} documents of bulk request {} with a full write queue; retrying them",
+            rejected.size(),
+            executionId);
+        scheduleOutageRetry(rejected, executionId, rejected.size(), attempt);
+      }
+      return retry;
+    }
+
     private void handlePartialFailure(
-        BulkResponse response, long executionId, int numberOfActions) {
+        BulkResponse response, long executionId, int numberOfActions, boolean rejectedRetried) {
       int failures = 0;
       int warnings = 0;
+      int retried = 0;
       for (BulkResponseItem item : response.items()) {
+        if (rejectedRetried && item.status() == TOO_MANY_REQUESTS) {
+          retried++;
+          continue;
+        }
         String docId = item.id();
         StageStatsTracker tracker = docId != null ? docIdToTracker.remove(docId) : null;
         if (item.error() != null) {
@@ -1643,7 +1699,7 @@ public class ElasticSearchBulkSink implements BulkSink {
           }
         }
       }
-      int successes = numberOfActions - failures - warnings;
+      int successes = numberOfActions - failures - warnings - retried;
       totalSuccess.addAndGet(successes);
       totalFailed.addAndGet(failures);
       totalWarnings.addAndGet(warnings);
@@ -1683,6 +1739,36 @@ public class ElasticSearchBulkSink implements BulkSink {
         return indexName.substring(0, searchIndexPos);
       }
       return indexName;
+    }
+
+    /** Waits for a request slot; during an outage the slots are held by batches riding it out. */
+    private boolean acquireRequestSlot() throws InterruptedException {
+      boolean acquired =
+          concurrentRequestSemaphore.tryAcquire(semaphoreAcquireTimeoutSeconds, TimeUnit.SECONDS);
+      for (int wait = 1;
+          !acquired
+              && circuitBreaker.getState() != BulkCircuitBreaker.State.CLOSED
+              && wait < BulkOutageRetry.SLOT_WAITS;
+          wait++) {
+        acquired =
+            concurrentRequestSemaphore.tryAcquire(semaphoreAcquireTimeoutSeconds, TimeUnit.SECONDS);
+      }
+      return acquired;
+    }
+
+    private void scheduleOutageRetry(
+        List<BulkOperation> operations, long executionId, int numberOfActions, int attemptNumber) {
+      final long delay = BulkOutageRetry.delayMillis(attemptNumber, initialBackoffMillis);
+      LOG.warn(
+          "Search unavailable; holding bulk request {} with {} actions for {}ms (attempt {})",
+          executionId,
+          numberOfActions,
+          delay,
+          attemptNumber + 1);
+      scheduler.schedule(
+          () -> executeBulkWithRetry(operations, executionId, numberOfActions, attemptNumber + 1),
+          delay,
+          TimeUnit.MILLISECONDS);
     }
 
     private boolean shouldRetry(int attemptNumber, Throwable error) {

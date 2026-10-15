@@ -56,8 +56,7 @@ class VectorEmbeddingHandlerTest {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
-      when(searchRepository.getClusterAlias()).thenReturn("");
-      when(indexMapping.getIndexName("")).thenReturn("table_search_index");
+      when(searchRepository.getWriteIndexName(indexMapping)).thenReturn("table_search_index");
 
       handler.onEntityCreated(entity, subjectContext);
 
@@ -85,8 +84,7 @@ class VectorEmbeddingHandlerTest {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
-      when(searchRepository.getClusterAlias()).thenReturn("");
-      when(indexMapping.getIndexName("")).thenReturn("table_search_index");
+      when(searchRepository.getWriteIndexName(indexMapping)).thenReturn("table_search_index");
 
       handler.onEntityUpdated(entity, null, subjectContext);
 
@@ -104,8 +102,8 @@ class VectorEmbeddingHandlerTest {
       entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(false);
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       when(searchRepository.getIndexMapping("contextMemory")).thenReturn(indexMapping);
-      when(searchRepository.getClusterAlias()).thenReturn("");
-      when(indexMapping.getIndexName("")).thenReturn("context_memory_search_index");
+      when(searchRepository.getWriteIndexName(indexMapping))
+          .thenReturn("context_memory_search_index");
 
       handler.onEntityUpdated(entity, null, subjectContext);
 

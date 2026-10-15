@@ -59,6 +59,8 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.search.EntityManagementClient;
+import org.openmetadata.service.search.RebuildAwareEntityManagement;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -114,6 +116,8 @@ public class OpenSearchClient implements SearchClient {
   @Getter protected final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
   private volatile boolean isNewClientAvailable;
   private final OpenSearchTransport transport;
+  private final ElasticSearchConfiguration configuration;
+  private volatile OpenSearchTransport bulkTransport;
   private final SdkHttpClient awsHttpClient; // Stored for cleanup on close()
 
   private volatile OSLineageGraphBuilder lineageGraphBuilder;
@@ -121,7 +125,7 @@ public class OpenSearchClient implements SearchClient {
 
   private final String clusterAlias;
   private final OpenSearchIndexManager indexManager;
-  private final OpenSearchEntityManager entityManager;
+  private final EntityManagementClient entityManager;
   private final OpenSearchGenericManager genericManager;
   private final OpenSearchAggregationManager aggregationManager;
   private final OpenSearchDataInsightAggregatorManager dataInsightAggregatorManager;
@@ -134,6 +138,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   public OpenSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
+    this.configuration = config;
     AwsConfiguration awsConfig = config != null ? config.getAws() : null;
     boolean useIamAuth = isAwsIamAuthEnabled(awsConfig);
 
@@ -156,7 +161,7 @@ public class OpenSearchClient implements SearchClient {
     entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(newClient);
     this.nlqService = nlqService;
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
-    entityManager = new OpenSearchEntityManager(newClient);
+    entityManager = RebuildAwareEntityManagement.around(new OpenSearchEntityManager(newClient));
     genericManager = new OpenSearchGenericManager(newClient, transport);
     aggregationManager = new OpenSearchAggregationManager(newClient, rbacConditionEvaluator);
     dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
@@ -959,6 +964,29 @@ public class OpenSearchClient implements SearchClient {
       LOG.error("Failed to create AwsSdk2Transport for OpenSearch", e);
       return null;
     }
+  }
+
+  /**
+   * The transport bulk writes use: a connection pool of its own, so a reindex queueing bulk
+   * requests never makes user searches and live writes wait for a connection. With IAM
+   * authentication the signed transport is shared.
+   */
+  public OpenSearchTransport getBulkTransport() {
+    OpenSearchTransport bulk = bulkTransport;
+    if (bulk == null) {
+      synchronized (this) {
+        bulk = bulkTransport;
+        if (bulk == null) {
+          bulk =
+              awsHttpClient != null
+                  ? transport
+                  : MeteredOpenSearchTransport.wrap(
+                      createApacheHttpClient5Transport(configuration));
+          bulkTransport = bulk;
+        }
+      }
+    }
+    return bulk;
   }
 
   private ApacheHttpClient5Transport createApacheHttpClient5Transport(

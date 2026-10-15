@@ -92,7 +92,7 @@ class NoDuplicatesDuringReindexIT {
     try {
       final long deadline = System.currentTimeMillis() + PROBE_DURATION.toMillis();
       final Future<AppRunRecord> reindexFuture =
-          reindexExecutor.submit(() -> ReindexHelpers.triggerSearchIndexAndWait(server));
+          reindexExecutor.submit(() -> ReindexHelpers.triggerForcedSearchIndexAndWait(server));
       final Future<?> probeFuture =
           probeExecutor.submit(
               () -> {

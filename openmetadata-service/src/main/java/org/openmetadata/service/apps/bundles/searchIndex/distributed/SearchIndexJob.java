@@ -49,6 +49,12 @@ public class SearchIndexJob {
    */
   private Map<String, String> stagedIndexMapping;
 
+  /**
+   * Mapping of entity type to the live index it is rewritten in, for entity types whose index
+   * definition is unchanged. Promotion never touches these.
+   */
+  private Map<String, String> inPlaceIndexMapping;
+
   /** Total records across all partitions */
   private long totalRecords;
 

@@ -3493,9 +3493,7 @@ public class TableRepository extends EntityRepository<Table> {
     String docJson = JsonUtils.pojoToJson(doc);
 
     // Use getIndexOrAliasName to get the correct index name with prefix
-    String indexName =
-        searchRepository.routeToStagedIfActive(
-            searchRepository.getIndexOrAliasName("pipeline_status_search_index"));
+    String indexName = searchRepository.getIndexOrAliasName("pipeline_status_search_index");
     searchRepository.getSearchClient().createEntity(indexName, docId, docJson);
 
     LOG.debug(

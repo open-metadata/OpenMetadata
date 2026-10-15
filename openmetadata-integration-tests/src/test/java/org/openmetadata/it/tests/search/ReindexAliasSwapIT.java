@@ -1,10 +1,12 @@
 package org.openmetadata.it.tests.search;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -30,11 +32,13 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.sdk.fluent.Apps;
+import org.openmetadata.service.Entity;
 
 /**
  * Verifies that a full recreate reindex performs an atomic alias swap: every
  * declared alias points to a new backing index after the run, and no orphaned
- * indices remain.
+ * indices remain. Indexes nothing can refill from the database keep their
+ * backing index: rebuilding them would only empty them.
  *
  * <p>The swap is the critical zero-downtime contract — old index stays serving
  * reads until the new one is fully populated, then the alias flips. If the
@@ -45,6 +49,8 @@ import org.openmetadata.sdk.fluent.Apps;
 @Execution(ExecutionMode.SAME_THREAD)
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class ReindexAliasSwapIT {
+  private static final Set<String> TYPES_WITHOUT_A_DATABASE_SOURCE =
+      Set.of(Entity.FIELD_PIPELINE_STATUS, Entity.MCP_EXECUTION);
 
   private static ServerHandle server;
   private static IndexAliasInspector inspector;
@@ -63,7 +69,7 @@ class ReindexAliasSwapIT {
     final Map<String, String> beforeSwap = new LinkedHashMap<>(inspector.aliasToIndex());
     assertThat(beforeSwap).as("aliases before reindex").isNotEmpty();
 
-    final AppRunRecord run = ReindexHelpers.triggerSearchIndexAndWait(server);
+    final AppRunRecord run = ReindexHelpers.triggerForcedSearchIndexAndWait(server);
     assertThat(run.getStatus().value()).isIn("success", "completed");
 
     // Per-entity alias promotions are fired by callbacks that can lag a beat behind the run
@@ -81,11 +87,20 @@ class ReindexAliasSwapIT {
     assertThat(afterSwap.keySet())
         .as("alias set must be unchanged after reindex")
         .containsExactlyInAnyOrderElementsOf(beforeSwap.keySet());
+    final Set<String> keptAliases =
+        TYPES_WITHOUT_A_DATABASE_SOURCE.stream().map(inspector::aliasFor).collect(toSet());
     beforeSwap.forEach(
-        (alias, beforeIndex) ->
+        (alias, beforeIndex) -> {
+          if (keptAliases.contains(alias)) {
+            assertThat(afterSwap.get(alias))
+                .as("alias %s has no database source, so it must keep its index", alias)
+                .isEqualTo(beforeIndex);
+          } else {
             assertThat(afterSwap.get(alias))
                 .as("alias %s must point to a NEW backing index after recreate reindex", alias)
-                .isNotEqualTo(beforeIndex));
+                .isNotEqualTo(beforeIndex);
+          }
+        });
   }
 
   private static void seedSmallCohort(final TestNamespace ns) {
