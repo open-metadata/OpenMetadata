@@ -85,7 +85,8 @@ JOIN
     crdb_internal.table_indexes ON partitions.table_id = table_indexes.descriptor_id
         AND partitions.index_id = table_indexes.index_id
 WHERE
-    tables.name = :table_name
+    tables.database_name = current_database()
+    AND tables.name = :table_name
     AND tables.schema_name = :schema_name
     AND table_indexes.index_type = 'primary'
     AND partitions.parent_name IS NULL;

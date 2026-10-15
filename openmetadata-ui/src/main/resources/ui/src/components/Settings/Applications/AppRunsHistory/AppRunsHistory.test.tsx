@@ -16,10 +16,8 @@ import {
   render,
   screen,
   waitForElementToBeRemoved,
-  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Table as AntdTable } from 'antd';
 import React from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { Status } from '../../../../generated/entity/applications/appRunRecord';
@@ -27,6 +25,7 @@ import {
   mockApplicationData,
   mockExternalApplicationData,
 } from '../../../../mocks/rests/applicationAPI.mock';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import AppRunsHistory from './AppRunsHistory.component';
 
 const mockHandlePagingChange = jest.fn();
@@ -144,11 +143,15 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../../../common/Table/TableV2', () => {
+  const ActualTable = jest.requireActual(
+    '../../../common/Table/TableV2'
+  ).default;
+
   return jest
     .fn()
     .mockImplementation(({ loading, customPaginationProps, ...rest }) => (
       <div>
-        {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
+        {loading ? <p>TableLoader</p> : <ActualTable {...rest} />}
         {customPaginationProps && (
           <button
             onClick={() =>
@@ -259,7 +262,9 @@ describe('AppRunsHistory', () => {
       .findIndex((header) => header.textContent === 'label.triggered-by');
     const [, firstDataRow] = screen.getAllByRole('row');
 
-    return within(firstDataRow).getAllByRole('cell')[columnIndex];
+    return Array.from(
+      firstDataRow.querySelectorAll('[role="rowheader"], [role="gridcell"]')
+    )[columnIndex];
   };
 
   it('should show the user who triggered an on-demand run', async () => {
@@ -444,6 +449,11 @@ describe('AppRunsHistory', () => {
 
     expect(screen.getByTestId('app-run-config-close')).toBeInTheDocument();
     expect(screen.getByText('Configure Save')).toBeInTheDocument();
+    // The run config is read-only, so the form must not offer a Submit.
+    expect(FormBuilderV1).toHaveBeenLastCalledWith(
+      expect.objectContaining({ readonly: true, hideFooter: true }),
+      expect.anything()
+    );
   });
 
   it('should disable config when schema is unavailable', async () => {

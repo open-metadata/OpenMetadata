@@ -73,7 +73,6 @@ import Table from '../../../common/Table/TableV2';
 import StopScheduleModal from '../../../Modals/StopScheduleRun/StopScheduleRunModal';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogsViewer from '../AppLogsViewer/AppLogsViewer.component';
-import './app-run-history.less';
 import {
   AppRunRecordWithId,
   AppRunsHistoryProps,

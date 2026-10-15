@@ -75,9 +75,10 @@ search-it nightly. Before requesting review, run the Java tests this PR impacts 
 `.github/java-tests/impact-map.json`):
 
   make java_affected                            # list the impacted unit tests + ITs and the commands
-  make java_affected_run ARGS="--update-pr"     # run them and fill the block below
+  make java_affected_run ARGS="--update-pr"     # run them, fill the block below, post the details as a comment
 
-Without `gh`, drop `--update-pr` and paste `target/java-tests/local-pr-results.md` between the markers.
+Without `gh`, drop `--update-pr`, paste `target/java-tests/local-pr-results.md` between the markers,
+and post `target/java-tests/local-pr-results-details.md` as a PR comment.
 -->
 <!-- local-java-test-results:start -->
 <!-- local-java-test-results:end -->

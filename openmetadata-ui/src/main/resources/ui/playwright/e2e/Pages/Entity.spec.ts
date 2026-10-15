@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Page, Request } from '@playwright/test';
-import { isUndefined } from 'lodash';
+import { isUndefined, startCase } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
 import {
   COMMON_TIER_TAG,
@@ -1345,16 +1345,14 @@ pickEntityMatrix(
               .getByTestId('filter-icon')
               .click();
 
-            // AntD mounts the dropdown as .ant-table-filter-dropdown;
-            // TableV2 mounts ColumnFilter inside a react-aria dialog popover.
-            const filterDropdown = page.locator(
-              '.ant-table-filter-dropdown:visible, [role="dialog"]:has(.ant-menu)'
-            );
+            // TableV2 mounts ColumnFilter in `filter-dropdown`; its core
+            // checkboxes are labelled with the start-cased tag FQN.
+            const filterDropdown = page.getByTestId('filter-dropdown');
 
             await expect(filterDropdown).toBeVisible();
 
             await filterDropdown
-              .locator(`.ant-checkbox-wrapper:has(input[value="${filterTag}"])`)
+              .getByText(startCase(filterTag), { exact: true })
               .click();
 
             await expect(filterDropdown).toBeHidden();

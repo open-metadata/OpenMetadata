@@ -28,7 +28,7 @@ only to hold migrated one-off values until they can be re-expressed).
 | Interactive control border | `--om-color-border-primary`, `--om-color-border-hover` |
 | Card / panel / divider border | `--om-color-border-subtle` |
 | Error / brand border | `--om-color-border-error`, `--om-color-border-brand` |
-| Link | `--om-color-link`, `--om-color-link-hover` |
+| Link | `--color-text-link`, `--color-text-link-hover` (core; `tw:text-link`) |
 | Hover / active / selected row | `--om-color-interactive-hover` / `-active` / `-selected` |
 | Focus ring | `--om-color-focus-ring` |
 | A specific brand/gray/red/… swatch | `--om-color-{scale}-{25…950}` (palette) |

@@ -675,3 +675,17 @@ def isolated_parse_query_cache():
 def test_parse_query(query, expected_identifier, isolated_parse_query_cache):
     result = _parse_query(query)
     assert result == expected_identifier
+
+
+def test_show_tables_escapes_untrusted_names():
+    """Names parsed from the query history are untrusted: a single quote and a
+    backslash are escaped in the LIKE literal, a double quote in the identifiers."""
+    session = MagicMock()
+    session.execute.return_value.fetchall.return_value = []
+    resolver = SnowflakeTableResovler(session)
+
+    resolver.show_tables('my"db', 'my"schema', "it's\\")
+
+    assert str(session.execute.call_args[0][0]) == (
+        'SHOW TABLES LIKE \'it\'\'s\\\\\' IN SCHEMA "my""db"."my""schema" LIMIT 100'
+    )

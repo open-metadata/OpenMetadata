@@ -92,7 +92,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
                 <Button
                   color="primary"
                   data-testid="add-team"
-                  size="sm"
+                  size="xs"
                   onPress={() =>
                     onNavigate({
                       type: 'teams-add',

@@ -164,6 +164,8 @@ class EntityRepositoryRestoreTest {
     relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     pipelineDAO = mock(CollectionDAO.PipelineDAO.class);
     when(daoCollection.relationshipDAO()).thenReturn(relationshipDAO);
+    when(daoCollection.customPropertyReferenceDAO())
+        .thenReturn(mock(CollectionDAO.CustomPropertyReferenceDAO.class));
     Entity.setCollectionDAO(daoCollection);
   }
 
