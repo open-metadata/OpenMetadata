@@ -19,7 +19,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.ServerStopping;
+import org.openmetadata.service.events.consumer.ServerStopping;
 import org.quartz.Trigger;
 
 /**
@@ -107,12 +107,12 @@ class AlertRunningTickIT {
     }
   }
 
-  // Quartz loads whatever class the job was stored with. The consumer that runs is the one the
-  // alert's row names, which is what lets a later release store every job with AlertPublisher.
+  // Every job is stored with the consumer job. The consumer that runs is the one the alert's row
+  // names, by its registered id.
   @Test
-  void jobStoredWithAlertPublisherRunsTheNamedConsumer(TestNamespace ns) throws Exception {
+  void theConsumerJobRunsTheNamedConsumer(TestNamespace ns) throws Exception {
     try (HeldTick held = HeldTick.of(ns, "named_consumer")) {
-      assertTrue(held.reachedTheNamedConsumer, "DirectTick always loads AlertPublisher");
+      assertTrue(held.reachedTheNamedConsumer, "DirectTick always runs the consumer job");
       held.finish();
     }
   }
@@ -142,7 +142,7 @@ class AlertRunningTickIT {
           AlertFixtures.tableAlert(
               ns,
               name,
-              LatchedConsumer.class.getName(),
+              LatchedConsumer.ID,
               List.of(AlertFixtures.external(WEBHOOK, "http://localhost:9/unused"))));
     }
 

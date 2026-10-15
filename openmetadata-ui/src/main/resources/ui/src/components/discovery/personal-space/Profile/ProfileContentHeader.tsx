@@ -121,9 +121,12 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
           </Typography>
           {meta}
         </Box>
+        {/* The header sits under the modal's close button, which core pins to
+            the dialog's top-right corner; the right margin keeps the actions
+            clear of it, as core's own Dialog header does with `pr-12`. */}
         {actions && (
           <Box
-            className="tw:ml-auto tw:flex tw:items-center tw:gap-2"
+            className="tw:ml-auto tw:mr-12 tw:flex tw:items-center tw:gap-2"
             direction="row">
             {actions}
           </Box>

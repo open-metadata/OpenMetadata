@@ -35,7 +35,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
 import { ReactComponent as FollowActiveIcon } from '../../../assets/svg/action-icons/follow-active.svg';
 import { ReactComponent as FollowIcon } from '../../../assets/svg/action-icons/follow.svg';
 import { ReactComponent as ChatIcon } from '../../../assets/svg/action-icons/message-chat.svg';
@@ -50,6 +49,7 @@ import { ReactComponent as UserIcon } from '../../../assets/svg/common/user.svg'
 import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sidebar-collapsible.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import { EditIconButton } from '../../../components/common/IconButtons/EditIconButton';
 import Loader from '../../../components/common/Loader/Loader';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
@@ -358,12 +358,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             multiple={entityRules.canAddMultipleDomains}
             selectedDomain={knowledgePage?.domains ?? []}
             onUpdate={handleDomainSave}>
-            <ButtonUtility
-              className="tw:p-1"
-              color="tertiary"
+            <EditIconButton
+              newLook
               data-testid="edit-domain-btn"
-              icon={<EditIcon height={14} width={14} />}
-              tooltip={t('label.edit-entity', {
+              size="small"
+              title={t('label.edit-entity', {
                 entity: t('label.domain'),
               })}
             />
@@ -422,12 +421,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               }}
               owner={knowledgePage?.owners}
               onUpdate={handleOwnerSave}>
-              <ButtonUtility
-                className="tw:p-1"
-                color="tertiary"
+              <EditIconButton
+                newLook
                 data-testid="edit-owner-btn"
-                icon={<EditIcon height={14} width={14} />}
-                tooltip={t('label.edit-entity', {
+                size="small"
+                title={t('label.edit-entity', {
                   entity: t('label.owner-plural'),
                 })}
               />
@@ -495,17 +493,16 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         </Tooltip>
 
         <ButtonUtility
-          className={
-            voteStatus === QueryVoteType.votedUp
-              ? 'tw:text-fg-brand-primary'
-              : undefined
-          }
           color="tertiary"
           data-testid="upvote-btn"
           disabled={knowledgePage?.deleted || voteLoading !== null}
           icon={
             voteStatus === QueryVoteType.votedUp ? (
-              <ThumbsUpActiveIcon height={20} width={20} />
+              <ThumbsUpActiveIcon
+                className="tw:text-fg-brand-primary"
+                height={20}
+                width={20}
+              />
             ) : (
               <ThumbsUpIcon height={20} width={20} />
             )
@@ -515,17 +512,16 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         />
 
         <ButtonUtility
-          className={
-            voteStatus === QueryVoteType.votedDown
-              ? 'tw:text-fg-brand-primary'
-              : undefined
-          }
           color="tertiary"
           data-testid="downvote-btn"
           disabled={knowledgePage?.deleted || voteLoading !== null}
           icon={
             voteStatus === QueryVoteType.votedDown ? (
-              <ThumbsDownActiveIcon height={20} width={20} />
+              <ThumbsDownActiveIcon
+                className="tw:text-fg-warning-primary"
+                height={20}
+                width={20}
+              />
             ) : (
               <ThumbsDownIcon height={20} width={20} />
             )
@@ -603,7 +599,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   <Box align="center" gap={2}>
                     <TrashIcon
                       aria-hidden="true"
-                      className="ttw:shrink-0 tw:text-error-primary"
+                      className="tw:shrink-0 tw:text-error-primary"
                       height={20}
                       width={20}
                     />

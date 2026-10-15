@@ -107,7 +107,7 @@ describe('OntologyConceptDataAssets', () => {
 
     expect(await screen.findByText('table_0')).toBeInTheDocument();
     expect(screen.getByTestId('authoring-more-assets')).toHaveTextContent(
-      '+2 label.more-lowercase label.data-asset-lowercase-plural'
+      'label.show-count-more'
     );
 
     fireEvent.click(screen.getByTestId('authoring-more-assets'));
