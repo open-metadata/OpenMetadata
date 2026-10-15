@@ -396,10 +396,16 @@
 
   // The embedded view needs a sensible canvas floor so the KG tab looks right
   // inside the entity page, but in fullscreen the viewport IS the floor —
-  // honouring `min-height: calc(--om-space-40 * 8)` here overflows a narrow
-  // viewport + 2x zoom and pushes the canvas past the container bottom (fails
-  // the geometry poll in the narrow-layouts test).
-  .knowledge-graph-body {
+  // honouring the default 320px (or the details-open 160px) min-height here
+  // overflows a narrow viewport + 2x zoom and pushes the canvas past the
+  // container bottom (fails the geometry poll in the narrow-layouts test).
+  //
+  // The second selector is load-bearing: `.knowledge-graph-container.kg-details-open
+  // .knowledge-graph-body` sits at specificity (0,3,0); without re-matching it
+  // under the fullscreen parent (bringing us to (0,4,0)), the details-open
+  // floor wins and the canvas can still overflow once the drawer is open.
+  .knowledge-graph-body,
+  .knowledge-graph-container.kg-details-open .knowledge-graph-body {
     min-height: 0;
   }
 
