@@ -19,7 +19,8 @@ export type NavItemVariant = 'default' | 'solid';
 // `solid` fills the current item with the brand colour and opens a collapsible
 // group under a filled header; hover tints rest items brand instead of gray.
 const solidStyles = sortCx({
-  root: 'tw:hover:bg-brand-primary_alt tw:dark:hover:bg-brand-primary_alt',
+  // Rest items sit on the sidebar surface instead of painting white boxes.
+  root: 'tw:bg-transparent tw:hover:bg-brand-primary_alt tw:dark:hover:bg-brand-primary_alt',
   rootSelected:
     'tw:bg-brand-solid tw:hover:bg-brand-solid tw:dark:bg-brand-solid tw:dark:hover:bg-brand-solid',
   groupSelected:

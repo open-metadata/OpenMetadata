@@ -59,7 +59,14 @@ describe('NavItemBase', () => {
         <NavItemBase current href="/b" type="link">
           Default
         </NavItemBase>
+        <NavItemBase href="/c" type="link" variant="solid">
+          Resting
+        </NavItemBase>
       </>
+    );
+
+    expect(screen.getByRole('link', { name: 'Resting' })).toHaveClass(
+      'tw:bg-transparent'
     );
 
     expect(screen.getByRole('link', { name: 'Current' })).toHaveClass(

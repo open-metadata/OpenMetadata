@@ -263,7 +263,7 @@ const LeftSidebar = () => {
 
   return (
     <aside
-      className={classNames('app-sidebar tw:bg-surface', {
+      className={classNames('app-sidebar', {
         'sidebar-collapsed': isSidebarCollapsed,
         'left-sidebar-col-rtl': isDirectionRTL,
         'sidebar-open': !isSidebarCollapsed,
