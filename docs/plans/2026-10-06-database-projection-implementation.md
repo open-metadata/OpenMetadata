@@ -1,9 +1,11 @@
 # Database projection implementation
 
-Status: **partial implementation; production capture remains disabled.** Shared search document
-preparation and RDF translation are in use, but the durable capture/expansion/delivery service is
-not yet implemented end to end. The indexing apps and their schedules remain active. The original
-checkpoints below describe foundation coverage, not completion of the transparent-indexing goal.
+Status: **partial implementation, shipping in 2.2 as the stacked PRs #35570–#35577 (merged in
+order); production capture remains disabled.** Shared search document preparation and RDF
+translation are in use, but the durable capture/expansion/delivery service is not yet implemented
+end to end. The indexing apps stay for manual and emergency rebuilds; their weekly schedules are
+retired (steps 3 and 4). The original checkpoints below describe foundation coverage, not
+completion of the transparent-indexing goal.
 Tracks the approved [search/RDF design](2026-10-06-database-search-indexing-design.md).
 
 ## Reliability, API latency and recovery — 2026-10-10

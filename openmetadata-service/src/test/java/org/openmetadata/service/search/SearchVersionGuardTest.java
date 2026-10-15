@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.service.search.scripts.SoftDeleteScript;
@@ -60,5 +61,15 @@ class SearchVersionGuardTest {
     assertEquals(Map.of("version", 0.3, "updatedAt", 30L, "sourceReadAt", 40L), own.params());
     assertTrue(own.painless().contains(descendants.painless()));
     assertEquals(Map.of(), descendants.params());
+  }
+
+  @Test
+  void aQueuedSoftDeleteIsOrderedByWhenItWasQueued() {
+    final AtomicReference<SoftDeleteScript> queued = new AtomicReference<>();
+
+    SearchVersionGuard.readAt(40L, () -> queued.set(SoftDeleteScript.forEntity(true, ENTITY)))
+        .run();
+
+    assertEquals(40L, queued.get().params().get(SearchVersionGuard.SOURCE_READ_AT));
   }
 }

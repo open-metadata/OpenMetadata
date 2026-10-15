@@ -106,13 +106,20 @@ public class StagedIndexRoutes implements Managed {
     }
   }
 
-  /** Renews this server's registrations and reads every server's. */
+  /**
+   * Renews this server's registrations and reads every server's. A registration the table lost,
+   * or never stored because the database was unreachable, is stored again, so the other servers
+   * follow it within a refresh.
+   */
   void refresh() {
     final SearchIndexWriteRouteDAO store = routeStore.get();
     if (store != null) {
       final long now = clock.getAsLong();
-      if (!owned.isEmpty()) {
-        store.renew(List.copyOf(owned.values()), now + LEASE_MS);
+      final Map<String, String> routes = Map.copyOf(owned);
+      if (!routes.isEmpty()
+          && store.renew(List.copyOf(routes.values()), now + LEASE_MS) < routes.size()) {
+        routes.forEach(
+            (canonical, staged) -> store.upsert(canonical, staged, ownerId.get(), now + LEASE_MS));
       }
       shared =
           store.listLive(now).stream()
