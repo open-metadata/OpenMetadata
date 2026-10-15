@@ -129,7 +129,9 @@ public class CsvImportExportJobHandler implements JobHandler {
 
     createBulkImportVersion(args, result, job.getCreatedBy());
     jobManager.completeImportJob(jobId, result, "Import completed.");
-    sendImportMessage(job.getCreatedBy(), new CSVImportMessage(jobId, "COMPLETED", result, null));
+    // Result is persisted on the job row above; the completion frame stays thin (id + status) so a
+    // large import result is fetched once over REST, not relayed through the websocket table.
+    sendImportMessage(job.getCreatedBy(), new CSVImportMessage(jobId, "COMPLETED", null, null));
   }
 
   private void runExport(BackgroundJob job, CsvAsyncJobArgs args) throws IOException {

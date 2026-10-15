@@ -472,11 +472,12 @@ test.describe(
         state: 'visible',
       });
 
-      // Verify test platform tags/badges are displayed
-      const platformTags = page.locator('.ant-tag, .ant-badge');
-      const tagCount = await platformTags.count();
+      // Verify the platform column lists test platforms
+      const platformCells = page
+        .getByTestId('test-definition-table')
+        .getByRole('gridcell', { name: /OpenMetadata/ });
 
-      expect(tagCount).toBeGreaterThan(0);
+      expect(await platformCells.count()).toBeGreaterThan(0);
     });
 
     test('should keep system test definitions editable but not deletable', async ({

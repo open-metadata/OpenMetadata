@@ -295,8 +295,7 @@ describe('OntologyExplorer Studio data controls', () => {
       screen.getByTestId(`ontology-data-cluster-${termNode.id}`)
     ).toBeInTheDocument();
     expect(screen.getByText('transactions')).toHaveClass(
-      'tw:font-mono',
-      'tw:text-[11px]',
+      'tw:text-sm',
       'tw:font-medium'
     );
     expect(screen.getByRole('tab', { name: 'label.data' })).toHaveAttribute(
