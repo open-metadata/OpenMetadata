@@ -109,6 +109,7 @@
   "throttle-debounce",
   "tinycolor2",
   "use-sync-external-store",
+  "vite-plugin-node-polyfills",
   "void-elements",
   "zustand"
 ]
