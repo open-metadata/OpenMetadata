@@ -177,18 +177,18 @@ export const handleAssetDownload = async (file: ContextFile) => {
 };
 
 /**
- * How often a memory was cited and when last: the answers it was applied to once its outcomes
- * are counted, otherwise the retrieval usage it recorded before outcomes existed.
+ * How often a memory was cited and when last: the answers it was applied to once a recount has
+ * stamped its outcomes, otherwise the retrieval usage it recorded before outcomes existed.
  */
 export const getMemoryCitations = (
   memory: ContextMemory
-): { count?: number; lastAt?: number } =>
-  memory.outcomes
-    ? {
-        count: memory.outcomes.appliedCount ?? 0,
-        lastAt: memory.outcomes.lastAppliedAt,
-      }
-    : { count: memory.usageCount, lastAt: memory.lastUsedAt };
+): { count?: number; lastAt?: number } => {
+  const { outcomes } = memory;
+
+  return outcomes?.countedAt === undefined
+    ? { count: memory.usageCount, lastAt: memory.lastUsedAt }
+    : { count: outcomes.appliedCount ?? 0, lastAt: outcomes.lastAppliedAt };
+};
 
 export const getSortConfig = (
   sortBy: MemorySortBy

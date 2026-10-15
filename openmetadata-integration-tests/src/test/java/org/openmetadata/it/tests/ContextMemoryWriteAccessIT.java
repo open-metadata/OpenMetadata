@@ -381,6 +381,22 @@ public class ContextMemoryWriteAccessIT {
     assertNull(adminMemories().get(created.getId().toString()).getOutcomes());
   }
 
+  @Test
+  void aMemoryNeverCountedIsIndexedWithoutOutcomes(TestNamespace ns) {
+    ContextMemory created = adminMemories().create(preference(ns, "outcomes-never-counted"));
+
+    Awaitility.await("search holds the memory with no outcomes, so lists fall back to usage")
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              JsonNode source = searchedMemory(created.getId());
+              assertEquals(created.getId().toString(), source.at("/id").asText());
+              assertTrue(source.at("/outcomes").isMissingNode());
+            });
+  }
+
   private static MemoryOutcomes outcomes(int applied, long countedAt) {
     return new MemoryOutcomes()
         .withAppliedCount(applied)

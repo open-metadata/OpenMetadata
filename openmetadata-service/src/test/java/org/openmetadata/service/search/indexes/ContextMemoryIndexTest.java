@@ -40,6 +40,7 @@ import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -139,16 +140,15 @@ class ContextMemoryIndexTest {
   }
 
   @Test
-  void buildSearchIndexDoc_aMemoryNeverCountedIndexesZeroOutcomes() {
+  void buildSearchIndexDoc_aMemoryNeverCountedIndexesNoOutcomes() {
+    ContextMemory memory = baseMemory().withUsageCount(37);
     Map<String, Object> doc =
-        new ContextMemoryIndex(baseMemory()).buildSearchIndexDocInternal(new HashMap<>());
+        new ContextMemoryIndex(memory).buildSearchIndexDocInternal(JsonUtils.getMap(memory));
 
-    Map<?, ?> outcomes = (Map<?, ?>) doc.get("outcomes");
-    assertEquals(0, outcomes.get("appliedCount"));
-    assertEquals(0, outcomes.get("positiveCount"));
-    assertEquals(0, outcomes.get("negativeCount"));
-    assertEquals(0, outcomes.get("correctedCount"));
-    assertNull(outcomes.get("lastAppliedAt"));
+    assertFalse(
+        doc.containsKey("outcomes"),
+        "a list read from search must fall back to usage, not show zero citations");
+    assertEquals(37, doc.get("usageCount"));
   }
 
   @Test
@@ -165,7 +165,7 @@ class ContextMemoryIndexTest {
                     .withLastCorrectedAt(1_690_000_000_000L)
                     .withCountedAt(1_700_000_500_000L));
     Map<String, Object> doc =
-        new ContextMemoryIndex(memory).buildSearchIndexDocInternal(new HashMap<>());
+        new ContextMemoryIndex(memory).buildSearchIndexDocInternal(JsonUtils.getMap(memory));
 
     Map<?, ?> outcomes = (Map<?, ?>) doc.get("outcomes");
     assertEquals(12, outcomes.get("appliedCount"));

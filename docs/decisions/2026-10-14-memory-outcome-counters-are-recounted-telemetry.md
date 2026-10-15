@@ -5,8 +5,9 @@
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryOutcomeWriteSqlTest` (absolute, monotonic and preserved on both
   engines), `ContextMemoryWriteAccessIT` (admin or bot only, stale recount refused, a PATCH
-  cannot change them in the database or the index), `ContextMemoryRepositoryTest`,
-  `ContextMemoryIndexTest`, `ContextMemoryIndexMappingTest`
+  cannot change them in the database or the index, an uncounted memory indexed without them),
+  `ContextMemoryRepositoryTest`, `ContextMemoryIndexTest`, `ContextMemoryIndexMappingTest`,
+  `ContextCenterPureUtils.test.ts` (usage shown until a recount stamps `countedAt`)
 - **Related:** open-metadata/ai-platform#1581;
   ADR:2026-10-10-memory-content-recency-and-usage-are-independent-of-review-writes;
   ADR:openmetadata-collate/2026-10-14-memory-usage-counts-persisted-answers
@@ -34,14 +35,17 @@ event is replayed, and a vote can be withdrawn or changed, which an increment ca
   stored telemetry onto the entity it returns and indexes, so a request cannot put values in search
   that the database refused.
 - `outcomes` is not in the create request and never enters version history.
+- The search index carries `outcomes` only once a memory is counted, never zero-filled, because
+  lists read from search build their memories from it.
 
 ## Consequences
 
 - Counts are idempotent: recounting the same events gives the same values, and a vote change is
   just a different recount.
 - Context Center reads `outcomes.appliedCount` and `lastAppliedAt` as "Cited", and shows helpful,
-  unhelpful and corrected counts. A memory with no `outcomes` yet still shows its legacy
-  `usageCount`. "Most used" sorts by `outcomes.appliedCount`, so memories never counted sort last.
+  unhelpful and corrected counts. A memory with no `outcomes` yet, or outcomes no recount stamped
+  with `countedAt`, still shows its legacy `usageCount`. "Most used" sorts by
+  `outcomes.appliedCount`, and a memory never counted has no such value, so it sorts last.
 - Nothing in OpenMetadata alone records outcomes. Without a recording service, `outcomes` stays
   empty and the UI keeps showing usage.
 - Existing indexes need a reindex to type the new fields; until then dynamic mapping types the

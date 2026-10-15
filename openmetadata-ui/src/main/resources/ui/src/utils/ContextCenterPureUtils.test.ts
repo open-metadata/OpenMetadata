@@ -125,14 +125,19 @@ describe('getMemoryCitations', () => {
         name: 'm',
         usageCount: 99,
         lastUsedAt: 1,
-        outcomes: { appliedCount: 12, lastAppliedAt: 2 },
+        outcomes: { appliedCount: 12, lastAppliedAt: 2, countedAt: 3 },
       })
     ).toEqual({ count: 12, lastAt: 2 });
   });
 
   it('counts zero for counted outcomes that hold no applied count', () => {
     expect(
-      getMemoryCitations({ id: 'm', name: 'm', usageCount: 99, outcomes: {} })
+      getMemoryCitations({
+        id: 'm',
+        name: 'm',
+        usageCount: 99,
+        outcomes: { countedAt: 3 },
+      })
     ).toEqual({ count: 0, lastAt: undefined });
   });
 
@@ -140,6 +145,23 @@ describe('getMemoryCitations', () => {
     expect(
       getMemoryCitations({ id: 'm', name: 'm', usageCount: 5, lastUsedAt: 7 })
     ).toEqual({ count: 5, lastAt: 7 });
+  });
+
+  it('falls back to the retrieval usage when no recount stamped the outcomes', () => {
+    expect(
+      getMemoryCitations({
+        id: 'm',
+        name: 'm',
+        usageCount: 37,
+        lastUsedAt: 7,
+        outcomes: {
+          appliedCount: 0,
+          positiveCount: 0,
+          negativeCount: 0,
+          correctedCount: 0,
+        },
+      })
+    ).toEqual({ count: 37, lastAt: 7 });
   });
 });
 

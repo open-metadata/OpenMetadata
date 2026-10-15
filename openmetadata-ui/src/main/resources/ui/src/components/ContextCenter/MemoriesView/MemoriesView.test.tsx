@@ -17,6 +17,16 @@ import {
 } from '../../../generated/entity/context/contextMemory';
 import MemoriesView from './MemoriesView.component';
 
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  useTranslation: () => ({
+    // Echoes the count, so a test can tell which count a label shows.
+    t: (key: string, options?: { count?: number }) =>
+      options?.count === undefined ? key : `${key}:${options.count}`,
+    i18n: { language: 'en-US' },
+  }),
+}));
+
 jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
   jest.fn(() => <div data-testid="profile-picture" />)
 );
@@ -210,6 +220,7 @@ describe('MemoriesView', () => {
               positiveCount: 3,
               negativeCount: 1,
               correctedCount: 2,
+              countedAt: 1778756959299,
             },
           },
         ]}
@@ -218,19 +229,24 @@ describe('MemoriesView', () => {
     );
 
     expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
-      'label.cited-n-times'
+      'label.cited-n-times:12'
     );
     expect(screen.getByTestId('memory-helpful-count')).toHaveTextContent('3');
     expect(screen.getByTestId('memory-unhelpful-count')).toHaveTextContent('1');
     expect(screen.getByTestId('memory-corrected-count')).toHaveTextContent(
-      'label.corrected-n-times'
+      'label.corrected-n-times:2'
     );
   });
 
   it('shows no vote or correction count that is zero', () => {
     render(
       <MemoriesView
-        data={[{ ...mockMemories[0], outcomes: { appliedCount: 4 } }]}
+        data={[
+          {
+            ...mockMemories[0],
+            outcomes: { appliedCount: 4, countedAt: 1778756959299 },
+          },
+        ]}
         isLoading={false}
       />
     );
@@ -256,7 +272,52 @@ describe('MemoriesView', () => {
     );
 
     expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
-      'label.cited-n-times'
+      'label.cited-n-times:5'
+    );
+  });
+
+  it('shows the legacy usage of a search-listed memory never counted', () => {
+    // A search hit carries the indexed usage and, until a recount, no outcomes.
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            usageCount: 37,
+            lastUsedAt: 1778756959299,
+            entityStatus: ContextMemoryStatus.Approved,
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
+      'label.cited-n-times:37'
+    );
+  });
+
+  it('shows the legacy usage when no recount stamped the outcomes', () => {
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            usageCount: 37,
+            outcomes: {
+              appliedCount: 0,
+              positiveCount: 0,
+              negativeCount: 0,
+              correctedCount: 0,
+            },
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
+      'label.cited-n-times:37'
     );
   });
 

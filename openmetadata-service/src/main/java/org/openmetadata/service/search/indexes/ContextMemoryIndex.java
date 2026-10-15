@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -93,18 +92,21 @@ public class ContextMemoryIndex implements TaggableIndex {
             : null);
     doc.put("usageCount", memory.getUsageCount() != null ? memory.getUsageCount() : 0);
     doc.put("lastUsedAt", memory.getLastUsedAt());
-    doc.put(FIELD_OUTCOMES, outcomesDoc(memory));
+    applyOutcomes(doc);
 
     applyShareConfig(doc);
     applyEntityReferences(doc);
     return doc;
   }
 
-  /** A memory never counted indexes zero counts, so sorting by a count ranks it last. */
-  static Map<String, Object> outcomesDoc(ContextMemory memory) {
-    MemoryOutcomes outcomes =
-        memory.getOutcomes() != null ? memory.getOutcomes() : new MemoryOutcomes();
-    return JsonUtils.getMap(outcomes);
+  /**
+   * Only a counted memory indexes outcomes: a list read from search then shows an uncounted one's
+   * usage, not zero citations, and a sort on a count puts it last.
+   */
+  private void applyOutcomes(Map<String, Object> doc) {
+    if (memory.getOutcomes() != null) {
+      doc.put(FIELD_OUTCOMES, JsonUtils.getMap(memory.getOutcomes()));
+    }
   }
 
   public static String memoryTypeValue(ContextMemory memory) {
