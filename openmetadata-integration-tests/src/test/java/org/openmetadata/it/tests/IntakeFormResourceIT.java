@@ -179,7 +179,7 @@ public class IntakeFormResourceIT {
   }
 
   private static final List<String> GOVERNANCE_ENTITY_TYPES =
-      List.of("dataProduct", "domain", "glossaryTerm", "metric");
+      List.of("dataProduct", "domain", "glossary", "glossaryTerm", "metric");
 
   @ParameterizedTest
   @EnumSource(
@@ -1494,6 +1494,52 @@ public class IntakeFormResourceIT {
       if (glossaryTermForm != null) {
         deleteIntakeForm(glossaryTermForm.getId());
       }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Glossary — native required field
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void glossary_create_enforcesIntakeFormRequiredNativeField(TestNamespace ns) throws Exception {
+    IntakeForm form =
+        createIntakeForm(
+            new CreateIntakeForm()
+                .withName(ns.prefix("glossary-intake"))
+                .withEntityType(TargetEntityType.GLOSSARY)
+                .withEnabled(Boolean.TRUE)
+                .withRequiredFields(
+                    List.of(
+                        new IntakeFormRequiredField()
+                            .withFieldPath("displayName")
+                            .withFieldLabel("Business name")
+                            .withFieldKind(FieldKind.NATIVE))));
+    try {
+      CreateGlossary missing =
+          new CreateGlossary()
+              .withName(ns.prefix("glossary-missing-name"))
+              .withDescription("IntakeForm integration test glossary");
+      InvalidRequestException ex =
+          assertThrows(
+              InvalidRequestException.class,
+              () -> SdkClients.adminClient().glossaries().create(missing));
+      assertEquals(400, ex.getStatusCode());
+      assertTrue(
+          ex.getMessage().contains("Business name"),
+          "Expected IntakeForm error mentioning Business name, got: %s".formatted(ex.getMessage()));
+
+      Glossary created =
+          SdkClients.adminClient()
+              .glossaries()
+              .create(
+                  new CreateGlossary()
+                      .withName(ns.prefix("glossary-with-name"))
+                      .withDisplayName("Reviewed glossary")
+                      .withDescription("IntakeForm integration test glossary"));
+      assertNotNull(created.getId());
+    } finally {
+      deleteIntakeForm(form.getId());
     }
   }
 

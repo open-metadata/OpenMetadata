@@ -122,6 +122,15 @@ public class UserApprovalTask implements NodeInterface {
             .fieldValue(nodeDefinition.getConfig().getStageDisplayName())
             .build();
 
+    FieldExtension lifecycleMoveExpr =
+        new FieldExtensionBuilder(false)
+            .fieldName("lifecycleMoveExpr")
+            .fieldValue(
+                nodeDefinition.getConfig().getLifecycleMove() != null
+                    ? JsonUtils.pojoToJson(nodeDefinition.getConfig().getLifecycleMove())
+                    : null)
+            .build();
+
     FieldExtension taskStatusExpr =
         new FieldExtensionBuilder()
             .fieldName("taskStatusExpr")
@@ -185,6 +194,7 @@ public class UserApprovalTask implements NodeInterface {
             taskCategoryExpr,
             stageIdExpr,
             stageDisplayNameExpr,
+            lifecycleMoveExpr,
             taskStatusExpr,
             transitionMetadataExpr,
             useEntityOwnerFallbackExpr);
@@ -292,6 +302,7 @@ public class UserApprovalTask implements NodeInterface {
       FieldExtension taskCategoryExpr,
       FieldExtension stageIdExpr,
       FieldExtension stageDisplayNameExpr,
+      FieldExtension lifecycleMoveExpr,
       FieldExtension taskStatusExpr,
       FieldExtension transitionMetadataExpr,
       FieldExtension useEntityOwnerFallbackExpr) {
@@ -314,6 +325,7 @@ public class UserApprovalTask implements NodeInterface {
             .addFieldExtension(taskCategoryExpr)
             .addFieldExtension(stageIdExpr)
             .addFieldExtension(stageDisplayNameExpr)
+            .addFieldExtension(lifecycleMoveExpr)
             .addFieldExtension(taskStatusExpr)
             .addFieldExtension(transitionMetadataExpr)
             .addFieldExtension(useEntityOwnerFallbackExpr)

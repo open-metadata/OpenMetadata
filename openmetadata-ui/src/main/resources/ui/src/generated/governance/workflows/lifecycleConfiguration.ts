@@ -24,6 +24,7 @@ export interface LifecycleConfiguration {
 export enum EntityType {
     DataProduct = "dataProduct",
     Domain = "domain",
+    Glossary = "glossary",
     GlossaryTerm = "glossaryTerm",
     Metric = "metric",
 }

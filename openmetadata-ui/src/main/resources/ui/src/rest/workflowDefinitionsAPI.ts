@@ -17,6 +17,7 @@ import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { CreateWorkflowDefinition } from '../generated/api/governance/createWorkflowDefinition';
 import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import { WorkflowInstance } from '../generated/governance/workflows/workflowInstance';
+import { Include } from '../generated/type/include';
 import APIClient from './axiosClient';
 
 const WORKFLOW_DEFINITIONS_BASE_URL = '/governance/workflowDefinitions';
@@ -56,6 +57,18 @@ export const createWorkflowDefinition = async (
 export const getWorkflowDefinitionByFQN = async (fqn: string) => {
   const res = await APIClient.get(
     `${WORKFLOW_DEFINITIONS_BASE_URL}/name/${fqn}`
+  );
+
+  return res.data;
+};
+
+export const getWorkflowDefinitionById = async (
+  id: string,
+  include = Include.All
+) => {
+  const res = await APIClient.get<WorkflowDefinition>(
+    `${WORKFLOW_DEFINITIONS_BASE_URL}/${id}`,
+    { params: { include } }
   );
 
   return res.data;

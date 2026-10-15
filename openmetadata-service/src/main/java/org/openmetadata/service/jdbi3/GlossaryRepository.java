@@ -86,6 +86,7 @@ import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
@@ -174,6 +175,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   @Override
   public void prepare(Glossary glossary, boolean update) {
     ontologyLayerValidator.applyDefaultsAndValidate(glossary);
+    IntakeFormValidator.validate(glossary, GLOSSARY);
   }
 
   @Override

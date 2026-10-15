@@ -165,6 +165,7 @@ export interface FieldChange {
 export enum TargetEntityType {
     DataProduct = "dataProduct",
     Domain = "domain",
+    Glossary = "glossary",
     GlossaryTerm = "glossaryTerm",
     Metric = "metric",
 }

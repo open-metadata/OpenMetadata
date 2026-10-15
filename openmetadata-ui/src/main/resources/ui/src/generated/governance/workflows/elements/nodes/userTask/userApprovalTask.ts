@@ -58,6 +58,11 @@ export interface NodeConfiguration {
      */
     expiryTimer?: ExpiryTimer;
     /**
+     * Set when the approval gates a lifecycle stage move: the task then asks to approve moving
+     * the asset from one stage to the next instead of listing the changes that led to it.
+     */
+    lifecycleMove?: LifecycleMove;
+    /**
      * Number of reviewers that must reject for the task to be rejected. Default is 1 (any
      * single reviewer can reject). This allows for scenarios where you want multiple approvals
      * but a single rejection can veto.
@@ -223,6 +228,41 @@ export enum ResolutionType {
     Rejected = "Rejected",
     Revoked = "Revoked",
     TimedOut = "TimedOut",
+}
+
+/**
+ * Set when the approval gates a lifecycle stage move: the task then asks to approve moving
+ * the asset from one stage to the next instead of listing the changes that led to it.
+ */
+export interface LifecycleMove {
+    /**
+     * Stage the asset is in while the approval is pending.
+     */
+    stage: EntityStatus;
+    /**
+     * Stage the asset moves to once approved.
+     */
+    targetStage: EntityStatus;
+}
+
+/**
+ * Stage the asset is in while the approval is pending.
+ *
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
+ *
+ * Stage the asset moves to once approved.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**

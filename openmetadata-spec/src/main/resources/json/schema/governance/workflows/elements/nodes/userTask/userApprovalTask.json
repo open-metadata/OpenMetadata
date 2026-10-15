@@ -100,6 +100,27 @@
           "description": "Human-readable stage label shown to task assignees.",
           "type": "string"
         },
+        "lifecycleMove": {
+          "title": "Lifecycle Move",
+          "description": "Set when the approval gates a lifecycle stage move: the task then asks to approve moving the asset from one stage to the next instead of listing the changes that led to it.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.userTask.LifecycleMove",
+          "properties": {
+            "stage": {
+              "description": "Stage the asset is in while the approval is pending.",
+              "$ref": "../../../../../type/status.json"
+            },
+            "targetStage": {
+              "description": "Stage the asset moves to once approved.",
+              "$ref": "../../../../../type/status.json"
+            }
+          },
+          "required": [
+            "stage",
+            "targetStage"
+          ],
+          "additionalProperties": false
+        },
         "taskStatus": {
           "title": "Task Status",
           "description": "Coarse task status mapped while this user task is active.",

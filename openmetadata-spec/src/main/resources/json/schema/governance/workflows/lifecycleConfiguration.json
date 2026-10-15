@@ -17,6 +17,7 @@
       "enum": [
         "dataProduct",
         "domain",
+        "glossary",
         "glossaryTerm",
         "metric"
       ]

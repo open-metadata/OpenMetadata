@@ -32,6 +32,7 @@ export const ENTITY_TYPE_LABEL_KEYS: Record<TargetEntityType, string> = {
   [TargetEntityType.Metric]: 'label.metric',
   [TargetEntityType.DataProduct]: 'label.data-product',
   [TargetEntityType.Domain]: 'label.domain',
+  [TargetEntityType.Glossary]: 'label.glossary',
   [TargetEntityType.GlossaryTerm]: 'label.glossary-term',
 };
 

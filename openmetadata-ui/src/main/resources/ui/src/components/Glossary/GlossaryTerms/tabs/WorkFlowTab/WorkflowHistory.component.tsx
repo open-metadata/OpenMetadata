@@ -16,7 +16,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { isEmpty, maxBy, uniq } from 'lodash';
+import { isEmpty } from 'lodash';
 import {
   memo,
   ReactNode,
@@ -29,8 +29,6 @@ import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CompletedIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as PendingIcon } from '../../../../../assets/svg/pending-badge-1.svg';
-import { GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME } from '../../../../../constants/Glossary.contant';
-import { EntityType } from '../../../../../enums/entity.enum';
 import {
   EntityStatus,
   GlossaryTerm,
@@ -39,67 +37,18 @@ import {
   WorkflowInstanceState,
   WorkflowStatus,
 } from '../../../../../generated/governance/workflows/workflowInstanceState';
-import { getEntityLifecycleStages } from '../../../../../rest/metadataTypeAPI';
-import {
-  getWorkflowInstancesForApplication,
-  getWorkflowInstanceStateById,
-} from '../../../../../rest/workflowAPI';
-import { WorkflowInstanceFromApplicationParams } from '../../../../../rest/workflowAPI.interface';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
   getShortRelativeTime,
 } from '../../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import './workflow-history.less';
-
-// Lifecycle playbooks can own the glossary term stage, each for the terms its filter selects,
-// and the default approval workflow keeps the runs from before they were published.
-const getStageWorkflowNames = async () => {
-  const owners = await getEntityLifecycleStages()
-    .then(
-      ({ entityTypes }) =>
-        entityTypes.find(
-          ({ entityType }) => entityType === EntityType.GLOSSARY_TERM
-        )?.stageWorkflows ?? []
-    )
-    .catch(() => []);
-
-  return uniq([...owners, GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME]);
-};
-
-const getLatestStageWorkflowRun = async (
-  params: Omit<WorkflowInstanceFromApplicationParams, 'workflowDefinitionName'>
-) => {
-  const names = await getStageWorkflowNames();
-  const responses = await Promise.allSettled(
-    names.map((workflowDefinitionName) =>
-      getWorkflowInstancesForApplication({
-        ...params,
-        workflowDefinitionName,
-      }).then(({ data }) =>
-        (data ?? []).map((instance) => ({ instance, workflowDefinitionName }))
-      )
-    )
-  );
-  const [firstResponse] = responses;
-  if (
-    firstResponse?.status === 'rejected' &&
-    responses.every(({ status }) => status === 'rejected')
-  ) {
-    throw firstResponse.reason;
-  }
-
-  return maxBy(
-    responses.flatMap((response) =>
-      response.status === 'fulfilled' ? response.value : []
-    ),
-    ({ instance }) => instance.startedAt ?? instance.timestamp ?? 0
-  );
-};
+import { getLatestWorkflowRun } from './WorkflowHistory.utils';
 
 interface WorkflowHistoryProps {
   glossaryTerm?: GlossaryTerm;
@@ -144,6 +93,7 @@ const WorkflowHistory = memo(
     const [workflowHistory, setWorkflowHistory] = useState<
       WorkflowInstanceState[]
     >([]);
+    const [workflowName, setWorkflowName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     // Collapse only when status is approved
@@ -166,36 +116,21 @@ const WorkflowHistory = memo(
 
       setIsLoading(true);
       try {
-        const startTs = getEpochMillisForPastDays(180);
-        const endTs = getCurrentMillis();
+        const timeRange = {
+          startTs: getEpochMillisForPastDays(180),
+          endTs: getCurrentMillis(),
+        };
         const entityLink = createGlossaryTermEntityLink(
           glossaryTerm.fullyQualifiedName
         );
 
-        const latestRun = await getLatestStageWorkflowRun({
-          startTs,
-          endTs,
-          entityLink,
-        });
+        const latestRun = await getLatestWorkflowRun(entityLink, timeRange);
 
-        if (!latestRun) {
-          setWorkflowHistory([]);
-
-          return;
-        }
-
-        const statesPromises = await getWorkflowInstanceStateById(
-          latestRun.workflowDefinitionName,
-          latestRun.instance.id ?? '',
-          {
-            startTs,
-            endTs,
-          }
-        );
-        const reverseStates = statesPromises.data.reverse();
-        setWorkflowHistory(reverseStates);
+        setWorkflowName(getEntityName(latestRun?.definition));
+        setWorkflowHistory(latestRun?.states ?? []);
       } catch (error) {
         showErrorToast(error as string);
+        setWorkflowName('');
         setWorkflowHistory([]);
       } finally {
         setIsLoading(false);
@@ -320,15 +255,30 @@ const WorkflowHistory = memo(
             aria-label={workflowHistoryLabel}
             className="tw:flex tw:w-full tw:cursor-pointer tw:flex-col tw:gap-2 tw:rounded-md tw:text-left tw:outline-focus-ring tw:focus-visible:outline-2"
             onPress={toggleCollapse}>
-            <div className="workflow-header tw:flex tw:w-full tw:items-center tw:justify-between">
+            <div className="workflow-header tw:flex tw:w-full tw:items-center tw:justify-between tw:gap-2">
+              <div className="tw:flex tw:min-w-0 tw:flex-col">
+                <Typography
+                  as="span"
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="medium">
+                  {workflowHistoryLabel}
+                </Typography>
+                {workflowName && (
+                  <Typography
+                    as="span"
+                    className="tw:truncate tw:text-tertiary"
+                    data-testid="workflow-history-workflow-name"
+                    size="text-xs"
+                    title={workflowName}>
+                    {workflowName}
+                  </Typography>
+                )}
+              </div>
               <Typography
                 as="span"
-                className="tw:text-primary"
-                size="text-sm"
-                weight="medium">
-                {workflowHistoryLabel}
-              </Typography>
-              <Typography as="span" className="tw:text-tertiary" size="text-sm">
+                className="tw:shrink-0 tw:text-tertiary"
+                size="text-sm">
                 {completedSteps}/{totalSteps}
               </Typography>
             </div>
@@ -346,6 +296,7 @@ const WorkflowHistory = memo(
     }, [
       isLoading,
       workflowHistory,
+      workflowName,
       completedSteps,
       totalSteps,
       workflowSteps,

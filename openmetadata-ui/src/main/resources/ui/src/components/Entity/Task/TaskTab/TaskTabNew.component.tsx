@@ -157,6 +157,8 @@ import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.interface';
+import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
+import { getLifecycleMove } from '../LifecycleApprovalCard/LifecycleApprovalCard.utils';
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import TaskActionSplitButton, {
@@ -507,6 +509,10 @@ export const TaskTabNew = ({
     () => (isTaskApprovalRequest ? extractProposedChanges(task.payload) : null),
     [isTaskApprovalRequest, task.payload]
   );
+  // A lifecycle approval gates a stage move, so it shows the move instead of field edits.
+  const lifecycleMove = isTaskApprovalRequest
+    ? getLifecycleMove(task.payload)
+    : null;
   const readOnlyTaskPayload = useMemo(
     () =>
       applyTaskFormSchemaDefaults(
@@ -2133,7 +2139,11 @@ export const TaskTabNew = ({
       </Box>
       <Divider className="m-0" />
       {!darHeaderRows && <div>{taskHeader}</div>}
-      {renderProposedChangesSection()}
+      {lifecycleMove ? (
+        <LifecycleApprovalCard move={lifecycleMove} />
+      ) : (
+        renderProposedChangesSection()
+      )}
       <div>
         {renderFeedbackOrTaskPayload()}
         {renderActionRequiredSection()}

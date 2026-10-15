@@ -21,11 +21,14 @@ import {
   HintText,
   HookForm,
 } from '@openmetadata/ui-core-components';
-import { useWatch } from 'react-hook-form';
+import { useCallback } from 'react';
+import { Control, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import { DomainFormValues } from '../../Domain/AddDomainForm/AddDomainForm.interface';
+import AddDomainFormExtensionFields from '../../Domain/AddDomainForm/AddDomainFormExtensionFields';
 import TagSelector from '../../Tag/TagSelector/TagSelector';
 import {
   useDomainOptions,
@@ -37,7 +40,7 @@ import {
   EntityReferenceOption,
 } from './AddGlossary.interface';
 
-const AddGlossary = ({ form, onSubmit }: AddGlossaryProps) => {
+const AddGlossary = ({ form, intake, onSubmit }: AddGlossaryProps) => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.GLOSSARY);
   const ownersPicker = useUserTeamOptions();
@@ -59,6 +62,36 @@ const AddGlossary = ({ form, onSubmit }: AddGlossaryProps) => {
     control: form.control,
     name: 'mutuallyExclusive',
   });
+
+  const getIntakeRequiredMessage = useCallback(
+    (fieldPath: string): string | undefined => {
+      const intakeField = intake.requiredNativeFields.get(fieldPath);
+
+      return intakeField
+        ? intakeField.errorMessage ||
+            t('label.field-required', { field: intakeField.fieldLabel })
+        : undefined;
+    },
+    [intake.requiredNativeFields, t]
+  );
+
+  // Intake forms can make any native field required, with their own message.
+  const applyIntakeRequired = useCallback(
+    (field: FieldProp): FieldProp => {
+      const message = getIntakeRequiredMessage(field.name);
+
+      return message
+        ? {
+            ...field,
+            required: true,
+            rules: { ...field.rules, required: message },
+          }
+        : field;
+    },
+    [getIntakeRequiredMessage]
+  );
+
+  const tagsRequiredMessage = getIntakeRequiredMessage('tags');
 
   const domainsField: FieldProp = {
     id: 'root/domains',
@@ -92,10 +125,10 @@ const AddGlossary = ({ form, onSubmit }: AddGlossaryProps) => {
       onSubmit={form.handleSubmit(onSubmit)}>
       <Box gap={4}>
         <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
-          {getField(nameField)}
+          {getField(applyIntakeRequired(nameField))}
         </div>
         <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
-          {getField(displayNameField)}
+          {getField(applyIntakeRequired(displayNameField))}
         </div>
       </Box>
 
@@ -131,29 +164,50 @@ const AddGlossary = ({ form, onSubmit }: AddGlossaryProps) => {
         )}
       </FormField>
 
-      <FormField control={form.control} name="tags">
-        {({ field }) => (
-          <TagSelector
-            className="tw:w-full"
-            data-testid="tags-container"
-            label={t('label.tag-plural')}
-            placeholder={t('label.select-field', {
-              field: t('label.tag-plural'),
-            })}
-            value={field.value ?? []}
-            onChange={field.onChange}
-          />
+      <FormField
+        control={form.control}
+        name="tags"
+        rules={tagsRequiredMessage ? { required: tagsRequiredMessage } : {}}>
+        {({ field, fieldState }) => (
+          <Box
+            aria-invalid={fieldState.invalid || undefined}
+            className="tw:gap-1.5"
+            direction="col">
+            <TagSelector
+              className="tw:w-full"
+              data-testid="tags-container"
+              label={t('label.tag-plural')}
+              placeholder={t('label.select-field', {
+                field: t('label.tag-plural'),
+              })}
+              required={Boolean(tagsRequiredMessage)}
+              value={field.value ?? []}
+              onChange={field.onChange}
+            />
+            {fieldState.error?.message && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
         )}
       </FormField>
 
-      {getField(ownersField)}
-      {getField(reviewersField)}
-      {getField(domainsField)}
+      {getField(applyIntakeRequired(ownersField))}
+      {getField(applyIntakeRequired(reviewersField))}
+      {getField(applyIntakeRequired(domainsField))}
       {getField(
         getMutuallyExclusiveField(
           Boolean(isMutuallyExclusive),
           t('label.glossary')
         )
+      )}
+
+      {intake.isLoaded && (
+        <AddDomainFormExtensionFields
+          // Safe cast: these fields only touch `extensionFormValues`, shared by both forms.
+          control={form.control as unknown as Control<DomainFormValues>}
+          customProperties={intake.customProperties}
+          formFields={intake.extensionFormFields}
+        />
       )}
     </HookForm>
   );

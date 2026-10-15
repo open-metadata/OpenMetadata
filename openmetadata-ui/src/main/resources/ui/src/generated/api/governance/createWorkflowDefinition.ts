@@ -71,6 +71,7 @@ export interface LifecycleConfiguration {
 export enum EntityType {
     DataProduct = "dataProduct",
     Domain = "domain",
+    Glossary = "glossary",
     GlossaryTerm = "glossaryTerm",
     Metric = "metric",
 }
@@ -121,6 +122,10 @@ export enum ValueType {
  * can declare their own status schema and lifecycle policy. Entity types without an
  * entityStatus property have no lifecycle. When a create request omits the stage, the
  * server assigns the entity type's initial stage.
+ *
+ * Stage the asset is in while the approval is pending.
+ *
+ * Stage the asset moves to once approved.
  *
  * The task applies while the asset is in this stage.
  *
@@ -336,6 +341,11 @@ export interface NodeConfiguration {
      */
     expiryTimer?: ExpiryTimer;
     /**
+     * Set when the approval gates a lifecycle stage move: the task then asks to approve moving
+     * the asset from one stage to the next instead of listing the changes that led to it.
+     */
+    lifecycleMove?: LifecycleMove;
+    /**
      * Number of reviewers that must reject for the task to be rejected. Default is 1 (any
      * single reviewer can reject). This allows for scenarios where you want multiple approvals
      * but a single rejection can veto.
@@ -545,6 +555,21 @@ export interface RequiredField {
      * JSON Logic condition that is true once the field is filled in.
      */
     rules: string;
+}
+
+/**
+ * Set when the approval gates a lifecycle stage move: the task then asks to approve moving
+ * the asset from one stage to the next instead of listing the changes that led to it.
+ */
+export interface LifecycleMove {
+    /**
+     * Stage the asset is in while the approval is pending.
+     */
+    stage: EntityStatus;
+    /**
+     * Stage the asset moves to once approved.
+     */
+    targetStage: EntityStatus;
 }
 
 export interface QualityBand {

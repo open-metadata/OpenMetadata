@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
@@ -31,7 +32,9 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -52,6 +55,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.LifecycleMove;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
@@ -115,6 +119,8 @@ public class CreateTask implements TaskListener {
           .retryOnResult(task -> task == null)
           .failAfterMaxAttempts(false)
           .build();
+  static final String LIFECYCLE_MOVE_KEY = "lifecycleMove";
+
   private Expression inputNamespaceMapExpr;
   private Expression assigneesVarNameExpr;
   private Expression approvalThresholdExpr;
@@ -123,6 +129,7 @@ public class CreateTask implements TaskListener {
   private Expression taskCategoryExpr;
   private Expression stageIdExpr;
   private Expression stageDisplayNameExpr;
+  private Expression lifecycleMoveExpr;
   private Expression taskStatusExpr;
   private Expression transitionMetadataExpr;
   private Expression useEntityOwnerFallbackExpr;
@@ -452,6 +459,7 @@ public class CreateTask implements TaskListener {
     String workflowStageId = WorkflowVariableResolver.stringExpression(stageIdExpr, delegateTask);
     String workflowStageDisplayName =
         WorkflowVariableResolver.stringExpression(stageDisplayNameExpr, delegateTask);
+    LifecycleMove lifecycleMove = readLifecycleMove(delegateTask);
     TaskEntityStatus stageStatus = resolveStageStatus(delegateTask);
     List<TaskAvailableTransition> availableTransitions =
         TaskWorkflowLifecycleResolver.parseTransitions(
@@ -571,7 +579,7 @@ public class CreateTask implements TaskListener {
           withGrantExpirationDate(stageStatus, taskType, updatedTask.getPayload()));
       updatedTask.setPayload(mergeManualGrantReason(updatedTask.getPayload(), manualGrantReason));
       updatedTask.setPayload(
-          applyProposedChangesIfApproval(taskType, entity, updatedTask.getPayload()));
+          approvalPayload(taskType, entity, updatedTask.getPayload(), lifecycleMove));
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
             JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -668,7 +676,7 @@ public class CreateTask implements TaskListener {
     }
     task.setPayload(withGrantExpirationDate(stageStatus, taskType, task.getPayload()));
     task.setPayload(mergeManualGrantReason(task.getPayload(), manualGrantReason));
-    task.setPayload(applyProposedChangesIfApproval(taskType, entity, task.getPayload()));
+    task.setPayload(approvalPayload(taskType, entity, task.getPayload(), lifecycleMove));
     if (requestedExternalReference != null) {
       task.setExternalReference(
           JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -1053,6 +1061,32 @@ public class CreateTask implements TaskListener {
       LOG.trace("[CreateTask] Payload is not a DataAccessRequestPayload", invalidPayload);
       throw new IllegalArgumentException("Invalid DataAccessRequest task payload", invalidPayload);
     }
+  }
+
+  /**
+   * A lifecycle approval gates a stage move, so its task names the move instead of listing the
+   * entity's latest changes, which in a lifecycle are usually the workflow's own move into the
+   * stage.
+   */
+  static Object approvalPayload(
+      TaskEntityType taskType, EntityInterface<?> entity, Object payload, LifecycleMove move) {
+    return move == null
+        ? applyProposedChangesIfApproval(taskType, entity, payload)
+        : withLifecycleMove(payload, move);
+  }
+
+  static Object withLifecycleMove(Object payload, LifecycleMove move) {
+    // The task payload is free-form JSON shared by every task type, so it is edited as a map.
+    final Map<String, Object> updated =
+        payload == null ? new LinkedHashMap<>() : new LinkedHashMap<>(JsonUtils.getMap(payload));
+    updated.remove(ChangePreviewUtils.PROPOSED_CHANGES_KEY);
+    updated.put(LIFECYCLE_MOVE_KEY, move);
+    return updated;
+  }
+
+  private LifecycleMove readLifecycleMove(DelegateTask delegateTask) {
+    final String json = WorkflowVariableResolver.stringExpression(lifecycleMoveExpr, delegateTask);
+    return nullOrEmpty(json) ? null : JsonUtils.readValue(json, LifecycleMove.class);
   }
 
   /**

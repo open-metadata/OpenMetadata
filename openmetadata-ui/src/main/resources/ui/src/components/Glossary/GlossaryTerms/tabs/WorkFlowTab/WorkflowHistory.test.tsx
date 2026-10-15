@@ -20,11 +20,11 @@ import {
 import WorkflowHistory from './WorkflowHistory.component';
 
 // Import mocked modules
-import { getEntityLifecycleStages } from '../../../../../rest/metadataTypeAPI';
 import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../../../../rest/workflowAPI';
+import { getWorkflowDefinitionById } from '../../../../../rest/workflowDefinitionsAPI';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -37,7 +37,7 @@ import { useGenericContext } from '../../../../Customization/GenericProvider/Gen
 // Mock dependencies
 jest.mock('../../../../Customization/GenericProvider/GenericContext');
 jest.mock('../../../../../rest/workflowAPI');
-jest.mock('../../../../../rest/metadataTypeAPI');
+jest.mock('../../../../../rest/workflowDefinitionsAPI');
 jest.mock('../../../../../utils/ToastUtils');
 jest.mock('../../../../../utils/date-time/DateTimeUtils');
 jest.mock('../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils');
@@ -110,11 +110,48 @@ const mockWorkflowHistory: WorkflowInstanceState[] = [
   },
 ];
 
+const APPROVAL_WORKFLOW_ID = 'approval-workflow-id';
+const LIFECYCLE_WORKFLOW_ID = 'lifecycle-workflow-id';
+const EVENT_WORKFLOW_ID = 'event-workflow-id';
+
+const mockWorkflowDefinitions: Record<
+  string,
+  {
+    id: string;
+    name: string;
+    displayName: string;
+    config?: Record<string, unknown>;
+    nodes?: { subType: string; config?: Record<string, unknown> }[];
+  }
+> = {
+  [APPROVAL_WORKFLOW_ID]: {
+    id: APPROVAL_WORKFLOW_ID,
+    name: 'GlossaryTermApprovalWorkflow',
+    displayName: 'Glossary Term Approval Workflow',
+    nodes: [{ subType: 'setGlossaryTermStatusTask' }],
+  },
+  [LIFECYCLE_WORKFLOW_ID]: {
+    id: LIFECYCLE_WORKFLOW_ID,
+    name: 'GlossaryTermLifecycle',
+    displayName: 'Glossary Term Lifecycle',
+    config: {
+      lifecycle: { version: 1, entityType: 'glossaryTerm', gates: [] },
+    },
+  },
+  [EVENT_WORKFLOW_ID]: {
+    id: EVENT_WORKFLOW_ID,
+    name: 'TagCertifiedTerms',
+    displayName: 'Tag certified terms',
+    nodes: [{ subType: 'checkEntityAttributesTask' }],
+  },
+};
+
 const mockWorkflowInstances = {
   data: [
     {
       id: 'instance-1',
-      workflowDefinitionName: 'GlossaryTermApprovalWorkflow',
+      workflowDefinitionId: APPROVAL_WORKFLOW_ID,
+      startedAt: 1647931273000,
     },
   ],
 };
@@ -171,20 +208,15 @@ describe('WorkflowHistory Component', () => {
     (getWorkflowInstanceStateById as jest.Mock).mockResolvedValue(
       mockWorkflowInstanceState
     );
-    (getEntityLifecycleStages as jest.Mock).mockResolvedValue({
-      entityTypes: [
-        {
-          entityType: 'glossaryTerm',
-          stages: [],
-          stageWorkflows: ['GlossaryTermApprovalWorkflow'],
-          transitions: [],
-        },
-      ],
-    });
+    (getWorkflowDefinitionById as jest.Mock).mockImplementation((id: string) =>
+      mockWorkflowDefinitions[id]
+        ? Promise.resolve(mockWorkflowDefinitions[id])
+        : Promise.reject(new Error('Not found'))
+    );
   });
 
   describe('Rendering', () => {
-    it('should render empty state when no workflow history exists', async () => {
+    it('should render empty state when no workflow has run for the term', async () => {
       (getWorkflowInstancesForApplication as jest.Mock).mockResolvedValueOnce({
         data: [],
       });
@@ -198,6 +230,12 @@ describe('WorkflowHistory Component', () => {
           screen.getByText('No Workflow History available')
         ).toBeInTheDocument();
       });
+
+      expect(getWorkflowDefinitionById).not.toHaveBeenCalled();
+      expect(getWorkflowInstanceStateById).not.toHaveBeenCalled();
+      expect(
+        screen.queryByTestId('workflow-history-workflow-name')
+      ).not.toBeInTheDocument();
     });
 
     it('should render workflow history when data exists', async () => {
@@ -224,82 +262,82 @@ describe('WorkflowHistory Component', () => {
       });
 
       await waitFor(() => {
-        expect(getWorkflowInstancesForApplication).toHaveBeenCalledWith({
-          startTs: expect.any(Number),
-          endTs: expect.any(Number),
-          entityLink: 'entity-link',
-          workflowDefinitionName: 'GlossaryTermApprovalWorkflow',
-        });
-      });
-    });
-
-    it('should read the newest run across every workflow that owns the stage', async () => {
-      const runs: Record<string, { id: string; startedAt: number }[]> = {
-        FinanceTermLifecycle: [{ id: 'finance-run', startedAt: 100 }],
-        SalesTermLifecycle: [{ id: 'sales-run', startedAt: 300 }],
-        GlossaryTermApprovalWorkflow: [{ id: 'legacy-run', startedAt: 200 }],
-      };
-      (getEntityLifecycleStages as jest.Mock).mockResolvedValueOnce({
-        entityTypes: [
-          {
-            entityType: 'glossaryTerm',
-            stages: [],
-            stageWorkflows: ['FinanceTermLifecycle', 'SalesTermLifecycle'],
-            transitions: [],
-          },
-        ],
-      });
-      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(
-        ({ workflowDefinitionName }) =>
-          Promise.resolve({ data: runs[workflowDefinitionName] })
-      );
-
-      await act(async () => {
-        render(<WorkflowHistory glossaryTerm={mockGlossaryTerm} />);
-      });
-
-      await waitFor(() => {
-        expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
-          'SalesTermLifecycle',
-          'sales-run',
-          expect.any(Object)
+        expect(getWorkflowInstancesForApplication).toHaveBeenCalledWith(
+          expect.objectContaining({ entityLink: 'entity-link' })
         );
       });
     });
 
-    it('should keep the history when one stage workflow cannot be read', async () => {
-      (getEntityLifecycleStages as jest.Mock).mockResolvedValueOnce({
-        entityTypes: [
+    it('should show the default approval workflow when only it has run for the term', async () => {
+      await act(async () => {
+        render(<WorkflowHistory glossaryTerm={mockGlossaryTerm} />);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('workflow-history-workflow-name')
+        ).toHaveTextContent('Glossary Term Approval Workflow');
+      });
+
+      expect(getWorkflowDefinitionById).toHaveBeenCalledWith(
+        APPROVAL_WORKFLOW_ID
+      );
+      expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
+        'GlossaryTermApprovalWorkflow',
+        'instance-1',
+        expect.any(Object)
+      );
+    });
+
+    it('should show the lifecycle workflow when its run is newer than the approval run', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockResolvedValueOnce({
+        data: [
           {
-            entityType: 'glossaryTerm',
-            stages: [],
-            stageWorkflows: ['GlossaryTermLifecycle'],
-            transitions: [],
+            id: 'approval-run',
+            workflowDefinitionId: APPROVAL_WORKFLOW_ID,
+            startedAt: 100,
+          },
+          {
+            id: 'lifecycle-run',
+            workflowDefinitionId: LIFECYCLE_WORKFLOW_ID,
+            startedAt: 300,
           },
         ],
       });
-      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(
-        ({ workflowDefinitionName }) =>
-          workflowDefinitionName === 'GlossaryTermLifecycle'
-            ? Promise.reject(new Error('Unavailable'))
-            : Promise.resolve(mockWorkflowInstances)
-      );
 
       await act(async () => {
         render(<WorkflowHistory glossaryTerm={mockGlossaryTerm} />);
       });
 
       await waitFor(() => {
-        expect(screen.getByText('1/3')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('workflow-history-workflow-name')
+        ).toHaveTextContent('Glossary Term Lifecycle');
       });
 
-      expect(showErrorToast).not.toHaveBeenCalled();
+      expect(getWorkflowInstanceStateById).toHaveBeenCalledTimes(1);
+      expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
+        'GlossaryTermLifecycle',
+        'lifecycle-run',
+        expect.any(Object)
+      );
     });
 
-    it('should fall back to the default approval workflow when lifecycle stages cannot be read', async () => {
-      (getEntityLifecycleStages as jest.Mock).mockRejectedValueOnce(
-        new Error('Unavailable')
-      );
+    it('should show the approval workflow when its run is newer than the lifecycle run', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockResolvedValueOnce({
+        data: [
+          {
+            id: 'lifecycle-run',
+            workflowDefinitionId: LIFECYCLE_WORKFLOW_ID,
+            startedAt: 100,
+          },
+          {
+            id: 'approval-run',
+            workflowDefinitionId: APPROVAL_WORKFLOW_ID,
+            startedAt: 300,
+          },
+        ],
+      });
 
       await act(async () => {
         render(<WorkflowHistory glossaryTerm={mockGlossaryTerm} />);
@@ -308,17 +346,26 @@ describe('WorkflowHistory Component', () => {
       await waitFor(() => {
         expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
           'GlossaryTermApprovalWorkflow',
-          'instance-1',
+          'approval-run',
           expect.any(Object)
         );
       });
-
-      expect(showErrorToast).not.toHaveBeenCalled();
     });
 
-    it('should fall back to the default approval workflow without a stage owner', async () => {
-      (getEntityLifecycleStages as jest.Mock).mockResolvedValueOnce({
-        entityTypes: [],
+    it('should ignore a newer run of a workflow that does not set the stage', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockResolvedValueOnce({
+        data: [
+          {
+            id: 'approval-run',
+            workflowDefinitionId: APPROVAL_WORKFLOW_ID,
+            startedAt: 100,
+          },
+          {
+            id: 'event-run',
+            workflowDefinitionId: EVENT_WORKFLOW_ID,
+            startedAt: 300,
+          },
+        ],
       });
 
       await act(async () => {
@@ -326,12 +373,43 @@ describe('WorkflowHistory Component', () => {
       });
 
       await waitFor(() => {
-        expect(getWorkflowInstancesForApplication).toHaveBeenCalledWith(
-          expect.objectContaining({
-            workflowDefinitionName: 'GlossaryTermApprovalWorkflow',
-          })
+        expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
+          'GlossaryTermApprovalWorkflow',
+          'approval-run',
+          expect.any(Object)
         );
       });
+    });
+
+    it('should fall back to an older run when the newest run definition cannot be read', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockResolvedValueOnce({
+        data: [
+          {
+            id: 'approval-run',
+            workflowDefinitionId: APPROVAL_WORKFLOW_ID,
+            startedAt: 100,
+          },
+          {
+            id: 'deleted-run',
+            workflowDefinitionId: 'deleted-workflow-id',
+            startedAt: 300,
+          },
+        ],
+      });
+
+      await act(async () => {
+        render(<WorkflowHistory glossaryTerm={mockGlossaryTerm} />);
+      });
+
+      await waitFor(() => {
+        expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
+          'GlossaryTermApprovalWorkflow',
+          'approval-run',
+          expect.any(Object)
+        );
+      });
+
+      expect(showErrorToast).not.toHaveBeenCalled();
     });
 
     it('should not fetch data when no glossary term is available', async () => {
@@ -431,7 +509,7 @@ describe('WorkflowHistory Component', () => {
           startTs: expect.any(Number),
           endTs: expect.any(Number),
           entityLink: 'entity-link',
-          workflowDefinitionName: 'GlossaryTermApprovalWorkflow',
+          limit: expect.any(Number),
         });
 
         expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
