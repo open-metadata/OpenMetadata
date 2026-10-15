@@ -1638,6 +1638,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     GlossaryTerm updated = patchEntity(term.getId().toString(), term);
     assertEquals(EntityStatus.DEPRECATED, updated.getEntityStatus());
 
+    QueuedSearchWrites.await();
     Awaitility.await("Glossary term status should be reflected in search")
         .atMost(java.time.Duration.ofSeconds(30))
         .pollInterval(java.time.Duration.ofMillis(500))
@@ -3322,6 +3323,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     client.glossaries().update(fetchedGlossary.getId().toString(), fetchedGlossary);
 
     String termId = term.getId().toString();
+    QueuedSearchWrites.await();
     Awaitility.await("GlossaryTerm search index should reflect inherited owner from glossary")
         .atMost(java.time.Duration.ofSeconds(30))
         .pollDelay(java.time.Duration.ofMillis(500))
@@ -3377,6 +3379,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     GlossaryTerm term = createEntity(termRequest);
 
     String termId = term.getId().toString();
+    QueuedSearchWrites.await();
     Awaitility.await("GlossaryTerm search index should reflect inherited reviewers from glossary")
         .atMost(java.time.Duration.ofSeconds(30))
         .pollDelay(java.time.Duration.ofMillis(500))
@@ -4607,6 +4610,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
   private void awaitTableGlossaryTag(
       OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedGlossaryFqn) {
+    QueuedSearchWrites.await();
     Awaitility.await("table search doc carries glossary tag " + expectedGlossaryFqn)
         .atMost(Duration.ofSeconds(60))
         .pollDelay(Duration.ofMillis(500))
@@ -4642,6 +4646,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
       OpenMetadataClient client, ObjectMapper mapper, String glossaryFqn, String tableId) {
     String queryFilter =
         "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"tags.tagFQN\":\"" + glossaryFqn + "\"}}]}}}";
+    QueuedSearchWrites.await();
     Awaitility.await("asset is searchable by glossary tag " + glossaryFqn)
         .atMost(Duration.ofSeconds(60))
         .pollDelay(Duration.ofMillis(500))

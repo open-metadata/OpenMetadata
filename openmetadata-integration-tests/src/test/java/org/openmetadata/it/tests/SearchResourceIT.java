@@ -31,6 +31,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.UserTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -466,6 +467,7 @@ public class SearchResourceIT {
     // query available and is scenario 1 of the matrix, so this warms up exactly what follows.
     // 90s timeout: search indexing is async via change events and can lag noticeably under
     // CI load, especially the first time the index is warmed in a fresh test container.
+    QueuedSearchWrites.await();
     Awaitility.await()
         .atMost(90, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
@@ -645,6 +647,7 @@ public class SearchResourceIT {
     // is about the dataAsset alias, so waiting on a different index left the gap between the two
     // becoming visible unguarded -- a create that had reached table_search_index could still miss
     // the alias on the single unretried attempt that followed.
+    QueuedSearchWrites.await();
     Awaitility.await()
         .atMost(90, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
@@ -713,6 +716,7 @@ public class SearchResourceIT {
     String targetName = target.getName();
     String decoyName = decoy.getName();
 
+    QueuedSearchWrites.await();
     Awaitility.await()
         .atMost(90, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
@@ -1904,6 +1908,7 @@ public class SearchResourceIT {
     createTestTable(ns, "export_size_test_2");
     createTestTable(ns, "export_size_test_3");
 
+    QueuedSearchWrites.await();
     Awaitility.await()
         .atMost(15, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
@@ -1966,6 +1971,7 @@ public class SearchResourceIT {
     createTestTable(ns, "export_page_test_b");
     createTestTable(ns, "export_page_test_c");
 
+    QueuedSearchWrites.await();
     Awaitility.await()
         .atMost(15, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
@@ -1976,6 +1982,7 @@ public class SearchResourceIT {
               return r.statusCode() == 200 && r.body().split("\n").length >= 4;
             });
 
+    QueuedSearchWrites.await();
     Awaitility.await("Page 1 and page 2 must return different rows")
         .atMost(15, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)

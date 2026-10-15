@@ -778,6 +778,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
                 .withClassification(classification.getFullyQualifiedName())
                 .withDescription("Tag for classification display name search"));
 
+    QueuedSearchWrites.await();
     Awaitility.await("Tag should be searchable by classification display name")
         .atMost(java.time.Duration.ofSeconds(90))
         .pollInterval(java.time.Duration.ofMillis(500))
@@ -1333,6 +1334,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
   private void awaitTagSearchDomains(
       OpenMetadataClient client, ObjectMapper mapper, UUID tagId, Set<String> expectedDomainFqns) {
+    QueuedSearchWrites.await();
     Awaitility.await("Tag search document should have expected domains")
         .atMost(java.time.Duration.ofSeconds(30))
         .pollInterval(java.time.Duration.ofMillis(500))
@@ -2097,6 +2099,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     client.classifications().update(fetched.getId().toString(), fetched);
 
     UUID tagId = tag.getId();
+    QueuedSearchWrites.await();
     Awaitility.await("Tag search index should reflect inherited owner from classification")
         .atMost(java.time.Duration.ofSeconds(30))
         .pollDelay(java.time.Duration.ofMillis(500))

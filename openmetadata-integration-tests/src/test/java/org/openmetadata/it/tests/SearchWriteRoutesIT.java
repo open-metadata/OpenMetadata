@@ -25,6 +25,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.factories.TopicTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SearchDocuments;
 import org.openmetadata.it.util.TestNamespace;
@@ -67,6 +68,7 @@ class SearchWriteRoutesIT {
 
       topic = TopicTestFactory.createSimple(ns);
 
+      QueuedSearchWrites.await();
       Awaitility.await("Topic written to the index another server is building")
           .atMost(ROUTE_WAIT)
           .ignoreExceptions()

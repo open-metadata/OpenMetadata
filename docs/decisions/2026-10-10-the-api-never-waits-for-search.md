@@ -32,8 +32,10 @@ nor recorded what they missed.
 - Writes do not force a refresh. Writes by query refresh their targets first, wait for their task
   and retry version conflicts up to three attempts; what is still undone is recorded as a repair
   scope that the retry worker rebuilds from the database. They run as fan-outs, never on a write
-  lane, so one slow task does not hold up other entities' writes; fan-outs have lanes of their own,
-  four per processor (32 to 128), since they mostly wait on search.
+  lane, so one slow task does not hold up other entities' writes. Fan-outs are ordered per entity
+  only (`KeyedTaskRunner`): an entity's fan-outs run in turn, different entities' at the same time,
+  up to four per processor (32 to 128) since they mostly wait on search, so a slow one holds up only
+  its own entity's later fan-outs.
 - The waits are bounded. A fan-out waits at most 2 minutes for the writes queued before it, then
   runs anyway; a document it overtook is corrected by its entity's next write or a repair. A write
   by query waits at most 30 minutes for its task, then cancels it and records the scope. A repair

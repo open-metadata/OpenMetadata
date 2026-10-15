@@ -60,9 +60,6 @@ public final class OrderedLaneExecutor implements AutoCloseable {
   private static final int MIN_LANES = 8;
   private static final int MAX_LANES = 32;
   private static final int DEFAULT_LANE_QUEUE_CAPACITY = 2000;
-  private static final int MIN_WAITING_LANES = 32;
-  private static final int MAX_WAITING_LANES = 128;
-  private static final int WAITING_LANE_QUEUE_CAPACITY = 500;
   private static final long LANE_KEEP_ALIVE_SECONDS = 60L;
   private static final long DEFAULT_SHUTDOWN_TIMEOUT_SECONDS = 30L;
   private static final String SHED_METRIC = "search.ordered_lane.shed";
@@ -101,33 +98,10 @@ public final class OrderedLaneExecutor implements AutoCloseable {
       BiConsumer<OrderedTask, Throwable> laneFailureHandler,
       int laneQueueCapacity,
       long shutdownTimeoutSeconds) {
-    this(laneFailureHandler, computeLaneCount(), laneQueueCapacity, shutdownTimeoutSeconds);
-  }
-
-  /**
-   * Lanes for tasks that spend most of their time waiting on another system, such as search tasks
-   * by query: four per processor, so a slow task holds up fewer others, each queueing fewer tasks so
-   * the executor holds no more than the default one.
-   */
-  public static OrderedLaneExecutor forWaitingTasks(
-      BiConsumer<OrderedTask, Throwable> laneFailureHandler) {
-    final int processors = Runtime.getRuntime().availableProcessors();
-    return new OrderedLaneExecutor(
-        laneFailureHandler,
-        Math.min(MAX_WAITING_LANES, Math.max(MIN_WAITING_LANES, 4 * processors)),
-        WAITING_LANE_QUEUE_CAPACITY,
-        DEFAULT_SHUTDOWN_TIMEOUT_SECONDS);
-  }
-
-  private OrderedLaneExecutor(
-      BiConsumer<OrderedTask, Throwable> laneFailureHandler,
-      int laneCount,
-      int laneQueueCapacity,
-      long shutdownTimeoutSeconds) {
     this.laneFailureHandler = laneFailureHandler;
     this.laneQueueCapacity = laneQueueCapacity;
     this.shutdownTimeoutSeconds = shutdownTimeoutSeconds;
-    this.laneCount = laneCount;
+    this.laneCount = computeLaneCount();
     this.lanes = new ThreadPoolExecutor[laneCount];
     for (int index = 0; index < laneCount; index++) {
       lanes[index] = newLane(index);

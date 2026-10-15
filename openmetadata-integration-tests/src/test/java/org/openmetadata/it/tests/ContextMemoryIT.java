@@ -17,6 +17,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.context.CreateContextMemory;
@@ -586,6 +587,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
   }
 
   private void awaitSearchPresence(String id, String message) {
+    QueuedSearchWrites.await();
     Awaitility.await(message)
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))

@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -54,6 +55,7 @@ public class DomainAssetsColumnExclusionIT {
     assertTrue(columnCount > 0, "Table should have columns");
 
     // Wait for columns to be indexed with inherited domain field
+    QueuedSearchWrites.await();
     Awaitility.await("Columns should be indexed with domain in column_search_index")
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)
@@ -86,6 +88,7 @@ public class DomainAssetsColumnExclusionIT {
             });
 
     // Verify the domain assets endpoint returns ONLY the table, not columns
+    QueuedSearchWrites.await();
     Awaitility.await("Domain assets should contain table but not columns")
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)
@@ -165,6 +168,7 @@ public class DomainAssetsColumnExclusionIT {
     assertTrue(totalColumns > 0, "Tables should have columns");
 
     // Wait for indexing to complete
+    QueuedSearchWrites.await();
     Awaitility.await("Domain assets should show exactly 2 tables")
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)

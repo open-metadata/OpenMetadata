@@ -37,6 +37,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
@@ -2737,6 +2738,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     // Search by id (single UUID term) instead of fullyQualifiedName phrase — long dotted FQNs
     // can inflate the boolean-clause count under parallel test load and trip the shard-level
     // maxClauseCount limit ([search_phase_execution_exception] all shards failed).
+    QueuedSearchWrites.await();
     Awaitility.await("search index reflects column tag after TagUpdate")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofMillis(500))
