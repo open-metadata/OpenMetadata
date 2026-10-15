@@ -34,6 +34,8 @@ export interface FilterButtonProps {
  * Hub's filters use it — a neutral trigger showing the current choice, and a
  * check on the selected option. Every card filter is single-choice and always
  * holds a value, so the trigger does not need a "something is selected" state.
+ * The trigger fits its choice rather than a fixed width, so a label with a
+ * leading icon ("Last 7 days") is never cut short.
  */
 export const FilterButton: React.FC<FilterButtonProps> = ({
   label,
@@ -45,7 +47,7 @@ export const FilterButton: React.FC<FilterButtonProps> = ({
 }) => (
   <Select
     aria-label={label}
-    className="tw:w-36"
+    className="tw:w-fit tw:min-w-36"
     data-testid={testId}
     icon={iconLeading}
     items={options.map((option) => ({ id: option.value, label: option.label }))}
