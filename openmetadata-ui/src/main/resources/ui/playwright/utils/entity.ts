@@ -1611,21 +1611,29 @@ export const validateFollowedEntityToWidget = async (
   entity: string | undefined,
   isFollowing: boolean
 ): Promise<Locator> => {
-  const followingWidget = await loadFollowingWidget(page);
-
   if (!entity) {
-    return followingWidget;
+    return loadFollowingWidget(page);
   }
 
-  const followedEntity = followingWidget.getByTestId(
-    `${FOLLOWED_ASSET_LIST}-${entity}`
-  );
+  // The card reads follows from search once per page load and never refetches,
+  // but the follow can land in the index after that read — a live index write
+  // that fails is re-applied by the server's SearchIndexRetryWorker 10-30s
+  // later. Waiting on the DOM alone would watch a list that cannot change, so
+  // each attempt reloads the landing page.
+  let followingWidget = page.getByTestId(FOLLOWED_ASSET_LIST);
 
-  if (isFollowing) {
-    await expect(followedEntity).toBeVisible();
-  } else {
-    await expect(followedEntity).not.toBeVisible();
-  }
+  await expect(async () => {
+    followingWidget = await loadFollowingWidget(page);
+    const followedEntity = followingWidget.getByTestId(
+      `${FOLLOWED_ASSET_LIST}-${entity}`
+    );
+
+    if (isFollowing) {
+      await expect(followedEntity).toBeVisible({ timeout: 5_000 });
+    } else {
+      await expect(followedEntity).not.toBeVisible({ timeout: 5_000 });
+    }
+  }).toPass({ timeout: 90_000, intervals: [2_000, 5_000, 10_000] });
 
   return followingWidget;
 };

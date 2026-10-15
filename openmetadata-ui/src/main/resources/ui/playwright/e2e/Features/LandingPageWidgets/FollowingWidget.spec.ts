@@ -89,6 +89,10 @@ pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
     test('Check followed entity present in following widget', async ({
       adminPage,
     }) => {
+      // The widget check reloads the landing page until search reflects the
+      // follow, which can outlast the default timeout when indexing lags.
+      test.slow();
+
       await redirectToHomePage(adminPage);
 
       await entity.visitEntityPage(adminPage);
