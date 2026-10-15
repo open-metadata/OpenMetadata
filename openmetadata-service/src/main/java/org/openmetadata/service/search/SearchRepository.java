@@ -1056,7 +1056,8 @@ public class SearchRepository {
 
   public Optional<String> checkHybridSearchPipeline() {
     if (vectorIndexService instanceof OpenSearchVectorService openSearchVectorService) {
-      return openSearchVectorService.checkHybridSearchPipeline();
+      double[] weights = resolveHybridWeights();
+      return openSearchVectorService.checkHybridSearchPipeline(weights[0], weights[1]);
     }
     return Optional.empty();
   }
