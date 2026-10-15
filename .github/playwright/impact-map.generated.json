@@ -6303,14 +6303,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/DataMarketplace/AnnouncementsWidgetV2/AnnouncementsWidgetV2.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/DataMarketplaceAnnouncements.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component.tsx"
       ],
       "specs": [
@@ -9103,7 +9095,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts"
+        "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts",
+        "playwright/e2e/Pages/DataMarketplaceAnnouncements.spec.ts"
       ]
     },
     {
