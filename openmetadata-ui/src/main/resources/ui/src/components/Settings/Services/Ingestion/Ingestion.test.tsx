@@ -20,13 +20,17 @@ import {
   screen,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { DISABLED } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ServiceAgentSubTabs } from '../../../../enums/service.enum';
+import {
+  ServiceAgentSubTabs,
+  ServiceCategory,
+} from '../../../../enums/service.enum';
 import { ingestionProps, mockAgent } from '../../../../mocks/Ingestion.mock';
 import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
+import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { Agent } from '../../../ServiceAgents/AgentsPage.interface';
 import Ingestion from './Ingestion.component';
 
@@ -272,6 +276,41 @@ describe('Ingestion', () => {
     });
 
     expect(screen.getByText('DeploymentSummaryCard')).toBeInTheDocument();
+  });
+
+  it('should offer the Collate AI sub-tab on a non-database service', async () => {
+    // AutoPilot creates AI Automations for services of every type, not only databases.
+    const widgetsSpy = jest
+      .spyOn(serviceUtilClassBase, 'getAgentsTabWidgets')
+      .mockReturnValue({
+        CollateAIAgentsWidget: () => null,
+      } as unknown as ReturnType<
+        typeof serviceUtilClassBase.getAgentsTabWidgets
+      >);
+
+    try {
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter
+            initialEntries={[
+              `/service/${ServiceCategory.DASHBOARD_SERVICES}/svc/agents/${ServiceAgentSubTabs.METADATA}`,
+            ]}>
+            <Routes>
+              <Route
+                element={<Ingestion {...ingestionProps} />}
+                path="/service/:serviceCategory/:fqn/:tab/:subTab"
+              />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
+
+      expect(
+        await screen.findByTestId('agents-sub-tabs-switch')
+      ).toBeInTheDocument();
+    } finally {
+      widgetsSpy.mockRestore();
+    }
   });
 
   it('should render the AddIngestionButton when create permission is granted', async () => {

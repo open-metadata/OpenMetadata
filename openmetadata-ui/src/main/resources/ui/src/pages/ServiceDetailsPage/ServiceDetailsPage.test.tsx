@@ -1749,8 +1749,8 @@ describe('ServiceDetailsPage', () => {
       });
     });
 
-    it('should not fetch agents for non-database services', async () => {
-      // Set up messaging service context (CollateAI widgets not supported)
+    it('should fetch agents for non-database services too', async () => {
+      // AutoPilot creates AI Automations for services of every type, not only databases.
       (useRequiredParams as jest.Mock).mockReturnValue({
         serviceCategory: ServiceCategory.MESSAGING_SERVICES,
         tab: EntityTabs.INSIGHTS,
@@ -1758,7 +1758,9 @@ describe('ServiceDetailsPage', () => {
 
       await renderComponent();
 
-      expect(getAiAutomationsByService).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+      });
     });
 
     it('should properly handle CollateAI widget support check', async () => {

@@ -356,13 +356,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     () => serviceUtilClassBase.getAgentsTabWidgets(),
     []
   );
-  const isDBService = useMemo(
-    () => serviceCategory === ServiceCategory.DATABASE_SERVICES,
-    [serviceCategory]
-  );
+  // AutoPilot creates AI Automations for services of every type, so the widget is not limited
+  // to database services.
   const isCollateAIWidgetSupported = useMemo(
-    () => !isUndefined(CollateAIAgentsWidget) && isDBService,
-    [CollateAIAgentsWidget, isDBService]
+    () => !isUndefined(CollateAIAgentsWidget),
+    [CollateAIAgentsWidget]
   );
 
   const { searchValue, fileSearchValue, spreadSheetSearchValue } =
