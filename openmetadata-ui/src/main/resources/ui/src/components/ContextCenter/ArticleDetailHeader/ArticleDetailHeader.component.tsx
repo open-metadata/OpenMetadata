@@ -493,17 +493,16 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         </Tooltip>
 
         <ButtonUtility
-          className={
-            voteStatus === QueryVoteType.votedUp
-              ? 'tw:text-fg-brand-primary'
-              : undefined
-          }
           color="tertiary"
           data-testid="upvote-btn"
           disabled={knowledgePage?.deleted || voteLoading !== null}
           icon={
             voteStatus === QueryVoteType.votedUp ? (
-              <ThumbsUpActiveIcon height={20} width={20} />
+              <ThumbsUpActiveIcon
+                className="tw:text-fg-brand-primary"
+                height={20}
+                width={20}
+              />
             ) : (
               <ThumbsUpIcon height={20} width={20} />
             )
@@ -513,17 +512,16 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         />
 
         <ButtonUtility
-          className={
-            voteStatus === QueryVoteType.votedDown
-              ? 'tw:text-fg-brand-primary'
-              : undefined
-          }
           color="tertiary"
           data-testid="downvote-btn"
           disabled={knowledgePage?.deleted || voteLoading !== null}
           icon={
             voteStatus === QueryVoteType.votedDown ? (
-              <ThumbsDownActiveIcon height={20} width={20} />
+              <ThumbsDownActiveIcon
+                className="tw:text-fg-warning-primary"
+                height={20}
+                width={20}
+              />
             ) : (
               <ThumbsDownIcon height={20} width={20} />
             )
@@ -601,7 +599,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   <Box align="center" gap={2}>
                     <TrashIcon
                       aria-hidden="true"
-                      className="ttw:shrink-0 tw:text-error-primary"
+                      className="tw:shrink-0 tw:text-error-primary"
                       height={20}
                       width={20}
                     />

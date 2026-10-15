@@ -102,8 +102,8 @@ import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
@@ -1308,7 +1308,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   private void createChangeEventAndUpdateInES(PutResponse<T> response, String importedBy) {
     if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(
+          ChangeEvents.createChangeEventForEntity(
               importedBy, response.getChangeType(), response.getEntity());
       Object entity = changeEvent.getEntity();
       changeEvent = copyChangeEvent(changeEvent);
@@ -1348,7 +1348,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
                 .withDefaultPersona(user.getDefaultPersona());
       }
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(
+          ChangeEvents.createChangeEventForEntity(
               importedBy, response.getChangeType(), entityForEvent);
       Object eventEntity = changeEvent.getEntity();
       changeEvent = copyChangeEvent(changeEvent);
@@ -1360,7 +1360,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
 
   private void createChangeEventForBatchedEntity(EntityInterface<?> entity, EventType eventType) {
     ChangeEvent changeEvent =
-        FormatterUtil.createChangeEventForEntity(importedBy, eventType, entity);
+        ChangeEvents.createChangeEventForEntity(importedBy, eventType, entity);
     Object eventEntity = changeEvent.getEntity();
     changeEvent = copyChangeEvent(changeEvent);
     changeEvent.setEntity(JsonUtils.pojoToMaskedJson(eventEntity));

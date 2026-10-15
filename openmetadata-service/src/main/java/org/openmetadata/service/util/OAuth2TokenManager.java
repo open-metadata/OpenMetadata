@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.util.http.OutboundHttpClients;
 
 @Slf4j
 public class OAuth2TokenManager {
@@ -152,7 +153,7 @@ public class OAuth2TokenManager {
   }
 
   private static Client createTokenClient() {
-    return SubscriptionUtil.getClient(TOKEN_CONNECT_TIMEOUT_SECONDS, TOKEN_READ_TIMEOUT_SECONDS);
+    return OutboundHttpClients.newClient(TOKEN_CONNECT_TIMEOUT_SECONDS, TOKEN_READ_TIMEOUT_SECONDS);
   }
 
   private record CachedToken(String accessToken, Instant expiresAt) {
