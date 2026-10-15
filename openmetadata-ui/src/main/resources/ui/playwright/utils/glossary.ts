@@ -41,6 +41,7 @@ import {
   getApiContext,
   INVALID_NAMES,
   redirectToHomePage,
+  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from './common';
@@ -770,7 +771,16 @@ export const addAssetToGlossaryTerm = async (
     ).toContainText(visibleName);
   }
 
+  // Callers tear down the term right after this returns; an in-flight add that
+  // lands after the term is deleted leaves an orphan tag_usage row.
+  const addAssetsResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/assets/add') &&
+      response.request().method() === 'PUT'
+  );
   await page.click('[data-testid="save-btn"]');
+
+  expect((await addAssetsResponse).status()).toBe(200);
 };
 
 const testFilterWithSpecificOption = async (
@@ -1207,13 +1217,20 @@ export const addRelatedTermsByRelationType = async (
         ? page.locator('[data-testid^="relation-row-"]').first()
         : page.locator('[data-testid^="relation-row-"]').last();
 
-    await rowLocator.getByRole('button').first().click();
-    const option = page.getByRole('option', {
-      exact: true,
-      name: row.relationTypeLabel,
-    });
-    await expect(option).toBeVisible();
-    await option.click();
+    // Later rows sit at the viewport's bottom edge; a scroll there closes the
+    // non-modal Select popover mid-click, so centre-and-retry the pick. A click
+    // on the repositioning popover can also land on the neighbouring option
+    // (CI saved "Antonym" for "See Also"), so retry until the trigger shows it.
+    const relationTypeTrigger = rowLocator.getByRole('button').first();
+    await expect(async () => {
+      await selectOptionWithRetry(
+        relationTypeTrigger,
+        page.getByRole('option', { exact: true, name: row.relationTypeLabel })
+      );
+      await expect(relationTypeTrigger).toHaveText(row.relationTypeLabel, {
+        timeout: 2000,
+      });
+    }).toPass({ timeout: 30000 });
 
     const trigger = rowLocator.locator('[data-testid^="term-picker-"]');
 

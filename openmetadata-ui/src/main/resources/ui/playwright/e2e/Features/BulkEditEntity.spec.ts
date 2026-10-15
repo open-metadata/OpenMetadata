@@ -810,8 +810,13 @@ test.describe('Bulk Edit Entity', () => {
       }
     });
 
-    await glossary.delete(apiContext);
     await afterAction();
+    // The setup context has idled past the server's 60s keep-alive timeout by
+    // now; a DELETE on its pooled socket dies with "socket hang up" and is not
+    // retried (non-idempotent), so clean up on a fresh connection.
+    const cleanup = await getApiContext(page);
+    await glossary.delete(cleanup.apiContext);
+    await cleanup.afterAction();
   });
 
   test('Glossary Term (Nested)', async ({ page }) => {

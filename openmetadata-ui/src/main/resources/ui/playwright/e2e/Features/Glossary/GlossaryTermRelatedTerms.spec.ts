@@ -14,7 +14,11 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import {
+  getApiContext,
+  redirectToHomePage,
+  selectOptionWithRetry,
+} from '../../../utils/common';
 import {
   addRelatedTermsByRelationType,
   selectActiveGlossary,
@@ -131,13 +135,10 @@ test.describe('Glossary Term — Related Terms', () => {
         .click();
 
       const row = page.locator('[data-testid^="relation-row-"]').first();
-      await row.getByRole('button').first().click();
-      const seeAlsoOption = page.getByRole('option', {
-        exact: true,
-        name: 'See Also',
-      });
-      await expect(seeAlsoOption).toBeVisible();
-      await seeAlsoOption.click();
+      await selectOptionWithRetry(
+        row.getByRole('button').first(),
+        page.getByRole('option', { exact: true, name: 'See Also' })
+      );
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-related-terms').click();
