@@ -178,15 +178,15 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   }
 
   protected void postCreate(T recordEntity) {
-    searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(recordEntity, entityClass));
+    searchRepository.getLiveWrites().createTimeSeriesEntity(recordEntity);
   }
 
   protected void postDelete(T recordEntity, boolean hardDelete) {
-    searchRepository.deleteTimeSeriesEntityById(JsonUtils.deepCopy(recordEntity, entityClass));
+    searchRepository.getLiveWrites().deleteTimeSeriesEntityById(recordEntity);
   }
 
   protected void postUpdate(T updated) {
-    searchRepository.updateTimeSeriesEntity(updated);
+    searchRepository.getLiveWrites().updateTimeSeriesEntity(updated);
   }
 
   // Database Repository Methods

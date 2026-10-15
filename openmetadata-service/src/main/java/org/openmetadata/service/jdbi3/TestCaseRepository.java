@@ -47,7 +47,6 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -1417,32 +1416,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return failing;
   }
 
-  @SneakyThrows
+  /**
+   * The saved result when the test case was read from search, where it is denormalized; otherwise
+   * the latest one in the database. Not from search: it indexes a result after the call that wrote
+   * it returns, so a read right after that write would get the previous result.
+   */
   private TestCaseResult getTestCaseResult(TestCase testCase) {
-    TestCaseResult testCaseResult = null;
-    if (testCase.getTestCaseResult() != null) {
-      // we'll return the saved state if it exists otherwise we'll fetch it from the database
-      // Should be the case if listing from the search repo. as the test case result
-      // is stored with the test case entity (denormalized)
-      return testCase.getTestCaseResult();
-    }
-    SearchListFilter searchListFilter = new SearchListFilter();
-    searchListFilter.addQueryParam("testCaseFQN", testCase.getFullyQualifiedName());
-    TestCaseResultRepository timeSeriesRepository =
-        (TestCaseResultRepository) getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    try {
-      testCaseResult =
-          timeSeriesRepository.latestFromSearch(Fields.EMPTY_FIELDS, searchListFilter, null);
-    } catch (Exception e) {
-      LOG.debug(
-          "Error fetching test case result from search. Fetching from test case results from database",
-          e);
-    }
-    if (nullOrEmpty(testCaseResult)) {
-      testCaseResult =
-          timeSeriesRepository.listLastTestCaseResult(testCase.getFullyQualifiedName());
-    }
-    return testCaseResult;
+    return testCase.getTestCaseResult() != null
+        ? testCase.getTestCaseResult()
+        : ((TestCaseResultRepository) getEntityTimeSeriesRepository(TEST_CASE_RESULT))
+            .getLatestRecord(testCase.getFullyQualifiedName());
   }
 
   /** StateId of the test case's ongoing incident: latest unresolved record, or null if resolved. */
@@ -1586,7 +1569,48 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
    */
   public RestUtil.PutResponse<TestSuite> addMatchingTestCasesToLogicalTestSuite(
       TestSuite testSuite, String searchFilter, String query, List<UUID> excludeIds) {
-    List<UUID> matchingIds = resolveMatchingTestCaseIds(searchFilter, query, excludeIds);
+    return addMatchingTestCases(
+        testSuite, resolveMatchingTestCaseIds(searchFilter, query, excludeIds));
+  }
+
+  /**
+   * Add every test case the database filter matches to the bundle suite, minus excludeIds. Read
+   * from the database, so a test case created moments ago is included before search indexes it.
+   */
+  public RestUtil.PutResponse<TestSuite> addMatchingTestCasesToLogicalTestSuite(
+      TestSuite testSuite, ListFilter filter, List<UUID> excludeIds) {
+    return addMatchingTestCases(testSuite, listMatchingTestCaseIds(filter, excludeIds));
+  }
+
+  private List<UUID> listMatchingTestCaseIds(ListFilter filter, List<UUID> excludeIds) {
+    Set<UUID> excluded = Set.copyOf(excludeIds);
+    List<UUID> matchingIds = new ArrayList<>();
+    List<TestCase> page = listTestCasePage(filter, "", "");
+    while (!page.isEmpty()) {
+      page.stream()
+          .map(TestCase::getId)
+          .filter(id -> !excluded.contains(id))
+          .forEach(matchingIds::add);
+      TestCase last = page.getLast();
+      page =
+          page.size() < BULK_MATCH_SEARCH_BATCH_SIZE
+              ? List.of()
+              : listTestCasePage(filter, last.getName(), last.getId().toString());
+    }
+    return matchingIds;
+  }
+
+  private List<TestCase> listTestCasePage(ListFilter filter, String afterName, String afterId) {
+    return daoCollection
+        .testCaseDAO()
+        .listAfter(filter, BULK_MATCH_SEARCH_BATCH_SIZE, afterName, afterId)
+        .stream()
+        .map(json -> JsonUtils.readValue(json, TestCase.class))
+        .toList();
+  }
+
+  private RestUtil.PutResponse<TestSuite> addMatchingTestCases(
+      TestSuite testSuite, List<UUID> matchingIds) {
     if (matchingIds.isEmpty()) {
       return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE);
     }

@@ -13,13 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.rdf.RdfTagUpdater;
-import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.DeferredSearchWrites;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.PostCommitActionQueue;
@@ -126,8 +123,8 @@ final class RepositorySideEffectScope {
       runGuarded(EntityRepository::drainCacheInvalidations);
     }
     runGuarded(() -> RdfTagUpdater.runDeferredClosures(rdf));
-    runGuarded(() -> runLineageWrites(lineage));
-    runGuarded(() -> runSearchWrites(search));
+    runGuarded(() -> DeferredSearchWrites.runLineage(lineage));
+    runGuarded(() -> DeferredSearchWrites.run(search));
     runGuarded(() -> PostCommitActionQueue.run(actions));
   }
 
@@ -146,50 +143,6 @@ final class RepositorySideEffectScope {
     }
     if (ownsPostCommit) {
       PostCommitActionQueue.clear();
-    }
-  }
-
-  private static void runSearchWrites(final List<SearchRepository.DeferredSearchWrite> writes) {
-    for (final SearchRepository.DeferredSearchWrite write : writes) {
-      try {
-        write.run();
-      } catch (RuntimeException failure) {
-        enqueueSearchWriteRetry(write, failure);
-      }
-    }
-  }
-
-  private static void enqueueSearchWriteRetry(
-      final SearchRepository.DeferredSearchWrite write, final RuntimeException failure) {
-    LOG.warn("Deferred search write {} failed; enqueuing retry", write.operation(), failure);
-    if (write.entityId() != null || !nullOrEmpty(write.entityFqn())) {
-      SearchIndexRetryQueue.enqueue(
-          write.entityId(),
-          write.entityFqn(),
-          write.entityType() == null ? "" : write.entityType(),
-          SearchIndexRetryQueue.failureReason(write.operation(), failure));
-    }
-  }
-
-  private static void runLineageWrites(final List<LineageUtil.DeferredLineageEsWrite> writes) {
-    for (final LineageUtil.DeferredLineageEsWrite write : writes) {
-      try {
-        write.run();
-      } catch (RuntimeException failure) {
-        enqueueLineageRetry(write.toEntity(), failure);
-      }
-    }
-  }
-
-  private static void enqueueLineageRetry(
-      final EntityReference toEntity, final RuntimeException failure) {
-    LOG.warn("Deferred lineage search write failed; enqueuing retry", failure);
-    if (toEntity != null) {
-      SearchIndexRetryQueue.enqueue(
-          toEntity.getId() != null ? toEntity.getId().toString() : null,
-          toEntity.getFullyQualifiedName(),
-          toEntity.getType(),
-          SearchIndexRetryQueue.failureReason("lineage", failure));
     }
   }
 

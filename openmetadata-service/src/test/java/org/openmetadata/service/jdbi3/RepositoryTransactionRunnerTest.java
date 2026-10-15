@@ -275,7 +275,7 @@ class RepositoryTransactionRunnerTest {
   }
 
   private static void deferSearch(final Runnable effect) {
-    SearchRepository.deferOrRunSearchWrite(effect, "test", null, null, null);
+    SearchRepository.runAfterCommit(effect, "test", null);
   }
 
   @Test

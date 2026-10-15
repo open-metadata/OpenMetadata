@@ -23,6 +23,7 @@ import org.junit.jupiter.api.parallel.Resources;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -1609,6 +1610,7 @@ public class ColumnGridResourceIT {
   }
 
   private void waitForSearchIndexRefresh(TestNamespace ns) {
+    QueuedSearchWrites.await();
     String namespaceMarker = ns.prefix("");
     await("Wait for a namespace entity to appear in search")
         .atMost(Duration.ofSeconds(60))

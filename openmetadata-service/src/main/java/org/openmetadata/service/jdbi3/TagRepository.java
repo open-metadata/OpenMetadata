@@ -556,7 +556,7 @@ public class TagRepository extends EntityRepository<Tag> {
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
         invalidateCacheAfterTagMutation(asset.getEntityReference());
 
-        searchRepository.updateEntity(ref);
+        searchRepository.getLiveWrites().updateEntity(ref);
         RdfUpdater.updateEntity(asset);
       }
     }
@@ -617,7 +617,7 @@ public class TagRepository extends EntityRepository<Tag> {
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
       invalidateCacheAfterTagMutation(table.getEntityReference());
-      searchRepository.updateEntity(table.getEntityReference());
+      searchRepository.getLiveWrites().updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);
     }
 
@@ -698,7 +698,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
       if (!dryRun) {
         // Update ES
-        searchRepository.updateEntity(ref);
+        searchRepository.getLiveWrites().updateEntity(ref);
         RdfUpdater.updateEntity(asset);
       }
     }
@@ -739,7 +739,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
     if (!dryRun) {
       // Update the parent table's search index
-      searchRepository.updateEntity(table.getEntityReference());
+      searchRepository.getLiveWrites().updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);
     }
   }
@@ -756,7 +756,7 @@ public class TagRepository extends EntityRepository<Tag> {
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
         || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
       EntityReference originalRef = original.getEntityReference();
-      searchRepository.deferIfFlushScopeActive(
+      searchRepository.queueFanOut(
           () -> searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", originalRef),
           "reindexAcrossIndices",
           originalRef.getId() != null ? originalRef.getId().toString() : null,

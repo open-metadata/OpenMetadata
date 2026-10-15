@@ -99,6 +99,7 @@ import { expectBreadcrumbToContainAncestor } from '../../utils/headerBreadcrumbU
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
 import { performUserLogin } from '../../utils/user';
+import { openTabUntilListed } from '../../utils/waitHelpers';
 let user: UserClass;
 let domain: Domain;
 let classification: ClassificationClass;
@@ -396,12 +397,14 @@ test.describe('Domains', () => {
         await createDataProduct(page, dataProduct1.data);
         await waitForAllLoadersToDisappear(page);
 
-        // Verify first data product card is visible
-        await expect(
+        // Verify first data product card is listed
+        await openTabUntilListed(
+          page,
+          page.getByTestId('data_products'),
           page.getByTestId(
             `table-data-card_${dataProduct1.data.fullyQualifiedName}`
           )
-        ).toBeVisible();
+        );
 
         await createDataProduct(page, dataProduct2.data);
       });
@@ -591,7 +594,11 @@ test.describe('Domains', () => {
 
       // Navigate to subdomain and verify
       const subDomainCard = page.getByTestId(subDomain.data.name);
-      await expect(subDomainCard).toBeVisible();
+      await openTabUntilListed(
+        page,
+        page.getByTestId('subdomains').getByText('Sub Domains'),
+        subDomainCard
+      );
 
       await Promise.all([
         subDomainCard.click(),
@@ -642,7 +649,11 @@ test.describe('Domains', () => {
 
       // Navigate to nested subdomain and verify
       const nestedSubDomainCard = page.getByTestId(nestedSubDomain.data.name);
-      await expect(nestedSubDomainCard).toBeVisible();
+      await openTabUntilListed(
+        page,
+        page.getByTestId('subdomains').getByText('Sub Domains'),
+        nestedSubDomainCard
+      );
 
       await Promise.all([
         nestedSubDomainCard.click(),

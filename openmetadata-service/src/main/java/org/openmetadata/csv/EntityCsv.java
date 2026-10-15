@@ -1346,19 +1346,19 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     pendingChangeEvents.add(JsonUtils.pojoToJson(changeEvent));
   }
 
-  /** Flush pending search index updates using bulk API */
+  /**
+   * Queues the imported entities' search writes; an import, like any API call, never waits for
+   * search. A write that fails goes to the search retry queue.
+   */
   protected void flushPendingSearchIndexUpdates() {
     if (pendingSearchIndexUpdates.isEmpty()) {
       return;
     }
-    try {
-      Entity.getSearchRepository().updateEntitiesBulk(pendingSearchIndexUpdates);
-      LOG.info("Bulk indexed {} entities in search", pendingSearchIndexUpdates.size());
-    } catch (Exception e) {
-      LOG.error("Error bulk indexing entities in search, will retry individually", e);
-    } finally {
-      pendingSearchIndexUpdates.clear();
-    }
+    Entity.getSearchRepository()
+        .getLiveWrites()
+        .updateEntitiesIndex(List.copyOf(pendingSearchIndexUpdates), Map.of());
+    LOG.info("Queued search writes for {} imported entities", pendingSearchIndexUpdates.size());
+    pendingSearchIndexUpdates.clear();
   }
 
   /** Flush pending change events using batch insert */

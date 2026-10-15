@@ -26,6 +26,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -1369,10 +1370,12 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   private void awaitPipelineSearchDoc(UUID pipelineId, Consumer<JsonNode> assertion) {
+    QueuedSearchWrites.await();
     String docPath = "/v1/search/get/" + getSearchIndex() + "/doc/" + pipelineId;
     Awaitility.await("pipeline " + pipelineId + " search doc")
         .pollInterval(Duration.ofMillis(500))
         .atMost(Duration.ofSeconds(60))
+        .ignoreExceptions()
         .untilAsserted(
             () ->
                 assertion.accept(

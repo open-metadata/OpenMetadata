@@ -59,7 +59,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -1927,11 +1926,7 @@ public class UserRepository extends EntityRepository<User> {
 
       // Update users and userCount in team search index
       Stream.concat(added.stream(), deleted.stream())
-          .forEach(
-              teamRef -> {
-                EntityInterface<?> team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
-                searchRepository.updateEntityIndex(team);
-              });
+          .forEach(teamRef -> searchRepository.getLiveWrites().updateEntity(teamRef));
     }
 
     private List<EntityReference> findAddedTeams(

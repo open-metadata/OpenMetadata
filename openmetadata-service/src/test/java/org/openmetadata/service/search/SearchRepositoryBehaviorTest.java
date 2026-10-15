@@ -34,6 +34,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -255,6 +256,7 @@ class SearchRepositoryBehaviorTest {
 
   @AfterEach
   void tearDown() {
+    repository.getLiveWrites().close();
     Entity.setSearchRepository(null);
     clearMockEntityRepositories();
     clearMockTimeSeriesRepositories();
@@ -1276,7 +1278,8 @@ class SearchRepositoryBehaviorTest {
             eq("cluster_table_search_index"),
             eq(entityId.toString()),
             any(Map.class),
-            eq(SearchClient.UPDATE_CERTIFICATION_SCRIPT));
+            eq(SearchClient.UPDATE_CERTIFICATION_SCRIPT),
+            eq(Entity.TABLE));
   }
 
   @Test
@@ -1302,7 +1305,8 @@ class SearchRepositoryBehaviorTest {
             eq("cluster_table_search_index"),
             eq(entityId.toString()),
             paramCaptor.capture(),
-            eq(SearchClient.UPDATE_CERTIFICATION_SCRIPT));
+            eq(SearchClient.UPDATE_CERTIFICATION_SCRIPT),
+            eq(Entity.TABLE));
     assertNull(paramCaptor.getValue().get("name"));
     assertNull(paramCaptor.getValue().get("description"));
     assertNull(paramCaptor.getValue().get("tagFQN"));
@@ -1464,7 +1468,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void deleteAndSoftDeleteOperationsSkipUnsupportedTypesButHandleMappedEntities()
-      throws IOException {
+      throws IOException, InterruptedException {
     EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     SearchRepository spyRepository = spy(repository);
     doNothing().when(spyRepository).deleteOrUpdateChildren(any(), any());
@@ -1472,6 +1476,7 @@ class SearchRepositoryBehaviorTest {
 
     spyRepository.deleteEntityIndex(entity);
     spyRepository.softDeleteOrRestoreEntityIndex(entity, true);
+    awaitQueuedWrites(spyRepository);
 
     verify(searchClient).deleteEntity("cluster_table_search_index", entity.getId().toString());
     final org.openmetadata.service.search.scripts.SoftDeleteScript entityScript =
@@ -2667,7 +2672,8 @@ class SearchRepositoryBehaviorTest {
             "cluster_page_search_index",
             page.getId().toString(),
             Map.of("field", "parent"),
-            "ctx._source.remove(params.field)");
+            "ctx._source.remove(params.field)",
+            Entity.PAGE);
   }
 
   @Test
@@ -2765,7 +2771,7 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void domainUpdateWrappersDelegateToSearchClient() {
+  void domainUpdateWrappersDelegateToSearchClient() throws InterruptedException {
     EntityReference domain =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN);
     List<String> oldDomains = List.of("old.domain");
@@ -2776,6 +2782,7 @@ class SearchRepositoryBehaviorTest {
     repository.updateAssetDomainsByIds(assetIds, oldDomains, newDomains);
     repository.updateDomainFqnByPrefix("old.domain", "new.domain");
     repository.updateAssetDomainFqnByPrefix("old.domain", "new.domain");
+    awaitQueuedWrites(repository);
 
     verify(searchClient).updateAssetDomainsForDataProduct("dataProduct", oldDomains, newDomains);
     verify(searchClient).updateAssetDomainsByIds(assetIds, oldDomains, newDomains);
@@ -3643,12 +3650,14 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void createReindexHandlerAndDeleteRelationshipHelpersUseExpectedImplementations() {
+  void createReindexHandlerAndDeleteRelationshipHelpersUseExpectedImplementations()
+      throws InterruptedException {
     repository.createReindexHandler();
 
     repository.deleteRelationshipFromSearch(
         UUID.fromString("00000000-0000-0000-0000-000000000001"),
         UUID.fromString("00000000-0000-0000-0000-000000000002"));
+    awaitQueuedWrites(repository);
 
     verify(searchClient)
         .updateChildren(
@@ -3938,5 +3947,10 @@ class SearchRepositoryBehaviorTest {
     public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
       return document;
     }
+  }
+
+  private static void awaitQueuedWrites(SearchRepository searchRepository)
+      throws InterruptedException {
+    assertTrue(searchRepository.getLiveWrites().awaitQueuedWrites(Duration.ofSeconds(10)));
   }
 }

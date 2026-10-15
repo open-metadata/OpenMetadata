@@ -30,6 +30,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityUpdateContext;
+import org.openmetadata.service.search.LiveSearchWrites;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -37,6 +38,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 class SearchIndexHandlerTest {
 
   @Mock private SearchRepository mockSearchRepository;
+  @Mock private LiveSearchWrites mockLiveWrites;
   @Mock private EntityInterface<?> mockEntity;
   @Mock private EntityInterface<?> mockEntity2;
   @Mock private EntityReference mockEntityRef;
@@ -48,6 +50,7 @@ class SearchIndexHandlerTest {
 
   @BeforeEach
   void setUp() {
+    lenient().when(mockSearchRepository.getLiveWrites()).thenReturn(mockLiveWrites);
     searchIndexHandler = new SearchIndexHandler(mockSearchRepository);
 
     // Setup mock entities with actual UUIDs to avoid circular dependencies
@@ -94,36 +97,36 @@ class SearchIndexHandlerTest {
   void testOnEntityCreated() {
     searchIndexHandler.onEntityCreated(mockEntity, mockSubjectContext);
 
-    verify(mockSearchRepository).createEntityIndex(mockEntity);
-    verifyNoMoreInteractions(mockSearchRepository);
+    verify(mockLiveWrites).createEntityIndex(mockEntity);
+    verifyNoMoreInteractions(mockLiveWrites);
   }
 
   @Test
   void testOnEntityCreatedWithException() {
     doThrow(new RuntimeException("Search indexing failed"))
-        .when(mockSearchRepository)
+        .when(mockLiveWrites)
         .createEntityIndex(mockEntity);
 
     // Should not throw exception but log it
     assertDoesNotThrow(() -> searchIndexHandler.onEntityCreated(mockEntity, mockSubjectContext));
 
-    verify(mockSearchRepository).createEntityIndex(mockEntity);
+    verify(mockLiveWrites).createEntityIndex(mockEntity);
   }
 
   @Test
   void testOnEntityUpdatedWithEntity() {
     searchIndexHandler.onEntityUpdated(mockEntity, mockChangeDescription, mockSubjectContext);
 
-    verify(mockSearchRepository).updateEntityIndex(mockEntity);
-    verifyNoMoreInteractions(mockSearchRepository);
+    verify(mockLiveWrites).updateEntityIndex(mockEntity);
+    verifyNoMoreInteractions(mockLiveWrites);
   }
 
   @Test
   void testOnEntityUpdatedWithEntityReference() {
     searchIndexHandler.onEntityUpdated(mockEntityRef, mockSubjectContext);
 
-    verify(mockSearchRepository).updateEntity(mockEntityRef);
-    verifyNoMoreInteractions(mockSearchRepository);
+    verify(mockLiveWrites).updateEntity(mockEntityRef);
+    verifyNoMoreInteractions(mockLiveWrites);
   }
 
   @Test
@@ -132,23 +135,23 @@ class SearchIndexHandlerTest {
 
     searchIndexHandler.onEntitiesUpdated(entities, mockChangeDescription, mockSubjectContext);
 
-    verify(mockSearchRepository).updateEntitiesIndex(entities, Map.of());
-    verifyNoMoreInteractions(mockSearchRepository);
+    verify(mockLiveWrites).updateEntitiesIndex(entities, Map.of());
+    verifyNoMoreInteractions(mockLiveWrites);
   }
 
   @Test
   void testOnEntitiesUpdatedFallsBackToIndividualUpdates() {
     List<EntityInterface<?>> entities = List.of(mockEntity, mockEntity2);
     doThrow(new RuntimeException("Bulk update failed"))
-        .when(mockSearchRepository)
+        .when(mockLiveWrites)
         .updateEntitiesIndex(entities, Map.of());
 
     searchIndexHandler.onEntitiesUpdated(entities, mockChangeDescription, mockSubjectContext);
 
-    verify(mockSearchRepository).updateEntitiesIndex(entities, Map.of());
-    verify(mockSearchRepository).updateEntityIndex(mockEntity);
-    verify(mockSearchRepository).updateEntityIndex(mockEntity2);
-    verifyNoMoreInteractions(mockSearchRepository);
+    verify(mockLiveWrites).updateEntitiesIndex(entities, Map.of());
+    verify(mockLiveWrites).updateEntityIndex(mockEntity);
+    verify(mockLiveWrites).updateEntityIndex(mockEntity2);
+    verifyNoMoreInteractions(mockLiveWrites);
   }
 
   @Test
@@ -159,8 +162,8 @@ class SearchIndexHandlerTest {
     searchIndexHandler.onEntitiesUpdated(
         entities, mockChangeDescription, mockSubjectContext, new EntityUpdateContext(revisions));
 
-    verify(mockSearchRepository).updateEntitiesIndex(entities, revisions);
-    verifyNoMoreInteractions(mockSearchRepository);
+    verify(mockLiveWrites).updateEntitiesIndex(entities, revisions);
+    verifyNoMoreInteractions(mockLiveWrites);
   }
 
   @Test
@@ -168,22 +171,22 @@ class SearchIndexHandlerTest {
     List<EntityInterface<?>> entities = List.of(mockEntity, mockEntity2);
     Map<UUID, Long> revisions = Map.of(mockEntity.getId(), 11L, mockEntity2.getId(), 12L);
     doThrow(new RuntimeException("Bulk update failed"))
-        .when(mockSearchRepository)
+        .when(mockLiveWrites)
         .updateEntitiesIndex(entities, revisions);
 
     searchIndexHandler.onEntitiesUpdated(
         entities, mockChangeDescription, mockSubjectContext, new EntityUpdateContext(revisions));
 
-    verify(mockSearchRepository).updateEntitiesIndex(entities, revisions);
-    verify(mockSearchRepository).updateEntityIndex(mockEntity, 11L);
-    verify(mockSearchRepository).updateEntityIndex(mockEntity2, 12L);
-    verifyNoMoreInteractions(mockSearchRepository);
+    verify(mockLiveWrites).updateEntitiesIndex(entities, revisions);
+    verify(mockLiveWrites).updateEntityIndex(mockEntity, 11L);
+    verify(mockLiveWrites).updateEntityIndex(mockEntity2, 12L);
+    verifyNoMoreInteractions(mockLiveWrites);
   }
 
   @Test
   void testOnEntityUpdatedWithException() {
     doThrow(new RuntimeException("Search update failed"))
-        .when(mockSearchRepository)
+        .when(mockLiveWrites)
         .updateEntityIndex(mockEntity);
 
     // Should not throw exception but log it
@@ -192,46 +195,46 @@ class SearchIndexHandlerTest {
             searchIndexHandler.onEntityUpdated(
                 mockEntity, mockChangeDescription, mockSubjectContext));
 
-    verify(mockSearchRepository).updateEntityIndex(mockEntity);
+    verify(mockLiveWrites).updateEntityIndex(mockEntity);
   }
 
   @Test
   void testOnEntityDeleted() {
     searchIndexHandler.onEntityDeleted(mockEntity, mockSubjectContext);
 
-    verify(mockSearchRepository).deleteEntityIndex(mockEntity);
-    verifyNoMoreInteractions(mockSearchRepository);
+    verify(mockLiveWrites).deleteEntityIndex(mockEntity);
+    verifyNoMoreInteractions(mockLiveWrites);
   }
 
   @Test
   void testOnEntityDeletedWithException() {
     doThrow(new RuntimeException("Search deletion failed"))
-        .when(mockSearchRepository)
+        .when(mockLiveWrites)
         .deleteEntityIndex(mockEntity);
 
     // Should not throw exception but log it
     assertDoesNotThrow(() -> searchIndexHandler.onEntityDeleted(mockEntity, mockSubjectContext));
 
-    verify(mockSearchRepository).deleteEntityIndex(mockEntity);
+    verify(mockLiveWrites).deleteEntityIndex(mockEntity);
   }
 
   @Test
   void testOnEntitySoftDeletedOrRestored() {
     // Test soft delete
     searchIndexHandler.onEntitySoftDeletedOrRestored(mockEntity, true, mockSubjectContext);
-    verify(mockSearchRepository).softDeleteOrRestoreEntityIndex(mockEntity, true);
+    verify(mockLiveWrites).softDeleteOrRestoreEntityIndex(mockEntity, true);
 
     // Test restore
     searchIndexHandler.onEntitySoftDeletedOrRestored(mockEntity, false, mockSubjectContext);
-    verify(mockSearchRepository).softDeleteOrRestoreEntityIndex(mockEntity, false);
+    verify(mockLiveWrites).softDeleteOrRestoreEntityIndex(mockEntity, false);
 
-    verifyNoMoreInteractions(mockSearchRepository);
+    verifyNoMoreInteractions(mockLiveWrites);
   }
 
   @Test
   void testOnEntitySoftDeletedOrRestoredWithException() {
     doThrow(new RuntimeException("Soft delete failed"))
-        .when(mockSearchRepository)
+        .when(mockLiveWrites)
         .softDeleteOrRestoreEntityIndex(mockEntity, true);
 
     // Should not throw exception but log it
@@ -239,7 +242,7 @@ class SearchIndexHandlerTest {
         () ->
             searchIndexHandler.onEntitySoftDeletedOrRestored(mockEntity, true, mockSubjectContext));
 
-    verify(mockSearchRepository).softDeleteOrRestoreEntityIndex(mockEntity, true);
+    verify(mockLiveWrites).softDeleteOrRestoreEntityIndex(mockEntity, true);
   }
 
   @Test
@@ -247,7 +250,7 @@ class SearchIndexHandlerTest {
     searchIndexHandler.onEntitiesCreated(List.of(), mockSubjectContext);
     searchIndexHandler.onEntitiesCreated(null, mockSubjectContext);
 
-    verifyNoInteractions(mockSearchRepository);
+    verifyNoInteractions(mockLiveWrites);
   }
 
   @Test
@@ -256,8 +259,8 @@ class SearchIndexHandlerTest {
 
     searchIndexHandler.onEntitiesCreated(entities, mockSubjectContext);
 
-    verify(mockSearchRepository).createEntitiesIndex(entities);
-    verifyNoMoreInteractions(mockSearchRepository);
+    verify(mockLiveWrites).createEntitiesIndex(entities);
+    verifyNoMoreInteractions(mockLiveWrites);
   }
 
   @Test
@@ -270,9 +273,9 @@ class SearchIndexHandlerTest {
     searchIndexHandler.onEntitiesCreated(entities, mockSubjectContext);
 
     // Should call createEntitiesIndex twice - once for each entity type
-    verify(mockSearchRepository).createEntitiesIndex(List.of(mockEntity));
-    verify(mockSearchRepository).createEntitiesIndex(List.of(mockEntity2));
-    verifyNoMoreInteractions(mockSearchRepository);
+    verify(mockLiveWrites).createEntitiesIndex(List.of(mockEntity));
+    verify(mockLiveWrites).createEntitiesIndex(List.of(mockEntity2));
+    verifyNoMoreInteractions(mockLiveWrites);
   }
 
   @Test
@@ -281,16 +284,16 @@ class SearchIndexHandlerTest {
 
     // Make bulk operation fail
     doThrow(new RuntimeException("Bulk indexing failed"))
-        .when(mockSearchRepository)
+        .when(mockLiveWrites)
         .createEntitiesIndex(entities);
 
     searchIndexHandler.onEntitiesCreated(entities, mockSubjectContext);
 
     // Should fallback to individual creation
-    verify(mockSearchRepository).createEntitiesIndex(entities);
-    verify(mockSearchRepository).createEntityIndex(mockEntity);
-    verify(mockSearchRepository).createEntityIndex(mockEntity2);
-    verifyNoMoreInteractions(mockSearchRepository);
+    verify(mockLiveWrites).createEntitiesIndex(entities);
+    verify(mockLiveWrites).createEntityIndex(mockEntity);
+    verify(mockLiveWrites).createEntityIndex(mockEntity2);
+    verifyNoMoreInteractions(mockLiveWrites);
   }
 
   @Test
@@ -302,7 +305,7 @@ class SearchIndexHandlerTest {
     searchIndexHandler.onEntityDeleted(null, mockSubjectContext);
     searchIndexHandler.onEntitySoftDeletedOrRestored(null, true, mockSubjectContext);
 
-    verifyNoInteractions(mockSearchRepository);
+    verifyNoInteractions(mockLiveWrites);
   }
 
   @Test

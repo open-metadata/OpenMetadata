@@ -31,6 +31,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -101,6 +102,8 @@ class PersonaAIContextIT extends McpTestBase {
             .withCacheTtlMinutes(30),
         PersonaContextDefinition.class);
     post(contextPath() + "/rules", tableRule("Baseline tables"), PersonaContextDefinition.class);
+    // Rules match their assets through search.
+    QueuedSearchWrites.await();
   }
 
   @Test

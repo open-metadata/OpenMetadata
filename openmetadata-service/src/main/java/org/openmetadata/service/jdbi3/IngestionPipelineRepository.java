@@ -990,7 +990,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     setFullyQualifiedName(ingestionPipeline);
 
     // Update ES Indexes
-    searchRepository.updateEntityIndex(ingestionPipeline);
+    searchRepository.getLiveWrites().updateEntityIndex(ingestionPipeline);
 
     // Fire lifecycle event for handlers (e.g., TestSuitePipelineStatusHandler)
     EntityLifecycleEventDispatcher.getInstance().onEntityUpdated(ingestionPipeline, change, null);

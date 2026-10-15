@@ -157,3 +157,22 @@ CREATE TABLE IF NOT EXISTS search_index_write_route (
     leaseExpiresAt BIGINT NOT NULL,
     PRIMARY KEY (canonicalIndex)
 );
+
+-- Search live indexing: when a failed retry may be claimed again. Each failure doubles the wait, up
+-- to an hour, so an overloaded or flapping cluster is retried for about a day before dead-lettering.
+SET @search_index_retry_next_attempt_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'search_index_retry_queue'
+        AND column_name = 'nextAttemptAt'
+    ),
+    'SELECT 1',
+    'ALTER TABLE search_index_retry_queue ADD COLUMN nextAttemptAt BIGINT NOT NULL DEFAULT 0'
+  )
+);
+PREPARE search_index_retry_next_attempt_stmt FROM @search_index_retry_next_attempt_ddl;
+EXECUTE search_index_retry_next_attempt_stmt;
+DEALLOCATE PREPARE search_index_retry_next_attempt_stmt;

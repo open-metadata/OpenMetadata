@@ -5178,7 +5178,8 @@ public class WorkflowDefinitionResourceIT {
 
     waitForWorkflowDeployment(client, "testRedundantChangeEvents");
 
-    // Trigger the workflow FIRST time
+    // Trigger the workflow FIRST time, once the batch can find the table in search
+    waitForEntityIndexedInSearch(client, "table_search_index", table.getFullyQualifiedName());
     workflowName = "testRedundantChangeEvents";
     String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
     String triggerResponse =
@@ -7821,7 +7822,8 @@ public class WorkflowDefinitionResourceIT {
     // Track the created workflow for cleanup
     trackWorkflowFromJson(created);
 
-    // Step 5: Trigger the workflow
+    // Step 5: Trigger the workflow once the batch can find the table in search
+    waitForEntityIndexedInSearch(client, "table_search_index", table.getFullyQualifiedName());
     String workflowName = ns.prefix("MutualExclusivityWorkflow");
     String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
     executeWithDeadlockRetry(
@@ -9370,7 +9372,11 @@ public class WorkflowDefinitionResourceIT {
     // Track the created workflow for cleanup
     trackWorkflowFromJson(created);
 
-    // Step 5: Trigger the workflow
+    // Step 5: Trigger the workflow once both endpoints are searchable; the batch reads them there
+    waitForEntityIndexedInSearch(
+        client, "api_endpoint_search_index", matchingApiEndpoint.getFullyQualifiedName());
+    waitForEntityIndexedInSearch(
+        client, "api_endpoint_search_index", nonMatchingApiEndpoint.getFullyQualifiedName());
     String workflowName = "ApiEndpointProcessingWorkflow";
     String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
     OpenMetadataClient finalClient1 = client;

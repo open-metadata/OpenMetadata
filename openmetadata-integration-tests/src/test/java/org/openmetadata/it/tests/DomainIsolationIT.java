@@ -25,6 +25,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -102,6 +103,7 @@ public class DomainIsolationIT {
       addLineage(admin, t0, t1);
       addLineage(admin, t1, t2);
       addLineage(admin, t2, t3);
+      QueuedSearchWrites.await();
 
       String t1Fqn = t1.getFullyQualifiedName();
       OpenMetadataClient restricted = createRestrictedUserClient(admin, p, d1, cleanup);
@@ -109,6 +111,7 @@ public class DomainIsolationIT {
       // Wait until the admin view of the full chain is fully indexed before checking the prune.
       Awaitility.await()
           .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
@@ -272,12 +275,14 @@ public class DomainIsolationIT {
       Table t1 = createTable(admin, p + "_t1", schema, d1, cleanup);
       Table t2 = createTable(admin, p + "_t2", schema, d2, cleanup);
       addLineage(admin, t1, t2);
+      QueuedSearchWrites.await();
 
       String t1Fqn = t1.getFullyQualifiedName();
       OpenMetadataClient plainUser = createPlainUserClient(admin, p, cleanup);
 
       Awaitility.await()
           .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
@@ -337,6 +342,7 @@ public class DomainIsolationIT {
       String d2Fqn = d2.getFullyQualifiedName();
       Awaitility.await()
           .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
@@ -367,6 +373,7 @@ public class DomainIsolationIT {
       cleanup.push(() -> restoreSearchAccessControl(admin, original));
       Awaitility.await()
           .atMost(Duration.ofSeconds(30))
+          .ignoreExceptions()
           .untilAsserted(
               () -> {
                 for (boolean includeTopHit : List.of(false, true)) {
@@ -439,6 +446,7 @@ public class DomainIsolationIT {
       // Control: the table is indexed and visible to a bot whose policies do not restrict it.
       Awaitility.await()
           .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
@@ -480,6 +488,7 @@ public class DomainIsolationIT {
       OpenMetadataClient ingestionBot = SdkClients.ingestionBotClient();
       Awaitility.await()
           .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
@@ -509,6 +518,7 @@ public class DomainIsolationIT {
       Table t1 = createTable(admin, p + "_lbot_t1", schema, d1, cleanup);
       Table t2 = createTable(admin, p + "_lbot_t2", schema, d2, cleanup);
       addLineage(admin, t1, t2);
+      QueuedSearchWrites.await();
 
       String t1Fqn = t1.getFullyQualifiedName();
       String t2Fqn = t2.getFullyQualifiedName();
@@ -516,6 +526,7 @@ public class DomainIsolationIT {
 
       Awaitility.await()
           .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {

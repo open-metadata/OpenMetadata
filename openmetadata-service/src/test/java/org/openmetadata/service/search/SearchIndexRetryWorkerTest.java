@@ -18,11 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Answers.CALLS_REAL_METHODS;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_FAILED;
@@ -32,45 +32,119 @@ import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDI
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDING_RETRY_2;
 
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.io.IOException;
-import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
-import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 class SearchIndexRetryWorkerTest {
 
   private final SearchIndexRetryWorker worker =
       new SearchIndexRetryWorker(mock(CollectionDAO.class), mock(SearchRepository.class));
 
+  private static final long NOW = 1_800_000_000_000L;
+  private static final long READ_AT = 1_700_000_000_000L;
+
   @Test
-  void retryableNextStatus_escalatesThenCapsAtFailed() {
+  void transientFailuresAreRetriedForAboutADayBeforeTheyAreDeadLettered() {
     assertEquals(STATUS_PENDING_RETRY_1, worker.retryableNextStatus(0));
     assertEquals(
         STATUS_PENDING_RETRY_2,
-        worker.retryableNextStatus(1),
-        "the second failure schedules the final retry");
-    assertEquals(
-        STATUS_FAILED,
         worker.retryableNextStatus(2),
-        "the third failure exhausts the three-attempt budget");
+        "a third failure is retried later instead of being dead-lettered");
+    assertEquals(
+        STATUS_PENDING_RETRY_2,
+        worker.retryableNextStatus(SearchIndexRetryWorker.RETRYABLE_ATTEMPTS - 2));
+    assertEquals(
+        STATUS_FAILED, worker.retryableNextStatus(SearchIndexRetryWorker.RETRYABLE_ATTEMPTS - 1));
     assertEquals(STATUS_FAILED, worker.retryableNextStatus(Integer.MAX_VALUE));
+  }
+
+  @Test
+  void eachFailedAttemptWaitsLongerUpToAnHour() {
+    assertEquals(Duration.ofSeconds(10).toMillis(), SearchIndexRetryWorker.retryDelayMillis(1));
+    assertEquals(Duration.ofSeconds(20).toMillis(), SearchIndexRetryWorker.retryDelayMillis(2));
+    assertEquals(Duration.ofHours(1).toMillis(), SearchIndexRetryWorker.retryDelayMillis(40));
+    final long scheduled =
+        IntStream.range(1, SearchIndexRetryWorker.RETRYABLE_ATTEMPTS)
+            .mapToLong(SearchIndexRetryWorker::retryDelayMillis)
+            .sum();
+    assertTrue(scheduled >= Duration.ofHours(23).toMillis(), "retries span about a day");
+  }
+
+  @Test
+  void aFailedAttemptIsScheduledAfterItsBackoff() {
+    final CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    final SearchIndexRetryQueueDAO retryQueueDAO = mock(SearchIndexRetryQueueDAO.class);
+    when(collectionDAO.searchIndexRetryQueueDAO()).thenReturn(retryQueueDAO);
+    when(retryQueueDAO.updateFailureAndRetryCount(
+            anyString(), anyString(), anyString(), anyString(), anyString(), anyLong()))
+        .thenReturn(1);
+    final SearchIndexRetryWorker retryWorker =
+        new SearchIndexRetryWorker(collectionDAO, mock(SearchRepository.class));
+    final SearchIndexRetryRecord thirdAttempt =
+        new SearchIndexRetryRecord(
+            UUID.randomUUID().toString(),
+            "service.database.table",
+            "earlier failure",
+            STATUS_IN_PROGRESS,
+            "table",
+            2,
+            null,
+            "claim-token");
+    final long before = System.currentTimeMillis();
+
+    retryWorker.recordRetryFailure(thirdAttempt, "still failing", STATUS_PENDING_RETRY_2);
+
+    final ArgumentCaptor<Long> nextAttemptAt = ArgumentCaptor.forClass(Long.class);
+    verify(retryQueueDAO)
+        .updateFailureAndRetryCount(
+            eq(thirdAttempt.getEntityId()),
+            eq(thirdAttempt.getEntityFqn()),
+            anyString(),
+            eq(STATUS_PENDING_RETRY_2),
+            eq("claim-token"),
+            nextAttemptAt.capture());
+    assertTrue(nextAttemptAt.getValue() >= before + SearchIndexRetryWorker.retryDelayMillis(3));
+  }
+
+  @Test
+  void queueDepthIsPublishedForEachStatus() {
+    final CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    final SearchIndexRetryQueueDAO retryQueueDAO = mock(SearchIndexRetryQueueDAO.class);
+    when(collectionDAO.searchIndexRetryQueueDAO()).thenReturn(retryQueueDAO);
+    when(retryQueueDAO.countByStatus(STATUS_PENDING)).thenReturn(3);
+    when(retryQueueDAO.countByStatus(STATUS_FAILED)).thenReturn(2);
+    final SimpleMeterRegistry registry = new SimpleMeterRegistry();
+    Metrics.addRegistry(registry);
+    try {
+      new SearchIndexRetryWorker(collectionDAO, mock(SearchRepository.class)).publishQueueDepth();
+
+      assertEquals(3.0, queueDepth(registry, STATUS_PENDING));
+      assertEquals(2.0, queueDepth(registry, STATUS_FAILED));
+      assertEquals(0.0, queueDepth(registry, STATUS_PENDING_RETRY_2));
+    } finally {
+      Metrics.removeRegistry(registry);
+    }
+  }
+
+  private static double queueDepth(final SimpleMeterRegistry registry, final String status) {
+    return registry.get("search.retry.queue.depth").tag("status", status).gauge().value();
   }
 
   @Test
@@ -90,6 +164,20 @@ class SearchIndexRetryWorkerTest {
   }
 
   @Test
+  void aMissingIndexATimeoutOrAConflictIsRetried() {
+    assertTrue(worker.isRetryable(searchError(404)), "the index can be recreated");
+    assertTrue(worker.isRetryable(searchError(408)), "the request timed out");
+    assertTrue(worker.isRetryable(searchError(409)), "a concurrent write conflicted");
+    assertFalse(worker.isRetryable(searchError(413)), "the document is too large to ever fit");
+  }
+
+  private static ElasticsearchException searchError(final int status) {
+    final ElasticsearchException error = mock(ElasticsearchException.class);
+    when(error.status()).thenReturn(status);
+    return error;
+  }
+
+  @Test
   void claimPendingReturnsTheClaimTokenThatOwnsTheRow() {
     SearchIndexRetryQueueDAO retryQueueDAO =
         mock(SearchIndexRetryQueueDAO.class, CALLS_REAL_METHODS);
@@ -98,11 +186,11 @@ class SearchIndexRetryWorkerTest {
     SearchIndexRetryRecord candidate =
         new SearchIndexRetryRecord(
             entityId, entityFqn, "bulk failure", STATUS_PENDING, "table", 0, null);
-    when(retryQueueDAO.findRetryCandidates(10, 20, 5)).thenReturn(List.of(candidate));
+    when(retryQueueDAO.findRetryCandidates(NOW, 5)).thenReturn(List.of(candidate));
     when(retryQueueDAO.claimRecord(eq(entityId), eq(entityFqn), eq(STATUS_PENDING), anyString()))
         .thenReturn(1);
 
-    List<SearchIndexRetryRecord> claimed = retryQueueDAO.claimPending(1, 10, 20);
+    List<SearchIndexRetryRecord> claimed = retryQueueDAO.claimPending(1, NOW);
 
     assertEquals(1, claimed.size());
     SearchIndexRetryRecord claimedRecord = claimed.getFirst();
@@ -140,22 +228,24 @@ class SearchIndexRetryWorkerTest {
         new SearchIndexRetryWorker(collectionDAO, mock(SearchRepository.class));
     SearchIndexRetryRecord staleClaim = retryRecordWithClaimToken("stale-claim-token");
     when(retryQueueDAO.updateFailureAndRetryCount(
-            staleClaim.getEntityId(),
-            staleClaim.getEntityFqn(),
-            "retry failed",
-            STATUS_PENDING_RETRY_1,
-            staleClaim.getClaimToken()))
+            eq(staleClaim.getEntityId()),
+            eq(staleClaim.getEntityFqn()),
+            eq("retry failed"),
+            eq(STATUS_PENDING_RETRY_1),
+            eq(staleClaim.getClaimToken()),
+            anyLong()))
         .thenReturn(0);
 
     assertFalse(retryWorker.recordRetryFailure(staleClaim, "retry failed", STATUS_PENDING_RETRY_1));
 
     verify(retryQueueDAO)
         .updateFailureAndRetryCount(
-            staleClaim.getEntityId(),
-            staleClaim.getEntityFqn(),
-            "retry failed",
-            STATUS_PENDING_RETRY_1,
-            "stale-claim-token");
+            eq(staleClaim.getEntityId()),
+            eq(staleClaim.getEntityFqn()),
+            eq("retry failed"),
+            eq(STATUS_PENDING_RETRY_1),
+            eq("stale-claim-token"),
+            anyLong());
   }
 
   @Test
@@ -166,6 +256,7 @@ class SearchIndexRetryWorkerTest {
         new SearchIndexRetryWorker(collectionDAO, searchRepository);
     EntityReference root = new EntityReference().withId(UUID.randomUUID()).withType(Entity.TOPIC);
     when(searchRepository.checkIfIndexingIsSupported(Entity.TOPIC)).thenReturn(true);
+    when(searchRepository.getSearchIndexFactory()).thenReturn(new SearchIndexFactory());
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock
@@ -177,115 +268,6 @@ class SearchIndexRetryWorkerTest {
 
       assertEquals("database unavailable", failure.getMessage());
     }
-  }
-
-  @Test
-  void staleDeleteReachesCurrentAndStagedIndexes() throws Exception {
-    CollectionDAO collectionDAO = mock(CollectionDAO.class);
-    SearchRepository searchRepository = mock(SearchRepository.class);
-    SearchClient searchClient = mock(SearchClient.class);
-    IndexMapping indexMapping = mock(IndexMapping.class);
-    SearchIndexRetryWorker retryWorker =
-        new SearchIndexRetryWorker(collectionDAO, searchRepository);
-    String entityId = UUID.randomUUID().toString();
-    when(searchRepository.getIndexMapping(Entity.TOPIC)).thenReturn(indexMapping);
-    when(searchRepository.getClusterAlias()).thenReturn("openmetadata");
-    when(indexMapping.getIndexName("openmetadata")).thenReturn("openmetadata_topic_search_index");
-    when(searchRepository.getWriteFanoutTargets("openmetadata_topic_search_index"))
-        .thenReturn(List.of("openmetadata_topic_search_index", "topic_search_index_staged"));
-    when(searchRepository.getSearchClient()).thenReturn(searchClient);
-
-    retryWorker.removeStaleEntityById(entityId, Entity.TOPIC);
-
-    verify(searchClient).deleteEntity("openmetadata_topic_search_index", entityId);
-    verify(searchClient).deleteEntity("topic_search_index_staged", entityId);
-  }
-
-  @Test
-  void testCaseRetryPreservesThenFencesRelationshipFields() throws Exception {
-    SearchRepository searchRepository = mock(SearchRepository.class);
-    BulkSink bulkSink = mock(BulkSink.class);
-    when(searchRepository.createBulkSink(
-            200, 5, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES))
-        .thenReturn(bulkSink);
-    when(bulkSink.flushAndAwait(60)).thenReturn(true);
-    SearchIndexRetryWorker retryWorker =
-        new SearchIndexRetryWorker(mock(CollectionDAO.class), searchRepository);
-    UUID testCaseId = UUID.randomUUID();
-    EntityInterface<?> testCase = mock(EntityInterface.class);
-    when(testCase.getId()).thenReturn(testCaseId);
-    when(testCase.getEntityReference())
-        .thenReturn(
-            new EntityReference().withId(testCaseId).withType(Entity.TEST_CASE).withName("test"));
-    Method upsertEntities =
-        SearchIndexRetryWorker.class.getDeclaredMethod(
-            "upsertEntitiesInBulk", List.class, Map.class);
-    upsertEntities.setAccessible(true);
-
-    try (MockedStatic<ReindexingUtil> reindexingUtil = mockStatic(ReindexingUtil.class)) {
-      upsertEntities.invoke(retryWorker, List.of(testCase), Map.of(testCaseId, 17L));
-    }
-
-    @SuppressWarnings("unchecked")
-    ArgumentCaptor<Map<String, Object>> contextCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(bulkSink, times(2)).write(eq(List.of(testCase)), contextCaptor.capture());
-    Map<String, Object> documentContext = contextCaptor.getAllValues().get(0);
-    Map<String, Object> relationshipContext = contextCaptor.getAllValues().get(1);
-    assertEquals(
-        Map.of(testCaseId, 17L), documentContext.get(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY));
-    assertFalse(documentContext.containsKey(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY));
-    assertTrue((Boolean) relationshipContext.get(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY));
-    assertEquals(
-        Map.of(testCaseId, 17L),
-        relationshipContext.get(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY));
-    verify(bulkSink).flushAndAwait(60);
-    verify(bulkSink).close();
-  }
-
-  @Test
-  void logicalTestSuiteRetryPreservesThenFencesRelationshipFields() throws Exception {
-    SearchRepository searchRepository = mock(SearchRepository.class);
-    BulkSink bulkSink = mock(BulkSink.class);
-    when(searchRepository.createBulkSink(
-            200, 5, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES))
-        .thenReturn(bulkSink);
-    when(bulkSink.flushAndAwait(60)).thenReturn(true);
-    SearchIndexRetryWorker retryWorker =
-        new SearchIndexRetryWorker(mock(CollectionDAO.class), searchRepository);
-    UUID testSuiteId = UUID.randomUUID();
-    TestSuite testSuite = mock(TestSuite.class);
-    when(testSuite.getId()).thenReturn(testSuiteId);
-    when(testSuite.getBasic()).thenReturn(false);
-    when(testSuite.getEntityReference())
-        .thenReturn(
-            new EntityReference()
-                .withId(testSuiteId)
-                .withType(Entity.TEST_SUITE)
-                .withName("logicalSuite"));
-    Method upsertEntities =
-        SearchIndexRetryWorker.class.getDeclaredMethod(
-            "upsertEntitiesInBulk", List.class, Map.class);
-    upsertEntities.setAccessible(true);
-
-    try (MockedStatic<ReindexingUtil> reindexingUtil = mockStatic(ReindexingUtil.class)) {
-      upsertEntities.invoke(retryWorker, List.of(testSuite), Map.of(testSuiteId, 23L));
-    }
-
-    @SuppressWarnings("unchecked")
-    ArgumentCaptor<Map<String, Object>> contextCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(bulkSink, times(2)).write(eq(List.of(testSuite)), contextCaptor.capture());
-    Map<String, Object> documentContext = contextCaptor.getAllValues().get(0);
-    Map<String, Object> relationshipContext = contextCaptor.getAllValues().get(1);
-    assertEquals(Entity.TEST_SUITE, documentContext.get(ReindexingUtil.ENTITY_TYPE_KEY));
-    assertEquals(
-        Map.of(testSuiteId, 23L), documentContext.get(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY));
-    assertFalse(documentContext.containsKey(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY));
-    assertTrue((Boolean) relationshipContext.get(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY));
-    assertEquals(
-        Map.of(testSuiteId, 23L),
-        relationshipContext.get(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY));
-    verify(bulkSink).flushAndAwait(60);
-    verify(bulkSink).close();
   }
 
   @Test

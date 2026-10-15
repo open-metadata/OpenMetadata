@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { get } from 'lodash';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
 import { deleteFixtureEntity } from '../../utils/apiResponse';
@@ -62,11 +63,12 @@ import {
   upVote,
   validateFollowedEntityToWidget,
 } from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 import { TagClass } from '../tag/TagClass';
-import { EntityTypeEndpoint } from './Entity.interface';
+import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
 import type { ParentNode } from './ParentChain';
 
 export class EntityClass {
@@ -150,6 +152,28 @@ export class EntityClass {
 
   async visitEntityPage(_: Page) {
     // Override for entity visit
+  }
+
+  /**
+   * Search is eventually consistent: the server indexes a write after the
+   * call that made it returns. Waits until search lists this entity, and
+   * matches `query` when given, for tests that reach it through search.
+   */
+  async waitUntilSearchable(
+    apiContext: APIRequestContext,
+    query?: Record<string, unknown>
+  ) {
+    const fullyQualifiedName = get(
+      this as EntityClass,
+      'entityResponseData.fullyQualifiedName'
+    ) as string | undefined;
+    const index = ENTITY_PATH[this.endpoint as keyof typeof ENTITY_PATH];
+    if (fullyQualifiedName && index) {
+      await waitForSearchIndexed(apiContext, fullyQualifiedName, index, {
+        timeout: 60_000,
+        queryFilter: query ? JSON.stringify({ query }) : undefined,
+      });
+    }
   }
 
   async prepareCustomProperty(

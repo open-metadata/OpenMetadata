@@ -1739,14 +1739,42 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   private PutResponse<TestSuite> addFilteredTestCasesToBundleSuite(
       TestSuite testSuite, Filter filter) {
+    List<UUID> excludeIds =
+        nullOrEmpty(filter.getExcludeIds()) ? List.of() : filter.getExcludeIds();
+    // Search is eventually consistent: only free text needs it. Every other criterion is answered
+    // from the database, so a test case created moments ago is not missed.
+    if (nullOrEmpty(filter.getQ())) {
+      return repository.addMatchingTestCasesToLogicalTestSuite(
+          testSuite, buildBulkListFilter(filter), excludeIds);
+    }
     SearchListFilter searchListFilter = buildBulkSearchListFilter(filter);
     // Deep-pagination search expects a full query body ({"query": {...}}); getFilterQuery()
     // returns only the inner bool clause, which listWithDeepPagination silently drops (adds all).
     String searchFilter = searchListFilter.getCondition(Entity.TEST_CASE);
-    List<UUID> excludeIds =
-        nullOrEmpty(filter.getExcludeIds()) ? List.of() : filter.getExcludeIds();
     return repository.addMatchingTestCasesToLogicalTestSuite(
         testSuite, searchFilter, filter.getQ(), excludeIds);
+  }
+
+  /** The bulk selection's criteria, other than free text, as a database filter. */
+  private ListFilter buildBulkListFilter(Filter filter) {
+    ListFilter listFilter = new ListFilter(Include.NON_DELETED);
+    if (filter.getTestCaseStatus() != null) {
+      listFilter.addQueryParam("testCaseStatus", filter.getTestCaseStatus().value());
+    }
+    String type = filter.getTestCaseType();
+    if (!nullOrEmpty(type) && !TEST_CASE_TYPE_ALL.equals(type)) {
+      listFilter.addQueryParam("testCaseType", type);
+    }
+    if (!nullOrEmpty(filter.getColumnName())) {
+      listFilter.addQueryParam("columnName", filter.getColumnName());
+    }
+    if (!nullOrEmpty(filter.getEntityLink())) {
+      listFilter.addQueryParam(
+          "entityFQN", EntityLink.parse(filter.getEntityLink()).getFullyQualifiedFieldValue());
+      listFilter.addQueryParam(
+          "includeAllTests", String.valueOf(Boolean.TRUE.equals(filter.getIncludeAllTests())));
+    }
+    return listFilter;
   }
 
   private SearchListFilter buildBulkSearchListFilter(Filter filter) {

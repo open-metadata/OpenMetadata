@@ -41,6 +41,7 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENT
 import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchConstants.DATABASE_ID;
 import static org.openmetadata.service.search.SearchConstants.DATABASE_SCHEMA_ID;
+import static org.openmetadata.service.search.SearchConstants.DATA_PRODUCTS_ID;
 import static org.openmetadata.service.search.SearchConstants.DOMAINS_ID;
 import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
 import static org.openmetadata.service.search.SearchConstants.FAILED_TO_CREATE_INDEX_MESSAGE;
@@ -149,6 +150,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.events.lifecycle.OrderedLaneTask;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CustomPropertyReferences;
@@ -219,17 +221,13 @@ public class SearchRepository {
       "aggregations":{}}""";
 
   /**
-   * When a search-write deferral scope is open on the calling thread, the rename/move/domain-change
-   * cascade ES mutations ({@link #updateEntityIndex}, {@link #updateEntity(EntityReference)}, the
-   * {@code update*ByFqnPrefix} / {@code updateAssetDomains*} bulk rewrites, plus the direct {@code
-   * getSearchClient().*} cascade calls routed through {@link #deferIfFlushScopeActive}) capture their
-   * blocking Elasticsearch round trip here instead of issuing it inline. The create/update flush
-   * opens a scope before its DB transaction so NO Elasticsearch call runs while a pooled DB
-   * connection is held, then drains the captured closures after commit. A deadlock replay re-runs the
-   * flush body, so the scope is reset per attempt and the closures are drained exactly once after the
-   * final successful commit. {@code null} means "no scope active" and the mutation executes inline —
-   * every non-flush caller (reindex apps, the post-commit search-index handler, lineage jobs) is
-   * unaffected.
+   * When a search-write deferral scope is open on the calling thread, search writes ({@link
+   * #updateEntityIndex}, {@link #updateEntity(EntityReference)}, the queued live writes and fan-outs)
+   * are captured here instead of being issued. The create/update flush opens a scope before its DB
+   * transaction so no Elasticsearch call runs while a pooled DB connection is held, then queues the
+   * captured writes after commit (see {@link DeferredSearchWrites}). A deadlock replay re-runs the
+   * flush body, so the scope is reset per attempt and the writes are drained exactly once after the
+   * final successful commit. {@code null} means "no scope active".
    */
   private static final ThreadLocal<List<DeferredSearchWrite>> DEFERRED_SEARCH_WRITES =
       new ThreadLocal<>();
@@ -243,7 +241,17 @@ public class SearchRepository {
    * {@code SearchRepository.update*} methods wrap their own try/catch), so the drain only logs.
    */
   public record DeferredSearchWrite(
-      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+      Runnable esWrite,
+      String operation,
+      String entityId,
+      String entityFqn,
+      String entityType,
+      boolean runsOnCommit) {
+    public DeferredSearchWrite(
+        Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+      this(esWrite, operation, entityId, entityFqn, entityType, false);
+    }
+
     public void run() {
       esWrite.run();
     }
@@ -313,36 +321,57 @@ public class SearchRepository {
   }
 
   /**
-   * Capture {@code esWrite} for post-commit execution when a flush deferral scope is open on this
-   * thread; otherwise run it inline. The locator is used to enqueue the entity to the durable
-   * search-index retry outbox if the deferred round trip later fails. Use this for the direct {@code
-   * getSearchClient().*} cascade rewrites that bypass the {@code SearchRepository.update*} methods
-   * (glossary-term / classification / container FQN-prefix updates) so they too never run inside the
-   * transaction handle.
+   * Queues a write that rewrites other entities' documents — children, assets, or documents matched
+   * by a prefix or a query — to run after the request, once every search write queued before it has
+   * been applied; inside a transaction, once it commits. A queued fan-out that issues another runs
+   * it directly, since it already follows those writes. The locator is retried if the write fails.
    */
-  public void deferIfFlushScopeActive(
+  public void queueFanOut(
       Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
-    deferOrRunSearchWrite(esWrite, operation, entityId, entityFqn, entityType);
+    if (!queuedAsFanOut(new OrderedLaneTask(esWrite, operation, entityId, entityFqn, entityType))) {
+      esWrite.run();
+    }
+  }
+
+  /** Queues {@code write} as a fan-out unless the caller is applying one; {@code true} if queued. */
+  private boolean queuedAsFanOut(OrderedLaneTask write) {
+    final boolean queued = !liveWrites.isApplyingFanOut();
+    if (queued) {
+      liveWrites.fanOut(write);
+    }
+    return queued;
   }
 
   /**
-   * Static variant of {@link #deferIfFlushScopeActive} for call sites that have no {@code
-   * SearchRepository} instance in scope (e.g. the static {@code
-   * EntityRepository.invalidateCacheForTaggedEntities} ES-search loop). The {@code entityId}/{@code
-   * entityFqn} locator drives durable retry on a failed post-commit drain.
+   * Runs {@code work} on the committing thread right after the commit, in capture order, or now when
+   * no transaction is open. For handing writes to the search lanes, and for post-commit work that
+   * reads search as the transaction left it, such as finding the documents a rename is about to
+   * rewrite.
+   */
+  public static void runAfterCommit(Runnable work, String operation, String entityFqn) {
+    if (!deferSearchWrite(new DeferredSearchWrite(work, operation, null, entityFqn, null, true))) {
+      work.run();
+    }
+  }
+
+  /**
+   * Captures {@code esWrite} for the post-commit drain when a transaction's deferral scope is open
+   * on this thread, otherwise runs it now. The {@code entityId}/{@code entityFqn} locator drives
+   * durable retry if the drained write fails.
    */
   public static void deferOrRunSearchWrite(
       Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
     if (!deferSearchWrite(
         new DeferredSearchWrite(esWrite, operation, entityId, entityFqn, entityType))) {
-      // No flush deferral scope is open (a non-flush cascade rewrite): run it synchronously inline
-      // on the request thread so the rewrite is read-your-write visible when the request returns.
       esWrite.run();
     }
   }
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
   private Map<String, IndexMapping> aliasIndexMap;
+
+  /** Search writes made for API requests, applied after the request returns. */
+  @Getter private final LiveSearchWrites liveWrites = new LiveSearchWrites(this);
 
   /**
    * Staged index names being populated by an in-flight reindex on any server, keyed by the
@@ -1458,16 +1487,19 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * Keeps the table's column documents in step with it. Removed columns need a delete by query;
+   * otherwise the documents are rewritten by id, which needs neither a refresh nor a background
+   * task. Only a table written without its columns falls back to updating the column documents'
+   * table fields by query.
+   */
   private void syncTableColumns(Table table, ChangeDescription changeDescription) {
-    // Check if columns were actually modified
-    boolean columnsChanged = hasColumnsChanged(changeDescription);
-
-    if (columnsChanged) {
-      // Columns were added/removed/modified - do full reindex
+    if (hasColumnsChanged(changeDescription)) {
       deleteTableColumns(table);
       indexTableColumns(table);
+    } else if (table.getColumns() != null) {
+      indexTableColumns(table);
     } else {
-      // Only inherited fields changed - use efficient update
       updateTableColumnsInheritedFields(table);
     }
   }
@@ -1878,8 +1910,9 @@ public class SearchRepository {
         try {
           syncTableColumns((Table) entity, changeDescription);
         } catch (Exception e) {
+          SearchIndexRetryQueue.enqueue(entity, "syncTableColumns", e);
           LOG.error(
-              "Column sync failed for [{}], continuing with propagation",
+              "Column sync failed for [{}]; the table is queued for retry, continuing with propagation",
               entity.getFullyQualifiedName(),
               e);
         }
@@ -1892,7 +1925,11 @@ public class SearchRepository {
       if (requiresPropagation(changeDescription, entityType, entity)) {
         // Time propagation operations
         startTime = System.currentTimeMillis();
-        propagateEntitySearchChanges(entity, entityType, changeDescription, indexMapping);
+        fanOutAfterEarlierWrites(
+            entity,
+            "propagateEntitySearchChanges",
+            () ->
+                propagateEntitySearchChanges(entity, entityType, changeDescription, indexMapping));
         propagateTime = System.currentTimeMillis() - startTime;
 
         LOG.info(
@@ -2009,30 +2046,25 @@ public class SearchRepository {
    * Re-index a moved asset AND propagate its (re-derived) domains to its inherited descendants in
    * search. Used by the Domain-page asset add/remove route: on add the re-read domains are the newly
    * assigned domain; on remove they are whatever the asset now inherits from its own ancestry (or
-   * none). Reuses the same rebuilt-from-DB read {@link #updateEntity(EntityReference)} performs — so
-   * it inherits its deferral (drained post-commit under a flush scope; read-your-writes inline
-   * otherwise) and correctness — then fans the same re-derived domains out to children through the
-   * inherited-guarded {@code ADD_DOMAINS_SCRIPT}, leaving descendants with an explicit domain
-   * untouched.
+   * none). The asset's document is rebuilt from its row on its own lane; the descendants get the
+   * domains it has when the fan-out runs, through the inherited-guarded {@code ADD_DOMAINS_SCRIPT},
+   * leaving descendants with an explicit domain untouched.
    */
   public void updateEntityAndPropagateInheritedDomainsToChildren(EntityReference entityReference) {
-    if (deferSearchWrite(
-        new DeferredSearchWrite(
-            () -> updateEntityAndPropagateInheritedDomainsToChildren(entityReference),
-            "updateEntityAndPropagateInheritedDomainsToChildren",
-            entityReference.getId() != null ? entityReference.getId().toString() : null,
-            entityReference.getFullyQualifiedName(),
-            entityReference.getType()))) {
-      return;
-    }
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
-    String fields =
-        String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
-    EntityInterface<?> entity =
-        entityRepository.get(
-            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
-    entity.setChangeDescription(null);
-    updateEntityIndex(entity);
+    liveWrites.updateEntity(entityReference);
+    queueFanOut(
+        () -> propagateCurrentDomainsToChildren(entityReference),
+        "propagateInheritedDomainsToChildren",
+        entityReference.getId().toString(),
+        entityReference.getFullyQualifiedName(),
+        entityReference.getType());
+  }
+
+  private void propagateCurrentDomainsToChildren(EntityReference entityReference) {
+    final EntityRepository<?> repository = Entity.getEntityRepository(entityReference.getType());
+    final EntityInterface<?> entity =
+        repository.get(
+            null, entityReference.getId(), repository.getOnlySupportedFields(FIELD_DOMAINS));
     propagateInheritedDomainsForType(
         entityReference.getType(),
         List.of(entityReference.getId()),
@@ -2046,8 +2078,8 @@ public class SearchRepository {
    * #updateEntity(EntityReference)} uses, then push bounded bulk index updates. Use this in place of
    * a per-entity {@code updateEntity} loop when a cascade (e.g. a glossary rename) must re-index many
    * siblings: it keeps the rebuilt-from-DB correctness while batching both DB reads and ES writes.
-   * Duplicate references are resolved only once. Callers inside a transaction should wrap the call
-   * in {@link #deferIfFlushScopeActive} so the re-reads see committed rows.
+   * Duplicate references are resolved only once. Request paths call it through {@link
+   * #queueFanOut}, so the re-reads see committed rows and follow the writes queued before them.
    */
   public void updateEntitiesByReference(List<EntityReference> references) {
     if (nullOrEmpty(references)) {
@@ -2408,6 +2440,38 @@ public class SearchRepository {
         entity, entityType, propagationChangeDescription, entityIndexMap.get(entityType));
   }
 
+  /**
+   * Fans an entity's change out to the documents that copy it. Inside a queued write the fan-out
+   * runs once the writes queued before it are applied (see {@link
+   * LiveSearchWrites#applyAfterEarlierWrites}); elsewhere, such as in the retry worker, it runs now.
+   */
+  private void fanOutAfterEarlierWrites(
+      EntityInterface<?> entity, String operation, SearchRetryUtil.IOOperation fanOut)
+      throws IOException {
+    if (liveWrites.isApplyingQueuedWrite()) {
+      EntityReference reference = entity.getEntityReference();
+      liveWrites.applyAfterEarlierWrites(
+          entity.getId(),
+          new OrderedLaneTask(
+              () -> runFanOut(entity, operation, fanOut),
+              operation,
+              entity.getId().toString(),
+              entity.getFullyQualifiedName(),
+              reference == null ? null : reference.getType()));
+    } else {
+      fanOut.execute();
+    }
+  }
+
+  private void runFanOut(
+      EntityInterface<?> entity, String operation, SearchRetryUtil.IOOperation fanOut) {
+    try {
+      fanOut.execute();
+    } catch (IOException | RuntimeException failure) {
+      enqueueEntityRetry(entity, operation, failure);
+    }
+  }
+
   private void propagateEntitySearchChanges(
       EntityInterface<?> entity,
       String entityType,
@@ -2466,8 +2530,8 @@ public class SearchRepository {
    */
   public void updateAssetDomainsForDataProduct(
       String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
-    if (deferSearchWrite(
-        new DeferredSearchWrite(
+    if (queuedAsFanOut(
+        new OrderedLaneTask(
             () -> updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains),
             "updateAssetDomainsForDataProduct",
             null,
@@ -2476,18 +2540,8 @@ public class SearchRepository {
       return;
     }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
-    if (!getSearchClient().isClientAvailable()) {
-      SearchIndexRetryQueue.enqueue(
-          null, dataProductFqn, "updateAssetDomainsForDataProduct: Search client unavailable");
-      return;
-    }
     try {
       getSearchClient().updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains);
-    } catch (Exception e) {
-      SearchIndexRetryQueue.enqueue(
-          null,
-          dataProductFqn,
-          SearchIndexRetryQueue.failureReason("updateAssetDomainsForDataProduct", e));
     } finally {
       RequestLatencyContext.endSearchOperation(s);
     }
@@ -2495,8 +2549,8 @@ public class SearchRepository {
 
   public void updateAssetDomainsByIds(
       List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
-    if (deferSearchWrite(
-        new DeferredSearchWrite(
+    if (queuedAsFanOut(
+        new OrderedLaneTask(
             () -> updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains),
             "updateAssetDomainsByIds",
             null,
@@ -2505,33 +2559,16 @@ public class SearchRepository {
       return;
     }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
-
-    if (!getSearchClient().isClientAvailable()) {
-      for (UUID assetId : listOrEmpty(assetIds)) {
-        SearchIndexRetryQueue.enqueue(
-            assetId != null ? assetId.toString() : null,
-            null,
-            "updateAssetDomainsByIds: Search client unavailable");
-      }
-      return;
-    }
     try {
       getSearchClient().updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains);
-    } catch (Exception e) {
-      for (UUID assetId : listOrEmpty(assetIds)) {
-        SearchIndexRetryQueue.enqueue(
-            assetId != null ? assetId.toString() : null,
-            null,
-            SearchIndexRetryQueue.failureReason("updateAssetDomainsByIds", e));
-      }
     } finally {
       RequestLatencyContext.endSearchOperation(s);
     }
   }
 
   public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
-    if (deferSearchWrite(
-        new DeferredSearchWrite(
+    if (queuedAsFanOut(
+        new OrderedLaneTask(
             () -> updateDomainFqnByPrefix(oldFqn, newFqn),
             "updateDomainFqnByPrefix",
             null,
@@ -2540,24 +2577,16 @@ public class SearchRepository {
       return;
     }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
-    if (!getSearchClient().isClientAvailable()) {
-      SearchIndexRetryQueue.enqueue(
-          null, newFqn, "updateDomainFqnByPrefix: Search client unavailable");
-      return;
-    }
     try {
       getSearchClient().updateDomainFqnByPrefix(oldFqn, newFqn);
-    } catch (Exception e) {
-      SearchIndexRetryQueue.enqueue(
-          null, newFqn, SearchIndexRetryQueue.failureReason("updateDomainFqnByPrefix", e));
     } finally {
       RequestLatencyContext.endSearchOperation(s);
     }
   }
 
   public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
-    if (deferSearchWrite(
-        new DeferredSearchWrite(
+    if (queuedAsFanOut(
+        new OrderedLaneTask(
             () -> updateAssetDomainFqnByPrefix(oldFqn, newFqn),
             "updateAssetDomainFqnByPrefix",
             null,
@@ -2566,17 +2595,8 @@ public class SearchRepository {
       return;
     }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
-
-    if (!getSearchClient().isClientAvailable()) {
-      SearchIndexRetryQueue.enqueue(
-          null, newFqn, "updateAssetDomainFqnByPrefix: Search client unavailable");
-      return;
-    }
     try {
       getSearchClient().updateAssetDomainFqnByPrefix(oldFqn, newFqn);
-    } catch (Exception e) {
-      SearchIndexRetryQueue.enqueue(
-          null, newFqn, SearchIndexRetryQueue.failureReason("updateAssetDomainFqnByPrefix", e));
     } finally {
       RequestLatencyContext.endSearchOperation(s);
     }
@@ -2594,8 +2614,8 @@ public class SearchRepository {
   /**
    * Targeted partial update of a single field in an entity's search document via a Painless script,
    * without rebuilding the whole document. Used to keep a derived denormalized field fresh when a
-   * related entity changes. The ES write is routed through {@link #deferIfFlushScopeActive} so it is
-   * drained after commit when a flush scope is open, never blocking while a DB connection is held.
+   * related entity changes. The write is queued through {@link #queueFanOut}, so it follows the
+   * document's own queued writes and never runs while a DB connection is held.
    */
   public void updateEntityFieldInSearch(
       String entityType, String entityId, String entityFqn, String field, Object value) {
@@ -2607,8 +2627,8 @@ public class SearchRepository {
     params.put(field, value);
     String indexName = getWriteIndexName(indexMapping);
     String script = String.format("ctx._source.%s = params.%s;", field, field);
-    deferIfFlushScopeActive(
-        () -> searchClient.updateEntity(indexName, entityId, params, script),
+    queueFanOut(
+        () -> searchClient.updateEntity(indexName, entityId, params, script, entityType),
         "updateEntityFieldInSearch:" + field,
         entityId,
         entityFqn,
@@ -2698,6 +2718,76 @@ public class SearchRepository {
   }
 
   /**
+   * Waits until every search write queued so far, fan-outs included, is applied, then refreshes
+   * OpenMetadata's indexes so the writes are searchable. Live writes do not force a refresh; this
+   * is for draining and tests, never for a request thread.
+   *
+   * @return {@code false} if {@code timeout} passed before the queued writes were applied
+   */
+  public boolean awaitQueuedWritesSearchable(Duration timeout)
+      throws InterruptedException, IOException {
+    boolean applied = liveWrites.awaitQueuedWrites(timeout);
+    String indexes = nullOrEmpty(clusterAlias) ? "_all" : clusterAlias + INDEX_NAME_SEPARATOR + "*";
+    SearchClient.RawSearchResponse refreshed =
+        searchClient.rawSearchRequest(
+            "POST",
+            "/" + indexes + "/_refresh?ignore_unavailable=true&allow_no_indices=true",
+            null);
+    if (refreshed.statusCode() >= 300) {
+      throw new IOException("Refreshing search indexes failed: " + refreshed.body());
+    }
+    return applied;
+  }
+
+  /**
+   * The documents that inherit fields from {@code parent}: those a propagation from it updates. A
+   * repair rebuilds the ones not rewritten since {@code notRewrittenSince}. Empty when nothing
+   * inherits from the parent's type.
+   */
+  public Optional<SearchRepairScope> inheritingDocuments(
+      EntityReference parent, long notRewrittenSince) {
+    return inheritingDocuments(
+        parent.getType(), List.of(parent.getId().toString()), notRewrittenSince);
+  }
+
+  /** {@link #inheritingDocuments(EntityReference, long)} for several parents of one type. */
+  public Optional<SearchRepairScope> inheritingDocuments(
+      String parentType, List<String> parentIds, long notRewrittenSince) {
+    Optional<SearchRepairScope> scope;
+    if (Entity.DOMAIN.equals(parentType)) {
+      scope =
+          Optional.of(globalScope(List.of(DOMAINS_ID, PARENT_ID), parentIds, notRewrittenSince));
+    } else if (Entity.DATA_PRODUCT.equals(parentType)) {
+      scope = Optional.of(globalScope(List.of(DATA_PRODUCTS_ID), parentIds, notRewrittenSince));
+    } else {
+      IndexMapping indexMapping = entityIndexMap.get(parentType);
+      List<String> children =
+          indexMapping == null
+              ? List.of()
+              : filterChildAliasesByCapability(
+                  indexMapping, capability -> capability == null || !capability.isTimeSeries());
+      scope =
+          children.isEmpty()
+              ? Optional.empty()
+              : Optional.of(
+                  new SearchRepairScope(
+                      children,
+                      SearchRepairScope.anyFieldIn(
+                          List.of(resolveParentFieldName(parentType)), parentIds),
+                      notRewrittenSince));
+    }
+    return scope;
+  }
+
+  private SearchRepairScope globalScope(
+      List<String> fields, List<String> values, long notRewrittenSince) {
+    return new SearchRepairScope(
+        List.of(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)),
+        SearchRepairScope.anyFieldIn(fields, values),
+        notRewrittenSince);
+  }
+
+  /**
    * The field on a child document that points back at {@code entityType}.
    *
    * <p>A service's children always reference it as {@code service.id} — no index anywhere declares a
@@ -2722,10 +2812,9 @@ public class SearchRepository {
    * performs, reusing {@code ADD_DOMAINS_SCRIPT} which overwrites a child only when its domain is
    * empty or inherited, leaving descendants that carry an explicit domain untouched.
    *
-   * <p>The {@code updateByQuery} fan-out is routed through {@link #deferIfFlushScopeActive}, so when
-   * the move runs inside a create/update flush its blocking Elasticsearch round trip is drained after
-   * the DB commit rather than while a pooled DB connection is held, matching the sibling {@code
-   * updateEntity} / {@code updateAssetDomainsByIds} writes.
+   * <p>The {@code updateByQuery} is queued through {@link #queueFanOut}, so it runs after the
+   * commit and after the descendants' own queued writes, which would otherwise put back the old
+   * domains.
    */
   public void propagateInheritedDomainsToChildren(
       List<EntityReference> assets, List<EntityReference> newDomains) {
@@ -2782,7 +2871,7 @@ public class SearchRepository {
       List<String> parentIds,
       Pair<String, Map<String, Object>> updates,
       String entityType) {
-    deferIfFlushScopeActive(
+    queueFanOut(
         () -> {
           try {
             searchClient.updateChildren(childAliases, parentField, parentIds, updates);
@@ -3028,7 +3117,11 @@ public class SearchRepository {
     }
 
     searchClient.updateEntity(
-        indexName, entity.getId().toString(), paramMap, UPDATE_CERTIFICATION_SCRIPT);
+        indexName,
+        entity.getId().toString(),
+        paramMap,
+        UPDATE_CERTIFICATION_SCRIPT,
+        entity.getEntityReference().getType());
   }
 
   public void propagateToRelatedEntities(
@@ -3074,7 +3167,11 @@ public class SearchRepository {
           Map<String, Object> params = new HashMap<>();
           params.put("field", parentFieldPath);
           searchClient.updateEntity(
-              indexName, entity.getId().toString(), params, "ctx._source.remove(params.field)");
+              indexName,
+              entity.getId().toString(),
+              params,
+              "ctx._source.remove(params.field)",
+              entityType);
 
           // Propagate FQN updates to all subchildren
           String originalFqn =
@@ -3132,7 +3229,7 @@ public class SearchRepository {
 
   private void reindexQueriesForDomainSource(String entityType, UUID entityId, String entityFqn) {
     if (QUERY_DOMAIN_REINDEX_SOURCE_TYPES.contains(entityType)) {
-      deferIfFlushScopeActive(
+      queueFanOut(
           () -> {
             final QueryRepository repository = (QueryRepository) Entity.getEntityRepository(QUERY);
             repository.forEachQueryBatchForDomainSource(
@@ -3528,7 +3625,8 @@ public class SearchRepository {
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
     try {
       searchClient.deleteEntity(getWriteIndexName(indexMapping), entityId);
-      deleteOrUpdateChildren(entity, indexMapping);
+      fanOutAfterEarlierWrites(
+          entity, "deleteOrUpdateChildren", () -> deleteOrUpdateChildren(entity, indexMapping));
       if (Entity.TABLE.equals(entityType)) {
         deleteTableColumns((Table) entity);
       } else {
@@ -3635,7 +3733,10 @@ public class SearchRepository {
     try {
       searchClient.softDeleteOrRestoreEntity(
           getWriteIndexName(indexMapping), entityId, script.painless(), script.params());
-      softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
+      fanOutAfterEarlierWrites(
+          entity,
+          "softDeleteOrRestoredChildren",
+          () -> softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete));
       reindexQueriesForDomainSource(entityType, entity.getId(), entity.getFullyQualifiedName());
 
       if (Entity.TABLE.equals(entityType)) {
@@ -3777,7 +3878,7 @@ public class SearchRepository {
       }
       case Entity.DATA_PRODUCT -> searchClient.updateChildren(
           GLOBAL_SEARCH_ALIAS,
-          new ImmutablePair<>("dataProducts.id", docId),
+          new ImmutablePair<>(DATA_PRODUCTS_ID, docId),
           new ImmutablePair<>(
               REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT,
               Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
@@ -4464,6 +4565,15 @@ public class SearchRepository {
   }
 
   public void deleteRelationshipFromSearch(UUID fromTableId, UUID toTableId) {
+    if (queuedAsFanOut(
+        new OrderedLaneTask(
+            () -> deleteRelationshipFromSearch(fromTableId, toTableId),
+            "deleteRelationshipFromSearch",
+            fromTableId.toString(),
+            null,
+            Entity.TABLE))) {
+      return;
+    }
     String relationDocId = fromTableId.toString() + "-" + toTableId.toString();
     try {
       searchClient.updateChildren(

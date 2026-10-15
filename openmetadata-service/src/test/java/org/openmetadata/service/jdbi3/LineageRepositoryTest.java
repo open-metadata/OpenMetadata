@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -41,6 +42,8 @@ import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.OrderedLaneTask;
+import org.openmetadata.service.search.LiveSearchWrites;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.slf4j.LoggerFactory;
@@ -64,9 +67,24 @@ class LineageRepositoryTest {
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
     when(searchRepository.getIndexMapping(any())).thenReturn(indexMapping);
     when(searchRepository.getClusterAlias()).thenReturn("default");
+    final LiveSearchWrites liveWrites = liveWritesRunningInline();
+    when(searchRepository.getLiveWrites()).thenReturn(liveWrites);
     mockedEntity = mockStatic(Entity.class);
     mockedEntity.when(Entity::getSearchRepository).thenReturn(searchRepository);
     mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+  }
+
+  /** Queued search writes run on the calling thread, where the static mocks apply. */
+  private static LiveSearchWrites liveWritesRunningInline() {
+    final LiveSearchWrites liveWrites = mock(LiveSearchWrites.class);
+    doAnswer(
+            call -> {
+              call.<OrderedLaneTask>getArgument(0).run();
+              return null;
+            })
+        .when(liveWrites)
+        .queue(any(OrderedLaneTask.class));
+    return liveWrites;
   }
 
   @AfterAll

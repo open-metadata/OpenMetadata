@@ -21,6 +21,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -86,6 +87,7 @@ public class PatchTableEmbeddingIT {
 
     Table table = client.tables().create(createRequest);
     String tableId = table.getId().toString();
+    QueuedSearchWrites.await();
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
       // Index the entity doc synchronously. The async SearchIndexHandler may be
@@ -102,6 +104,7 @@ public class PatchTableEmbeddingIT {
       // Patch description and re-generate embedding synchronously
       table.setDescription("Revenue metrics for quarterly financial reporting analysis");
       Table updated = client.tables().update(tableId, table);
+      QueuedSearchWrites.await();
       vectorService.updateEntityEmbedding(updated, entityIndexName);
 
       String updatedFingerprint =

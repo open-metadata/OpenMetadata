@@ -34,6 +34,7 @@ import {
   clickOutside,
   closeFirstPopupAlert,
   descriptionBox,
+  getApiContext,
   getEntityTypeSearchIndexMapping,
   redirectToHomePage,
   resolveDescriptionBox,
@@ -55,7 +56,11 @@ import {
   toggleGlossaryTermInPicker,
 } from './glossaryPicker';
 import { sidebarClick } from './sidebar';
-import { clickUntilVisible, waitForResponseWithStatus } from './waitHelpers';
+import {
+  clickUntilVisible,
+  searchUntilVisible,
+  waitForResponseWithStatus,
+} from './waitHelpers';
 
 /**
  * Waits until no loader is left in `scope`: the whole page, or a widget's
@@ -156,17 +161,23 @@ export const visitEntityPage = async (data: {
     await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
   }
 
-  await waitForAllLoadersToDisappear(page);
-
-  const searchResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=dataAsset') &&
-      response.url().includes('exclude_source_fields'),
-    { timeout: ACTION_TIMEOUT }
+  const searchResult = page.getByTestId(dataTestId).getByTestId('data-name');
+  await searchUntilVisible(
+    page,
+    async () => {
+      await waitForAllLoadersToDisappear(page);
+      const searchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=dataAsset') &&
+          response.url().includes('exclude_source_fields'),
+        { timeout: ACTION_TIMEOUT }
+      );
+      await page.getByTestId('searchBox').fill(searchTerm);
+      await searchResponse;
+    },
+    searchResult
   );
-  await page.getByTestId('searchBox').fill(searchTerm);
-  await searchResponse;
 
   // Adding a failsafe for the operation below to avoid a tooltip overlap issue.
   // A tooltip over the option can cause Playwright click failures
@@ -177,7 +188,7 @@ export const visitEntityPage = async (data: {
       y: 0,
     },
   });
-  await page.getByTestId(dataTestId).getByTestId('data-name').click();
+  await searchResult.click();
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('searchBox').clear();
 };
@@ -2541,6 +2552,17 @@ export const checkExploreSearchFilter = async (
   entity?: EntityClass,
   searchEntityType = false
 ) => {
+  if (entity) {
+    // The change this filter looks for is indexed after its call returns.
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      await entity.waitUntilSearchable(apiContext, {
+        term: { [filterKey]: filterValue },
+      });
+    } finally {
+      await afterAction();
+    }
+  }
   await sidebarClick(page, SidebarItem.EXPLORE);
   if (entity?.type && searchEntityType) {
     const entityTypeId = (

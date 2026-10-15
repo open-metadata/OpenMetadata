@@ -37,6 +37,7 @@ import {
   openClassificationTagPicker,
   waitForAllLoadersToDisappear,
 } from './entity';
+import { searchAssetPickerUntilListed } from './waitHelpers';
 
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',
@@ -140,23 +141,19 @@ export const addAssetsToTag = async (
   }
 
   for (const asset of assets) {
-    const name = get(asset, 'entityResponseData.name');
+    const name = get(asset, 'entityResponseData.name') as string | undefined;
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-    const entityDisplayName = get(asset, 'entityResponseData.displayName');
-    const visibleName = entityDisplayName ?? name;
+    const entityDisplayName = get(asset, 'entityResponseData.displayName') as
+      | string
+      | undefined;
+    const visibleName = entityDisplayName ?? name ?? '';
 
-    const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${encodeURIComponent(
-        visibleName
-      )}&index=all&from=0&size=25&**`
+    const assetCard = assetSelectionModal.locator(
+      `[data-testid="table-data-card_${fqn}"]`
     );
-    await searchBar.fill(visibleName);
-    await searchRes;
+    await searchAssetPickerUntilListed(page, searchBar, visibleName, assetCard);
 
-    await assetSelectionModal
-      .locator(`[data-testid="table-data-card_${fqn}"]`)
-      .getByTestId('asset-checkbox')
-      .click();
+    await assetCard.getByTestId('asset-checkbox').click();
 
     await expect(
       assetSelectionModal.locator(
@@ -168,6 +165,32 @@ export const addAssetsToTag = async (
   const assetsAddRes = page.waitForResponse(`/api/v1/tags/*/assets/add`);
   await page.getByTestId('save-btn').click();
   await assetsAddRes;
+
+  // Search indexes the tagged assets after the call returns, while the asset
+  // list and its filters were read right away; read them again once indexed.
+  await waitForAssetsTagged(page, assets, tag, true);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
+};
+
+const waitForAssetsTagged = async (
+  page: Page,
+  assets: EntityClass[],
+  tag: TagClass,
+  tagged: boolean
+) => {
+  const hasTag = {
+    term: { 'tags.tagFQN': tag.responseData.fullyQualifiedName },
+  };
+  const query = tagged ? hasTag : { bool: { must_not: [hasTag] } };
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    await Promise.all(
+      assets.map((asset) => asset.waitUntilSearchable(apiContext, query))
+    );
+  } finally {
+    await afterAction();
+  }
 };
 
 export const removeAssetsFromTag = async (
@@ -234,6 +257,7 @@ export const removeAssetsFromTag = async (
   await page.getByTestId('delete-all-button').click();
   await assetsRemoveRes;
 
+  await waitForAssetsTagged(page, assets, tag, false);
   await page.reload();
   await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
   await checkAssetsCount(page, 0);

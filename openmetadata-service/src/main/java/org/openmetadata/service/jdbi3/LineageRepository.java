@@ -87,13 +87,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.CSVExportException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.OrderedLaneTask;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.lineage.LineageGraphPruner;
 import org.openmetadata.service.lineage.LineageSceneCache;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ChildFieldResolver;
@@ -106,6 +106,8 @@ public class LineageRepository {
   private final CollectionDAO dao;
 
   private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
+  private static final String ADD_LINEAGE_OPERATION = "addLineageToSearch";
+  private static final String DELETE_LINEAGE_OPERATION = "deleteLineageFromSearch";
 
   public LineageRepository() {
     this.dao = Entity.getCollectionDAO();
@@ -637,16 +639,40 @@ public class LineageRepository {
 
   private void addLineageToSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    // For lineage from -> to (not stored) since the doc itself is the toEntity
+    final EsLineageData lineageData =
+        buildEntityLineageData(fromEntity, toEntity, lineageDetails).withToEntity(null);
+    queueOnEdgeDocument(
+        toEntity, ADD_LINEAGE_OPERATION, () -> writeLineage(fromEntity, toEntity, lineageData));
+  }
+
+  private void writeLineage(
+      EntityReference fromEntity, EntityReference toEntity, EsLineageData lineageData) {
     IndexMapping destinationIndexMapping =
         Entity.getSearchRepository().getIndexMapping(toEntity.getType());
     String destinationIndexName =
-        destinationIndexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
-    // For lineage from -> to (not stored) since the doc itself is the toEntity
-    EsLineageData lineageData =
-        buildEntityLineageData(fromEntity, toEntity, lineageDetails).withToEntity(null);
+        Entity.getSearchRepository().getWriteIndexName(destinationIndexMapping);
     Pair<String, String> to = new ImmutablePair<>("_id", toEntity.getId().toString());
     searchClient.updateLineage(destinationIndexName, to, lineageData);
     invalidateLineageCacheForEdge(fromEntity, toEntity);
+  }
+
+  /**
+   * An edge lives in its downstream entity's document, so its writes go on that entity's lane: a
+   * write of the document queued earlier cannot land afterwards and drop the edge. A failed write
+   * retries that document.
+   */
+  private static void queueOnEdgeDocument(
+      EntityReference toEntity, String operation, Runnable write) {
+    Entity.getSearchRepository()
+        .getLiveWrites()
+        .queue(
+            new OrderedLaneTask(
+                write,
+                operation,
+                toEntity.getId() == null ? null : toEntity.getId().toString(),
+                toEntity.getFullyQualifiedName(),
+                toEntity.getType()));
   }
 
   private void invalidateLineageCacheForEdge(EntityReference from, EntityReference to) {
@@ -1556,21 +1582,18 @@ public class LineageRepository {
 
   private void deleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    queueOnEdgeDocument(
+        toEntity, DELETE_LINEAGE_OPERATION, () -> removeLineage(fromEntity, toEntity));
+  }
+
+  private void removeLineage(EntityReference fromEntity, EntityReference toEntity) {
     String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
-    try {
-      searchClient.updateChildren(
-          GLOBAL_SEARCH_ALIAS,
-          new ImmutablePair<>("upstreamLineage.docUniqueId", uniqueValue),
-          new ImmutablePair<>(
-              REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
-      invalidateLineageCacheForEdge(fromEntity, toEntity);
-    } catch (Exception e) {
-      SearchIndexRetryQueue.enqueue(
-          fromEntity.getId() != null ? fromEntity.getId().toString() : null,
-          fromEntity.getFullyQualifiedName(),
-          SearchIndexRetryQueue.failureReason("deleteLineageFromSearch", e));
-      LOG.error("Failed to delete lineage from search for {}: {}", uniqueValue, e.getMessage());
-    }
+    searchClient.updateChildren(
+        GLOBAL_SEARCH_ALIAS,
+        new ImmutablePair<>("upstreamLineage.docUniqueId", uniqueValue),
+        new ImmutablePair<>(
+            REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
+    invalidateLineageCacheForEdge(fromEntity, toEntity);
   }
 
   private EntityLineage getLineage(

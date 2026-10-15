@@ -32,6 +32,7 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SearchDocuments;
 import org.openmetadata.it.util.SearchIndexingAppRuns;
@@ -172,6 +173,7 @@ class SearchReindexInPlaceIT {
     SdkClients.adminClient()
         .tables()
         .update(id, JsonUtils.deepCopy(older, Table.class).withDescription("newer"));
+    QueuedSearchWrites.await();
 
     deliver(late, id);
 

@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -497,6 +498,7 @@ public class McpToolsValidationIT extends McpTestBase {
             .withColumns(testTable.getColumns());
 
     Table deletionTestTable = post("tables", createDeletionTestTable, Table.class);
+    QueuedSearchWrites.await();
 
     Map<String, Object> searchActive =
         McpTestUtils.createSearchMetadataToolCall(deletionTestTableName, 5, Entity.TABLE);
@@ -504,6 +506,7 @@ public class McpToolsValidationIT extends McpTestBase {
     validateDeletedFieldPresence(activeResult, false);
 
     delete("tables/" + deletionTestTable.getId());
+    QueuedSearchWrites.await();
 
     Map<String, Object> searchWithDeleted =
         createSearchToolCallWithDeletedParam(deletionTestTableName, 5, Entity.TABLE, true);

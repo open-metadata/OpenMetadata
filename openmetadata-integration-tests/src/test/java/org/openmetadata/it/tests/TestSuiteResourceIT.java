@@ -30,6 +30,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.UserTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -1128,6 +1129,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     TestSuite testSuite = createBasicTestSuiteForTable(table);
     List<TestCase> testCases = createTestCases(client, ns, table, 4);
     recordTestCaseResults(client, testCases, 2, 2);
+    QueuedSearchWrites.await();
 
     String scopedQuery = scopedTestCaseQuery(testSuite.getId());
     String statusAgg = "bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus";

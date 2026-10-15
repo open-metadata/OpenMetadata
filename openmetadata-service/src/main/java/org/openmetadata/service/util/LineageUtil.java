@@ -31,6 +31,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.DeferredSearchWrites;
 
 @Slf4j
 public class LineageUtil {
@@ -112,10 +113,11 @@ public class LineageUtil {
 
   private static void deferOrRun(Runnable esWrite, EntityReference toEntity) {
     List<DeferredLineageEsWrite> deferred = DEFERRED_LINEAGE_ES.get();
+    DeferredLineageEsWrite write = new DeferredLineageEsWrite(esWrite, toEntity);
     if (deferred != null) {
-      deferred.add(new DeferredLineageEsWrite(esWrite, toEntity));
+      deferred.add(write);
     } else {
-      esWrite.run();
+      Entity.getSearchRepository().getLiveWrites().queue(DeferredSearchWrites.lineageTask(write));
     }
   }
 

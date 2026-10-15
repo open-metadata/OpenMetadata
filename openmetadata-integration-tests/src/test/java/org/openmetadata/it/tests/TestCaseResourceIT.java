@@ -41,6 +41,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.UserTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
@@ -1300,21 +1301,8 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .parameter("value", "100")
             .create();
 
-    // Filtered "all" resolves matches from the search index, so the test cases must be
-    // indexed before the bulk add runs.
-    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
-      Awaitility.await("test cases indexed before filtered bulk add")
-          .atMost(SEARCH_CONVERGENCE_TIMEOUT)
-          .pollInterval(Duration.ofSeconds(2))
-          .ignoreExceptions()
-          .untilAsserted(
-              () -> {
-                assertNotNull(queryTestCaseSearchSource(searchClient, matching1.getId()));
-                assertNotNull(queryTestCaseSearchSource(searchClient, matching2.getId()));
-                assertNotNull(queryTestCaseSearchSource(searchClient, excluded.getId()));
-              });
-    }
-
+    // A filter without free text is answered from the database, so test cases created moments
+    // ago match before search has indexed them.
     CreateTestSuite suiteReq = new CreateTestSuite();
     suiteReq.setName(ns.prefix("logical_filtered_all"));
     TestSuite logicalSuite = client.testSuites().create(suiteReq);
@@ -1340,20 +1328,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             request,
             RequestOptions.builder().build());
 
-    Awaitility.await("only the filtered subset is added to the logical suite")
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(2))
-        .untilAsserted(
-            () -> {
-              TestSuite updated = client.testSuites().get(logicalSuite.getId().toString(), "tests");
-              assertNotNull(updated.getTests());
-              List<UUID> ids = updated.getTests().stream().map(ref -> ref.getId()).toList();
-              assertEquals(2, ids.size(), "only the two matching-table test cases should be added");
-              assertTrue(ids.contains(matching1.getId()));
-              assertTrue(ids.contains(matching2.getId()));
-              assertFalse(
-                  ids.contains(excluded.getId()), "test case from other table must not be added");
-            });
+    TestSuite updated = client.testSuites().get(logicalSuite.getId().toString(), "tests");
+    assertNotNull(updated.getTests());
+    List<UUID> ids = updated.getTests().stream().map(ref -> ref.getId()).toList();
+    assertEquals(2, ids.size(), "only the two matching-table test cases should be added");
+    assertTrue(ids.contains(matching1.getId()));
+    assertTrue(ids.contains(matching2.getId()));
+    assertFalse(ids.contains(excluded.getId()), "test case from other table must not be added");
   }
 
   @Test
@@ -6217,6 +6198,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         createTestCaseWithStatus(client, ns, table, "status_aborted", TestCaseStatus.Aborted);
     TestCase successTestCase =
         createTestCaseWithStatus(client, ns, table, "status_success", TestCaseStatus.Success);
+    QueuedSearchWrites.await();
 
     String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
 

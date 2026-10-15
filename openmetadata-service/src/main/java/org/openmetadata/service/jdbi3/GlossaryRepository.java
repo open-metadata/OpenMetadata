@@ -568,15 +568,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     String newFqn = updated.getFullyQualifiedName();
 
     // Re-index the glossary and all nested child terms from the renamed DB rows so each doc's own
-    // FQN and the glossary/parent denorm reflect the new name. Drained on the request thread
-    // post-commit = read-your-write, unlike the previous fire-and-forget reindexAcrossIndices that
-    // raced the commit and left child terms stale. Rebuilding from the authoritative rows is
+    // FQN and the glossary/parent denorm reflect the new name. Queued after the commit, unlike the
+    // previous fire-and-forget reindexAcrossIndices that raced the commit and left child terms
+    // stale. Rebuilding from the authoritative rows is
     // boundary-safe — getAllTerms matches on fixed-width fqnHash segments, where an ES
     // prefix-rewrite over the raw FQN would also hit sibling glossaries sharing a name prefix
     // (e.g. "Finance" vs "FinanceReports") and can't refresh glossary.name/fullyQualifiedName at
     // all. The child terms go out as one bulk request, not N individual ES round-trips.
-    searchRepository.updateEntity(updated.getEntityReference());
-    searchRepository.deferIfFlushScopeActive(
+    searchRepository.getLiveWrites().updateEntity(updated.getEntityReference());
+    searchRepository.queueFanOut(
         () ->
             searchRepository.updateEntitiesByReference(
                 getAllTerms(updated).stream().map(GlossaryTerm::getEntityReference).toList()),
@@ -585,9 +585,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         newFqn,
         GLOSSARY_TERM);
 
-    // Rewrite tags.tagFQN on every asset tagged with this glossary's terms in one synchronous
-    // prefix update-by-query (refresh=true) — the same in-line mechanism GlossaryTerm rename uses.
-    searchRepository.deferIfFlushScopeActive(
+    // Rewrite tags.tagFQN on every asset tagged with this glossary's terms in one prefix
+    // update-by-query (refresh=true) — the same mechanism GlossaryTerm rename uses.
+    searchRepository.queueFanOut(
         () ->
             searchRepository
                 .getSearchClient()

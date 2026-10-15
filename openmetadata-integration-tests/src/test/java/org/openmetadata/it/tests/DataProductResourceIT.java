@@ -28,6 +28,7 @@ import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.EntityValidation;
 import org.openmetadata.it.util.GovernanceWorkflowActions;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDashboard;
@@ -1241,6 +1242,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   private ResultList<EntityReference> getAssets(UUID id, int limit, int offset) throws Exception {
+    QueuedSearchWrites.await();
     String path = "/v1/dataProducts/" + id + "/assets?limit=" + limit + "&offset=" + offset;
     String responseJson =
         SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, path, null, null);
@@ -1249,6 +1251,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
   private ResultList<EntityReference> getAssetsByName(String name, int limit, int offset)
       throws Exception {
+    QueuedSearchWrites.await();
     String path = "/v1/dataProducts/name/" + name + "/assets?limit=" + limit + "&offset=" + offset;
     String responseJson =
         SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, path, null, null);

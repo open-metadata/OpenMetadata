@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -29,7 +30,9 @@ import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.OrderedLaneTask;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.LiveSearchWrites;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -46,6 +49,7 @@ class LineageUtilTest {
     CollectionDAO.EntityRelationshipDAO relationshipDAO =
         mock(CollectionDAO.EntityRelationshipDAO.class);
     SearchRepository searchRepository = mock(SearchRepository.class);
+    runQueuedWritesInline(searchRepository);
     SearchClient searchClient = mock(SearchClient.class);
 
     when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
@@ -156,6 +160,7 @@ class LineageUtilTest {
     CollectionDAO.EntityRelationshipDAO relationshipDAO =
         mock(CollectionDAO.EntityRelationshipDAO.class);
     SearchRepository searchRepository = mock(SearchRepository.class);
+    runQueuedWritesInline(searchRepository);
     SearchClient searchClient = mock(SearchClient.class);
     LineageDetails lineageDetails =
         new LineageDetails().withAssetEdges(2).withSource(LineageDetails.Source.CHILD_ASSETS);
@@ -223,6 +228,7 @@ class LineageUtilTest {
     CollectionDAO.EntityRelationshipDAO relationshipDAO =
         mock(CollectionDAO.EntityRelationshipDAO.class);
     SearchRepository searchRepository = mock(SearchRepository.class);
+    runQueuedWritesInline(searchRepository);
     SearchClient searchClient = mock(SearchClient.class);
     LineageDetails lineageDetails =
         new LineageDetails().withAssetEdges(1).withSource(LineageDetails.Source.CHILD_ASSETS);
@@ -341,6 +347,7 @@ class LineageUtilTest {
     CollectionDAO.EntityRelationshipDAO relationshipDAO =
         mock(CollectionDAO.EntityRelationshipDAO.class);
     SearchRepository searchRepository = mock(SearchRepository.class);
+    runQueuedWritesInline(searchRepository);
     SearchClient searchClient = mock(SearchClient.class);
 
     when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
@@ -593,5 +600,18 @@ class LineageUtilTest {
         .fromId(ref.getId().toString())
         .fromEntity(ref.getType())
         .build();
+  }
+
+  /** Runs queued search writes on the calling thread, where the static mocks apply. */
+  private static void runQueuedWritesInline(SearchRepository searchRepository) {
+    LiveSearchWrites liveWrites = mock(LiveSearchWrites.class);
+    doAnswer(
+            call -> {
+              call.<OrderedLaneTask>getArgument(0).run();
+              return null;
+            })
+        .when(liveWrites)
+        .queue(any(OrderedLaneTask.class));
+    when(searchRepository.getLiveWrites()).thenReturn(liveWrites);
   }
 }

@@ -34,7 +34,6 @@ import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.jdbi.BindJson;
 
@@ -1186,7 +1185,7 @@ public interface SearchReindexDAOs {
                 + "', "
                 + "failureReason))) END, "
                 + "status = VALUES(status), entityType = VALUES(entityType), retryCount = 0, "
-                + "claimedAt = NULL, claimToken = NULL",
+                + "claimedAt = NULL, claimToken = NULL, nextAttemptAt = 0",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
@@ -1211,7 +1210,7 @@ public interface SearchReindexDAOs {
                 + "search_index_retry_queue.failureReason)) END, "
                 + "status = EXCLUDED.status, "
                 + "entityType = EXCLUDED.entityType, retryCount = 0, claimedAt = NULL, "
-                + "claimToken = NULL",
+                + "claimToken = NULL, nextAttemptAt = 0",
         connectionType = POSTGRES)
     void upsert(
         @Bind("entityId") String entityId,
@@ -1234,31 +1233,14 @@ public interface SearchReindexDAOs {
     List<SearchIndexRetryRecord> findByStatuses(
         @BindList("statuses") List<String> statuses, @Bind("limit") int limit);
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt, claimToken "
-                + "FROM search_index_retry_queue WHERE status = 'PENDING' "
-                + "OR (status = 'PENDING_RETRY_1' AND (claimedAt IS NULL OR "
-                + "claimedAt <= DATE_SUB(NOW(), INTERVAL :firstRetryBackoffSeconds SECOND))) "
-                + "OR (status = 'PENDING_RETRY_2' AND (claimedAt IS NULL OR "
-                + "claimedAt <= DATE_SUB(NOW(), INTERVAL :secondRetryBackoffSeconds SECOND))) "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt, claimToken "
-                + "FROM search_index_retry_queue WHERE status = 'PENDING' "
-                + "OR (status = 'PENDING_RETRY_1' AND (claimedAt IS NULL OR "
-                + "claimedAt <= NOW() - (:firstRetryBackoffSeconds * INTERVAL '1 second'))) "
-                + "OR (status = 'PENDING_RETRY_2' AND (claimedAt IS NULL OR "
-                + "claimedAt <= NOW() - (:secondRetryBackoffSeconds * INTERVAL '1 second'))) "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
+    @SqlQuery(
+        "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt, claimToken "
+            + "FROM search_index_retry_queue WHERE status = 'PENDING' "
+            + "OR (status IN ('PENDING_RETRY_1', 'PENDING_RETRY_2') AND nextAttemptAt <= :now) "
+            + "LIMIT :limit")
     @RegisterRowMapper(SearchIndexRetryRecordMapper.class)
     List<SearchIndexRetryRecord> findRetryCandidates(
-        @Bind("firstRetryBackoffSeconds") int firstRetryBackoffSeconds,
-        @Bind("secondRetryBackoffSeconds") int secondRetryBackoffSeconds,
-        @Bind("limit") int limit);
+        @Bind("now") long now, @Bind("limit") int limit);
 
     @SqlUpdate(
         "UPDATE search_index_retry_queue SET status = :newStatus "
@@ -1321,7 +1303,8 @@ public interface SearchReindexDAOs {
 
     @SqlUpdate(
         "UPDATE search_index_retry_queue SET status = :status, failureReason = :failureReason, "
-            + "retryCount = retryCount + 1, claimedAt = NOW(), claimToken = NULL "
+            + "retryCount = retryCount + 1, claimedAt = NOW(), claimToken = NULL, "
+            + "nextAttemptAt = :nextAttemptAt "
             + "WHERE entityId = :entityId AND entityFqn = :entityFqn "
             + "AND status = 'IN_PROGRESS' AND claimToken = :claimToken")
     int updateFailureAndRetryCount(
@@ -1329,18 +1312,17 @@ public interface SearchReindexDAOs {
         @Bind("entityFqn") String entityFqn,
         @Bind("failureReason") String failureReason,
         @Bind("status") String status,
-        @Bind("claimToken") String claimToken);
+        @Bind("claimToken") String claimToken,
+        @Bind("nextAttemptAt") long nextAttemptAt);
 
     default List<SearchIndexRetryRecord> claimPending(int batchSize) {
-      return claimPending(batchSize, 0, 0);
+      return claimPending(batchSize, System.currentTimeMillis());
     }
 
-    default List<SearchIndexRetryRecord> claimPending(
-        int batchSize, int firstRetryBackoffSeconds, int secondRetryBackoffSeconds) {
+    default List<SearchIndexRetryRecord> claimPending(int batchSize, long now) {
       int fetchSize = Math.max(batchSize * 5, batchSize);
       List<SearchIndexRetryRecord> candidates =
-          new ArrayList<>(
-              findRetryCandidates(firstRetryBackoffSeconds, secondRetryBackoffSeconds, fetchSize));
+          new ArrayList<>(findRetryCandidates(now, fetchSize));
       // Shuffle so concurrent worker threads attempt different rows first,
       // reducing wasted optimistic-lock failures on the same candidates.
       Collections.shuffle(candidates);

@@ -13,7 +13,7 @@
 import { expect, Page, Response } from '@playwright/test';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
-import { waitForResponseWithStatus } from './waitHelpers';
+import { searchUntilVisible, waitForResponseWithStatus } from './waitHelpers';
 
 // The child-asset list the AI-mode service details page reads, by service category.
 const SERVICE_CHILD_LIST_PATHS: Record<string, string> = {
@@ -52,10 +52,16 @@ export const visitServiceDetailsPage = async (
   await serviceResponse;
   await waitForAllLoadersToDisappear(page);
 
-  await searchServiceFromSettingPage(page, service.name);
-
-  // Click on created service
-  await page.click(`[data-testid="service-name-${service.name}"]`);
+  const serviceRow = page.getByTestId(`service-name-${service.name}`);
+  await searchUntilVisible(
+    page,
+    async () => {
+      await waitForAllLoadersToDisappear(page);
+      await searchServiceFromSettingPage(page, service.name);
+    },
+    serviceRow
+  );
+  await serviceRow.click();
 
   await waitForAllLoadersToDisappear(page);
 

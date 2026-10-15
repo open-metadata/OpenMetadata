@@ -112,3 +112,94 @@ export const clickUntilVisible = async (
     await expect(target).toBeVisible({ timeout: 5_000 });
   }).toPass({ timeout: options?.timeout ?? 30_000, intervals: [500, 1_000] });
 };
+
+/** Budget for one search to list what the test is looking for. */
+const SEARCH_ATTEMPT_TIMEOUT = 5_000;
+/** Total budget for something written moments ago to become searchable. */
+const SEARCH_INDEXING_TIMEOUT = 90_000;
+
+/**
+ * Search is eventually consistent: the server indexes a write after the API
+ * call returns, so what a test created moments ago can be missing from the
+ * first query. Runs `search` until `target` is visible, reloading the page
+ * between attempts so the term is queried afresh — typing an unchanged term
+ * again issues no new request.
+ */
+export const searchUntilVisible = async (
+  page: Page,
+  search: () => Promise<void>,
+  target: Locator,
+  options?: { timeout?: number }
+) => {
+  let hasSearched = false;
+  await expect(async () => {
+    if (hasSearched) {
+      await page.reload({ waitUntil: 'domcontentloaded' });
+    }
+    hasSearched = true;
+    await search();
+    await expect(target).toBeVisible({ timeout: SEARCH_ATTEMPT_TIMEOUT });
+  }).toPass({
+    timeout: options?.timeout ?? SEARCH_INDEXING_TIMEOUT,
+    intervals: [2_000, 3_000, 5_000],
+  });
+};
+
+/**
+ * A card list the page queried right after a create can miss what was just
+ * created, since search is eventually consistent. Opens `tab` until `card` is
+ * listed, reloading between attempts so the list is queried afresh.
+ */
+export const openTabUntilListed = async (
+  page: Page,
+  tab: Locator,
+  card: Locator
+) => searchUntilVisible(page, () => tab.click(), card);
+
+/**
+ * A page-sized asset query for `term`. The pickers also fire size=0 counts,
+ * and search `all` or `dataAsset` depending on what they add assets to.
+ */
+const isAssetPickerQuery = (response: Response, term: string): boolean => {
+  const url = new URL(response.url());
+
+  return (
+    url.pathname.endsWith('/api/v1/search/query') &&
+    url.searchParams.get('size') === '25' &&
+    url.searchParams.get('q') === term
+  );
+};
+
+/**
+ * Searches an asset picker until `card` is listed. Search is eventually
+ * consistent, so an asset created moments ago can be missing from the first
+ * query. Between attempts the box is cleared and its unfiltered query awaited,
+ * so the next fill is a new query rather than an unchanged term.
+ */
+export const searchAssetPickerUntilListed = async (
+  page: Page,
+  searchBar: Locator,
+  term: string,
+  card: Locator
+) => {
+  let hasSearched = false;
+  await expect(async () => {
+    if (hasSearched) {
+      const cleared = page.waitForResponse((response) =>
+        isAssetPickerQuery(response, '')
+      );
+      await searchBar.clear();
+      await cleared;
+    }
+    hasSearched = true;
+    const searched = page.waitForResponse((response) =>
+      isAssetPickerQuery(response, term)
+    );
+    await searchBar.fill(term);
+    await searched;
+    await expect(card).toBeVisible({ timeout: SEARCH_ATTEMPT_TIMEOUT });
+  }).toPass({
+    timeout: SEARCH_INDEXING_TIMEOUT,
+    intervals: [2_000, 3_000, 5_000],
+  });
+};

@@ -19,8 +19,9 @@ import java.util.List;
 public final class DataQualitySearchFixtures {
 
   /**
-   * Search converges synchronously post-commit, but a transient write failure falls back to the
-   * async retry queue — allow generous headroom so heavy parallel runs don't trip the happy path.
+   * Search converges shortly after each API call returns, and a transient write failure falls back
+   * to the async retry queue — allow generous headroom so heavy parallel runs don't trip the happy
+   * path.
    */
   public static final Duration SEARCH_CONVERGENCE_TIMEOUT = Duration.ofSeconds(120);
 
