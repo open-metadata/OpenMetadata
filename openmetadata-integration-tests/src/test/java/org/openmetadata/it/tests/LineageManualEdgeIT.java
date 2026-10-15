@@ -19,6 +19,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -330,6 +331,7 @@ public class LineageManualEdgeIT {
   }
 
   private void waitForEdgeInSearchIndex(Table from, Table to) {
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for edge in ES: " + from.getName() + " → " + to.getName())
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(3))

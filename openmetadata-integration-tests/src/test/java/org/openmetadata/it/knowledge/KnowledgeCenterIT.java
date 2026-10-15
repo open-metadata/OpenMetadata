@@ -12,6 +12,7 @@ import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
@@ -281,6 +282,7 @@ public class KnowledgeCenterIT {
   }
 
   private void awaitPageIndexed(RestClient rest, UUID id) {
+    QueuedSearchWrites.await();
     await()
         .pollDelay(Duration.ZERO)
         .pollInterval(Duration.ofMillis(200))

@@ -33,6 +33,7 @@ import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.ShortStackFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -954,6 +955,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     Metric metric = createEntity(request);
     assertNotNull(metric);
 
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for metric to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))

@@ -27,6 +27,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
@@ -141,6 +142,7 @@ public class TableCertificationPropagationIT {
 
   private static void awaitTestCaseCertification(
       OpenMetadataClient client, String testCaseFqn, String expectedFqn) {
+    QueuedSearchWrites.await();
     await("test_case_search_index reflects cert " + expectedFqn + " for " + testCaseFqn)
         .atMost(AWAIT_TIMEOUT)
         .pollInterval(POLL_INTERVAL)
@@ -160,6 +162,7 @@ public class TableCertificationPropagationIT {
 
   private static void awaitTestCaseCertificationAbsent(
       OpenMetadataClient client, String testCaseFqn) {
+    QueuedSearchWrites.await();
     await("test_case_search_index has no certification for " + testCaseFqn)
         .atMost(AWAIT_TIMEOUT)
         .pollInterval(POLL_INTERVAL)

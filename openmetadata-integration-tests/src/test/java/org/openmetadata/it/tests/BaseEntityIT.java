@@ -2459,6 +2459,7 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
         dataProduct.getFullyQualifiedName(),
         apiDataProducts.path(0).path("fullyQualifiedName").asText());
 
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for minimal data product PATCH to update search-backed assets")
         .atMost(Duration.ofSeconds(60))
         .pollDelay(Duration.ofMillis(500))
@@ -5865,6 +5866,7 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index (async indexing may take time)
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
@@ -5893,6 +5895,7 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index before delete
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
@@ -5929,6 +5932,7 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
@@ -5957,6 +5961,7 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
     T entity = createEntity(createRequest);
 
     // First wait for entity to appear in search index
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
@@ -5976,6 +5981,7 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
     T updated = patchEntity(entity.getId().toString(), entity);
 
     // Wait for updated entity to be reflected in search
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for search to reflect update")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))

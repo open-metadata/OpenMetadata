@@ -18,6 +18,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.AutoClassificationConfig;
@@ -949,6 +950,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
 
   private void awaitTableTag(
       OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedTagFqn) {
+    QueuedSearchWrites.await();
     Awaitility.await("table search doc carries tag " + expectedTagFqn)
         .atMost(Duration.ofSeconds(60))
         .pollDelay(Duration.ofMillis(500))

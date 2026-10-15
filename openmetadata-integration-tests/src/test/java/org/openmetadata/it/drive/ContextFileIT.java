@@ -20,6 +20,7 @@ import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
@@ -878,6 +879,7 @@ class ContextFileIT {
     // free-text q= search using the namespaced unique name, but the prefix contains '-'
     // which the query_string parser treats as a NOT operator and can produce a 500 on
     // ES 9.x — yielding a flaky 30s-timeout failure even when the document is indexed.
+    QueuedSearchWrites.await();
     await()
         .pollDelay(Duration.ZERO)
         .pollInterval(Duration.ofMillis(200))

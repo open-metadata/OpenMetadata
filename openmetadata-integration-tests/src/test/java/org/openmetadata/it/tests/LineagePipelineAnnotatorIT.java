@@ -21,6 +21,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -212,6 +213,7 @@ public class LineagePipelineAnnotatorIT {
   private JsonNode searchLineage(String fqn, String type, int upDepth, int downDepth)
       throws Exception {
     String[] result = {null};
+    QueuedSearchWrites.await();
     Awaitility.await("searchLineage for " + fqn)
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))
@@ -268,6 +270,7 @@ public class LineagePipelineAnnotatorIT {
   }
 
   private void waitForEntityLineageIndexed() {
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for entity lineage in ES")
         .atMost(Duration.ofSeconds(90))
         .pollInterval(Duration.ofSeconds(3))
@@ -284,6 +287,7 @@ public class LineagePipelineAnnotatorIT {
   }
 
   private void waitForServiceLineageIndexed() {
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for service lineage in ES")
         .atMost(Duration.ofSeconds(90))
         .pollInterval(Duration.ofSeconds(3))
@@ -402,6 +406,7 @@ public class LineagePipelineAnnotatorIT {
 
   private void awaitServiceView(
       MessagingService targetService, Predicate<JsonNode> expectedNodes, String expectation) {
+    QueuedSearchWrites.await();
     Awaitility.await(expectation)
         .atMost(Duration.ofSeconds(20))
         .pollInterval(Duration.ofSeconds(1))
