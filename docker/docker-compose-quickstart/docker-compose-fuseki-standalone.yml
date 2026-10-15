@@ -1,31 +1,32 @@
 # Standalone Apache Jena Fuseki for RDF/Knowledge Graph storage
 services:
   fuseki:
-    # Build from the in-repo Dockerfile (Fuseki 6.2.0). See
-    # ../development/docker-compose-fuseki.yml for the full rationale.
-    build:
-      context: ../rdf-store
-      dockerfile: Dockerfile
-    image: openmetadata-fuseki:6.2.0
+    # The published OpenMetadata Fuseki image (built in open-metadata/jena), pinned to its
+    # immutable <version>-<commit> tag. See docs/rdf-fuseki-image-release.md.
+    image: openmetadata/fuseki:6.2.0-600514c
     container_name: fuseki-standalone
     hostname: fuseki
     ports:
       - "3030:3030"
     environment:
-      # Local-dev default — production deployments MUST override via
-      # FUSEKI_ADMIN_PASSWORD / FUSEKI_OPENMETADATA_PASSWORD env vars.
-      - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
-      - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
-      - JVM_ARGS=-Xmx4g -Xms2g
+      # The image's environment contract, set as OpenMetadata needs it: the serving dataset and
+      # its two blue/green rebuild targets, the union default graph (OpenMetadata writes every
+      # entity into a named graph), server-side deadlines below the 60 s client deadline, and the
+      # bounded Graph Store extension. docs/rdf-production-setup.md explains each one.
+      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_DATASETS=openmetadata,openmetadata_a,openmetadata_b
+      - FUSEKI_UNION_DEFAULT_GRAPH=true
+      - FUSEKI_QUERY_TIMEOUT_MS=50000
+      - FUSEKI_UPDATE_TIMEOUT_MS=50000
+      - OPENMETADATA_EXTENSION_ENABLED=true
+      - FUSEKI_HEAP=${FUSEKI_HEAP:-2g}
     volumes:
-      # See docker-compose-fuseki-rosetta.yml — host bind path renamed so
-      # existing directories with the old stain layout aren't silently
-      # mounted at the new /fuseki-data path.
-      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki-tdb2-data:/fuseki-data
+      # A new host path: fuseki-tdb2-data holds the retired in-repo image's layout.
+      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki-store:/fuseki
     networks:
       - fuseki-net
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3030/$/ping"]
+      test: ["CMD", "/healthcheck.sh"]
       interval: 15s
       timeout: 10s
       retries: 5

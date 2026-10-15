@@ -10,57 +10,39 @@ full rebuild required to replace legacy lineage and extension triples when upgra
 The [catalog scale harness](rdf-scale-validation.md) measures full rebuilds, serving queries,
 resource peaks, cancellation, and restart persistence against a specified catalog size.
 
-## The shipped Fuseki image
+## The Fuseki image
 
-`docker/rdf-store/` builds the supported image (`openmetadata-fuseki:6.2.0`):
+Run the published `openmetadata/fuseki` image, pinned to an immutable `<version>-<commit>` tag
+(today `6.2.0-600514c`). [rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) lists the
+environment OpenMetadata needs, what readiness checks, and how to verify a deployment. In short:
 
-- **Fuseki 6.2.0 on `eclipse-temurin:21-jre-jammy`.** Jena 6.x requires Java 21. The download is
-  verified against a pinned SHA-512 checksum at build time.
-- **Runs as non-root user `fuseki` (uid/gid 1000).** On Kubernetes set `fsGroup: 1000` (the shipped
-  manifest does) so the persistent volume is writable.
+- **Fuseki 6.2.0 on Java 21**, downloaded and checked against its SHA-512 when the image is built,
+  running as uid 1000 under `tini`. On Kubernetes set `fsGroup: 1000` so the volume is writable; a
+  volume written by a root-running image needs a one-time `chown`, which the entrypoint prints.
+- **Datasets from `FUSEKI_DATASETS`**: `openmetadata`, `openmetadata_a`, and `openmetadata_b`, at
+  `/fuseki/databases/<name>` on the `/fuseki` volume.
+- **Union default graph and deadlines, server-wide.** `FUSEKI_UNION_DEFAULT_GRAPH=true` lets the
+  SPARQL playground and MCP knowledge-graph tools read the named graphs OpenMetadata writes into
+  without a `GRAPH` clause; without it a plain `?s ?p ?o` returns nothing.
+  `FUSEKI_QUERY_TIMEOUT_MS=50000` and `FUSEKI_UPDATE_TIMEOUT_MS=50000` fire before the 60-second
+  client deadline: client-side `requestTimeoutMs` releases an OpenMetadata thread but cannot stop
+  work already executing in Fuseki, so the server must release TDB2's writer lock first. Jena 6.2.0
+  has a known failure on the second WHERE-bearing operation in one timed update request.
+  OpenMetadata's generated mutations therefore combine batch sources with `VALUES`/`UNION`, and the
+  admin SPARQL API rejects requests containing more than one WHERE-bearing operation with a clear
+  validation error. Direct Fuseki clients must follow the same restriction.
+- **The OpenMetadata Graph Store extension** with `OPENMETADATA_EXTENSION_ENABLED=true`.
+- **Admin-only access.** Only `/$/ping` is anonymous; OpenMetadata connects as `admin`.
+- **Explicit equal heap** from `FUSEKI_HEAP` (default `4g`; the development compose files use
+  1500 MB).
+- **No Lucene text index.** The retired in-repo image wrapped each dataset in a Jena
+  `text:TextDataset`; no OpenMetadata code issues `text:query`.
 
-  **Upgrading an existing deployment requires a one-time chown.** A volume written by the previous
-  root-running image stays owned by uid 0, and the container refuses to start against it — by
-  design, since the alternative is a server that runs but cannot write. The startup log says so
-  explicitly (`/fuseki-data ... is not writable by uid 1000`). For Docker Compose, with the stack
-  stopped:
+### Upgrading from the in-repo image
 
-  ```bash
-  docker run --rm -v <project>_fuseki-tdb2-data:/data alpine chown -R 1000:1000 /data
-  ```
-
-  On Kubernetes, `fsGroup: 1000` handles this at mount time and no manual step is needed.
-- **Launched with `--config=/fuseki/config.ttl`, not `--loc`.** The assembler file is what enables
-  `tdb2:unionDefaultGraph`, which `--loc` cannot express and which the SPARQL playground and MCP
-  knowledge-graph tools depend on — OpenMetadata writes into named graphs, so without it a plain
-  `?s ?p ?o` returns nothing.
-
-  The assembler also sets `arq:queryTimeout=50000` and `arq:updateTimeout=50000`. These server
-  deadlines intentionally fire before the shipped 60-second client deadline: client-side
-  `requestTimeoutMs` releases an OpenMetadata thread but cannot stop work already executing in
-  Fuseki, so the server must release TDB2's writer lock first. Jena 6.2.0 has a known failure on the
-  second WHERE-bearing operation in one timed update request. OpenMetadata's generated mutations
-  therefore combine batch sources with `VALUES`/`UNION`, and the admin SPARQL API rejects requests
-  containing more than one WHERE-bearing operation with a clear validation error. Direct Fuseki
-  clients must follow the same restriction.
-
-  Note the dataset location: `config.ttl` uses
-  `/fuseki-data/openmetadata`, whereas the old `--loc=/fuseki-data` launch wrote TDB2 files directly
-  into `/fuseki-data`. Upgrading from that layout requires moving the files (below) — the locations
-  are deliberately not the same.
-- **The assembler provisions `openmetadata`, `openmetadata_a`, and `openmetadata_b`** on the data volume with the same union-default-graph and timeout settings. `FUSEKI_BASE` retains authentication and any operator-managed registrations. The OpenMetadata Graph Store extension is refreshed from the image at startup.
-- **Each dataset has its own persistent Lucene index** (`lucene`, `lucene_a`, `lucene_b`) for
-  `rdfs:label`, `dcterms:description`, and the OpenMetadata `name` property. The services use
-  Jena `text:TextDataset` wrappers so both SPARQL updates and Graph Store uploads maintain the
-  indexes. Graph and statement identifiers keep named-graph searches and deletions consistent
-  through live updates and repeated blue/green rebuilds.
-- **Explicit equal heap** (`-Xms4g -Xmx4g` in the image; the development compose files override to
-  1500 MB) plus GC logging to `/fuseki-data/gc.log`.
-
-### Upgrading an existing deployment (`--loc` → `--config`)
-
-A wrong `tdb2:location` does not fail — it silently starts an **empty** store. Verify data
-survival with a triple count before and after the upgrade:
+The retired `docker/rdf-store/` image stored TDB2 at `/fuseki-data/<dataset>`. Mounting that volume
+at `/fuseki` does not fail: it silently starts **empty** datasets. Verify data survival with a
+triple count before and after the move:
 
 ```bash
 curl -s -u admin:<password> --data-urlencode \
@@ -69,40 +51,16 @@ curl -s -u admin:<password> --data-urlencode \
   http://localhost:3030/openmetadata/sparql
 ```
 
-Run it on the old image, then move the existing store into the location the assembler expects
-before starting the new one:
-
-```bash
-# With the container stopped, on the host path backing /fuseki-data:
-mkdir -p /fuseki-data/openmetadata
-mv /fuseki-data/Data-* /fuseki-data/*.lock /fuseki-data/openmetadata/
-```
-
-Then start the new image and run the count again; the two must match. If they do not, stop and
-restore rather than letting a rebuild repopulate — an empty store that looks healthy is the failure
-mode this check exists to catch.
-For deployments that previously created alternates through the admin API, stop Fuseki and back up
-both the TDB2 directories and the `rdf_active_dataset` SQL row before upgrading. Move each existing
-alternate's data to the matching `/fuseki-data/openmetadata_a` or `_b` assembler location and remove
-its duplicate registration from `FUSEKI_BASE/configuration`. Preserve the active dataset's contents;
-starting an empty alternate with an existing active pointer would expose an empty graph. Verify
-counts against the active dataset after restart.
+Run it on the old image, stop it, copy the three dataset directories into `/fuseki/databases/` on
+a new volume ([the commands](rdf-fuseki-image-release.md#cutting-over-an-existing-deployment)), start
+the published image and run the count again; the two must match. If they do not, stop and restore
+rather than letting a rebuild repopulate: an empty store that looks healthy is the failure mode
+this check exists to catch. Alternatively start empty and run the RDF indexing app with
+`recreateIndex: true`. Preserve the `rdf_active_dataset` SQL row either way, and copy all three
+datasets, since the active pointer may name an alternate.
 
 Apply the native 2.0.2 SQL migrations and upgrade every OpenMetadata pod before enabling online
 rebuilds. Older pods do not participate in the mutation journal or routing fence.
-
-### Populating full-text indexes after an upgrade
-
-The previous `ja:textIndex` property on a plain TDB2 dataset did not activate Jena text indexing.
-Adding the text-dataset wrapper indexes new writes; it does not backfill triples already on disk.
-After upgrading, run the RDF indexing app with `recreateIndex: true` and `blueGreenRebuild: true` to
-populate a new target and its Lucene index before promotion. Reusing a target clears its old
-triples and text documents together. Include the corresponding `lucene*` directory with each
-TDB2 dataset in backups; account for these indexes in disk capacity planning.
-
-For datasets populated outside OpenMetadata, follow Jena's
-[text-index backfill procedure](https://jena.apache.org/documentation/query/text-query.html#building-a-text-index)
-with a separate assembler description for each text dataset while Fuseki is stopped.
 
 ## Access to the agent SPARQL endpoint
 
@@ -256,9 +214,9 @@ Throughput therefore depends on the number and size of write transactions:
   upload before acquiring TDB2's writer, then checks the operation deadline during parsing and
   before commit. Only gzip is supported.
 
-The supplied image includes a Graph Store extension. Its defaults are 50 seconds per upload,
-64 MiB decompressed per request, and 16 simultaneous receivers. Override the first two through
-`JVM_ARGS` properties `openmetadata.fuseki.writeTimeoutMs` and `openmetadata.fuseki.maxUploadBytes`.
+The image includes a Graph Store extension (`OPENMETADATA_EXTENSION_ENABLED=true`). Its defaults
+are 50 seconds per upload, 64 MiB decompressed per request, and 16 simultaneous receivers. Override
+the first two with `OPENMETADATA_WRITE_TIMEOUT_MS` and `OPENMETADATA_MAX_UPLOAD_BYTES`.
 Indexing preflights the dataset before clearing data, and fails only when the dataset cannot be
 used: it does not exist, the credentials are rejected, the user is not authorized, the dataset is
 read-only, or `tdb2:unionDefaultGraph` is off. Union is checked by behaviour, so it holds on any
@@ -357,7 +315,7 @@ are in flight whatever `producerThreads` is.
 - **Do not raise `RDF_WRITE_MAX_RETRIES` when requests are timing out.** The client-side deadline
   does not cancel the server-side update — Fuseki keeps parsing and committing the abandoned
   request, so each same-size retry multiplies server load. (The server-side `arq:updateTimeout` in
-  the shipped `config.ttl` bounds this damage, but retry storms still waste the writer.)
+  `FUSEKI_UPDATE_TIMEOUT_MS` bounds this damage, but retry storms still waste the writer.)
 - **Fuseki sizing is the primary unlock for wide-table catalogs.** Before touching batch or retry
   settings, give Fuseki production resources: at least 2 CPU cores (request = limit in the shipped
   manifest), heap per the capacity table above, container memory headroom beyond `-Xmx` for TDB2's
@@ -521,8 +479,8 @@ Useful Fuseki administration endpoints are:
 - `/$/ping` for liveness and readiness.
 - `/$/stats` for dataset and operation statistics.
 - `/$/metrics` for **Prometheus-format metrics** — scrape this in production; it exposes request
-  counts and latency per endpoint alongside JVM memory and GC figures. It requires basic auth in
-  the shipped `shiro.ini`; configure the Prometheus scrape with the dedicated Fuseki credentials.
+  counts and latency per endpoint alongside JVM memory and GC figures. It requires basic auth,
+  like every path except `/$/ping`; configure the Prometheus scrape with the Fuseki credentials.
 - `/$/tasks` for compaction and other asynchronous administration work.
 
 On the OpenMetadata side:
@@ -572,8 +530,8 @@ The original `RdfWritePathScaleHarness` measurements used Fuseki 6.2.0 in Docker
 | 100k entities | piped RDF Thrift | 158 s | 632 |
 
 These are historical results from before complete-payload staging and durable rebuild coordination.
-The measurements below also predate the active Lucene indexes; rerun the harness with the shipped
-assembler to include text-index maintenance in write-throughput measurements.
+The measurements below were taken on the retired in-repo image, before it gained Lucene indexes;
+the published image has none.
 They compare transports on this branch, not this branch against `origin/main`, and do not establish
 current indexing-app or live-event throughput. The harness exercises translation and storage;
 `scripts/rdf-reindex-benchmark.sh` instead triggers the complete indexing app.
@@ -608,7 +566,7 @@ Two scripts turn the guidance above into checks against a real stack:
 
 # Add the runaway-UPDATE check: submits a deliberately expensive UPDATE and asserts
 # the server aborts it near arq:updateTimeout. Takes ~1 minute, and is the direct
-# proof that the --config launch (not --loc) is in effect.
+# proof that FUSEKI_UPDATE_TIMEOUT_MS reached the server.
 ./docker/docker-compose-quickstart/test-rdf-services.sh --with-timeout-test
 ```
 
