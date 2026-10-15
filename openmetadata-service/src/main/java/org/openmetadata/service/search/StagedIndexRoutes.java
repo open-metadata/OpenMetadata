@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
@@ -52,6 +53,9 @@ public class StagedIndexRoutes implements Managed {
   private final Supplier<String> ownerId;
   private final LongSupplier clock;
   private final Map<String, String> owned = new ConcurrentHashMap<>();
+
+  private final ReentrantLock routeChange = new ReentrantLock();
+
   private volatile Map<String, String> shared = Map.of();
   private volatile long lastChangeAt;
   private ScheduledExecutorService refresher;
@@ -67,23 +71,33 @@ public class StagedIndexRoutes implements Managed {
 
   /** Sends live writes for {@code canonicalIndex} to {@code stagedIndex}, on every server. */
   public void register(final String canonicalIndex, final String stagedIndex) {
-    owned.put(canonicalIndex, stagedIndex);
-    lastChangeAt = clock.getAsLong();
-    final long leaseExpiresAt = lastChangeAt + LEASE_MS;
-    persist(
-        store -> store.upsert(canonicalIndex, stagedIndex, ownerId.get(), leaseExpiresAt),
-        canonicalIndex);
+    routeChange.lock();
+    try {
+      owned.put(canonicalIndex, stagedIndex);
+      lastChangeAt = clock.getAsLong();
+      final long leaseExpiresAt = lastChangeAt + LEASE_MS;
+      persist(
+          store -> store.upsert(canonicalIndex, stagedIndex, ownerId.get(), leaseExpiresAt),
+          canonicalIndex);
+    } finally {
+      routeChange.unlock();
+    }
   }
 
   /** Stops routing {@code canonicalIndex} to {@code stagedIndex}; false when it was not routed. */
   public boolean unregister(final String canonicalIndex, final String stagedIndex) {
-    final boolean removed = owned.remove(canonicalIndex, stagedIndex);
-    if (removed) {
-      lastChangeAt = clock.getAsLong();
-      shared = withoutRoute(shared, canonicalIndex, stagedIndex);
-      persist(store -> store.delete(canonicalIndex, stagedIndex), canonicalIndex);
+    routeChange.lock();
+    try {
+      final boolean removed = owned.remove(canonicalIndex, stagedIndex);
+      if (removed) {
+        lastChangeAt = clock.getAsLong();
+        shared = withoutRoute(shared, canonicalIndex, stagedIndex);
+        persist(store -> store.delete(canonicalIndex, stagedIndex), canonicalIndex);
+      }
+      return removed;
+    } finally {
+      routeChange.unlock();
     }
-    return removed;
   }
 
   /** The index a reindex is building to replace {@code canonicalIndex}, if any. */
@@ -109,23 +123,35 @@ public class StagedIndexRoutes implements Managed {
   /**
    * Renews this server's registrations and reads every server's. A registration the table lost,
    * or never stored because the database was unreachable, is stored again, so the other servers
-   * follow it within a refresh.
+   * follow it within a refresh. Registering and unregistering wait for a refresh in progress, so a
+   * renewal never stores again a route that a change replaced or removed.
    */
   void refresh() {
     final SearchIndexWriteRouteDAO store = routeStore.get();
     if (store != null) {
-      final long now = clock.getAsLong();
-      final Map<String, String> routes = Map.copyOf(owned);
-      if (!routes.isEmpty()
-          && store.renew(List.copyOf(routes.values()), now + LEASE_MS) < routes.size()) {
-        routes.forEach(
-            (canonical, staged) -> store.upsert(canonical, staged, ownerId.get(), now + LEASE_MS));
+      routeChange.lock();
+      try {
+        final long now = clock.getAsLong();
+        renewOwnedRoutes(store, now);
+        shared =
+            store.listLive(now).stream()
+                .collect(
+                    toUnmodifiableMap(
+                        WriteRoute::canonicalIndex,
+                        WriteRoute::stagedIndex,
+                        (first, last) -> last));
+      } finally {
+        routeChange.unlock();
       }
-      shared =
-          store.listLive(now).stream()
-              .collect(
-                  toUnmodifiableMap(
-                      WriteRoute::canonicalIndex, WriteRoute::stagedIndex, (first, last) -> last));
+    }
+  }
+
+  private void renewOwnedRoutes(final SearchIndexWriteRouteDAO store, final long now) {
+    final Map<String, String> routes = Map.copyOf(owned);
+    if (!routes.isEmpty()
+        && store.renew(List.copyOf(routes.values()), now + LEASE_MS) < routes.size()) {
+      routes.forEach(
+          (canonical, staged) -> store.upsert(canonical, staged, ownerId.get(), now + LEASE_MS));
     }
   }
 

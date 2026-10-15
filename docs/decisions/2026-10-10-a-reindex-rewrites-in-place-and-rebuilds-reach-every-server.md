@@ -25,7 +25,8 @@ or stopped run could still replace a complete serving index with a partial one.
 - A new-index run publishes its staged indexes in `search_index_write_route`; every server
   refreshes the routes every second under a 30 second lease, and the run waits for them to
   propagate before reading rows. An owner whose renewal finds fewer routes than it holds stores
-  them again, so a registration the database missed is shared within a second. While a route
+  them again, so a registration the database missed is shared within a second; registering and
+  unregistering wait for a renewal in progress, so it never restores a removed route. While a route
   exists, live writes go to the serving index and the staged one (`RebuildAwareEntityManagement`),
   so neither falls behind.
 - A failed run never replaces a serving index that holds documents, and discards what it staged
