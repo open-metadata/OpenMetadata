@@ -13,6 +13,7 @@
 
 import {
   Box,
+  DatePicker,
   FormField,
   FormItemLabel,
   Grid,
@@ -24,12 +25,23 @@ import {
 import { DateTime } from 'luxon';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import DatePicker from '../../components/common/DatePicker/DatePicker';
-import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import { KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
-import { getDisabledDates } from '../../utils/DataInsightPureUtils';
+import {
+  dateValueToMillis,
+  millisToDateValue,
+} from '../../utils/date-time/calendarDate.utils';
 import { KPIMetricTypeOptions } from '../../utils/KPI/KPIUtils';
 import { KPIFormValues } from './KPIPage.interface';
+
+// Core resolves its own @internationalized/date copy, so its DateValue is a
+// distinct nominal type from the app's; convert at the picker boundary.
+type CoreDateValue = Parameters<typeof DatePicker>[0]['value'];
+
+const toPickerValue = (value: DateTime | null) =>
+  millisToDateValue(value?.toMillis()) as CoreDateValue;
+
+const fromPickerValue = (value: CoreDateValue) =>
+  value ? DateTime.fromMillis(dateValueToMillis(value)) : null;
 
 interface KPIFormFieldsProps {
   form: UseFormReturn<KPIFormValues>;
@@ -48,6 +60,7 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
   const { t } = useTranslation();
   const metricType = form.watch('metricType');
   const startLabel = t('label.start-entity', { entity: t('label.date') });
+  const todayValue = toPickerValue(DateTime.now());
 
   // A start date counts from the start of its day; an end date before it moves the start back.
   const handleStartDate = (value: DateTime | null) => {
@@ -205,13 +218,14 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
               <Box className="tw:gap-1.5" direction="col">
                 <FormItemLabel required label={startLabel} />
                 <DatePicker
-                  className="w-full"
+                  aria-label={startLabel}
                   data-testid="start-date"
-                  disabledDate={getDisabledDates}
-                  format={KPI_DATE_PICKER_FORMAT}
                   id="startDate"
-                  value={field.value}
-                  onChange={handleStartDate}
+                  isInvalid={Boolean(fieldState.error)}
+                  minValue={todayValue}
+                  triggerVariant="input"
+                  value={toPickerValue(field.value)}
+                  onChange={(value) => handleStartDate(fromPickerValue(value))}
                 />
                 {fieldState.error && (
                   <HintText isInvalid>{fieldState.error.message}</HintText>
@@ -233,13 +247,14 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
               <Box className="tw:gap-1.5" direction="col">
                 <FormItemLabel required label={t('label.end-date')} />
                 <DatePicker
-                  className="w-full"
+                  aria-label={t('label.end-date')}
                   data-testid="end-date"
-                  disabledDate={getDisabledDates}
-                  format={KPI_DATE_PICKER_FORMAT}
                   id="endDate"
-                  value={field.value}
-                  onChange={handleEndDate}
+                  isInvalid={Boolean(fieldState.error)}
+                  minValue={todayValue}
+                  triggerVariant="input"
+                  value={toPickerValue(field.value)}
+                  onChange={(value) => handleEndDate(fromPickerValue(value))}
                 />
                 {fieldState.error && (
                   <HintText isInvalid>{fieldState.error.message}</HintText>

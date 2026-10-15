@@ -16,6 +16,7 @@ import {
   Button,
   ButtonUtility,
   Card,
+  DateRangePicker,
   Input,
   ProgressBar,
   SimpleModal,
@@ -32,8 +33,6 @@ import AuditLogFilters from '../../components/AuditLog/AuditLogFilters.component
 import AuditLogList from '../../components/AuditLog/AuditLogList.component';
 import '../../components/common/atoms/filters/FilterSelection.less';
 import Banner from '../../components/common/Banner/Banner';
-import DatePicker from '../../components/common/DatePicker/DatePicker';
-import { getPopupContainer } from '../../components/common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -65,9 +64,17 @@ import {
 } from '../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../utils/AuditLogUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../utils/DatePickerMenuUtils';
+import {
+  dateValueToMillis,
+  millisToDateValue,
+} from '../../utils/date-time/calendarDate.utils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './AuditLogsPage.less';
+
+// Core resolves its own @internationalized/date copy, so its DateValue is a
+// distinct nominal type from the app's; type picker state with core's own.
+type CorePickerProps = Parameters<typeof DateRangePicker>[0];
 
 // Fallback cadence for the export modal when the completion websocket event is
 // delivered to a different server than the one holding this client's socket.
@@ -107,9 +114,8 @@ const AuditLogsPage = () => {
   const [pageSize, setPageSize] = useState(PAGE_SIZE_MEDIUM);
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [exportDateRange, setExportDateRange] = useState<
-    [DateTime, DateTime] | null
-  >(null);
+  const [exportDateRange, setExportDateRange] =
+    useState<CorePickerProps['value']>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportJob, setExportJob] = useState<ExportJob | null>(null);
   const exportJobRef = useRef<ExportJob | null>(null);
@@ -386,8 +392,9 @@ const AuditLogsPage = () => {
     setIsExporting(true);
     try {
       const response = await exportAuditLogs({
-        startTs: exportDateRange[0].startOf('day').valueOf(),
-        endTs: exportDateRange[1].endOf('day').valueOf(),
+        startTs: dateValueToMillis(exportDateRange.start),
+        // The date-only end value resolves to midnight; include the whole day.
+        endTs: dateValueToMillis(exportDateRange.end.add({ days: 1 })) - 1,
         q: searchTerm || undefined,
         ...filterParams,
       });
@@ -624,21 +631,15 @@ const AuditLogsPage = () => {
               size="text-md">
               {t('label.date-range')} <span className="tw:text-red-600">*</span>
             </Typography>
-            <DatePicker.RangePicker
-              allowClear
-              className="w-full"
+            <DateRangePicker
+              fullWidth
               data-testid="export-date-range-picker"
-              disabled={isExporting}
-              disabledDate={(current) => current > DateTime.now().endOf('day')}
-              getPopupContainer={getPopupContainer}
+              isDisabled={isExporting}
+              maxValue={
+                millisToDateValue(Date.now()) as CorePickerProps['maxValue']
+              }
               value={exportDateRange}
-              onChange={(dates) => {
-                if (dates?.[0] && dates?.[1]) {
-                  setExportDateRange([dates[0], dates[1]]);
-                } else {
-                  setExportDateRange(null);
-                }
-              }}
+              onChange={setExportDateRange}
             />
           </div>
           {renderExportProgress()}

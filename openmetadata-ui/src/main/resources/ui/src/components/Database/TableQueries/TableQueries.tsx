@@ -12,17 +12,18 @@
  */
 
 import {
-  CloseCircleOutlined,
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
 import {
   Box,
   Button,
+  ButtonUtility,
   Grid,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -30,6 +31,7 @@ import Qs from 'qs';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import DqDateRangeFilter from '../../observability/DataQuality/Dashboard/DqDateRangeFilter';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -71,9 +73,6 @@ import {
 } from '../../../utils/Query/QueryUtils';
 import { getAddQueryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import DatePicker, {
-  RangePickerProps,
-} from '../../common/DatePicker/DatePicker';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import Loader from '../../common/Loader/Loader';
@@ -118,7 +117,6 @@ const TableQueries: FC<TableQueriesProp> = ({
   );
   const [isTagsLoading, setIsTagsLoading] = useState(false);
   const [isOwnerLoading, setIsOwnerLoading] = useState(false);
-  const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [queryDateFilter, setQueryDateFilter] = useState<{
     startTs: number;
     endTs: number;
@@ -431,23 +429,9 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const onDateChange: RangePickerProps['onChange'] = (values) => {
-    if (values) {
-      const startTs = values[0]?.startOf('day').valueOf();
-      const endTs = values[1]?.endOf('day').valueOf();
-
-      if (!isUndefined(startTs) && !isUndefined(endTs)) {
-        setQueryDateFilter({ startTs, endTs });
-        fetchFilteredQueries({
-          tags: tagsFilter.selected,
-          timeRange: { startTs, endTs },
-        });
-        setIsClickedCalendar(false);
-      }
-    } else {
-      setQueryDateFilter(undefined);
-      fetchFilteredQueries({ tags: tagsFilter.selected });
-    }
+  const onDateChange = (timeRange?: { startTs: number; endTs: number }) => {
+    setQueryDateFilter(timeRange);
+    fetchFilteredQueries({ tags: tagsFilter.selected, timeRange });
   };
 
   const pagingHandler = (currentPage: number, pageSize: number) => {
@@ -633,30 +617,28 @@ const TableQueries: FC<TableQueriesProp> = ({
                         onGetInitialOptions={getInitialTagsOptions}
                         onSearch={handleTagsSearch}
                       />
-                      <span
-                        className="tw:inline-flex tw:cursor-pointer tw:items-center"
-                        role="presentation"
-                        onClick={() => {
-                          setIsClickedCalendar(true);
-                        }}>
-                        <span>
-                          <Typography>{t('label.created-date')}</Typography>
-                          <DatePicker.RangePicker
-                            allowClear
-                            showNow
-                            bordered={false}
-                            className="p-t-0"
-                            clearIcon={<CloseCircleOutlined />}
-                            data-testid="data-range-picker"
-                            open={isClickedCalendar}
-                            suffixIcon={null}
-                            onChange={onDateChange}
-                            onOpenChange={(isOpen) => {
-                              setIsClickedCalendar(isOpen);
-                            }}
+                      <Box
+                        inline
+                        align="center"
+                        data-testid="data-range-picker"
+                        gap={2}>
+                        <Typography>{t('label.created-date')}</Typography>
+                        <DqDateRangeFilter
+                          endTs={queryDateFilter?.endTs}
+                          size="sm"
+                          startTs={queryDateFilter?.startTs}
+                          onApply={onDateChange}
+                        />
+                        {queryDateFilter && (
+                          <ButtonUtility
+                            aria-label={t('label.clear')}
+                            color="tertiary"
+                            data-testid="clear-date-filter"
+                            icon={<XClose size={14} />}
+                            onClick={() => onDateChange()}
                           />
-                        </span>
-                      </span>
+                        )}
+                      </Box>
                     </Box>
 
                     <Box

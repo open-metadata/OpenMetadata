@@ -121,8 +121,6 @@ export const ENTITIES_SUMMARY_LIST: Array<entitySummeryList> = [
   },
 ];
 
-export const KPI_DATE_PICKER_FORMAT = 'yyyy-MM-dd';
-
 export const BASE_COLORS = [
   '#E57373',
   '#BA68C8',

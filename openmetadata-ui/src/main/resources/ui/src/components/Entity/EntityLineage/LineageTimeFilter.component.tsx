@@ -11,21 +11,34 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  DatePicker,
+  Dropdown,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { DateTime } from 'luxon';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../../assets/svg/calendar.svg';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
 import {
+  dateValueToMillis,
+  millisToDateValue,
+} from '../../../utils/date-time/calendarDate.utils';
+import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
-import MyDatePicker from '../../common/DatePicker/DatePicker';
+import DqDateRangeFilter from '../../observability/DataQuality/Dashboard/DqDateRangeFilter';
 import {
   LineageTimeFilterProps,
   LineageTimePresetKey,
 } from './LineageTimeFilter.interface';
+
+// Core resolves its own @internationalized/date copy, so its DateValue is a
+// distinct nominal type from the app's; stage the picker value with core's own.
+type CoreDateValue = Parameters<typeof DatePicker>[0]['value'];
 
 const PRESET_DAYS: Record<
   Exclude<
@@ -49,6 +62,7 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
   const { i18n, t } = useTranslation();
   const [showCustomRange, setShowCustomRange] = useState<boolean>(false);
   const [showPointInTime, setShowPointInTime] = useState<boolean>(false);
+  const [pointValue, setPointValue] = useState<CoreDateValue>(null);
 
   const matchedPresetDays = useMemo<number | null>(() => {
     if (startTime === undefined || endTime === undefined) {
@@ -112,6 +126,9 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
         return;
       }
       if (key === LineageTimePresetKey.PointInTime) {
+        setPointValue(
+          (isPointInTime ? millisToDateValue(endTime) : null) as CoreDateValue
+        );
         setShowPointInTime(true);
 
         return;
@@ -124,41 +141,24 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
         });
       }
     },
+    [onChange, isPointInTime, endTime]
+  );
+
+  const handleCustomApply = useCallback(
+    ({ startTs, endTs }: { startTs: number; endTs: number }) =>
+      onChange({ startTime: startTs, endTime: endTs }),
     [onChange]
   );
 
-  const handleCustomChange = useCallback(
-    (values: [DateTime | null, DateTime | null] | null) => {
-      if (!values) {
-        onChange({ startTime: undefined, endTime: undefined });
-        setShowCustomRange(false);
-
-        return;
-      }
-      const start = values[0]?.startOf('day').toMillis();
-      const end = values[1]?.endOf('day').toMillis();
-      onChange({ startTime: start, endTime: end });
-      setShowCustomRange(false);
-    },
-    [onChange]
-  );
-
-  const handlePointInTimeChange = useCallback(
-    (value: DateTime | null) => {
-      if (!value) {
-        onChange({ startTime: undefined, endTime: undefined });
-        setShowPointInTime(false);
-
-        return;
-      }
+  const handlePointInTimeApply = useCallback(() => {
+    if (pointValue) {
+      // The date-only value resolves to midnight; include the whole day.
       onChange({
         startTime: undefined,
-        endTime: value.endOf('day').toMillis(),
+        endTime: dateValueToMillis(pointValue.add({ days: 1 })) - 1,
       });
-      setShowPointInTime(false);
-    },
-    [onChange]
-  );
+    }
+  }, [onChange, pointValue]);
 
   const presetItems = useMemo(
     () => [
@@ -244,35 +244,25 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
         </Dropdown.Popover>
       </Dropdown.Root>
       {showCustomRange && (
-        <MyDatePicker.RangePicker
-          allowClear
-          data-testid="lineage-time-filter-range"
-          format={(value) => value.toFormat('yyyy-LL-dd')}
-          open={showCustomRange}
-          placement="bottomRight"
-          value={
-            startTime !== undefined && endTime !== undefined
-              ? [DateTime.fromMillis(startTime), DateTime.fromMillis(endTime)]
-              : null
-          }
-          onChange={handleCustomChange}
-          onOpenChange={(open) => setShowCustomRange(open)}
-        />
+        <span data-testid="lineage-time-filter-range">
+          <DqDateRangeFilter
+            isOpen
+            endTs={endTime}
+            size="sm"
+            startTs={startTime}
+            onApply={handleCustomApply}
+            onOpenChange={setShowCustomRange}
+          />
+        </span>
       )}
       {showPointInTime && (
-        <MyDatePicker
-          allowClear
+        <DatePicker
+          isOpen
           data-testid="lineage-time-filter-point"
-          format={(value) => value.toFormat('yyyy-LL-dd')}
-          open={showPointInTime}
-          placement="bottomRight"
-          value={
-            isPointInTime && endTime !== undefined
-              ? DateTime.fromMillis(endTime)
-              : null
-          }
-          onChange={handlePointInTimeChange}
-          onOpenChange={(open) => setShowPointInTime(open)}
+          value={pointValue}
+          onApply={handlePointInTimeApply}
+          onChange={setPointValue}
+          onOpenChange={setShowPointInTime}
         />
       )}
     </div>
