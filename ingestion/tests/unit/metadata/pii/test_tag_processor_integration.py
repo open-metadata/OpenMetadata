@@ -20,6 +20,7 @@ from typing import Any
 from unittest.mock import Mock, create_autospec
 
 import pytest
+from presidio_analyzer import RecognizerResult
 from presidio_analyzer.nlp_engine import NlpEngine
 
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.classification import (
@@ -58,7 +59,10 @@ from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import Recognizer, Target
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
+from metadata.pii.algorithms.presidio_utils import load_nlp_engine
 from metadata.pii.models import ScoredTag
+from metadata.pii.tag_analyzer import TagAnalyzer
 from metadata.pii.tag_processor import TagProcessor
 
 
@@ -774,28 +778,76 @@ def test_one_valid_fin_among_synthetic_codes_still_requires_column_context(shipp
 
 
 @pytest.mark.parametrize(
-    "language,column_name,value,recognizer_name",
+    "language,column_name,value,valid_value,recognizer_name",
     [
-        (ClassificationLanguage.en, "iban", "gb83 west 1234 5698 7654 32", "IbanRecognizer"),
-        (ClassificationLanguage.es, "nif", "12345678a", "CaseInsensitiveEsNifRecognizer"),
-        (ClassificationLanguage.es, "nie", "x1234567a", "CaseInsensitiveEsNieRecognizer"),
-        (ClassificationLanguage.en, "uen", "t15lp0010x", "CaseInsensitiveSgUenRecognizer"),
-        (ClassificationLanguage.en, "abn", "51-824-753-557", "SeparatorTolerantAuAbnRecognizer"),
-        (ClassificationLanguage.en, "acn", "004-085-617", "SeparatorTolerantAuAcnRecognizer"),
-        (ClassificationLanguage.it, "partita_iva", "IT12345678904", "PrefixedItVatRecognizer"),
-        (ClassificationLanguage.en, "sg_nric", "S1234567E", "ValidatedSgFinRecognizer"),
-        (ClassificationLanguage.en, "sg_nric", "A1234567D", "ValidatedSgFinRecognizer"),
+        (
+            ClassificationLanguage.en,
+            "iban",
+            "gb83 west 1234 5698 7654 32",
+            "gb82 west 1234 5698 7654 32",
+            Name.IbanRecognizer,
+        ),
+        (ClassificationLanguage.es, "nif", "12345678a", "12345678z", Name.EsNifRecognizer),
+        (ClassificationLanguage.es, "nie", "x1234567a", "x1234567l", Name.EsNieRecognizer),
+        (ClassificationLanguage.en, "uen", "t15lp0010x", "t15lp0010d", Name.SgUenRecognizer),
+        (ClassificationLanguage.en, "abn", "51-824-753-557", "51-824-753-556", Name.AuAbnRecognizer),
+        (ClassificationLanguage.en, "acn", "004-085-617", "004-085-616", Name.AuAcnRecognizer),
+        (ClassificationLanguage.it, "partita_iva", "IT12345678904", "IT12345678903", Name.ItVatCodeRecognizer),
+        (ClassificationLanguage.en, "sg_nric", "S1234567E", "S1234567D", Name.SgFinRecognizer),
+        (ClassificationLanguage.en, "sg_nric", "A1234567D", "S1234567D", Name.SgFinRecognizer),
     ],
 )
 def test_invalid_identifiers_cannot_receive_tag_from_checksum_adapter(
-    shipped_pii_tags, language, column_name, value, recognizer_name
+    shipped_pii_tags, language, column_name, value, valid_value, recognizer_name
 ):
     classification, tags = shipped_pii_tags
     column = Column(
         name=column_name, fullyQualifiedName=f"database.schema.table.{column_name}", dataType=DataType.VARCHAR
     )
-    labels = _processor(classification, tags, language).create_column_tag_labels(column, [value])
-    assert all(recognizer_name not in (label.reason or "") for label in labels)
+    tag = next(tag for tag in tags if model_str(tag.fullyQualifiedName) == "PII.Sensitive")
+    analyzer = TagAnalyzer(tag, column, load_nlp_engine(classification_language=language), language)
+    positive = analyzer.analyze([valid_value]).recognizer_results
+    assert any(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer_name.value
+        and valid_value[result.start : result.end] == valid_value
+        for result in positive
+    )
+    negative = analyzer.analyze([value]).recognizer_results
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] != recognizer_name.value
+        for result in negative
+    )
+    processor = _processor(classification, tags, language)
+    expected_reason = f"Detected by `{recognizer_name.value}`"
+    assert any(
+        expected_reason in (label.reason or "") for label in processor.create_column_tag_labels(column, [valid_value])
+    )
+    assert all(
+        expected_reason not in (label.reason or "") for label in processor.create_column_tag_labels(column, [value])
+    )
+
+
+@pytest.mark.parametrize("column_name", ["sku", "partita_iva"])
+def test_attached_italian_vat_receives_sensitive_tag_without_column_context(shipped_pii_tags, column_name):
+    classification, tags = shipped_pii_tags
+    column = Column(
+        name=column_name, fullyQualifiedName=f"database.schema.table.{column_name}", dataType=DataType.VARCHAR
+    )
+    value = "IT12345678903"
+    tag = next(tag for tag in tags if model_str(tag.fullyQualifiedName) == "PII.Sensitive")
+    analyzer = TagAnalyzer(
+        tag, column, load_nlp_engine(classification_language=ClassificationLanguage.it), ClassificationLanguage.it
+    )
+    matches = [
+        result
+        for result in analyzer.analyze([value]).recognizer_results
+        if result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == Name.ItVatCodeRecognizer.value
+    ]
+    assert [(result.start, result.end, result.score) for result in matches] == [(0, len(value), 1.0)]
+    assert matches[0].analysis_explanation.pattern_name
+    labels = _processor(classification, tags, ClassificationLanguage.it).create_column_tag_labels(column, [value])
+    assert [label.tagFQN.root for label in labels] == ["PII.Sensitive"]
+    assert f"Detected by `{Name.ItVatCodeRecognizer.value}`" in (labels[0].reason or "")
 
 
 @pytest.mark.parametrize(

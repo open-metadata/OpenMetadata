@@ -51,4 +51,4 @@ CREATE TABLE identifier_es (nif VARCHAR(30), nie VARCHAR(30));
 INSERT INTO identifier_es VALUES ('12345678z', 'x1234567l');
 
 CREATE TABLE identifier_it (partita_iva VARCHAR(30));
-INSERT INTO identifier_it VALUES ('IT 12345678903');
+INSERT INTO identifier_it VALUES ('IT12345678903');
