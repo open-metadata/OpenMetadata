@@ -22,6 +22,7 @@ import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
@@ -87,8 +88,7 @@ class RedisSessionStoreTest extends SessionStoreContractTest {
   }
 
   @Test
-  void updateIfVersionMovesNonTerminalIndexInCasScript() {
-    RedisSessionStore redisStore = (RedisSessionStore) store;
+  void refreshedSessionLeavesNoIndexEntryOnceRedisEvictsIt() {
     String userId = UUID.randomUUID().toString();
     long now = System.currentTimeMillis();
     UserSession active =
@@ -103,14 +103,17 @@ class RedisSessionStoreTest extends SessionStoreContractTest {
             .expiresAt(now + TimeUnit.HOURS.toMillis(1))
             .idleExpiresAt(now + TimeUnit.MINUTES.toMillis(30))
             .build();
-    redisStore.create(active);
-
+    store.create(active);
     UserSession refreshing =
         active.toBuilder().status(SessionStatus.REFRESHING).version(1L).build();
+    assertTrue(store.updateIfVersion(refreshing, 0L));
+    UserSession refreshed = refreshing.toBuilder().status(SessionStatus.ACTIVE).version(2L).build();
+    assertTrue(store.updateIfVersion(refreshed, 1L));
 
-    assertTrue(redisStore.updateIfVersion(refreshing, 0L));
-    assertEquals(0L, redisStore.userIndexSize(userId, SessionStatus.ACTIVE));
-    assertEquals(1L, redisStore.userIndexSize(userId, SessionStatus.REFRESHING));
+    commands.del("om-test:session:" + active.getId());
+
+    assertTrue(store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, 10).isEmpty());
+    assertEquals(List.of(), commands.keys("om-test:session:idx:user:" + userId + ":*"));
   }
 
   @Test
