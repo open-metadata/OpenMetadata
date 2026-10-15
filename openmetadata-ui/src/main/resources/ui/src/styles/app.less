@@ -38,7 +38,7 @@ body {
 
 // Login video panel and card. Fixed brand illustration colours (sampled from
 // the login videos) with no semantic token, named once so LoginClassBase uses
-// one class per surface. The dark panel matches the form side; the dark card
+// one class per surface. The dark panel matches Collate's (#202a3c); the dark card
 // matches the dark video's frames, shown until it paints. Collate overrides
 // these through LoginClassCollate.
 :root {
@@ -59,10 +59,7 @@ body {
 }
 
 :root.dark-mode {
-  --login-panel-bg: linear-gradient(
-    var(--tw-color-bg-primary),
-    var(--tw-color-bg-primary)
-  );
+  --login-panel-bg: linear-gradient(#202a3c, #202a3c);
   --login-card-bg: linear-gradient(
     180deg,
     #07152b 0%,
