@@ -18,7 +18,9 @@ import { GraphFilters, OntologyGraphData } from './OntologyExplorer.interface';
 import {
   buildOntologyQuerySuggestions,
   buildOntologyTreeGroups,
+  buildOntologyTreeMetrics,
   getOntologyHealthSummary,
+  nestTreeRows,
   resolveOntologyTermLabel,
 } from './OntologyStudio.utils';
 
@@ -285,6 +287,68 @@ describe('OntologyStudio utils', () => {
       ['Revenue Policy', 0],
       ['Recognition Rule', 1],
     ]);
+  });
+
+  it('nests depth-ordered rows back under their parents', () => {
+    const row = (id: string, depth: number) => ({
+      depth,
+      isIsolated: false,
+      node: { id, label: id, type: 'glossaryTerm' },
+      parentCount: 0,
+      relationCount: 1,
+    });
+    const tree = nestTreeRows([
+      row('a', 0),
+      row('b', 1),
+      row('c', 2),
+      row('d', 1),
+      row('e', 0),
+    ]);
+    const shape = (items: typeof tree): unknown[] =>
+      items.map((item) => [item.node.id, shape(item.children)]);
+
+    expect(shape(tree)).toEqual([
+      [
+        'a',
+        [
+          ['b', [['c', []]]],
+          ['d', []],
+        ],
+      ],
+      ['e', []],
+    ]);
+  });
+
+  it('lists only metrics that measure a scoped term', () => {
+    const metrics = buildOntologyTreeMetrics(
+      {
+        nodes: [
+          { id: 'a', label: 'Revenue', type: 'glossaryTerm', glossaryId: 'g1' },
+          { id: 'b', label: 'Policy', type: 'glossaryTerm', glossaryId: 'g2' },
+          { id: 'm1', label: 'Net Revenue', type: 'metric' },
+          { id: 'm2', label: 'Policy Count', type: 'metric' },
+        ],
+        edges: [
+          {
+            from: 'm1',
+            to: 'a',
+            label: 'Metric for',
+            relationType: 'metricFor',
+          },
+          {
+            from: 'm2',
+            to: 'b',
+            label: 'Metric for',
+            relationType: 'metricFor',
+          },
+        ],
+      },
+      { ...FILTERS, glossaryIds: ['g1'] }
+    );
+
+    expect(metrics).toHaveLength(1);
+    expect(metrics[0].node.id).toBe('m1');
+    expect(metrics[0].measures.map((term) => term.id)).toEqual(['a']);
   });
 
   it('derives executable query suggestions from scoped ontology relations', () => {
