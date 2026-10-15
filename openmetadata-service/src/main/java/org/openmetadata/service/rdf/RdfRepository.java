@@ -151,6 +151,7 @@ public class RdfRepository {
   private final AtomicLong appendBudgetOverrideBytes = new AtomicLong(0);
   private final RdfStorageInterface materializationStorageService;
   private final JsonLdTranslator translator;
+  private final RdfEntityProjection entityProjection;
   private final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier;
   private final RdfProjectionLoaders projectionLoaders;
   private final AssertedOnlyQueries assertedOnlyQueries =
@@ -222,6 +223,7 @@ public class RdfRepository {
       this.translator = null;
       LOG.info("RDF Repository disabled");
     }
+    this.entityProjection = createEntityProjection();
   }
 
   private static void warnAboutIgnoredInferenceSettings(final RdfConfiguration rdfConfiguration) {
@@ -266,6 +268,16 @@ public class RdfRepository {
     this.translator = translator;
     this.relationshipTypeResolverSupplier = relationshipTypeResolverSupplier;
     this.projectionLoaders = projectionLoaders;
+    this.entityProjection = createEntityProjection();
+  }
+
+  private RdfEntityProjection createEntityProjection() {
+    return new RdfEntityProjection(
+        config,
+        storageService,
+        translator,
+        this::payloadBudgetBytes,
+        appendBudgetOverrideBytes::get);
   }
 
   static int resolveBulkEntityBatchSize(RdfConfiguration config) {
@@ -474,6 +486,11 @@ public class RdfRepository {
     return config.getEnabled() != null && config.getEnabled() && storageService != null;
   }
 
+  /** Whether the store answers a query now; the probe bypasses the storage circuit breaker. */
+  public boolean isStorageReachable() {
+    return storageService != null && storageService.testConnection();
+  }
+
   public String getBaseUri() {
     if (config.getBaseUri() == null) {
       throw new IllegalStateException("RDF baseUri is not configured");
@@ -531,37 +548,18 @@ public class RdfRepository {
   }
 
   public void createOrUpdate(EntityInterface<?> entity) {
-    if (!isEnabled()) {
-      return;
-    }
-
     try {
-      String entityType = entity.getEntityReference().getType();
-      LOG.debug(
-          "Storing entity in RDF - Type: {}, FQN: {}, Name: {}, ID: {}",
-          entityType,
-          entity.getFullyQualifiedName(),
-          entity.getName(),
-          entity.getId());
-      Model rdfModel = translator.toRdf(entity);
-      storageService.storeEntity(entityType, entity.getId(), rdfModel);
-      LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
-    } catch (Exception e) {
-      RdfProjectionHealth.markDegraded(e);
-      LOG.error(
-          "Failed to create/update entity {} in RDF - Type: {}, FQN: {}",
-          entity.getId(),
-          entity.getEntityReference().getType(),
-          entity.getFullyQualifiedName(),
-          e);
-      throw new RuntimeException("Failed to create/update entity in RDF", e);
+      bulkCreateOrUpdate(List.of(entity));
+    } catch (RuntimeException failure) {
+      RdfProjectionHealth.markDegraded(failure);
+      throw failure;
     }
   }
 
   /**
    * Bulk variant of {@link #createOrUpdate(EntityInterface)} — translates every
    * entity to RDF and forwards the batch to the storage layer. Used by the
-   * indexer batch path; production hot path (per-entity hooks) keeps calling
+   * indexer batch path; per-entity hooks delegate to the same implementation through
    * {@link #createOrUpdate}.
    *
    * <p>From the caller's perspective: all-or-nothing — a single thrown
@@ -589,9 +587,9 @@ public class RdfRepository {
       return;
     }
     try {
-      bulkStoreEntityRequests(translateEntities(entities), writeMode);
+      entityProjection.write(entities, writeMode);
       LOG.debug("Bulk created/updated {} entities in RDF store", entities.size());
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       LOG.error("Failed to bulk create/update {} entities in RDF", entities.size(), e);
       throw new RuntimeException("Failed to bulk create/update entities in RDF", e);
     }
@@ -606,28 +604,7 @@ public class RdfRepository {
    */
   public List<RdfStorageInterface.EntityWriteRequest> translateEntities(
       List<? extends EntityInterface<?>> entities) {
-    List<RdfStorageInterface.EntityWriteRequest> requests = new ArrayList<>(entities.size());
-    if (isEnabled()) {
-      for (EntityInterface<?> entity : entities) {
-        // Per-entity isolation: mapEntityToRdf propagates mapping failures, and the sink
-        // translates a whole batch in one task, so an unguarded throw here would record
-        // every entity in the batch as failed instead of the one that is actually bad.
-        // A skipped entity is reported as a single failure by the caller.
-        try {
-          String entityType = entity.getEntityReference().getType();
-          Model rdfModel = translator.toRdf(entity);
-          requests.add(
-              new RdfStorageInterface.EntityWriteRequest(entityType, entity.getId(), rdfModel));
-        } catch (RuntimeException translationFailure) {
-          LOG.warn(
-              "Skipping entity {} - RDF translation failed: {}",
-              entity.getId(),
-              translationFailure.getMessage(),
-              translationFailure);
-        }
-      }
-    }
-    return requests;
+    return isEnabled() ? entityProjection.translate(entities) : List.of();
   }
 
   /**
@@ -653,61 +630,9 @@ public class RdfRepository {
 
   void bulkStoreEntityRequests(
       List<RdfStorageInterface.EntityWriteRequest> requests, RdfWriteMode writeMode) {
-    if (requests == null || requests.isEmpty()) {
-      return;
+    if (requests != null && !requests.isEmpty()) {
+      entityProjection.store(requests, writeMode);
     }
-    for (List<RdfStorageInterface.EntityWriteRequest> chunk :
-        chunkByPayloadBudget(requests, writeMode)) {
-      if (appendBudgetOverrideBytes.get() > 0 && writeMode == RdfWriteMode.INSERT_ONLY) {
-        storageService.bulkStoreEntities(chunk, writeMode, payloadBudgetBytes(writeMode));
-      } else {
-        storageService.bulkStoreEntities(chunk, writeMode);
-      }
-    }
-  }
-
-  /**
-   * Chunks are bounded by BOTH an entity-count cap and an estimated-bytes budget, each of which
-   * differs by write mode. Count-only chunking let a batch of wide tables (hundreds of columns
-   * each) serialize into multi-MB requests that time out server-side; budgeting by {@code
-   * Model.size()} × the per-triple planning factor packs narrow entities densely while wide
-   * entities split automatically. A single entity over the budget still ships alone — the storage
-   * layer's post-serialization guard owns that case.
-   *
-   * <p>Insert-only appends get much larger limits than reconciling updates: they carry no DELETE
-   * statements, the backend parses them with the streaming parser rather than the SPARQL grammar,
-   * and collapsing thousands of transactions into dozens is the dominant throughput lever on a
-   * single-writer store.
-   */
-  private List<List<RdfStorageInterface.EntityWriteRequest>> chunkByPayloadBudget(
-      List<RdfStorageInterface.EntityWriteRequest> requests, RdfWriteMode writeMode) {
-    boolean appendOnly = writeMode == RdfWriteMode.INSERT_ONLY;
-    int maxCount =
-        appendOnly
-            ? RdfStorageInterface.resolveBulkAppendEntityBatchSize(config)
-            : resolveBulkEntityBatchSize(config);
-    long byteBudget = payloadBudgetBytes(writeMode);
-    List<List<RdfStorageInterface.EntityWriteRequest>> chunks = new ArrayList<>();
-    List<RdfStorageInterface.EntityWriteRequest> current = new ArrayList<>();
-    long currentBytes = 0;
-    for (RdfStorageInterface.EntityWriteRequest request : requests) {
-      long estimatedBytes =
-          request.model().size() * (long) RdfStorageInterface.ESTIMATED_BYTES_PER_TRIPLE;
-      boolean overflows =
-          !current.isEmpty()
-              && (current.size() >= maxCount || currentBytes + estimatedBytes > byteBudget);
-      if (overflows) {
-        chunks.add(current);
-        current = new ArrayList<>();
-        currentBytes = 0;
-      }
-      current.add(request);
-      currentBytes += estimatedBytes;
-    }
-    if (!current.isEmpty()) {
-      chunks.add(current);
-    }
-    return chunks;
   }
 
   public void delete(EntityReference entityReference) {

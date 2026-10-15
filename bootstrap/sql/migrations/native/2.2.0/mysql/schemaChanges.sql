@@ -185,3 +185,22 @@ CREATE TABLE IF NOT EXISTS projection_repair_state (
     sweptAt BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (name)
 );
+
+-- Live RDF delivery: a dead letter replayed in the background stays until every failure since the
+-- last repair has been replayed, so the projection is reported healthy only when nothing was lost.
+SET @rdf_dead_letter_replayed_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'rdf_live_write_dead_letter'
+        AND column_name = 'replayedAt'
+    ),
+    'SELECT 1',
+    'ALTER TABLE rdf_live_write_dead_letter ADD COLUMN replayedAt BIGINT DEFAULT NULL'
+  )
+);
+PREPARE rdf_dead_letter_replayed_stmt FROM @rdf_dead_letter_replayed_ddl;
+EXECUTE rdf_dead_letter_replayed_stmt;
+DEALLOCATE PREPARE rdf_dead_letter_replayed_stmt;

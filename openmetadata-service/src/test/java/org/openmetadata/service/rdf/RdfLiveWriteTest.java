@@ -16,10 +16,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Answers.CALLS_REAL_METHODS;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
@@ -38,6 +42,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.entity.data.RelationshipType;
@@ -53,6 +58,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
+import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteRequest;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 
 class RdfLiveWriteTest {
@@ -208,6 +214,54 @@ class RdfLiveWriteTest {
     assertTrue(dataset.getNamedModel(GRAPH).isEmpty());
   }
 
+  @Test
+  void aReplayedEdgeAdditionIsSkippedOnceTheEdgeIsGone() {
+    final EntityRelationship edge = containsEdge();
+
+    replayDeadLetter(RdfLiveWrite.RelationshipChange.capture(edge, false), false);
+
+    assertTrue(dataset.getNamedModel(GRAPH).isEmpty(), "a removed edge must not come back");
+  }
+
+  @Test
+  void aReplayedEdgeRemovalIsSkippedOnceTheEdgeIsBack() {
+    final EntityRelationship edge = containsEdge();
+    replay(RdfLiveWrite.RelationshipChange.capture(edge, false));
+
+    replayDeadLetter(RdfLiveWrite.RelationshipChange.capture(edge, true), true);
+
+    assertFalse(dataset.getNamedModel(GRAPH).isEmpty(), "a re-added edge must stay");
+  }
+
+  @Test
+  void aReplayedEdgeChangeTheDatabaseStillHasIsApplied() {
+    replayDeadLetter(RdfLiveWrite.RelationshipChange.capture(containsEdge(), false), true);
+
+    assertFalse(dataset.getNamedModel(GRAPH).isEmpty());
+  }
+
+  private static EntityRelationship containsEdge() {
+    return new EntityRelationship()
+        .withFromId(UUID.randomUUID())
+        .withToId(UUID.randomUUID())
+        .withFromEntity(Entity.TABLE)
+        .withToEntity(Entity.TABLE)
+        .withRelationshipType(Relationship.CONTAINS);
+  }
+
+  private void replayDeadLetter(final RdfLiveWrite command, final boolean edgeInDatabase) {
+    final CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    final CollectionDAO.EntityRelationshipDAO relationships =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationships);
+    when(relationships.existsRelationship(any(), any(), anyString(), anyString(), anyInt()))
+        .thenReturn(edgeInDatabase ? 1 : 0);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      JsonUtils.readValue(JsonUtils.pojoToJson(command), RdfLiveWrite.class).replay(repository);
+    }
+  }
+
   private void replay(final RdfLiveWrite command) {
     final RdfLiveWrite restored =
         JsonUtils.readValue(JsonUtils.pojoToJson(command), RdfLiveWrite.class);
@@ -228,11 +282,12 @@ class RdfLiveWriteTest {
     doAnswer(
             call -> {
               requireAvailable();
-              dataset.getNamedModel(GRAPH).add((Model) call.getArgument(2));
+              final List<EntityWriteRequest> requests = call.getArgument(0);
+              requests.forEach(request -> dataset.getNamedModel(GRAPH).add(request.model()));
               return null;
             })
         .when(storage)
-        .storeEntity(anyString(), any(UUID.class), any(Model.class));
+        .bulkStoreEntities(anyList(), any(RdfWriteMode.class));
     final CollectionDAO.RelationshipTypeDAO types = mock(CollectionDAO.RelationshipTypeDAO.class);
     when(types.findEntityByName("broader", Include.NON_DELETED))
         .thenReturn(

@@ -14,6 +14,7 @@ package org.openmetadata.service.rdf;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.util.List;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -30,6 +31,9 @@ public final class RdfLiveWriteStore {
   private static final String RECORD_ENQUEUED =
       "UPDATE rdf_projection_health SET enqueuedWatermark = GREATEST(enqueuedWatermark, ?) "
           + "WHERE id = 'active'";
+  private static final long STORE_UNAVAILABLE_RETRY_MILLIS = Duration.ofSeconds(10).toMillis();
+  private static final String OWN_WRITER =
+      "SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE SKIP LOCKED";
   private final Jdbi jdbi;
   private final Clock clock;
 
@@ -117,14 +121,7 @@ public final class RdfLiveWriteStore {
     return jdbi.inTransaction(
         TransactionIsolationLevel.READ_COMMITTED,
         handle -> {
-          final boolean ownsWriter =
-              handle
-                  .createQuery(
-                      "SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE SKIP LOCKED")
-                  .mapTo(String.class)
-                  .findOne()
-                  .isPresent();
-          return ownsWriter && processHead(handle, write);
+          return ownsWriter(handle) && processHead(handle, write);
         });
   }
 
@@ -155,8 +152,15 @@ public final class RdfLiveWriteStore {
     handle.execute(RECORD_ENQUEUED, id);
   }
 
+  private static boolean ownsWriter(final Handle handle) {
+    return handle.createQuery(OWN_WRITER).mapTo(String.class).findOne().isPresent();
+  }
+
   private boolean recordFailure(
       final Handle handle, final Entry entry, final RuntimeException failure) {
+    if (failure instanceof RdfStoreUnavailableException) {
+      return waitForStore(handle, entry, failure);
+    }
     final int attempts = Math.min(entry.attempts(), Integer.MAX_VALUE - 1) + 1;
     if (attempts >= MAX_DELIVERY_ATTEMPTS) {
       deadLetter(handle, entry, attempts, failure);
@@ -192,6 +196,140 @@ public final class RdfLiveWriteStore {
         entry.id(),
         attempts,
         failure);
+  }
+
+  /** An unreachable store says nothing about this write, so it waits without spending an attempt. */
+  private boolean waitForStore(
+      final Handle handle, final Entry entry, final RuntimeException failure) {
+    handle.execute(
+        "UPDATE rdf_live_write_queue SET nextAttemptAt = ?, lastError = ? WHERE id = ?",
+        clock.millis() + STORE_UNAVAILABLE_RETRY_MILLIS,
+        failureReason(failure),
+        entry.id());
+    LOG.warn("RDF store unreachable; live write {} waits for it", entry.id());
+    return false;
+  }
+
+  /**
+   * Replays up to {@code limit} dead letters, oldest first, through {@code replay}. A replayed
+   * letter is kept until every failure since the last repair has been replayed; health then clears
+   * and those letters go. A failure that left no dead letter keeps the projection degraded until a
+   * rebuild.
+   *
+   * @return how many letters replayed successfully
+   */
+  public int replayDeadLetters(final int limit, final Consumer<String> replay) {
+    final int replayed =
+        jdbi.inTransaction(
+            TransactionIsolationLevel.READ_COMMITTED,
+            handle -> ownsWriter(handle) ? replayDeadLetters(handle, limit, replay) : 0);
+    if (replayed > 0) {
+      // Replays write the serving graph outside the queue, so reasoning read before them is stale.
+      recordUntrackedWrite();
+    }
+    return replayed;
+  }
+
+  public boolean hasDeadLettersToReplay() {
+    return jdbi.withHandle(
+        handle ->
+            handle
+                    .createQuery(
+                        "SELECT COUNT(*) FROM rdf_live_write_dead_letter WHERE replayedAt IS NULL")
+                    .mapTo(Long.class)
+                    .one()
+                > 0);
+  }
+
+  private int replayDeadLetters(
+      final Handle handle, final int limit, final Consumer<String> replay) {
+    int replayed = 0;
+    for (final DeadLetter letter : deadLettersToReplay(handle, limit)) {
+      replayed += replayDeadLetter(handle, letter, replay) ? 1 : 0;
+    }
+    clearHealthIfEveryFailureWasReplayed(handle);
+    return replayed;
+  }
+
+  private boolean replayDeadLetter(
+      final Handle handle, final DeadLetter letter, final Consumer<String> replay) {
+    boolean replayed = true;
+    try {
+      replay.accept(letter.payload());
+      handle.execute(
+          "UPDATE rdf_live_write_dead_letter SET replayedAt = ? WHERE id = ?",
+          clock.millis(),
+          letter.id());
+    } catch (RuntimeException failure) {
+      replayed = false;
+      handle.execute(
+          "UPDATE rdf_live_write_dead_letter SET attempts = attempts + 1, failedAt = ?, lastError = ? WHERE id = ?",
+          clock.millis(),
+          failureReason(failure),
+          letter.id());
+      LOG.warn(
+          "Replaying dead-lettered RDF write {} failed; kept for the next replay", letter.id());
+    }
+    return replayed;
+  }
+
+  /** Each failure bumps the version by one, so replayed letters must cover the whole gap. */
+  private void clearHealthIfEveryFailureWasReplayed(final Handle handle) {
+    final HealthVersions health =
+        handle
+            .createQuery(
+                "SELECT failureVersion, repairedVersion FROM rdf_projection_health WHERE id = 'active' FOR UPDATE")
+            .map(
+                (result, context) ->
+                    new HealthVersions(
+                        result.getLong("failureVersion"), result.getLong("repairedVersion")))
+            .one();
+    if (health.unrepaired() > 0
+        && replayedFailureVersions(handle, health) == health.unrepaired()
+        && unreplayedDeadLetters(handle, health) == 0) {
+      handle.execute(
+          "UPDATE rdf_projection_health SET repairedVersion = ? WHERE id = 'active'",
+          health.failureVersion());
+      handle.execute(
+          "DELETE FROM rdf_live_write_dead_letter WHERE failureVersion <= ? AND replayedAt IS NOT NULL",
+          health.failureVersion());
+      LOG.info("Every RDF projection failure was replayed; projection is healthy again");
+    }
+  }
+
+  private static long replayedFailureVersions(final Handle handle, final HealthVersions health) {
+    return countDeadLetters(
+        handle, "COUNT(DISTINCT failureVersion)", "replayedAt IS NOT NULL", health);
+  }
+
+  private static long unreplayedDeadLetters(final Handle handle, final HealthVersions health) {
+    return countDeadLetters(handle, "COUNT(*)", "replayedAt IS NULL", health);
+  }
+
+  private static long countDeadLetters(
+      final Handle handle,
+      final String aggregate,
+      final String replayState,
+      final HealthVersions health) {
+    return handle
+        .createQuery(
+            "SELECT "
+                + aggregate
+                + " FROM rdf_live_write_dead_letter WHERE failureVersion > ? AND failureVersion <= ? AND "
+                + replayState)
+        .bind(0, health.repairedVersion())
+        .bind(1, health.failureVersion())
+        .mapTo(Long.class)
+        .one();
+  }
+
+  private static List<DeadLetter> deadLettersToReplay(final Handle handle, final int limit) {
+    return handle
+        .createQuery(
+            "SELECT id, payload FROM rdf_live_write_dead_letter WHERE replayedAt IS NULL ORDER BY id LIMIT ?")
+        .bind(0, limit)
+        .map((result, context) -> new DeadLetter(result.getLong("id"), result.getString("payload")))
+        .list();
   }
 
   static long retryDelayMillis(final int attempts) {
@@ -239,28 +377,34 @@ public final class RdfLiveWriteStore {
   }
 
   public boolean isDegraded() {
-    return jdbi.withHandle(
-        handle -> {
-          final boolean unrepaired =
-              handle
-                  .createQuery(
-                      "SELECT failureVersion > repairedVersion FROM rdf_projection_health WHERE id = 'active'")
-                  .mapTo(Boolean.class)
-                  .one();
-          final QueueHead head =
-              handle
-                  .createQuery(
-                      "SELECT createdAt, attempts FROM rdf_live_write_queue ORDER BY id LIMIT 1")
-                  .map(
-                      (result, context) ->
-                          new QueueHead(result.getLong("createdAt"), result.getInt("attempts")))
-                  .findOne()
-                  .orElse(null);
-          return unrepaired
-              || (head != null
-                  && (head.attempts() > 0
-                      || clock.millis() - head.createdAt() >= MAX_HEALTHY_LAG_MILLIS));
-        });
+    return jdbi.withHandle(handle -> isUnrepaired(handle) || isStalled(queueHead(handle)));
+  }
+
+  private static boolean isUnrepaired(final Handle handle) {
+    return handle
+        .createQuery(
+            "SELECT failureVersion > repairedVersion FROM rdf_projection_health WHERE id = 'active'")
+        .mapTo(Boolean.class)
+        .one();
+  }
+
+  private static QueueHead queueHead(final Handle handle) {
+    return handle
+        .createQuery("SELECT createdAt, lastError FROM rdf_live_write_queue ORDER BY id LIMIT 1")
+        .map(
+            (result, context) ->
+                new QueueHead(result.getLong("createdAt"), result.getString("lastError") != null))
+        .findOne()
+        .orElse(null);
+  }
+
+  /**
+   * The oldest write has failed, including one that waits out an outage without spending an
+   * attempt, or has waited too long.
+   */
+  private boolean isStalled(final QueueHead head) {
+    return head != null
+        && (head.failed() || clock.millis() - head.createdAt() >= MAX_HEALTHY_LAG_MILLIS);
   }
 
   public long pendingWrites() {
@@ -290,5 +434,13 @@ public final class RdfLiveWriteStore {
 
   private record Entry(long id, String payload, long createdAt, int attempts, long nextAttemptAt) {}
 
-  private record QueueHead(long createdAt, int attempts) {}
+  private record QueueHead(long createdAt, boolean failed) {}
+
+  private record DeadLetter(long id, String payload) {}
+
+  private record HealthVersions(long failureVersion, long repairedVersion) {
+    long unrepaired() {
+      return failureVersion - repairedVersion;
+    }
+  }
 }

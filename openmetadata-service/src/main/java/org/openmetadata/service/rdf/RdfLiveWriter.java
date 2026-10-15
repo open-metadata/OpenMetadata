@@ -13,10 +13,12 @@
 package org.openmetadata.service.rdf;
 
 import io.micrometer.core.instrument.Timer;
+import java.time.Duration;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -28,17 +30,41 @@ import org.openmetadata.service.util.PerRequestContextCleaner;
 @Slf4j
 public final class RdfLiveWriter implements AutoCloseable {
   private static final int MAX_WRITES_PER_DRAIN = 100;
+  private static final int MAX_REPLAYS_PER_RUN = 50;
+  private static final long REPLAY_INTERVAL_MILLIS = Duration.ofMinutes(5).toMillis();
   private final RdfLiveWriteStore store;
-  private final Consumer<RdfLiveWrite> write;
+  private final Target target;
   private final Executor executor;
   private final AtomicBoolean draining = new AtomicBoolean();
   private volatile boolean closed;
+  private volatile long lastReplayAt;
   private ScheduledFuture<?> poll;
 
+  /**
+   * Where queued writes go.
+   *
+   * @param write delivers a live write
+   * @param replay delivers a dead-lettered write after later writes may have changed its data
+   * @param reachable whether the store answers, asked only after a write failed or before a replay
+   */
+  public record Target(
+      Consumer<RdfLiveWrite> write, Consumer<RdfLiveWrite> replay, BooleanSupplier reachable) {
+    /**
+     * Live writes are delivered like replays, against the database's current state, so a write
+     * delivered late, after a retry or a replay, cannot put back older data.
+     */
+    public static Target of(final RdfRepository repository) {
+      return new Target(
+          command -> command.replay(repository),
+          command -> command.replay(repository),
+          repository::isStorageReachable);
+    }
+  }
+
   public RdfLiveWriter(
-      final RdfLiveWriteStore store, final Consumer<RdfLiveWrite> write, final Executor executor) {
+      final RdfLiveWriteStore store, final Target target, final Executor executor) {
     this.store = store;
-    this.write = write;
+    this.target = target;
     this.executor = executor;
   }
 
@@ -83,6 +109,9 @@ public final class RdfLiveWriter implements AutoCloseable {
       }
       continueDraining = processed == MAX_WRITES_PER_DRAIN;
       OntologyMetrics.recordRdfQueueDepth((int) Math.min(Integer.MAX_VALUE, store.pendingWrites()));
+      if (processed == 0) {
+        replayDeadLettersIfDue();
+      }
     } catch (RuntimeException exception) {
       LOG.warn("Could not drain live RDF writes; pending writes remain in SQL", exception);
     } finally {
@@ -93,18 +122,48 @@ public final class RdfLiveWriter implements AutoCloseable {
     }
   }
 
+  /** While the live queue is idle, retries dead letters every few minutes once the store answers. */
+  private void replayDeadLettersIfDue() {
+    final long now = System.currentTimeMillis();
+    if (now - lastReplayAt >= REPLAY_INTERVAL_MILLIS) {
+      lastReplayAt = now;
+      if (store.hasDeadLettersToReplay() && target.reachable().getAsBoolean()) {
+        final int replayed = store.replayDeadLetters(MAX_REPLAYS_PER_RUN, this::replay);
+        LOG.info("Replayed {} dead-lettered RDF writes", replayed);
+      }
+    }
+  }
+
   private void apply(final String payload) {
+    deliver(payload, target.write());
+  }
+
+  private void replay(final String payload) {
+    deliver(payload, target.replay());
+  }
+
+  private void deliver(final String payload, final Consumer<RdfLiveWrite> delivery) {
     // Each queued write is its own unit of work: a read cached by an earlier write in this drain
     // would project a stale entity, so start and leave every write with a clean request context.
     PerRequestContextCleaner.clear();
     final Timer.Sample sample = RequestLatencyContext.startRdfOperation();
     try {
       RdfProjectionHealth.withDurableRecovery(
-          () -> write.accept(JsonUtils.readValue(payload, RdfLiveWrite.class)));
+          () -> delivery.accept(JsonUtils.readValue(payload, RdfLiveWrite.class)));
+    } catch (RuntimeException failure) {
+      throw unreachableStoreOr(failure);
     } finally {
       RequestLatencyContext.endRdfOperation(sample);
       PerRequestContextCleaner.clear();
     }
+  }
+
+  /** A failure while the store does not answer says nothing about the write itself. */
+  private RuntimeException unreachableStoreOr(final RuntimeException failure) {
+    return RdfStoreUnavailableException.isAvailabilityFailure(failure)
+            && !target.reachable().getAsBoolean()
+        ? new RdfStoreUnavailableException(failure)
+        : failure;
   }
 
   @Override
