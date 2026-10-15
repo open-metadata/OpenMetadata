@@ -59,14 +59,14 @@ class LoginClassBase {
   // Panel and card styles are returned from here (not inlined in
   // CarouselLayout) so Collate can override the login palette via
   // LoginClassCollate without forking the layout. Theme-aware tokens live in
-  // styles/tokens.css (light) and styles/app.less (dark).
+  // styles/app.less.
   public getLoginVideoPanelClassName(): string {
-    return 'tw:bg-(image:--om-login-panel-bg)';
+    return 'tw:bg-(image:--login-panel-bg)';
   }
 
   // The card background stands in for the video until it paints.
   public getLoginVideoCardClassName(): string {
-    return 'tw:bg-(image:--om-login-card-bg) tw:shadow-(--om-login-card-shadow)';
+    return 'tw:bg-(image:--login-card-bg) tw:shadow-(--login-card-shadow)';
   }
 }
 

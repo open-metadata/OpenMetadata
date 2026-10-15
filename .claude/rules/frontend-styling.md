@@ -19,11 +19,14 @@ Token source of truth: `openmetadata-ui/src/main/resources/ui/src/styles/tokens.
   Full token reference, dark-mode guide, and anti-patterns:
   [`docs/colors.md`](../../openmetadata-ui/src/main/resources/ui/docs/colors.md) — consult before
   choosing any color class.
-- In `.less`/`.css` component styles reference `var(--om-*)` — never a raw hex, `rgb()/rgba()`, px
-  spacing, raw font-size/weight, border-radius, box-shadow color, z-index, or transition duration.
-  The token file is three-layer: Layer 1 `--ds-*` primitives → Layer 2 `--om-*` aliases → components
-  use Layer 2. If a value has no token, add it to `tokens.css` (Layers 1+2), not to the component.
-  Legacy LESS `@variable` (`variables.less`) is still allowed as a bridge; prefer `var(--om-*)` for new work.
+- In `.less`/`.css` component styles reference the Tailwind semantic layer `var(--tw-color-*)`
+  (`--tw-color-bg-surface`, `--tw-color-border-secondary`, …): the same tokens the `tw:` classes
+  read, and they flip in dark. Do not add new `var(--om-*)` references; the `--om-*` aliases in
+  `tokens.css` are legacy (`yarn token-migrate` still emits them, so rewrite its output). Never a raw
+  hex, `rgb()/rgba()`, px spacing, raw font-size/weight, border-radius, box-shadow color, z-index, or
+  transition duration. A fixed brand/illustration colour with no semantic token is named once as a
+  feature custom property (light on `:root`, dark on `:root.dark-mode`) and referenced by name, never
+  inlined per theme. Legacy LESS `@variable` (`variables.less`) is still allowed as a bridge.
 
 ## Borders — never use `tw:ring-*` to draw an edge
 
@@ -71,7 +74,7 @@ Light mode is frozen: reach dark with tokens that adapt, never by changing light
   Readable secondary copy → `tw:text-tertiary`; `placeholder`/`disabled` only for those states.
 - **Icons:** `tw:text-fg-*` (e.g. `fg-quaternary`), not text tokens. SVGs use `fill`/`stroke="currentColor"`
   — a baked-in hex never follows the theme.
-- **LESS/CSS:** `var(--om-color-*)` (usually `--om-color-bg-surface`, not `-bg-primary`). Never raw hex,
+- **LESS/CSS:** `var(--tw-color-*)` (usually `--tw-color-bg-surface`, not `-bg-primary`). Never `--om-*`, raw hex,
   `rgb()`, `@white`/`@black`, or raw `var(--color-*)` (invalid outside `@theme` → transparent). LESS
   `darken()`/`fade()`/`lighten()` break on `var()`-backed variables. Theme antd through `variables.less`
   vars, not per-component overrides.
