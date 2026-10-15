@@ -478,6 +478,10 @@ describe('CSV utils ClassBase', () => {
       const onRowChange = jest.fn();
       const onClose = jest.fn();
 
+      if (!editor) {
+        throw new Error('Expected metricType editor to be defined');
+      }
+
       render(
         <>
           {editor({
