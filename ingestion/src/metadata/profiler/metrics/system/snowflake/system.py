@@ -1,8 +1,14 @@
 """Snowflake system metrics source"""
 
+import functools
 import hashlib
 import re
+import threading
 import traceback
+from collections import OrderedDict, defaultdict
+from collections.abc import Callable, Iterable
+from datetime import datetime
+from typing import Generic, NamedTuple, TypeVar
 
 import sqlalchemy.orm
 from pydantic import TypeAdapter
@@ -25,12 +31,14 @@ from metadata.ingestion.source.database.snowflake.models import (
 )
 from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
 from metadata.profiler.metrics.system.system import (
-    CacheProvider,
+    TABLE_BATCH_WINDOW,
     SystemMetricsComputer,
+    TableBatch,
     register_system_metrics,
 )
 from metadata.profiler.orm.registry import PythonDialects
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils import fqn
 from metadata.utils.collections import CaseInsensitiveString
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
@@ -182,13 +190,12 @@ class SnowflakeTableResovler:
         Returns:
             bool: True if the table exists in Snowflake
         """
-        if f"{db}.{schema}.{table}" in self._cache:
-            return self._cache.get(f"{db}.{schema}.{table}")
-        table = self.show_tables(db, schema, table)
-        if table:
-            self._cache.put(f"{db}.{schema}.{table}", True)
-            return True
-        return False
+        key = f"{db}.{schema}.{table}"
+        if key in self._cache:
+            return self._cache.get(key)
+        exists = self.show_tables(db, schema, table) is not None
+        self._cache.put(key, exists)
+        return exists
 
     def resolve_implicit_fqn(
         self,
@@ -348,8 +355,162 @@ def get_snowflake_system_queries(
     return None
 
 
+TableKey = tuple[str, str, str]
+T = TypeVar("T")
+# Builds the history index of a set of tables; returns it with the number of rows read.
+HistoryBuilder = Callable[[frozenset[TableKey]], tuple[dict[TableKey, list[T]], int]]
+
+
+class DmlRecord(NamedTuple):
+    """What system metrics keep of a QUERY_HISTORY row: the QUERY_TEXT is dropped once
+    the target table is resolved, so an index entry stays a few dozen bytes."""
+
+    database_name: str
+    schema_name: str
+    table_name: str
+    query_type: str
+    start_time: datetime
+    rows_inserted: int | None
+    rows_updated: int | None
+    rows_deleted: int | None
+
+
+def _table_key(database: str, schema: str, table: str) -> TableKey:
+    return database.lower(), schema.lower(), table.lower()
+
+
+@functools.lru_cache(maxsize=4)
+def _batch_table_keys(batch: TableBatch) -> frozenset[TableKey]:
+    """Every table of the batch asks for its keys; splitting an FQN runs the ANTLR
+    parser, so it is done once per batch."""
+    keys = set()
+    for table_fqn in batch.table_fqns:
+        parts = fqn.split(table_fqn)
+        if len(parts) == 4:
+            keys.add(_table_key(*parts[1:]))
+    return frozenset(keys)
+
+
+def _target_table_name(identifier: str) -> str | None:
+    try:
+        return get_identifiers_from_string(identifier)[2]
+    except ValueError:
+        return None
+
+
+class BatchHistoryIndex(Generic[T]):
+    """DML history of the tables of the most recent batches, keyed by table.
+
+    The first table of a batch to ask builds the index of the whole batch; the others
+    read it. Only the latest batches are retained, so memory is bounded by the history
+    of `systemMetricsBatchSize` tables rather than by the size of the service.
+    """
+
+    def __init__(self, name: str, max_batches: int = 2):
+        self.name = name
+        self._max_batches = max_batches
+        self._lock = threading.Lock()
+        self._indexes: OrderedDict[int, dict[TableKey, list[T]]] = OrderedDict()
+        self._batches_built = 0
+
+    def get(self, batch: TableBatch, build: HistoryBuilder[T]) -> dict[TableKey, list[T]]:
+        # The lock is held while building so concurrent tables of a batch wait for the
+        # one scan instead of each starting their own.
+        with self._lock:
+            if batch.batch_id in self._indexes:
+                self._indexes.move_to_end(batch.batch_id)
+                return self._indexes[batch.batch_id]
+            index, rows_read = build(_batch_table_keys(batch))
+            self._batches_built += 1
+            logger.info(
+                "Scanned Snowflake %s for system metrics batch #%d (%d tables): %d rows fetched, %d tables indexed",
+                self.name,
+                self._batches_built,
+                len(batch.table_fqns),
+                rows_read,
+                len(index),
+            )
+            self._indexes[batch.batch_id] = index
+            while len(self._indexes) > self._max_batches:
+                self._indexes.popitem(last=False)
+            return index
+
+    def clear(self) -> None:
+        with self._lock:
+            self._indexes.clear()
+            self._batches_built = 0
+
+
+QUERY_HISTORY_INDEX = BatchHistoryIndex[DmlRecord]("QUERY_HISTORY")
+DYNAMIC_TABLE_REFRESH_INDEX = BatchHistoryIndex[SnowflakeDynamicTableRefreshEntry]("DYNAMIC_TABLE_REFRESH_HISTORY")
+
+
+def index_query_history(
+    entries: Iterable[SnowflakeQueryLogEntry],
+    resolver: SnowflakeTableResovler,
+    targets: frozenset[TableKey],
+) -> tuple[dict[TableKey, list[DmlRecord]], int]:
+    """Resolve the table each DML modified and keep the ones that target `targets`.
+
+    `entries` is consumed lazily so a large history is never held in memory: only the
+    compact record of a matching row survives. Each row is attributed to the single
+    table it resolves to, so a query matched by several ILIKE patterns -- in this batch
+    or in another one -- is counted once.
+
+    Returns the index and the number of rows read.
+    """
+    target_names = {table for _, _, table in targets}
+    index: dict[TableKey, list[DmlRecord]] = defaultdict(list)
+    rows_read = 0
+    for entry in entries:
+        rows_read += 1
+        identifier = _parse_query(entry.query_text)
+        if not identifier:
+            continue
+        # ILIKE matches the name anywhere in the text (`orders` in `customer_orders`):
+        # skip such rows before resolving, which can cost a SHOW TABLES round trip.
+        target_name = _target_table_name(identifier)
+        if target_name is not None and target_name.lower() not in target_names:
+            continue
+        result = get_snowflake_system_queries(query_log_entry=entry, resolver=resolver)
+        if result is None:
+            continue
+        key = _table_key(result.database_name, result.schema_name, result.table_name)
+        if key not in targets:
+            continue
+        index[key].append(
+            DmlRecord(
+                database_name=key[0],
+                schema_name=key[1],
+                table_name=key[2],
+                query_type=result.query_type,
+                start_time=result.start_time,
+                rows_inserted=result.rows_inserted,
+                rows_updated=result.rows_updated,
+                rows_deleted=result.rows_deleted,
+            )
+        )
+    return dict(index), rows_read
+
+
+def index_dynamic_table_refreshes(
+    entries: Iterable[SnowflakeDynamicTableRefreshEntry],
+    targets: frozenset[TableKey],
+) -> tuple[dict[TableKey, list[SnowflakeDynamicTableRefreshEntry]], int]:
+    """Group the refreshes of `targets` by dynamic table. Returns the index and the
+    number of rows read."""
+    index: dict[TableKey, list[SnowflakeDynamicTableRefreshEntry]] = defaultdict(list)
+    rows_read = 0
+    for entry in entries:
+        rows_read += 1
+        key = _table_key(entry.database_name or "", entry.schema_name or "", entry.table_name)
+        if key in targets:
+            index[key].append(entry)
+    return dict(index), rows_read
+
+
 @register_system_metrics(PythonDialects.Snowflake)
-class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[SnowflakeQueryLogEntry]):
+class SnowflakeSystemMetricsComputer(SystemMetricsComputer):
     """Snowflake system metrics source"""
 
     def __init__(
@@ -369,6 +530,8 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
         )
         self.service_connection_config = service_connection_config
         self.table_entity = table_entity
+        # get_inserts/updates/deletes each read the history of the same table
+        self._history: dict[tuple[str, str], list] = {}
 
     @property
     def is_dynamic_table(self) -> bool:
@@ -434,17 +597,57 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
             DmlOperationType.DELETE,
         )
 
+    def _table_batch(self) -> TableBatch | None:
+        table_fqn = getattr(self.table_entity.fullyQualifiedName, "root", None)
+        return TABLE_BATCH_WINDOW.batch_for(table_fqn) if isinstance(table_fqn, str) else None
+
+    def _history_for(
+        self,
+        table: str,
+        history_index: BatchHistoryIndex[T],
+        build: HistoryBuilder[T],
+    ) -> list[T]:
+        """History of `table`, read from its batch's index. A table the fetcher did not
+        queue (e.g. profiled on its own) is scanned alone, as before batching."""
+        memo_key = (history_index.name, table)
+        if memo_key not in self._history:
+            key = _table_key(self.database or "", self.schema or "", table)
+            batch = self._table_batch()
+            if batch is not None and key in _batch_table_keys(batch):
+                index = history_index.get(batch, build)
+            else:
+                index, _ = build(frozenset({key}))
+            self._history[memo_key] = index.get(key, [])
+        return self._history[memo_key]
+
+    def _build_query_history_index(self, targets: frozenset[TableKey]) -> tuple[dict[TableKey, list[DmlRecord]], int]:
+        return index_query_history(
+            SnowflakeQueryLogEntry.stream_for_tables(
+                session=self.session,
+                table_names=[table for _, _, table in targets],
+                service_connection_config=self.service_connection_config,
+            ),
+            resolver=self.resolver,
+            targets=targets,
+        )
+
+    def _build_dynamic_table_refresh_index(
+        self, targets: frozenset[TableKey]
+    ) -> tuple[dict[TableKey, list[SnowflakeDynamicTableRefreshEntry]], int]:
+        return index_dynamic_table_refreshes(
+            SnowflakeDynamicTableRefreshEntry.stream_for_tables(
+                session=self.session,
+                table_names=[table for _, _, table in targets],
+                service_connection_config=self.service_connection_config,
+            ),
+            targets=targets,
+        )
+
     def _get_dynamic_table_refresh_entries(
         self,
     ) -> list[SnowflakeDynamicTableRefreshEntry]:
-        """Get dynamic table refresh history entries from cache or query"""
-        return self.get_or_update_cache(
-            self.table,
-            SnowflakeDynamicTableRefreshEntry.get_for_table,
-            session=self.session,
-            tablename=self.table,
-            service_connection_config=self.service_connection_config,
-        )
+        """Get dynamic table refresh history entries of this table"""
+        return self._history_for(self.table, DYNAMIC_TABLE_REFRESH_INDEX, self._build_dynamic_table_refresh_index)
 
     def _get_dynamic_table_system_profile(
         self,
@@ -471,7 +674,7 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
         db: str,
         schema: str,
         table: str,
-        query_results: list[SnowflakeQueryResult],
+        query_results: list[SnowflakeQueryResult] | list[DmlRecord],
         rows_affected_field: str,
         operation: DmlOperationType,
     ) -> list[SystemProfile]:
@@ -487,7 +690,7 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
                     "rowsAffected": getattr(q, rows_affected_field),
                 }
                 for q in query_results
-                if getattr(q, rows_affected_field) > 0
+                if (getattr(q, rows_affected_field) or 0) > 0
                 # snowflake SQL identifiers are case insensitive. All identifiers are stored in upper case.
                 and (
                     CaseInsensitiveString(db),
@@ -506,19 +709,5 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
         ops = [op.value for op in operations]
         yield from (query for query in self.get_queries(table) if query.query_type in ops)
 
-    def get_queries(self, table: str) -> list[SnowflakeQueryResult]:
-        queries = self.get_or_update_cache(
-            table,
-            SnowflakeQueryLogEntry.get_for_table,
-            session=self.session,
-            tablename=table,
-            service_connection_config=self.service_connection_config,
-        )
-        results = [
-            get_snowflake_system_queries(
-                query_log_entry=row,
-                resolver=self.resolver,
-            )
-            for row in queries
-        ]
-        return [result for result in results if result is not None]
+    def get_queries(self, table: str) -> list[DmlRecord]:
+        return self._history_for(table, QUERY_HISTORY_INDEX, self._build_query_history_index)

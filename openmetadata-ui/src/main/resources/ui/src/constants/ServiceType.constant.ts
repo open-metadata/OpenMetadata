@@ -219,6 +219,7 @@ export const ADVANCED_PROPERTIES = [
   'connectionOptions',
   'useAccessHistory',
   'accessHistoryChunkSize',
+  'systemMetricsBatchSize',
   'scheme',
   'computeTableMetrics',
   'computeColumnMetrics',

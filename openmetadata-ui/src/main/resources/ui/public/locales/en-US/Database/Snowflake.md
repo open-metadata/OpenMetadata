@@ -172,6 +172,14 @@ This value is used to calculate the Total Cost shown in the "Most Expensive Quer
 $$
 
 $$section
+### System Metrics Batch Size $(id="systemMetricsBatchSize")
+
+Number of tables whose DML history is read from `QUERY_HISTORY` with a single query when the profiler computes system metrics (inserts, updates and deletes). For example, profiling 1,000 tables with the default of `50` issues 20 scans instead of 1,000.
+
+Higher values issue fewer scans but hold the history of more tables in memory at once. Lower it if the profiler runs out of memory on an account with a very high volume of DML.
+$$
+
+$$section
 ### Snowflake Source Host $(id="snowflakeSourceHost")
 
 Set the Snowflake host name to be used while forming entity source URL. Entity source URLs are used in `View on Snowflake` button to open any entity in Snowflake.
