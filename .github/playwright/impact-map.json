@@ -741,16 +741,19 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterClassBase.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/PersonaAIContextUtils.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/aicontext/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/PersonaRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/teams/PersonaResource.java",
         "openmetadata-spec/src/main/resources/json/schema/type/personaContext.json",
-        "openmetadata-spec/src/main/resources/json/schema/type/personaContextDefinition.json"
+        "openmetadata-spec/src/main/resources/json/schema/type/personaContextDefinition.json",
+        "openmetadata-spec/src/main/resources/json/schema/type/personaContextStatus.json"
       ],
       "projects": ["chromium"],
       "specs": [
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextPermissions.spec.ts"
+        "playwright/e2e/Features/PersonaAIContextPermissions.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextList.spec.ts"
       ]
     },
     {
