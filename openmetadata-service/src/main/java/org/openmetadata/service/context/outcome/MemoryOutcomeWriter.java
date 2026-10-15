@@ -21,6 +21,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.RequestEntityCache;
 
 /**
  * Sets a memory's outcome counters to the values of one recount and reindexes it. The write is
@@ -49,6 +50,9 @@ public final class MemoryOutcomeWriter {
   private static void reindex(UUID memoryId) {
     EntityReference memory =
         Entity.getEntityReferenceById(Entity.CONTEXT_MEMORY, memoryId, Include.NON_DELETED);
+    // The write bypasses the repository, so it evicts the request cache too: the caller reads the
+    // memory back in the same request.
+    RequestEntityCache.invalidate(Entity.CONTEXT_MEMORY, memoryId, memory.getFullyQualifiedName());
     EntityRepository.invalidateCacheForEntity(
         Entity.CONTEXT_MEMORY, memoryId, memory.getFullyQualifiedName());
     Entity.getSearchRepository().updateEntity(memory);
