@@ -11,23 +11,40 @@
  *  limitations under the License.
  */
 
-import { Card } from '@openmetadata/ui-core-components';
+import { Card, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { ProviderType } from '../../generated/entity/events/notificationTemplate';
+import { AlertType } from '../../generated/events/eventSubscription';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { AddObservabilityPageProps } from './AddObservabilityPage.interface';
 import ObservabilityAlertForm from './components/ObservabilityAlertForm';
 import { useObservabilityAlertForm } from './hooks/useObservabilityAlertForm';
 
-function AddObservabilityPage(_props: Readonly<AddObservabilityPageProps>) {
+function AddObservabilityPage({
+  alertType = AlertType.Observability,
+}: Readonly<AddObservabilityPageProps>) {
   const { t } = useTranslation();
-  const formState = useObservabilityAlertForm();
+  const formState = useObservabilityAlertForm({ alertType });
   const { alert, isEditMode, isLoading } = formState;
+  const isNotification = alertType === AlertType.Notification;
 
   if (isLoading || (isEditMode && isEmpty(alert))) {
     return <Loader />;
+  }
+
+  if (alert?.provider === ProviderType.System) {
+    return (
+      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <Typography as="p" className="tw-max-w-md tw:mb-0">
+          {t('message.system-alert-edit-message')}
+        </Typography>
+      </ErrorPlaceHolder>
+    );
   }
 
   return (
@@ -40,7 +57,12 @@ function AddObservabilityPage(_props: Readonly<AddObservabilityPageProps>) {
         children: (
           <Card className="steps-form-container">
             <Card.Content>
-              <ObservabilityAlertForm {...formState} />
+              <ObservabilityAlertForm
+                {...formState}
+                shouldShowActionsSection={
+                  !isNotification && formState.shouldShowActionsSection
+                }
+              />
             </Card.Content>
           </Card>
         ),
@@ -49,7 +71,9 @@ function AddObservabilityPage(_props: Readonly<AddObservabilityPageProps>) {
         wrapInCard: false,
       }}
       pageTitle={t('label.add-entity', {
-        entity: t('label.observability'),
+        entity: t(
+          isNotification ? 'label.notification-alert' : 'label.observability'
+        ),
       })}
       secondPanel={{
         children: <></>,
