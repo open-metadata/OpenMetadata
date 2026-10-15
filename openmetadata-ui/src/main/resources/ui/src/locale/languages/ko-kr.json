@@ -4022,6 +4022,7 @@
     "collaborate-with-other-user": "다른 사용자와 협업하기 위해",
     "collate-ai-agents-description": "AI로 자산을 자동 티어 분류, 문서화 및 품질 검사합니다.",
     "collate-ai-widget-description": "해당 서비스에서 Collate AI가 생성한 데이터 개요입니다. <0>자세히 보기</0>",
+    "collect-metadata-asks-required-group": "여기서 {{group}}은(는) 필수 필드입니다. 설정되기 전까지는 요청할 사람이 없으므로 작업이 관리자에게 할당됩니다.",
     "collect-metadata-assignees-hint": "아직 비어 있는 필드 목록과 조건 미충족 여부를 알려 주는 작업 하나를 받을 사람입니다. 모든 것이 갖춰지면 작업이 자동으로 완료됩니다.",
     "collect-metadata-fields-hint": "이 단계에서 필요한 필드입니다. 수명 주기 편집기에서 설정하며, 작업에는 아직 비어 있는 필드만 표시됩니다.",
     "column-bulk-empty-description": "서비스에서 메타데이터가 수집되면 여기에 열이 표시됩니다. 서비스를 연결하고 메타데이터 에이전트를 실행하면 수천 개의 열에 대한 설명, 태그, 용어집 용어를 한 번에 편집할 수 있습니다.",

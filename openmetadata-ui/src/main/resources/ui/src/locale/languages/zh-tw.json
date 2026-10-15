@@ -4022,6 +4022,7 @@
     "collaborate-with-other-user": "與其他使用者協作。",
     "collate-ai-agents-description": "運用 AI 為您的資產自動分級、建立文件並進行品質檢查。",
     "collate-ai-widget-description": "Collate AI 為服務產生的資料概觀。<0>了解更多。</0>",
+    "collect-metadata-asks-required-group": "此處{{group}}為必填欄位。在設定之前沒有可詢問的人，因此任務將指派給管理員。",
     "collect-metadata-assignees-hint": "接收一個任務的人，該任務列出仍為空白的欄位，並在條件未滿足時提示。一切就緒後任務會自動完成。",
     "collect-metadata-fields-hint": "此階段要求填寫的欄位。這些欄位在生命週期編輯器中設定；任務只會列出仍為空白的欄位。",
     "column-bulk-empty-description": "從您的服務擷取中繼資料後，欄位將顯示在此處。連接服務並執行中繼資料代理程式，然後即可一次編輯數千個欄位的描述、標籤和詞彙表詞彙。",

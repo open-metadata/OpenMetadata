@@ -4022,6 +4022,7 @@
     "collaborate-with-other-user": "与其他用户协作",
     "collate-ai-agents-description": "使用 AI 自动分级、记录并检查资产质量。",
     "collate-ai-widget-description": "服务中由 Collate AI 生成的数据概览。<0>了解更多。</0>",
+    "collect-metadata-asks-required-group": "此处{{group}}为必填字段。在设置之前没有可询问的人，因此任务将分配给管理员。",
     "collect-metadata-assignees-hint": "接收一个任务的人，该任务列出仍为空的字段，并在条件未满足时给出提示。一切就绪后任务会自动完成。",
     "collect-metadata-fields-hint": "此阶段要求填写的字段。它们在生命周期编辑器中设置；任务只列出仍为空的字段。",
     "column-bulk-empty-description": "从您的服务中提取元数据后，列将显示在此处。连接服务并运行元数据代理，然后即可一次性编辑数千个列的描述、标签和术语表术语。",

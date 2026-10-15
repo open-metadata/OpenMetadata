@@ -171,8 +171,8 @@ const AddGlossary = ({ form, intake, onSubmit }: AddGlossaryProps) => {
         {({ field, fieldState }) => (
           <Box
             aria-invalid={fieldState.invalid || undefined}
-            className="tw:gap-1.5"
-            direction="col">
+            direction="col"
+            gap={2}>
             <TagSelector
               className="tw:w-full"
               data-testid="tags-container"

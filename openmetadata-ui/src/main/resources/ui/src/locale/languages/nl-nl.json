@@ -4022,6 +4022,7 @@
     "collaborate-with-other-user": "om samen te werken met andere gebruikers.",
     "collate-ai-agents-description": "Wijs automatisch tiers toe, documenteer en controleer de kwaliteit van je assets met AI.",
     "collate-ai-widget-description": "Overzicht van de data gegenereerd door de Collate AI voor de service. <0>meer informatie.</0>",
+    "collect-metadata-asks-required-group": "{{group}} is hier een verplicht veld. Zolang het niet is ingesteld, is er niemand om te vragen, dus gaat de taak naar de beheerders.",
     "collect-metadata-assignees-hint": "Wie één taak krijgt met de velden die nog leeg zijn en een melding wanneer niet aan de voorwaarden is voldaan. Ze voltooit zichzelf zodra alles aanwezig is.",
     "collect-metadata-fields-hint": "De velden die deze fase vereist. Ze worden ingesteld in de levenscycluseditor; de taak toont alleen de velden die nog leeg zijn.",
     "column-bulk-empty-description": "Kolommen verschijnen hier zodra metadata uit je services zijn opgehaald. Verbind een service en voer een metadata-agent uit — daarna kun je beschrijvingen, tags en woordenlijsttermen voor duizenden kolommen tegelijk bewerken.",

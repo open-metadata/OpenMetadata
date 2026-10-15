@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Card,
   EmptyPlaceholder,
   Typography,
@@ -255,8 +256,12 @@ const WorkflowHistory = memo(
             aria-label={workflowHistoryLabel}
             className="tw:flex tw:w-full tw:cursor-pointer tw:flex-col tw:gap-2 tw:rounded-md tw:text-left tw:outline-focus-ring tw:focus-visible:outline-2"
             onPress={toggleCollapse}>
-            <div className="workflow-header tw:flex tw:w-full tw:items-center tw:justify-between tw:gap-2">
-              <div className="tw:flex tw:min-w-0 tw:flex-col">
+            <Box
+              align="center"
+              className="workflow-header tw:w-full"
+              gap={2}
+              justify="between">
+              <Box className="tw:min-w-0" direction="col">
                 <Typography
                   as="span"
                   className="tw:text-primary"
@@ -274,14 +279,14 @@ const WorkflowHistory = memo(
                     {workflowName}
                   </Typography>
                 )}
-              </div>
+              </Box>
               <Typography
                 as="span"
                 className="tw:shrink-0 tw:text-tertiary"
                 size="text-sm">
                 {completedSteps}/{totalSteps}
               </Typography>
-            </div>
+            </Box>
             <div className="workflow-progress tw:w-full">
               <div className="workflow-steps">{workflowSteps}</div>
             </div>

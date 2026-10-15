@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -43,6 +44,7 @@ import org.openmetadata.service.governance.workflows.elements.nodes.automatedTas
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
+import org.openmetadata.service.util.UserUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 /**
@@ -223,7 +225,7 @@ public final class MetadataCollectionService {
     final List<EntityReference> assignees = assignees(entity, configuration);
     if (assignees.isEmpty()) {
       LOG.info(
-          "[MetadataCompletion] {} has no {} to ask: {}",
+          "[MetadataCompletion] {} has no {} and no admins to ask: {}",
           entity.getFullyQualifiedName(),
           configuration.getTaskAssignees().value(),
           outstanding.describe());
@@ -323,7 +325,16 @@ public final class MetadataCollectionService {
           case REVIEWERS -> entity.getReviewers();
           case CANDIDATES -> configuration.getCandidates();
         };
-    return List.copyOf(listOrEmpty(references));
+    return orAdmins(listOrEmpty(references), UserUtil::getAdmins);
+  }
+
+  /**
+   * An asset with nobody to ask — its owners or reviewers may be among the fields the stage still
+   * needs — asks the admins; the task moves to the asked group once it has someone.
+   */
+  static List<EntityReference> orAdmins(
+      final List<EntityReference> asked, final Supplier<List<EntityReference>> admins) {
+    return List.copyOf(asked.isEmpty() ? admins.get() : asked);
   }
 
   private void finish(final Task task, final boolean complete) {

@@ -36,8 +36,9 @@ nor its payload. An asset missing four fields produced four such tasks.
    filled in, or when the asset has left the stage, and is refused with the missing fields named
    otherwise. It never changes the asset; the gate moves it on the next event. Closing the task is
    allowed: the next reconcile reopens it while fields are still missing.
-5. Assignees are the asset's owners, its reviewers, or named users and teams. An asset with nobody to
-   ask gets no task; the gate still holds it.
+5. Assignees are the asset's owners, its reviewers, or named users and teams. An asset with nobody in
+   that group — its owners or reviewers can themselves be among the fields the stage still needs —
+   asks the admins instead, and the task moves to the group once it has someone.
 6. A stage may also carry **conditions**: any JSON Logic rule, written with the workflow builder's
    condition picker, that must hold as well as the required fields. Either part may be empty. The
    stage's gate checks the conjunction; the collect node carries the conditions too, evaluated on the

@@ -602,6 +602,8 @@ const AddMetricForm = ({
     return (
       <Alert title={t('label.error')} variant="error">
         <Button
+          color="link-color"
+          size="sm"
           onPress={() => {
             void intake.retry();
           }}>

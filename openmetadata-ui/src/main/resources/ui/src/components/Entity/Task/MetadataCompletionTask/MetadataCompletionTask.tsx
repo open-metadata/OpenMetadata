@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { Task, TaskEntityStatus } from '../../../../rest/tasksAPI';
 import {
@@ -33,44 +33,47 @@ const MetadataCompletionTask = ({ task }: MetadataCompletionTaskProps) => {
   const conditionsUnmet = isOpen && payload.conditionsMet === false;
 
   return (
-    <div
-      className="tw:flex tw:flex-col tw:gap-3 tw:rounded-lg tw:border tw:border-secondary tw:p-4"
-      data-testid="metadata-completion-task">
-      <Typography as="p" className="tw:text-sm tw:text-secondary">
-        {getMetadataCompletionInstruction(payload, t)}
-      </Typography>
-      {isOpen && missingFields.length > 0 && (
-        <ul
-          className="tw:flex tw:flex-wrap tw:gap-2"
-          data-testid="metadata-completion-missing-fields">
-          {missingFields.map((field) => (
-            <li key={field}>
-              <Badge color="warning" size="md" type="color">
-                {getRequiredFieldLabel(field, t)}
-              </Badge>
-            </li>
-          ))}
-        </ul>
-      )}
-      {conditionsUnmet && (
-        <Typography
-          as="p"
-          className="tw:text-sm tw:text-warning-primary"
-          data-testid="metadata-completion-conditions">
-          {t('message.lifecycle-conditions-not-met')}
-        </Typography>
-      )}
-      {task.status === TaskEntityStatus.Completed && (
-        <Typography as="p" className="tw:text-sm tw:text-primary">
-          {t('message.metadata-completion-filled-in')}
-        </Typography>
-      )}
-      {isOpen && (
-        <Typography as="p" className="tw:text-xs tw:text-tertiary">
-          {t('message.metadata-completion-hint')}
-        </Typography>
-      )}
-    </div>
+    <Card data-testid="metadata-completion-task" variant="default">
+      <Card.Content>
+        <Box direction="col" gap={3}>
+          <Typography as="p" className="tw:text-secondary" size="text-sm">
+            {getMetadataCompletionInstruction(payload, t)}
+          </Typography>
+          {isOpen && missingFields.length > 0 && (
+            <ul
+              className="tw:flex tw:flex-wrap tw:gap-2"
+              data-testid="metadata-completion-missing-fields">
+              {missingFields.map((field) => (
+                <li key={field}>
+                  <Badge color="warning" size="md" type="color">
+                    {getRequiredFieldLabel(field, t)}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+          {conditionsUnmet && (
+            <Typography
+              as="p"
+              className="tw:text-warning-primary"
+              data-testid="metadata-completion-conditions"
+              size="text-sm">
+              {t('message.lifecycle-conditions-not-met')}
+            </Typography>
+          )}
+          {task.status === TaskEntityStatus.Completed && (
+            <Typography as="p" className="tw:text-primary" size="text-sm">
+              {t('message.metadata-completion-filled-in')}
+            </Typography>
+          )}
+          {isOpen && (
+            <Typography as="p" className="tw:text-tertiary" size="text-xs">
+              {t('message.metadata-completion-hint')}
+            </Typography>
+          )}
+        </Box>
+      </Card.Content>
+    </Card>
   );
 };
 

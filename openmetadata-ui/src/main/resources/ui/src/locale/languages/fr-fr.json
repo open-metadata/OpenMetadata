@@ -4022,6 +4022,7 @@
     "collaborate-with-other-user": "pour collaborer avec d'autres utilisateurs.",
     "collate-ai-agents-description": "Classez, documentez et vérifiez la qualité de vos actifs automatiquement grâce à l'IA.",
     "collate-ai-widget-description": "Aperçu des données générées par Collate AI pour le service. <0>en savoir plus.</0>",
+    "collect-metadata-asks-required-group": "{{group}} est un champ obligatoire ici. Tant qu'il n'est pas renseigné, personne ne peut être sollicité, donc la tâche est attribuée aux administrateurs.",
     "collect-metadata-assignees-hint": "Qui reçoit une tâche listant les champs encore vides et signalant les conditions non remplies. Elle se termine d'elle-même une fois que tout est en place.",
     "collect-metadata-fields-hint": "Les champs exigés par cette étape. Ils se définissent dans l'éditeur du cycle de vie ; la tâche ne liste que ceux encore vides.",
     "column-bulk-empty-description": "Les colonnes apparaissent ici une fois les métadonnées ingérées depuis vos services. Connectez un service et exécutez un agent de métadonnées, puis vous pourrez modifier les descriptions, les étiquettes et les termes du glossaire sur des milliers de colonnes à la fois.",

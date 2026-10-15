@@ -4022,6 +4022,7 @@
     "collaborate-with-other-user": "他のユーザーとコラボレーションできます。",
     "collate-ai-agents-description": "AI を使ってアセットの自動ティア付け、ドキュメント化、品質チェックを行います。",
     "collate-ai-widget-description": "Collate AI によって生成されたデータの概要。<0>詳細を見る。</0>",
+    "collect-metadata-asks-required-group": "ここでは{{group}}は必須項目です。設定されるまで依頼できる相手がいないため、タスクは管理者に割り当てられます。",
     "collect-metadata-assignees-hint": "まだ空の項目を一覧にし、条件を満たしていない場合はそれを知らせるタスクを受け取る人です。すべて揃うとタスクは自動的に完了します。",
     "collect-metadata-fields-hint": "このステージで必須の項目です。ライフサイクルエディターで設定し、タスクにはまだ空の項目だけが表示されます。",
     "column-bulk-empty-description": "サービスからメタデータが取り込まれると、ここに列が表示されます。サービスを接続してメタデータエージェントを実行すると、数千の列の説明、タグ、用語集の用語を一度に編集できます。",

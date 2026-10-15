@@ -4022,6 +4022,7 @@
     "collaborate-with-other-user": "för att samarbeta med andra användare.",
     "collate-ai-agents-description": "Klassificera automatiskt, dokumentera och kvalitetskontrollera dina tillgångar med AI.",
     "collate-ai-widget-description": "Översikt över de data som genererats av Collate AI för tjänsten. <0>läs mer.</0>",
+    "collect-metadata-asks-required-group": "{{group}} är ett obligatoriskt fält här. Tills det är angivet finns ingen att fråga, så uppgiften går till administratörerna.",
     "collect-metadata-assignees-hint": "Vem som får en uppgift med de fält som fortfarande är tomma och en notering när villkoren inte är uppfyllda. Den slutförs av sig själv när allt är på plats.",
     "collect-metadata-fields-hint": "Fälten som det här steget kräver. De anges i livscykelredigeraren; uppgiften listar bara de som fortfarande är tomma.",
     "column-bulk-empty-description": "Kolumner visas här när metadata har hämtats från dina tjänster. Anslut en tjänst och kör en metadataagent – sedan kan du redigera beskrivningar, taggar och ordlistetermer för tusentals kolumner samtidigt.",

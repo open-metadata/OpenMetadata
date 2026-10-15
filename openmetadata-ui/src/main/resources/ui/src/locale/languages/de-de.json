@@ -4022,6 +4022,7 @@
     "collaborate-with-other-user": "um mit anderen Benutzern zusammenzuarbeiten.",
     "collate-ai-agents-description": "Klassifizieren, dokumentieren und prüfen Sie Ihre Assets automatisch mit KI.",
     "collate-ai-widget-description": "Übersicht über die von der Collate AI für den Dienst generierten Daten. <0>Mehr erfahren.</0>",
+    "collect-metadata-asks-required-group": "{{group}} ist hier ein Pflichtfeld. Solange es nicht gesetzt ist, gibt es darin niemanden zu fragen, daher geht die Aufgabe an die Administratoren.",
     "collect-metadata-assignees-hint": "Wer eine Aufgabe mit den noch leeren Feldern und einem Hinweis auf nicht erfüllte Bedingungen erhält. Sie schließt sich selbst ab, sobald alles vorhanden ist.",
     "collect-metadata-fields-hint": "Die Felder, die diese Phase verlangt. Sie werden im Lebenszyklus-Editor festgelegt; die Aufgabe listet nur die noch leeren auf.",
     "column-bulk-empty-description": "Spalten erscheinen hier, sobald Metadaten aus Ihren Diensten erfasst wurden. Verbinden Sie einen Dienst und führen Sie einen Metadaten-Agenten aus – dann können Sie Beschreibungen, Tags und Glossarbegriffe für Tausende von Spalten auf einmal bearbeiten.",

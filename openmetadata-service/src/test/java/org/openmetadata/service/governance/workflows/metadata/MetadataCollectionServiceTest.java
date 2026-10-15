@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.MetadataCollectionConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RequiredMetadataField;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.governance.workflows.metadata.MetadataCollectionService.Outstanding;
 
@@ -75,5 +76,21 @@ class MetadataCollectionServiceTest {
         MetadataCollectionService.outstanding(
             domain.withDescription(null),
             required.withConditions("{\"==\":[{\"var\":\"name\"},\"finance\"]}")));
+  }
+
+  @Test
+  void asksTheAdminsOnlyWhenTheAskedGroupIsEmpty() {
+    final EntityReference admin = new EntityReference().withId(UUID.randomUUID()).withType("user");
+    final EntityReference owner = new EntityReference().withId(UUID.randomUUID()).withType("user");
+
+    assertEquals(
+        List.of(admin), MetadataCollectionService.orAdmins(List.of(), () -> List.of(admin)));
+    assertEquals(
+        List.of(owner),
+        MetadataCollectionService.orAdmins(
+            List.of(owner),
+            () -> {
+              throw new AssertionError("the admins are not looked up while someone can be asked");
+            }));
   }
 }

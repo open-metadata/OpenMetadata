@@ -13,6 +13,7 @@
 
 import {
   Badge,
+  Box,
   Button,
   RadioButton,
   RadioGroup,
@@ -41,6 +42,7 @@ import { getRequiredFieldLabel } from '../../../Entity/Task/MetadataCompletionTa
 import { SearchOutputType } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { FormField } from '../common/FormField';
 import { ModeAwareFormField } from '../ModeAwareFormField';
+import { AskedGroupWarning } from './AskedGroupWarning';
 import { FormActionButtons } from './FormActionButtons';
 import { MetadataFormSection } from './MetadataFormSection';
 import { QueryBuilderSection } from './QueryBuilderSection';
@@ -119,7 +121,7 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
 
   return (
     <>
-      <div className="tw:flex-1 tw:flex tw:flex-col">
+      <Box className="tw:flex-1" direction="col">
         <MetadataFormSection
           description={description}
           isStartNode={false}
@@ -129,9 +131,7 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
         />
 
         <FormField label={t('label.stage')}>
-          <div
-            className="tw:flex tw:items-center tw:gap-2"
-            data-testid="collect-metadata-stage">
+          <Box align="center" data-testid="collect-metadata-stage" gap={2}>
             <Badge color="gray" size="md" type="color">
               {config.stage}
             </Badge>
@@ -146,7 +146,7 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
                 </Badge>
               </>
             )}
-          </div>
+          </Box>
         </FormField>
 
         {Boolean(config.fields?.length) && (
@@ -204,6 +204,12 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
           </RadioGroup>
         </FormField>
 
+        <AskedGroupWarning
+          assignees={taskAssignees}
+          fields={config.fields}
+          groupLabel={t(ASSIGNEE_LABEL_KEYS[taskAssignees])}
+        />
+
         {taskAssignees === TaskAssignees.Candidates && (
           <FormField label={t('label.specific-users-and-teams')}>
             <ModeAwareFormField>
@@ -235,7 +241,7 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
             </ModeAwareFormField>
           </FormField>
         )}
-      </div>
+      </Box>
 
       <FormActionButtons
         showDelete

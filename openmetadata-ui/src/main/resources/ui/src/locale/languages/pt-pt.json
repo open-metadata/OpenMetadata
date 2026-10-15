@@ -4022,6 +4022,7 @@
     "collaborate-with-other-user": "para colaborar com outros Utilizadores.",
     "collate-ai-agents-description": "Classifique por nível, documente e verifique a qualidade dos seus recursos com IA.",
     "collate-ai-widget-description": "Visão geral dos dados gerados pela IA Collate para o serviço. <0>saber mais.</0>",
+    "collect-metadata-asks-required-group": "{{group}} é um campo obrigatório aqui. Até ser preenchido, não há ninguém a quem pedir, por isso a tarefa é atribuída aos administradores.",
     "collect-metadata-assignees-hint": "Quem recebe uma tarefa com os campos que ainda estão vazios e um aviso quando as condições não estão cumpridas. Fica concluída automaticamente quando tudo estiver pronto.",
     "collect-metadata-fields-hint": "Os campos que esta etapa exige. São definidos no editor do ciclo de vida; a tarefa mostra apenas os que ainda estão vazios.",
     "column-bulk-empty-description": "As colunas aparecem aqui assim que os metadados forem recolhidos dos seus serviços. Ligue um serviço e execute um agente de metadados — depois poderá editar descrições, etiquetas e termos de glossário em milhares de colunas de uma só vez.",

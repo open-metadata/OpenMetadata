@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { Status } from '../../../../generated/type/status';
+import { EntityStatus } from '../../../../generated/governance/workflows/elements/nodes/userTask/userApprovalTask';
 import LifecycleApprovalCard from './LifecycleApprovalCard';
 import { getLifecycleMove } from './LifecycleApprovalCard.utils';
 
@@ -19,7 +19,10 @@ describe('LifecycleApprovalCard', () => {
   it('names the stage the approval moves the asset to', () => {
     render(
       <LifecycleApprovalCard
-        move={{ stage: Status.InReview, targetStage: Status.Approved }}
+        move={{
+          stage: EntityStatus.InReview,
+          targetStage: EntityStatus.Approved,
+        }}
       />
     );
 

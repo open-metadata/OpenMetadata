@@ -4022,6 +4022,7 @@
     "collaborate-with-other-user": "diğer kullanıcılarla işbirliği yapmak için.",
     "collate-ai-agents-description": "Varlıklarınızı yapay zeka ile otomatik olarak katmanlandırın, belgeleyin ve kalite denetiminden geçirin.",
     "collate-ai-widget-description": "Collate AI tarafından servis için oluşturulan verilere genel bakış. <0>daha fazla bilgi edinin.</0>",
+    "collect-metadata-asks-required-group": "{{group}} burada zorunlu bir alandır. Ayarlanana kadar sorulacak kimse olmadığından görev yöneticilere atanır.",
     "collect-metadata-assignees-hint": "Hâlâ boş olan alanları listeleyen ve koşullar karşılanmadığında bunu belirten tek bir görevi kimin alacağı. Her şey hazır olunca kendiliğinden tamamlanır.",
     "collect-metadata-fields-hint": "Bu aşamanın gerektirdiği alanlar. Yaşam döngüsü düzenleyicisinde belirlenir; görev yalnızca hâlâ boş olanları listeler.",
     "column-bulk-empty-description": "Hizmetlerinizden meta veriler alındığında sütunlar burada görünür. Bir hizmet bağlayın ve bir meta veri aracısı çalıştırın; ardından binlerce sütunun açıklamalarını, etiketlerini ve sözlük terimlerini tek seferde düzenleyebilirsiniz.",

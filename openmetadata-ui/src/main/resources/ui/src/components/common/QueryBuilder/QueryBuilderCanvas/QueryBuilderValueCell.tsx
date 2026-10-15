@@ -37,7 +37,8 @@ const QueryBuilderValueCell: FC<QueryBuilderValueCellProps> = ({
       return (
         <Typography
           as="span"
-          className="tw:flex tw:h-9 tw:items-center tw:text-sm tw:text-tertiary">
+          className="tw:flex tw:h-9 tw:items-center tw:text-tertiary"
+          size="text-sm">
           {t('label.no-value-needed')}
         </Typography>
       );

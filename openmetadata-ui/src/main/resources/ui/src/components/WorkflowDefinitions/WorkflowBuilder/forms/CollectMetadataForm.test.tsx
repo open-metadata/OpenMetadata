@@ -99,6 +99,36 @@ describe('CollectMetadataForm', () => {
     );
   });
 
+  it('warns that the admins are asked while the asked group is itself a required field', () => {
+    renderForm(jest.fn(), {
+      ...node,
+      data: {
+        ...node.data,
+        config: {
+          ...node.data.config,
+          fields: [
+            ...FIELDS,
+            {
+              field: 'owners',
+              rules:
+                '{"some":[{"var":"owners"},{"!=":[{"var":"fullyQualifiedName"},null]}]}',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(
+      screen.getByTestId('collect-metadata-asks-required-group')
+    ).toHaveTextContent('message.collect-metadata-asks-required-group');
+
+    fireEvent.click(screen.getByLabelText('label.reviewer-plural'));
+
+    expect(
+      screen.queryByTestId('collect-metadata-asks-required-group')
+    ).not.toBeInTheDocument();
+  });
+
   it('offers no reviewers for domains, which have none', () => {
     render(
       <MemoryRouter initialEntries={['/?mode=edit']}>

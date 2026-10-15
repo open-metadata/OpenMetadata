@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -88,14 +89,17 @@ class LifecycleMetadataTasksIT {
   }
 
   @Test
-  void waitsUntilTheAssetHasSomeoneToAsk(TestNamespace namespace) {
+  void asksTheAdminsUntilTheAssetHasOwnersAndThenAsksThem(TestNamespace namespace) {
     final Domain domain = createDomain(namespace);
     final String workflow = createWorkflow(namespace);
     try {
-      service()
-          .reconcile(
-              domain, draftFields().withTaskAssignees(TaskAssignees.OWNERS), workflow, DRAFT_NODE);
-      assertEquals(0, tasks(domain).size());
+      final MetadataCollectionConfiguration owners =
+          draftFields().withTaskAssignees(TaskAssignees.OWNERS);
+      service().reconcile(domain, owners, workflow, DRAFT_NODE);
+      assertTrue(assigneeNames(onlyTask(domain)).contains("admin"));
+
+      service().reconcile(addOwner(domain), owners, workflow, DRAFT_NODE);
+      assertEquals(List.of(sharedUser().getName()), assigneeNames(onlyTask(domain)));
     } finally {
       cleanup(domain, workflow);
     }
@@ -296,6 +300,24 @@ class LifecycleMetadataTasksIT {
             "/experts",
             "value",
             List.of(Map.of("id", sharedUser().getId().toString(), "type", Entity.USER))));
+  }
+
+  private static Domain addOwner(Domain domain) {
+    return patch(
+        domain,
+        Map.of(
+            "op",
+            "add",
+            "path",
+            "/owners",
+            "value",
+            List.of(Map.of("id", sharedUser().getId().toString(), "type", Entity.USER))));
+  }
+
+  private static List<String> assigneeNames(JsonNode task) {
+    final List<String> names = new ArrayList<>();
+    task.get("assignees").forEach(assignee -> names.add(assignee.get("name").asText()));
+    return names;
   }
 
   private static Domain updateStage(Domain domain, EntityStatus stage) {
