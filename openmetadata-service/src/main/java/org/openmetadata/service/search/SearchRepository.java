@@ -1584,76 +1584,35 @@ public class SearchRepository {
    * This method is used by SearchIndexHandler.
    */
   public void createEntitiesIndex(List<EntityInterface<?>> entities) throws IOException {
-    if (!nullOrEmpty(entities)) {
-      String entityType = null;
-      for (EntityInterface<?> entity : entities) {
-        try {
-          EntityReference entityReference = entity != null ? entity.getEntityReference() : null;
-          if (entityReference != null) {
-            entityType = entityReference.getType();
-            if (!nullOrEmpty(entityType)) {
-              break;
-            }
-          }
-        } catch (Exception ie) {
-          LOG.error("Issue resolving entity type for bulk search index create", ie);
-        }
-      }
-      if (nullOrEmpty(entityType)) {
-        return;
-      }
-      Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
-      try {
-        if (!getSearchClient().isClientAvailable()) {
-          for (EntityInterface<?> entity : entities) {
-            try {
-              if (Entity.isSearchIndexable(entity)) {
-                SearchIndexRetryQueue.enqueue(
-                    entity.getId() != null ? entity.getId().toString() : null,
-                    entity.getFullyQualifiedName(),
-                    entityType,
-                    "createEntitiesIndex: Search client unavailable");
-              }
-            } catch (Exception ie) {
-              LOG.error(
-                  "Issue checking search indexability for entity [{}] and entityType [{}]",
-                  entity != null ? entity.getId() : null,
-                  entityType,
-                  ie);
-            }
-          }
-          return;
-        }
-        IndexMapping indexMapping = entityIndexMap.get(entityType);
-        List<Map<String, String>> docs = new ArrayList<>();
-        for (EntityInterface<?> entity : entities) {
-          try {
-            if (!Entity.isSearchIndexable(entity)) {
-              continue;
-            }
-            String doc = JsonUtils.pojoToJson(documentBuilder.build(entityType, entity));
-            docs.add(Collections.singletonMap(entity.getId().toString(), doc));
-          } catch (Exception ie) {
-            LOG.error(
-                "Issue in building search document for entity [{}] and entityType [{}]",
-                entity != null ? entity.getId() : null,
-                entityType,
-                ie);
-          }
-        }
+    if (nullOrEmpty(entities)) {
+      return;
+    }
+    final List<EntityInterface<?>> indexable =
+        entities.stream().filter(SearchRepository::isIndexableForCreate).toList();
+    if (indexable.isEmpty()) {
+      return;
+    }
+    // Written like a bulk update, guarded by when the entities were read: a create applied after a
+    // newer write of the same entity must not put the older state back.
+    updateEntitiesIndex(indexable);
+    final List<EntityInterface<?>> tables =
+        indexable.stream()
+            .filter(entity -> Entity.TABLE.equals(entity.getEntityReference().getType()))
+            .toList();
+    if (!tables.isEmpty() && getSearchClient().isClientAvailable()) {
+      indexColumnsForTables(tables);
+    }
+  }
 
-        if (docs.isEmpty()) {
-          return;
-        }
-
-        searchClient.createEntities(getWriteIndexName(indexMapping), docs);
-
-        if (Entity.TABLE.equals(entityType)) {
-          indexColumnsForTables(entities);
-        }
-      } finally {
-        RequestLatencyContext.endSearchOperation(searchSample);
-      }
+  private static boolean isIndexableForCreate(EntityInterface<?> entity) {
+    try {
+      return entity != null && Entity.isSearchIndexable(entity);
+    } catch (Exception e) {
+      LOG.error(
+          "Issue checking search indexability for entity [{}]",
+          entity != null ? entity.getId() : null,
+          e);
+      return false;
     }
   }
 

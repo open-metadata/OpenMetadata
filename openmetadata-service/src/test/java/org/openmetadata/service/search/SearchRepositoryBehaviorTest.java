@@ -32,6 +32,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.LinkedHashSet;
@@ -672,25 +673,21 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void createEntitiesIndexBulkWritesDocumentsOfTheSameType() throws IOException {
+  void createEntitiesIndexWritesDocumentsGuardedByWhenTheyWereRead() throws Exception {
     EntityInterface<?> first = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     EntityInterface<?> second = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
-    when(searchIndexFactory.buildIndex(Entity.TABLE, first))
-        .thenReturn(new MapBackedSearchIndex(first, Map.of("name", "orders")));
-    when(searchIndexFactory.buildIndex(Entity.TABLE, second))
-        .thenReturn(new MapBackedSearchIndex(second, Map.of("name", "customers")));
 
-    repository.createEntitiesIndex(List.of(first, second));
+    try (MockedConstruction<ElasticSearchBulkSink> bulkSinks = completingBulkSinks()) {
+      SearchVersionGuard.readAt(40L, () -> createEntitiesIndex(List.of(first, second))).run();
 
-    @SuppressWarnings("unchecked")
-    ArgumentCaptor<List<Map<String, String>>> docsCaptor = ArgumentCaptor.forClass(List.class);
-    verify(searchClient).createEntities(eq("cluster_table_search_index"), docsCaptor.capture());
-    assertEquals(2, docsCaptor.getValue().size());
+      Map<String, Object> context = verifyBulkWrite(bulkSinks, List.of(first, second));
+      assertEquals(40L, context.get(BulkSink.SOURCE_READ_AT_CONTEXT_KEY));
+      verify(searchClient, never()).createEntities(any(String.class), anyList());
+    }
   }
 
   @Test
-  void createEntitiesIndexDoesNotRetryNonIndexableEntitiesWhenSearchIsUnavailable()
-      throws IOException {
+  void createEntitiesIndexDoesNotRetryNonIndexableEntitiesWhenSearchIsUnavailable() {
     EntityInterface<?> hidden = mockEntity(Entity.TABLE, UUID.randomUUID(), "private-memory");
     EntityInterface<?> visible = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     EntityRepository<?> tableRepository = Entity.getEntityRepository(Entity.TABLE);
@@ -698,7 +695,7 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.isClientAvailable()).thenReturn(false);
 
     try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
-      repository.createEntitiesIndex(List.of(hidden, visible));
+      createEntitiesIndex(List.of(hidden, visible));
 
       retryQueue.verify(
           () ->
@@ -706,75 +703,69 @@ class SearchRepositoryBehaviorTest {
                   visible.getId().toString(),
                   visible.getFullyQualifiedName(),
                   Entity.TABLE,
-                  "createEntitiesIndex: Search client unavailable"));
+                  "updateEntitiesBulk: Search client unavailable"));
       retryQueue.verify(
           () ->
               SearchIndexRetryQueue.enqueue(
-                  hidden.getId().toString(),
-                  hidden.getFullyQualifiedName(),
-                  Entity.TABLE,
-                  "createEntitiesIndex: Search client unavailable"),
+                  eq(hidden.getId().toString()), any(), any(), any(String.class)),
           never());
     }
   }
 
   @Test
-  void createEntitiesIndexSkipsFailedDocumentsAndContinuesBulkCreate() throws IOException {
-    EntityInterface<?> broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
-    EntityInterface<?> valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
-    when(searchIndexFactory.buildIndex(Entity.TABLE, broken))
-        .thenThrow(new IllegalStateException("cannot index broken entity"));
-    when(searchIndexFactory.buildIndex(Entity.TABLE, valid))
-        .thenReturn(new MapBackedSearchIndex(valid, Map.of("name", "customers")));
-
-    repository.createEntitiesIndex(List.of(broken, valid));
-
-    @SuppressWarnings("unchecked")
-    ArgumentCaptor<List<Map<String, String>>> docsCaptor = ArgumentCaptor.forClass(List.class);
-    verify(searchClient).createEntities(eq("cluster_table_search_index"), docsCaptor.capture());
-    assertEquals(1, docsCaptor.getValue().size());
-    assertEquals(
-        valid.getId().toString(), docsCaptor.getValue().getFirst().keySet().iterator().next());
-  }
-
-  @Test
-  void createEntitiesIndexSkipsEntityWhenIndexabilityCheckFails() throws IOException {
+  void createEntitiesIndexSkipsEntityWhenIndexabilityCheckFails() throws Exception {
     EntityInterface<?> broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
     EntityInterface<?> valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
     when(broken.getEntityReference())
         .thenThrow(new IllegalStateException("cannot resolve entity reference"));
-    when(searchIndexFactory.buildIndex(Entity.TABLE, valid))
-        .thenReturn(new MapBackedSearchIndex(valid, Map.of("name", "customers")));
 
-    repository.createEntitiesIndex(List.of(broken, valid));
+    try (MockedConstruction<ElasticSearchBulkSink> bulkSinks = completingBulkSinks()) {
+      createEntitiesIndex(List.of(broken, valid));
 
+      verifyBulkWrite(bulkSinks, List.of(valid));
+    }
+  }
+
+  @Test
+  void createEntitiesIndexWritesNothingWithoutAnIndexableEntity() throws IOException {
+    EntityInterface<?> hidden = mockEntity(Entity.TABLE, UUID.randomUUID(), "private-memory");
+    doReturn(false).when(Entity.getEntityRepository(Entity.TABLE)).isSearchIndexable(hidden);
+
+    try (MockedConstruction<ElasticSearchBulkSink> bulkSinks = completingBulkSinks()) {
+      createEntitiesIndex(List.of(hidden));
+      createEntitiesIndex(List.of());
+
+      assertTrue(bulkSinks.constructed().isEmpty());
+      verify(searchClient, never()).createEntities(any(String.class), anyList());
+      verify(searchClient, never()).deleteEntity(any(String.class), any(String.class));
+    }
+  }
+
+  private void createEntitiesIndex(List<EntityInterface<?>> entities) {
+    try {
+      repository.createEntitiesIndex(entities);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  private MockedConstruction<ElasticSearchBulkSink> completingBulkSinks() {
+    when(searchClient.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    return mockConstruction(
+        ElasticSearchBulkSink.class,
+        (bulkSink, context) -> {
+          when(bulkSink.flushAndAwait(60)).thenReturn(true);
+          when(bulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(0));
+        });
+  }
+
+  private static Map<String, Object> verifyBulkWrite(
+      MockedConstruction<ElasticSearchBulkSink> bulkSinks, List<?> entities) throws Exception {
     @SuppressWarnings("unchecked")
-    ArgumentCaptor<List<Map<String, String>>> docsCaptor = ArgumentCaptor.forClass(List.class);
-    verify(searchClient).createEntities(eq("cluster_table_search_index"), docsCaptor.capture());
-    assertEquals(1, docsCaptor.getValue().size());
-    assertEquals(
-        valid.getId().toString(), docsCaptor.getValue().getFirst().keySet().iterator().next());
-  }
-
-  @Test
-  void createEntitiesIndexSkipsBulkCreateWhenNoDocumentCanBeBuilt() throws IOException {
-    EntityInterface<?> first = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken_1");
-    EntityInterface<?> second = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken_2");
-    when(searchIndexFactory.buildIndex(Entity.TABLE, first))
-        .thenThrow(new IllegalStateException("cannot index first"));
-    when(searchIndexFactory.buildIndex(Entity.TABLE, second))
-        .thenThrow(new IllegalStateException("cannot index second"));
-
-    repository.createEntitiesIndex(List.of(first, second));
-
-    verify(searchClient, never()).createEntities(any(String.class), any(List.class));
-  }
-
-  @Test
-  void createEntitiesIndexSkipsEmptyEntityLists() throws IOException {
-    repository.createEntitiesIndex(List.of());
-
-    verify(searchClient, never()).createEntities(any(String.class), any(List.class));
+    ArgumentCaptor<Map<String, Object>> context = ArgumentCaptor.forClass(Map.class);
+    verify(bulkSinks.constructed().getFirst()).write(eq(entities), context.capture());
+    return context.getValue();
   }
 
   @Test

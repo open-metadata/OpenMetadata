@@ -28,6 +28,15 @@ rename of 10,000 descendants about five times slower.
 - Consumer progress (`metadata_projection_consumer`) and work (`metadata_projection_work`) are kept
   apart from the facts, so one consumer cannot acknowledge another's work; retention keeps a fact
   until every consumer registered for it has passed it.
+- Then relationship, tag-usage, field-relationship and extension facts are purged, and so is an
+  entity fact that retires no former FQN. Prefix rewrites, and entity facts that retire a former
+  FQN, are the only record of the names descendants and deleted entities had, so they stay as
+  locator anchors: retention deletes their consumer rows, and purges an entity anchor only once a
+  newer anchor for the same entity carries both of its locators.
+- Owner lookup fails rather than truncate when one hash resolves to more than 1000 historical
+  locators. A transaction's capture buffer flushes at 1000 entries or 1 MiB; a claim takes 1 to
+  1000 rows on a lease of at most 10 minutes; a retry waits at most an hour; a retention pass scans
+  pages of 100 and deletes at most 1000 rows.
 - The journal ships inactive: nothing in production installs the capture plugin until a consumer
   reads it.
 
@@ -36,4 +45,6 @@ rename of 10,000 descendants about five times slower.
 The 2.2.0 migration creates the journal tables on every install, empty until capture is turned on.
 A new write path that bypasses the decorated DAOs (a raw `Handle` batch, a `@SqlUpdate` on another
 interface) is invisible to capture and must be routed through them before capture is enabled.
-Turning capture on is a separate decision with its own performance budget.
+Turning capture on is a separate decision with its own performance budget. Locator anchors grow with
+renames and deletes until compacted, and a hash whose history resolves to more than 1000 locators
+fails owner lookup instead of resolving part of it.

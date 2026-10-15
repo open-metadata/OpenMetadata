@@ -37,9 +37,9 @@ public record SoftDeleteScript(boolean deleted, Double version, Long updatedAt, 
     this(deleted, null, null, null);
   }
 
-  /** The entity's own delete or restore, ordered against its other writes when it is prepared. */
+  /** The entity's own delete or restore, ordered by when it was read, like its other writes. */
   public static SoftDeleteScript forEntity(boolean deleted, EntityInterface<?> entity) {
-    return forEntity(deleted, entity, System.currentTimeMillis());
+    return forEntity(deleted, entity, SearchVersionGuard.readTime());
   }
 
   public static SoftDeleteScript forEntity(
