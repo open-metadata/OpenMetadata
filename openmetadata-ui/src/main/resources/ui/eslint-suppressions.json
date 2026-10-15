@@ -202,11 +202,6 @@
       "count": 3
     }
   },
-  "playwright/e2e/Features/Glossary/GlossaryTermRelatedTerms.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
-    }
-  },
   "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
@@ -719,7 +714,7 @@
   },
   "playwright/utils/glossary.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 11
+      "count": 8
     },
     "playwright/no-wait-for-selector": {
       "count": 1

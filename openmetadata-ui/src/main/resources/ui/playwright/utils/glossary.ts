@@ -1197,6 +1197,56 @@ export const addRelatedTerms = async (
   }
 };
 
+export const getRelationRows = (page: Page) =>
+  page.locator('[data-testid^="relation-row-"]');
+
+export const getOnlyRelationRow = async (page: Page) => {
+  const rows = getRelationRows(page);
+  await expect(rows).toHaveCount(1);
+
+  return rows;
+};
+
+// Row ids are Date.now() values, so find the added row as the one id that was
+// not there before the click.
+export const addRelationRow = async (page: Page) => {
+  const rows = getRelationRows(page);
+  const readIds = () =>
+    rows.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('data-testid') ?? '')
+    );
+  const before = await readIds();
+
+  await page.getByTestId('add-row-button').click();
+  await expect(rows).toHaveCount(before.length + 1);
+
+  const added = (await readIds()).find((id) => !before.includes(id)) ?? '';
+
+  return page.getByTestId(added);
+};
+
+// Later rows sit at the viewport's bottom edge; a scroll there closes the
+// non-modal Select popover mid-click, so centre-and-retry the pick. A click on
+// the repositioning popover can also land on the neighbouring option (CI saved
+// "Antonym" for "See Also"), so retry until the trigger shows it.
+export const selectRelationType = async (
+  page: Page,
+  row: Locator,
+  relationTypeLabel: string
+) => {
+  const relationTypeTrigger = row.locator('button[aria-haspopup="listbox"]');
+
+  await expect(async () => {
+    await selectOptionWithRetry(
+      relationTypeTrigger,
+      page.getByRole('option', { exact: true, name: relationTypeLabel })
+    );
+    await expect(relationTypeTrigger).toHaveText(relationTypeLabel, {
+      timeout: 2000,
+    });
+  }).toPass({ timeout: 30000 });
+};
+
 export const addRelatedTermsByRelationType = async (
   page: Page,
   rows: Array<{ relationTypeLabel: string; terms: GlossaryTerm[] }>
@@ -1205,32 +1255,10 @@ export const addRelatedTermsByRelationType = async (
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-
-    if (i > 0) {
-      await page.getByTestId('add-row-button').click();
-    }
-
-    // Row ids are non-deterministic (Date.now() in handleStartAdding/handleAddRow),
-    // so identify rows by position — first when i=0, otherwise last.
     const rowLocator =
-      i === 0
-        ? page.locator('[data-testid^="relation-row-"]').first()
-        : page.locator('[data-testid^="relation-row-"]').last();
+      i === 0 ? await getOnlyRelationRow(page) : await addRelationRow(page);
 
-    // Later rows sit at the viewport's bottom edge; a scroll there closes the
-    // non-modal Select popover mid-click, so centre-and-retry the pick. A click
-    // on the repositioning popover can also land on the neighbouring option
-    // (CI saved "Antonym" for "See Also"), so retry until the trigger shows it.
-    const relationTypeTrigger = rowLocator.getByRole('button').first();
-    await expect(async () => {
-      await selectOptionWithRetry(
-        relationTypeTrigger,
-        page.getByRole('option', { exact: true, name: row.relationTypeLabel })
-      );
-      await expect(relationTypeTrigger).toHaveText(row.relationTypeLabel, {
-        timeout: 2000,
-      });
-    }).toPass({ timeout: 30000 });
+    await selectRelationType(page, rowLocator, row.relationTypeLabel);
 
     const trigger = rowLocator.locator('[data-testid^="term-picker-"]');
 
