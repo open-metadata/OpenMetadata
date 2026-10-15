@@ -2687,8 +2687,10 @@ om:expirationDate a rdf:Property ;
     rdfs:label "expirationDate" .
 
 om:expressions a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "expressions" .
+    om:projectionStatus om:InferenceOnly ;
+    owl:deprecated true ;
+    rdfs:label "expressions" ;
+    rdfs:comment "Not emitted by the metadata projection. An ontology axiom's class expressions are projected in the OWL 2 RDF mapping into the graph <baseUri>graph/axiom/{id}. Graphs written by earlier releases hold this as a JSON literal on the axiom record until the axiom is next written or the graph is rebuilt." .
 
 om:extensionKey a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -3254,8 +3256,10 @@ om:lineageUpdatedBy a rdf:Property ;
     rdfs:label "lineageUpdatedBy" .
 
 om:literal a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "literal" .
+    om:projectionStatus om:InferenceOnly ;
+    owl:deprecated true ;
+    rdfs:label "literal" ;
+    rdfs:comment "Not emitted by the metadata projection. An ontology axiom's asserted literal is projected in the OWL 2 RDF mapping into the graph <baseUri>graph/axiom/{id}. Graphs written by earlier releases hold this as a JSON literal on the axiom record until the axiom is next written or the graph is rebuilt." .
 
 om:location a rdf:Property ;
     om:projectionStatus om:Stored ;

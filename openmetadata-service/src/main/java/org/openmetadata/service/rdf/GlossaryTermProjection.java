@@ -81,7 +81,7 @@ final class GlossaryTermProjection {
     if (term.getEntityStatus() == EntityStatus.DEPRECATED) {
       resource.addLiteral(OWL2.deprecated, true);
     }
-    addAttributes(resource, term.getAttributes());
+    addAttributes(resource, term);
     return resource;
   }
 
@@ -105,13 +105,30 @@ final class GlossaryTermProjection {
     return term.getConceptType() == null ? OntologyConceptType.BOTH : term.getConceptType();
   }
 
-  private void addAttributes(final Resource domain, final List<OntologyAttribute> attributes) {
+  private void addAttributes(final Resource resource, final GlossaryTerm term) {
+    dataPropertyIris.addAll(addAttributes(model, resource, isOwlClass(term), term.getAttributes()));
+  }
+
+  /**
+   * Declares a term's attributes as data properties and returns their IRIs. The term is their
+   * domain only when it is an OWL class: a {@code SKOS_CONCEPT} term is an individual, and naming it
+   * as a domain would use an undeclared class. See
+   * ADR:2026-10-14-ontology-entities-own-their-named-graphs.
+   */
+  static Set<String> addAttributes(
+      final Model model,
+      final Resource term,
+      final boolean isOwlClass,
+      final List<OntologyAttribute> attributes) {
+    final Set<String> propertyIris = new HashSet<>();
     for (final OntologyAttribute attribute : listOrEmpty(attributes)) {
-      final String propertyIri = attributeIri(domain, attribute);
+      final String propertyIri = attributeIri(term.getURI(), attribute);
       final Resource property = model.createResource(propertyIri);
       OwlEntityDeclarations.declare(model, property, EntityKind.DATA_PROPERTY);
-      dataPropertyIris.add(propertyIri);
-      property.addProperty(RDFS.domain, domain);
+      propertyIris.add(propertyIri);
+      if (isOwlClass) {
+        property.addProperty(RDFS.domain, term);
+      }
       property.addProperty(RDFS.range, model.createResource(datatypeIri(attribute)));
       property.addProperty(RDFS.label, attribute.getName());
       if (attribute.getDescription() != null && !attribute.getDescription().isBlank()) {
@@ -121,12 +138,14 @@ final class GlossaryTermProjection {
         property.addProperty(RDF.type, OWL2.FunctionalProperty);
       }
     }
+    return propertyIris;
   }
 
-  private static String attributeIri(final Resource domain, final OntologyAttribute attribute) {
+  /** An attribute's authored IRI, otherwise one minted under its term's class IRI. */
+  static String attributeIri(final String termClassIri, final OntologyAttribute attribute) {
     final String iri =
         attribute.getIri() == null
-            ? domain.getURI() + "/property/" + attribute.getName()
+            ? termClassIri + "/property/" + attribute.getName()
             : attribute.getIri().toString();
     return iri;
   }
