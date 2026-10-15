@@ -12,11 +12,11 @@
  */
 
 import {
-    Box,
-    Button,
-    Input,
-    Tabs,
-    Typography
+  Box,
+  Button,
+  Input,
+  Tabs,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -32,16 +32,16 @@ import Fqn from '../../../utils/Fqn';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import {
-    GraphData,
-    GraphNode,
-    KnowledgeGraphDrawer,
-    KnowledgeGraphMode,
-    MappingCoverage
+  GraphData,
+  GraphNode,
+  KnowledgeGraphDrawer,
+  KnowledgeGraphMode,
+  MappingCoverage,
 } from './KnowledgeGraph.interface';
 import {
-    getRelationStyle,
-    RelationCategory,
-    RELATION_CATEGORIES
+  getRelationStyle,
+  RelationCategory,
+  RELATION_CATEGORIES,
 } from './KnowledgeGraph.relations';
 
 interface DetailsProps {

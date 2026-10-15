@@ -12,32 +12,32 @@
  */
 
 import {
-    Badge,
-    Box,
-    Button,
-    Typography
+  Badge,
+  Box,
+  Button,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getColorSetForType } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import { getGraphNodeHref } from '../../../utils/discovery/knowledge-graph/knowledgeGraphNavigation.utils';
 import {
-    getGroupMemberLabelKey,
-    getSharedMemberType
+  getGroupMemberLabelKey,
+  getSharedMemberType,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import { getNodeIcon } from './GraphElements/CustomNode';
 import type {
-    GraphNode,
-    KnowledgeGraphG6Edge
+  GraphNode,
+  KnowledgeGraphG6Edge,
 } from './KnowledgeGraph.interface';
 import { getRelationStyle } from './KnowledgeGraph.relations';
 import {
-    entityTile,
-    InspectorKeyValue,
-    InspectorRelationshipRow,
-    InspectorSection,
-    InspectorStatement
+  entityTile,
+  InspectorKeyValue,
+  InspectorRelationshipRow,
+  InspectorSection,
+  InspectorStatement,
 } from './KnowledgeGraphInspectorParts';
 
 interface RelationshipProps {
