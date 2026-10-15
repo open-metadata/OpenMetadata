@@ -188,7 +188,7 @@ describe('OntologyConceptDraftInspector', () => {
       within(screen.getByTestId('attribute-name-input')).getByRole('textbox'),
       { target: { value: 'subscriptionId' } }
     );
-    fireEvent.click(screen.getByTestId('attribute-identifier-checkbox'));
+    fireEvent.click(screen.getByTestId('attribute-identifier-toggle'));
     fireEvent.click(screen.getByTestId('save-attribute'));
 
     expect(

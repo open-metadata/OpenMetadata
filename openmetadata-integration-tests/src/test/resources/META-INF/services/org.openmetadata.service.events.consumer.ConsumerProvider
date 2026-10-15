@@ -1,0 +1,3 @@
+org.openmetadata.it.tests.alerts.TestConsumers$Latched
+org.openmetadata.it.tests.alerts.TestConsumers$Reporting
+org.openmetadata.it.tests.alerts.TestConsumers$FailingCommit

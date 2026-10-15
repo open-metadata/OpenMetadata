@@ -13,12 +13,20 @@
 
 import {
   Badge,
+  Box,
   Button,
   ButtonUtility,
   Input,
+  Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  Database01,
+  Plus,
+  Search,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
+import { useControlledState } from '@react-stately/utils';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -34,10 +42,12 @@ import { patchGlossaryTerm } from '../../rest/glossaryAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
-  InspectorAddButton,
   InspectorEmptyText,
+  InspectorForm,
   InspectorList,
+  InspectorRemoveButton,
   InspectorRow,
+  InspectorSection,
   InspectorSectionHeading,
 } from './OntologyInspectorSection';
 
@@ -47,6 +57,9 @@ export interface OntologyConceptRealizationProps {
   readonly isEditMode?: boolean;
   readonly variant?: 'default' | 'inspector';
   readonly onTermUpdate?: (term: GlossaryTerm) => void;
+  /** Lets the parent drawer open the add form, e.g. from its "Add more details" chips. */
+  readonly isAdding?: boolean;
+  readonly onAddingChange?: (isAdding: boolean) => void;
 }
 
 interface AssetCandidate {
@@ -69,6 +82,16 @@ const ROLE_LABEL_KEYS: Record<RealizationRole, string> = {
   [RealizationRole.Replica]: 'label.replica',
 };
 
+const ROLE_HINT_KEYS: Record<RealizationRole, string> = {
+  [RealizationRole.PrimaryStore]: 'message.realization-role-primary-store-hint',
+  [RealizationRole.Derived]: 'message.realization-role-derived-hint',
+  [RealizationRole.Replica]: 'message.realization-role-replica-hint',
+};
+
+const SearchInputIcon = ({ className }: { className?: string }) => (
+  <Search aria-hidden="true" className={className} />
+);
+
 const ROLE_ORDER: RealizationRole[] = [
   RealizationRole.PrimaryStore,
   RealizationRole.Derived,
@@ -86,12 +109,18 @@ export const OntologyConceptRealization: React.FC<
   realizations,
   isEditMode = false,
   variant = 'default',
+  isAdding: controlledIsAdding,
+  onAddingChange,
   onTermUpdate,
 }) => {
   const { t } = useTranslation();
   const isInspector = variant === 'inspector';
   const canAuthor = isEditMode && Boolean(termId);
-  const [isAdding, setIsAdding] = useState(false);
+  const [isAdding, setIsAdding] = useControlledState(
+    controlledIsAdding,
+    false,
+    onAddingChange
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [assetQuery, setAssetQuery] = useState('');
   const [candidates, setCandidates] = useState<AssetCandidate[]>([]);
@@ -108,7 +137,7 @@ export const OntologyConceptRealization: React.FC<
     setSelectedAsset(null);
     setDraftRole(RealizationRole.PrimaryStore);
     setIsAdding(false);
-  }, []);
+  }, [setIsAdding]);
 
   const persist = useCallback(
     async (value: AssetRealization[]) => {
@@ -227,13 +256,53 @@ export const OntologyConceptRealization: React.FC<
     );
   };
 
-  const renderRealization = (realization: AssetRealization) =>
-    isInspector ? (
+  const renderInspectorRealization = (realization: AssetRealization) => {
+    const role = realization.role ?? RealizationRole.PrimaryStore;
+
+    return (
       <InspectorRow
         key={realization.asset.id}
         testId={`concept-realization-${realization.asset.name}`}>
-        {renderRealizationContent(realization)}
+        <Box
+          align="center"
+          className="tw:size-7 tw:shrink-0 tw:rounded-md tw:bg-utility-gray-blue-50 tw:text-utility-gray-blue-600"
+          justify="center">
+          <Database01 aria-hidden="true" className="tw:size-4" />
+        </Box>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+          <Typography
+            ellipsis
+            className="tw:text-primary"
+            size="text-sm"
+            weight="medium">
+            {realization.asset.displayName ?? realization.asset.name}
+          </Typography>
+          {realization.asset.fullyQualifiedName ? (
+            <Typography ellipsis className="tw:text-tertiary" size="text-xs">
+              {realization.asset.fullyQualifiedName}
+            </Typography>
+          ) : null}
+        </Box>
+        <Badge color={ROLE_BADGE_COLORS[role]} size="sm" type="pill-color">
+          {t(ROLE_LABEL_KEYS[role])}
+        </Badge>
+        {canAuthor ? (
+          <InspectorRemoveButton
+            isDisabled={isSaving}
+            label={t('label.remove-entity', {
+              entity: realization.asset.displayName ?? realization.asset.name,
+            })}
+            testId={`remove-realization-${realization.asset.name}`}
+            onRemove={() => handleRemove(realization.asset.id)}
+          />
+        ) : null}
       </InspectorRow>
+    );
+  };
+
+  const renderRealization = (realization: AssetRealization) =>
+    isInspector ? (
+      renderInspectorRealization(realization)
     ) : (
       <div
         className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:p-3"
@@ -305,11 +374,94 @@ export const OntologyConceptRealization: React.FC<
 
   const addLabel = t('label.add-entity', { entity: t('label.realized-in') });
 
+  const renderInspectorForm = () => (
+    <InspectorForm
+      isSubmitDisabled={!selectedAsset || isSaving}
+      submitLabel={t('label.add-entity', { entity: t('label.realization') })}
+      submitTestId="save-realization"
+      testId="realization-add-form"
+      title={t('label.new-entity', { entity: t('label.realization') })}
+      onCancel={resetDraft}
+      onSubmit={handleAdd}>
+      <Box direction="col" gap={2}>
+        <Input
+          isRequired
+          data-testid="realization-asset-input"
+          icon={SearchInputIcon}
+          label={t('label.data-asset')}
+          placeholder={t('message.realization-asset-placeholder')}
+          value={assetQuery}
+          onChange={handleSearch}
+        />
+        {candidates.length > 0 ? (
+          <InspectorList>
+            {candidates.map((candidate) => (
+              <Button
+                noTextPadding
+                aria-pressed={selectedAsset?.id === candidate.id}
+                className={classNames(
+                  'tw:flex tw:w-full tw:rounded-none tw:px-3 tw:py-2 tw:text-left',
+                  'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:min-w-0 tw:*:data-text:flex-col',
+                  selectedAsset?.id === candidate.id && 'tw:bg-brand-primary'
+                )}
+                color="tertiary"
+                data-testid={`realization-candidate-${candidate.name}`}
+                key={candidate.id}
+                type="button"
+                onClick={() => setSelectedAsset(candidate)}>
+                <Typography
+                  ellipsis
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="medium">
+                  {candidate.displayName ?? candidate.name}
+                </Typography>
+                <Typography
+                  ellipsis
+                  className="tw:text-tertiary"
+                  size="text-xs">
+                  {candidate.fullyQualifiedName}
+                </Typography>
+              </Button>
+            ))}
+          </InspectorList>
+        ) : null}
+      </Box>
+      <Box direction="col" gap={1}>
+        <Typography
+          className="tw:text-secondary"
+          size="text-sm"
+          weight="medium">
+          {t('label.role')}
+        </Typography>
+        <Tabs
+          selectedKey={draftRole}
+          onSelectionChange={(key) => setDraftRole(key as RealizationRole)}>
+          <Tabs.List fullWidth size="sm" type="button-border">
+            {ROLE_ORDER.map((role) => (
+              <Tabs.Item
+                data-testid={`realization-role-${role}`}
+                id={role}
+                key={role}>
+                {t(ROLE_LABEL_KEYS[role])}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+        </Tabs>
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {t(ROLE_HINT_KEYS[draftRole])}
+        </Typography>
+      </Box>
+    </InspectorForm>
+  );
+
   const renderInspectorSection = () => (
-    <section data-testid="ontology-realizations">
+    <InspectorSection testId="ontology-realizations">
       <InspectorSectionHeading
+        addTestId="add-realization"
         count={realizations.length}
         label={t('label.realized-in')}
+        onAdd={canAuthor && !isAdding ? () => setIsAdding(true) : undefined}
       />
       {realizations.length === 0 ? (
         <InspectorEmptyText>
@@ -318,18 +470,8 @@ export const OntologyConceptRealization: React.FC<
       ) : (
         <InspectorList>{realizations.map(renderRealization)}</InspectorList>
       )}
-      {canAuthor && isAdding ? (
-        <div className="tw:mt-3">{renderAddForm()}</div>
-      ) : null}
-      {canAuthor && !isAdding ? (
-        <InspectorAddButton
-          isDisabled={false}
-          label={addLabel}
-          testId="add-realization"
-          onClick={() => setIsAdding(true)}
-        />
-      ) : null}
-    </section>
+      {canAuthor && isAdding ? renderInspectorForm() : null}
+    </InspectorSection>
   );
 
   const renderDefaultSection = () => (

@@ -12,12 +12,11 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Tooltip } from '@openmetadata/ui-core-components';
-import { Badge } from 'antd';
+import { Badge, Tooltip } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { GRAYED_OUT_COLOR } from '../../../constants/constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { HelperTextType } from '../../../interface/FormUtils.interface';
 import { FormItemLabelProps } from './Form.interface';
 
@@ -32,7 +31,6 @@ const FormItemLabel = ({
   betaBadgeClassName,
 }: FormItemLabelProps) => {
   const { t } = useTranslation();
-  const { theme } = useApplicationStore();
 
   return (
     <>
@@ -60,10 +58,10 @@ const FormItemLabel = ({
       {isBeta && (
         <Badge
           className={classNames('m-l-xs', betaBadgeClassName)}
-          color={theme.primaryColor}
-          count={t('label.beta')}
-          size="small"
-        />
+          color="brand"
+          size="sm">
+          {t('label.beta')}
+        </Badge>
       )}
     </>
   );

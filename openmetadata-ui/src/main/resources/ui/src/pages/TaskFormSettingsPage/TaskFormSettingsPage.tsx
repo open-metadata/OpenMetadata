@@ -26,6 +26,7 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -37,7 +38,6 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Alert } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -864,10 +864,10 @@ const TaskFormSettingsPage = () => {
           <Alert
             showIcon
             className="task-form-settings-designer-pane__alert"
-            description="Use the builder for create forms, resolve forms, transition forms, and stage mappings. The raw JSON editors are still available under Advanced."
-            message="Design task forms visually"
-            type="info"
-          />
+            title={t('message.task-form-builder-title')}
+            variant="brand">
+            {t('message.task-form-builder-description')}
+          </Alert>
           <Tabs
             className="tw:gap-6"
             selectedKey={designerTab}
