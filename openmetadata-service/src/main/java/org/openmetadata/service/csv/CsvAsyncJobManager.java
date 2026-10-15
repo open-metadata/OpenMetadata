@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jobs.BackgroundJobLog;
 import org.openmetadata.service.jobs.JobDAO;
 
@@ -108,6 +109,14 @@ public final class CsvAsyncJobManager {
       String createdBy, CsvAsyncJobArgs.LineageExportArgs lineageExport) {
     return insertExportJob(
         exportArgs(LINEAGE_ENTITY_TYPE, lineageExport.getFqn()).setLineageExport(lineageExport),
+        createdBy,
+        BackgroundJob.JobType.CSV_EXPORT);
+  }
+
+  public CsvAsyncJob createTestCaseExportJob(
+      String targetFqn, String createdBy, CsvAsyncJobArgs.TestCaseExportArgs testCaseExport) {
+    return insertExportJob(
+        exportArgs(Entity.TEST_CASE, targetFqn).setTestCaseExport(testCaseExport),
         createdBy,
         BackgroundJob.JobType.CSV_EXPORT);
   }

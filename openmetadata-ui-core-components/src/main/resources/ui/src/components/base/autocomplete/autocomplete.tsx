@@ -10,6 +10,7 @@ import {
 } from '@/components/base/select/select';
 import { Typography } from '@/components/foundations/typography';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { Search } from '../../../icons';
@@ -155,6 +156,7 @@ const InnerAutocomplete = ({
   isDisabled?: boolean;
   placeholder?: string;
 }) => {
+  const { t } = useCoreTranslation();
   const focusManager = useFocusManager();
   const context = useContext(AutocompleteContext);
   const comboBoxStateContext = useContext(ComboBoxStateContext);
@@ -290,18 +292,22 @@ const InnerAutocomplete = ({
       : allSelected.length - visibleSelected.length;
 
   return (
-    <div className="tw:relative tw:flex tw:w-full tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
+    <div className="tw:relative tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
       {!isSelectionEmpty &&
         visibleSelected.map((item) =>
           context.renderTag ? (
             context.renderTag(item, () => context.onRemove(new Set([item.id])))
           ) : (
             <BadgeWithButton
+              // Capped at the field width so a long label ends in an ellipsis.
+              buttonLabel={t('label.remove-entity', { entity: item.label })}
+              className="tw:max-w-full"
               color="gray"
               data-testid="autocomplete-selected-item"
               isDisabled={isDisabled}
               key={item.id}
               size="lg"
+              title={item.label}
               type="modern"
               onButtonClick={() => context.onRemove(new Set([item.id]))}
               onButtonKeyDown={(e) => handleTagKeyDown(e, item.id)}>
