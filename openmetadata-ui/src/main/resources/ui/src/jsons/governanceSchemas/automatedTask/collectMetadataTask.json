@@ -1,6 +1,6 @@
 {
   "title": "CollectMetadataTaskDefinition",
-  "description": "Keeps one Metadata Completion task open on an asset while it is in this node's stage and any listed field is still empty (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task). The stage gate, not the task, decides whether the asset advances.",
+  "description": "Keeps one Metadata Completion task open on an asset while it is in this node's stage and any listed field is still empty or the stage's conditions are not met (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task). The stage gate, not the task, decides whether the asset advances.",
   "javaInterfaces": [
     "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
   ],
@@ -57,11 +57,15 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/requiredField"
-          },
-          "minItems": 1
+          }
+        },
+        "conditions": {
+          "description": "JSON Logic condition the asset must also meet before it leaves the stage. The task only reports that it is not met.",
+          "type": "string",
+          "minLength": 1
         },
         "taskAssignees": {
-          "description": "Who is asked to fill in the missing fields.",
+          "description": "Who is asked to complete what the stage still needs.",
           "type": "string",
           "enum": [
             "owners",
@@ -129,7 +133,6 @@
       },
       "required": [
         "stage",
-        "fields",
         "taskAssignees"
       ],
       "additionalProperties": false
