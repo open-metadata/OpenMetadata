@@ -35,6 +35,12 @@ NOT_VERIFIED = "not-verified"
 
 FAILED_CONCLUSIONS = frozenset({"failure", "timed_out", "cancelled"})
 STATUS_DESCRIPTION_LIMIT = 140
+SLUG = re.compile(r"[^a-z0-9]+")
+
+
+def job_slug(name: str) -> str:
+    """Artifact-safe form of a job name: `it / pg-os / parallel` → `it-pg-os-parallel`."""
+    return SLUG.sub("-", name.lower()).strip("-")
 
 
 @dataclass(frozen=True)
@@ -140,6 +146,10 @@ class VerifiedTest:
     entry_runs: int
     parent_failed: int | None = None
     parent_runs: int | None = None
+    # Slug of the job the failure was seen in. The same test fails on each engine for
+    # its own reasons, so a Java IT verified on one lane says nothing about another;
+    # empty for suites whose verification is not tied to a job.
+    job: str = ""
 
 
 @dataclass(frozen=True)
@@ -329,9 +339,12 @@ def decide(evidence: Evidence, policy: Policy) -> Decision:
             blocking=[{"job": name} for name in deterministic],
         )
 
-    failing_tests = list(
+    failures = list(
         dict.fromkeys(
-            test for job in jobs if kinds[job.name][0] == "test" for test in job.failing_tests
+            (job_slug(job.name), test)
+            for job in jobs
+            if kinds[job.name][0] == "test"
+            for test in job.failing_tests
         )
     )
     per_suite: dict[str, set[str]] = {}
@@ -349,13 +362,15 @@ def decide(evidence: Evidence, policy: Policy) -> Decision:
                 blocking=[{"test": test} for test in sorted(tests)],
             )
 
-    verified = {test.test_id: test for test in evidence.verified}
+    # A failure is answered by the verification of its own job; a record tied to no job
+    # (a suite verified inside the failing shard) answers that test wherever it failed.
+    records = {(test.job, test.test_id): test for test in evidence.verified}
     forgiven, blocking = [], []
-    for test_id in failing_tests:
-        record = verified.get(test_id)
+    for job, test_id in failures:
+        record = records.get((job, test_id)) or records.get(("", test_id))
         test_class = classify_test(record) if record else NOT_VERIFIED
         fingerprint = record.fingerprint if record else ""
-        entry = {"test": test_id, "class": test_class, "fingerprint": fingerprint}
+        entry = {"test": test_id, "job": job, "class": test_class, "fingerprint": fingerprint}
         if record:
             entry["entry"] = f"{record.entry_failed}/{record.entry_runs} failed"
             if record.parent_runs:

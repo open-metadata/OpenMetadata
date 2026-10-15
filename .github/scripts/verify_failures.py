@@ -78,6 +78,14 @@ class Target:
     title: str = ""
     # python
     nodeid: str = ""
+    # The slug of the job the failure was seen in: a Java IT fails on each engine and
+    # lane for its own reasons, so each is verified, and answered, on its own.
+    job: str = ""
+
+
+def target_key(target: Target) -> str:
+    """A target's key in the results files: its test, and its job when it has one."""
+    return f"{target.job}::{target.test_id}" if target.job else target.test_id
 
 
 @dataclass
@@ -104,7 +112,7 @@ def suite_of_outcome(outcome: dict) -> str:
     return "other"
 
 
-def java_target(test_id: str, fingerprint: str, context: dict) -> Target:
+def java_target(test_id: str, fingerprint: str, context: dict, job: str = "") -> Target:
     class_name, _, method = test_id.partition("#")
     return Target(
         "java-it",
@@ -114,6 +122,7 @@ def java_target(test_id: str, fingerprint: str, context: dict) -> Target:
         lane=str(context.get("lane") or ""),
         class_name=class_name,
         method=PARAMS.sub("", method),
+        job=job,
     )
 
 
@@ -134,11 +143,32 @@ def python_nodeid(test_id: str, root: Path) -> str:
     return ""
 
 
-def select(evidence_dir: Path, suite: str, max_tests: int) -> tuple[list[Target], str]:
-    """The suite's failing tests from every outcome.json under evidence_dir, or an empty
-    list and why none will be verified."""
-    targets: dict[str, Target] = {}
+def latest_outcomes(evidence_dir: Path) -> list[tuple[str, Path]]:
+    """(job slug, outcome.json) for each job's newest evidence under evidence_dir.
+
+    download-artifact puts each `evidence-<job slug>-a<attempt>` artifact in a directory
+    of that name. A re-run leaves the jobs it did not re-run with an earlier attempt's
+    evidence, so the newest per job is that job's latest run. An outcome outside such a
+    directory (a shard verifying its own failures) belongs to no job."""
+    newest: dict[str, tuple[int, Path]] = {}
+    loose: list[tuple[str, Path]] = []
     for path in sorted(evidence_dir.rglob("outcome.json")):
+        name = path.relative_to(evidence_dir).parts[0]
+        match = evidence_mod.ATTEMPT_SUFFIX.search(name)
+        if not name.startswith(evidence_mod.EVIDENCE_PREFIX) or not match:
+            loose.append(("", path))
+            continue
+        job = evidence_mod.ATTEMPT_SUFFIX.sub("", name[len(evidence_mod.EVIDENCE_PREFIX) :])
+        if job not in newest or int(match["attempt"]) > newest[job][0]:
+            newest[job] = (int(match["attempt"]), path)
+    return loose + [(job, path) for job, (_, path) in sorted(newest.items())]
+
+
+def select(evidence_dir: Path, suite: str, max_tests: int) -> tuple[list[Target], str]:
+    """The suite's failing tests from each job's newest outcome.json under evidence_dir,
+    or an empty list and why none will be verified."""
+    targets: dict[tuple[str, str], Target] = {}
+    for job, path in latest_outcomes(evidence_dir):
         outcome = json.loads(path.read_text())
         if suite_of_outcome(outcome) != suite:
             continue
@@ -146,14 +176,15 @@ def select(evidence_dir: Path, suite: str, max_tests: int) -> tuple[list[Target]
         for test_id, message in evidence_mod.failing_tests(outcome):
             fp = evidence_mod.fingerprint(test_id, message)
             if suite == "java-it":
-                targets.setdefault(test_id, java_target(test_id, fp, context))
+                targets.setdefault((job, test_id), java_target(test_id, fp, context, job))
             elif suite == "playwright":
-                targets.setdefault(test_id, playwright_target(test_id, fp))
+                targets.setdefault(("", test_id), playwright_target(test_id, fp))
             else:
                 target = Target("python", test_id, fp, nodeid=python_nodeid(test_id, INGESTION_DIR))
-                targets.setdefault(test_id, target)
-    if len(targets) > max_tests:
-        return [], f"{len(targets)} failing tests exceed verify.maxFailingTests ({max_tests})"
+                targets.setdefault(("", test_id), target)
+    tests = {test_id for _, test_id in targets}
+    if len(tests) > max_tests:
+        return [], f"{len(tests)} failing tests exceed verify.maxFailingTests ({max_tests})"
     if not targets:
         return [], "no failing tests with evidence"
     return list(targets.values()), ""
@@ -226,27 +257,45 @@ def _local(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
-def junit_counts(report: Path, class_name: str, method: str) -> SideResult | None:
-    """Attempts of one test case in a JUnit report, counting failsafe's rerun records:
-    `flaky*` are failed attempts before a pass, `rerun*` failed re-runs of a failure."""
+def _test_cases(report: Path, class_name: str, method: str) -> list[ElementTree.Element] | None:
+    """The report's non-skipped test cases of one test, or None when it cannot be read."""
     try:
         root = ElementTree.parse(report).getroot()
     except (ElementTree.ParseError, OSError):
         return None
-    result = None
-    for case in root.iter():
-        if _local(case.tag) != "testcase":
-            continue
-        if case.attrib.get("classname") != class_name:
-            continue
-        if PARAMS.sub("", case.attrib.get("name", "")) != method:
-            continue
+    return [
+        case
+        for case in root.iter()
+        if _local(case.tag) == "testcase"
+        and case.attrib.get("classname") == class_name
+        and PARAMS.sub("", case.attrib.get("name", "")) == method
+        and "skipped" not in [_local(child.tag) for child in case]
+    ]
+
+
+def junit_failure_messages(report: Path, class_name: str, method: str) -> list[str]:
+    """The message of each failed attempt of one test, cut as classify_test_outcome.py
+    cuts it for the evidence, so a fingerprint of either side means the same failure."""
+    failed = ("failure", "error", "flakyFailure", "flakyError", "rerunFailure", "rerunError")
+    return [
+        child.attrib.get("message", "")[:1000]
+        for case in _test_cases(report, class_name, method) or []
+        for child in case
+        if _local(child.tag) in failed
+    ]
+
+
+def junit_counts(report: Path, class_name: str, method: str) -> SideResult | None:
+    """Attempts of one test case in a JUnit report, counting failsafe's rerun records:
+    `flaky*` are failed attempts before a pass, `rerun*` failed re-runs of a failure."""
+    cases = _test_cases(report, class_name, method)
+    if not cases:
+        return None
+    result = SideResult()
+    for case in cases:
         children = [_local(child.tag) for child in case]
-        if "skipped" in children:
-            continue
         failed = sum(c in ("flakyFailure", "flakyError", "rerunFailure", "rerunError") for c in children)
         final_failed = any(c in ("failure", "error") for c in children)
-        result = result or SideResult()
         result.failed += failed + int(final_failed)
         result.runs += failed + 1
     return result
@@ -299,15 +348,26 @@ def java_reports(class_name: str) -> list[Path]:
     return sorted(IT_REPORTS.glob(f"TEST-{outer}*.xml"))
 
 
+def another_failure(target: Target, reports: list[Path]) -> str:
+    """On the parent side: the first line of a failure that is not the entry's, or "" when
+    the test failed the way it failed on the entry. Only the entry's failure proves the
+    failure pre-exists; a parent whose database never started fails every test."""
+    messages = [m for report in reports for m in junit_failure_messages(report, target.class_name, target.method)]
+    if any(evidence_mod.fingerprint(target.test_id, message) == target.fingerprint for message in messages):
+        return ""
+    first = next((m for m in messages if m.strip()), "no message")
+    return first.strip().splitlines()[0][:200]
+
+
 def run_java(targets: list[Target], side: str, runs: int, work: Path) -> dict[str, SideResult]:
-    results = {t.test_id: SideResult() for t in targets}
+    results = {target_key(t): SideResult() for t in targets}
     groups: dict[tuple[str, str], list[Target]] = {}
     for target in targets:
         groups.setdefault((target.profile, target.lane), []).append(target)
     for (profile, lane), group in groups.items():
         if not profile or not lane:
             for target in group:
-                results[target.test_id].problems.append("outcome has no engine profile or lane")
+                results[target_key(target)].problems.append("outcome has no engine profile or lane")
             continue
         # Every attempt is a fresh JVM: the entry side stops at a test's first pass, the
         # parent side at its first failure.
@@ -320,13 +380,19 @@ def run_java(targets: list[Target], side: str, runs: int, work: Path) -> dict[st
             execute(java_command(pending), REPO, work / f"{side}-java.log")
             still = []
             for target in pending:
-                counts = [junit_counts(r, target.class_name, target.method) for r in java_reports(target.class_name)]
+                result = results[target_key(target)]
+                reports = java_reports(target.class_name)
+                counts = [junit_counts(r, target.class_name, target.method) for r in reports]
                 counts = [c for c in counts if c]
                 if not counts:
-                    results[target.test_id].problems.append(f"no report named {target.test_id}")
+                    result.problems.append(f"no report named {target.test_id}")
                     continue
-                result = results[target.test_id]
                 failed = sum(c.failed for c in counts)
+                if side == "parent" and failed and (other := another_failure(target, reports)):
+                    # Neither a clean run nor this failure: run the control again.
+                    result.problems.append(f"failed on the parent with another error: {other}")
+                    still.append(target)
+                    continue
                 result.failed += failed
                 result.runs += sum(c.runs for c in counts)
                 if (side == "entry" and failed) or (side == "parent" and not failed):
@@ -347,7 +413,7 @@ def run_playwright(targets: list[Target], side: str, runs: int, work: Path) -> d
             counts = playwright_counts(json.loads(report.read_text() or "{}"), target)
         except json.JSONDecodeError:
             counts = None
-        results[target.test_id] = counts or SideResult(problems=[f"no report named {target.test_id}"])
+        results[target_key(target)] = counts or SideResult(problems=[f"no report named {target.test_id}"])
     return results
 
 
@@ -357,7 +423,7 @@ def run_python(targets: list[Target], side: str, runs: int, work: Path) -> dict[
         result = SideResult()
         if not target.nodeid:
             result.problems.append(f"no test module found for {target.test_id}")
-            results[target.test_id] = result
+            results[target_key(target)] = result
             continue
         class_name, method = target.test_id.split("#", 1)
         for attempt in range(runs):
@@ -372,7 +438,7 @@ def run_python(targets: list[Target], side: str, runs: int, work: Path) -> dict[
             stop = counts.failed == 0 if side == "entry" else counts.failed > 0
             if stop:
                 break
-        results[target.test_id] = result
+        results[target_key(target)] = result
     return results
 
 
@@ -449,11 +515,12 @@ def build_document(
 ) -> dict:
     tests = []
     for target in targets:
-        entry_side = entry.get(target.test_id) or {}
-        parent_side = (parent or {}).get(target.test_id)
+        entry_side = entry.get(target_key(target)) or {}
+        parent_side = (parent or {}).get(target_key(target))
         tests.append(
             {
                 "id": target.test_id,
+                "job": target.job,
                 "fingerprint": target.fingerprint,
                 "entry": {"failed": entry_side.get("failed", 0), "runs": entry_side.get("runs", 0)},
                 "parent": None
@@ -500,9 +567,11 @@ def ledger_results(targets: list[Target], parent_sha: str, min_runs: int) -> dic
         return {}
     reused = {}
     for target in targets:
-        hit = registry.ledger_lookup(records, target.test_id, target.fingerprint, parent_sha, min_runs=min_runs)
+        hit = registry.ledger_lookup(
+            records, target.test_id, target.fingerprint, parent_sha, min_runs=min_runs, job=target.job
+        )
         if hit:
-            reused[target.test_id] = SideResult(failed=int(hit["failed"]), runs=int(hit["runs"]))
+            reused[target_key(target)] = SideResult(failed=int(hit["failed"]), runs=int(hit["runs"]))
     return reused
 
 
@@ -581,16 +650,16 @@ def main(argv: list[str] | None = None) -> int:
         targets, _ = load_targets(args.targets)
         if args.only_reproduced:
             entry = json.loads(args.only_reproduced.read_text())
-            targets = [t for t in targets if (entry.get(t.test_id) or {}).get("failed", 0) > 0]
+            targets = [t for t in targets if (entry.get(target_key(t)) or {}).get("failed", 0) > 0]
         if args.skip and args.skip.exists():
             answered = json.loads(args.skip.read_text())
-            targets = [t for t in targets if t.test_id not in answered]
+            targets = [t for t in targets if target_key(t) not in answered]
         runs = int(verify["entryRuns"] if args.side == "entry" else verify["parentRuns"])
         args.work.mkdir(parents=True, exist_ok=True)
         reused: dict[str, SideResult] = {}
         if args.side == "parent" and args.reuse_ledger and args.parent_sha:
             reused = ledger_results(targets, args.parent_sha, runs)
-            targets = [t for t in targets if t.test_id not in reused]
+            targets = [t for t in targets if target_key(t) not in reused]
         results = RUNNERS[targets[0].suite](targets, args.side, runs, args.work) if targets else {}
         results.update(reused)
         args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -599,7 +668,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "ledger":
         targets, _ = load_targets(args.targets)
         entry = json.loads(args.only_reproduced.read_text())
-        reproduced = [t for t in targets if (entry.get(t.test_id) or {}).get("failed", 0) > 0]
+        reproduced = [t for t in targets if (entry.get(target_key(t)) or {}).get("failed", 0) > 0]
         answered = ledger_results(reproduced, args.parent_sha, int(verify["parentRuns"])) if reproduced else {}
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps({k: asdict(v) for k, v in answered.items()}, indent=1))

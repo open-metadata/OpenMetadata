@@ -31,7 +31,7 @@ def lane(tests=("TableResourceIT#t1",), **kw):
     return gate.FailedJob(**defaults)
 
 
-def verified(test_id="TableResourceIT#t1", entry=(0, 3), parent=None, fp="fp1"):
+def verified(test_id="TableResourceIT#t1", entry=(0, 3), parent=None, fp="fp1", job=""):
     return gate.VerifiedTest(
         test_id,
         fp,
@@ -39,6 +39,7 @@ def verified(test_id="TableResourceIT#t1", entry=(0, 3), parent=None, fp="fp1"):
         entry_runs=entry[1],
         parent_failed=None if parent is None else parent[0],
         parent_runs=None if parent is None else parent[1],
+        job=job,
     )
 
 
@@ -96,6 +97,22 @@ def test_one_introduced_failure_ejects_even_beside_forgiven_ones():
     assert decision.verdict == gate.FAIL
     assert decision.summary.startswith("B#regressed reproduces on the entry")
     assert [b["test"] for b in decision.blocking] == ["B#regressed"]
+
+
+def test_each_failing_job_is_answered_by_its_own_verification():
+    # A Java IT fails on each engine for its own reasons: one flaky on MySQL says nothing
+    # about the same test regressing on Postgres.
+    mysql = lane(("T#t",), name="it / mysql-elasticsearch / parallel")
+    postgres = lane(("T#t",), name="it / postgres-opensearch / parallel")
+    flaky_on_mysql = verified("T#t", (0, 3), job="it-mysql-elasticsearch-parallel")
+    introduced_on_postgres = verified("T#t", (3, 3), (0, 3), job="it-postgres-opensearch-parallel")
+    both = gate.decide(evidence([mysql, postgres], [flaky_on_mysql, introduced_on_postgres]), POLICY)
+    assert both.verdict == gate.FAIL
+    assert [(b["job"], b["class"]) for b in both.blocking] == [("it-postgres-opensearch-parallel", gate.INTRODUCED)]
+    assert gate.decide(evidence([mysql, postgres], [flaky_on_mysql]), POLICY).verdict == gate.FAIL
+    assert gate.decide(evidence([mysql], [flaky_on_mysql]), POLICY).verdict == gate.PASS
+    # A record tied to no job (a shard verifying its own failures) answers the test anywhere.
+    assert gate.decide(evidence([mysql, postgres], [verified("T#t", (0, 3))]), POLICY).verdict == gate.PASS
 
 
 def test_an_ambiguous_failure_without_independent_history_ejects():

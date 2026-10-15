@@ -93,7 +93,9 @@ def test_each_attempt_is_a_fresh_jvm_until_the_side_has_its_answer(tmp_path, mon
     reports = tmp_path / "failsafe-reports"
     reports.mkdir()
     monkeypatch.setattr(verify, "IT_REPORTS", reports)
-    target = verify.java_target("org.x.AIT#a", "f", {"profile": "postgres-opensearch", "lane": "retry-queue"})
+    # The fingerprint of the entry's failure, which the parent's failures are matched against.
+    fp = evidence.fingerprint("org.x.AIT#a", "boom")
+    target = verify.java_target("org.x.AIT#a", fp, {"profile": "postgres-opensearch", "lane": "retry-queue"})
     calls = []
 
     def fake_execute(argv, cwd, log):
@@ -303,3 +305,80 @@ def test_the_parent_control_reuses_what_the_ledger_already_answers(tmp_path, mon
     assert ran == ["org.x.BIT#b"]
     assert results["org.x.AIT#a"]["failed"] == 1
     assert results["org.x.BIT#b"] == {"failed": 0, "runs": 3, "problems": []}
+
+
+def test_select_verifies_each_engine_and_each_lanes_newest_evidence(tmp_path):
+    # download-artifact puts each evidence artifact in a directory of its name; a re-run
+    # leaves the lanes it did not re-run with attempt 1's evidence.
+    test = "org.x.TableResourceIT#test_a"
+    write_outcome(tmp_path, "evidence-it-mysql-elasticsearch-parallel-a1/ci-diagnostics", java_outcome([test]))
+    write_outcome(tmp_path, "evidence-it-mysql-elasticsearch-parallel-a2/ci-diagnostics", java_outcome(["org.x.UserResourceIT#test_b"]))
+    write_outcome(tmp_path, "evidence-it-postgres-opensearch-parallel-a1/ci-diagnostics", java_outcome([test], profile="postgres-opensearch"))
+
+    targets, skipped = verify.select(tmp_path, "java-it", 10)
+    assert not skipped
+    assert sorted((t.job, t.test_id, t.profile) for t in targets) == [
+        ("it-mysql-elasticsearch-parallel", "org.x.UserResourceIT#test_b", "mysql-elasticsearch"),
+        ("it-postgres-opensearch-parallel", test, "postgres-opensearch"),
+    ]
+    # The cap counts tests, as the gate does, not test-and-engine pairs.
+    assert verify.select(tmp_path, "java-it", 2)[0]
+    assert verify.select(tmp_path, "java-it", 1) == ([], "2 failing tests exceed verify.maxFailingTests (1)")
+
+
+@pytest.mark.parametrize(
+    ("parent_errors", "expected"),
+    [
+        # The database never started: no control, so the verify job fails and is re-run.
+        (["Container startup failed"] * 3, (0, 0, 3)),
+        # One broken start, then the test passes: two clean runs, still flagged.
+        (["Container startup failed", None, None], (0, 2, 3)),
+        # The entry's own failure on the parent: pre-existing, at the first try.
+        (["boom"], (1, 1, 1)),
+    ],
+)
+def test_only_the_entrys_failure_on_the_parent_counts_as_pre_existing(tmp_path, monkeypatch, parent_errors, expected):
+    reports = tmp_path / "failsafe-reports"
+    reports.mkdir()
+    monkeypatch.setattr(verify, "IT_REPORTS", reports)
+    target = verify.java_target("org.x.AIT#a", evidence.fingerprint("org.x.AIT#a", "boom"), {"profile": "mysql-elasticsearch", "lane": "parallel"})
+    calls = []
+
+    def fake_execute(argv, cwd, log):
+        error = parent_errors[len(calls)]
+        calls.append(argv)
+        body = f'<error message="{error}"/>' if error else ""
+        (reports / "TEST-org.x.AIT.xml").write_text(
+            f'<testsuite name="org.x.AIT"><testcase classname="org.x.AIT" name="a">{body}</testcase></testsuite>'
+        )
+
+    monkeypatch.setattr(verify, "execute", fake_execute)
+    [result] = verify.run_java([target], "parent", 3, tmp_path).values()
+    assert (result.failed, result.runs, len(calls)) == expected
+    assert bool(result.problems) is (expected != (1, 1, 1))
+    document = verify.build_document([target], {"org.x.AIT#a": {"failed": 3, "runs": 3}}, {"org.x.AIT#a": vars(result)}, "9", "1", "p")
+    assert verify.unverifiable(document) is (expected != (1, 1, 1))
+
+
+def test_targets_of_one_test_on_two_engines_keep_their_own_results(tmp_path, monkeypatch):
+    registry = load_script("merge_gate_registry")
+    fp = evidence.fingerprint("org.x.AIT#a", "boom")
+    mysql = verify.java_target("org.x.AIT#a", fp, {"profile": "mysql-elasticsearch", "lane": "parallel"}, job="it-mysql-elasticsearch-parallel")
+    postgres = verify.java_target("org.x.AIT#a", fp, {"profile": "postgres-opensearch", "lane": "parallel"}, job="it-postgres-opensearch-parallel")
+    parent = "9aac6e95c795d2a658bd3ede35980c2d5bdeb98e"
+    # A control recorded on MySQL answers the MySQL failure only.
+    ledger = [{"testId": "org.x.AIT#a", "job": mysql.job, "fingerprint": fp, "parentSha": parent, "parentFailed": 1, "parentRuns": 1, "class": "pre-existing", "prs": [7]}]
+    monkeypatch.setattr(registry, "ledger_read", lambda owner, repo, token: ledger)
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GH_TOKEN", "t")
+    reused = verify.ledger_results([mysql, postgres], parent, 3)
+    assert list(reused) == [verify.target_key(mysql)]
+
+    entry = {verify.target_key(mysql): {"failed": 3, "runs": 3}, verify.target_key(postgres): {"failed": 0, "runs": 1}}
+    document = verify.build_document([mysql, postgres], entry, {k: vars(v) for k, v in reused.items()}, "9", "1", parent)
+    assert [(t["job"], t["entry"]["failed"], t["parent"]) for t in document["tests"]] == [
+        (mysql.job, 3, {"failed": 1, "runs": 1}),
+        (postgres.job, 0, None),
+    ]
+    verified = evidence.verified_tests(document)
+    assert [(v.job, gate.classify_test(v)) for v in verified] == [(mysql.job, gate.PRE_EXISTING), (postgres.job, gate.FLAKY)]

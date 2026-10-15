@@ -78,6 +78,7 @@ MARKER_RE = re.compile(r"<!-- merge-gate-fingerprint: ([0-9a-f]{8,64}) -->")
 STATS_RE = re.compile(r"```json\n(.*?)\n```", re.DOTALL)
 FINGERPRINT_RE = re.compile(r"[0-9a-f]{8,64}")
 SHA_RE = re.compile(r"[0-9a-f]{40}")
+JOB_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,199}")
 CLASS_RE = re.compile(r"[a-z][a-z-]{0,39}")
 OWNER_RE = re.compile(r"@[A-Za-z0-9][A-Za-z0-9-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)?")
 REPOSITORY_RE = re.compile(r"[A-Za-z0-9-]+/[A-Za-z0-9._-]+")
@@ -185,6 +186,12 @@ def valid_fingerprint(value: Any) -> str:
 def _sha(value: Any) -> str | None:
     text = str(value or "").strip().lower()
     return text if SHA_RE.fullmatch(text) else None
+
+
+def _job(value: Any) -> str:
+    """The slug of the job a failure was seen in, as merge_gate_policy.job_slug writes it."""
+    text = str(value or "").strip()
+    return text if JOB_RE.fullmatch(text) else ""
 
 
 def _number(value: Any) -> int | None:
@@ -943,6 +950,7 @@ def ledger_record(observation: dict) -> dict:
     return {
         "ts": observation["ts"],
         "testId": observation["testId"],
+        "job": observation.get("job") or "",
         "fingerprint": observation["fingerprint"],
         "class": observation["class"],
         "runId": observation.get("runId"),
@@ -971,6 +979,7 @@ def _normalize_record(raw: Any) -> dict | None:
     return {
         "ts": _iso(when),
         "testId": _guard(raw.get("testId"), MAX_TEST_ID_CHARS),
+        "job": _job(raw.get("job")),
         "fingerprint": fingerprint,
         "class": _class(raw.get("class")),
         "runId": _number(raw.get("runId")),
@@ -1077,7 +1086,7 @@ def ledger_read(owner: str, repo: str, token: str) -> list[dict]:
 
 
 def _record_key(record: dict) -> tuple:
-    return record.get("runId") or record["ts"], record.get("runAttempt"), record["fingerprint"]
+    return record.get("runId") or record["ts"], record.get("runAttempt"), record.get("job") or "", record["fingerprint"]
 
 
 def _lost_race(exc: mq.ApiError) -> bool:
@@ -1148,10 +1157,16 @@ def ledger_append(
 
 
 def ledger_lookup(
-    records: Iterable[dict], test_id: str, fingerprint: str, parent_sha: str, min_runs: int = DEFAULT_PARENT_RUNS
+    records: Iterable[dict],
+    test_id: str,
+    fingerprint: str,
+    parent_sha: str,
+    min_runs: int = DEFAULT_PARENT_RUNS,
+    job: str = "",
 ) -> dict | None:
-    """A parent control already run for this test, failure and parent commit, in the
-    shape verify_failures writes for its parent side, or None when verify must run it.
+    """A parent control already run for this test, failure, job and parent commit, in
+    the shape verify_failures writes for its parent side, or None when verify must run
+    it. The job matters: a Java IT's control on one engine says nothing about another.
 
     Controls on one parent are pooled. One failure proves the failure pre-exists; a
     clean result is reused only once it has as many runs as a fresh control
@@ -1166,7 +1181,7 @@ def ledger_lookup(
     for record in records:
         if record.get("fingerprint") != fingerprint or record.get("parentSha") != parent_sha:
             continue
-        if record.get("testId") not in ids:
+        if record.get("testId") not in ids or (record.get("job") or "") != _job(job):
             continue
         counts = _counts({"failed": record.get("parentFailed"), "runs": record.get("parentRuns")})
         if not counts or not counts["runs"]:
@@ -1285,13 +1300,23 @@ def collect(
     report (merge_gate.py --out), its run's verify documents and the tests that passed
     only on an in-job re-run.
 
-    Every verified test is observed, whatever the verdict: a control that ejected one
-    entry is reusable by the next on the same parent. Issues are only for tests a PASS
-    forgave, the in-job re-runs included. Inputs of another run or attempt are ignored."""
+    Every verified test of an entry the gate decided is observed, whatever the verdict:
+    a control that ejected one entry is reusable by the next on the same parent. Issues
+    are only for tests a PASS forgave, the in-job re-runs included. Inputs of another
+    run or attempt are ignored.
+
+    Nothing is kept from a strict entry, whose verification ran CI code the entry itself
+    changed, nor from a run the gate did not decide, which names no attempt or parent
+    to check the documents against: a record from either would answer other entries'
+    parent controls."""
     context = payload.get("context") or {}
     decision = payload.get("decision") or {}
     mode = context.get("mode") if context.get("mode") in GATE_MODES else None
     run_id, attempt = _number(context.get("runId")), _number(context.get("attempt"))
+    if context.get("strict"):
+        return [], [], ["the entry changes CI configuration, so its verification is not recorded"]
+    if not attempt or not _sha(context.get("parentSha")):
+        return [], [], ["the gate decided no attempt of this run, so nothing is recorded"]
     created = _when(context.get("runCreatedAt"))
     base = {
         "ts": _iso(now),
@@ -1306,7 +1331,8 @@ def collect(
     }
     trusted_parent = _sha(context.get("parentSha"))
     notes: list[str] = []
-    observations: dict[str, dict] = {}
+    # By job and test: the same test fails on each engine for its own reasons.
+    observations: dict[tuple[str, str], dict] = {}
     for document in documents:
         if run_id and _number(document.get("runId")) != run_id:
             continue
@@ -1339,9 +1365,11 @@ def collect(
             )
             if test_class == gate.NOT_VERIFIED:
                 continue
-            observations[raw_id] = {
+            job = _job(item.get("job"))
+            observations[(job, raw_id)] = {
                 **base,
                 "testId": clean_text(raw_id, MAX_TEST_ID_CHARS),
+                "job": job,
                 "fingerprint": fingerprint,
                 "suite": document.get("suite") or infer_suite(raw_id),
                 "class": test_class,
@@ -1356,12 +1384,13 @@ def collect(
         raw_id = item["id"]
         if (run_id and item.get("runId") != run_id) or (attempt and item.get("runAttempt") != attempt):
             continue
-        if raw_id in observations:
+        if any(seen == raw_id for _, seen in observations):
             continue
         in_job.append(raw_id)
-        observations[raw_id] = {
+        observations[("", raw_id)] = {
             **base,
             "testId": clean_text(raw_id, MAX_TEST_ID_CHARS),
+            "job": "",
             "fingerprint": evidence_mod.fingerprint(raw_id, item["message"]),
             "suite": infer_suite(raw_id),
             "class": gate.FLAKY,
@@ -1375,24 +1404,26 @@ def collect(
     occurrences = []
     if decision.get("verdict") == gate.PASS:
         let_through = mode != "shadow"
-        occurrences += [{**observations[raw_id], "letThrough": let_through} for raw_id in in_job]
+        occurrences += [{**observations[("", raw_id)], "letThrough": let_through} for raw_id in in_job]
         fingerprints = context.get("fingerprints") if isinstance(context.get("fingerprints"), dict) else {}
         for item in decision.get("forgiven") or []:
             if not isinstance(item, dict):
                 continue
-            raw_id = str(item.get("test") or "")
+            raw_id, job = str(item.get("test") or ""), _job(item.get("job"))
             if raw_id in in_job:
                 continue
-            observation = observations.get(raw_id)
+            observation = observations.get((job, raw_id)) or observations.get(("", raw_id))
             if observation is None:
-                # Forgiven without a verify record (a pass-on-retry): the decision's own fields.
+                # Forgiven by a verification this attempt did not write (an earlier
+                # attempt's, for a job the re-run left alone): the decision's own fields.
                 fingerprint = valid_fingerprint(item.get("fingerprint")) or valid_fingerprint(fingerprints.get(raw_id))
                 if not raw_id or not fingerprint:
                     notes.append("skipped a forgiven test without an id or a valid fingerprint")
                     continue
-                observation = observations[raw_id] = {
+                observation = observations[(job, raw_id)] = {
                     **base,
                     "testId": clean_text(raw_id, MAX_TEST_ID_CHARS),
+                    "job": job,
                     "fingerprint": fingerprint,
                     "suite": infer_suite(raw_id),
                     "class": _class(item.get("class")),

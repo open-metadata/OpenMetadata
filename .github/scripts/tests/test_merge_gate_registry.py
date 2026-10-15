@@ -97,10 +97,11 @@ def api_issue(number, body, *, title="Flaky: x", state="open", labels=("flaky-te
     }
 
 
-def record(fp=FP, test=JAVA_ID, parent=PARENT, parent_failed=None, parent_runs=None, cls="flaky", prs=(35297,), pr=35297, run_id=500, attempt=1, ts=NOW, entry_failed=0, entry_runs=3):
+def record(fp=FP, test=JAVA_ID, parent=PARENT, parent_failed=None, parent_runs=None, cls="flaky", prs=(35297,), pr=35297, run_id=500, attempt=1, ts=NOW, entry_failed=0, entry_runs=3, job=""):
     return {
         "ts": iso(ts),
         "testId": test,
+        "job": job,
         "fingerprint": fp,
         "class": cls,
         "runId": run_id,
@@ -753,7 +754,7 @@ def test_verify_documents_of_another_attempt_or_parent_are_not_trusted():
 
 def test_a_truncated_entry_diff_records_no_pr_set():
     payload = {
-        "context": {"runId": 500, "attempt": 1, "pr": 35297, "prs": [35297], "truncatedDiff": True},
+        "context": {"runId": 500, "attempt": 1, "pr": 35297, "prs": [35297], "truncatedDiff": True, "parentSha": PARENT},
         "decision": {"verdict": "fail", "forgiven": []},
     }
     document = {"runId": 500, "runAttempt": 1, "tests": [{"id": JAVA_ID, "fingerprint": FP, "entry": {"failed": 0, "runs": 3}}]}
@@ -801,3 +802,50 @@ def test_an_in_job_flake_in_an_ejected_entry_is_kept_on_the_ledger_without_an_is
 
     assert (observation["class"], observation["entry"]) == ("flaky", {"failed": 1, "runs": 2})
     assert occurrences == []
+
+
+def decided(**context):
+    return {
+        "context": {"runId": 500, "attempt": 1, "pr": 35297, "prs": [35297], "parentSha": PARENT, "headSha": HEAD, "mode": "enforce", **context},
+        "decision": {"verdict": "fail", "forgiven": []},
+    }
+
+
+@pytest.mark.parametrize(
+    "context",
+    [
+        {"strict": True},  # its verification ran CI code the entry changed
+        {"attempt": None},  # the gate decided no attempt: nothing to check the documents against
+        {"parentSha": None},
+    ],
+)
+def test_nothing_is_recorded_from_a_strict_or_undecided_entry(context):
+    # A forged parent failure would otherwise answer every later entry's control on PARENT.
+    document = {"runId": 500, "runAttempt": 1, "parentSha": PARENT, "tests": [{"id": JAVA_ID, "fingerprint": FP, "entry": {"failed": 1, "runs": 1}, "parent": {"failed": 1, "runs": 1}}]}
+    flaky = [{"id": LINEAGE_ID, "message": "m", "runId": 500, "runAttempt": 1}]
+    observations, occurrences, notes = registry.collect(decided(**context), [document], NOW, flaky)
+    assert (observations, occurrences) == ([], [])
+    assert notes
+
+
+def test_a_test_failing_on_two_engines_keeps_a_record_and_a_control_per_job(monkeypatch):
+    mysql, postgres = "it-mysql-elasticsearch-parallel", "it-postgres-opensearch-parallel"
+    document = {
+        "runId": 500,
+        "runAttempt": 1,
+        "parentSha": PARENT,
+        "tests": [
+            {"id": JAVA_ID, "job": mysql, "fingerprint": FP, "entry": {"failed": 1, "runs": 1}, "parent": {"failed": 1, "runs": 1}},
+            {"id": JAVA_ID, "job": postgres, "fingerprint": FP, "entry": {"failed": 3, "runs": 3}, "parent": {"failed": 0, "runs": 3}},
+        ],
+    }
+    observations, _, _ = registry.collect(decided(), [document], NOW)
+    assert sorted((o["job"], o["class"]) for o in observations) == [(mysql, "pre-existing"), (postgres, "introduced")]
+
+    FakeGitHub(monkeypatch, branch=True)
+    assert registry.ledger_append("o", "r", map(registry.ledger_record, observations), "t", now=NOW)["appended"] == 2
+    records = registry.ledger_read("o", "r", "t")
+    assert registry.ledger_lookup(records, JAVA_ID, FP, PARENT, job=postgres) == {"failed": 0, "runs": 3, "problems": [], "reusedFrom": [500]}
+    assert registry.ledger_lookup(records, JAVA_ID, FP, PARENT, job=mysql)["failed"] == 1
+    # A lookup tied to no job matches only records tied to no job.
+    assert registry.ledger_lookup(records, JAVA_ID, FP, PARENT) is None

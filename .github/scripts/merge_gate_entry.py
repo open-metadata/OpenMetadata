@@ -13,10 +13,13 @@ about this entry only when the two share no PR.
 
 from __future__ import annotations
 
+import fnmatch
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 import merge_queue_metrics as mq
+import plan_local_java_tests as planner
 
 QUEUE_REF = re.compile(
     r"^(?:refs/heads/)?gh-readonly-queue/(?P<base>.+)/pr-(?P<pr>\d+)-(?P<parent>[0-9a-f]{40})$"
@@ -85,3 +88,43 @@ def load_entry(owner: str, repo: str, ref: QueueRef, head_sha: str, token: str) 
 def independent(observed_prs: frozenset[int], entry_prs: frozenset[int]) -> bool:
     """A run on main has no PR set and is always independent evidence."""
     return not (observed_prs & entry_prs)
+
+
+def _it_file(test_id: str) -> tuple[str, str]:
+    """(path under the IT source root, simple class name) of a `Class#method` test id."""
+    outer = test_id.partition("#")[0].split("$", 1)[0]
+    return outer.replace(".", "/") + ".java", outer.rsplit(".", 1)[-1]
+
+
+def impact_related(test_ids: Iterable[str], changed_files: Iterable[str], impact_map: dict) -> frozenset[str]:
+    """The tests `.github/java-tests/impact-map.json` links to the changed files, by the
+    rules plan_local_java_tests.py applies without reading code: the test's own file, an
+    area that owns a changed file and names the test, an entity name (`TableRepository`
+    → `Table…IT`), and every test for shared infrastructure, a full-suite area, or
+    production code no rule places (which the planner answers with the full suite).
+    The links it finds by reading code (references, callers) are not applied here."""
+    tests = {test_id: _it_file(test_id) for test_id in test_ids}
+    it_root = impact_map["maven"]["integrationTestSourceRoot"].rstrip("/") + "/"
+    related: set[str] = set()
+    for path in changed_files:
+        if planner.matches(path, impact_map["ignore"]):
+            continue
+        if planner.matches(path, impact_map["sharedInfrastructure"]):
+            return frozenset(tests)
+        areas = [area for area in impact_map["areas"] if planner.matches(path, area["sources"])]
+        if any(area.get("fullSuite") for area in areas):
+            return frozenset(tests)
+        stem = planner.convention_stem(path)
+        named = {test_id for test_id, (_, name) in tests.items() if stem and planner.stem_matches(stem, name)}
+        if not areas and not named and "/src/test/" not in path:
+            return frozenset(tests)
+        for test_id, (relative, name) in tests.items():
+            # As the planner reads an area's pattern: a path when it has a slash, else a class name.
+            owned = any(
+                fnmatch.fnmatchcase(relative if "/" in pattern else name, pattern)
+                for area in areas
+                for pattern in area["tests"]
+            )
+            if owned or test_id in named or path == it_root + relative:
+                related.add(test_id)
+    return frozenset(related)

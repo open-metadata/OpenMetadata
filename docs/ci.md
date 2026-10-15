@@ -46,7 +46,10 @@ the shadow period measures them.
 ## The merge gate
 
 `merge-gate.yml` runs on every finished CI run (`workflow_run`), every 10 minutes, and
-by hand. It runs main's code only, and decides only finished runs. The sweep catches a
+by hand. It runs main's code only, and decides only finished runs of `ci.yml` whose jobs
+ran: one that could not start fails, and one awaiting approval or cancelled before any job
+began gets no verdict. Several jobs that need a re-run go together through the run's failed
+jobs, since GitHub refuses a targeted re-run once another has started. The sweep catches a
 missed delivery: a run that finished 15 to 60 minutes ago whose head has no gate status,
 or only a pending one (a re-run leaves it pending until the new attempt is decided; an
 entry the gate holds is decided again on each sweep, without a second alert). Queue runs
@@ -102,16 +105,32 @@ and the answer only reported, so its accuracy can be checked against what the re
 | Entry re-runs (≤3, stop at first pass) | Parent re-runs (≤3, stop at first failure) | Class | Forgiven |
 |---|---|---|---|
 | 0 failed | — | flaky | yes |
-| ≥1 failed | ≥1 failed | pre-existing | yes |
+| ≥1 failed | ≥1 failed with the entry's failure | pre-existing | yes |
 | ≥2 of 3 failed | 0 failed | introduced | **no** |
 | 1 failed | 0 failed | ambiguous | only with independent history and no impact-map link |
 
 Java IT failures are verified in `verify / java-it` against the entry and the parent commit
-(`merge_group.base_sha`, rebuilt in the job). Playwright and Python re-run their failures
+(`merge_group.base_sha`, rebuilt in the job). A parent re-run counts only when it fails the
+way the entry did (the same failure fingerprint): a parent whose database never started is
+no control, so the verify job fails and the gate re-runs it. Each failure is verified, and
+answered, in the job it failed in: the same IT fails on each engine and lane for its own
+reasons. Playwright and Python re-run their failures
 inside the failed shard while its environment is up (the reusables' `verify_failures`
 input). **v1 gap:** Playwright and Python have no parent control yet, so a failure that
 reproduces on the entry counts as the entry's. The shadow period measures how often that
 happens before the parent build is added for them.
+
+A re-run copies the jobs it leaves alone into the new attempt with their earlier results.
+The gate reads each job's evidence from the execution that wrote it (an artifact created
+after the job started), and a verification answers a failure only when it ran no earlier
+than the attempt that saw it; `verify / java-it` downloads every attempt's lane evidence
+and re-verifies each lane's newest.
+
+The impact-map link of an ambiguous failure applies the static rules of
+`plan_local_java_tests.py` to `.github/java-tests/impact-map.json`: the test's own file, an
+area that owns a changed file and names the test, an entity name (`TableRepository` →
+`Table…IT`), and every test for shared infrastructure, a full-suite area or production code
+no rule places. The links the planner finds by reading code are not applied.
 
 Playwright retries a failing test once inside the shard (`retries: 1`): one that passes
 on that retry leaves the job green, as the verify table would also forgive it, and the
@@ -124,9 +143,11 @@ Every verified test, and every test a suite reports as flaky, is recorded on an 
 ledger (`ledger.jsonl` on the `ci/merge-gate` data branch, rolling 30 days, size-capped;
 `merge_gate_registry.py`).
 Entries built on the same parent reuse a recorded parent control (same test, same failure
-fingerprint, same parent commit) instead of rebuilding the parent: one recorded failure is
-conclusive, clean records count once they add up to a fresh control's runs (v3 of the
-same-run record). The ledger's independent history breaks the ambiguous tie. Forgiven
+fingerprint, same job, same parent commit) instead of rebuilding the parent: one recorded
+failure is conclusive, clean records count once they add up to a fresh control's runs (v3 of
+the same-run record). Nothing is recorded from an entry changing CI configuration, whose
+verification ran code it changed, or from a run the gate did not decide. The ledger's
+independent history breaks the ambiguous tie. Forgiven
 failures become `flaky-test` issues (`broken-main` when the parent was main's tip), owned
 through CODEOWNERS; the issue is closed by its fix and reopens if the failure recurs.
 

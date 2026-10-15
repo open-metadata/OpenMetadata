@@ -13,11 +13,13 @@ replay result means what the live gate would have seen.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import io
 import json
 import re
 import zipfile
+from datetime import timedelta
 from pathlib import Path
 
 import merge_gate_policy as policy_mod
@@ -32,13 +34,11 @@ MAX_ERROR_CHARS = 2000
 MAX_STACK_LINES = 40
 EVIDENCE_PREFIX = "evidence-"
 VERIFY_PREFIX = "verify-"
+VERIFY_LOGS_PREFIX = "verify-logs-"
 ATTEMPT_SUFFIX = re.compile(r"-a(?P<attempt>\d+)$")
-SLUG = re.compile(r"[^a-z0-9]+")
-
-
-def job_slug(name: str) -> str:
-    """Artifact-safe form of a job name: `it / pg-os / parallel` → `it-pg-os-parallel`."""
-    return SLUG.sub("-", name.lower()).strip("-")
+# An artifact and a job's start time come from different services.
+CLOCK_SKEW = timedelta(minutes=1)
+job_slug = policy_mod.job_slug
 
 
 def fingerprint(test_id: str, message: str) -> str:
@@ -197,6 +197,7 @@ def verified_tests(document: dict) -> list[policy_mod.VerifiedTest]:
                 entry_runs=int(entry.get("runs", 0)),
                 parent_failed=None if parent is None else int(parent.get("failed", 0)),
                 parent_runs=None if parent is None else int(parent.get("runs", 0)),
+                job=str(item.get("job") or ""),
             )
         )
     return tests
@@ -208,43 +209,139 @@ def _download(owner: str, repo: str, artifact: dict, token: str) -> zipfile.ZipF
     return read_zip(pfr.download_zip(owner, repo, artifact, token))
 
 
+def uploaded_by(artifact: dict, job: dict) -> bool:
+    """Whether `artifact` can come from the job's latest execution. A re-run copies
+    every job it leaves alone into the new attempt with its original start time, so
+    such a job's evidence is the artifact it uploaded in an earlier attempt; a job that
+    was re-run starts later, and the earlier attempt's artifact is not its own."""
+    created, started = artifact.get("created_at"), job.get("started_at")
+    if not created or not started:
+        return True
+    return mq.parse_ts(created) >= mq.parse_ts(started) - CLOCK_SKEW
+
+
+def _attempt(name: str) -> int | None:
+    match = ATTEMPT_SUFFIX.search(name)
+    return int(match["attempt"]) if match else None
+
+
+def _newest(candidates: list[tuple[int, dict]], job: dict) -> tuple[int, dict] | None:
+    """The newest of a job's artifacts that its latest execution uploaded."""
+    own = [(attempt, artifact) for attempt, artifact in candidates if uploaded_by(artifact, job)]
+    return max(own, key=lambda item: item[0]) if own else None
+
+
+def _outcome(owner: str, repo: str, artifact: dict, token: str) -> dict:
+    archive = _download(owner, repo, artifact, token)
+    if archive is None:
+        return {}
+    with archive:
+        member = next((m for m in archive.infolist() if m.filename.endswith("outcome.json")), None)
+        outcome = json.loads(member_bytes(archive, member, MAX_MEMBER_BYTES)) if member else {}
+    return outcome if isinstance(outcome, dict) else {}
+
+
 def _playwright_shard_failures(
-    owner: str, repo: str, artifacts: list[dict], attempt: int, shard: str, token: str
-) -> tuple[list[tuple[str, str]], str | None]:
-    """Failing tests of one shard of the Playwright reusable, from its results JSON."""
-    try:
-        picked = [a for a in pfr.pick_results(artifacts, attempt) if pfr.RESULTS_RE.match(a["name"])["shard"] == shard]
-    except mq.ApiError as exc:
-        return [], str(exc)
+    owner: str, repo: str, artifacts: list[dict], attempt: int, shard: str, job: dict, token: str
+) -> tuple[list[tuple[str, str]], int | None]:
+    """Failing tests of one shard of the Playwright reusable, from the results JSON its
+    latest execution uploaded (a retry upload of the same attempt wins, as in
+    render_playwright_summary.cjs), and the attempt that wrote it."""
+    picked: dict[int, dict] = {}
+    for artifact in artifacts:
+        match = pfr.RESULTS_RE.match(artifact["name"])
+        if not match or match["shard"] != shard or int(match["attempt"]) > attempt or not uploaded_by(artifact, job):
+            continue
+        if match["retry"] or int(match["attempt"]) not in picked:
+            picked[int(match["attempt"])] = artifact
+    if not picked:
+        return [], None
+    ran_in = max(picked)
+    archive = _download(owner, repo, picked[ran_in], token)
+    if archive is None:
+        return [], None
     tests: list[tuple[str, str]] = []
-    for artifact in picked:
-        archive = _download(owner, repo, artifact, token)
-        if archive is None:
-            return [], f"{artifact['name']} unavailable"
-        with archive:
-            for member in archive.infolist():
-                if member.filename.endswith("results.json"):
-                    failed, _ = playwright_tests(json.loads(member_bytes(archive, member, pfr.MAX_RESULTS_BYTES)))
-                    tests += [(playwright_id(t), t.get("error") or "") for t in failed]
-    return tests, None if picked else "no results JSON for the shard"
+    with archive:
+        for member in archive.infolist():
+            if member.filename.endswith("results.json"):
+                failed, _ = playwright_tests(json.loads(member_bytes(archive, member, pfr.MAX_RESULTS_BYTES)))
+                tests += [(playwright_id(t), t.get("error") or "") for t in failed]
+    return tests, ran_in
+
+
+def _outcome_attempt(outcome: dict, run_id: int, default: int) -> int | None:
+    """The attempt an outcome.json was written in, or None when it is another run's."""
+    context = outcome.get("context") if isinstance(outcome.get("context"), dict) else {}
+    if str(context.get("runId", run_id)) != str(run_id):
+        return None
+    try:
+        return int(context.get("runAttempt", default))
+    except (TypeError, ValueError):
+        return None
 
 
 def _python_shard_outcome(
-    owner: str, repo: str, artifacts: list[dict], run_id: int, attempt: int, lane: str, token: str
-) -> dict | None:
-    """The py-tests-shared integration shard's outcome.json. Its artifact name has no
-    attempt, so the outcome's own context decides whether it is this attempt's."""
+    owner: str, repo: str, artifacts: list[dict], run_id: int, attempt: int, lane: str, job: dict, token: str
+) -> tuple[dict, int | None]:
+    """The py-tests-shared integration shard's outcome.json and the attempt that wrote
+    it. Its artifact name has no attempt, so the outcome's own context says which
+    attempt it is, and the job's start time whether it is this execution's."""
     suffix = f"integration-test-results-{lane.replace('-python-', '-')}"
     for artifact in artifacts:
         if not artifact["name"].endswith(suffix):
             continue
+        if not uploaded_by(artifact, job):
+            return {}, None
+        outcome = _outcome(owner, repo, artifact, token)
+        ran_in = _outcome_attempt(outcome, run_id, attempt) if outcome else None
+        if ran_in is None or ran_in > attempt:
+            return {}, None
+        return outcome, ran_in
+    return {}, None
+
+
+def _verify_records(
+    owner: str, repo: str, artifacts: list[dict], attempt: int, token: str
+) -> list[tuple[int, policy_mod.VerifiedTest]]:
+    """Every verify record of this attempt and the earlier ones, with the attempt that
+    wrote it. A job a re-run left alone keeps the evidence of the attempt it ran in, and
+    that attempt's verification is the one that read it."""
+    records: list[tuple[int, policy_mod.VerifiedTest]] = []
+    for artifact in artifacts:
+        name, written = artifact["name"], _attempt(artifact["name"])
+        if not name.startswith(VERIFY_PREFIX) or name.startswith(VERIFY_LOGS_PREFIX):
+            continue
+        if written is None or written > attempt:
+            continue
         archive = _download(owner, repo, artifact, token)
         if archive is None:
-            return None
+            continue
         with archive:
-            outcome, _, problems = outcomes_from_archive(archive, run_id, attempt)
-        return None if problems else outcome
-    return None
+            for member in archive.infolist():
+                if member.filename.endswith("verify.json"):
+                    document = json.loads(member_bytes(archive, member, MAX_MEMBER_BYTES))
+                    if str(document.get("runAttempt")) == str(written):
+                        records += [(written, test) for test in verified_tests(document)]
+    return records
+
+
+def answering(
+    records: list[tuple[int, policy_mod.VerifiedTest]], job: str, test_id: str, fingerprint_: str, seen_in: int | None
+) -> policy_mod.VerifiedTest | None:
+    """The verification that answers one failure: of this test, in this job (or tied to
+    no job), of this failure, run no earlier than the attempt the failure was seen in.
+    The newest wins; it is returned tied to the job."""
+    best: tuple[int, policy_mod.VerifiedTest] | None = None
+    for written, record in records:
+        if record.test_id != test_id or record.job not in ("", job):
+            continue
+        if seen_in is not None and written < seen_in:
+            continue
+        if record.fingerprint and fingerprint_ and record.fingerprint != fingerprint_:
+            continue
+        if best is None or written >= best[0]:
+            best = (written, record)
+    return dataclasses.replace(best[1], job=job) if best else None
 
 
 PY_SHARD_JOB = re.compile(r"Integration Tests \((?P<shard>shard-\d+), (?P<python>[\d.]+)\)")
@@ -279,6 +376,10 @@ def run_evidence(
     and its verify steps `verify-<name>-a<attempt>` (a verify.json). The Playwright
     and Python suites it calls as reusable workflows keep their own artifacts, which
     are read the way their summary jobs read them.
+
+    An attempt lists every job, including the ones its re-run left alone, so a job's
+    evidence is what its latest execution uploaded, whichever attempt that was, and a
+    failure is answered only by a verification that ran after it was seen.
     """
     if jobs is None:
         jobs = run_jobs(owner, repo, run, attempt, token)
@@ -288,41 +389,32 @@ def run_evidence(
     artifacts = mq.paginated_items(
         f"/repos/{owner}/{repo}/actions/runs/{run['id']}/artifacts", "artifacts", token
     )
-    outcomes: dict[str, dict] = {}
-    verified: list[policy_mod.VerifiedTest] = []
-    fingerprints: dict[str, str] = {}
+    evidence: dict[str, list[tuple[int, dict]]] = {}
     for artifact in artifacts:
-        name = artifact["name"]
-        match = ATTEMPT_SUFFIX.search(name)
-        if not match or int(match["attempt"]) != attempt:
-            continue
-        if not name.startswith((EVIDENCE_PREFIX, VERIFY_PREFIX)):
-            continue
-        archive = _download(owner, repo, artifact, token)
-        if archive is None:
-            continue
-        with archive:
-            for member in archive.infolist():
-                if name.startswith(VERIFY_PREFIX) and member.filename.endswith("verify.json"):
-                    document = json.loads(member_bytes(archive, member, MAX_MEMBER_BYTES))
-                    if str(document.get("runAttempt")) == str(attempt):
-                        verified += verified_tests(document)
-                if name.startswith(EVIDENCE_PREFIX) and member.filename.endswith("outcome.json"):
-                    outcome = json.loads(member_bytes(archive, member, MAX_MEMBER_BYTES))
-                    outcomes[ATTEMPT_SUFFIX.sub("", name[len(EVIDENCE_PREFIX) :])] = outcome
+        name, written = artifact["name"], _attempt(artifact["name"])
+        if name.startswith(EVIDENCE_PREFIX) and written is not None and written <= attempt:
+            evidence.setdefault(ATTEMPT_SUFFIX.sub("", name[len(EVIDENCE_PREFIX) :]), []).append((written, artifact))
+    verify_records = _verify_records(owner, repo, artifacts, attempt, token)
 
     records = []
+    verified: list[policy_mod.VerifiedTest] = []
+    fingerprints: dict[str, str] = {}
     for job in failed:
-        outcome = outcomes.get(job_slug(job["name"])) or {}
+        slug = job_slug(job["name"])
+        picked = _newest(evidence.get(slug, []), job)
+        seen_in, outcome = (picked[0], _outcome(owner, repo, picked[1], token)) if picked else (None, {})
         tests = failing_tests(outcome)
         if not outcome and (shard := pfr.SHARD_JOB_RE.search(job["name"])):
-            tests, _ = _playwright_shard_failures(owner, repo, artifacts, attempt, shard[1], token)
+            tests, seen_in = _playwright_shard_failures(owner, repo, artifacts, attempt, shard[1], job, token)
         elif not outcome and (py := PY_SHARD_JOB.search(job["name"])):
             lane = f"{py['shard']}-python-{py['python']}"
-            outcome = _python_shard_outcome(owner, repo, artifacts, run["id"], attempt, lane, token) or {}
+            outcome, seen_in = _python_shard_outcome(owner, repo, artifacts, run["id"], attempt, lane, job, token)
             tests = failing_tests(outcome)
         for test_id, message in tests:
-            fingerprints.setdefault(test_id, fingerprint(test_id, message))
+            failure = fingerprint(test_id, message)
+            fingerprints.setdefault(test_id, failure)
+            if record := answering(verify_records, slug, test_id, failure, seen_in):
+                verified.append(record)
         records.append(
             policy_mod.FailedJob(
                 name=job["name"],

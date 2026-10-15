@@ -58,6 +58,7 @@ class FakeGitHub:
         self.run = {
             "id": 500,
             "event": event,
+            "path": ".github/workflows/ci.yml",
             "head_branch": BRANCH,
             "head_sha": HEAD,
             "run_attempt": run_attempt,
@@ -158,10 +159,13 @@ def test_shadow_mode_posts_the_shadow_context_and_reruns_only_the_infra_job(monk
     assert ("/repos/o/r/actions/jobs/1/rerun", None) in fake.posts
 
 
+FP = evidence.fingerprint("A#t", "boom")
+
+
 def test_forgiven_failures_pass_the_entry_in_enforce_mode(monkeypatch):
     zips = {
         10: zip_with({"outcome.json": json.dumps({"classification": "test_failure", "failedTests": [{"id": "A#t", "message": "boom"}]})}),
-        11: zip_with({"verify.json": json.dumps({"runAttempt": 1, "tests": [{"id": "A#t", "fingerprint": "f", "entry": {"failed": 0, "runs": 3}}]})}),
+        11: zip_with({"verify.json": json.dumps({"runAttempt": 1, "tests": [{"id": "A#t", "fingerprint": FP, "entry": {"failed": 0, "runs": 3}}]})}),
     }
     fake = FakeGitHub(
         monkeypatch,
@@ -204,7 +208,7 @@ def test_strict_mode_fails_any_failed_job_without_rerunning(monkeypatch):
 def test_entries_that_change_ci_config_forgive_nothing(monkeypatch):
     zips = {
         10: zip_with({"outcome.json": json.dumps({"classification": "test_failure", "failedTests": [{"id": "A#t", "message": "boom"}]})}),
-        11: zip_with({"verify.json": json.dumps({"runAttempt": 1, "tests": [{"id": "A#t", "fingerprint": "f", "entry": {"failed": 0, "runs": 3}}]})}),
+        11: zip_with({"verify.json": json.dumps({"runAttempt": 1, "tests": [{"id": "A#t", "fingerprint": FP, "entry": {"failed": 0, "runs": 3}}]})}),
     }
     fake = FakeGitHub(
         monkeypatch,
@@ -251,7 +255,7 @@ def test_unreadable_runs_exit_nonzero_and_post_nothing(monkeypatch):
 
 
 def test_auto_decides_a_pull_request_run_strictly(monkeypatch):
-    fake = FakeGitHub(monkeypatch, jobs=[], event="pull_request")
+    fake = FakeGitHub(monkeypatch, jobs=[plan_job(sampled=True)], event="pull_request")
     fake.run["conclusion"] = "success"
     assert run(["--mode", "shadow", "auto", "--run-id", "500"]) == 0
     [status] = statuses(fake)
@@ -375,11 +379,17 @@ def test_a_run_still_in_progress_gets_no_verdict(monkeypatch, event, command):
     assert fake.posts == []
 
 
-def ambiguous_run(monkeypatch):
-    fp = evidence.fingerprint("A#t", "boom")
+TABLE_IT = "org.openmetadata.it.tests.TableResourceIT#test_create"
+UI_FILE = "openmetadata-ui/src/main/resources/ui/src/App.tsx"
+TABLE_REPOSITORY = "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TableRepository.java"
+
+
+def ambiguous_run(monkeypatch, files=(UI_FILE,)):
+    """A Java IT that failed once in three on the entry and never on its parent."""
+    fp = evidence.fingerprint(TABLE_IT, "boom")
     zips = {
-        10: zip_with({"outcome.json": json.dumps({"classification": "test_failure", "failedTests": [{"id": "A#t", "message": "boom"}]})}),
-        11: zip_with({"verify.json": json.dumps({"runAttempt": 1, "tests": [{"id": "A#t", "fingerprint": fp, "entry": {"failed": 1, "runs": 3}, "parent": {"failed": 0, "runs": 3}}]})}),
+        10: zip_with({"outcome.json": json.dumps({"classification": "test_failure", "failedTests": [{"id": TABLE_IT, "message": "boom"}]})}),
+        11: zip_with({"verify.json": json.dumps({"runAttempt": 1, "tests": [{"id": TABLE_IT, "fingerprint": fp, "entry": {"failed": 1, "runs": 3}, "parent": {"failed": 0, "runs": 3}}]})}),
     }
     fake = FakeGitHub(
         monkeypatch,
@@ -389,6 +399,7 @@ def ambiguous_run(monkeypatch):
             {"id": 11, "name": "verify-java-it-a1", "size_in_bytes": 10},
         ],
         zips=zips,
+        files=files,
     )
     return fake, fp
 
@@ -409,6 +420,105 @@ def test_an_unreadable_ledger_means_no_history_and_the_entry_is_ejected(monkeypa
     monkeypatch.setattr(controller.registry, "ledger_read", broken)
     assert run(["--mode", "enforce", "entry", "--run-id", "500"]) == 0
     assert statuses(fake)[0]["state"] == "failure"
+
+
+def test_an_ambiguous_failure_the_impact_map_links_to_the_entry_is_not_forgiven(monkeypatch):
+    # ADR:2026-10-13-a-queue-failure-is-forgiven-only-when-the-same-run-proves-it-is-not-the-entrys:
+    # history breaks the tie only for a test the entry's diff does not reach.
+    fake, fp = ambiguous_run(monkeypatch, files=(TABLE_REPOSITORY,))
+    monkeypatch.setattr(controller.registry, "ledger_read", lambda o, r, t: [{"fingerprint": fp, "prs": [], "class": "pre-existing"}])
+    assert run(["--mode", "enforce", "entry", "--run-id", "500"]) == 0
+    assert statuses(fake)[0]["state"] == "failure"
+
+
+@pytest.mark.parametrize("event", ["merge_group", "pull_request"])
+@pytest.mark.parametrize("conclusion", ["startup_failure", "failure"])
+def test_a_run_whose_jobs_never_started_fails(monkeypatch, event, conclusion):
+    # A broken ci.yml, or a called workflow asking for more than ci.yml grants: no job
+    # ran, so "no failed job" proves nothing.
+    fake = FakeGitHub(monkeypatch, jobs=[], event=event)
+    fake.run["conclusion"] = conclusion
+    assert run(["--mode", "enforce", "auto", "--run-id", "500"]) == 0
+    [status] = statuses(fake)
+    assert (status["context"], status["state"]) == ("merge-gate", "failure")
+
+
+@pytest.mark.parametrize("conclusion", ["action_required", "cancelled", "skipped"])
+def test_a_run_no_job_ran_in_gets_no_verdict(monkeypatch, conclusion):
+    # A fork's first run awaits a maintainer's approval; a superseded run was cancelled
+    # before it began.
+    fake = FakeGitHub(monkeypatch, jobs=[], event="pull_request")
+    fake.run["conclusion"] = conclusion
+    assert run(["--mode", "enforce", "auto", "--run-id", "500"]) == 0
+    assert fake.posts == []
+
+
+def test_a_run_of_another_workflow_named_ci_gets_no_verdict(monkeypatch):
+    fake = FakeGitHub(monkeypatch, jobs=[plan_job(sampled=True)], event="pull_request")
+    fake.run.update(conclusion="success", path=".github/workflows/also-ci.yml")
+    assert run(["--mode", "enforce", "auto", "--run-id", "500"]) == 0
+    assert fake.posts == []
+
+
+def flaky_lane_and_blip(monkeypatch, lane_started_at):
+    """Attempt 2 of a run where attempt 1 forgave A#t in the MySQL parallel lane as flaky
+    and re-ran another lane, which failed on a blip, by itself."""
+    lane = job(1, "it / mysql-elasticsearch / parallel", step="Run integration tests")
+    lane["started_at"] = lane_started_at
+    rerun = job(2, "it / postgres-opensearch / rdf", conclusion="success")
+    rerun["started_at"] = "2026-10-14T11:30:00Z"
+    fake = FakeGitHub(monkeypatch, jobs=[lane, rerun], run_attempt=2)
+    fake.artifacts = [
+        {"id": 10, "name": "evidence-it-mysql-elasticsearch-parallel-a1", "size_in_bytes": 10, "created_at": "2026-10-14T10:40:00Z"},
+        {"id": 11, "name": "verify-java-it-a1", "size_in_bytes": 10, "created_at": "2026-10-14T11:05:00Z"},
+        {"id": 12, "name": "verify-java-it-a2", "size_in_bytes": 10, "created_at": "2026-10-14T12:20:00Z"},
+    ]
+    fake.zips = {
+        10: zip_with({"outcome.json": json.dumps({"classification": "test_failure", "failedTests": [{"id": "A#t", "message": "boom"}]})}),
+        11: zip_with({"verify.json": json.dumps({"runAttempt": 1, "tests": [{"id": "A#t", "job": "it-mysql-elasticsearch-parallel", "fingerprint": FP, "entry": {"failed": 0, "runs": 3}}]})}),
+        12: zip_with({"verify.json": json.dumps({"runAttempt": 2, "tests": []})}),
+    }
+    fake.logs[1] = "##[group]Run mvn\n[ERROR] Tests run: 9, Failures: 1, Errors: 0\n##[error]Process completed with exit code 1."
+    return fake
+
+
+def test_a_flake_forgiven_before_a_rerun_stays_forgiven(monkeypatch):
+    # GitHub copies a job a re-run left alone into the new attempt with its original start
+    # time; its evidence and its verification are the ones attempt 1 wrote.
+    fake = flaky_lane_and_blip(monkeypatch, lane_started_at="2026-10-14T10:00:00Z")
+    assert run(["--mode", "enforce", "entry", "--run-id", "500"]) == 0
+    assert statuses(fake)[0]["state"] == "success"
+
+
+def test_a_rerun_job_is_not_answered_by_its_earlier_run(monkeypatch):
+    # Re-run in attempt 2, the lane uploaded nothing new: attempt 1's evidence is not its
+    # own, so the old verification forgives nothing and the unexplained failure ejects.
+    fake = flaky_lane_and_blip(monkeypatch, lane_started_at="2026-10-14T11:30:00Z")
+    assert run(["--mode", "enforce", "entry", "--run-id", "500"]) == 0
+    assert statuses(fake)[0]["state"] == "failure"
+
+
+def test_several_jobs_are_rerun_together_through_the_runs_failed_jobs(monkeypatch):
+    # After one targeted re-run starts attempt 2, GitHub refuses a targeted re-run of a
+    # job from attempt 1, so two blips are re-run in one call.
+    fake = FakeGitHub(
+        monkeypatch,
+        jobs=[
+            job(1, "playwright / chromium-03", step="Download backend distribution"),
+            job(2, "playwright / chromium-04", step="Download backend distribution"),
+        ],
+    )
+    assert run(["--mode", "enforce", "entry", "--run-id", "500"]) == 0
+    assert [path for path, _ in fake.posts if "rerun" in path] == ["/repos/o/r/actions/runs/500/rerun-failed-jobs"]
+    assert statuses(fake)[0]["state"] == "pending"
+
+
+def test_the_report_marks_an_entry_that_changes_ci_configuration(monkeypatch, tmp_path):
+    # The registry keeps nothing from a strict entry; it reads the mark from this report.
+    FakeGitHub(monkeypatch, jobs=[job(1, "playwright / chromium-03", step="Download backend distribution")], files=(".github/workflows/ci.yml",))
+    out = tmp_path / "decision.json"
+    assert run(["--dry-run", "--out", str(out), "entry", "--run-id", "500"]) == 0
+    assert json.loads(out.read_text())["context"]["strict"] is True
 
 
 def plan_job(sampled):

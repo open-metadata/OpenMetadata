@@ -148,7 +148,7 @@ def test_run_evidence_joins_jobs_outcomes_and_verify_results_for_the_attempt(mon
     zips = {
         10: zip_with({"outcome.json": json.dumps({"classification": "test_failure", "failedTests": [{"id": "A#t", "message": "boom"}]})}),
         11: zip_with({"outcome.json": json.dumps({"classification": "passed", "failedTests": []})}),
-        12: zip_with({"verify.json": json.dumps({"runAttempt": 1, "tests": [{"id": "A#t", "fingerprint": "f", "entry": {"failed": 0, "runs": 3}}]})}),
+        12: zip_with({"verify.json": json.dumps({"runAttempt": 1, "tests": [{"id": "A#t", "fingerprint": evidence.fingerprint("A#t", "boom"), "entry": {"failed": 0, "runs": 3}}]})}),
     }
     downloads = []
 
@@ -225,3 +225,92 @@ def test_reusable_suites_are_read_from_their_own_artifacts(monkeypatch):
     zips[11] = zip_with({"ci-diagnostics/outcome.json": json.dumps({**outcome_this, "context": {"runId": "99", "runAttempt": "2"}})})
     failed, _, _ = evidence.run_evidence("o", "r", {"id": 99}, 1, "t")
     assert failed[1].failing_tests == ()
+
+
+def test_a_job_left_alone_by_a_rerun_keeps_its_earlier_attempts_evidence(monkeypatch):
+    # GitHub copies the jobs a re-run leaves alone into the new attempt with their
+    # original start time; the shards below ran in attempt 1 and were not re-run.
+    jobs = [
+        {"id": 1, "name": "playwright / playwright-ci (chromium-03, chromium-03.json, 3, chromium, false)", "conclusion": "failure", "html_url": "u1", "steps": [], "started_at": "2026-10-14T10:00:00Z"},
+        {"id": 2, "name": "py-it / Integration Tests (shard-2, 3.10)", "conclusion": "failure", "html_url": "u2", "steps": [], "started_at": "2026-10-14T10:00:00Z"},
+    ]
+    results = {"suites": [{"title": "X", "file": "X.spec.ts", "specs": [{"title": "t", "file": "X.spec.ts", "line": 3, "tests": [{"projectName": "chromium", "status": "unexpected", "results": [{"error": {"message": "Timeout"}}]}]}]}]}
+    outcome = {"classification": "test_failure", "context": {"runId": "99", "runAttempt": "1"}, "failedTests": [{"id": "tests.x.TestY#t", "message": "m"}]}
+    artifacts = [
+        {"id": 10, "name": "playwright-results-json-chromium-03-a1", "size_in_bytes": 10, "created_at": "2026-10-14T10:30:00Z"},
+        {"id": 11, "name": "py-integration-test-results-shard-2-3.10", "size_in_bytes": 10, "created_at": "2026-10-14T10:30:00Z"},
+    ]
+    zips = {10: zip_with({"results.json": json.dumps(results)}), 11: zip_with({"ci-diagnostics/outcome.json": json.dumps(outcome)})}
+    monkeypatch.setattr(mq, "paginated_items", lambda path, key, token, max_pages=10: jobs if path.endswith("/jobs") else artifacts)
+    monkeypatch.setattr(pfr, "download_zip", lambda o, r, a, t: zips[a["id"]])
+    monkeypatch.setattr(pfr, "job_reasons", lambda o, r, js, t: [])
+
+    failed, _, _ = evidence.run_evidence("o", "r", {"id": 99}, 2, "t")
+    assert [j.failing_tests for j in failed] == [("chromium :: X.spec.ts :: X › t",), ("tests.x.TestY#t",)]
+
+    # Re-run in attempt 2, they uploaded nothing new: attempt 1's artifacts are not theirs.
+    for job in jobs:
+        job["started_at"] = "2026-10-14T11:00:00Z"
+    failed, _, _ = evidence.run_evidence("o", "r", {"id": 99}, 2, "t")
+    assert [j.failing_tests for j in failed] == [(), ()]
+
+
+def test_uploaded_by_allows_only_the_jobs_latest_execution():
+    job = {"started_at": "2026-10-14T10:00:00Z"}
+    assert evidence.uploaded_by({"created_at": "2026-10-14T10:20:00Z"}, job)
+    assert evidence.uploaded_by({"created_at": "2026-10-14T09:59:30Z"}, job)  # clock skew
+    assert not evidence.uploaded_by({"created_at": "2026-10-14T09:50:00Z"}, job)
+    assert evidence.uploaded_by({}, job) and evidence.uploaded_by({"created_at": "2026-10-14T09:00:00Z"}, {})
+
+
+def verified_record(job="", fp="f1", entry=(0, 3)):
+    return policy.VerifiedTest("A#t", fp, entry[0], entry[1], job=job)
+
+
+def test_a_failure_is_answered_by_its_own_jobs_newest_verification_after_it():
+    records = [
+        (1, verified_record("it-a")),
+        (2, verified_record("it-b")),
+        (1, verified_record("it-a", fp="f2")),
+        (3, verified_record("it-a", entry=(2, 3))),
+    ]
+    assert evidence.answering(records, "it-a", "A#t", "f1", seen_in=1).entry_failed == 2  # the newest of its job's
+    assert evidence.answering(records, "it-a", "A#t", "f1", seen_in=4) is None  # all ran before the failure
+    assert evidence.answering(records, "it-c", "A#t", "f1", seen_in=1) is None  # another job's
+    assert evidence.answering([(1, verified_record("it-a", fp="f2"))], "it-a", "A#t", "f1", seen_in=1) is None
+    # A record tied to no job (a shard verifying its own failures) answers here, tied to this job.
+    assert evidence.answering([(1, verified_record())], "it-a", "A#t", "f1", seen_in=1).job == "it-a"
+
+
+IMPACT_MAP = {
+    "maven": {"integrationTestSourceRoot": "openmetadata-integration-tests/src/test/java"},
+    "ignore": ["openmetadata-ui/**", "*.md"],
+    "sharedInfrastructure": ["pom.xml", "*/pom.xml"],
+    "areas": [
+        {"name": "core", "fullSuite": True, "sources": ["openmetadata-service/src/main/java/org/openmetadata/service/Entity.java"], "tests": []},
+        {"name": "glossary", "sources": ["openmetadata-service/src/main/java/org/openmetadata/service/glossary/**"], "tests": ["*Glossary*IT"]},
+        {"name": "search", "sources": ["openmetadata-service/src/main/java/org/openmetadata/service/search/**"], "tests": ["org/openmetadata/it/tests/search/**"]},
+    ],
+}
+SERVICE = "openmetadata-service/src/main/java/org/openmetadata/service"
+GLOSSARY_IT = "org.openmetadata.it.tests.GlossaryTermResourceIT#create"
+TABLE_IT = "org.openmetadata.it.tests.TableResourceIT#create"
+SEARCH_IT = "org.openmetadata.it.tests.search.SearchIndexIT#reindex"
+TESTS = (GLOSSARY_IT, TABLE_IT, SEARCH_IT)
+
+
+@pytest.mark.parametrize(
+    ("changed", "related"),
+    [
+        (["openmetadata-ui/src/main/resources/ui/src/App.tsx", "README.md"], set()),
+        ([f"{SERVICE}/glossary/GlossaryTermService.java"], {GLOSSARY_IT}),  # an area that names it
+        ([f"{SERVICE}/search/IndexBuilder.java"], {SEARCH_IT}),  # an area that names its path
+        ([f"{SERVICE}/jdbi3/TableRepository.java"], {TABLE_IT}),  # its entity's name
+        (["openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/TableResourceIT.java"], {TABLE_IT}),
+        ([f"{SERVICE}/util/Unowned.java"], set(TESTS)),  # code no rule places: the full suite
+        ([f"{SERVICE}/Entity.java"], set(TESTS)),  # a full-suite area
+        (["openmetadata-service/pom.xml"], set(TESTS)),  # shared infrastructure
+    ],
+)
+def test_impact_related_links_tests_by_the_planners_static_rules(changed, related):
+    assert entry.impact_related(TESTS, changed, IMPACT_MAP) == related

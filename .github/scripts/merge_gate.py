@@ -42,8 +42,12 @@ import merge_gate_triage as triage_mod
 import merge_queue_metrics as mq
 
 POLICY_PATH = Path(__file__).resolve().parents[1] / "merge-gate" / "policy.json"
+IMPACT_MAP_PATH = Path(__file__).resolve().parents[1] / "java-tests" / "impact-map.json"
 MODES = ("shadow", "enforce", "strict")
 STATE = {gate.PASS: "success", gate.FAIL: "failure", gate.RERUN: "pending", gate.PENDING: "pending"}
+# Conclusions of a run whose jobs ran. Anything else (waiting for approval, never
+# started, skipped) has nothing to decide from.
+RAN = frozenset({"success", "failure", "cancelled", "timed_out"})
 
 
 def post(path: str, body: dict | None, token: str) -> Any:
@@ -122,20 +126,34 @@ def parent_passed_jobs(owner: str, repo: str, workflow: str, parent_sha: str, to
     return frozenset(j["name"] for j in jobs if j.get("conclusion") == "success")
 
 
-def independent_history(
-    owner: str, repo: str, verified: list, fingerprints: dict[str, str], entry, token: str
-) -> frozenset[str]:
+def independent_history(owner: str, repo: str, verified: list, entry, token: str) -> frozenset[str]:
     """Fingerprints seen failing on main or in entries sharing no PR with this one,
     read from the registry's ledger. Only an ambiguous result consults it, so the
     ledger is read only then; any error reads as no history, which ejects."""
-    if not any(gate.classify_test(v) == gate.AMBIGUOUS for v in verified):
+    ambiguous = [v.fingerprint for v in verified if gate.classify_test(v) == gate.AMBIGUOUS]
+    if not ambiguous:
         return frozenset()
     try:
         records = registry.ledger_read(owner, repo, token)
     except Exception as exc:  # noqa: BLE001 - any failure must mean "no history"
         print(f"::warning::ledger unreadable, treating as no history: {exc}")
         return frozenset()
-    return registry.independent_history(records, fingerprints.values(), entry.prs)
+    return registry.independent_history(records, ambiguous, entry.prs)
+
+
+def impact_related(verified: list, entry, history: frozenset[str]) -> frozenset[str]:
+    """Ambiguous tests the impact map links to the entry's diff. Only an ambiguous result
+    with independent history can be forgiven, so only then is the map read; a map that
+    cannot be read links every test, which ejects."""
+    ambiguous = {v.test_id for v in verified if gate.classify_test(v) == gate.AMBIGUOUS and v.fingerprint in history}
+    if not ambiguous:
+        return frozenset()
+    try:
+        impact_map = json.loads(IMPACT_MAP_PATH.read_text())
+    except (OSError, ValueError) as exc:
+        print(f"::warning::impact map unreadable, linking every ambiguous test: {exc}")
+        return frozenset(ambiguous)
+    return entry_mod.impact_related(ambiguous, entry.changed_files, impact_map)
 
 
 def unfinished(run: dict, context: dict) -> bool:
@@ -148,6 +166,29 @@ def unfinished(run: dict, context: dict) -> bool:
     return True
 
 
+def not_ci(run: dict, policy_doc: dict, context: dict) -> bool:
+    """A run of another workflow — one a PR added under the same name included — is not
+    ci.yml's evidence; `workflow_run` matches workflows by name only."""
+    if run.get("path") == policy_doc["workflow"]:
+        return False
+    context["skipped"] = f"not a {policy_doc['workflow']} run ({run.get('path') or 'no path'})"
+    return True
+
+
+def did_not_run(run: dict, jobs: list[dict], context: dict) -> tuple[bool, gate.Decision | None]:
+    """(stop, decision) for a run whose jobs never ran. "No failed job" is a pass only
+    when jobs ran: a run that could not start (a broken workflow file, a called workflow
+    asking for more permissions than ci.yml grants) fails, since nothing was tested; a
+    run waiting for approval, or cancelled before any job began, gets no verdict."""
+    conclusion = run.get("conclusion")
+    if jobs and conclusion in RAN:
+        return False, None
+    if conclusion == "startup_failure" or (not jobs and conclusion in ("failure", "timed_out")):
+        return True, gate.Decision(gate.FAIL, "CI did not start: no job ran, so nothing was tested.")
+    context["skipped"] = f"no job ran (run concluded {conclusion or 'without a conclusion'})"
+    return True, None
+
+
 def entry_decision(
     owner: str, repo: str, run: dict, policy: gate.Policy, policy_doc: dict, mode: str, token: str
 ) -> tuple[gate.Decision | None, dict]:
@@ -156,7 +197,7 @@ def entry_decision(
     the queue)."""
     ref = entry_mod.parse_queue_ref(run.get("head_branch") or "")
     context: dict[str, Any] = {"runId": run["id"], "headSha": run.get("head_sha"), "mode": mode}
-    if unfinished(run, context):
+    if unfinished(run, context) or not_ci(run, policy_doc, context):
         return None, context
     if ref is None:
         context["skipped"] = "not a merge-queue ref"
@@ -169,11 +210,15 @@ def entry_decision(
 
     attempt = int(run.get("run_attempt") or 1)
     jobs = evidence_mod.run_jobs(owner, repo, run, attempt, token)
+    stop, decision = did_not_run(run, jobs, context)
+    if stop:
+        return decision, context
     if evidence_mod.not_sampled(jobs):
         context["skipped"] = "outside the shadow sample"
         return None, context
     failed_jobs, verified, fingerprints = evidence_mod.run_evidence(owner, repo, run, attempt, token, jobs)
     entry = entry_mod.load_entry(owner, repo, ref, run["head_sha"], token)
+    strict = gate.is_strict(list(entry.changed_files), entry.truncated, policy)
     context.update(
         attempt=attempt,
         prs=sorted(entry.prs),
@@ -181,6 +226,8 @@ def entry_decision(
         truncatedDiff=entry.truncated,
         parentSha=ref.parent_sha,
         runCreatedAt=run.get("created_at"),
+        # Its verification ran CI code the entry changed, so the registry keeps none of it.
+        strict=strict,
     )
     if mode == "strict":
         jobs = [j for j in failed_jobs if j.name != policy.summary_job]
@@ -194,15 +241,15 @@ def entry_decision(
     )
     per_pr, per_hour = recent_reruns(owner, repo, policy_doc["workflow"], ref.pr, token)
     age = (mq.utcnow() - mq.parse_ts(run["created_at"])).total_seconds() / 60
+    history = independent_history(owner, repo, verified, entry, token)
     evidence = gate.Evidence(
         attempt=attempt,
         entry_age_minutes=age,
         failed_jobs=tuple(failed_jobs),
         verified=tuple(verified),
-        strict=gate.is_strict(list(entry.changed_files), entry.truncated, policy),
-        independent_history=independent_history(owner, repo, verified, fingerprints, entry, token),
-        # Impact links only matter with history; with none, an ambiguous failure ejects.
-        impact_related=frozenset(),
+        strict=strict,
+        independent_history=history,
+        impact_related=impact_related(verified, entry, history),
         reruns_left=per_pr < budgets["maxInfraRerunsPerPrPerDay"]
         and per_hour < budgets["maxRerunsPerHour"],
         # Only consulted once re-runs are spent, so only fetched then.
@@ -216,24 +263,20 @@ def entry_decision(
 
 
 def rerun(owner: str, repo: str, run: dict, decision: gate.Decision, job_ids: dict, token: str) -> list[str]:
-    """Re-run only the named jobs (each re-runs with its dependents). If GitHub refuses
-    a second targeted re-run while the first is starting, fall back to the run's
-    failed jobs, which is a superset but never re-runs a passing job."""
+    """Re-run the named jobs, each with its dependents. A single job is re-run by itself.
+    Several go through the run's failed jobs, a superset that never re-runs a passing
+    job: the first targeted re-run starts a new attempt, and GitHub then refuses a
+    targeted re-run of any job from the attempt before it."""
     notes = []
-    for name in decision.rerun_jobs:
-        job_id = job_ids.get(name)
-        if job_id is None:
-            notes.append(f"{name}: no job id")
-            continue
+    names = decision.rerun_jobs
+    if len(names) == 1 and job_ids.get(names[0]) is not None:
         try:
-            post(f"/repos/{owner}/{repo}/actions/jobs/{job_id}/rerun", None, token)
-            notes.append(f"{name}: re-run requested")
+            post(f"/repos/{owner}/{repo}/actions/jobs/{job_ids[names[0]]}/rerun", None, token)
+            return [f"{names[0]}: re-run requested"]
         except mq.ApiError as exc:
-            notes.append(f"{name}: {exc}")
-            post(f"/repos/{owner}/{repo}/actions/runs/{run['id']}/rerun-failed-jobs", None, token)
-            notes.append("fell back to re-running the run's failed jobs")
-            break
-    return notes
+            notes.append(f"{names[0]}: {exc}")
+    post(f"/repos/{owner}/{repo}/actions/runs/{run['id']}/rerun-failed-jobs", None, token)
+    return notes + [f"re-ran the run's failed jobs for {', '.join(names)}"]
 
 
 def controller_url() -> str:
@@ -317,10 +360,13 @@ def pr_decision(
     job which failed on infrastructure is re-run (gate.decide_pr), and drafts never pass.
     None when there is nothing to decide."""
     context: dict[str, Any] = {"runId": run["id"], "headSha": run.get("head_sha"), "mode": mode}
-    if unfinished(run, context):
+    if unfinished(run, context) or not_ci(run, policy_doc, context):
         return None, context
     attempt = int(run.get("run_attempt") or 1)
     jobs = evidence_mod.run_jobs(owner, repo, run, attempt, token)
+    stop, decision = did_not_run(run, jobs, context)
+    if stop:
+        return decision, context
     if evidence_mod.not_sampled(jobs):
         context["skipped"] = "outside the shadow sample"
         return None, context
