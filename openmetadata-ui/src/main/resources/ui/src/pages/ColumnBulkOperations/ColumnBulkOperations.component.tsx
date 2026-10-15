@@ -20,6 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import { useId } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -34,6 +35,7 @@ import ColumnGrid from './ColumnGrid/ColumnGrid.component';
 const ColumnBulkOperations = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
+  const deprecationDescriptionId = useId();
 
   const breadcrumbItems = [
     isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
@@ -74,12 +76,17 @@ const ColumnBulkOperations = () => {
       }
       placement="bottom start">
       <AriaButton
+        aria-describedby={deprecationDescriptionId}
         className="tw:cursor-default tw:rounded-full tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
         data-testid="deprecated-badge">
         <BadgeWithIcon color="warning" iconTrailing={InfoCircle} size="sm">
           {t('label.deprecated')}
         </BadgeWithIcon>
       </AriaButton>
+      {/* The card is portalled and absent until opened, so the description is duplicated here. */}
+      <span className="tw:sr-only" id={deprecationDescriptionId}>
+        {t('message.feature-deprecated-but-functional')}
+      </span>
     </HoverCard>
   );
 

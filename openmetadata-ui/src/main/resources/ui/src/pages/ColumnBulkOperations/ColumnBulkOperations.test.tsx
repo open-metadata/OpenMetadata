@@ -50,6 +50,14 @@ describe('ColumnBulkOperations', () => {
     expect(screen.getByTestId('column-grid')).toBeInTheDocument();
   });
 
+  it('describes the deprecation to screen readers before the card opens', () => {
+    renderPage(true);
+
+    expect(screen.getByTestId('deprecated-badge')).toHaveAccessibleDescription(
+      'message.feature-deprecated-but-functional'
+    );
+  });
+
   it('explains the deprecation in a card on hovering the badge', () => {
     jest.useFakeTimers();
     // Establish pointer modality so react-aria accepts hover events.
