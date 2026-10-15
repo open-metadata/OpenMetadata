@@ -56,7 +56,7 @@ icon**, **input**, **trailing slot** (tooltip / invalid icon / shortcut),
 | `size` | `sm` \| `md` (default `sm`) | Control padding |
 | `fontSize` | `xs` \| `sm` \| `md` \| `lg` \| `xl` (default `sm`) | Input text size |
 | `placeholder` | string | Empty-state text |
-| `icon` | `ComponentType` | Leading `@untitledui/icons` glyph |
+| `icon` | `ComponentType` | Leading `@openmetadata/ui-core-components/icons` glyph |
 | `tooltip` | string | Trailing help tooltip |
 | `shortcut` | string \| boolean | Trailing keyboard hint (`⌘K`) |
 | `trailingSlot` | ReactNode | Custom trailing content |

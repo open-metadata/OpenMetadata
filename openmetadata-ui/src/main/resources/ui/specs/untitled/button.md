@@ -59,7 +59,7 @@ span, `tw:font-medium`), optional **leading/trailing icon** (`data-icon`),
 | `color` | `primary`, `secondary`, `tertiary`, `link-gray`, `link-color`, `primary-destructive`, `secondary-destructive`, `tertiary-destructive`, `link-destructive`, `secondary-success`, `secondary-warning`, `secondary-brand` (default `primary`) |
 | `size` | `xs`, `sm`, `md`, `lg`, `xl` (default `md`) |
 | `isDisabled` / `isLoading` | boolean |
-| `iconLeading` / `iconTrailing` | `@untitledui/icons` component or node |
+| `iconLeading` / `iconTrailing` | `@openmetadata/ui-core-components/icons` component or node |
 | `noTextPadding` / `showTextWhileLoading` / `ellipsis` | boolean |
 | `href`, `onPress`, `onClick` | renders `AriaLink` when `href` set, else `AriaButton` |
 

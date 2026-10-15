@@ -52,7 +52,7 @@ in the [core Card implementation](../../../../../../../openmetadata-ui-core-comp
 
 | Prop | Values |
 | --- | --- |
-| `variant` | `default`, `elevated`, `outlined`, `ghost` |
+| `variant` | `default`, `elevated`, `outlined`, `ghost`, `muted` |
 | `color` | `default`, `secondary`, `brand`, `brandOutlined`, `error`, `warning`, `success` |
 | `size` | `sm`, `md`, `lg` (drives padding) |
 | `isClickable` | boolean |
