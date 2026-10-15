@@ -85,10 +85,7 @@ const OntologyHealthPanel = ({
             {health.connectedPercent}%
           </span>
           {hasIsolated ? (
-            <BadgeWithDot
-              color="warning"
-              size="sm"
-              type="pill-color">
+            <BadgeWithDot color="warning" size="sm" type="pill-color">
               {isolatedLabel}
             </BadgeWithDot>
           ) : null}
