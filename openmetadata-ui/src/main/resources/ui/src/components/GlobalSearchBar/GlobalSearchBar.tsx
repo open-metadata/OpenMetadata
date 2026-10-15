@@ -102,6 +102,7 @@ export const GlobalSearchBar = () => {
   const entitiesSelect = useMemo(
     () => (
       <Select
+        borderless
         aria-label={t('label.search-index')}
         data-testid="global-search-selector"
         popoverClassName="tw:w-50"
@@ -314,6 +315,7 @@ export const GlobalSearchBar = () => {
       ref={searchContainerRef}>
       {renderNlpToggle()}
       <Input
+        borderless
         aria-label={t('label.search-for-type', {
           type: t('label.data-asset-plural'),
         })}

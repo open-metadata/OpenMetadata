@@ -17,6 +17,21 @@ import { Input } from './input';
 import { PasswordInput } from './password-input';
 
 describe('Input', () => {
+  it('drops its own border when borderless', () => {
+    const { rerender } = render(<Input label="Search" />);
+    // The border is drawn on the group that wraps the input.
+    const group = () =>
+      screen
+        .getByRole('textbox', { name: /Search/ })
+        .closest('[role="presentation"]');
+
+    expect(group()).not.toHaveClass('tw:outline-0');
+
+    rerender(<Input borderless label="Search" />);
+
+    expect(group()).toHaveClass('tw:outline-0', 'tw:bg-transparent');
+  });
+
   it('greys the input text when the field is disabled', () => {
     render(<Input isDisabled label="Service name" value="mysql_sample" />);
 
