@@ -64,8 +64,6 @@ export interface SubNavItem {
   badgeCount?: number;
   /** Badge pill color; defaults to 'gray' (neutral count) when omitted. */
   badgeColor?: BadgeColors;
-  /** i18n key for a text badge (e.g. `label.deprecated`); takes precedence over the count. */
-  badgeKey?: string;
   /** CTA-styled item: semibold weight, secondary text color. */
   emphasized?: boolean;
   /**
