@@ -204,6 +204,10 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # -- it arrives transitively from the top-of-file apt layer -- and that layer's
 # frozen index is exactly why the image keeps shipping 2.8.2 and being reported
 # for CVE-2026-72522 while trixie-security has 2.8.3-1~deb13u1.
+# curl is the same story: the top-of-file layer installs it, so an image built on a
+# cached copy of that layer keeps the curl that was current when the layer was built.
+# trixie-security fixes CVE-2026-8924, CVE-2026-8927 and CVE-2026-8286 in
+# 8.14.1-2+deb13u7, and the source query covers curl, libcurl4t64 and libcurl3t64-gnutls.
 # openssl follows the same cache boundary. The early apt layer can retain
 # 3.5.6-1~deb13u2, while trixie-security carries the CVE-2026-14457 fix in
 # 3.5.7-1~deb13u2. Querying the source package upgrades openssl, libssl3t64,
@@ -261,7 +265,7 @@ RUN set -eu; \
     [ -n "$ossl" ] || { echo "no src:openssl packages found; refusing to skip the OpenSSL CVE patch" >&2; exit 1; }; \
     kh="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="linux"{print $2}')"; \
     apt-get -qq update; \
-    cve_pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^(perl|glibc|sqlite3|gzip|libssh2|libevent|pcre2)$/ {print $2}')"; \
+    cve_pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^(perl|glibc|sqlite3|gzip|libssh2|libevent|pcre2|curl)$/ {print $2}')"; \
     apt-get -qq install -y --only-upgrade $ul $ex $kh $ossl $cve_pkgs; \
     apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8; \
     apt-get -qq purge -y build-essential gcc; \
