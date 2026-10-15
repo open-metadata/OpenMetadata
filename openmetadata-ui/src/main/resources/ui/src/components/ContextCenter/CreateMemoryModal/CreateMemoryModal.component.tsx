@@ -1147,7 +1147,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       style={{ zIndex: 999 }}
       onOpenChange={(open) => !open && handleClose()}>
       <Modal>
-        <Dialog showCloseButton title="" width={600} onClose={handleClose}>
+        <Dialog
+          showCloseButton
+          data-testid="memory-modal"
+          title=""
+          width={600}
+          onClose={handleClose}>
           <Dialog.Content className="tw:p-0! tw:min-h-[92vh]">
             <div ref={modalContainerRef}>
               <ConfigProvider

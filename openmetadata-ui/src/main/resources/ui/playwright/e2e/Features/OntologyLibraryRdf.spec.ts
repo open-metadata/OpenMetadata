@@ -180,7 +180,7 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
 
       await page.getByTestId('ontology-pack-open-graph').click();
       await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
-        'aria-pressed',
+        'aria-selected',
         'true'
       );
       await expect(

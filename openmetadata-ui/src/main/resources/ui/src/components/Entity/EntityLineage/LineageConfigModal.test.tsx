@@ -60,7 +60,7 @@ describe('LineageConfigModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
@@ -87,7 +87,7 @@ describe('LineageConfigModal', () => {
     fireEvent.change(fieldNodesPerLayer, { target: { value: '7' } });
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith({
@@ -114,7 +114,7 @@ describe('LineageConfigModal', () => {
     fireEvent.change(fieldUpstream, { target: { value: '-1' } });
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe('LineageConfigModal', () => {
     fireEvent.change(fieldDownstream, { target: { value: '-1' } });
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).not.toHaveBeenCalled();
@@ -162,7 +162,7 @@ describe('LineageConfigModal', () => {
     fireEvent.change(fieldNodesPerLayer, { target: { value: '4' } });
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).not.toHaveBeenCalled();
@@ -191,10 +191,48 @@ describe('LineageConfigModal', () => {
     fireEvent.change(fieldNodesPerLayer, { target: { value: '' } });
 
     // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).not.toHaveBeenCalled();
     });
+  });
+
+  it('shows the latest config and drops cancelled edits when reopened', async () => {
+    const { rerender } = render(
+      <LineageConfigModal
+        visible
+        config={config}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+
+    fireEvent.change(await screen.findByTestId('field-upstream'), {
+      target: { value: '9' },
+    });
+
+    rerender(
+      <LineageConfigModal
+        config={config}
+        visible={false}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+    rerender(
+      <LineageConfigModal
+        visible
+        config={{ ...config, downstreamDepth: 7 }}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('field-upstream')).toHaveValue(2)
+    );
+
+    expect(screen.getByTestId('field-downstream')).toHaveValue(7);
   });
 });

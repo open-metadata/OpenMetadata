@@ -1,5 +1,6 @@
 import datetime
 import inspect
+import logging
 from collections.abc import Generator
 from unittest.mock import MagicMock, Mock, patch
 
@@ -33,6 +34,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import Timestamp
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 
 
 def build_column(
@@ -470,21 +472,22 @@ class TestRun:
         assert result == HasAttributes(testCaseStatus=TestCaseStatus.Failed, failedRows=3, passedRows=2)
         assert table_diff.result_list == []
 
-    @pytest.mark.parametrize("debug, diffs_run", ((False, 1), (True, 2)))
-    def test_only_debug_logging_diffs_again_for_a_sample(self, diff_tables: Mock, debug: bool, diffs_run: int) -> None:
-        """The sample of failed rows is a second diff of the tables, logged only at debug level."""
+    def test_the_failed_rows_sample_comes_from_the_same_diff(
+        self, diff_tables: Mock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Logging or showing a sample of the failed rows takes no second diff of the tables."""
         validator = build_run_validator()
         diff_tables.side_effect = lambda *_, **__: build_table_diff(
             (row for row in THREE_DIFFERING_KEYS), table1_rows=4, table2_rows=4
         )
+        caplog.set_level(logging.DEBUG, logger=tableDiff.logger.name)
 
-        with (
-            patch.object(validator, "_compute_row_count", return_value=4),
-            patch.object(tableDiff.logger, "isEnabledFor", return_value=debug),
-        ):
+        with patch.object(validator, "_compute_row_count", return_value=4):
             validator._run()
 
-        assert diff_tables.call_count == diffs_run
+        assert diff_tables.call_count == 1
+        assert validator.failed_rows_sample == list(THREE_DIFFERING_KEYS)
+        assert "Sample of failed rows:" in caplog.messages
 
     def test_a_repeated_key_is_still_blamed_on_its_table(self, diff_tables: Mock) -> None:
         """data-diff finds the duplicate while counting and names the table: no rows are kept to look at."""
@@ -510,3 +513,81 @@ class TestRun:
         assert table_diff.result_list == []
         # Closing the diff is what stops data-diff's worker pool
         assert inspect.getgeneratorstate(table_diff.diff) == inspect.GEN_CLOSED
+        # The rows read before stopping are the sample
+        assert validator.failed_rows_sample == list(THREE_DIFFERING_KEYS)
+
+    def test_over_the_threshold_the_sample_is_capped(self, diff_tables: Mock) -> None:
+        validator = build_run_validator(threshold=100)
+        rows = [("-", (str(key), "name")) for key in range(SAMPLE_DATA_DEFAULT_COUNT + 10)]
+        diff_tables.return_value = build_table_diff((row for row in rows), table1_rows=60, table2_rows=0)
+
+        validator._run()
+
+        assert validator.failed_rows_sample == rows[:SAMPLE_DATA_DEFAULT_COUNT]
+
+
+@pytest.fixture
+def data_diff() -> Generator[MagicMock, None, None]:
+    """The data-diff library: the validator's connections and diff go through it."""
+    with patch("metadata.data_quality.validations.table.sqlalchemy.tableDiff.data_diff") as data_diff:
+        yield data_diff
+
+
+def build_parallel_queries_validator(parallel_queries: str | None) -> TableDiffValidator:
+    validator = build_duplicate_key_validator()
+    validator.test_case = TestCase.model_construct(
+        parameterValues=[]
+        if parallel_queries is None
+        else [TestCaseParameterValue(name="parallelQueries", value=parallel_queries)]
+    )
+    return validator
+
+
+def thread_counts(data_diff: MagicMock) -> list[int]:
+    return [call.kwargs["thread_count"] for call in data_diff.connect_to_table.call_args_list]
+
+
+class TestParallelQueries:
+    """Each database runs up to `parallelQueries` queries at once, and both are always queried at the same time."""
+
+    @pytest.mark.parametrize(
+        "parallel_queries, expected",
+        (
+            (None, 1),
+            ("", 1),  # a number field cleared in the test case form
+            ("1", 1),
+            ("4", 4),
+            ("4.0", 4),
+        ),
+    )
+    def test_it_sizes_both_databases_and_the_diff_from_the_parameter(
+        self, data_diff: MagicMock, parallel_queries: str | None, expected: int
+    ) -> None:
+        validator = build_parallel_queries_validator(parallel_queries)
+
+        validator.get_table_diff()
+
+        assert thread_counts(data_diff) == [expected, expected]
+        # Twice the queries per database: data-diff runs a segment's two tables on that same pool
+        assert data_diff.diff_tables.call_args.kwargs["max_threadpool_size"] == 2 * expected
+
+    @pytest.mark.parametrize("parallel_queries", ("0", "-2", "2.5", "many"))
+    def test_an_invalid_value_falls_back_to_one_query_per_database(
+        self, data_diff: MagicMock, parallel_queries: str, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        validator = build_parallel_queries_validator(parallel_queries)
+
+        with caplog.at_level(logging.WARNING, logger="TestSuite"):
+            validator.get_table_diff()
+
+        assert thread_counts(data_diff) == [1, 1]
+        assert data_diff.diff_tables.call_args.kwargs["max_threadpool_size"] == 2
+        assert f"Ignoring parallelQueries={parallel_queries!r}" in caplog.text
+
+    def test_the_column_check_opens_connections_sized_for_the_diff(self, data_diff: MagicMock) -> None:
+        """data-diff caches connections by URL alone, so the diff reuses the ones the column check opens first."""
+        validator = build_parallel_queries_validator("4")
+
+        validator.get_incomparable_columns()
+
+        assert thread_counts(data_diff) == [4, 4]

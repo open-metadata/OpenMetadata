@@ -40,9 +40,11 @@ import {
   EventFilterRule,
   EventSubscription,
   InputType,
+  Status,
   SubscriptionCategory,
   SubscriptionType,
   Type,
+  type Destination,
 } from '../../../generated/events/eventSubscription';
 import {
   ModifiedCreateEventSubscription,
@@ -302,8 +304,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
     AccordionHeader: ({ children }: MockCoreProps) => <div>{children}</div>,
     AccordionItem: ({ children }: MockCoreProps) => <div>{children}</div>,
     AccordionPanel: ({ children }: MockCoreProps) => <div>{children}</div>,
-    Alert: ({ title }: MockCoreProps & { title?: ReactNode }) => (
-      <div>{title}</div>
+    Alert: ({
+      title,
+      variant,
+    }: MockCoreProps & { title?: ReactNode; variant?: string }) => (
+      <div data-testid={`alert-${variant}`}>{title}</div>
     ),
     Autocomplete,
     BadgeWithButton: ({
@@ -1285,6 +1290,108 @@ describe('AlertAi form field components', () => {
     expect(screen.getByTestId('destination-downstream-depth-0')).toBeEnabled();
   });
 
+  it('shows each duplicate AI alert destination its own test status', async () => {
+    const duplicate = {
+      category: SubscriptionCategory.External,
+      config: { endpoint: 'https://hooks.slack.com' },
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+    } as ModifiedDestination;
+    const destinationsWithStatus: Array<Destination | undefined> = [
+      {
+        category: SubscriptionCategory.External,
+        config: { endpoint: 'https://hooks.slack.com' },
+        type: SubscriptionType.Slack,
+        statusDetails: { status: Status.Success, statusCode: 200 },
+      } as Destination,
+      {
+        category: SubscriptionCategory.External,
+        config: { endpoint: 'https://hooks.slack.com' },
+        type: SubscriptionType.Slack,
+        statusDetails: {
+          status: Status.Failed,
+          statusCode: 500,
+          reason: 'rate limited',
+        },
+      } as Destination,
+    ];
+    const value = {
+      ...baseValue,
+      destinations: [duplicate, duplicate],
+    } as ModifiedCreateEventSubscription;
+
+    render(
+      <>
+        <AlertAiDestinationItem
+          destination={duplicate}
+          destinationsWithStatus={destinationsWithStatus}
+          name={0}
+          value={value}
+        />
+        <AlertAiDestinationItem
+          destination={duplicate}
+          destinationsWithStatus={destinationsWithStatus}
+          name={1}
+          value={value}
+        />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('alert-success')).toHaveLength(1);
+      expect(screen.getAllByTestId('alert-error')).toHaveLength(1);
+    });
+  });
+
+  it('does not leak an external AI destination test status onto a neighboring internal destination', async () => {
+    const internal = {
+      category: SubscriptionCategory.Owners,
+      destinationType: SubscriptionCategory.Owners,
+      type: SubscriptionType.Email,
+    } as ModifiedDestination;
+    const external = {
+      category: SubscriptionCategory.External,
+      config: { endpoint: 'https://hooks.slack.com' },
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+    } as ModifiedDestination;
+    const destinationsWithStatus: Array<Destination | undefined> = [
+      undefined,
+      {
+        category: SubscriptionCategory.External,
+        config: { endpoint: 'https://hooks.slack.com' },
+        type: SubscriptionType.Slack,
+        statusDetails: { status: Status.Success, statusCode: 200 },
+      } as Destination,
+    ];
+    const value = {
+      ...baseValue,
+      destinations: [internal, external],
+    } as ModifiedCreateEventSubscription;
+
+    render(
+      <>
+        <AlertAiDestinationItem
+          destination={internal}
+          destinationsWithStatus={destinationsWithStatus}
+          name={0}
+          value={value}
+        />
+        <AlertAiDestinationItem
+          destination={external}
+          destinationsWithStatus={destinationsWithStatus}
+          name={1}
+          value={value}
+        />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('alert-success')).toHaveLength(1);
+      expect(screen.queryAllByTestId('alert-error')).toHaveLength(0);
+    });
+  });
+
   it('tests configured external destinations with OSS destination API', async () => {
     const destination = {
       category: SubscriptionCategory.External,
@@ -1313,6 +1420,38 @@ describe('AlertAi form field components', () => {
         ],
       })
     );
+  });
+
+  it('clears AI destination test statuses when a destination row is removed', async () => {
+    const destination = {
+      category: SubscriptionCategory.External,
+      config: { endpoint: 'https://hooks.example.com' },
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+    } as ModifiedDestination;
+    const value = {
+      ...baseValue,
+      destinations: [destination, destination],
+    } as ModifiedCreateEventSubscription;
+    (testAlertDestination as jest.Mock).mockResolvedValueOnce([
+      { statusDetails: { status: Status.Failed, statusCode: 500 } },
+      { statusDetails: { status: Status.Success, statusCode: 200 } },
+    ]);
+
+    render(<AlertAiDestinationSection selectedSource="table" value={value} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-destination-button'));
+    });
+
+    expect(await screen.findByTestId('alert-success')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('remove-destination-0'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('alert-success')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
+    });
   });
 
   it('rebuilds a clean internal row when switching a populated external destination to Owners', () => {

@@ -102,7 +102,9 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtilsPure.ts",
         "openmetadata-ui/src/main/resources/ui/src/interface/feed.interface.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/feedsAPI.ts",
-        "openmetadata-ui/src/main/resources/ui/src/rest/tasksAPI.ts"
+        "openmetadata-ui/src/main/resources/ui/src/rest/tasksAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/constants/Task.constant.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/tasks/**"
       ],
       "specs": [
         "playwright/e2e/Features/ActivityFeed.spec.ts",
@@ -178,7 +180,11 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/notificationAlert.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/dqtests/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/events/**",
-        "openmetadata-service/src/main/java/org/openmetadata/service/events/subscription/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/alerting/definition/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/alerting/matching/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/alerting/channel/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/alerting/delivery/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/events/consumer/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestCase*.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestSuiteRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestDefinitionRepository.java",
@@ -271,7 +277,6 @@
       "specs": [
         "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
         "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
-        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts"
       ]
     },
@@ -333,8 +338,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/DomainsWidget/**",
-        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/DataProductsWidget/**",
         "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/AssetsSelectionModal/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/domainAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/queries/domainQuery.ts",
@@ -486,7 +489,14 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterUtils.test.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterPureUtils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterQueryKeys.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/discovery/context-center/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/context-center/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/context/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/context/review/**",
+        "openmetadata-service/src/test/java/org/openmetadata/service/context/review/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ContextMemoryLifecycle.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/ContextMemoryLifecycleTest.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/knowledge/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/drive/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ContextMemoryRepository.java",
@@ -504,6 +514,8 @@
       "specs": [
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
@@ -537,6 +549,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/OntologyExplorerPage/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.interface.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useSparqlQueryLibrary.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**",
@@ -659,7 +672,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/customizeLandingPage.ts",
         "openmetadata-ui/src/main/resources/ui/playwright/utils/widgetFilters.ts"
       ],
-      "projects": ["chromium", "Data Insight"],
+      "projects": ["chromium", "Data Insight", "Basic"],
       "specs": [
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
@@ -670,6 +683,29 @@
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The persona-driven home page: its shell, the topic-card widgets and the hooks that feed them. Every card has its behaviour spec under Features/LandingPageWidgets; CustomizeWidgets and CustomizeLandingPage drive the same cards through the persona layout editor. The landing-page fixture is listed because every spec in that folder signs in through it.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataEstate.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useKpiProgress.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataQualitySummary.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useCuratedAssets.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataProducts.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDomainOverview.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useOwnedAndFollowed.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeMyDataPage*",
+        "openmetadata-ui/src/main/resources/ui/src/constants/CustomizeMyDataPage.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/landingPageUser.ts"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Features/LandingPageWidgets/**/*.spec.ts",
+        "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Flow/CustomizeLandingPage.spec.ts"
       ]
     },
     {
@@ -848,8 +884,104 @@
       ]
     },
     {
+      "_comment": "FormBuilderV1 renders every app-config, SSO, ingestion and service-connection form, so it runs the specs those forms map to.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/FormBuilderV1/**"
+      ],
+      "projects": ["chromium", "Basic", "GlobalSettings", "Ingestion"],
+      "specs": [
+        "playwright/e2e/Auth/LoginConfiguration.spec.ts",
+        "playwright/e2e/Features/AutoPilot.spec.ts",
+        "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
+        "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/SSOConfiguration.spec.ts",
+        "playwright/e2e/Features/ServiceAgentsDeploymentSummary.spec.ts",
+        "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
+        "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
+        "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
+        "playwright/e2e/Features/TestSuite*.spec.ts",
+        "playwright/e2e/Flow/LineageSettings.spec.ts",
+        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
+        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
+        "playwright/e2e/Pages/AppStopRunModal.spec.ts",
+        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
+        "playwright/e2e/Pages/HealthCheck.spec.ts",
+        "playwright/e2e/Pages/LogsViewer.spec.ts",
+        "playwright/e2e/Pages/OmdURLConfiguration.spec.ts",
+        "playwright/e2e/Pages/Policies.spec.ts",
+        "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts",
+        "playwright/e2e/Pages/Roles.spec.ts",
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts",
+        "playwright/e2e/Pages/TaskFormSettings.spec.ts",
+        "playwright/e2e/Pages/TestSuite*.spec.ts"
+      ]
+    },
+    {
+      "_comment": "SSO configuration form and its tests; the form itself is also mapped by the generated map.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/SettingsSso/SSOConfigurationForm/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/SSOConfiguration.spec.ts"]
+    },
+    {
+      "_comment": "Shared data-asset picker (shell, rows, footer, count bar, async options hook) behind both DataAssetSelectList and DataAssetAsyncSelectList.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/DataAssetSelectList/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/DataAssetAsyncSelectList/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Legacy RJSF FormBuilder and its JSONSchema widgets, used only by the application config, app run history and SSO configuration forms.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/FormBuilder/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/**"
+      ],
+      "projects": ["chromium", "Basic", "GlobalSettings"],
+      "specs": [
+        "playwright/e2e/Features/SSOConfiguration.spec.ts",
+        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
+        "playwright/e2e/Pages/AppStopRunModal.spec.ts",
+        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts"
+      ]
+    },
+    {
       "_comment": "Backend integration tests are a test-only Maven module — not packaged into the server the suite runs against, nor into the UI bundle — so no change here can alter a spec outcome. Mapped to no specs rather than left unmapped: openmetadata-integration-tests/ is in UNMAPPED_CODE_ROOTS, so without this every backend-IT change escalates to a full-suite run.",
       "sources": ["openmetadata-integration-tests/**"],
+      "projects": [],
+      "specs": []
+    },
+    {
+      "_comment": "The Data Contract tab: its add/edit forms, contract cards and their utils. Every contract spec drives these forms, and the ODCS specs edit imported contracts through them.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataContract/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataContract/**"
+      ],
+      "projects": ["chromium", "ImportExport"],
+      "specs": [
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
+        "playwright/e2e/Pages/ODCSImportExport.spec.ts",
+        "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The ESLint suppressions baseline is read only by the linter: it ships in neither the server nor the UI bundle, so no change to it can alter a spec outcome. Mapped to no specs rather than left unmapped, so pruning it does not escalate to a full-suite run.",
+      "sources": ["openmetadata-ui/src/main/resources/ui/eslint-suppressions.json"],
       "projects": [],
       "specs": []
     }

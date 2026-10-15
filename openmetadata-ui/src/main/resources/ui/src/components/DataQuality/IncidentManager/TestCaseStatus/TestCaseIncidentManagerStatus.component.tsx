@@ -19,7 +19,6 @@ import {
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -97,7 +96,6 @@ const TestCaseIncidentManagerStatus = ({
           {hasEditPermission && (
             <EditIconButton
               data-testid="edit-resolution-icon"
-              icon={<EditIcon width="12px" />}
               newLook={newLook}
               size="small"
               title={t('label.edit-entity', {

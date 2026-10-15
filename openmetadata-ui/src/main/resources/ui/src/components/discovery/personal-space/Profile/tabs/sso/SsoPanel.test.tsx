@@ -18,12 +18,16 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { SettingType } from '../../../../../../generated/system/settingsSourceResponse';
 import {
   getSecurityConfiguration,
   patchSecurityConfiguration,
 } from '../../../../../../rest/securityConfigAPI';
+import { getSettingsSource } from '../../../../../../rest/settingConfigAPI';
+import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
+import { deploymentOwnedSource } from '../platform-settings/PlatformSettings.mock';
 import SsoPanel from './SsoPanel';
 
 jest.mock('react-i18next', () => ({
@@ -38,6 +42,11 @@ jest.mock('../../../../../../hooks/useSettingsHash', () => ({
     state: { tab: 'sso', subPath: mockSubPath, params: {} },
     setHash: mockSetHash,
   }),
+}));
+
+jest.mock('../../../../../../rest/settingConfigAPI', () => ({
+  getSettingsSource: jest.fn().mockResolvedValue({ settings: [] }),
+  adoptDeploymentConfig: jest.fn(),
 }));
 
 jest.mock('../../../../../../rest/securityConfigAPI', () => ({
@@ -56,16 +65,22 @@ jest.mock('./SsoConfigureForm', () =>
       selectedProvider,
       securityConfig,
       showHint,
+      isReadOnly,
+      managedPaths,
     }: {
       selectedProvider?: string;
       securityConfig?: { authenticationConfiguration: { provider: string } };
       showHint: boolean;
+      isReadOnly?: boolean;
+      managedPaths?: Record<string, string[]>;
     }) => (
       <div
+        data-managed-paths={JSON.stringify(managedPaths)}
         data-provider={
           selectedProvider ??
           securityConfig?.authenticationConfiguration.provider
         }
+        data-read-only={String(Boolean(isReadOnly))}
         data-show-hint={String(showHint)}
         data-testid="sso-configure-form"
       />
@@ -86,7 +101,7 @@ const renderHeaderActions = () => render(<>{lastHeader().actions}</>);
 
 const renderPanel = async (config: unknown) => {
   (getSecurityConfiguration as jest.Mock).mockResolvedValue({ data: config });
-  render(
+  renderWithQueryClient(
     <MemoryRouter>
       <SsoPanel onHeaderChange={onHeaderChange} />
     </MemoryRouter>
@@ -99,9 +114,10 @@ describe('SsoPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSubPath = '';
+    (getSettingsSource as jest.Mock).mockResolvedValue({ settings: [] });
   });
 
-  it('shows the provider grid when SSO is not set up, with Configure disabled until a pick', async () => {
+  it('shows the provider grid when SSO is not set up, with no header action', async () => {
     await renderPanel({
       authenticationConfiguration: { provider: 'basic' },
       authorizerConfiguration: {},
@@ -116,17 +132,13 @@ describe('SsoPanel', () => {
       ],
     });
 
-    renderHeaderActions();
-
-    expect(screen.getByTestId('sso-configure-provider')).toBeDisabled();
+    expect(lastHeader().actions).toBeUndefined();
   });
 
-  it('opens the setup form for the picked provider', async () => {
+  it('opens the setup form as soon as a provider card is clicked', async () => {
     await renderPanel(undefined);
 
     fireEvent.click(await screen.findByText('Google'));
-    renderHeaderActions();
-    fireEvent.click(screen.getByTestId('sso-configure-provider'));
 
     expect(mockSetHash).toHaveBeenCalledWith('sso', 'new/google');
   });
@@ -219,5 +231,95 @@ describe('SsoPanel', () => {
     fireEvent.click(await screen.findByTestId('sso-tab-configure'));
 
     expect(mockSetHash).toHaveBeenCalledWith('sso', 'configure');
+  });
+
+  describe('when the deployment owns part of the configuration', () => {
+    const ownAuthentication = (managedPaths: string[]) =>
+      (getSettingsSource as jest.Mock).mockResolvedValue({
+        settings: [
+          deploymentOwnedSource(
+            SettingType.AuthenticationConfiguration,
+            managedPaths
+          ),
+        ],
+      });
+
+    it('locks the deployment-owned fields and offers no Change provider', async () => {
+      ownAuthentication(['/provider', '/clientId']);
+      mockSubPath = 'configure';
+      await renderPanel(OKTA_CONFIG);
+
+      expect(
+        await screen.findByTestId('settings-source-env-alert')
+      ).toBeInTheDocument();
+
+      await waitFor(() =>
+        expect(screen.getByTestId('sso-configure-form')).toHaveAttribute(
+          'data-managed-paths',
+          JSON.stringify({
+            authenticationConfiguration: ['/provider', '/clientId'],
+            authorizerConfiguration: [],
+          })
+        )
+      );
+
+      expect(screen.getByTestId('sso-configure-form')).toHaveAttribute(
+        'data-read-only',
+        'false'
+      );
+
+      renderHeaderActions();
+
+      expect(
+        screen.queryByTestId('change-provider-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it('offers no provider to pick when the deployment sets it', async () => {
+      ownAuthentication(['/provider']);
+      await renderPanel({
+        authenticationConfiguration: { provider: 'basic' },
+        authorizerConfiguration: {},
+      });
+
+      expect(
+        await screen.findByTestId('sso-provider-set-by-deployment')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('sso-provider-grid')).not.toBeInTheDocument();
+
+      renderHeaderActions();
+
+      expect(
+        screen.queryByTestId('sso-configure-provider')
+      ).not.toBeInTheDocument();
+    });
+
+    it('locks self signup when the deployment sets it', async () => {
+      ownAuthentication(['/enableSelfSignup']);
+      await renderPanel(OKTA_CONFIG);
+      await screen.findByTestId('settings-source-env-alert');
+
+      expect(
+        await screen.findByRole('switch', { name: 'label.enable-sso' })
+      ).toBeDisabled();
+    });
+
+    it('shows the form read-only when the deployment owns both settings', async () => {
+      (getSettingsSource as jest.Mock).mockResolvedValue({
+        settings: [
+          deploymentOwnedSource(SettingType.AuthenticationConfiguration, ['/']),
+          deploymentOwnedSource(SettingType.AuthorizerConfiguration, ['/']),
+        ],
+      });
+      mockSubPath = 'configure';
+      await renderPanel(OKTA_CONFIG);
+
+      await waitFor(() =>
+        expect(screen.getByTestId('sso-configure-form')).toHaveAttribute(
+          'data-read-only',
+          'true'
+        )
+      );
+    });
   });
 });

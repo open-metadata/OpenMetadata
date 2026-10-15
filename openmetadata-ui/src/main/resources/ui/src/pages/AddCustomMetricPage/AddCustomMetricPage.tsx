@@ -10,11 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
@@ -39,7 +44,6 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { putCustomMetric } from '../../rest/customMetricAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
-import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../utils/FqnUtils';
@@ -57,11 +61,13 @@ const AddCustomMetricPage = () => {
   const navigate = useNavigate();
   const location = useCustomLocation();
   const isColumnMetric = dashboardType === ProfilerDashboardType.COLUMN;
-  const [form] = Form.useForm<CustomMetric>();
+  const form = useForm<CustomMetric>({
+    defaultValues: { name: '', expression: '' },
+  });
   const [table, setTable] = useState<Table>();
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
-  const columnName = Form.useWatch('columnName', form);
+  const columnName = useWatch({ control: form.control, name: 'columnName' });
   const entityFqn = useMemo(() => table?.fullyQualifiedName ?? '', [table]);
 
   const breadcrumb = useMemo(() => {
@@ -101,7 +107,7 @@ const AddCustomMetricPage = () => {
   const initialValues = useMemo(
     () =>
       activeColumnFqn
-        ? ({ columnName: getNameFromFQN(activeColumnFqn) } as CustomMetric)
+        ? { columnName: getNameFromFQN(activeColumnFqn) }
         : undefined,
     [activeColumnFqn]
   );
@@ -215,8 +221,8 @@ const AddCustomMetricPage = () => {
         children: (
           <div data-testid="add-custom-metric-page-container">
             <Grid
-              className="layout-row layout-grid"
-              style={{ ...getLayoutGutter(16, 16) }}>
+              className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+              rowGap="4">
               <Grid.Item className="layout-column" span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
               </Grid.Item>
@@ -249,17 +255,20 @@ const AddCustomMetricPage = () => {
                   gap={2}
                   itemClassName="layout-space-item">
                   <Button
+                    color="secondary"
                     data-testid="cancel-button"
-                    disabled={isActionLoading}
-                    onClick={handleBackClick}>
+                    isDisabled={isActionLoading}
+                    size="md"
+                    onPress={handleBackClick}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="submit-button"
-                    htmlType="submit"
-                    loading={isActionLoading}
-                    type="primary"
-                    onClick={() => form.submit()}>
+                    form="custom-metric-form"
+                    isLoading={isActionLoading}
+                    size="md"
+                    type="submit">
                     {t('label.create')}
                   </Button>
                 </Box>

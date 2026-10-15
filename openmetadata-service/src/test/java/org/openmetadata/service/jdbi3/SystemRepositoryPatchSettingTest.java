@@ -255,7 +255,7 @@ class SystemRepositoryPatchSettingTest {
             PreconditionFailedException.class,
             () -> systemRepository.patchSetting(settingName, Json.createPatchBuilder().build()));
 
-    assertTrue(failure.getMessage().contains("Setting changed"));
+    assertTrue(failure.getMessage().contains("changed since it was read"));
     assertEquals(
         Response.Status.PRECONDITION_FAILED.getStatusCode(), failure.getResponse().getStatus());
     settingsCacheMock.verifyNoInteractions();

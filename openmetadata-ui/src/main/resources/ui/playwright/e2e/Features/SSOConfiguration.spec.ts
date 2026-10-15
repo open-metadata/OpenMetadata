@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Page } from '@playwright/test';
 import path from 'path';
 
 import {
@@ -20,6 +21,10 @@ import {
   SSO_COMMON_FIELDS,
 } from '../../constant/ssoConfiguration';
 import { redirectToHomePage } from '../../utils/common';
+import {
+  MockSettingSource,
+  mockSettingsSource,
+} from '../../utils/settingsSource';
 import {
   enableSSOEditMode,
   selectSSOProvider,
@@ -453,13 +458,9 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigCollapse = page.locator(
-        '.sso-advanced-properties-collapse'
-      );
-
-      await expect(advancedConfigCollapse).toBeVisible();
-
-      const advancedConfigHeader = page.getByText(/advanced config/i);
+      const advancedConfigHeader = page.getByRole('button', {
+        name: /advanced config/i,
+      });
 
       await expect(advancedConfigHeader).toBeVisible();
     });
@@ -649,12 +650,13 @@ test.describe('SSO Configuration Tests', () => {
     test('should collapse advanced config by default', async ({ page }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigPanel = page.locator(
-        '.sso-advanced-properties-collapse .ant-collapse-item'
-      );
+      const advancedConfigHeader = page.getByRole('button', {
+        name: /advanced config/i,
+      });
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'false'
       );
     });
 
@@ -663,23 +665,27 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigHeader = page.getByText(/advanced config/i);
-      const advancedConfigPanel = page.locator(
-        '.sso-advanced-properties-collapse .ant-collapse-item'
-      );
+      const advancedConfigHeader = page.getByRole('button', {
+        name: /advanced config/i,
+      });
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'false'
       );
 
       await advancedConfigHeader.click();
 
-      await expect(advancedConfigPanel).toHaveClass(/ant-collapse-item-active/);
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
 
       await advancedConfigHeader.click();
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'false'
       );
     });
 
@@ -733,17 +739,17 @@ test.describe('SSO Configuration Tests', () => {
 
       // Open the roles dropdown — options are loaded from the API
       const roleInput = adminsMapping.rolesSelect.getByRole('combobox');
-      await roleInput.focus();
-      await roleInput.press('ArrowDown');
-      const roleOption = page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Data Consumer', { exact: true });
+      await roleInput.click();
+      const roleOption = page.getByRole('option', {
+        name: 'Data Consumer',
+        exact: true,
+      });
       await expect(roleOption).toBeVisible();
       await roleOption.click();
       await roleInput.press('Escape');
       await expect(
-        adminsMapping.rolesSelect.getByTitle('Data Consumer', { exact: true })
-      ).toBeVisible();
+        adminsMapping.rolesSelect.getByTestId('autocomplete-selected-item')
+      ).toHaveText('Data Consumer');
 
       // Add a second mapping with a duplicate DN — both rows show an error
       const duplicateMapping = await addMapping();
@@ -787,49 +793,50 @@ test.describe('SSO Configuration Tests', () => {
       const field = page.getByTestId(
         'sso-configuration-form-array-field-template-authReassignRoles'
       );
-      const dropdown = page.locator('.ant-select-dropdown:visible');
+      const dropdown = page.getByRole('listbox');
+      const selectedRoles = field.getByTestId('autocomplete-selected-item');
 
       // Field renders as a combobox (not a plain tags input)
       await expect(field).toBeVisible();
       await expect(field.getByRole('combobox')).toBeVisible();
 
       // Opening the dropdown shows API-fetched role options
-      await field.click();
+      await field.getByRole('combobox').click();
       await expect(dropdown).toBeVisible();
-      await expect(dropdown.locator('.ant-select-item-option')).not.toHaveCount(
-        0
-      );
+      await expect(dropdown.getByRole('option')).not.toHaveCount(0);
 
       // Select a named role — it appears as a selection tag
-      await dropdown.getByTitle('Data Consumer', { exact: true }).click();
-      await expect(field.locator('.ant-select-selection-item')).toHaveCount(1);
+      await dropdown
+        .getByRole('option', { name: 'Data Consumer', exact: true })
+        .click();
+      await expect(selectedRoles).toHaveCount(1);
 
-      // Remove the selected role via its remove button
-      await field.locator('.ant-select-selection-item-remove').click();
-      await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
+      // Remove the selected role via its remove button; the open list hides
+      // the chips from the accessibility tree, so close it first.
+      await field.getByRole('combobox').press('Escape');
+      await selectedRoles.getByRole('button').click();
+      await expect(selectedRoles).toHaveCount(0);
 
       // Typing filters the visible options
-      await field.click();
+      await field.getByRole('combobox').click();
       const dataRoleSearchResponse = page.waitForResponse(
         '/api/v1/roles/search?*'
       );
-      await field.locator('input').fill('Data');
+      await field.getByRole('combobox').fill('Data');
       await dataRoleSearchResponse;
-      await expect(
-        dropdown.locator(
-          '.ant-select-item-option:not(.ant-select-item-option-disabled)'
-        )
-      ).not.toHaveCount(0, { timeout: 15000 });
+      await expect(dropdown.getByRole('option')).not.toHaveCount(0, {
+        timeout: 15000,
+      });
 
       // Pressing Enter on a non-existent value does not create an arbitrary tag
-      await field.locator('input').clear();
+      await field.getByRole('combobox').clear();
       const missingRoleSearchResponse = page.waitForResponse(
         '/api/v1/roles/search?*'
       );
-      await field.locator('input').fill('NonExistentRoleXYZ123');
+      await field.getByRole('combobox').fill('NonExistentRoleXYZ123');
       await missingRoleSearchResponse;
-      await field.locator('input').press('Enter');
-      await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
+      await field.getByRole('combobox').press('Enter');
+      await expect(selectedRoles).toHaveCount(0);
     });
 
     test('should not display role mapping widget for non-LDAP providers', async ({
@@ -848,7 +855,7 @@ test.describe('SAML Metadata XML Upload', () => {
     await enableSSOEditMode(page);
     await selectSSOProvider(page, 'saml');
 
-    const dropZone = page.getByTestId('file-upload-drop-zone');
+    const dropZone = page.getByTestId('file-uploader');
 
     await expect(dropZone).toBeVisible();
     await expect(
@@ -869,8 +876,8 @@ test.describe('SAML Metadata XML Upload', () => {
     await selectSSOProvider(page, 'saml');
 
     await test.step('Wait for drop zone and upload valid SAML metadata XML', async () => {
-      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
-      const fileInput = page.getByTestId('file-uploader');
+      await expect(page.getByTestId('file-uploader')).toBeVisible();
+      const fileInput = page.getByTestId('file-upload-input');
 
       await fileInput.setInputFiles(VALID_SAML_XML);
     });
@@ -908,9 +915,9 @@ test.describe('SAML Metadata XML Upload', () => {
 
     await test.step('Click change file and upload invalid SAML metadata XML', async () => {
       await page.getByTestId('change-metadata-xml-btn').click();
-      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
+      await expect(page.getByTestId('file-uploader')).toBeVisible();
 
-      const fileInput = page.getByTestId('file-uploader');
+      const fileInput = page.getByTestId('file-upload-input');
 
       await fileInput.setInputFiles(INVALID_SAML_XML);
     });
@@ -964,9 +971,9 @@ test.describe('SAML Metadata XML Upload', () => {
     await selectSSOProvider(page, 'saml');
 
     await test.step('Upload Okta SAML metadata XML', async () => {
-      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
+      await expect(page.getByTestId('file-uploader')).toBeVisible();
 
-      await page.getByTestId('file-uploader').setInputFiles(OKTA_SAML_XML);
+      await page.getByTestId('file-upload-input').setInputFiles(OKTA_SAML_XML);
 
       await expect(page.getByTestId('change-metadata-xml-btn')).toBeVisible();
       await expect(
@@ -1105,5 +1112,219 @@ test.describe('SSO Back Navigation', () => {
     await expect(page.locator('.provider-selector-container')).toBeVisible();
 
     expect(page.url()).not.toContain('provider=');
+  });
+});
+
+test.describe('SSO configuration source', () => {
+  const AUTHORIZER_CONFIGURATION = {
+    className: 'org.openmetadata.service.security.DefaultAuthorizer',
+    containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+    adminPrincipals: ['admin'],
+    principalDomain: 'open-metadata.org',
+    enforcePrincipalDomain: false,
+    enableSecureSocketConnection: false,
+  };
+
+  const OKTA_CONFIG = {
+    authenticationConfiguration: {
+      provider: 'okta',
+      providerName: 'Okta',
+      clientType: 'confidential',
+      authority: 'https://test.okta.com',
+      clientId: 'okta-client-id',
+      callbackUrl: 'http://localhost:8585/callback',
+      publicKeyUrls: [],
+      jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
+      enableSelfSignup: false,
+      oidcConfiguration: {
+        type: 'okta',
+        id: 'okta-client-id',
+        secret: '*********',
+        discoveryUri: 'https://test.okta.com/.well-known/openid-configuration',
+        callbackUrl: 'http://localhost:8585/callback',
+        serverUrl: 'http://localhost:8585',
+      },
+    },
+    authorizerConfiguration: AUTHORIZER_CONFIGURATION,
+  };
+
+  const BASIC_CONFIG = {
+    authenticationConfiguration: {
+      provider: 'basic',
+      providerName: 'basic',
+      authority: '',
+      clientId: '',
+      callbackUrl: '',
+      publicKeyUrls: [],
+      jwtPrincipalClaims: [],
+      enableSelfSignup: true,
+    },
+    authorizerConfiguration: AUTHORIZER_CONFIGURATION,
+  };
+
+  const envSecuritySources = (
+    authenticationPaths: string[],
+    authorizerPaths: string[]
+  ): MockSettingSource[] => [
+    {
+      configType: 'authenticationConfiguration',
+      source: 'ENV',
+      sourceVariable: 'SECURITY_CONFIG_SOURCE',
+      editable: false,
+      managedPaths: authenticationPaths,
+    },
+    {
+      configType: 'authorizerConfiguration',
+      source: 'ENV',
+      sourceVariable: 'SECURITY_CONFIG_SOURCE',
+      editable: false,
+      managedPaths: authorizerPaths,
+    },
+  ];
+
+  const CLIENT_ID_FIELD =
+    '[id="root/authenticationConfiguration/oidcConfiguration/id"]';
+  const CLIENT_SECRET_FIELD =
+    '[id="root/authenticationConfiguration/oidcConfiguration/secret"]';
+
+  // Every write is answered locally: no test here may change how the shared server signs users in.
+  const serveSecurityConfig = (page: Page, config: object) =>
+    page.route('**/api/v1/system/security/config', (route) =>
+      route.fulfill({ json: config })
+    );
+
+  const openSsoSettings = async (page: Page) => {
+    await page.goto('/settings/sso', { waitUntil: 'domcontentloaded' });
+  };
+
+  test('locks the fields the deployment configuration owns', async ({
+    page,
+  }) => {
+    await serveSecurityConfig(page, OKTA_CONFIG);
+    await mockSettingsSource(
+      page,
+      envSecuritySources(
+        [
+          '/provider',
+          '/clientType',
+          '/enableSelfSignup',
+          '/oidcConfiguration/id',
+          '/oidcConfiguration/discoveryUri',
+        ],
+        ['/adminPrincipals']
+      )
+    );
+    await openSsoSettings(page);
+
+    await test.step('One banner names the variable for both settings', async () => {
+      await expect(page.getByTestId('settings-source-env-alert')).toContainText(
+        'SECURITY_CONFIG_SOURCE=ENV'
+      );
+      await expect(page.getByTestId('settings-source-env-alert')).toHaveCount(
+        1
+      );
+    });
+
+    await test.step('Self signup cannot be switched', async () => {
+      await expect(
+        page.locator('.enable-sso-card-container').getByRole('switch')
+      ).toBeDisabled();
+    });
+
+    await test.step('Only the managed fields are read-only', async () => {
+      await page.getByRole('tab', { name: 'Configure' }).click();
+
+      await expect(page.locator(CLIENT_SECRET_FIELD)).toBeEnabled();
+      await expect(page.locator(CLIENT_ID_FIELD)).toBeDisabled();
+      await expect(page.locator(CLIENT_ID_FIELD)).toHaveValue('okta-client-id');
+      await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
+    });
+  });
+
+  test('shows the configuration read-only when the deployment owns all of it', async ({
+    page,
+  }) => {
+    await serveSecurityConfig(page, OKTA_CONFIG);
+    await mockSettingsSource(page, envSecuritySources(['/'], ['/']));
+    await openSsoSettings(page);
+
+    await expect(page.getByTestId('settings-source-env-alert')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Configure' }).click();
+
+    await expect(page.locator(CLIENT_ID_FIELD)).toHaveValue('okta-client-id');
+    await expect(page.locator(CLIENT_ID_FIELD)).toBeDisabled();
+    await expect(page.locator(CLIENT_SECRET_FIELD)).toBeDisabled();
+    await expect(page.getByTestId('save-sso-configuration')).not.toBeVisible();
+  });
+
+  test('offers no provider to choose when the deployment sets the provider', async ({
+    page,
+  }) => {
+    await serveSecurityConfig(page, BASIC_CONFIG);
+    await mockSettingsSource(page, envSecuritySources(['/provider'], []));
+    await openSsoSettings(page);
+
+    await expect(page.getByTestId('settings-source-env-alert')).toContainText(
+      'SECURITY_CONFIG_SOURCE=ENV'
+    );
+    await expect(
+      page.locator('.provider-selector-container')
+    ).not.toBeVisible();
+  });
+
+  test('replaces saved values with the deployment values on request', async ({
+    page,
+  }) => {
+    await serveSecurityConfig(page, OKTA_CONFIG);
+    const adoptRequests = await mockSettingsSource(page, [
+      {
+        configType: 'authenticationConfiguration',
+        source: 'AUTO',
+        sourceVariable: 'SECURITY_CONFIG_SOURCE',
+        editable: true,
+        overriddenFields: [
+          {
+            path: '/oidcConfiguration/clientAuthenticationMethod',
+            envVariable: 'OIDC_CLIENT_AUTH_METHOD',
+          },
+        ],
+      },
+    ]);
+    await openSsoSettings(page);
+
+    const overriddenAlert = page.getByTestId(
+      'settings-source-overridden-alert'
+    );
+
+    await expect(overriddenAlert).toContainText(
+      '/oidcConfiguration/clientAuthenticationMethod (set by OIDC_CLIENT_AUTH_METHOD)'
+    );
+
+    await overriddenAlert
+      .getByRole('button', { name: 'Use deployment value' })
+      .click();
+
+    const configReload = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().endsWith('/api/v1/system/security/config')
+    );
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Use deployment value' })
+      .click();
+    await configReload;
+
+    await expect
+      .poll(() => adoptRequests)
+      .toEqual([
+        {
+          configType: 'authenticationConfiguration',
+          paths: ['/oidcConfiguration/clientAuthenticationMethod'],
+        },
+      ]);
+    await expect(page.getByRole('tab', { name: 'Configure' })).toBeVisible();
+    await expect(overriddenAlert).not.toBeVisible();
   });
 });

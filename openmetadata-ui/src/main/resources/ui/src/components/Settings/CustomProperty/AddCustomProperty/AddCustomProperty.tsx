@@ -10,34 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import {
   Badge,
   Box,
-  Button as CoreButton,
-  SelectItemType,
+  Button,
+  HookForm,
   SlideoutMenu,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, FormInstance } from 'antd';
 import { AxiosError } from 'axios';
-import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
-
-import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
+import { isUndefined } from 'lodash';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  CUSTOM_PROPERTIES_ICON_MAP,
-  ENTITY_REFERENCE_OPTIONS,
-  PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
-  PROPERTY_TYPES_WITH_FORMAT,
-  SUPPORTED_FORMAT_MAP,
-  TABLE_TYPE_CUSTOM_PROPERTY,
-} from '../../../../constants/CustomProperty.constants';
+import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
-import { CUSTOM_PROPERTY_NAME_REGEX } from '../../../../constants/regex.constants';
 import {
   CUSTOM_PROPERTY_CATEGORY,
   OPEN_METADATA,
@@ -47,17 +36,10 @@ import { ServiceCategory } from '../../../../enums/service.enum';
 import { Category, Type } from '../../../../generated/entity/type';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
-} from '../../../../interface/FormUtils.interface';
-import {
   addPropertyToEntity,
   getTypeByFQN,
   getTypeListByCategory,
 } from '../../../../rest/metadataTypeAPI';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { generateFormFields } from '../../../../utils/formUtils';
 import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -65,9 +47,11 @@ import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { AddCustomPropertyFormValues } from '../../../discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertiesPanel.types';
+import { toCustomPropertyPayload } from '../../../discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertiesPanel.utils';
+import CustomPropertyFormFields from '../../../discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertyFormFields';
 
 interface AddCustomPropertyProps {
-  formRef?: FormInstance;
   onCancel?: () => void;
   onSubmit?: (data: CustomProperty) => void;
   loading?: boolean;
@@ -76,15 +60,15 @@ interface AddCustomPropertyProps {
   onClose?: () => void;
 }
 
-/**
- * Column name the earlier table-type custom property editor used as its
- * internal row key and stripped on save. It stays reserved so a user column
- * never takes that name and loses its data to an older client.
- */
-const RESERVED_TABLE_COLUMN_NAMES = ['__row_id__'];
+const DEFAULT_VALUES: AddCustomPropertyFormValues = {
+  name: '',
+  displayName: '',
+  propertyType: null,
+  description: '',
+  multiSelect: false,
+};
 
 const AddCustomProperty = ({
-  formRef,
   onSubmit,
   loading,
   entityType: entityTypeProp,
@@ -92,8 +76,11 @@ const AddCustomProperty = ({
   onClose,
   onCancel,
 }: AddCustomPropertyProps) => {
-  const [localForm] = Form.useForm();
-  const form = formRef ?? localForm;
+  // Validate while typing so the drawer's Create button tracks validity.
+  const form = useForm<AddCustomPropertyFormValues>({
+    mode: 'onChange',
+    defaultValues: DEFAULT_VALUES,
+  });
   const { entityType: entityTypeParam } = useRequiredParams<{
     entityType: EntityType;
   }>();
@@ -101,14 +88,11 @@ const AddCustomProperty = ({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [typeDetail, setTypeDetail] = useState<Type>();
-
-  const [propertyTypes, setPropertyTypes] = useState<Array<Type>>([]);
+  const [propertyTypes, setPropertyTypes] = useState<Type[]>([]);
   const [activeField, setActiveField] = useState<string>('');
   const [isCreating, setIsCreating] = useState<boolean>(false);
-  const [isFormInvalid, setIsFormInvalid] = useState<boolean>(true);
   const [showSidePanel, setShowSidePanel] = useState<boolean>(false);
-
-  const watchedPropertyType = Form.useWatch('propertyType', form);
+  const [descriptionKey, setDescriptionKey] = useState(0);
 
   const slashedBreadcrumb = useMemo(
     () => [
@@ -130,55 +114,8 @@ const AddCustomProperty = ({
         url: '',
       },
     ],
-    [entityType]
+    [entityType, t]
   );
-
-  const propertyTypeOptions: SelectItemType[] = useMemo(() => {
-    return map(propertyTypes, (type) => {
-      const Icon =
-        CUSTOM_PROPERTIES_ICON_MAP[
-          type.name as keyof typeof CUSTOM_PROPERTIES_ICON_MAP
-        ];
-
-      // Remove -cp from the name and convert to start case
-      const title = startCase(getEntityName(type).replaceAll('-cp', ''));
-
-      return {
-        id: type.id ?? '',
-        label: title,
-        icon: Icon,
-      };
-    });
-  }, [propertyTypes]);
-
-  const {
-    hasEnumConfig,
-    hasFormatConfig,
-    hasEntityReferenceConfig,
-    watchedTypeName,
-    hasTableTypeConfig,
-  } = useMemo(() => {
-    const watchedTypeName =
-      propertyTypes.find((type) => type.id === watchedPropertyType)?.name ?? '';
-
-    const hasEnumConfig = watchedTypeName === 'enum';
-
-    const hasTableTypeConfig = watchedTypeName === TABLE_TYPE_CUSTOM_PROPERTY;
-
-    const hasFormatConfig =
-      PROPERTY_TYPES_WITH_FORMAT.includes(watchedTypeName);
-
-    const hasEntityReferenceConfig =
-      PROPERTY_TYPES_WITH_ENTITY_REFERENCE.includes(watchedTypeName);
-
-    return {
-      hasEnumConfig,
-      hasFormatConfig,
-      hasEntityReferenceConfig,
-      watchedTypeName,
-      hasTableTypeConfig,
-    };
-  }, [watchedPropertyType, propertyTypes]);
 
   const fetchPropertyType = async () => {
     try {
@@ -190,12 +127,8 @@ const AddCustomProperty = ({
   };
 
   const fetchTypeDetail = async (typeFQN: string) => {
-    if (!typeFQN) {
-      return;
-    }
     try {
-      const response = await getTypeByFQN(typeFQN);
-      setTypeDetail(response);
+      setTypeDetail(await getTypeByFQN(typeFQN));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -209,26 +142,35 @@ const AddCustomProperty = ({
     }
   }, [navigate, onCancel]);
 
-  const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
+  const handleFieldFocus = useCallback((event: FocusEvent<HTMLElement>) => {
     const isDescription = event.target.classList.contains('ProseMirror');
-    const fieldName = isDescription ? 'root/description' : event.target.id;
-
-    setActiveField(fieldName);
+    setActiveField(isDescription ? 'root/description' : event.target.id);
   }, []);
 
-  const handleFieldsChange = useCallback(() => {
-    // Internal validation logic for Drawer
-    const hasErrors = form.getFieldsError().some(({ errors }) => errors.length);
+  const handleFormSubmit = async (data: AddCustomPropertyFormValues) => {
+    if (isUndefined(typeDetail)) {
+      return;
+    }
+    const payload = toCustomPropertyPayload(data, propertyTypes);
 
-    const { name, propertyType, description } = form.getFieldsValue();
-    const isNameValid = !!name;
-    const isPropertyTypeValid = !!propertyType;
-    const isDescriptionValid = !!description;
+    if (onSubmit) {
+      onSubmit(payload);
 
-    setIsFormInvalid(
-      hasErrors || !isNameValid || !isPropertyTypeValid || !isDescriptionValid
-    );
-  }, [form]);
+      return;
+    }
+
+    try {
+      setIsCreating(true);
+      await addPropertyToEntity(typeDetail.id ?? '', payload);
+      navigate(-1);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const submit = form.handleSubmit(handleFormSubmit);
 
   useEffect(() => {
     if (entityType) {
@@ -240,404 +182,68 @@ const AddCustomProperty = ({
     fetchPropertyType();
   }, []);
 
-  const getAppliesToField = useCallback(() => {
-    return (
-      <Badge
-        className="flex items-center gap-1"
-        color="gray"
-        size="md"
-        type="pill-color">
-        <ColumnIcon height={14} width={14} />
-        {t('label.table-column')}
-      </Badge>
-    );
-  }, [t]);
-
-  const supportedFormats = useMemo(() => {
-    return (
-      SUPPORTED_FORMAT_MAP[
-        watchedTypeName as keyof typeof SUPPORTED_FORMAT_MAP
-      ] ?? []
-    );
-  }, [watchedTypeName]);
-
-  const formFields: FieldProp[] = useMemo(
-    () => [
-      {
-        name: 'name',
-        required: true,
-        label: t('label.name'),
-        id: 'root/name',
-        type: FieldTypes.UT_TEXT,
-        props: {
-          'data-testid': 'name',
-          autoComplete: 'off',
-        },
-        placeholder: t('label.name'),
-        rules: [
-          {
-            max: 256,
-            message: t('message.entity-size-in-between', {
-              entity: t('label.name'),
-              min: 1,
-              max: 256,
-            }),
-          },
-          {
-            pattern: CUSTOM_PROPERTY_NAME_REGEX,
-            message: t('message.custom-property-name-validation'),
-          },
-        ],
-      },
-      {
-        name: 'displayName',
-        id: 'root/displayName',
-        label: t('label.display-name'),
-        required: false,
-        placeholder: t('label.display-name'),
-        type: FieldTypes.UT_TEXT,
-        props: {
-          'data-testid': 'display-name',
-        },
-      },
-      {
-        name: 'propertyType',
-        required: true,
-        label: t('label.type'),
-        id: 'root/propertyType',
-        type: FieldTypes.UT_SELECT,
-        placeholder: `${t('label.select-field', {
-          field: t('label.type'),
-        })}`,
-        props: {
-          'data-testid': 'propertyType',
-          items: propertyTypeOptions,
-        },
-      },
-      ...(entityType === EntityType.TABLE_COLUMN
-        ? [
-            {
-              name: 'appliesTo',
-              required: false,
-              label: t('label.applies-to'),
-              id: 'root/appliesTo',
-              type: FieldTypes.COMPONENT,
-              props: {
-                'data-testid': 'applies-to',
-                children: getAppliesToField(),
-              },
-            },
-          ]
-        : []),
-    ],
-    [getAppliesToField, propertyTypeOptions, t, entityType]
-  );
-
-  const descriptionField: FieldProp = useMemo(
-    () => ({
-      name: 'description',
-      required: true,
-      label: t('label.description'),
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-      },
-    }),
-    [t]
-  );
-
-  const enumConfigField: FieldProp = useMemo(
-    () => ({
-      name: 'enumConfig',
-      required: false,
-      label: t('label.enum-value-plural'),
-      id: 'root/enumConfig',
-      type: FieldTypes.SELECT,
-      props: {
-        'data-testid': 'enumConfig',
-        mode: 'tags',
-        placeholder: t('label.enum-value-plural'),
-        open: false,
-        className: 'trim-select',
-        getPopupContainer: (triggerNode: HTMLElement) =>
-          triggerNode.parentElement ?? document.body,
-      },
-      rules: [
-        {
-          required: true,
-          message: t('label.field-required', {
-            field: t('label.enum-value-plural'),
-          }),
-        },
-      ],
-    }),
-    [t]
-  );
-
-  const multiSelectField: FieldProp = useMemo(
-    () => ({
-      name: 'multiSelect',
-      label: t('label.multi-select'),
-      type: FieldTypes.UT_SWITCH,
-      required: false,
-      props: {
-        'data-testid': 'multiSelect',
-      },
-      id: 'root/multiSelect',
-      formItemLayout: FormItemLayout.HORIZONTAL,
-    }),
-    [t]
-  );
-
-  const formatConfigField: FieldProp = useMemo(
-    () => ({
-      name: 'formatConfig',
-      required: false,
-      label: t('label.format'),
-      id: 'root/formatConfig',
-      type: FieldTypes.UT_SELECT,
-      props: {
-        'data-testid': 'formatConfig',
-        items: supportedFormats.map((option) => ({
-          id: option,
-          label: option,
-        })),
-      },
-      placeholder: t('label.format'),
-      rules: [
-        {
-          validator: (_, value) => {
-            if (value && !supportedFormats.includes(value)) {
-              return Promise.reject(
-                t('label.field-invalid', {
-                  field: t('label.format'),
-                })
-              );
-            }
-
-            return Promise.resolve();
-          },
-        },
-      ],
-    }),
-    [supportedFormats, t]
-  );
-
-  const entityReferenceConfigField: FieldProp = useMemo(
-    () => ({
-      name: 'entityReferenceConfig',
-      required: true,
-      label: t('label.entity-reference-types'),
-      id: 'root/entityReferenceConfig',
-      type: FieldTypes.SELECT,
-      props: {
-        mode: 'multiple',
-        options: ENTITY_REFERENCE_OPTIONS,
-        'data-testid': 'entityReferenceConfig',
-        placeholder: `${t('label.select-field', {
-          field: t('label.type'),
-        })}`,
-        getPopupContainer: (triggerNode: HTMLElement) =>
-          triggerNode.parentElement ?? document.body,
-      },
-    }),
-    [t]
-  );
-
-  const tableTypePropertyConfig: FieldProp[] = useMemo(
-    () => [
-      {
-        name: 'columns',
-        required: true,
-        label: t('label.column-plural'),
-        id: 'root/columns',
-        type: FieldTypes.SELECT,
-        props: {
-          'data-testid': 'columns',
-          mode: 'tags',
-          placeholder: t('label.column-plural'),
-          getPopupContainer: (triggerNode: HTMLElement) =>
-            triggerNode.parentElement ?? document.body,
-        },
-        rules: [
-          {
-            required: true,
-            validator: async (_, value) => {
-              if (isArray(value)) {
-                if (value.length > 3) {
-                  throw t('message.maximum-count-allowed', {
-                    count: 3,
-                    label: t('label.column-plural'),
-                  });
-                }
-                if (
-                  value.some((c: string) =>
-                    RESERVED_TABLE_COLUMN_NAMES.includes(c)
-                  )
-                ) {
-                  throw t('message.reserved-column-name', {
-                    name: RESERVED_TABLE_COLUMN_NAMES.join(', '),
-                  });
-                }
-              } else {
-                throw t('label.field-required', {
-                  field: t('label.column-plural'),
-                });
-              }
-            },
-          },
-        ],
-      },
-    ],
-    [t]
-  );
-
-  const handleFormSubmit = async (
-    data: Exclude<CustomProperty, 'propertyType'> & {
-      propertyType: string;
-      enumConfig: string[];
-      formatConfig: string;
-      entityReferenceConfig: string[];
-      multiSelect?: boolean;
-      columns: string[];
+  // The drawer stays mounted between openings, so start each one clean.
+  useEffect(() => {
+    if (open) {
+      form.reset(DEFAULT_VALUES);
+      setDescriptionKey((key) => key + 1);
     }
-  ) => {
-    if (isUndefined(typeDetail)) {
-      return;
-    }
-
-    let customPropertyConfig;
-
-    if (hasEnumConfig) {
-      customPropertyConfig = {
-        config: {
-          multiSelect: Boolean(data?.multiSelect),
-          values: data.enumConfig,
-        },
-      };
-    }
-
-    if (hasFormatConfig) {
-      customPropertyConfig = {
-        config: data.formatConfig,
-      };
-    }
-
-    if (hasEntityReferenceConfig) {
-      customPropertyConfig = {
-        config: data.entityReferenceConfig,
-      };
-    }
-
-    if (hasTableTypeConfig) {
-      customPropertyConfig = {
-        config: {
-          columns: data.columns,
-        },
-      };
-    }
-
-    const payload = omitBy(
-      {
-        ...omit(data, [
-          'multiSelect',
-          'formatConfig',
-          'entityReferenceConfig',
-          'enumConfig',
-          'columns',
-        ]),
-        propertyType: {
-          id: data.propertyType,
-          type: 'type',
-        },
-        customPropertyConfig,
-      },
-      isUndefined
-    ) as unknown as CustomProperty;
-
-    if (onSubmit) {
-      onSubmit(payload);
-
-      return;
-    }
-
-    try {
-      setIsCreating(true);
-      await addPropertyToEntity(typeDetail?.id ?? '', payload);
-      navigate(-1);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  // Fields shown conditionally based on the selected property type; computed
-  // once here so the render body doesn't carry each type-specific branch.
-  const conditionalTypeFields: FieldProp[] = useMemo(() => {
-    const fields: FieldProp[] = [];
-
-    if (hasEnumConfig) {
-      fields.push(enumConfigField, multiSelectField);
-    }
-    if (hasFormatConfig) {
-      fields.push(formatConfigField);
-    }
-    if (hasEntityReferenceConfig) {
-      fields.push(entityReferenceConfigField);
-    }
-    if (hasTableTypeConfig) {
-      fields.push(...tableTypePropertyConfig);
-    }
-
-    return fields;
-  }, [
-    hasEnumConfig,
-    hasFormatConfig,
-    hasEntityReferenceConfig,
-    hasTableTypeConfig,
-    enumConfigField,
-    multiSelectField,
-    formatConfigField,
-    entityReferenceConfigField,
-    tableTypePropertyConfig,
-  ]);
+  }, [open, form]);
 
   const formContent = (
-    <Form
-      className="m-t-md"
-      data-testid="custom-property-form"
-      form={form}
-      layout="vertical"
-      onFieldsChange={handleFieldsChange}
-      onFinish={handleFormSubmit}
-      onFocus={handleFieldFocus}>
-      {generateFormFields(formFields)}
-      {generateFormFields(conditionalTypeFields)}
-      {generateFormFields([descriptionField])}
-      {isUndefined(open) && (
-        <Box className="layout-row" justify="end" wrap="wrap">
-          <Box className="layout-column tw:block">
-            <Button
-              data-testid="back-button"
-              type="link"
-              onClick={handleCancel}>
-              {t('label.back')}
-            </Button>
+    // Tracks the focused field for the doc panel; focus events bubble.
+    <div className="tw:mt-4" role="presentation" onFocus={handleFieldFocus}>
+      <HookForm
+        className="tw:flex tw:flex-col tw:gap-4"
+        data-testid="custom-property-form"
+        form={form}
+        onSubmit={submit}>
+        <CustomPropertyFormFields
+          descriptionKey={descriptionKey}
+          form={form}
+          propertyTypes={propertyTypes}
+          typeAddon={
+            entityType === EntityType.TABLE_COLUMN && (
+              <Box direction="col" gap={1}>
+                <Typography size="text-sm" weight="medium">
+                  {t('label.applies-to')}
+                </Typography>
+                <Badge
+                  className="flex items-center gap-1"
+                  color="gray"
+                  data-testid="applies-to"
+                  size="md"
+                  type="pill-color">
+                  <ColumnIcon height={14} width={14} />
+                  {t('label.table-column')}
+                </Badge>
+              </Box>
+            )
+          }
+        />
+        {isUndefined(open) && (
+          <Box className="layout-row" justify="end" wrap="wrap">
+            <Box className="layout-column tw:block">
+              <Button
+                color="link-color"
+                data-testid="back-button"
+                onClick={handleCancel}>
+                {t('label.back')}
+              </Button>
+            </Box>
+            <Box className="layout-column tw:block">
+              <Button
+                color="primary"
+                data-testid="create-button"
+                isLoading={isCreating || loading}
+                type="submit">
+                {t('label.create')}
+              </Button>
+            </Box>
           </Box>
-          <Box className="layout-column tw:block">
-            <Button
-              data-testid="create-button"
-              htmlType="submit"
-              loading={isCreating || loading}
-              type="primary">
-              {t('label.create')}
-            </Button>
-          </Box>
-        </Box>
-      )}
-    </Form>
+        )}
+      </HookForm>
+    </div>
   );
 
   if (!isUndefined(open)) {
@@ -704,21 +310,21 @@ const AddCustomProperty = ({
 
             <SlideoutMenu.Footer>
               <div className="tw:flex tw:justify-end tw:gap-4">
-                <CoreButton
+                <Button
                   color="tertiary"
                   data-testid="cancel-button"
                   isDisabled={isDrawerLoading}
                   onClick={close}>
                   {t('label.cancel')}
-                </CoreButton>
-                <CoreButton
+                </Button>
+                <Button
                   color="primary"
                   data-testid="create-button"
-                  isDisabled={isDrawerLoading || isFormInvalid}
+                  isDisabled={isDrawerLoading || !form.formState.isValid}
                   isLoading={isDrawerLoading}
-                  onClick={() => form.submit()}>
+                  onClick={submit}>
                   {t('label.create')}
-                </CoreButton>
+                </Button>
               </div>
             </SlideoutMenu.Footer>
           </>

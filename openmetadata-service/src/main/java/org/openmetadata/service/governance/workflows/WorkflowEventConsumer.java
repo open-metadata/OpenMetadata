@@ -28,12 +28,12 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.Destination;
-import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.alerting.audience.Recipient;
+import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.Registry;
 

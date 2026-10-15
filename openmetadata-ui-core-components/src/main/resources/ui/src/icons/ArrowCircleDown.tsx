@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const ArrowCircleDown: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const ArrowCircleDown: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="m8 12 4 4m0 0 4-4m-4 4V8m10 4c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10"
+      d="M6.667 10 10 13.333m0 0L13.333 10M10 13.333V6.667M18.333 10c0 4.603-3.731 8.333-8.333 8.333S1.667 14.603 1.667 10 5.398 1.667 10 1.667 18.333 5.398 18.333 10"
       stroke="currentColor"
       strokeWidth={1.3}
     />

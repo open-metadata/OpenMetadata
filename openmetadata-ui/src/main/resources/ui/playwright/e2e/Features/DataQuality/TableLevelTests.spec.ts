@@ -24,6 +24,7 @@ import {
 } from '../../../utils/common';
 import {
   clickUpdateButton,
+  expectFormHint,
   selectTestType,
   visitCreateTestCasePanelFromEntityPage,
 } from '../../../utils/dataQuality';
@@ -108,9 +109,7 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
-
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
 
         await page
           .getByTestId('test-case-name')
@@ -118,13 +117,7 @@ test.describe(
           .fill(testCase.name);
 
         await selectTestType(page, 'Table Row Count To Be Between');
-        await page.locator('[data-id="tableRowCountToBeBetween"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableRowCountToBeBetween"]')
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill('#testCaseFormV1_params_minValue', testCase.minValue);
         await page.fill('#testCaseFormV1_params_maxValue', testCase.maxValue);
@@ -145,15 +138,11 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
         await expect(page.getByTestId('form-heading')).toHaveText(
@@ -195,9 +184,7 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
-
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
 
         await page
           .getByTestId('test-case-name')
@@ -205,13 +192,7 @@ test.describe(
           .fill(testCase.name);
 
         await selectTestType(page, 'Table Row Count To Equal');
-        await page.locator('[data-id="tableRowCountToEqual"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableRowCountToEqual"]')
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill('#testCaseFormV1_params_value', testCase.value);
 
@@ -231,15 +212,11 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
         await expect(page.getByTestId('form-heading')).toHaveText(
@@ -280,9 +257,7 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
-
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
 
         await page
           .getByTestId('test-case-name')
@@ -290,13 +265,7 @@ test.describe(
           .fill(testCase.name);
 
         await selectTestType(page, 'Table Column Count To Be Between');
-        await page.locator('[data-id="tableColumnCountToBeBetween"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableColumnCountToBeBetween"]')
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill(
           '#testCaseFormV1_params_minColValue',
@@ -323,15 +292,11 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
         await expect(page.getByTestId('form-heading')).toHaveText(
@@ -373,9 +338,7 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
-
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
 
         await page
           .getByTestId('test-case-name')
@@ -383,13 +346,7 @@ test.describe(
           .fill(testCase.name);
 
         await selectTestType(page, 'Table Column Count To Equal');
-        await page.locator('[data-id="tableColumnCountToEqual"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableColumnCountToEqual"]')
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill(
           '#testCaseFormV1_params_columnCount',
@@ -412,15 +369,11 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
         await expect(page.getByTestId('form-heading')).toHaveText(
@@ -460,9 +413,7 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
-
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
 
         await page
           .getByTestId('test-case-name')
@@ -470,13 +421,7 @@ test.describe(
           .fill(testCase.name);
 
         await selectTestType(page, 'Table Column Name To Exist');
-        await page.locator('[data-id="tableColumnNameToExist"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableColumnNameToExist"]')
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill(
           '#testCaseFormV1_params_columnName',
@@ -499,15 +444,11 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
         await expect(page.getByTestId('form-heading')).toHaveText(
@@ -548,9 +489,7 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
-
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
 
         await page
           .getByTestId('test-case-name')
@@ -558,13 +497,7 @@ test.describe(
           .fill(testCase.name);
 
         await selectTestType(page, 'Table Column Names To Match Set');
-        await page.locator('[data-id="tableColumnToMatchSet"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableColumnToMatchSet"]')
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill(
           '#testCaseFormV1_params_columnNames',
@@ -587,15 +520,11 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
         await expect(page.getByTestId('form-heading')).toHaveText(
@@ -653,9 +582,7 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
-
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
 
         await page
           .getByTestId('test-case-name')
@@ -685,11 +612,7 @@ test.describe(
         await expect(table2KeyColumnsInput).toBeDisabled();
 
         await page.click('#testCaseFormV1_params_table2');
-        await page.locator('[data-id="tableDiff"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(page.locator('[data-id="tableDiff"]')).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         const tableSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*${testCase.table2}*index=table*`
@@ -781,15 +704,11 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
         await expect(page.getByTestId('form-heading')).toHaveText(
@@ -829,11 +748,6 @@ test.describe(
         ).toBeVisible();
 
         await page.getByTestId('add-keyColumns').click();
-        await page.locator('[data-id="tableDiff"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(page.locator('[data-id="tableDiff"]')).toBeVisible();
 
         await selectOptionWithRetry(
           page.locator('#testCaseFormV1_params_keyColumns_1_value'),
@@ -882,9 +796,7 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
-
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
 
         await page
           .getByTestId('test-case-name')
@@ -892,13 +804,7 @@ test.describe(
           .fill(testCase.name);
 
         await selectTestType(page, 'Custom SQL Query');
-        await page.locator('[data-id="tableCustomSQLQuery"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableCustomSQLQuery"]')
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         await clickCodeEditor(page);
         await page
@@ -929,15 +835,11 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
         await expect(page.getByTestId('form-heading')).toHaveText(
@@ -962,13 +864,6 @@ test.describe(
           page.locator('#testCaseFormV1_params_strategy'),
           page.getByRole('option', { name: 'use the single number' })
         );
-        await page.locator('[data-id="tableCustomSQLQuery"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableCustomSQLQuery"]')
-        ).toBeVisible();
 
         await page.getByPlaceholder('Enter a Threshold').clear();
         await page.getByPlaceholder('Enter a Threshold').fill('244');
@@ -1007,9 +902,7 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
-
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await expectFormHint(page, 'Name');
 
         await page
           .getByTestId('test-case-name')
@@ -1017,15 +910,7 @@ test.describe(
           .fill(testCase.name);
 
         await selectTestType(page, 'Table Row Inserted Count To be Between');
-        await page
-          .locator('[data-id="tableRowInsertedCountToBeBetween"]')
-          .waitFor({
-            state: 'visible',
-          });
-
-        await expect(
-          page.locator('[data-id="tableRowInsertedCountToBeBetween"]')
-        ).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill('#testCaseFormV1_params_min', testCase.minValue);
         await page.fill('#testCaseFormV1_params_max', testCase.maxValue);
@@ -1058,15 +943,11 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
         await expect(page.getByTestId('form-heading')).toHaveText(
