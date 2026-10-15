@@ -26,6 +26,7 @@ import java.net.URL;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.List;
+import java.util.Locale;
 import javax.security.auth.x500.X500Principal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -354,6 +355,39 @@ class SamlValidatorTest {
       samlConfig.getIdp().setEntityId("https://sts.windows.net/" + tenantId + "/");
       samlConfig.getIdp().setIdpX509Certificate(AZURE_CERT);
       samlConfig.getIdp().setNameId("urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress");
+
+      FieldError error =
+          validator.validateSamlConfiguration(new AuthenticationConfiguration(), samlConfig);
+
+      assertNull(error);
+    }
+  }
+
+  /**
+   * An Azure AD tenant GUID entered in upper case (e.g. transcribed from a tool that renders GUIDs
+   * in upper case) must be accepted end-to-end. Azure's OpenID-config endpoint returns a
+   * lowercase issuer for an upper case path GUID, so both the format check and the issuer
+   * comparison must be case-insensitive.
+   */
+  @Test
+  void validateSamlConfigurationAcceptsUppercaseAzureTenantGuid() throws Exception {
+    String tenantId = "A1B2C3D4-E5F6-7890-1234-567890ABCDEF";
+    String normalizedTenantId = tenantId.toLowerCase(Locale.ROOT);
+    String openIdConfigUrl =
+        "https://login.microsoftonline.com/"
+            + normalizedTenantId
+            + "/v2.0/.well-known/openid-configuration";
+
+    try (TestSsoServer server = TestSsoServer.start(200, "ok");
+        MockedStatic<ValidationHttpUtil> http = mockStatic(ValidationHttpUtil.class)) {
+      http.when(() -> ValidationHttpUtil.safeGet(openIdConfigUrl))
+          .thenReturn(
+              new ValidationHttpUtil.HttpResponseData(
+                  200, "{\"issuer\":\"https://sts.windows.net/" + normalizedTenantId + "/\"}"));
+
+      SamlSSOClientConfig samlConfig = baseConfig(server.url());
+      samlConfig.getIdp().setEntityId("https://sts.windows.net/" + tenantId + "/");
+      samlConfig.getIdp().setIdpX509Certificate(AZURE_CERT);
 
       FieldError error =
           validator.validateSamlConfiguration(new AuthenticationConfiguration(), samlConfig);

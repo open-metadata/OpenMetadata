@@ -18,6 +18,7 @@ import java.util.Base64;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
@@ -658,11 +659,16 @@ public class SamlValidator {
             "Could not extract tenant ID from Entity ID or SSO URL");
       }
 
-      // Validate tenant ID format (should be a GUID)
-      if (!tenantId.matches("[a-f0-9\\-]{36}")
-          && !tenantId.equals("common")
-          && !tenantId.equals("organizations")
-          && !tenantId.equals("consumers")) {
+      // Azure AD tenant GUIDs are case-insensitive, and Azure's OpenID-config endpoint returns a
+      // lowercase issuer even when the request path used an uppercase GUID. Normalize once so
+      // both the format check and the issuer comparison are case-insensitive end-to-end.
+      String normalizedTenantId = tenantId.toLowerCase(Locale.ROOT);
+
+      // Validate tenant ID format (should be a GUID, case-insensitive)
+      if (!normalizedTenantId.matches("[a-f0-9\\-]{36}")
+          && !normalizedTenantId.equals("common")
+          && !normalizedTenantId.equals("organizations")
+          && !normalizedTenantId.equals("consumers")) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.SAML_IDP_ENTITY_ID,
             "Invalid Azure AD tenant ID format: " + tenantId);
@@ -671,7 +677,7 @@ public class SamlValidator {
       // Validate tenant exists by checking OpenID configuration
       String openIdConfigUrl =
           "https://login.microsoftonline.com/"
-              + tenantId
+              + normalizedTenantId
               + "/v2.0/.well-known/openid-configuration";
 
       try {
@@ -681,13 +687,14 @@ public class SamlValidator {
           // Parse response to verify it's a valid OpenID config
           JsonNode config = JsonUtils.readTree(response.getBody());
 
-          // Check if the issuer matches the tenant
+          // Check if the issuer matches the tenant (case-insensitive: Azure returns a lowercase
+          // issuer even for an uppercase path-segment GUID, so compare on the normalized value)
           if (config.has("issuer")) {
             String issuer = config.get("issuer").asText();
-            if (!issuer.contains(tenantId)
-                && !tenantId.equals("common")
-                && !tenantId.equals("organizations")
-                && !tenantId.equals("consumers")) {
+            if (!issuer.contains(normalizedTenantId)
+                && !normalizedTenantId.equals("common")
+                && !normalizedTenantId.equals("organizations")
+                && !normalizedTenantId.equals("consumers")) {
               return ValidationErrorBuilder.createFieldError(
                   ValidationErrorBuilder.FieldPaths.SAML_IDP_ENTITY_ID,
                   "Tenant ID mismatch. Expected tenant: " + tenantId + " but issuer is: " + issuer);
