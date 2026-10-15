@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from '@openmetadata/ui-core-components';
+import { Tabs, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -158,9 +158,9 @@ const EntityRightPanelVerticalNav: React.FC<
               id={key}
               key={key}>
               {icon}
-              <span className="tw:mx-auto tw:block tw:w-[54px] tw:text-center tw:text-[11px] tw:leading-[1.2] tw:break-words tw:whitespace-normal">
+              <Typography className="tw:mx-auto tw:block tw:w-[54px] tw:text-center tw:text-[10px] tw:leading-[1.2] tw:text-inherit tw:break-words tw:whitespace-normal">
                 {label}
-              </span>
+              </Typography>
             </Tabs.Item>
           ))}
         </Tabs.List>

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -214,7 +214,12 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   const descriptionHeader = (
     <div className="description-header">
       <div className="description-title-row">
-        <span className="description-title">{t('label.description')}</span>
+        <Typography
+          className="description-title"
+          size="text-xs"
+          weight="semibold">
+          {t('label.description')}
+        </Typography>
         {headerBadge}
       </div>
       {canShowEditButton && (

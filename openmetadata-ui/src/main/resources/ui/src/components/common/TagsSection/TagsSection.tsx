@@ -225,7 +225,9 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
   return (
     <div className="tags-section">
       <div className="tags-header">
-        <Typography className="tags-title">{t('label.tag-plural')}</Typography>
+        <Typography className="tags-title" size="text-xs" weight="semibold">
+          {t('label.tag-plural')}
+        </Typography>
         {editButton}
       </div>
       <div className="tags-content">{tagsContent}</div>

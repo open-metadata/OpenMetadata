@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Typography } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -63,7 +62,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
     if (info.isExternal && info.value !== '-') {
       return (
         <a
-          className="summary-item-link"
+          className="summary-item-link tw:text-xs!"
           href={info.url}
           rel="noopener noreferrer"
           target="_blank">
@@ -79,7 +78,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
     return (
       <Link
-        className="summary-item-link"
+        className="summary-item-link tw:text-xs!"
         to={info.linkProps ?? info.url ?? ''}
         onClick={onLinkClick}>
         {info.value}
@@ -100,16 +99,20 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
       ) : (
         visibleEntityInfo.map((info) => (
           <div className="overview-row" key={info.name}>
-            <span
-              className={classNames('overview-label')}
-              data-testid={`${info.name}-label`}>
+            <Typography
+              className="overview-label tw:text-secondary"
+              data-testid={`${info.name}-label`}
+              size="text-xs"
+              weight="regular">
               {info.name}
-            </span>
-            <span
-              className={classNames('overview-value text-grey-body')}
-              data-testid={`${info.name}-value`}>
+            </Typography>
+            <Typography
+              className="overview-value"
+              data-testid={`${info.name}-value`}
+              size="text-xs"
+              weight="medium">
               {renderInfoValue(info)}
-            </span>
+            </Typography>
           </div>
         ))
       )}

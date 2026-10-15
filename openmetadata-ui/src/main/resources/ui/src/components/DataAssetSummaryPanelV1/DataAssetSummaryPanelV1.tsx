@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -647,7 +647,12 @@ export const DataAssetSummaryPanelV1 = ({
             (dataAsset.owners as EntityReference[])?.length || 0
           }`}>
           <div className="owners-header">
-            <span className="owners-title">{t('label.owner-plural')}</span>
+            <Typography
+              className="owners-title"
+              size="text-xs"
+              weight="semibold">
+              {t('label.owner-plural')}
+            </Typography>
             {editOwnerPermission && (
               <UserTeamSelectableList
                 hasPermission={Boolean(editOwnerPermission)}
@@ -756,7 +761,9 @@ export const DataAssetSummaryPanelV1 = ({
           (dataAsset.owners as EntityReference[])?.length || 0
         }`}>
         <div className="owners-header">
-          <span className="owners-title">{t('label.owner-plural')}</span>
+          <Typography className="owners-title" size="text-xs" weight="semibold">
+            {t('label.owner-plural')}
+          </Typography>
           {editOwnerPermission && (
             <UserTeamSelectableList
               hasPermission={Boolean(editOwnerPermission)}
@@ -824,7 +831,9 @@ export const DataAssetSummaryPanelV1 = ({
           (dataAsset.owners as EntityReference[])?.length || 0
         }`}>
         <div className="owners-header">
-          <span className="owners-title">{t('label.owner-plural')}</span>
+          <Typography className="owners-title" size="text-xs" weight="semibold">
+            {t('label.owner-plural')}
+          </Typography>
           {editOwnerPermission && (
             <UserTeamSelectableList
               hasPermission={Boolean(editOwnerPermission)}
@@ -914,7 +923,12 @@ export const DataAssetSummaryPanelV1 = ({
             (dataAsset.owners as EntityReference[])?.length || 0
           }`}>
           <div className="owners-header">
-            <span className="owners-title">{t('label.owner-plural')}</span>
+            <Typography
+              className="owners-title"
+              size="text-xs"
+              weight="semibold">
+              {t('label.owner-plural')}
+            </Typography>
             {editOwnerPermission && (
               <UserTeamSelectableList
                 hasPermission={Boolean(editOwnerPermission)}

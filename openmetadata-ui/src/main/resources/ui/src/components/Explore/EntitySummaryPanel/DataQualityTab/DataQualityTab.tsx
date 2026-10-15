@@ -752,7 +752,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('new')}>
-              <Typography className="stat-count new">
+              <Typography
+                className="stat-count new tw:block"
+                size="text-xs"
+                weight="semibold">
                 {incidentCounts.new}
               </Typography>
               <Typography className="stat-label new">
@@ -770,7 +773,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('ack')}>
-              <Typography className="stat-count ack">
+              <Typography
+                className="stat-count ack tw:block"
+                size="text-xs"
+                weight="semibold">
                 {incidentCounts.ack}
               </Typography>
               <Typography className="stat-label ack">
@@ -788,7 +794,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('assigned')}>
-              <Typography className="stat-count assigned">
+              <Typography
+                className="stat-count assigned tw:block"
+                size="text-xs"
+                weight="semibold">
                 {incidentCounts.assigned}
               </Typography>
               <Typography className="stat-label assigned">
