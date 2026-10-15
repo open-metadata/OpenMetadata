@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexWriteRouteDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexWriteRouteDAO.WriteRoute;
@@ -114,6 +116,29 @@ class StagedIndexRoutesTest {
   }
 
   @Test
+  void aRouteUnregisteredWhileItsOwnerRenewsStaysGone() throws InterruptedException {
+    final StagedIndexRoutes reindexingServer = server("a");
+    final StagedIndexRoutes otherServer = server("b");
+    reindexingServer.register(TABLES, TABLES_REBUILT);
+    final AtomicReference<Thread> unregistering = new AtomicReference<>();
+    routeTable.duringRenew =
+        () -> {
+          final Thread thread =
+              Thread.ofPlatform().start(() -> reindexingServer.unregister(TABLES, TABLES_REBUILT));
+          unregistering.set(thread);
+          Awaitility.await("the reindex unregisters the route while it is being renewed")
+              .until(() -> thread.getState() == Thread.State.WAITING || !thread.isAlive());
+        };
+
+    reindexingServer.refresh();
+    unregistering.get().join();
+    otherServer.refresh();
+
+    assertEquals(Optional.empty(), reindexingServer.stagedIndexFor(TABLES));
+    assertEquals(Optional.empty(), otherServer.stagedIndexFor(TABLES));
+  }
+
+  @Test
   void everyServersStagedIndexesAreFannedOutTo() {
     final StagedIndexRoutes reindexingServer = server("a");
     final StagedIndexRoutes otherServer = server("b");
@@ -145,6 +170,7 @@ class StagedIndexRoutesTest {
 
     private final Map<String, Row> rows = new ConcurrentHashMap<>();
     private boolean failNextUpsert;
+    private Runnable duringRenew = () -> {};
 
     @Override
     public void upsert(
@@ -161,6 +187,7 @@ class StagedIndexRoutesTest {
 
     @Override
     public int renew(final List<String> stagedIndexes, final long leaseExpiresAt) {
+      duringRenew.run();
       final List<String> renewed = new ArrayList<>();
       rows.replaceAll(
           (canonical, row) -> {
