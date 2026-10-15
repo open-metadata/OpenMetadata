@@ -12,7 +12,6 @@
  */
 
 import { SlideoutMenu, Tabs } from '@openmetadata/ui-core-components';
-import { DrawerPopupContainerProvider } from '../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 
 import classNames from 'classnames';
 import { FC, useEffect, useState } from 'react';
@@ -64,7 +63,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
         }
       }}>
       <SlideoutMenu.Content role="region">
-        <DrawerPopupContainerProvider>
+        <>
           <div id="thread-panel">
             <Tabs
               className="tw:gap-4"
@@ -103,7 +102,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               </Tabs.Panel>
             </Tabs>
           </div>
-        </DrawerPopupContainerProvider>
+        </>
       </SlideoutMenu.Content>
     </SlideoutMenu>
   );

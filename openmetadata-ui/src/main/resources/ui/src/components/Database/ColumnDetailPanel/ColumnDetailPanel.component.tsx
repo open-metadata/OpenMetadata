@@ -26,7 +26,6 @@ import {
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { useId } from 'react';
-import { DrawerPopupContainerProvider } from '../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -1088,7 +1087,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         {columnTitle}
       </SlideoutMenu.Header>
       <SlideoutMenu.Content role="region">
-        <DrawerPopupContainerProvider>
+        <>
           <div className="column-detail-panel-container">
             <div className="tw:flex tw:gap-2 tw:h-full">
               <Card className="summary-panel-container" variant="ghost">
@@ -1110,7 +1109,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             </div>
           </div>
           {renderDisplayNameModal()}
-        </DrawerPopupContainerProvider>
+        </>
       </SlideoutMenu.Content>
       <SlideoutMenu.Footer>{navFooter}</SlideoutMenu.Footer>
     </SlideoutMenu>

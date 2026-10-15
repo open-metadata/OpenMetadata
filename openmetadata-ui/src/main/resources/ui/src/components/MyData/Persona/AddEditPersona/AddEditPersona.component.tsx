@@ -37,7 +37,6 @@ import { createPersona } from '../../../../rest/PersonaAPI';
 import { getUserById } from '../../../../rest/userAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { DrawerPopupContainerProvider } from '../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import { UserSelectableList } from '../../../common/UserSelectableList/UserSelectableList.component';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
@@ -135,7 +134,7 @@ export const AddEditPersonaForm = ({
       width={750}
       onCancel={onCancel}
       onOk={form.handleSubmit(handleSubmit)}>
-      <DrawerPopupContainerProvider>
+      <>
         <HookForm
           className="tw:flex tw:flex-col tw:gap-4"
           form={form}
@@ -195,7 +194,7 @@ export const AddEditPersonaForm = ({
             )}
           </FormField>
         </HookForm>
-      </DrawerPopupContainerProvider>
+      </>
     </SimpleModal>
   );
 };

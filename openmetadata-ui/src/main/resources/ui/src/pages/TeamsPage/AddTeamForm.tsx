@@ -31,7 +31,6 @@ import { RegisterOptions, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
-import { DrawerPopupContainerProvider } from '../../components/common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import {
   DISPLAY_NAME_FIELD_REGISTER_RULES,
@@ -155,7 +154,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       width={750}
       onCancel={onCancel}
       onOk={form.handleSubmit(handleSubmit)}>
-      <DrawerPopupContainerProvider>
+      <>
         <HookForm
           className="tw:flex tw:flex-col tw:gap-4"
           form={form}
@@ -284,7 +283,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
             )}
           </FormField>
         </HookForm>
-      </DrawerPopupContainerProvider>
+      </>
     </SimpleModal>
   );
 };
