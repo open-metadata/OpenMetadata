@@ -27,7 +27,17 @@ import './tour.style.less';
 // never lands in any user's bundle who isn't actively viewing the tour.
 // Suspense fallback is `null` because the tour overlay would be the only
 // visible content — a spinner here would just flash on first activation.
-const ReactTutorial = lazy(() => import('@deuex-solutions/react-tour'));
+// The package is a UMD bundle: the production build unwraps its `__esModule`
+// default, but Vite's dev pre-bundle hands back the whole `module.exports`, so
+// the component sits one `default` deeper there.
+const ReactTutorial = lazy(async () => {
+  const { default: tourExport } = await import('@deuex-solutions/react-tour');
+  const { default: nestedExport } = tourExport as unknown as {
+    default?: typeof tourExport;
+  };
+
+  return { default: nestedExport ?? tourExport };
+});
 
 const Tour = ({ steps }: { steps: TourSteps[] }) => {
   const { isTourOpen, updateIsTourOpen, updateTourPage } = useTourProvider();

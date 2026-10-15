@@ -35,6 +35,13 @@ import {
 } from '../../generated/type/ontologyAttribute';
 import { patchGlossaryTerm } from '../../rest/glossaryAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import {
+  InspectorAddButton,
+  InspectorEmptyText,
+  InspectorList,
+  InspectorRow,
+  InspectorSectionHeading,
+} from './OntologyInspectorSection';
 
 interface OntologyConceptAttributesBaseProps {
   readonly attributes: OntologyAttribute[];
@@ -246,52 +253,34 @@ export const OntologyConceptAttributes: React.FC<
   const renderAttributeRow = (attribute: OntologyAttribute) => {
     if (isInspector) {
       return (
-        <div
-          className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-2.5 tw:py-2"
-          data-testid={`ontology-attribute-${attribute.name}`}
-          key={attribute.id}>
-          <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-mono tw:text-xs tw:leading-normal tw:font-medium tw:text-primary">
+        <InspectorRow
+          key={attribute.id}
+          testId={`ontology-attribute-${attribute.name}`}>
+          <Typography
+            className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-primary"
+            size="text-sm"
+            weight="medium">
             {attribute.name}
-          </span>
+          </Typography>
           {attribute.isIdentifier ? (
-            <span
-              className={classNames(
-                'tw:rounded tw:border tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:px-1.5 tw:py-px',
-                'tw:font-body tw:text-[8px] tw:leading-normal tw:font-bold tw:text-utility-warning-700'
-              )}>
+            <Badge color="warning" size="sm" type="color">
               {t('label.id')}
-            </span>
+            </Badge>
           ) : null}
           {attribute.unit ? (
-            <span className="tw:text-xs tw:leading-normal tw:text-tertiary">
+            <Typography color="secondary" size="text-xs">
               {attribute.unit}
-            </span>
+            </Typography>
           ) : null}
-          <span
-            className={classNames(
-              'tw:font-mono tw:text-[11px] tw:leading-normal tw:font-semibold',
-              {
-                'tw:text-brand-secondary':
-                  attribute.dataType === DataType.String,
-                'tw:text-success-primary':
-                  attribute.dataType === DataType.Integer ||
-                  attribute.dataType === DataType.Decimal,
-                'tw:text-warning-primary':
-                  attribute.dataType === DataType.Boolean,
-                'tw:text-utility-pink-700':
-                  attribute.dataType === DataType.Enum,
-                'tw:text-utility-purple-700':
-                  attribute.dataType === DataType.Date,
-              }
-            )}>
+          <Badge
+            color={DATA_TYPE_BADGE_COLORS[attribute.dataType]}
+            size="sm"
+            type="pill-color">
             {attribute.dataType.toLowerCase()}
-          </span>
+          </Badge>
           {onAttributesChange ? (
             <ButtonUtility
-              className={classNames(
-                'tw:size-5 tw:shrink-0 tw:rounded-md tw:border-0 tw:p-0',
-                'tw:bg-transparent tw:text-quaternary hover:tw:bg-primary_hover hover:tw:text-secondary'
-              )}
+              color="tertiary"
               data-testid={`remove-attribute-${attribute.name}`}
               icon={XClose}
               size="xs"
@@ -299,7 +288,7 @@ export const OntologyConceptAttributes: React.FC<
               onClick={() => handleRemoveAttribute(attribute.id)}
             />
           ) : null}
-        </div>
+        </InspectorRow>
       );
     }
 
@@ -344,26 +333,51 @@ export const OntologyConceptAttributes: React.FC<
     );
   };
 
-  const renderInheritedAttributeRow = (attribute: OntologyAttribute) => (
-    <div
-      className={classNames(
-        'tw:flex tw:items-center tw:gap-2 tw:border tw:border-dashed tw:border-secondary tw:bg-secondary',
-        isInspector ? 'tw:rounded-lg tw:px-2.5 tw:py-2' : 'tw:rounded-lg tw:p-3'
-      )}
-      data-testid={`inherited-attribute-${attribute.name}`}
-      key={`${attribute.declaringTerm?.id}-${attribute.id}`}>
-      <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-mono tw:text-xs tw:leading-normal tw:font-medium tw:text-secondary">
-        {attribute.name}
-      </span>
-      <Badge color="gray" size="sm" type="color">
-        {t('label.inherited-from')}{' '}
-        {attribute.declaringTerm?.displayName ?? attribute.declaringTerm?.name}
-      </Badge>
-      <span className="tw:font-mono tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-tertiary">
-        {attribute.dataType.toLowerCase()}
-      </span>
-    </div>
-  );
+  const renderInheritedAttributeRow = (attribute: OntologyAttribute) =>
+    isInspector ? (
+      <InspectorRow
+        key={`${attribute.declaringTerm?.id}-${attribute.id}`}
+        testId={`inherited-attribute-${attribute.name}`}>
+        <Typography
+          className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-secondary"
+          size="text-sm">
+          {attribute.name}
+        </Typography>
+        <Badge color="gray" size="sm" type="color">
+          {t('label.inherited-from')}{' '}
+          {attribute.declaringTerm?.displayName ??
+            attribute.declaringTerm?.name}
+        </Badge>
+        <Badge
+          color={DATA_TYPE_BADGE_COLORS[attribute.dataType]}
+          size="sm"
+          type="pill-color">
+          {attribute.dataType.toLowerCase()}
+        </Badge>
+      </InspectorRow>
+    ) : (
+      <div
+        className={classNames(
+          'tw:flex tw:items-center tw:gap-2 tw:border tw:border-dashed tw:border-secondary tw:bg-secondary',
+          isInspector
+            ? 'tw:rounded-lg tw:px-2.5 tw:py-2'
+            : 'tw:rounded-lg tw:p-3'
+        )}
+        data-testid={`inherited-attribute-${attribute.name}`}
+        key={`${attribute.declaringTerm?.id}-${attribute.id}`}>
+        <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-mono tw:text-xs tw:leading-normal tw:font-medium tw:text-secondary">
+          {attribute.name}
+        </span>
+        <Badge color="gray" size="sm" type="color">
+          {t('label.inherited-from')}{' '}
+          {attribute.declaringTerm?.displayName ??
+            attribute.declaringTerm?.name}
+        </Badge>
+        <span className="tw:font-mono tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-tertiary">
+          {attribute.dataType.toLowerCase()}
+        </span>
+      </div>
+    );
 
   const renderAddForm = () => (
     <Card
@@ -465,6 +479,17 @@ export const OntologyConceptAttributes: React.FC<
       return renderAddForm();
     }
 
+    if (isInspector) {
+      return (
+        <InspectorAddButton
+          isDisabled={!isEditMode}
+          label={t('label.add-entity', { entity: t('label.property') })}
+          testId="add-attribute"
+          onClick={() => setIsAdding(true)}
+        />
+      );
+    }
+
     return (
       <Button
         noTextPadding
@@ -485,36 +510,41 @@ export const OntologyConceptAttributes: React.FC<
     );
   };
 
+  const propertyCount = attributes.length + inheritedAttributes.length;
+
+  if (isInspector) {
+    return (
+      <section data-testid="ontology-attributes">
+        <InspectorSectionHeading
+          count={propertyCount}
+          label={t('label.properties')}
+        />
+        {propertyCount === 0 ? (
+          <InspectorEmptyText>
+            {t('message.no-concept-properties')}
+          </InspectorEmptyText>
+        ) : (
+          <InspectorList>
+            {attributes.map(renderAttributeRow)}
+            {inheritedAttributes.map(renderInheritedAttributeRow)}
+          </InspectorList>
+        )}
+        {renderEditControls()}
+      </section>
+    );
+  }
+
   return (
     <div
-      className={classNames(
-        'tw:flex tw:flex-col',
-        isInspector ? 'tw:gap-1.5' : 'tw:gap-2'
-      )}
+      className="tw:flex tw:flex-col tw:gap-2"
       data-testid="ontology-attributes">
       <div className="tw:mb-1 tw:flex tw:items-center tw:gap-2">
-        {isInspector ? (
-          <h3 className="tw:m-0 tw:font-body tw:text-[13px] tw:leading-normal tw:font-semibold tw:text-primary">
-            {t('label.properties')}
-          </h3>
-        ) : (
-          <Typography as="h3" size="text-sm" weight="semibold">
-            {t('label.properties')}
-          </Typography>
-        )}
-        <span
-          className={classNames(
-            isInspector &&
-              'tw:rounded-full tw:border tw:border-secondary tw:bg-tertiary tw:px-2 tw:py-px tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-secondary'
-          )}>
-          {isInspector ? (
-            attributes.length + inheritedAttributes.length
-          ) : (
-            <Badge color="gray" size="sm" type="color">
-              {attributes.length + inheritedAttributes.length}
-            </Badge>
-          )}
-        </span>
+        <Typography as="h3" size="text-sm" weight="semibold">
+          {t('label.properties')}
+        </Typography>
+        <Badge color="gray" size="sm" type="color">
+          {propertyCount}
+        </Badge>
       </div>
       {attributes.map(renderAttributeRow)}
       {inheritedAttributes.map(renderInheritedAttributeRow)}

@@ -1179,29 +1179,30 @@ test.describe(
         const serviceResponse = page.waitForResponse(
           '/api/v1/search/query?q=*index=databaseService*'
         );
-        await page.fill('#serviceName', filterTable1.service.name);
+        await page
+          .getByTestId('service-select-filter')
+          .getByRole('combobox')
+          .fill(filterTable1.service.name);
         await serviceResponse;
 
         const testCaseByServiceName = page.waitForResponse(
           `/api/v1/dataQuality/testCases/search/list?*serviceName=${filterTable1.service.name}*`
         );
         await page
-          .locator('.ant-select-dropdown')
-          .filter({
-            hasNot: page.locator('.ant-select-dropdown-hidden'),
-            has: page.locator(`[data-testid="${filterTable1.service.name}"]`),
-          })
+          .getByRole('listbox')
+          .getByRole('option', { name: filterTable1.service.name, exact: true })
           .click();
         await testCaseByServiceName;
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page);
 
         // remove service filter
-        await page.click('[data-testid="advanced-filter"]');
         const getTestCase = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.getByTestId('advanced-filter-option-serviceName').click();
+        await page
+          .getByRole('button', { name: 'Clear Service', exact: true })
+          .click();
         await getTestCase;
 
         // Test case filter by Tags
@@ -1210,69 +1211,80 @@ test.describe(
         );
         await page
           .getByTestId('tags-select-filter')
-          .locator('div')
-          .filter({ hasText: 'Tags' })
-          .click();
-        await page.fill('#tags', 'PII.None');
+          .getByRole('combobox')
+          .fill('PII.None');
         await tagResponse;
 
         const getTestCaseByTag = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*tags=PII.None*'
         );
         await page
-          .locator('.ant-select-dropdown')
-          .filter({
-            hasNot: page.locator('.ant-select-dropdown-hidden'),
-            has: page.locator(`[data-testid="PII.None"]`),
-          })
+          .getByRole('listbox')
+          .getByRole('option', { name: 'PII.None', exact: true })
           .click();
         await getTestCaseByTag;
+        await page.keyboard.press('Escape');
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
 
         // remove tags filter
-        await page.click('[data-testid="advanced-filter"]');
         const getTestCaseWithoutTag = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.getByTestId('advanced-filter-option-tags').click();
+        await page
+          .getByRole('button', { name: 'Clear Tags', exact: true })
+          .click();
         await getTestCaseWithoutTag;
 
         // Test case filter by Tier
 
-        await page.click('#tier');
-        await page.fill('#tier', 'Tier2');
-        await page.waitForLoadState('domcontentloaded');
+        await page
+          .getByTestId('tier-select-filter')
+          .getByRole('combobox')
+          .fill('Tier2');
         const getTestCaseByTier = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*tier=Tier.Tier2*'
         );
-        await page.getByTestId('Tier.Tier2').getByText('Tier.Tier2').click();
+        await page
+          .getByRole('listbox')
+          .getByRole('option')
+          .filter({ has: page.getByText('Tier.Tier2', { exact: true }) })
+          .click();
         await getTestCaseByTier;
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
 
         // remove tier filter
-        await page.click('[data-testid="advanced-filter"]');
         const getTestCaseWithoutTier = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.getByTestId('advanced-filter-option-tier').click();
+        await page
+          .getByRole('button', { name: 'Clear Tier', exact: true })
+          .click();
         await getTestCaseWithoutTier;
 
         // Test case filter by table name
         const tableSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=table*`
         );
-        await page.fill('#tableFqn', filterTable1.entity.name);
+        await page
+          .getByTestId('table-select-filter')
+          .getByRole('combobox')
+          .fill(filterTable1.entity.name);
         await tableSearchResponse;
         const getTestCaseByTable = page.waitForResponse(
           `/api/v1/dataQuality/testCases/search/list?*entityLink=*${filterTable1.entity.name}*`
         );
 
         await page
-          .getByTestId(
-            filterTable1.entityResponseData?.['fullyQualifiedName'] || ''
-          )
+          .getByRole('listbox')
+          .getByRole('option')
+          .filter({
+            has: page.getByText(
+              filterTable1.entityResponseData.fullyQualifiedName!,
+              { exact: true }
+            ),
+          })
           .click();
         await getTestCaseByTable;
         await verifyFilterTestCase(page);
@@ -1283,7 +1295,10 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*testCaseType=column*`
         );
         await page.getByTestId('test-case-type-select-filter').click();
-        await page.getByTitle('Column', { exact: true }).click();
+        await page
+          .getByRole('listbox')
+          .getByRole('option', { name: 'Column', exact: true })
+          .click();
         await testCaseTypeByColumn;
 
         await expect(
@@ -1296,12 +1311,8 @@ test.describe(
         );
         await page.getByTestId('test-case-type-select-filter').click();
         await page
-          .locator('.ant-select-dropdown')
-          .filter({
-            hasNot: page.locator('.ant-select-dropdown-hidden'),
-            has: page.locator(`[title="Table"]`),
-            hasText: 'Table',
-          })
+          .getByRole('listbox')
+          .getByRole('option', { name: 'Table', exact: true })
           .click();
         await testCaseTypeByTable;
         await verifyFilterTestCase(page);
@@ -1311,7 +1322,10 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*testCaseType=all*`
         );
         await page.getByTestId('test-case-type-select-filter').click();
-        await page.getByTitle('All').nth(1).click();
+        await page
+          .getByRole('listbox')
+          .getByRole('option', { name: 'All', exact: true })
+          .click();
         await testCaseTypeByAll;
 
         // Test case filter by status
@@ -1326,8 +1340,8 @@ test.describe(
         const statusFilter = page.getByTestId('status-select-filter');
         await statusFilter.getByRole('combobox').click();
         await page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('Success', { exact: true })
+          .getByRole('listbox')
+          .getByRole('option', { name: 'Success', exact: true })
           .click();
         await testCaseStatusBySuccess;
 
@@ -1348,10 +1362,11 @@ test.describe(
         );
         await statusFilter.getByRole('combobox').click();
         await page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('Failed', { exact: true })
+          .getByRole('listbox')
+          .getByRole('option', { name: 'Failed', exact: true })
           .click();
         await testCaseStatusesBySuccessAndFailed;
+        await page.keyboard.press('Escape');
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
 
@@ -1360,8 +1375,12 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*testPlatforms=dbt*`
         );
         await page.getByTestId('platform-select-filter').click();
-        await page.getByTitle('DBT').click();
+        await page
+          .getByRole('listbox')
+          .getByRole('option', { name: 'dbt', exact: true })
+          .click();
         await testCasePlatformByDBT;
+        await page.keyboard.press('Escape');
 
         await expect(
           page.locator('[data-testid="empty-placeholder"]')
@@ -1371,15 +1390,17 @@ test.describe(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
         await page
-          .getByTestId('platform-select-filter')
-          .locator('.ant-select-clear')
+          .getByRole('button', { name: 'Clear Platform', exact: true })
           .click();
         await getTestCaseWithoutPlatform;
         const testCasePlatformByOpenMetadata = page.waitForResponse(
           `/api/v1/dataQuality/testCases/search/list?*testPlatforms=OpenMetadata*`
         );
         await page.getByTestId('platform-select-filter').click();
-        await page.getByTitle('OpenMetadata').click();
+        await page
+          .getByRole('listbox')
+          .getByRole('option', { name: 'OpenMetadata', exact: true })
+          .click();
         await testCasePlatformByOpenMetadata;
         await clickOutside(page);
         await verifyFilterTestCase(page);

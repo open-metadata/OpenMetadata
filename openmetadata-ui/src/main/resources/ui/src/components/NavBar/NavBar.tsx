@@ -20,7 +20,7 @@ import {
   Tooltip as CoreTooltip,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Alert, Badge, InputRef } from 'antd';
+import { Alert, Badge } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
@@ -124,7 +124,6 @@ const NavBar = () => {
   } = useDomainStore();
   const switchActiveDomain = useSwitchActiveDomain();
   const { t } = useTranslation();
-  const searchRef = useRef<InputRef>(null);
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
   const [hasMentionNotification, setHasMentionNotification] =
@@ -311,7 +310,7 @@ const NavBar = () => {
 
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
     if (isCommandKeyPress(event) && event.key === Keys.K) {
-      searchRef.current?.focus();
+      document.getElementById('searchBox')?.focus();
       event.preventDefault();
     }
   }, []);
