@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_PARENT;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CachedRelationshipDao;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.resources.domains.DomainResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.EntityBuilderConstant;
@@ -65,6 +67,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.QueryFilterBuilder;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -287,13 +290,34 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request, String userName) {
     Domain domain = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true, userName);
+    EntityReference domainRef = domain.getEntityReference();
+    List<BulkResponse> held =
+        ApprovalGate.holdGatedAssets(
+            request.getAssets(),
+            FIELD_DOMAINS,
+            userName,
+            Boolean.TRUE.equals(request.getDryRun()),
+            asset -> asset.setDomains(ApprovalGate.withReference(asset.getDomains(), domainRef)));
+    return ApprovalGate.withHeld(
+        bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true, userName),
+        held);
   }
 
   public BulkOperationResult bulkRemoveAssets(
       String domainName, BulkAssets request, String userName) {
     Domain domain = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false, userName);
+    List<BulkResponse> held =
+        ApprovalGate.holdGatedAssets(
+            request.getAssets(),
+            FIELD_DOMAINS,
+            userName,
+            Boolean.TRUE.equals(request.getDryRun()),
+            asset ->
+                asset.setDomains(
+                    ApprovalGate.withoutReference(asset.getDomains(), domain.getId())));
+    return ApprovalGate.withHeld(
+        bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false, userName),
+        held);
   }
 
   public ResultList<EntityReference> getDomainAssets(UUID domainId, int limit, int offset) {
@@ -559,6 +583,38 @@ public class DomainRepository extends EntityRepository<Domain> {
         reindexDetachedDataProducts(context);
       }
     }
+  }
+
+  // Evicts users' cached selections once the delete has committed (cleanup() drops their
+  // DEFAULTS_TO
+  // rows after deleteChildren), so a concurrent read can't re-cache a deleted domain.
+  @Override
+  protected DeleteLifecycle beginDeleteLifecycle(Domain domain, String deletedBy) {
+    // A sub-domain deleted through its parent's cascade is covered by the parent's lifecycle
+    List<String> usersToEvict =
+        domainHardDeleteSubtree.get() == null ? usersDefaultingToSubtree(domain) : List.of();
+    DeleteLifecycle parentLifecycle = super.beginDeleteLifecycle(domain, deletedBy);
+    if (usersToEvict.isEmpty()) {
+      return parentLifecycle;
+    }
+    return () -> {
+      try (parentLifecycle) {
+        usersToEvict.forEach(
+            user ->
+                UserRepository.evictNowAndAfterCommit(
+                    () -> SubjectCache.invalidateUserContext(user)));
+      }
+    };
+  }
+
+  private List<String> usersDefaultingToSubtree(Domain domain) {
+    String fqnHash = FullyQualifiedName.buildHash(domain.getFullyQualifiedName());
+    List<UUID> subtreeIds =
+        daoCollection.domainDAO().listSubtreeIds(fqnHash, fqnHash + Entity.SEPARATOR + "%").stream()
+            .map(UUID::fromString)
+            .toList();
+    return ((UserRepository) Entity.getEntityRepository(Entity.USER))
+        .listUsersDefaultingTo(subtreeIds);
   }
 
   @Override

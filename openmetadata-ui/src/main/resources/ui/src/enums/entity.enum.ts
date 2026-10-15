@@ -128,6 +128,7 @@ export enum TabSpecificField {
   DATA_INSIGHT_CHART = 'dataInsightChart',
   DATA_PRODUCTS = 'dataProducts',
   DEFAULT_PERSONA = 'defaultPersona',
+  DEFAULT_DOMAIN = 'defaultDomain',
   DEFAULT_ROLES = 'defaultRoles',
   DOMAIN = 'domain',
   DOMAINS = 'domains',

@@ -3442,7 +3442,14 @@ pickEntityMatrix(
           );
           await expect(customPropertyBadge).toBeVisible();
 
-          await fieldPanel.click();
+          // A newly added field opens on its own; a second click on its
+          // header would close it again.
+          const collapsedFieldHeader = fieldPanel.locator(
+            'button[aria-expanded="false"]'
+          );
+          if (await collapsedFieldHeader.isVisible()) {
+            await collapsedFieldHeader.click();
+          }
           await setSliderValue(
             page,
             'field-weight-slider',
@@ -3581,7 +3588,14 @@ pickEntityMatrix(
           );
           await expect(customPropertyBadge).toBeVisible();
 
-          await fieldPanel.click();
+          // A newly added field opens on its own; a second click on its
+          // header would close it again.
+          const collapsedFieldHeader = fieldPanel.locator(
+            'button[aria-expanded="false"]'
+          );
+          if (await collapsedFieldHeader.isVisible()) {
+            await collapsedFieldHeader.click();
+          }
           await setSliderValue(
             page,
             'field-weight-slider',

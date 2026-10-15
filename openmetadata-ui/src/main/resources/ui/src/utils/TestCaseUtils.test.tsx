@@ -12,8 +12,8 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { MemoryRouter } from 'react-router-dom';
+import { ManageMenuItem as ItemType } from '../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
 import { exportTestCasesInCSV } from '../rest/testAPI';

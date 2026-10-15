@@ -95,7 +95,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
   test('Create description and owner KPI', async ({ page }) => {
     await navigateToDataInsightPage(page);
 
-    await page.getByRole('menuitem', { name: 'KPIs' }).click();
+    await page.getByRole('link', { name: 'KPIs', exact: true }).click();
 
     for (const data of kpiData) {
       await page.getByTestId('add-kpi-btn').click();
@@ -224,7 +224,9 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await page.getByTestId('date-picker-menu').click();
     await page.getByRole('menuitem', { name: 'Last 60 days' }).click();
 
-    await page.getByRole('menuitem', { name: 'App Analytics' }).click();
+    await page
+      .getByRole('link', { name: 'App Analytics', exact: true })
+      .click();
 
     await expect(page.getByTestId('summary-card-content')).toBeVisible();
     await expect(
@@ -255,7 +257,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await percentageOfDataAssetWithDescriptionResponse;
     await page.getByTestId('date-picker-menu').click();
     await page.getByRole('menuitem', { name: 'Last 60 days' }).click();
-    await page.getByRole('menuitem', { name: 'KPIs' }).click();
+    await page.getByRole('link', { name: 'KPIs', exact: true }).click();
 
     await expect(page.getByTestId('kpi-card')).toBeVisible();
     await expect(
@@ -287,7 +289,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
 
-    await page.getByRole('menuitem', { name: 'KPIs' }).click();
+    await page.getByRole('link', { name: 'KPIs', exact: true }).click();
 
     for (const data of kpiData) {
       await page.getByTestId(`edit-action-${data.displayName}`).click();
@@ -354,7 +356,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
 
-    await page.getByRole('menuitem', { name: 'KPIs' }).click();
+    await page.getByRole('link', { name: 'KPIs', exact: true }).click();
 
     for (const data of kpiData) {
       const kpi = getCreatedKpi(data.displayName);
