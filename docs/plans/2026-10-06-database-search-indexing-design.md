@@ -1,6 +1,7 @@
 # Reliable database-to-search and RDF projection
 
-Status: accepted direction; implementation in progress. Baseline code examined at `9d5f2d3f77c`.
+Status: accepted direction; implemented for 2.2 by the stacked PRs #35570–#35577, merged in
+order. Baseline code examined at `9d5f2d3f77c`.
 Implementation steps and measured verification are tracked in the
 [implementation plan](2026-10-06-database-projection-implementation.md). The end-to-end durability
 and performance guarantees below remain release gates, not claims about the current implementation.
@@ -1210,7 +1211,7 @@ Search:
   missing one, or one the cluster auto-created on a write, is confirmed again after a minute, then
   the templates are recreated and a forced rebuild runs for those types only.
 
-RDF ([`RdfRepairJob`](../../openmetadata-service/src/main/java/org/openmetadata/service/rdf/repair/RdfRepairJob.java),
+RDF (`RdfRepairJob`,
 lock `RDF_REPAIR_LOCK` in `rdf_reindex_lock`):
 
 - **Projection check.** A full RdfIndexApp rebuild starts when the projection was never built (no

@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-10-10 (initial)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** `SearchVersionGuardTest`, `SearchDocumentUpdatesTest`, `SearchRepositoryBehaviorTest`
-  (`createEntityIndexWritesTheDocumentGuardedByWhenItWasRead`, the time-series write tests),
+  (`createEntityIndexWritesTheDocumentGuardedByWhenItWasRead`,
+  `createEntitiesIndexWritesDocumentsGuardedByWhenTheyWereRead`, the time-series write tests),
   `BulkWriteOptionsTest`, `SearchIndexSettingsTest`
 - **Related:** `docs/plans/2026-10-06-database-search-indexing-design.md`,
   `docs/plans/2026-10-06-database-projection-implementation.md` (in-place reindex, step 1)
@@ -22,8 +23,9 @@ retry that waited out an outage, puts back older content and nothing corrects it
   read from the database, and stamps it on the document. The engine applies the write unless the
   stored document carries a later `sourceReadAt`; a document without one (written before this
   change) always takes the write.
-- Creates, updates, soft delete and restore, time-series records and reindex bulk upserts are
-  guarded (`SearchVersionGuard`, `BulkWriteOptions`, `SoftDeleteScript`).
+- Creates (single and bulk), updates, soft delete and restore, time-series records and reindex
+  bulk upserts are guarded (`SearchVersionGuard`, `BulkWriteOptions`, `SoftDeleteScript`). A write
+  queued to run later is stamped with the time it was queued (`SearchVersionGuard.readAt`).
 - Every index built from now on declares `sourceReadAt` as a `long`
   (`SearchIndexSettings.forIndexCreation`), so its type does not depend on the first write.
   Readers that deserialize documents strictly drop it, as time-series listings do.
