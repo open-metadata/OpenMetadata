@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.csv;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import jakarta.ws.rs.BadRequestException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -151,6 +153,20 @@ public final class CsvAsyncJobManager {
   public String getExportResult(String jobId) {
     Long id = lookupIdOrNull(jobId);
     return id == null ? null : dao.findCsvJobResultById(id);
+  }
+
+  /**
+   * The stored import result, read on demand after the thin completion notification. Kept out of the
+   * notification itself and out of {@link #getJob} so a large result (e.g. a recursive import) is
+   * fetched once by the client, not pushed through the websocket relay on every pod.
+   */
+  public CsvImportResult getImportResult(String jobId) {
+    Long id = lookupIdOrNull(jobId);
+    if (id == null) {
+      return null;
+    }
+    String result = dao.findCsvJobResultById(id);
+    return nullOrEmpty(result) ? null : JsonUtils.readValue(result, CsvImportResult.class);
   }
 
   private CsvAsyncJob insertExportJob(
