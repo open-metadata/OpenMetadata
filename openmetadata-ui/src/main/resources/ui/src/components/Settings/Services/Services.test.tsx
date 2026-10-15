@@ -361,7 +361,10 @@ describe('Services', () => {
     );
   });
 
-  it('shows the pager even when every service fits on one page', async () => {
+  it('shows the pager when there are services, even a single page of them', async () => {
+    (getServices as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: mockGetServicesData, paging: { total: 1 } })
+    );
     const pagingState = (usePaging as jest.Mock)();
     (usePaging as jest.Mock).mockReturnValue({
       ...pagingState,
@@ -382,6 +385,25 @@ describe('Services', () => {
     );
 
     (usePaging as jest.Mock).mockReturnValue(pagingState);
+  });
+
+  it('hides the pager when there are no services', async () => {
+    (getServices as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: [], paging: { total: 0 } })
+    );
+
+    await act(async () => {
+      render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
+    });
+
+    expect(ListView).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        customPaginationProps: expect.objectContaining({
+          showPagination: false,
+        }),
+      }),
+      expect.anything()
+    );
   });
 
   it('should render Services', async () => {

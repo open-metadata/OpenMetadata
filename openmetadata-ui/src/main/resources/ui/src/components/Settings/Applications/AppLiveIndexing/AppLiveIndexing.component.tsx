@@ -18,6 +18,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -184,15 +185,21 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
           </Box>
         ),
       }}
-      pagination={{
-        total: paging.total,
-        pageSize,
-        current: currentPage,
-        showSizeChanger: true,
-        pageSizeOptions: LIST_PAGE_SIZE_OPTIONS,
-        onChange: (page) => handlePageChangeHandler({ currentPage: page }),
-        onShowSizeChange: (_, size) => handlePageSizeChange(size),
-      }}
+      // Shown whenever there are records, even a single page of them; hidden when there are none.
+      pagination={
+        isEmpty(records)
+          ? false
+          : {
+              total: paging.total,
+              pageSize,
+              current: currentPage,
+              showSizeChanger: true,
+              pageSizeOptions: LIST_PAGE_SIZE_OPTIONS,
+              onChange: (page) =>
+                handlePageChangeHandler({ currentPage: page }),
+              onShowSizeChange: (_, size) => handlePageSizeChange(size),
+            }
+      }
       rowKey={(record) => `${record.entityId}-${record.entityFqn}`}
       size="small"
     />

@@ -378,10 +378,10 @@ const Services = ({ serviceName }: ServicesProps) => {
     }));
   }, [serviceName]);
 
-  // The pager stays visible even when every service fits on one page, so the page size can be changed.
+  // Shown whenever there are services, even a single page of them, so the page size can be changed.
   const customPaginationTableProps = useMemo(
     () => ({
-      showPagination: true,
+      showPagination: !isEmpty(serviceDetails),
       currentPage,
       isLoading,
       isNumberBased: !isEmpty(searchTerm) || !isEmpty(serviceTypeFilter),
@@ -392,6 +392,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       onShowSizeChange: handlePageSizeChange,
     }),
     [
+      serviceDetails,
       currentPage,
       isLoading,
       searchTerm,
