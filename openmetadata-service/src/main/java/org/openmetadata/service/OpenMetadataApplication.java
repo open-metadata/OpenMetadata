@@ -94,6 +94,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.VersionUtils;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.alerting.channel.Channels;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
@@ -116,9 +117,8 @@ import org.openmetadata.service.context.center.ContextMemoryExtractionJobHandler
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.csv.CsvImportExportJobHandler;
 import org.openmetadata.service.events.EventFilter;
+import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
@@ -147,10 +147,7 @@ import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
-import org.openmetadata.service.monitoring.EventMonitorConfiguration;
-import org.openmetadata.service.monitoring.JettyMetricsIntegration;
-import org.openmetadata.service.monitoring.JettyQoSIntegration;
-import org.openmetadata.service.monitoring.UserMetricsServlet;
+import org.openmetadata.service.monitoring.*;
 import org.openmetadata.service.ontology.OntologyBulkJobHandler;
 import org.openmetadata.service.ontology.OntologyBulkJobManager;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationJobHandler;
@@ -1374,6 +1371,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     eioOptions.setAllowedCorsOrigins(null);
     eioOptions.setMaxTimeoutThreadPoolSize(8);
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
+    initializeWebSocketRelay(catalogConfig, environment);
     FilterHolder socketAddressFilterHolder = new FilterHolder();
     socketAddressFilterHolder.setFilter(socketAddressFilter);
     environment
@@ -1398,6 +1396,55 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
     }
+  }
+
+  // Selects the cross-pod WebSocket relay behind sendToOne: Redis pub/sub when a Redis cache is
+  // configured, otherwise the DB-poll relay. A Redis relay that cannot start fails boot loudly
+  // (below) rather than leaving cross-pod delivery silently off.
+  private void initializeWebSocketRelay(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    org.openmetadata.service.cache.CacheConfig cacheConfig = catalogConfig.getCacheConfig();
+    boolean redisConfigured =
+        cacheConfig != null
+            && cacheConfig.provider == org.openmetadata.service.cache.CacheConfig.Provider.redis;
+    org.openmetadata.service.socket.WebSocketRelay relay = null;
+    try {
+      if (redisConfigured) {
+        relay = new org.openmetadata.service.socket.RedisWebSocketRelay(cacheConfig);
+      } else {
+        relay =
+            new org.openmetadata.service.socket.DbWebSocketRelay(
+                Entity.getJdbi().onDemand(org.openmetadata.service.socket.WsRelayDAO.class));
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to initialize WebSocket relay; staying node-local", e);
+      return; // WebSocketManager keeps its no-op relay (node-local delivery).
+    }
+    relay.start();
+    if (redisConfigured && !relay.isRunning()) {
+      // Boot continues with the relay inert rather than failing. Log loudly so the condition is
+      // visible; cross-pod WebSocket delivery stays off until Redis is reachable.
+      LOG.warn(
+          "Redis WebSocket relay did not connect (CACHE_PROVIDER=redis); cross-pod WebSocket "
+              + "delivery is disabled until Redis is reachable. Check the Redis connection.");
+    }
+    WebSocketManager.getInstance().setRelay(relay);
+    org.openmetadata.service.socket.WebSocketRelay startedRelay = relay;
+    environment
+        .lifecycle()
+        .manage(
+            new Managed() {
+              @Override
+              public void start() {
+                // Already started above so it is active before the first frame.
+              }
+
+              @Override
+              public void stop() {
+                startedRelay.stop();
+              }
+            });
+    LOG.info("WebSocket relay enabled: {}", relay.getClass().getSimpleName());
   }
 
   protected void registerDistributedJobParticipant(Environment environment, Jdbi jdbi) {
@@ -1436,6 +1483,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
       EntityCacheRepair.shutdown();
       EventSubscriptionScheduler.shutDown();
+      Channels.closeTransports();
       RdfUpdater.stop();
       AsyncService.getInstance().shutdown();
       EntityLifecycleEventDispatcher.getInstance().shutdown();
