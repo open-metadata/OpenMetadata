@@ -17,7 +17,7 @@ import DqFilterChip from './DqFilterChip';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span data-testid="icon-chevron" />,
 }));
 

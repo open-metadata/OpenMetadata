@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { clickOutside, redirectToHomePage } from './common';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const redirectToUserPage = async (page: Page) => {
   await redirectToHomePage(page);
 
   await page.getByTestId('dropdown-profile').click();
-
-  // Hover on the profile avatar to close the name tooltip
-  await page.getByTestId('profile-avatar').first().hover();
 
   await page.locator('.profile-dropdown').waitFor({ state: 'visible' });
 
@@ -34,10 +33,12 @@ export const redirectToUserPage = async (page: Page) => {
 };
 
 export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
-  const teamHierarchyResponse = page.waitForResponse(
+  const teamHierarchyResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/teams/hierarchy?isJoinable=false') &&
-      response.ok()
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/teams/hierarchy?isJoinable=false'),
+    'ok'
   );
   await page.getByTestId('edit-teams-button').click();
   await teamHierarchyResponse;
@@ -46,31 +47,26 @@ export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
   await expect(teamSelect).toBeVisible();
   await teamSelect.click();
 
-  const teamDropdown = page.locator('.ant-tree-select-dropdown').last();
-  await expect(teamDropdown).toBeVisible({ timeout: 30000 });
+  await selectTeamInPicker(page, teamName);
+};
 
-  const directTeamOption = teamDropdown
-    .locator('.ant-select-tree-title')
-    .filter({ hasText: new RegExp(`^${teamName}$`) })
-    .first();
+/**
+ * Picks a team in the core TreeSelect team picker. The tree opens in its own
+ * overlay (`team-select-popover`), and searching first keeps nested teams
+ * reachable without expanding their parents. The multi-select overlay stays
+ * open after a pick and swallows the next outside click, so close it before
+ * the caller saves.
+ */
+export const selectTeamInPicker = async (page: Page, teamName: string) => {
+  const popover = page.getByTestId('team-select-popover');
+  await expect(popover).toBeVisible({ timeout: ACTION_TIMEOUT });
 
-  if (await directTeamOption.isVisible().catch(() => false)) {
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await directTeamOption.click({ force: true });
+  await page.getByTestId('team-select').getByRole('combobox').fill(teamName);
 
-    return;
-  }
+  const teamOption = popover.getByText(teamName, { exact: true }).first();
 
-  await teamSelect.locator('input:not([disabled])').first().click();
-  await page.keyboard.type(teamName);
-
-  await expect(teamDropdown).toContainText(teamName, { timeout: 30000 });
-
-  const teamOption = teamDropdown.getByText(teamName, {
-    exact: true,
-  });
-
-  await expect(teamOption).toBeVisible({ timeout: 30000 });
-  // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-  await teamOption.click({ force: true });
+  await expect(teamOption).toBeVisible({ timeout: ACTION_TIMEOUT });
+  await teamOption.click();
+  await page.keyboard.press('Escape');
+  await expect(popover).toBeHidden();
 };

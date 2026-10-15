@@ -10,22 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tag } from 'antd';
+import { Badge } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { get } from 'lodash';
 import { FC, useMemo } from 'react';
-import { PRIMARY_COLOR } from '../../../../constants/Color.constants';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
 import { getEntityIcon } from '../../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
-import './entity-suggestion-option.less';
 import { EntitySuggestionOptionProps } from './EntitySuggestionOption.interface';
 const EntitySuggestionOption: FC<EntitySuggestionOptionProps> = ({
   entity,
   heading,
-  onSelectHandler,
   className,
   showEntityTypeBadge = false,
 }) => {
@@ -53,18 +50,7 @@ const EntitySuggestionOption: FC<EntitySuggestionOptionProps> = ({
   }, [entity]);
 
   return (
-    <Button
-      block
-      className={classNames(
-        'd-flex items-center entity-suggestion-option-btn p-0',
-        className
-      )}
-      data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
-      key={entity.fullyQualifiedName}
-      type="text"
-      onClick={() => {
-        onSelectHandler?.(entity);
-      }}>
+    <div className={classNames('tw:w-full', className)}>
       <div className="d-flex items-center w-full overflow-hidden justify-between">
         <div className="d-flex items-center flex-1 overflow-hidden">
           {serviceIcon}
@@ -83,14 +69,16 @@ const EntitySuggestionOption: FC<EntitySuggestionOptionProps> = ({
           </div>
         </div>
         {showEntityTypeBadge && (
-          <Tag
-            className="entity-tag text-xs ml-2 whitespace-nowrap"
-            color={PRIMARY_COLOR}>
+          <Badge
+            bordered={false}
+            className="tw:mr-2 tw:ml-2 tw:inline-flex tw:bg-brand-solid tw:text-white tw:capitalize"
+            size="sm"
+            type="color">
             {(entity as SourceType)?.entityType}
-          </Tag>
+          </Badge>
         )}
       </div>
-    </Button>
+    </div>
   );
 };
 

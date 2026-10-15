@@ -188,13 +188,65 @@ test('boot config HTTP failures stay visible and are not cached', async ({
   }
 });
 
-test('a reset boot connection fails in the browser without retrying or caching it', async ({
+test('static asset caching is opt-in across browser contexts', async ({
+  browser,
+}) => {
+  const assetPath = '/assets/static-cache-default.js';
+  const assetBody = 'window.staticCacheDefault = true;';
+  const expectedReads = process.env.PW_CACHE_STATIC_ASSETS === 'true' ? 1 : 2;
+  let reads = 0;
+  const server = createServer((request, response) => {
+    if (request.url === assetPath) {
+      reads++;
+      response.writeHead(200, { 'Content-Type': 'application/javascript' });
+      response.end(assetBody);
+    } else {
+      response.end('<html></html>');
+    }
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const loadAsset = async () => {
+    const context = await browser.newContext();
+
+    try {
+      await installServerLoadReducers(context);
+      const page = await context.newPage();
+      await page.goto(origin, { waitUntil: 'domcontentloaded' });
+
+      const asset = await page.evaluate(
+        async (url) => (await fetch(url)).text(),
+        `${origin}${assetPath}`
+      );
+
+      return asset;
+    } finally {
+      await context.close();
+    }
+  };
+
+  try {
+    expect(await loadAsset()).toBe(assetBody);
+    expect(await loadAsset()).toBe(assetBody);
+    expect(reads).toBe(expectedReads);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve()))
+    );
+  }
+});
+
+test('a reset intercepted connection fails in the browser without retrying or caching it', async ({
   page,
 }) => {
+  const interceptedPath =
+    process.env.PW_CACHE_STATIC_ASSETS === 'true'
+      ? '/assets/reset-connection.js'
+      : configPath;
   let reads = 0;
   let healthy = false;
   const server = createServer((request, response) => {
-    if (request.url !== configPath) {
+    if (request.url !== interceptedPath) {
       response.end('<html></html>');
 
       return;
@@ -218,7 +270,8 @@ test('a reset boot connection fails in the browser without retrying or caching i
       { waitUntil: 'domcontentloaded' }
     );
     const failedRequest = page.waitForEvent('requestfailed', {
-      predicate: (request) => new URL(request.url()).pathname === configPath,
+      predicate: (request) =>
+        new URL(request.url()).pathname === interceptedPath,
     });
     const failure = await page.evaluate(async (url) => {
       try {
@@ -228,7 +281,7 @@ test('a reset boot connection fails in the browser without retrying or caching i
       } catch (error) {
         return error instanceof Error ? error.name : String(error);
       }
-    }, configPath);
+    }, interceptedPath);
 
     expect(failure).toBe('TypeError');
     expect((await failedRequest).failure()?.errorText).toBe(
@@ -238,7 +291,7 @@ test('a reset boot connection fails in the browser without retrying or caching i
 
     healthy = true;
     const read = () =>
-      page.evaluate(async (url) => (await fetch(url)).json(), configPath);
+      page.evaluate(async (url) => (await fetch(url)).json(), interceptedPath);
     expect(await read()).toEqual({ version: 1 });
     expect(await read()).toEqual({ version: 1 });
     expect(reads).toBe(2);

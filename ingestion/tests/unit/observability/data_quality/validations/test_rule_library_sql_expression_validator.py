@@ -6,6 +6,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, Mock
 
 import pytest
+from jinja2.exceptions import SecurityError
 
 from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
     RESERVED_PARAMS,
@@ -21,6 +22,9 @@ from metadata.data_quality.validations.column.sqlalchemy.columnRuleLibrarySqlExp
 )
 from metadata.data_quality.validations.table.base.tableRuleLibrarySqlExpressionValidator import (
     TableRuleLibrarySqlExpressionValidator as TableBaseValidator,
+)
+from metadata.data_quality.validations.table.sqlalchemy.tableRuleLibrarySqlExpressionValidator import (
+    TableRuleLibrarySqlExpressionValidator as TableSQAValidator,
 )
 
 
@@ -375,3 +379,52 @@ class TestPandasValidatorRunResults:
 
         with pytest.raises(Exception, match="Query error"):
             pandas_validator._run_results("invalid query")
+
+
+class TestCompileSqlExpressionSandbox:
+    """The SQL expression is user-authored, so rendering must not reach Python internals."""
+
+    SSTI_PAYLOADS = (
+        "SELECT * FROM {{ table_name }} WHERE {{ cycler.__init__.__globals__.os.popen('echo pwned').read() }}",
+        "SELECT * FROM {{ table_name }} WHERE {{ ''.__class__.__mro__[1].__subclasses__() }}",
+    )
+
+    @staticmethod
+    def _validator(validator_class, sql_expression: str):
+        validator = validator_class.__new__(validator_class)
+        validator.test_case = Mock()
+        validator.test_case.parameterValues = []
+        validator.runtime_params = Mock()
+        validator.runtime_params.test_definition.sqlExpression = _mock_sql_query(sql_expression)
+        return validator
+
+    @staticmethod
+    def _compile(validator):
+        if isinstance(validator, (TableBaseValidator, TableSQAValidator)):
+            return validator.compile_sql_expression(table_name="db.schema.tbl")
+        return validator.compile_sql_expression(column_name="col", table_name="db.schema.tbl")
+
+    @pytest.mark.parametrize("payload", SSTI_PAYLOADS)
+    @pytest.mark.parametrize("validator_class", [BaseValidator, TableBaseValidator])
+    def test_base_validator_rejects_unsafe_template(self, validator_class, payload):
+        validator = self._validator(validator_class, payload)
+
+        with pytest.raises(ValueError, match="Unsafe operation in SQL expression"):
+            self._compile(validator)
+
+    @pytest.mark.parametrize("payload", SSTI_PAYLOADS)
+    @pytest.mark.parametrize("validator_class", [SQAValidator, TableSQAValidator])
+    def test_sqa_validator_rejects_unsafe_template(self, validator_class, payload):
+        validator = self._validator(validator_class, payload)
+
+        with pytest.raises(SecurityError):
+            self._compile(validator)
+
+    @pytest.mark.parametrize("validator_class", [BaseValidator, TableBaseValidator, SQAValidator, TableSQAValidator])
+    def test_safe_template_still_renders(self, validator_class):
+        validator = self._validator(validator_class, "SELECT * FROM {{ table_name }} {% if 1 %}WHERE 1=1{% endif %}")
+
+        result = self._compile(validator)
+
+        compiled_sql = result[0] if isinstance(result, tuple) else result
+        assert compiled_sql == "SELECT * FROM db.schema.tbl WHERE 1=1"

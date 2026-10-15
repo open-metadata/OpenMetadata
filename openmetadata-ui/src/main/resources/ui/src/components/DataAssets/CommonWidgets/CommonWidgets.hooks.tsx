@@ -10,12 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
 import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { SettingType } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { getGlossarySettings } from '../../../rest/settingConfigAPI';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
   getEntityVersionByField,
@@ -23,6 +27,7 @@ import {
 } from '../../../utils/EntityVersionUtilsPure';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsPureUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback, {
   TAB_CONTENT_FALLBACK,
 } from '../../AppRouter/withSuspenseFallback';
@@ -103,7 +108,7 @@ interface TagsUpdateHandler {
  * Wraps the "user changed tags on a tag/glossary widget" flow.
  *
  * For any non-glossary entity, the selected tags are combined with the
- * current tier and pushed straight through onUpdate. For a glossary term the
+ * current tier and pushed straight through onUpdate. When glossary tag propagation is enabled, the
  * selection is captured in local state and a confirmation modal is rendered;
  * onUpdate only fires once the user confirms. Both TagsWidget and
  * GlossaryWidget need this exact flow, so the state and the modal live here
@@ -115,6 +120,7 @@ export const useTagsUpdateHandler = (
   updatedData: GenericEntity
 ): TagsUpdateHandler => {
   const { type, onUpdate } = useGenericContext<GenericEntity>();
+  const queryClient = useQueryClient();
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
 
   const onTagsChange = useCallback(
@@ -122,9 +128,24 @@ export const useTagsUpdateHandler = (
       const updatedTags = createTagObject(selectedTags);
 
       if (type === EntityType.GLOSSARY_TERM) {
-        setTagsUpdating(updatedTags);
+        try {
+          const settings = await queryClient.fetchQuery({
+            queryKey: ['settings', SettingType.GlossarySettings],
+            queryFn: getGlossarySettings,
+            staleTime: 60_000,
+            retry: false,
+          });
+          if (settings.enableTagPropagation !== false) {
+            setTagsUpdating(updatedTags);
 
-        return;
+            return;
+          }
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+          setTagsUpdating(updatedTags);
+
+          return;
+        }
       }
 
       if (updatedTags && data) {
@@ -134,7 +155,7 @@ export const useTagsUpdateHandler = (
         });
       }
     },
-    [data, tier, type, onUpdate]
+    [data, tier, type, onUpdate, queryClient]
   );
 
   const handleConfirm = useCallback(async () => {

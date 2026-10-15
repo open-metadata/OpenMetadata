@@ -24,13 +24,17 @@ import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, toastNotification, uuid } from '../../utils/common';
 import {
   checkAssetsCount,
+  clearDomainFromNavbar,
   selectDataProduct,
   selectDomain,
+  switchNavbarDomain,
 } from '../../utils/domain';
 import {
   fillDeleteConfirmationIfPresent,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { fillStyleIconUrl } from '../../utils/glossaryForm';
+import { loginAsIsolatedAdmin } from '../../utils/isolatedDomainUser';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
@@ -129,7 +133,9 @@ test.describe('Domain Owner Management', () => {
       });
 
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(
+        page.getByTestId('owner-link').filter({ visible: true })
+      ).not.toHaveCount(0);
     } finally {
       await domain.delete(apiContext);
       await user.delete(apiContext);
@@ -171,7 +177,9 @@ test.describe('Domain Owner Management', () => {
         timeout: 10000,
       });
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(
+        page.getByTestId('owner-link').filter({ visible: true })
+      ).not.toHaveCount(0);
 
       // Click edit owner button
       await page.getByTestId('edit-owner').click();
@@ -301,12 +309,16 @@ test.describe('Domain Style Editing', () => {
       await page.getByTestId('edit-style-button').click();
 
       // Wait for modal to appear
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
-      // Fill icon URL input (data-testid="icon-url")
-      await page.getByTestId('icon-url').fill('https://example.com/icon.png');
+      await fillStyleIconUrl(
+        page,
+        page.getByTestId('icon-color-modal'),
+        'https://example.com/icon.png'
+      );
 
-      // Click Save button (Ant Design Modal uses getByRole for OK button)
       const patchRes = page.waitForResponse('/api/v1/domains/*');
       await page.getByRole('button', { name: 'Save' }).click();
       await patchRes;
@@ -338,7 +350,9 @@ test.describe('Data Product UI Operations', () => {
       await page.getByTestId('rename-button').first().click();
 
       // Wait for modal to appear
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const newName = `Renamed DP ${uuid()}`;
       await page.locator('#displayName').clear();
@@ -373,7 +387,9 @@ test.describe('Data Product UI Operations', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
       await fillDeleteConfirmationIfPresent(page);
@@ -470,7 +486,9 @@ test.describe('Data Product UI Operations', () => {
       });
 
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(
+        page.getByTestId('owner-link').filter({ visible: true })
+      ).not.toHaveCount(0);
     } finally {
       await dataProduct.delete(apiContext);
       await domain.delete(apiContext);
@@ -514,7 +532,9 @@ test.describe('Subdomain Management', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
       await fillDeleteConfirmationIfPresent(page);
@@ -563,7 +583,9 @@ test.describe('Subdomain Management', () => {
       await page.getByTestId('rename-button').first().click();
 
       // Wait for modal to appear
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const newName = `Renamed SubDomain ${uuid()}`;
       await page.locator('#displayName').clear();
@@ -699,8 +721,12 @@ test.describe('Domain Assets Tab Operations', () => {
 
 test.describe('Domain Global Dropdown', () => {
   test('Select domain from global dropdown filters explore', async ({
-    page,
+    browser,
   }) => {
+    // Picks a navbar domain, which is saved per user: use a throwaway admin so it can't leak.
+    const { page, afterAction: pickerDone } = await loginAsIsolatedAdmin(
+      browser
+    );
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
 
@@ -712,7 +738,7 @@ test.describe('Domain Global Dropdown', () => {
       await page.getByTestId('domain-dropdown').click();
 
       const domainOption = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
+        `tree-node-${domain.responseData.fullyQualifiedName}`
       );
 
       if (await domainOption.isVisible()) {
@@ -725,10 +751,15 @@ test.describe('Domain Global Dropdown', () => {
     } finally {
       await domain.delete(apiContext);
       await afterAction();
+      await pickerDone();
     }
   });
 
-  test('Clear domain selection returns to All Domains', async ({ page }) => {
+  test('Clear domain selection returns to All Domains', async ({ browser }) => {
+    // Picks a navbar domain, which is saved per user: use a throwaway admin so it can't leak.
+    const { page, afterAction: pickerDone } = await loginAsIsolatedAdmin(
+      browser
+    );
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
 
@@ -740,14 +771,12 @@ test.describe('Domain Global Dropdown', () => {
       await page.getByTestId('domain-dropdown').click();
 
       const domainOption = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
+        `tree-node-${domain.responseData.fullyQualifiedName}`
       );
 
       if (await domainOption.isVisible()) {
-        await domainOption.click();
-
-        await page.getByTestId('domain-dropdown').click();
-        await page.getByTestId('all-domains-selector').click();
+        await switchNavbarDomain(page, () => domainOption.click());
+        await clearDomainFromNavbar(page);
 
         await expect(page.getByTestId('domain-dropdown')).toContainText(
           'All Domains'
@@ -756,6 +785,7 @@ test.describe('Domain Global Dropdown', () => {
     } finally {
       await domain.delete(apiContext);
       await afterAction();
+      await pickerDone();
     }
   });
 });
@@ -840,7 +870,9 @@ test.describe('Delete Domain with Dependencies', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
       await fillDeleteConfirmationIfPresent(page);

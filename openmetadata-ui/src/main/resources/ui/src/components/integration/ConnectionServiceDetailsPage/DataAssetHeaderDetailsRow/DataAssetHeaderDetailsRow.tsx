@@ -13,7 +13,6 @@
 
 import {
   Button,
-  ButtonUtility,
   Dot,
   Owner,
   Popover,
@@ -21,12 +20,16 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Database01, Globe01, User03 } from '@untitledui/icons';
+import {
+  Database01,
+  Globe01,
+  User03,
+} from '@openmetadata/ui-core-components/icons';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { getTierTags } from '../../../../utils/TablePureUtils';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
+import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TierCard from '../../../common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DataAssetHeaderDetailsRowProps } from './DataAssetHeaderDetailsRow.interface';
@@ -41,7 +44,9 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
   domains,
   tags,
   visibilitySlot,
-  hasEditPermission,
+  canEditDomains,
+  canEditOwners,
+  canEditTier,
   onUpdateDomain,
   onUpdateOwners,
   onUpdateTier,
@@ -115,20 +120,18 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
             </Popover>
           </PopoverTrigger>
         )}
-        {hasEditPermission && onUpdateDomain && (
+        {canEditDomains && onUpdateDomain && (
           <DomainSelectableList
             hasPermission
             isClearable
             multiple
             selectedDomain={domains}
             onUpdate={onUpdateDomain}>
-            <ButtonUtility
-              className="tw:h-5.5 tw:w-5.5 tw:p-1"
-              color="tertiary"
+            <EditIconButton
+              newLook
               data-testid="edit-domain-button"
-              icon={<EditIcon className="tw:h-4.5 tw:w-4.5 tw:text-primary" />}
-              size="sm"
-              type="button"
+              size="small"
+              title={t('label.edit-entity', { entity: t('label.domain') })}
             />
           </DomainSelectableList>
         )}
@@ -157,19 +160,19 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
             {t('label.add-entity', { entity: t('label.owner') })}
           </Typography>
         )}
-        {hasEditPermission && onUpdateOwners && (
+        {canEditOwners && onUpdateOwners && (
           <UserTeamSelectableList
             hasPermission
             multiple={{ user: true, team: true }}
             owner={owners}
             onUpdate={onUpdateOwners}>
-            <ButtonUtility
-              className="tw:h-5.5 tw:w-5.5 tw:p-1"
-              color="tertiary"
+            <EditIconButton
+              newLook
               data-testid="edit-owner-button"
-              icon={<EditIcon className="tw:h-4.5 tw:w-4.5 tw:text-primary" />}
-              size="sm"
-              type="button"
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.owner-plural'),
+              })}
             />
           </UserTeamSelectableList>
         )}
@@ -197,16 +200,14 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
               ? tier.displayName ?? tier.name ?? tier.tagFQN
               : t('label.add-entity', { entity: t('label.tier') })}
           </Typography>
-          {hasEditPermission && onUpdateTier && (
-            <ButtonUtility
+          {canEditTier && onUpdateTier && (
+            <EditIconButton
+              newLook
               aria-expanded={tierPopoverOpen}
               aria-haspopup="dialog"
-              className="tw:h-5.5 tw:w-5.5 tw:p-1"
-              color="tertiary"
               data-testid="edit-tier-button"
-              icon={<EditIcon className=" tw:h-4.5 tw:w-4.5 tw:text-primary" />}
-              size="sm"
-              type="button"
+              size="small"
+              title={t('label.edit-entity', { entity: t('label.tier') })}
               onClick={() => setTierPopoverOpen(true)}
             />
           )}

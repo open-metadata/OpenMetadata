@@ -12,8 +12,12 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Badge, Button, List, Typography } from 'antd';
+import {
+  Button,
+  Dot,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -240,13 +244,7 @@ const NotificationBox = ({
 
   const getTabTitle = (name: string, key: string) => {
     return (
-      <Badge
-        dot={
-          key === NotificationTabsKey.TASK
-            ? hasTaskNotification
-            : hasMentionNotification
-        }
-        offset={[5, 0]}>
+      <span className="tw:relative tw:inline-flex tw:items-center">
         <Icon
           alt="notification-icon"
           className="align-middle m-r-xs"
@@ -254,7 +252,17 @@ const NotificationBox = ({
           style={{ fontSize: '16px' }}
         />
         {name}
-      </Badge>
+        {(key === NotificationTabsKey.TASK
+          ? hasTaskNotification
+          : hasMentionNotification) && (
+          <Dot
+            aria-label={t('label.notification-plural')}
+            className="tw:absolute tw:-right-1 tw:top-0 tw:text-fg-error-primary"
+            role="img"
+            size="sm"
+          />
+        )}
+      </span>
     );
   };
 
@@ -265,38 +273,40 @@ const NotificationBox = ({
           <p>{t('message.no-notification-found')}</p>
         </div>
       ) : (
-        <List
-          className="notification-content-container"
-          dataSource={notificationDropDownList}
-          footer={
-            <Button block href={viewAllPath} type="link">
-              <span>
+        <div className="notification-content-container">
+          <ul className="tw:m-0 tw:h-50 tw:list-none tw:overflow-y-auto tw:p-0">
+            {notificationDropDownList.map((item, index) => (
+              <li
+                className="notification-dropdown-list-btn cursor-pointer tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
+                key={notifications[index].id}>
+                {item}
+              </li>
+            ))}
+          </ul>
+          <div className="notification-list-footer tw:px-4 tw:py-3">
+            <Button className="tw:w-full" color="link-color" href={viewAllPath}>
+              <Typography>
                 {t('label.view-entity', {
                   entity: t('label.all-lowercase'),
                 })}
-              </span>
+              </Typography>
             </Button>
-          }
-          itemLayout="vertical"
-          renderItem={(item) => (
-            <List.Item className="notification-dropdown-list-btn cursor-pointer">
-              {item}
-            </List.Item>
-          )}
-          size="small"
-        />
+          </div>
+        </div>
       ),
     [notifications, notificationDropDownList, viewAllPath, t]
   );
 
   return (
     <div className="notification-box">
-      <Typography.Title
+      <Typography
+        as="h5"
         className="p-x-md p-t-sm p-b-xss"
         data-testid="notification-heading"
-        level={5}>
+        size="text-md"
+        weight="semibold">
         {t('label.notification-plural')}
-      </Typography.Title>
+      </Typography>
       <Tabs
         defaultSelectedKey={NotificationTabsKey.TASK}
         onSelectionChange={(key) => updateActiveTab(String(key))}>

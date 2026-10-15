@@ -80,6 +80,68 @@ describe('GlobalSettingsClassBase', () => {
       ?.items?.find((item) => item.key === 'preferences.loginConfiguration');
 
   describe('getGlobalSettingsMenuWithPermission', () => {
+    it.each([true, false])(
+      'requires admin access for glossary preferences (admin=%s)',
+      (isAdmin) => {
+        const item = globalSettingsClassBase
+          .getGlobalSettingsMenuWithPermission(mockNoPermissions, isAdmin)
+          .find((entry) => entry.key === 'preferences')
+          ?.items?.find((entry) => entry.key === 'preferences.glossary');
+
+        expect(item?.label).toBe('label.glossary');
+        expect(item?.isProtected).toBe(isAdmin);
+      }
+    );
+
+    it.each([true, false])(
+      'shows the Announcements card under Notifications to admins only (admin=%s)',
+      (isAdmin) => {
+        (userPermissions.hasViewPermissions as jest.Mock).mockReturnValue(true);
+
+        const item = globalSettingsClassBase
+          .getGlobalSettingsMenuWithPermission(mockPermissions, isAdmin)
+          .find((entry) => entry.key === 'notifications')
+          ?.items?.find((entry) => entry.key === 'notifications.announcements');
+
+        expect(item?.category).toBe('label.announcement-plural');
+        // Even with every view permission: the server lets only admins write
+        // a system announcement, so the card follows the admin flag alone.
+        expect(item?.isProtected).toBe(isAdmin);
+      }
+    );
+
+    it.each([
+      { isAdmin: false, auditLogs: false, expected: false },
+      { isAdmin: false, auditLogs: true, expected: true },
+      { isAdmin: true, auditLogs: false, expected: true },
+    ])(
+      'requires AuditLogs access independently of ViewAll: %j',
+      ({ isAdmin, auditLogs, expected }) => {
+        (userPermissions.hasViewPermissions as jest.Mock).mockImplementation(
+          jest.requireActual('./PermissionsUtils').userPermissions
+            .hasViewPermissions
+        );
+        const permissions = {
+          [ResourceEntity.AUDIT_LOG]: {
+            ...ENTITY_PERMISSIONS,
+            ViewAll: true,
+            ViewBasic: true,
+            AuditLogs: auditLogs,
+          },
+        } as UIPermission;
+        const menu =
+          globalSettingsClassBase.getGlobalSettingsMenuWithPermission(
+            permissions,
+            isAdmin
+          );
+        const auditItem = menu
+          .find((item) => item.key === 'access')
+          ?.items?.find((item) => item.key === 'access.audit-logs');
+
+        expect(auditItem?.isProtected).toBe(expected);
+      }
+    );
+
     it('should return menu items for admin user with all permissions', () => {
       (userPermissions.hasViewPermissions as jest.Mock).mockReturnValue(true);
 

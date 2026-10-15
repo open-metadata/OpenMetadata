@@ -684,6 +684,50 @@ class DefaultRecreateHandlerTest {
         assertEquals(Set.of("table"), handler.recreatedEntities);
       }
     }
+
+    @Test
+    @DisplayName("Should recreate the column index along with the table index")
+    void recreatingTablesAlsoRecreatesTheColumnIndex() {
+      SearchRepository repo = repositoryWithTableAndColumnMappings(true);
+
+      TrackingRecreateHandler handler = new TrackingRecreateHandler();
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        handler.reCreateIndexes(Set.of("table"));
+      }
+
+      assertEquals(Set.of("table", "tableColumn"), handler.recreatedEntities);
+    }
+
+    @Test
+    @DisplayName("Should not recreate the column index while column indexing is off")
+    void columnIndexIsNotRecreatedWhileColumnIndexingIsOff() {
+      SearchRepository repo = repositoryWithTableAndColumnMappings(false);
+
+      TrackingRecreateHandler handler = new TrackingRecreateHandler();
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        handler.reCreateIndexes(Set.of("table", "tableColumn"));
+      }
+
+      assertEquals(Set.of("table"), handler.recreatedEntities);
+    }
+
+    private SearchRepository repositoryWithTableAndColumnMappings(boolean columnIndexingEnabled) {
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.isColumnIndexingEnabled()).thenReturn(columnIndexingEnabled);
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder().indexName("table_search_index").alias("table").build());
+      // Mapped either way: the setting, not a missing mapping, decides whether it is recreated.
+      lenient()
+          .when(repo.getIndexMapping("tableColumn"))
+          .thenReturn(
+              IndexMapping.builder().indexName("column_search_index").alias("tableColumn").build());
+      return repo;
+    }
   }
 
   @Nested
@@ -1134,6 +1178,7 @@ class DefaultRecreateHandlerTest {
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
       when(repo.getClusterAlias()).thenReturn("");
+      when(repo.isColumnIndexingEnabled()).thenReturn(true);
       when(repo.getIndexMapping("tableColumn"))
           .thenReturn(
               IndexMapping.builder()
@@ -1174,6 +1219,47 @@ class DefaultRecreateHandlerTest {
                   + "got "
                   + stagedAliases);
       assertTrue(aliasState.deletedIndices.contains("column_search_index_rebuild_old"));
+    }
+
+    @Test
+    @DisplayName("Should drop a staged column index when column indexing was turned off mid-run")
+    void stagedColumnIndexIsDroppedWhenColumnIndexingWasTurnedOff() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("column_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.isColumnIndexingEnabled()).thenReturn(false);
+      when(repo.getIndexMapping("tableColumn"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("column_search_index")
+                  .alias("tableColumn")
+                  .parentAliases(List.of("all", "table", "dataAsset"))
+                  .childAliases(List.of())
+                  .build());
+
+      boolean finalized;
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("tableColumn")
+                .canonicalIndex("column_search_index")
+                .stagedIndex("column_search_index_rebuild_new")
+                .existingAliases(new HashSet<>())
+                .parentAliases(new HashSet<>())
+                .build();
+
+        finalized = new DefaultRecreateHandler().finalizeReindex(context, true);
+      }
+
+      assertTrue(finalized);
+      assertTrue(aliasState.deletedIndices.contains("column_search_index_rebuild_new"));
+      verify(client, never()).swapAliases(anySet(), anyString(), anySet(), anySet());
+      verify(repo).unregisterStagedIndex("tableColumn", "column_search_index_rebuild_new");
     }
   }
 

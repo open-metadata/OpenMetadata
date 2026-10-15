@@ -16,6 +16,13 @@ import { ReactNode } from 'react';
 import { Glossary } from '../../generated/entity/data/glossary';
 import OntologyExplorerPage from './OntologyExplorerPage';
 
+let mockSearchParams = new URLSearchParams();
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useSearchParams: () => [mockSearchParams, jest.fn()],
+}));
+
 interface ExplorerMockProps {
   conceptDraftId?: string;
   defaultConceptGlossaryId?: string;
@@ -140,6 +147,14 @@ jest.mock('../../components/OntologyExplorer/OntologyAiAssistant', () => ({
   )),
 }));
 
+jest.mock(
+  '../../components/OntologyExplorer/OntologyMemoryReviewPanel',
+  () => ({
+    __esModule: true,
+    default: jest.fn(() => <div data-testid="ontology-memory-review-panel" />),
+  })
+);
+
 jest.mock('../../components/OntologyExplorer/OntologyImportExportMenu', () => ({
   __esModule: true,
   default: jest.fn(() => <div data-testid="ontology-import-export" />),
@@ -182,19 +197,19 @@ describe('OntologyExplorerPage', () => {
   it('renders the dedicated Studio shell and graph by default', () => {
     render(<OntologyExplorerPage />);
 
-    expect(screen.getByTestId('heading')).toHaveTextContent(
-      'label.ontology-studio'
-    );
+    expect(
+      screen.getByRole('heading', { name: 'label.ontology-studio' })
+    ).toBeInTheDocument();
     expect(screen.getByTestId('page-layout-v1')).toBeInTheDocument();
     expect(screen.getByTestId('ontology-studio-shell').className).not.toContain(
       'tw:fixed'
     );
     expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'true'
     );
     expect(screen.getByTestId('submode-tab-graph')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'true'
     );
     expect(
@@ -477,8 +492,32 @@ describe('OntologyExplorerPage', () => {
     render(<OntologyExplorerPage />);
 
     expect(screen.queryByTestId('mode-tab-edit')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mode-tab-review')).not.toBeInTheDocument();
     expect(screen.getByTestId('mode-tab-view')).toBeVisible();
     expect(screen.getByTestId('mode-tab-query')).toBeVisible();
+  });
+
+  it('opens saved proposals for review when ontology AI is disabled', () => {
+    render(<OntologyExplorerPage />);
+
+    fireEvent.click(screen.getByTestId('mode-tab-review'));
+
+    expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();
+    expect(screen.getByTestId('ontology-explorer')).not.toBeVisible();
+  });
+
+  it('opens a linked draft directly in Studio review', () => {
+    mockSearchParams = new URLSearchParams('draft=draft-16');
+
+    render(<OntologyExplorerPage />);
+
+    expect(screen.getByTestId('mode-tab-review')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();
+
+    mockSearchParams = new URLSearchParams();
   });
 
   it('does not expose an AI affordance when the effective flag is disabled', () => {

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from '@openmetadata/ui-core-components';
+import { Box, Card, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import Qs from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -164,56 +164,57 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
 
   return (
     <TableProfilerProvider {...props}>
-      <div
-        className="data-observability-tab-container tw:bg-surface"
+      <Card
+        className="data-observability-tab-container"
         data-testid="table-profiler-container"
         id="profilerDetails">
-        <div className="tw:flex tw:items-center tw:justify-between">
-          {isEmpty(activeColumnFqn) ? (
-            <Tabs
-              className="tw:w-auto"
-              selectedKey={activeTab}
-              onSelectionChange={(key) => handleTabChange(String(key))}>
-              <Tabs.List type="button-border">
-                {tabOptions.map(({ label, key }) => (
-                  <Tabs.Item
-                    className={({ isSelected, isHovered }) =>
-                      isSelected || isHovered
-                        ? 'tw:bg-brand-solid tw:text-primary_on-brand'
-                        : ''
-                    }
-                    id={key}
-                    key={key}>
-                    <TabsLabel count={tabCounts?.[key]} id={key} name={label} />
-                  </Tabs.Item>
-                ))}
-              </Tabs.List>
-            </Tabs>
-          ) : (
-            <Link
-              className="tw:flex tw:items-center tw:gap-1 tw:font-semibold tw:no-underline!"
-              to={{
-                pathname: getEntityDetailsPath(
-                  EntityType.TABLE,
-                  tableFqn,
-                  EntityTabs.PROFILER,
-                  ProfilerTabPath.COLUMN_PROFILE
-                ),
-                search: Qs.stringify({
-                  ...searchData,
-                  activeColumnFqn: undefined,
-                }),
-              }}>
-              <DropDownIcon className="transform-90" height={16} width={16} />
-              {t(PAGE_HEADERS.COLUMN_PROFILE.header)}
-            </Link>
-          )}
-          <TabFilters />
-        </div>
-        <div className="data-observability-content-panel">
-          {activeTabComponent}
-        </div>
-      </div>
+        <Card.Content>
+          <Box align="center" justify="between">
+            {isEmpty(activeColumnFqn) ? (
+              <Tabs
+                className="tw:w-auto"
+                selectedKey={activeTab}
+                onSelectionChange={(key) => handleTabChange(String(key))}>
+                <Tabs.List type="button-border">
+                  {tabOptions.map(({ label, key }) => (
+                    <Tabs.Item id={key} key={key}>
+                      <TabsLabel
+                        count={tabCounts?.[key]}
+                        id={key}
+                        name={label}
+                      />
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+              </Tabs>
+            ) : (
+              <Link
+                className="tw:flex tw:items-center tw:gap-1"
+                to={{
+                  pathname: getEntityDetailsPath(
+                    EntityType.TABLE,
+                    tableFqn,
+                    EntityTabs.PROFILER,
+                    ProfilerTabPath.COLUMN_PROFILE
+                  ),
+                  search: Qs.stringify({
+                    ...searchData,
+                    activeColumnFqn: undefined,
+                  }),
+                }}>
+                <DropDownIcon className="transform-90" height={16} width={16} />
+                <Typography weight="semibold">
+                  {t(PAGE_HEADERS.COLUMN_PROFILE.header)}
+                </Typography>
+              </Link>
+            )}
+            <TabFilters />
+          </Box>
+          <Box className="data-observability-content-panel" direction="col">
+            {activeTabComponent}
+          </Box>
+        </Card.Content>
+      </Card>
     </TableProfilerProvider>
   );
 };

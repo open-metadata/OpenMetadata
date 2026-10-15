@@ -57,6 +57,9 @@ Light mode is frozen: reach dark with tokens that adapt, never by changing light
 [`docs/colors.md`](../../openmetadata-ui/src/main/resources/ui/docs/colors.md); dark values live under
 `.dark-mode` in `globals.css`.
 
+- **Scope:** dark mode is AI mode on core/Tailwind surfaces only. Classic mode gets no dark theme
+  and antd-only surfaces (`.ant-*`) are not themed for dark — migrate them to core instead
+  (ADR:2026-10-12-dark-mode-targets-ai-mode-core-surfaces-only).
 - **Surfaces:** page → `tw:bg-page`; card/panel → core `<Card>` or `tw:bg-surface`; popover, dropdown,
   select, modal, drawer → `tw:bg-overlay-surface`. `tw:bg-primary` is the page colour in dark
   (invisible card); `Box` is layout only — give it no background. Wrappers/grid frames stay transparent

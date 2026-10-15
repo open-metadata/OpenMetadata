@@ -21,6 +21,7 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -35,7 +36,7 @@ async function goToLearningResourcesAdmin(page: Page) {
   await page.waitForLoadState('domcontentloaded');
 
   if (page.url().includes('/signin')) {
-    await admin.login(page);
+    await admin.signIn(page);
   }
 
   await page.waitForURL(
@@ -48,14 +49,28 @@ async function goToLearningResourcesAdmin(page: Page) {
   await expect(page.getByTestId('learning-resources-table-body')).toBeVisible();
 }
 
-async function selectDropdownOption(page: Page, optionText: string) {
-  const option = page
-    .locator('.ant-select-dropdown:visible')
-    .locator('.ant-select-item-option')
-    .filter({ hasText: new RegExp(`^${optionText}$`, 'i') });
-
-  await expect(option).toBeVisible();
-  await option.click();
+async function selectDropdownOption(
+  page: Page,
+  testId: string,
+  optionText: string,
+  role: 'button' | 'combobox' = 'button'
+) {
+  const trigger = page
+    .getByTestId('learning-resource-form-drawer')
+    .getByTestId(testId)
+    .getByRole(role);
+  await selectOptionWithRetry(
+    trigger,
+    page.getByRole('option', { name: new RegExp(`^${optionText}$`, 'i') })
+  );
+  // A multi-select stays open; Escape would bubble to the drawer and close it.
+  if ((await trigger.getAttribute('aria-expanded')) === 'true') {
+    await page
+      .getByTestId('learning-resource-form-drawer')
+      .getByText(/^(Add|Edit) Resource$/)
+      .click();
+  }
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
 }
 
 async function fillResourceForm(
@@ -70,52 +85,30 @@ async function fillResourceForm(
     status: string;
   }
 ) {
-  const nameInput = page.getByTestId('name-input');
+  const nameInput = page.getByTestId('name-input').getByRole('textbox');
   await expect(nameInput).toBeVisible();
   await nameInput.fill(data.resourceName);
 
-  const descriptionInput = page.getByTestId('description-input');
+  const descriptionInput = page
+    .getByTestId('description-input')
+    .getByRole('textbox');
   await expect(descriptionInput).toBeVisible();
   await descriptionInput.fill(data.description);
 
-  const typeSelector = page
-    .getByTestId('resource-type-form-item')
-    .locator('.ant-select-selector');
-  await expect(typeSelector).toBeVisible();
-  await typeSelector.click();
-  await selectDropdownOption(page, data.type);
+  await selectDropdownOption(page, 'resource-type-select', data.type);
+  await selectDropdownOption(
+    page,
+    'categories-select',
+    data.category,
+    'combobox'
+  );
+  await selectDropdownOption(page, 'contexts-select', data.context, 'combobox');
 
-  const categorySelector = page
-    .getByTestId('categories-form-item')
-    .locator('.ant-select-selector');
-  await expect(categorySelector).toBeVisible();
-  await categorySelector.click();
-  await selectDropdownOption(page, data.category);
-  await page.locator('.ant-drawer-header').click();
-  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
-
-  const contextSelector = page
-    .getByTestId('contexts-form-item')
-    .locator('.ant-select-selector');
-  await expect(contextSelector).toBeVisible();
-  await contextSelector.click();
-  await page
-    .locator('.ant-select-dropdown:visible')
-    .getByTitle(data.context, { exact: true })
-    .click();
-  await page.locator('.ant-drawer-header').click();
-  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
-
-  const urlInput = page.getByTestId('source-url-input');
+  const urlInput = page.getByTestId('source-url-input').getByRole('textbox');
   await expect(urlInput).toBeVisible();
   await urlInput.fill(data.url);
 
-  const statusSelector = page
-    .getByTestId('status-form-item')
-    .locator('.ant-select-selector');
-  await expect(statusSelector).toBeVisible();
-  await statusSelector.click();
-  await selectDropdownOption(page, data.status);
+  await selectDropdownOption(page, 'status-select', data.status);
 }
 
 async function scrollDrawerToShowResource(page: Page, resourceText: string) {
@@ -124,6 +117,16 @@ async function scrollDrawerToShowResource(page: Page, resourceText: string) {
   const targetElement = drawer.getByText(resourceText, { exact: false });
   await targetElement.scrollIntoViewIfNeeded();
   await expect(targetElement).toBeVisible();
+}
+
+async function openGlossaryLearningDrawer(page: Page, resourceText: string) {
+  await sidebarClick(page, SidebarItem.GLOSSARY);
+  await waitForAllLoadersToDisappear(page);
+
+  const learningIcon = page.getByTestId('learning-icon');
+  await expect(learningIcon).toBeVisible();
+  await learningIcon.click();
+  await scrollDrawerToShowResource(page, resourceText);
 }
 
 test.describe(
@@ -194,6 +197,53 @@ test.describe(
         page.getByTestId('learning-resource-form-drawer')
       ).not.toBeVisible();
       await waitForAllLoadersToDisappear(page);
+    });
+
+    test('should create a Link learning resource', async ({ page }) => {
+      const resourceName = `PW_Create_Link_${uuid()}`;
+      const guideUrl = 'https://docs.example.com/data-seeker-guide';
+      const { apiContext, afterAction } = await getApiContext(page);
+
+      await test.step('Fill the form with the Link type', async () => {
+        await page.getByTestId('create-resource').click();
+        await expect(
+          page.getByTestId('learning-resource-form-drawer')
+        ).toBeVisible();
+
+        await fillResourceForm(page, {
+          resourceName,
+          description: 'Internal guidance linked from the learning drawer',
+          type: 'Link',
+          category: 'Discovery',
+          context: 'Domain',
+          url: guideUrl,
+          status: 'Active',
+        });
+      });
+
+      await test.step('Save and verify a Link resource is created', async () => {
+        const createResponse = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/learning/resources') &&
+            r.request().method() === 'POST'
+        );
+        await page.getByTestId('save-resource').click();
+        const response = await createResponse;
+
+        expect(response.status()).toBe(201);
+        const created = await response.json();
+        expect(created.resourceType).toBe('Link');
+        expect(created.source.url).toBe(guideUrl);
+        await expect(
+          page.getByTestId('learning-resource-form-drawer')
+        ).not.toBeVisible();
+
+        await apiContext.delete(
+          `/api/v1/learning/resources/${created.id}?hardDelete=true`
+        );
+      });
+
+      await afterAction();
     });
 
     test('should preview a learning resource by clicking on row', async ({
@@ -365,6 +415,99 @@ test.describe(
           playerDialog.getByText(`PW Player Resource ${uniqueId}`)
         ).toBeVisible();
       });
+    });
+
+    test('should open a Link resource in a new tab from the learning drawer', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const uniqueId = uuid();
+      const displayName = `PW Link Resource ${uniqueId}`;
+      const guideUrl = `https://docs.example.com/pw-link-${uniqueId}`;
+      const resource = new LearningResourceClass({
+        name: `PW_Link_Resource_${uniqueId}`,
+        displayName,
+        resourceType: 'Link',
+        contexts: [{ pageId: 'glossary' }],
+        status: 'Active',
+        source: { url: guideUrl },
+      });
+      await resource.create(apiContext);
+      // Serve the linked page locally so the test does not depend on an external host.
+      await page.context().route(guideUrl, (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'text/html',
+          body: '<h1>Data Seeker Guide</h1>',
+        })
+      );
+
+      await test.step('Open learning drawer on glossary page', async () => {
+        await openGlossaryLearningDrawer(page, displayName);
+      });
+
+      await test.step('Click Link card and verify it opens in a new tab', async () => {
+        const newTabPromise = page.context().waitForEvent('page');
+        await page
+          .getByTestId(`learning-resource-card-PW_Link_Resource_${uniqueId}`)
+          .click();
+        const newTab = await newTabPromise;
+
+        await expect(newTab).toHaveURL(guideUrl);
+        await expect(
+          page.getByTestId('resource-player-dialog')
+        ).not.toBeVisible();
+        await expect(page.getByTestId('learning-drawer')).toBeVisible();
+        await newTab.close();
+      });
+
+      await resource.delete(apiContext);
+      await afterAction();
+    });
+
+    test('should show a PDF resource in the resource player', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const uniqueId = uuid();
+      const displayName = `PW PDF Resource ${uniqueId}`;
+      const pdfUrl = `https://docs.example.com/pw-guide-${uniqueId}.pdf`;
+      const resource = new LearningResourceClass({
+        name: `PW_PDF_Resource_${uniqueId}`,
+        displayName,
+        resourceType: 'PDF',
+        contexts: [{ pageId: 'glossary' }],
+        status: 'Active',
+        source: { url: pdfUrl },
+      });
+      await resource.create(apiContext);
+
+      await test.step('Open learning drawer on glossary page', async () => {
+        await openGlossaryLearningDrawer(page, displayName);
+      });
+
+      await test.step('Click PDF card and verify the player embeds it', async () => {
+        await page
+          .getByTestId(`learning-resource-card-PW_PDF_Resource_${uniqueId}`)
+          .click();
+
+        const playerDialog = page.getByTestId('resource-player-dialog');
+        await expect(playerDialog).toBeVisible();
+        await expect(playerDialog.getByTitle(displayName)).toHaveAttribute(
+          'src',
+          pdfUrl
+        );
+        await expect(
+          playerDialog.getByRole('link', { name: 'Open in New Tab' })
+        ).toHaveAttribute('href', pdfUrl);
+      });
+
+      await resource.delete(apiContext);
+      await afterAction();
     });
   }
 );

@@ -22,11 +22,14 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
  * Direct coverage for {@link DefaultToolContext}'s Phase 3 outcome construction. The recorder side
@@ -90,6 +93,38 @@ class DefaultToolContextTest {
   void classifyRateLimitException() {
     assertThat(DefaultToolContext.classifyException(new RuntimeException("rate limit exceeded")))
         .isEqualTo(McpToolCallUsage.ErrorCategory.RATE_LIMIT);
+  }
+
+  @Test
+  void classifyGraphReadsThatShouldBeRetriedAsRateLimited() {
+    assertThat(
+            DefaultToolContext.classifyException(
+                new RdfRetryLaterException("PROJECTION_NOT_READY: rebuilding", null)))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.RATE_LIMIT);
+    assertThat(
+            DefaultToolContext.classifyException(
+                new SparqlQueryExecutionGuard.QueryCapacityException("concurrency limit reached")))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.RATE_LIMIT);
+    assertThat(DefaultToolContext.resolveStatusCode(new RdfRetryLaterException("not ready", null)))
+        .isEqualTo(429);
+  }
+
+  @Test
+  void aDegradedProjectionIsADeploymentStateNotARetryableFault() {
+    final RdfProjectionDegradedException degraded =
+        new RdfProjectionDegradedException("PROJECTION_NOT_READY: degraded", null);
+
+    assertThat(DefaultToolContext.classifyException(degraded))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
+    assertThat(DefaultToolContext.resolveStatusCode(degraded)).isEqualTo(400);
+  }
+
+  @Test
+  void classifyGraphQueryTimeoutAsTimeout() {
+    assertThat(
+            DefaultToolContext.classifyException(
+                new RdfQueryTimeoutException("EXECUTION_TIMEOUT: too slow", null)))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.TIMEOUT);
   }
 
   @Test
@@ -235,6 +270,25 @@ class DefaultToolContextTest {
         .contains("\"tool\":\"get_entity_details\"")
         .contains("\"maxResponseChars\":" + McpResponseTrim.MAX_RESPONSE_CHARS)
         .doesNotContain("zzzz");
+  }
+
+  @Test
+  void serializeWithinBudgetUsesTheCapSetOnTheMcpServer() {
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    MCPConfiguration previous = SecurityConfigurationManager.getCurrentMcpConfig();
+    manager.setCurrentMcpConfig(new MCPConfiguration().withMaxResponseChars(20_000));
+    try {
+      String serialized =
+          DefaultToolContext.serializeWithinBudget(
+              Map.of("blob", "z".repeat(30_000)), "get_entity_details");
+
+      assertThat(serialized)
+          .contains("\"truncated\":true")
+          .contains("\"maxResponseChars\":20000")
+          .doesNotContain("zzzz");
+    } finally {
+      manager.setCurrentMcpConfig(previous);
+    }
   }
 
   @Test

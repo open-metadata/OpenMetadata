@@ -14,27 +14,36 @@ import { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
+import { DatabaseClass } from '../../../support/entity/DatabaseClass';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import {
   getDefaultAdminAPIContext,
   redirectToHomePage,
   uuid,
-  waitForAntdPopupToSettle,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   dismissLineageMapOnboarding,
+  expectLineageNodeVisible,
   performZoomOut,
   verifyExportLineagePNG,
   visitLineageTab,
 } from '../../../utils/lineage';
 import { sidebarClick } from '../../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { test } from '../../fixtures/pages';
 
-// Create a table with '/' in the name to test encoding functionality
+// Create a table with '/' in the name to test encoding functionality.
+// Its database is owned rather than the shard's shared one: the database
+// lineage scene draws every table and edge other specs put under the shared
+// database, and there the scene request failed or this table's schema node
+// never rendered.
 const tableNameWithSlash = `pw-table-with/slash-${uuid()}`;
-const table = new TableClass(tableNameWithSlash);
+const table = new TableClass({
+  name: tableNameWithSlash,
+  database: new DatabaseClass(),
+});
 
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
@@ -56,6 +65,12 @@ test.beforeAll(async ({ browser }) => {
     ],
   });
 
+  await afterAction();
+});
+
+test.afterAll(async ({ browser }) => {
+  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+  await table.delete(apiContext);
   await afterAction();
 });
 
@@ -83,14 +98,13 @@ test.describe('Entity Lineage tab', () => {
           req.url().includes('/api/v1/search/query') &&
           req.url().includes('deleted=false')
       );
-      await page.fill(
-        '[data-testid="search-entity-select"] .ant-select-selection-search-input',
-        table.entity.name
-      );
+      await page
+        .getByTestId('search-entity-select')
+        .getByRole('combobox')
+        .fill(table.entity.name);
       await searchRequest;
 
-      await page.locator('.ant-select-dropdown').waitFor();
-      await waitForAntdPopupToSettle(page);
+      await page.getByRole('listbox').waitFor();
 
       const nodeFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
       const dbFqn = get(
@@ -103,48 +117,49 @@ test.describe('Entity Lineage tab', () => {
         'entityResponseData.databaseSchema.fullyQualifiedName',
         ''
       );
-      const tableSceneResponse = page.waitForResponse(
+      const tableSceneResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
-          new URL(response.url()).searchParams.get('focusFqn') === nodeFqn
+          new URL(response.url()).searchParams.get('focusFqn') === nodeFqn,
+        200
       );
       await page.getByTestId(`node-suggestion-${nodeFqn}`).click();
-      await expect(page).toHaveURL(
-        (url) =>
-          url.pathname === `/lineage/table/${encodeURIComponent(nodeFqn)}`
-      );
-      expect((await tableSceneResponse).ok()).toBeTruthy();
+      await expect
+        .poll(() => new URL(page.url()).pathname)
+        .toBe(`/lineage/table/${encodeURIComponent(nodeFqn)}`);
+      await tableSceneResponse;
 
       await expect(
         page.locator('[data-testid="lineage-details"]')
       ).toBeVisible();
-      await expect(page.getByTestId(`lineage-node-${nodeFqn}`)).toBeVisible();
+      await expectLineageNodeVisible(page, nodeFqn);
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.LINEAGE);
       await page.getByTestId('search-entity-select').waitFor();
       await page.click('[data-testid="search-entity-select"]');
 
-      await page.fill(
-        '[data-testid="search-entity-select"] .ant-select-selection-search-input',
-        db
-      );
+      await page
+        .getByTestId('search-entity-select')
+        .getByRole('combobox')
+        .fill(db);
       await page.getByTestId(`node-suggestion-${dbFqn}`).waitFor();
-      await waitForAntdPopupToSettle(page);
-      const databaseSceneResponse = page.waitForResponse(
+      const databaseSceneResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
-          new URL(response.url()).searchParams.get('focusFqn') === dbFqn
+          new URL(response.url()).searchParams.get('focusFqn') === dbFqn,
+        200
       );
       await page.getByTestId(`node-suggestion-${dbFqn}`).click();
-      await expect(page).toHaveURL(
-        (url) =>
-          url.pathname === `/lineage/database/${encodeURIComponent(dbFqn)}`
-      );
-      expect((await databaseSceneResponse).ok()).toBeTruthy();
+      await expect
+        .poll(() => new URL(page.url()).pathname)
+        .toBe(`/lineage/database/${encodeURIComponent(dbFqn)}`);
+      await databaseSceneResponse;
 
       await expect(page.getByTestId('lineage-details')).toBeVisible();
-      await expect(page.getByTestId(`lineage-node-${schemaFqn}`)).toBeVisible();
+      await expectLineageNodeVisible(page, schemaFqn);
     }
   );
 

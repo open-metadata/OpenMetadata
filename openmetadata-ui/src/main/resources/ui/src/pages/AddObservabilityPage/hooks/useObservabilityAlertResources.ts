@@ -11,97 +11,15 @@
  *  limitations under the License.
  */
 
-import type { FormInstance } from 'antd';
-import { Form } from 'antd';
-import { isEmpty } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
-import { AlertType } from '../../../generated/events/eventSubscription';
-import { getResourceFunctions as getNotificationResourceFunctions } from '../../../rest/alertsAPI';
-import { getResourceFunctions as getObservabilityResourceFunctions } from '../../../rest/observabilityAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import {
-  ModifiedCreateEventSubscription,
-  ObservabilityFilterResourceDescriptor,
-  UseObservabilityAlertResourcesReturn,
-} from '../AddObservabilityPage.interface';
-import { toObservabilityFilterResourceDescriptor } from '../ObservabilityAlertForm.utils';
+import { UseFormReturn } from 'react-hook-form';
+import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
+const NO_SOURCES: string[] = [];
 
-export function useObservabilityAlertResources(
-  form: FormInstance<ModifiedCreateEventSubscription>,
-  alertType: AlertType = AlertType.Observability
-): UseObservabilityAlertResourcesReturn {
-  const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
-  const [filterResources, setFilterResources] = useState<
-    ObservabilityFilterResourceDescriptor[]
-  >([]);
-
-  const [selectedTrigger] =
-    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
-
-  const fetchFunctions = async () => {
-    try {
-      setLoading(true);
-      const filterResources =
-        alertType === AlertType.Notification
-          ? await getNotificationResourceFunctions()
-          : await getObservabilityResourceFunctions();
-
-      setFilterResources(
-        filterResources.data.map(toObservabilityFilterResourceDescriptor)
-      );
-    } catch {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.config') })
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchFunctions();
-  }, [alertType]);
-
-  const selectedResource = useMemo(
-    () => filterResources.find((resource) => resource.name === selectedTrigger),
-    [filterResources, selectedTrigger]
-  );
-
-  const supportedFilters = useMemo(
-    () => selectedResource?.supportedFilters,
-    [selectedResource]
-  );
-
-  const containerEntities = useMemo<
-    UseObservabilityAlertResourcesReturn['containerEntities']
-  >(() => selectedResource?.containerEntities, [selectedResource]);
-
-  const supportedTriggers = useMemo(
-    () => selectedResource?.supportedActions,
-    [selectedResource]
-  );
-
-  const shouldShowFiltersSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
-    [selectedTrigger, supportedFilters]
-  );
-
-  const shouldShowActionsSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedTriggers) : true),
-    [selectedTrigger, supportedTriggers]
-  );
-
+export function useSelectedAlertSources(
+  form: UseFormReturn<ModifiedCreateEventSubscription>
+): { sources: string[]; input: ModifiedCreateEventSubscription['input'] } {
   return {
-    containerEntities,
-    filterResources,
-    loading,
-    shouldShowActionsSection,
-    shouldShowFiltersSection,
-    supportedFilters,
-    supportedTriggers,
+    sources: form.watch('resources') ?? NO_SOURCES,
+    input: form.watch('input'),
   };
 }

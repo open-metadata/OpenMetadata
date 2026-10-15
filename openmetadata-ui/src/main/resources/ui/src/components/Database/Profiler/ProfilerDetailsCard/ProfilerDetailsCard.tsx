@@ -12,64 +12,83 @@
  */
 
 import { Skeleton } from '@openmetadata/ui-core-components';
-import React, { Fragment, useMemo, useState } from 'react';
 import {
-  Area,
-  Brush,
-  CartesianGrid,
-  ComposedChart,
-  Legend,
-  LegendProps,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+  AreaChart,
+  LineChart,
+  type ChartSeries,
+  type ChartTooltipRenderProps,
+  type ChartYAxisProps,
+} from '@openmetadata/ui-core-components/charts';
+import React, { useMemo } from 'react';
 import { PROFILER_CHART_DATA_SIZE } from '../../../../constants/profiler.constant';
-import { useChartColors } from '../../../../hooks/useChartColors';
 import {
   axisTickFormatter,
-  createHorizontalGridLineRenderer,
   tooltipFormatter,
-  updateActiveChartFilter,
 } from '../../../../utils/ChartUtils';
-import { CustomDQTooltip } from '../../../../utils/DataQuality/CustomDQTooltip.component';
+import {
+  chartTooltipRows,
+  DQTooltipContent,
+} from '../../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ProfilerDetailsCardProps } from '../ProfilerDashboard/profilerDashboard.interface';
+import {
+  MetricChartType,
+  ProfilerDetailsCardProps,
+} from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerLatestValue from '../ProfilerLatestValue/ProfilerLatestValue';
+
+type MetricRow = MetricChartType['data'][number];
+
+const CHART_HEIGHT = 300;
+// Date columns: min / max are date strings, plotted as categories.
+const CATEGORY_Y_AXIS: ChartYAxisProps = { type: 'category' };
 
 const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   showYAxisCategory = false,
   chartCollection,
   tickFormatter,
   name,
-  curveType,
   title,
   isLoading,
   noDataPlaceholderText,
   chartType = 'line',
 }: ProfilerDetailsCardProps) => {
-  const { axis, grid } = useChartColors();
   const { data, information } = chartCollection;
-  const [activeKeys, setActiveKeys] = useState<string[]>([]);
-  const { showBrush, endIndex } = useMemo(() => {
-    return {
-      showBrush: data.length > PROFILER_CHART_DATA_SIZE,
-      endIndex: PROFILER_CHART_DATA_SIZE,
-    };
-  }, [data]);
+  const Chart = chartType === 'area' ? AreaChart : LineChart;
 
-  const handleClick: LegendProps['onClick'] = (event) => {
-    setActiveKeys((prevActiveKeys) =>
-      updateActiveChartFilter(event.dataKey, prevActiveKeys)
-    );
-  };
+  const series = useMemo<ChartSeries[]>(
+    () =>
+      information.map((info) => ({
+        key: info.dataKey,
+        name: info.title,
+        status: info.status,
+      })),
+    [information]
+  );
 
-  const renderHorizontalGridLine = useMemo(
-    () => createHorizontalGridLineRenderer(),
-    []
+  const yAxis = useMemo<ChartYAxisProps>(
+    () =>
+      showYAxisCategory
+        ? CATEGORY_Y_AXIS
+        : {
+            type: 'value',
+            formatter: (value) =>
+              String(axisTickFormatter(Number(value), tickFormatter)),
+          },
+    [showYAxisCategory, tickFormatter]
+  );
+
+  const tooltip = useMemo<ChartTooltipRenderProps<MetricRow>>(
+    () => ({
+      render: (items, row) => (
+        <DQTooltipContent
+          header={formatDateTimeLong(Number(row?.timestamp ?? 0))}
+          rows={chartTooltipRows(items)}
+          valueFormatter={(value) => tooltipFormatter(value, tickFormatter)}
+        />
+      ),
+    }),
+    [tickFormatter]
   );
 
   if (isLoading) {
@@ -93,102 +112,19 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
           />
 
           {data.length > 0 ? (
-            <ResponsiveContainer
-              className="custom-legend"
-              debounce={200}
-              id={`${name}_graph`}
-              minHeight={300}>
-              <ComposedChart
-                className="w-full"
+            <div className="tw:w-full" id={`${name}_graph`}>
+              <Chart
+                ariaLabel={title ?? name}
                 data={data}
-                margin={{ left: 0 }}>
-                <CartesianGrid
-                  horizontal={renderHorizontalGridLine}
-                  stroke={grid}
-                  strokeDasharray="3 3"
-                  vertical={false}
-                />
-                <XAxis
-                  axisLine={false}
-                  dataKey="name"
-                  padding={{ left: 16, right: 16 }}
-                  tick={{ fill: axis, fontSize: 12 }}
-                  tickLine={false}
-                />
-
-                <YAxis
-                  allowDataOverflow
-                  axisLine={false}
-                  padding={{ top: 16, bottom: 16 }}
-                  tick={{ fill: axis, fontSize: 12 }}
-                  tickFormatter={(props) =>
-                    axisTickFormatter(props, tickFormatter)
-                  }
-                  tickLine={false}
-                  type={showYAxisCategory ? 'category' : 'number'}
-                  width={showYAxisCategory ? undefined : 50}
-                />
-                <Tooltip
-                  content={
-                    <CustomDQTooltip
-                      dateTimeFormatter={formatDateTimeLong}
-                      timeStampKey="timestamp"
-                      valueFormatter={(value) =>
-                        tooltipFormatter(value, tickFormatter)
-                      }
-                    />
-                  }
-                  cursor={{
-                    stroke: grid,
-                    strokeDasharray: '3 3',
-                  }}
-                />
-                {information.map((info) => (
-                  <Fragment key={info.dataKey}>
-                    {chartType === 'area' && (
-                      <Area
-                        dataKey={info.dataKey}
-                        fill={info.fill ?? info.color}
-                        fillOpacity={info.fill ? 1 : 0.1}
-                        hide={
-                          activeKeys.length
-                            ? !activeKeys.includes(info.dataKey)
-                            : false
-                        }
-                        key={info.dataKey}
-                        name={info.title}
-                        stroke={info.color}
-                        type={curveType ?? 'monotone'}
-                      />
-                    )}
-                    <Line
-                      dataKey={info.dataKey}
-                      hide={
-                        activeKeys.length
-                          ? !activeKeys.includes(info.dataKey)
-                          : false
-                      }
-                      key={info.dataKey}
-                      name={info.title}
-                      stroke={info.color}
-                      type={curveType ?? 'monotone'}
-                    />
-                  </Fragment>
-                ))}
-                {chartType === 'line' && (
-                  <Legend iconType="rect" onClick={handleClick} />
-                )}
-                {showBrush && (
-                  <Brush
-                    data={data}
-                    endIndex={endIndex}
-                    gap={5}
-                    height={30}
-                    padding={{ left: 16, right: 16 }}
-                  />
-                )}
-              </ComposedChart>
-            </ResponsiveContainer>
+                height={CHART_HEIGHT}
+                series={series}
+                tooltip={tooltip}
+                xKey="name"
+                yAxis={yAxis}
+                zoom="auto"
+                zoomVisiblePoints={PROFILER_CHART_DATA_SIZE}
+              />
+            </div>
           ) : (
             <ErrorPlaceHolder
               className="mt-0-important"

@@ -13,16 +13,18 @@
 import test, { expect } from '@playwright/test';
 import { SearchIndex } from '../../../src/enums/search.enum';
 import {
+  addKeyColumns,
   clickOnDistKeySelector,
   clickOnForeignKeySelector,
   clickOnSortKeySelector,
   clickOnUniqueKeySelector,
+  removeKeyColumns,
 } from '../../constant/tableConstraint';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  clickOutside,
   createNewPage,
   redirectToHomePage,
+  selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -65,51 +67,17 @@ test.describe('Table Constraints', {}, () => {
       await waitForAllLoadersToDisappear(page);
 
       await page.click('[data-testid="table-constraints-add-button"]');
-      await page.locator('[role="dialog"].ant-modal').waitFor();
+      await page.getByTestId('table-constraint-modal').waitFor();
 
       // Add for Primary Key
 
       await expect(page.getByTestId('constraint-type-select')).toContainText(
         'Primary key'
       );
-      await expect(
-        page.getByTestId('primary-constraint-type-select')
-      ).toBeVisible();
-
-      await page
-        .locator(
-          '[data-testid="primary-constraint-type-select"] > .ant-select-selector .ant-select-selection-search-input'
-        )
-        .click();
-
-      await page
-        .getByTestId('primary-constraint-type-select')
-        .getByRole('combobox')
-        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
-        .fill(columnName1, { force: true });
-
-      // select 1st value from dropdown
-      const firstPrimaryKeyColumn = page.getByTitle(columnName1);
-      await firstPrimaryKeyColumn.hover();
-      await firstPrimaryKeyColumn.click();
-
-      // select 2nd value  from dropdown
-      await page
-        .getByTestId('primary-constraint-type-select')
-        .getByRole('combobox')
-        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
-        .fill(columnName2, { force: true });
-
-      const secondPrimaryKeyColumn = page.getByTitle(columnName2);
-      await secondPrimaryKeyColumn.hover();
-      await secondPrimaryKeyColumn.click();
-      await clickOutside(page);
-
-      await expect(
-        page
-          .getByTestId('primary-constraint-type-select')
-          .getByText(`${columnName1}${columnName2}`)
-      ).toBeVisible();
+      await addKeyColumns(page, 'primary-constraint-type-select', [
+        columnName1,
+        columnName2,
+      ]);
 
       // Foreign Key Constraint Section
 
@@ -120,38 +88,16 @@ test.describe('Table Constraints', {}, () => {
 
       await clickOnForeignKeySelector(page);
 
-      await page
-        .locator(
-          '[data-testid="0-column-type-select"] > .ant-select-selector .ant-select-selection-search-input'
-        )
-        .click();
-
-      // select value from dropdown
-      const columnNameDropdownValue = page
-        .getByTitle(columnName)
-        .locator('div');
-      await columnNameDropdownValue.hover();
-      await columnNameDropdownValue.click();
-      await clickOutside(page);
-
-      await page
-        .locator(
-          '[data-testid="0-relationship-type-select"] > .ant-select-selector .ant-select-selection-search-input'
-        )
-        .click();
-
-      // select value from dropdown
-      const relationTypeDropdownValue = page.getByText('One to One');
-      await relationTypeDropdownValue.hover();
-      await relationTypeDropdownValue.click();
-      await clickOutside(page);
+      await selectOptionWithRetry(
+        page.getByTestId('0-column-type-select').getByRole('button'),
+        page.getByRole('option', { name: columnName, exact: true })
+      );
+      await selectOptionWithRetry(
+        page.getByTestId('0-relationship-type-select').getByRole('button'),
+        page.getByRole('option', { name: 'One to One', exact: true })
+      );
 
       // select 2nd Table column as related column
-      const relatedColumnSelect = page.locator(
-        '[data-testid="0-related-column-select"] > .ant-select-selector .ant-select-selection-search-input'
-      );
-      await relatedColumnSelect.click();
-
       const querySearchResponse = page.waitForResponse((response) => {
         const url = new URL(response.url());
         const query = (url.searchParams.get('q') ?? '').replace(/\\(.)/g, '$1');
@@ -163,138 +109,41 @@ test.describe('Table Constraints', {}, () => {
           query.includes(relatedColumnFQN)
         );
       });
-      await relatedColumnSelect.fill(relatedColumnFQN);
+      await page
+        .getByTestId('0-related-column-select')
+        .getByRole('combobox')
+        .fill(relatedColumnFQN);
 
       expect((await querySearchResponse).status()).toBe(200);
 
-      // select value from dropdown
-      const dropdownValue = page.getByTestId(
-        `option-label-${relatedColumnFQN}`
-      );
-      await dropdownValue.click();
-      await clickOutside(page);
+      await page.getByTestId(`option-label-${relatedColumnFQN}`).click();
 
       // Unique Constraint Section
       await clickOnUniqueKeySelector(page);
-
-      await page
-        .locator(
-          '[data-testid="unique-constraint-type-select"] > .ant-select-selector .ant-select-selection-search-input'
-        )
-        .click();
-
-      await page
-        .getByTestId('unique-constraint-type-select')
-        .getByRole('combobox')
-        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
-        .fill(columnName3, { force: true });
-
-      // select 1st value from dropdown
-      const firstUniqueKeyColumn = page.getByTitle(columnName3, {
-        exact: true,
-      });
-      await firstUniqueKeyColumn.hover();
-      await firstUniqueKeyColumn.click();
-
-      // select 2nd value  from dropdown
-      await page
-        .getByTestId('unique-constraint-type-select')
-        .getByRole('combobox')
-        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
-        .fill(columnName4, { force: true });
-
-      const secondUniqueKeyColumn = page.getByTitle(columnName4);
-      await secondUniqueKeyColumn.hover();
-      await secondUniqueKeyColumn.click();
-      await clickOutside(page);
-
-      await expect(
-        page
-          .getByTestId('unique-constraint-type-select')
-          .getByText(`${columnName3}${columnName4}`)
-      ).toBeVisible();
+      await addKeyColumns(page, 'unique-constraint-type-select', [
+        columnName3,
+        columnName4,
+      ]);
 
       // Dist Constraint Section
       await clickOnDistKeySelector(page);
-
-      await page
-        .locator(
-          '[data-testid="dist-constraint-type-select"] > .ant-select-selector .ant-select-selection-search-input'
-        )
-        .click();
-
-      await page
-        .getByTestId('dist-constraint-type-select')
-        .getByRole('combobox')
-        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
-        .fill(columnName1, { force: true });
-
-      // select 1st value from dropdown
-      const firstDistKeyColumn = page.getByTitle(columnName1);
-      await firstDistKeyColumn.hover();
-      await firstDistKeyColumn.click();
-
-      // select 2nd value  from dropdown
-      await page
-        .getByTestId('dist-constraint-type-select')
-        .getByRole('combobox')
-        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
-        .fill(columnName2, { force: true });
-
-      const secondDistKeyColumn = page.getByTitle(columnName2);
-      await secondDistKeyColumn.hover();
-      await secondDistKeyColumn.click();
-      await clickOutside(page);
-
-      await expect(
-        page
-          .getByTestId('dist-constraint-type-select')
-          .getByText(`${columnName1}${columnName2}`)
-      ).toBeVisible();
+      await addKeyColumns(page, 'dist-constraint-type-select', [
+        columnName1,
+        columnName2,
+      ]);
 
       // Sort Constraint Section
       await clickOnSortKeySelector(page);
-
-      await page
-        .locator(
-          '[data-testid="sort-constraint-type-select"] > .ant-select-selector .ant-select-selection-search-input'
-        )
-        .click();
-
-      await page
-        .getByTestId('sort-constraint-type-select')
-        .getByRole('combobox')
-        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
-        .fill(columnName3, { force: true });
-
-      // select 1st value from dropdown
-      const firstSortKeyColumn = page.getByTitle(columnName3, { exact: true });
-      await firstSortKeyColumn.hover();
-      await firstSortKeyColumn.click();
-
-      // select 2nd value  from dropdown
-      await page
-        .getByTestId('sort-constraint-type-select')
-        .getByRole('combobox')
-        // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
-        .fill(columnName4, { force: true });
-
-      const secondSortKeyColumn = page.getByTitle(columnName4);
-      await secondSortKeyColumn.hover();
-      await secondSortKeyColumn.click();
-      await clickOutside(page);
-
-      await expect(
-        page
-          .getByTestId('sort-constraint-type-select')
-          .getByText(`${columnName3}${columnName4}`)
-      ).toBeVisible();
+      await addKeyColumns(page, 'sort-constraint-type-select', [
+        columnName3,
+        columnName4,
+      ]);
 
       const saveResponse = page.waitForResponse('/api/v1/tables/*');
       await page.click('[data-testid="save-btn"]');
       await saveResponse;
 
-      await page.locator('[role="dialog"].ant-modal').waitFor({
+      await page.getByTestId('table-constraint-modal').waitFor({
         state: 'detached',
       });
     });
@@ -342,9 +191,10 @@ test.describe('Table Constraints', {}, () => {
       await page.getByTestId('edit-table-constraint-button').click();
 
       // Clear Primary Key
-      await page.click(
-        '[data-testid="primary-constraint-type-select"] .anticon-close-circle'
-      );
+      await removeKeyColumns(page, 'primary-constraint-type-select', [
+        columnName1,
+        columnName2,
+      ]);
 
       // Clear Foreign Key
       await clickOnForeignKeySelector(page);
@@ -352,15 +202,16 @@ test.describe('Table Constraints', {}, () => {
 
       // Clear Unique Key
       await clickOnUniqueKeySelector(page);
-      await page.click(
-        '[data-testid="unique-constraint-type-select"] .anticon-close-circle'
-      );
+      await removeKeyColumns(page, 'unique-constraint-type-select', [
+        columnName3,
+        columnName4,
+      ]);
 
       const saveResponseOne = page.waitForResponse('/api/v1/tables/*');
       await page.click('[data-testid="save-btn"]');
       await saveResponseOne;
 
-      await page.locator('[role="dialog"].ant-modal').waitFor({
+      await page.getByTestId('table-constraint-modal').waitFor({
         state: 'detached',
       });
 
@@ -376,25 +227,27 @@ test.describe('Table Constraints', {}, () => {
       // Remove the pending constraints
 
       await page.getByTestId('edit-table-constraint-button').click();
-      await page.locator('[role="dialog"].ant-modal').waitFor();
+      await page.getByTestId('table-constraint-modal').waitFor();
 
       // Clear Dist Key
-      await clickOnDistKeySelector(page, true);
-      await page.click(
-        '[data-testid="dist-constraint-type-select"] .anticon-close-circle'
-      );
+      await clickOnDistKeySelector(page);
+      await removeKeyColumns(page, 'dist-constraint-type-select', [
+        columnName1,
+        columnName2,
+      ]);
 
       // Clear Sort Key
       await clickOnSortKeySelector(page);
-      await page.click(
-        '[data-testid="sort-constraint-type-select"] .anticon-close-circle'
-      );
+      await removeKeyColumns(page, 'sort-constraint-type-select', [
+        columnName3,
+        columnName4,
+      ]);
 
       const saveResponse = page.waitForResponse('/api/v1/tables/*');
       await page.click('[data-testid="save-btn"]');
       await saveResponse;
 
-      await page.locator('[role="dialog"].ant-modal').waitFor({
+      await page.getByTestId('table-constraint-modal').waitFor({
         state: 'detached',
       });
 

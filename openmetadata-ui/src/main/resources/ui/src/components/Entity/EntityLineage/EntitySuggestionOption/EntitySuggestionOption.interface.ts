@@ -15,7 +15,6 @@ import { EntityReference } from '../../../../generated/entity/type';
 export interface EntitySuggestionOptionProps {
   entity: EntityReference;
   heading?: string;
-  onSelectHandler?: (value: EntityReference) => void;
   className?: string;
   showEntityTypeBadge?: boolean;
 }

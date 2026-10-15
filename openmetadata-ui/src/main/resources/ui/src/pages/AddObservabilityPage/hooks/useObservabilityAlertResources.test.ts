@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,75 +11,31 @@
  *  limitations under the License.
  */
 
-import { renderHook, waitFor } from '@testing-library/react';
-import { AlertType } from '../../../generated/events/eventSubscription';
-import { useObservabilityAlertResources } from './useObservabilityAlertResources';
+import { act, renderHook } from '@testing-library/react';
+import { useForm } from 'react-hook-form';
+import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
+import { useSelectedAlertSources } from './useObservabilityAlertResources';
 
-const mockObservabilityResources = jest.fn();
-const mockNotificationResources = jest.fn();
-
-jest.mock('../../../rest/observabilityAPI', () => ({
-  getResourceFunctions: () => mockObservabilityResources(),
-}));
-
-jest.mock('../../../rest/alertsAPI', () => ({
-  getResourceFunctions: () => mockNotificationResources(),
-}));
-
-// The hook only reads the selected source through Form.useWatch.
-jest.mock('antd', () => ({
-  Form: { useWatch: () => undefined },
-}));
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
-
-jest.mock('../../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-}));
-
-const renderResources = (alertType?: AlertType) =>
-  renderHook(() =>
-    useObservabilityAlertResources(
-      {} as Parameters<typeof useObservabilityAlertResources>[0],
-      alertType
-    )
-  );
-
-describe('useObservabilityAlertResources', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockObservabilityResources.mockResolvedValue({
-      data: [{ name: 'testCase' }],
+it('tracks programmatic source and rule changes used for capabilities requests', () => {
+  const { result } = renderHook(() => {
+    const form = useForm<ModifiedCreateEventSubscription>({
+      defaultValues: { resources: [], input: {} },
     });
-    mockNotificationResources.mockResolvedValue({
-      data: [{ name: 'all' }, { name: 'table' }],
+
+    return { form, ...useSelectedAlertSources(form) };
+  });
+
+  expect(result.current.sources).toEqual([]);
+
+  act(() => {
+    result.current.form.setValue('resources', ['table', 'topic']);
+    result.current.form.setValue('input', {
+      filters: [{ name: 'filterByOwnerName' }],
     });
   });
 
-  it('loads observability resources by default', async () => {
-    const { result } = renderResources();
-
-    await waitFor(() =>
-      expect(result.current.filterResources.map((r) => r.name)).toEqual([
-        'testCase',
-      ])
-    );
-
-    expect(mockNotificationResources).not.toHaveBeenCalled();
-  });
-
-  it('loads notification resources for notification alerts', async () => {
-    const { result } = renderResources(AlertType.Notification);
-
-    await waitFor(() =>
-      expect(result.current.filterResources.map((r) => r.name)).toEqual([
-        'all',
-        'table',
-      ])
-    );
-
-    expect(mockObservabilityResources).not.toHaveBeenCalled();
+  expect(result.current.sources).toEqual(['table', 'topic']);
+  expect(result.current.input).toEqual({
+    filters: [{ name: 'filterByOwnerName' }],
   });
 });

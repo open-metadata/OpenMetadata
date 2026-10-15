@@ -87,6 +87,17 @@ const DefaultAppModePage = withPageSuspenseFallback(
   )
 );
 
+const GlossarySettings = withPageSuspenseFallback(
+  React.lazy(() => import('../governance/glossary/GlossarySettings'))
+);
+
+const DefaultTimeFormatPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/Settings/DefaultTimeFormatPage/DefaultTimeFormatPage')
+  )
+);
+
 const EditLoginConfiguration = withPageSuspenseFallback(
   React.lazy(
     () =>
@@ -339,6 +350,24 @@ const NotificationAlertDetailsPage = () => (
   <AlertDetailsPage isNotificationAlert />
 );
 
+const SystemAnnouncementsPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/platform/settings/SystemAnnouncementsPage/SystemAnnouncementsPage'
+      )
+  )
+);
+
+const SystemAnnouncementFormPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/platform/settings/SystemAnnouncementFormPage/SystemAnnouncementFormPage'
+      )
+  )
+);
+
 // AI mode renders notification alerts with the same AI alert pages
 // Observability uses; only the alert kind differs.
 const AiAlertsPage = withPageSuspenseFallback(
@@ -493,6 +522,42 @@ const SettingsRouter = () => {
           </AdminProtectedRoute>
         }
         path={ROUTES.EDIT_POLICY_RULE.replace(ROUTES.SETTINGS, '')}
+      />
+      {/* System announcements are admin-only: the server lets no one else write them. */}
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <SystemAnnouncementsPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.SETTINGS_ANNOUNCEMENTS.replace(ROUTES.SETTINGS, '')}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <SystemAnnouncementFormPage mode="create" />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.SETTINGS_ANNOUNCEMENT_ADD.replace(ROUTES.SETTINGS, '')}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <SystemAnnouncementFormPage mode="edit" />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.SETTINGS_ANNOUNCEMENT_EDIT.replace(ROUTES.SETTINGS, '')}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <SystemAnnouncementFormPage mode="duplicate" />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.SETTINGS_ANNOUNCEMENT_DUPLICATE.replace(
+          ROUTES.SETTINGS,
+          ''
+        )}
       />
       {/*  Setting routes without any category will be places here */}
       <Route
@@ -833,7 +898,8 @@ const SettingsRouter = () => {
       <Route
         element={
           <AdminProtectedRoute
-            hasPermission={userPermissions.hasViewPermissions(
+            hasPermission={checkPermission(
+              Operation.AuditLogs,
               ResourceEntity.AUDIT_LOG,
               permissions
             )}>
@@ -999,6 +1065,28 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.APP_MODE
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <GlossarySettings />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.GLOSSARY
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <DefaultTimeFormatPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.TIME_FORMAT
         )}
       />
       <Route

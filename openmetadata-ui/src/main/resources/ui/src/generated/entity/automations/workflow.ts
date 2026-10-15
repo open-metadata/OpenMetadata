@@ -403,6 +403,13 @@ export enum AuthProvider {
  *
  * Regex to only include or exclude matching tables.
  *
+ * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+ * ingested.
+ *
+ * Regex to include or exclude Databend databases.
+ *
+ * Regex to include or exclude tables and views.
+ *
  * Regex to only fetch containers that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
@@ -453,6 +460,8 @@ export enum AuthProvider {
  * Regex to only include/exclude pipelines that matches the pattern.
  *
  * Regex to only include/exclude Process Chains that match the pattern.
+ *
+ * Regex exclude or include pipelines that match the pattern.
  *
  * Regex to only fetch MlModels with names matching the pattern.
  *
@@ -651,6 +660,11 @@ export interface TestServiceConnectionRequest {
      */
     serviceType?: ServiceType;
     /**
+     * Reverse Metadata Agent: JSONLogic expression selecting the assets whose changes are
+     * propagated. Empty means all assets of the service.
+     */
+    filter?: string;
+    /**
      * List of operations to be performed on the service
      */
     operations?: Operation[];
@@ -659,9 +673,30 @@ export interface TestServiceConnectionRequest {
      */
     service?: EntityReference;
     /**
+     * Reverse Metadata Agent: name of the security service (e.g. Ranger) the changes are
+     * applied to instead of this service.
+     */
+    sinkService?: string;
+    /**
+     * Reverse Metadata Agent: templated SQL command used instead of the default operations.
+     */
+    SQLTemplate?: string;
+    /**
      * Pipeline type
      */
     type?: ReverseIngestionType;
+    /**
+     * Reverse Metadata Agent: propagate description changes to the source.
+     */
+    updateDescriptions?: boolean;
+    /**
+     * Reverse Metadata Agent: propagate owner changes to the source.
+     */
+    updateOwners?: boolean;
+    /**
+     * Reverse Metadata Agent: propagate tag changes to the source.
+     */
+    updateTags?: boolean;
     /**
      * Authentication type configured by admin in QueryRunnerConfig (e.g., Basic, ExternalOAuth,
      * etc.). Used to determine which credential field to use from user config.
@@ -683,6 +718,17 @@ export interface TestServiceConnectionRequest {
      * of 'schema' to avoid conflicts with Pydantic's BaseModel.schema() method.
      */
     databaseSchema?: string;
+    /**
+     * UUIDs of files uploaded to one chat conversation, analyzed instead of a warehouse
+     * service. Every file is loaded into the same in-process DuckDB session, so a query may
+     * join them; serviceName and credentials are not used.
+     */
+    fileIds?: string[];
+    /**
+     * RUNTIME FIELD - The files behind fileIds, resolved by the backend before dispatch. Never
+     * accepted from the client.
+     */
+    files?: QueryRunnerFile[];
     /**
      * RUNTIME FIELD - Automatically injected by backend from admin
      * QueryRunnerConfig.querySettings.maxResultSize. This is NOT user-configurable in the
@@ -775,6 +821,8 @@ export interface RequestConnection {
  * ClickZetta Database Connection Config
  *
  * Databricks Connection Config
+ *
+ * Databend Database Connection Config
  *
  * Db2 Connection Config
  *
@@ -994,6 +1042,8 @@ export interface RequestConnection {
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  *
+ * Tableau Pipeline Connection Config
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -1157,7 +1207,12 @@ export interface Connection {
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
     connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
+    /**
+     * Additional options appended to the Databend SQLAlchemy connection URL. For a non-TLS HTTP
+     * endpoint, such as the default self-hosted port 8000, set sslmode to disable. For a TLS
+     * endpoint, set sslmode to enable.
+     */
+    connectionOptions?: { [key: string]: string };
     /**
      * Cost per TiB for BigQuery usage
      */
@@ -1175,6 +1230,9 @@ export interface Connection {
      *
      * Regex to only include or exclude matching databases.
      *
+     * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+     * ingested.
+     *
      * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
      * Dremio Cloud, namespaces are mapped as databases.
      */
@@ -1189,6 +1247,8 @@ export interface Connection {
      * Complete ClickZetta instance and service host, with an optional port.
      *
      * Host and port of the Databricks service.
+     *
+     * Host and port of the Databend HTTP query service. The default self-hosted port is 8000.
      *
      * Host and port of the DB2 service.
      *
@@ -1315,6 +1375,8 @@ export interface Connection {
      * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
      * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
      *
+     * Tableau Server URL.
+     *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
      *
@@ -1336,12 +1398,13 @@ export interface Connection {
     /**
      * Option to include policy tags as part of column description.
      */
-    includePolicyTags?:       boolean;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    includePolicyTags?: boolean;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      *
      * Regex to only include or exclude matching schemas.
+     *
+     * Regex to include or exclude Databend databases.
      *
      * Regex to only include/exclude schemas that matches the pattern. System schemas
      * (information_schema, _statistics_, sys) are excluded by default.
@@ -1388,6 +1451,8 @@ export interface Connection {
      * Regex to only include/exclude tables that matches the pattern.
      *
      * Regex to only include or exclude matching tables.
+     *
+     * Regex to include or exclude tables and views.
      *
      * Regex to include/exclude FHIR resource types
      *
@@ -1519,6 +1584,8 @@ export interface Connection {
      *
      * Password to connect to Clickhouse.
      *
+     * Password to connect to Databend.
+     *
      * Password to connect to DB2.
      *
      * Password to connect to Druid.
@@ -1599,6 +1666,9 @@ export interface Connection {
      * metadata in Clickhouse.
      *
      * Username to connect to ClickZetta.
+     *
+     * Username to connect to Databend. The user must be able to read system and
+     * information_schema metadata.
      *
      * Username to connect to DB2. This user should have privileges to read all the metadata in
      * DB2.
@@ -1737,6 +1807,10 @@ export interface Connection {
      *
      * Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.
      *
+     * Optional Databend database to ingest. It is also used as the initial database of the
+     * connection. When omitted, the connection starts in the `default` database and all
+     * accessible Databend databases are scanned as OpenMetadata schemas.
+     *
      * databaseSchema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
      * Ingestion attempts to scan all the databaseSchema.
@@ -1777,6 +1851,9 @@ export interface Connection {
      * Choose how to authenticate with SAP SuccessFactors OData API.
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
+     *
+     * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
+     * Fabric SQL endpoint.
      *
      * Types of methods used to authenticate to the tableau instance
      *
@@ -2318,13 +2395,13 @@ export interface Connection {
     /**
      * Azure Application client secret for service principal authentication.
      *
-     * Azure Application client secret for Service Principal authentication.
-     *
      * User's Client Secret.
      *
      * clientSecret for PowerBI.
      *
      * clientSecret for Sigma.
+     *
+     * Azure Application client secret for Service Principal authentication.
      *
      * Application (client) secret from Azure Active Directory
      */
@@ -2690,6 +2767,8 @@ export interface Connection {
      * Pipeline Service Number Of Status
      *
      * Number of past flow run statuses to ingest per flow.
+     *
+     * Number of recent runs to fetch per flow or extract refresh.
      */
     numberOfStatus?: number;
     /**
@@ -2700,6 +2779,8 @@ export interface Connection {
      * Regex to only include/exclude pipelines that matches the pattern.
      *
      * Regex to only include/exclude Process Chains that match the pattern.
+     *
+     * Regex exclude or include pipelines that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -2866,6 +2947,12 @@ export interface Connection {
      * {"S3_Connector": "my-s3-service"}
      */
     serviceMapping?: string;
+    /**
+     * Ingest the extract refresh tasks of published data sources and workbooks as pipelines,
+     * with their refresh jobs as pipeline status. Reading refresh job history requires a site
+     * administrator.
+     */
+    includeExtractRefreshes?: boolean;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -3255,6 +3342,15 @@ export enum AuthMechanismEnum {
  * Authentication configuration for self-hosted Dremio Software using username and password.
  * Dremio Software is deployed on-premises or in your own cloud infrastructure.
  *
+ * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
+ * Fabric SQL endpoint.
+ *
+ * Authenticate the service principal with a client secret of its Microsoft Entra ID
+ * application.
+ *
+ * Authenticate the service principal with an X.509 certificate registered on its Microsoft
+ * Entra ID application.
+ *
  * Types of methods used to authenticate to the tableau instance
  *
  * Basic Auth Credentials
@@ -3350,6 +3446,9 @@ export interface AuthenticationType {
      * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
      * secure OAuth2 authentication.
      *
+     * Client secret value (not the secret ID) from the application's Certificates & secrets
+     * page in Microsoft Entra ID.
+     *
      * OAuth 2.0 client secret.
      */
     clientSecret?: string;
@@ -3420,6 +3519,26 @@ export interface AuthenticationType {
      * SFTP username
      */
     username?: string;
+    /**
+     * PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page
+     * in Microsoft Entra ID. It may be followed by its issuing certificate chain.
+     */
+    certificate?: string;
+    /**
+     * PEM-encoded private key of the certificate, as PKCS#8 (`BEGIN PRIVATE KEY` or `BEGIN
+     * ENCRYPTED PRIVATE KEY`) or PKCS#1 (`BEGIN RSA PRIVATE KEY`). A single PEM file holding
+     * both the key and the certificate can be supplied in both fields.
+     *
+     * SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.
+     */
+    privateKey?: string;
+    /**
+     * Passphrase of an encrypted private key. Leave empty when the private key is not
+     * encrypted.
+     *
+     * Passphrase for the private key (if encrypted)
+     */
+    privateKeyPassphrase?: string;
     /**
      * Personal Access Token Name.
      */
@@ -3513,14 +3632,6 @@ export interface AuthenticationType {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
-    /**
-     * SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.
-     */
-    privateKey?: string;
-    /**
-     * Passphrase for the private key (if encrypted)
-     */
-    privateKeyPassphrase?: string;
 }
 
 /**
@@ -3727,6 +3838,11 @@ export interface GCPCredentialsConfiguration {
      * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
+    /**
+     * Google Cloud service domain, used to override the default `googleapis.com` domain for
+     * sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).
+     */
+    universeDomain?: string;
     /**
      * Path of the file containing the GCP credentials info
      */
@@ -4415,8 +4531,7 @@ export interface AirflowConnectionConnection {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?:    string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryStatementSource?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -4600,96 +4715,6 @@ export enum Provider {
 export enum Region {
     Eu1 = "eu1",
     Us1 = "us1",
-}
-
-/**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: DataStorageConfig;
-}
-
-/**
- * Storage config to store sample data
- */
-export interface DataStorageConfig {
-    /**
-     * Bucket Name
-     */
-    bucketName?: string;
-    /**
-     * Provide the pattern of the path where the generated sample data file needs to be stored.
-     */
-    filePathPattern?: string;
-    /**
-     * When this field enabled a single parquet file will be created to store sample data,
-     * otherwise we will create a new file per day
-     */
-    overwriteData?: boolean;
-    /**
-     * Prefix of the data source.
-     */
-    prefix?:        string;
-    storageConfig?: AwsCredentials;
-    [property: string]: any;
-}
-
-/**
- * AWS credentials required to access the S3 file.
- *
- * AWS credentials configs.
- *
- * AWS credentials for generating MWAA CLI token.
- *
- * AWS credentials configuration.
- */
-export interface AwsCredentials {
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
 }
 
 /**
@@ -4885,8 +4910,7 @@ export interface DatabaseConnectionClass {
     /**
      * Password to connect to MSSQL.
      */
-    password?:                string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    password?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -5097,8 +5121,7 @@ export interface HiveMetastoreConnectionDetails {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?:    string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryStatementSource?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -5402,6 +5425,7 @@ export enum AirflowConnectionScheme {
     Clickzetta = "clickzetta",
     CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
+    Databend = "databend",
     Databricks = "databricks",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
@@ -5704,6 +5728,7 @@ export enum AirflowConnectionType {
     Data360 = "Data360",
     Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
+    Databend = "Databend",
     Databricks = "Databricks",
     DatabricksPipeline = "DatabricksPipeline",
     Datalake = "Datalake",
@@ -5805,6 +5830,7 @@ export enum AirflowConnectionType {
     Superset = "Superset",
     Synapse = "Synapse",
     Tableau = "Tableau",
+    TableauPipeline = "TableauPipeline",
     Teradata = "Teradata",
     ThoughtSpot = "ThoughtSpot",
     Timescale = "Timescale",
@@ -5822,6 +5848,29 @@ export enum AirflowConnectionType {
 export enum CredentialSourceType {
     Team = "team",
     User = "user",
+}
+
+/**
+ * An uploaded file resolved by the backend for in-process analysis.
+ */
+export interface QueryRunnerFile {
+    /**
+     * UUID of the uploaded file (Asset).
+     */
+    fileId: string;
+    /**
+     * Original name of the file. Its extension selects the reader.
+     */
+    fileName: string;
+    /**
+     * Short-lived readable location (presigned URL) of the file.
+     */
+    fileUri: string;
+    /**
+     * Relation name the file is registered under. A multi-sheet workbook registers one relation
+     * per sheet, named tableName_<sheet>.
+     */
+    tableName: string;
 }
 
 /**

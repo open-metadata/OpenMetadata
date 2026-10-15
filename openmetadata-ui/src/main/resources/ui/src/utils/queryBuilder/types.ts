@@ -37,11 +37,11 @@ export const QUERY_BUILDER_SURFACE_CLASS: Record<
   { card: string; header: string }
 > = {
   [QUERY_BUILDER_SURFACE.PLAIN]: {
-    card: 'tw:bg-primary tw:border tw:border-primary',
+    card: 'tw:bg-surface tw:border tw:border-primary',
     header: 'tw:bg-utility-gray-blue-50 tw:border-b tw:border-primary',
   },
   [QUERY_BUILDER_SURFACE.SUBTLE]: {
-    card: 'tw:bg-utility-gray-blue-50',
+    card: 'tw:bg-secondary',
     header: 'tw:border-b tw:border-secondary',
   },
 };
@@ -70,8 +70,8 @@ export interface QueryBuilderConfigModes {
   useFriendlyOperatorLabels?: boolean;
 }
 
-// A long option in the narrow value column reads as ellipses, so let the option
-// text wrap, capped at three lines. The selector is the only reach core offers:
-// the label is core's own <Text slot="label"> and carries its `truncate`.
-export const QUERY_BUILDER_VALUE_POPOVER_CLASS =
+// A long option in the narrow field/value columns reads as ellipses, so let the
+// option text wrap, capped at three lines. The selector is the only reach core
+// offers: the label is core's own <Text slot="label"> and carries its `truncate`.
+export const QUERY_BUILDER_POPOVER_CLASS =
   'tw:[&_[slot=label]]:line-clamp-3 tw:[&_[slot=label]]:whitespace-normal';

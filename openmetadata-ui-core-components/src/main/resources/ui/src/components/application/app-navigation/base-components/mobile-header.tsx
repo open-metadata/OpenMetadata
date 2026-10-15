@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react';
-import { X as CloseIcon, Home01, Menu02 } from '@untitledui/icons';
+import { X as CloseIcon, Home01, Menu02 } from '../../../../icons';
 import {
   Button as AriaButton,
   Dialog as AriaDialog,

@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
-import { User03 } from '@untitledui/icons';
-import { Button, Col, Modal, Row, Typography } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import {
+  Button,
+  FeaturedIcon,
+  Grid,
+  SimpleModal,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { User03 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -24,6 +29,7 @@ import { ReactComponent as CheckCircleOutlined } from '../../../assets/svg/compl
 import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/ic-close-circle.svg';
 import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
+import { ManageMenuItem as ItemType } from '../../../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -45,6 +51,7 @@ import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEnt
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getUserById } from '../../../rest/userAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getCustomizePageCategories } from '../../../utils/Persona/PersonaUtils';
 import {
@@ -98,10 +105,6 @@ export const PersonaDetailsPage = () => {
     }
   }, [permissionsError]);
 
-  // AI is always available in OSS — the shell ships in-tree, no
-  // install-gate.
-  const hasNonDefaultMode = true;
-
   const breadcrumb = useMemo(() => {
     const breadcrumbList = [
       {
@@ -115,13 +118,9 @@ export const PersonaDetailsPage = () => {
     ];
 
     if (activeCategory) {
-      const category = getCustomizePageCategories()
-        .filter(
-          (item) =>
-            !['app-mode', 'askCollateSidebar'].includes(item.key) ||
-            hasNonDefaultMode
-        )
-        .find((category) => category.key === activeCategory);
+      const category = getCustomizePageCategories().find(
+        (category) => category.key === activeCategory
+      );
 
       if (category) {
         breadcrumbList.push({
@@ -132,7 +131,7 @@ export const PersonaDetailsPage = () => {
     }
 
     return breadcrumbList;
-  }, [personaDetails, activeCategory, fqn, hasNonDefaultMode]);
+  }, [personaDetails, activeCategory, fqn]);
 
   const fetchPersonaDetails = async () => {
     try {
@@ -346,8 +345,10 @@ export const PersonaDetailsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={personaDetails.name}>
-      <Row className="m-b-md tw:isolate" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid m-b-md tw:isolate"
+        style={getLayoutGutter(0, 16)}>
+        <Grid.Item className="layout-column" span={24}>
           <div className="d-flex justify-between items-start">
             <div className="persona-details-title-container">
               <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -376,8 +377,8 @@ export const PersonaDetailsPage = () => {
               }}
             />
           </div>
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Description
             description={personaDetails.description}
             entityName={personaDetails.name}
@@ -388,8 +389,8 @@ export const PersonaDetailsPage = () => {
               await handlePersonaUpdate({ description });
             }}
           />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Tabs
             selectedKey={activeKey}
             onSelectionChange={(key) => handleTabClick(String(key))}>
@@ -411,9 +412,9 @@ export const PersonaDetailsPage = () => {
                       await handlePersonaUpdate({ users }, true);
                     }}>
                     <Button
+                      color="primary"
                       data-testid="add-persona-button"
-                      size="small"
-                      type="primary">
+                      size="xs">
                       {t('label.add-entity', { entity: t('label.user') })}
                     </Button>
                   </UserSelectableList>
@@ -422,18 +423,15 @@ export const PersonaDetailsPage = () => {
             </div>
           </Tabs>
           <div>{activeTabContent}</div>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
       {/* Set Default Persona Confirmation Modal */}
-      <Modal
+      <SimpleModal
         data-testid="default-persona-confirmation-modal"
-        okButtonProps={{
-          loading: isConfirmModalLoading,
-        }}
+        isOkLoading={isConfirmModalLoading}
+        isOpen={isConfirmModalVisible}
         okText={t('label.yes')}
-        okType="primary"
-        open={isConfirmModalVisible}
         title={
           personaDetails?.default
             ? t('label.remove-default')
@@ -441,7 +439,7 @@ export const PersonaDetailsPage = () => {
         }
         onCancel={handleCancelSetAsDefault}
         onOk={handleConfirmDefaultAction}>
-        <Typography.Text>
+        <Typography>
           {personaDetails?.default
             ? t('message.remove-default-persona-confirmation', {
                 persona: getEntityName(personaDetails),
@@ -449,8 +447,8 @@ export const PersonaDetailsPage = () => {
             : t('message.set-default-persona-confirmation', {
                 persona: getEntityName(personaDetails),
               })}
-        </Typography.Text>
-      </Modal>
+        </Typography>
+      </SimpleModal>
     </PageLayoutV1>
   );
 };

@@ -19,7 +19,9 @@ import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { QueryFieldInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 
-export const useDomainListingData = (): ListingData<Domain> => {
+export const useDomainListingData = ({
+  enableNlq,
+}: { enableNlq?: boolean } = {}): ListingData<Domain> => {
   const { domainBasePath } = useMarketplaceStore();
   const { userDomains, isDomainRestricted } = useDomainStore();
 
@@ -60,5 +62,6 @@ export const useDomainListingData = (): ListingData<Domain> => {
     baseFilter: JSON.stringify(baseFilter),
     nameLabelKey: 'label.domain',
     basePath: domainBasePath,
+    enableNlq,
   });
 };

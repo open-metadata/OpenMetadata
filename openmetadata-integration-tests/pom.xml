@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tests that need the RDF store. The rdf lane runs them against a Fuseki the bootstrap
@@ -313,8 +313,17 @@
                 <include>org/openmetadata/it/factories/**</include>
                 <include>org/openmetadata/it/server/**</include>
                 <include>org/openmetadata/it/search/**</include>
+                <!-- SdkClients, the server handles and UiSessionExtension feed ApiLatencyRecorder, and
+                     META-INF/services below registers ApiLatencyReportListener — both must ship. -->
+                <include>org/openmetadata/it/bench/**</include>
                 <include>org/openmetadata/playwright/**</include>
                 <include>org/openmetadata/it/tests/BaseEntityIT*</include>
+                <!-- The consumers the services file registers, so a server loading the harness
+                     can build every consumer it lists. -->
+                <include>org/openmetadata/it/tests/alerts/TestConsumers*</include>
+                <include>org/openmetadata/it/tests/alerts/LatchedConsumer*</include>
+                <include>org/openmetadata/it/tests/alerts/ReportingConsumer*</include>
+                <include>org/openmetadata/it/tests/alerts/FailingCommitConsumer*</include>
                 <include>private_key.der</include>
                 <include>public_key.der</include>
                 <include>openmetadata-secure-test.yaml</include>
@@ -327,6 +336,10 @@
                      Docker build context, so it has to travel with the published harness. -->
                 <include>opensearch-plugins/**</include>
               </includes>
+              <excludes>
+                <!-- The bench package's own unit tests are not part of the harness. -->
+                <exclude>org/openmetadata/it/bench/*Test*</exclude>
+              </excludes>
             </configuration>
           </execution>
         </executions>
@@ -438,6 +451,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
+                    <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -487,6 +501,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
+                    <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -568,6 +583,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
+                    <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -617,6 +633,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
+                    <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -699,6 +716,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
+                    <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -749,6 +767,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
+                    <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -831,6 +850,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
+                    <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -880,6 +900,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
+                    <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -961,6 +982,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
+                    <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -1010,6 +1032,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
+                    <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -1090,6 +1113,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
+                    <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -1140,6 +1164,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
+                    <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -1237,6 +1262,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
+                    <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -1288,6 +1314,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
+                    <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -1375,6 +1402,7 @@
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
+                    <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -1425,6 +1453,7 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
+                    <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>

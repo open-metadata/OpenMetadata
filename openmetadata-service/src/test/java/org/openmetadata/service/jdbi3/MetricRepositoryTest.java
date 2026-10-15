@@ -136,26 +136,26 @@ class MetricRepositoryTest {
   }
 
   @Test
-  void defaultStatusReflectsReviewersAndPreservesExplicitUpdates() {
+  void initialStageReflectsReviewersWhateverTheRequestAsks() {
     try (RepositoryFixture fixture = repositoryFixture()) {
+      List<EntityReference> reviewers =
+          List.of(
+              new EntityReference()
+                  .withId(UUID.randomUUID())
+                  .withType(Entity.USER)
+                  .withName("reviewer"));
       Metric withoutReviewers = new Metric();
-      Metric withReviewers =
-          new Metric()
-              .withReviewers(
-                  List.of(
-                      new EntityReference()
-                          .withId(UUID.randomUUID())
-                          .withType(Entity.USER)
-                          .withName("reviewer")));
-      Metric explicitUpdate = new Metric().withEntityStatus(EntityStatus.IN_REVIEW);
+      Metric withReviewers = new Metric().withReviewers(reviewers);
+      Metric askingToSkipReview =
+          new Metric().withReviewers(reviewers).withEntityStatus(EntityStatus.APPROVED);
 
-      fixture.repository().setDefaultStatus(withoutReviewers, false);
-      fixture.repository().setDefaultStatus(withReviewers, false);
-      fixture.repository().setDefaultStatus(explicitUpdate, true);
-
-      assertEquals(EntityStatus.APPROVED, withoutReviewers.getEntityStatus());
-      assertEquals(EntityStatus.DRAFT, withReviewers.getEntityStatus());
-      assertEquals(EntityStatus.IN_REVIEW, explicitUpdate.getEntityStatus());
+      assertEquals(
+          EntityStatus.APPROVED, fixture.repository().initialEntityStatus(withoutReviewers));
+      assertEquals(EntityStatus.DRAFT, fixture.repository().initialEntityStatus(withReviewers));
+      assertEquals(
+          EntityStatus.DRAFT,
+          fixture.repository().initialEntityStatus(askingToSkipReview),
+          "a metric with reviewers cannot be created already approved");
     }
   }
 

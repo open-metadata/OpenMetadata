@@ -13,13 +13,22 @@
 
 import React, { useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { ROUTES } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import EntityPopOverCard from '../../PopOverCard/EntityPopOverCard';
+import DocumentMarkdownLink from './DocumentMarkdownLink';
 import {
   EntityMarkdownLinkProps,
   ParsedEntityLink,
 } from './EntityMarkdownLink.interface';
+
+/**
+ * A file uploaded to a chat is a Context Center document, and the chat knows it only by the id of
+ * the stored asset. `#document/<assetId>` is that reference; it is not an entity type, so it is
+ * resolved before the entity-type check rather than made to pass it.
+ */
+export const DOCUMENT_LINK_PREFIX = '#document/';
 
 const parseEntityLink = (href: string): ParsedEntityLink => {
   if (!href || !href.startsWith('#')) {
@@ -70,7 +79,7 @@ const parseEntityLink = (href: string): ParsedEntityLink => {
   };
 };
 
-const EntityMarkdownLink: React.FC<EntityMarkdownLinkProps> = ({
+const ResolvedEntityLink: React.FC<EntityMarkdownLinkProps> = ({
   href,
   children,
   className,
@@ -127,6 +136,29 @@ const EntityMarkdownLink: React.FC<EntityMarkdownLinkProps> = ({
         {children}
       </Link>
     </EntityPopOverCard>
+  );
+};
+
+const EntityMarkdownLink: React.FC<EntityMarkdownLinkProps> = ({
+  href,
+  children,
+  className,
+}) => {
+  if (href?.startsWith(DOCUMENT_LINK_PREFIX)) {
+    return (
+      <DocumentMarkdownLink
+        assetId={decodeURIComponent(href.slice(DOCUMENT_LINK_PREFIX.length))}
+        className={className}
+        documentsRoute={ROUTES.CONTEXT_CENTER_DOCUMENTS}>
+        {children}
+      </DocumentMarkdownLink>
+    );
+  }
+
+  return (
+    <ResolvedEntityLink className={className} href={href}>
+      {children}
+    </ResolvedEntityLink>
   );
 };
 

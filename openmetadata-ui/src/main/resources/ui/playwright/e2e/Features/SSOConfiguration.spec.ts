@@ -22,6 +22,10 @@ import {
 } from '../../constant/ssoConfiguration';
 import { redirectToHomePage } from '../../utils/common';
 import {
+  MockSettingSource,
+  mockSettingsSource,
+} from '../../utils/settingsSource';
+import {
   enableSSOEditMode,
   selectSSOProvider,
   verifyProviderFields,
@@ -126,18 +130,15 @@ test.describe('SSO Configuration Tests', () => {
       await expect(confidentialRadio).toBeChecked();
 
       // Verify common fields are visible
-      await verifyProviderFields(page, SSO_COMMON_FIELDS);
+      await verifyProviderFields(page, SSO_COMMON_FIELDS, [
+        'Client ID',
+        'Callback URL',
+      ]);
 
       // Verify OIDC specific fields with OIDC prefix in labels
       await page.getByText(/advanced config/i).click();
 
-      for (const field of OIDC_COMMON_FIELDS) {
-        const fieldElement = page.getByLabel(field);
-        const fieldCount = await fieldElement.count();
-        if (fieldCount > 0) {
-          await expect(fieldElement.first()).toBeVisible();
-        }
-      }
+      await verifyProviderFields(page, OIDC_COMMON_FIELDS);
     });
 
     test('should show correct fields for Auth0 provider with confidential client', async ({
@@ -153,20 +154,19 @@ test.describe('SSO Configuration Tests', () => {
       await expect(confidentialRadio).toBeChecked();
 
       // Verify common fields are visible
-      await verifyProviderFields(page, SSO_COMMON_FIELDS);
+      await verifyProviderFields(page, SSO_COMMON_FIELDS, [
+        'Client ID',
+        'Callback URL',
+      ]);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      // The OIDC fields now sit behind this toggle, so they are not on screen
+      // until it is expanded. OIDC Tenant stays hidden: it is Azure-specific and
+      // this provider has no such field. main asserted it visible but guarded on
+      // `count() > 0`, which skipped the check here rather than making it.
       await page.getByText(/advanced config/i).click();
 
-      const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
-
-      for (const field of oidcFields) {
-        const fieldElement = page.getByLabel(field);
-        const fieldCount = await fieldElement.count();
-        if (fieldCount > 0) {
-          await expect(fieldElement.first()).toBeVisible();
-        }
-      }
+      await verifyProviderFields(page, OIDC_COMMON_FIELDS, ['OIDC Tenant']);
     });
 
     test('should show correct fields for Okta provider with confidential client', async ({
@@ -182,20 +182,19 @@ test.describe('SSO Configuration Tests', () => {
       await expect(confidentialRadio).toBeChecked();
 
       // Verify common fields are visible
-      await verifyProviderFields(page, SSO_COMMON_FIELDS);
+      await verifyProviderFields(page, SSO_COMMON_FIELDS, [
+        'Client ID',
+        'Callback URL',
+      ]);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      // The OIDC fields now sit behind this toggle, so they are not on screen
+      // until it is expanded. OIDC Tenant stays hidden: it is Azure-specific and
+      // this provider has no such field. main asserted it visible but guarded on
+      // `count() > 0`, which skipped the check here rather than making it.
       await page.getByText(/advanced config/i).click();
 
-      const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
-
-      for (const field of oidcFields) {
-        const fieldElement = page.getByLabel(field);
-        const fieldCount = await fieldElement.count();
-        if (fieldCount > 0) {
-          await expect(fieldElement.first()).toBeVisible();
-        }
-      }
+      await verifyProviderFields(page, OIDC_COMMON_FIELDS, ['OIDC Tenant']);
     });
   });
 
@@ -234,6 +233,7 @@ test.describe('SSO Configuration Tests', () => {
       await selectSSOProvider(page, 'ldap');
 
       await verifyProviderFields(page, LDAP_VISIBLE_FIELDS);
+      await expect(page.getByTestId('add-mapping-btn')).toBeVisible();
 
       const hiddenFields = [
         'OIDC Client ID',
@@ -241,9 +241,6 @@ test.describe('SSO Configuration Tests', () => {
         'Allowed Email Registration Domains',
         'Use Roles From Provider',
         'Username Attribute Name',
-        'Auth Roles Mapping',
-        'Allowed Email Registration Domains',
-        'Use Roles From Provider',
       ];
 
       await verifyProviderFields(page, [], hiddenFields);
@@ -263,11 +260,15 @@ test.describe('SSO Configuration Tests', () => {
       // Verify public client fields are visible
       await verifyProviderFields(page, [
         ...SSO_COMMON_FIELDS,
+        'Client ID',
+        'Callback URL',
         'Public Key URLs',
       ]);
 
       // Verify Client Type radio group is visible
-      await expect(page.locator('.field-radio-group').first()).toBeVisible();
+      await expect(
+        page.getByRole('radio', { name: /public|confidential/i })
+      ).toHaveCount(2);
 
       // Verify Secret field is NOT visible for public client
       await expect(page.getByLabel('Secret Key')).not.toBeVisible();
@@ -290,11 +291,15 @@ test.describe('SSO Configuration Tests', () => {
       // Verify public client fields are visible
       await verifyProviderFields(page, [
         ...SSO_COMMON_FIELDS,
+        'Client ID',
+        'Callback URL',
         'Public Key URLs',
       ]);
 
       // Verify Client Type radio group is visible
-      await expect(page.locator('.field-radio-group').first()).toBeVisible();
+      await expect(
+        page.getByRole('radio', { name: /public|confidential/i })
+      ).toHaveCount(2);
 
       const hiddenFields = [
         'LDAP Host',
@@ -326,11 +331,15 @@ test.describe('SSO Configuration Tests', () => {
       // Verify public client fields are visible
       await verifyProviderFields(page, [
         ...SSO_COMMON_FIELDS,
+        'Client ID',
+        'Callback URL',
         'Public Key URLs',
       ]);
 
       // Verify Client Type radio group is visible
-      await expect(page.locator('.field-radio-group').first()).toBeVisible();
+      await expect(
+        page.getByRole('radio', { name: /public|confidential/i })
+      ).toHaveCount(2);
 
       const hiddenFields = [
         'LDAP Host',
@@ -449,13 +458,9 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigCollapse = page.locator(
-        '.sso-advanced-properties-collapse'
-      );
-
-      await expect(advancedConfigCollapse).toBeVisible();
-
-      const advancedConfigHeader = page.getByText(/advanced config/i);
+      const advancedConfigHeader = page.getByRole('button', {
+        name: /advanced config/i,
+      });
 
       await expect(advancedConfigHeader).toBeVisible();
     });
@@ -479,12 +484,11 @@ test.describe('SSO Configuration Tests', () => {
       ];
 
       for (const fieldName of advancedFields) {
-        const field = page.locator(`[id*="${fieldName}"]`);
-        const fieldCount = await field.count();
-
-        if (fieldCount > 0) {
-          await expect(field.first()).toBeVisible();
-        }
+        await expect(
+          page.locator(
+            `[id="root/authenticationConfiguration/oidcConfiguration/${fieldName}"]`
+          )
+        ).toBeVisible();
       }
     });
 
@@ -499,9 +503,7 @@ test.describe('SSO Configuration Tests', () => {
 
       await expect(confidentialRadio).toBeChecked();
 
-      const publicKeyUrlsField = page.locator('[id*="publicKeyUrls"]').first();
-
-      await expect(publicKeyUrlsField).not.toBeVisible();
+      await expect(page.locator('[id*="publicKeyUrls"]')).toHaveCount(0);
     });
 
     test('should hide serverUrl field for OIDC providers', async ({ page }) => {
@@ -573,17 +575,13 @@ test.describe('SSO Configuration Tests', () => {
     test('should hide publicKeyUrls for SAML provider', async ({ page }) => {
       await selectSSOProvider(page, 'saml');
 
-      const publicKeyUrlsField = page.locator('[id*="publicKeyUrls"]').first();
-
-      await expect(publicKeyUrlsField).not.toBeVisible();
+      await expect(page.locator('[id*="publicKeyUrls"]')).toHaveCount(0);
     });
 
     test('should hide publicKeyUrls for LDAP provider', async ({ page }) => {
       await selectSSOProvider(page, 'ldap');
 
-      const publicKeyUrlsField = page.locator('[id*="publicKeyUrls"]').first();
-
-      await expect(publicKeyUrlsField).not.toBeVisible();
+      await expect(page.locator('[id*="publicKeyUrls"]')).toHaveCount(0);
     });
 
     test('should hide SAML SP callback URL field', async ({ page }) => {
@@ -624,11 +622,7 @@ test.describe('SSO Configuration Tests', () => {
       const clientAuthMethodField = page.locator(
         '[id*="clientAuthenticationMethod"]'
       );
-      const fieldCount = await clientAuthMethodField.count();
-
-      if (fieldCount > 0) {
-        await expect(clientAuthMethodField.first()).toBeVisible();
-      }
+      await expect(clientAuthMethodField).toBeVisible();
     });
 
     test('should hide tenant field for Auth0 provider', async ({ page }) => {
@@ -656,12 +650,13 @@ test.describe('SSO Configuration Tests', () => {
     test('should collapse advanced config by default', async ({ page }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigPanel = page.locator(
-        '.sso-advanced-properties-collapse .ant-collapse-item'
-      );
+      const advancedConfigHeader = page.getByRole('button', {
+        name: /advanced config/i,
+      });
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'false'
       );
     });
 
@@ -670,23 +665,27 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigHeader = page.getByText(/advanced config/i);
-      const advancedConfigPanel = page.locator(
-        '.sso-advanced-properties-collapse .ant-collapse-item'
-      );
+      const advancedConfigHeader = page.getByRole('button', {
+        name: /advanced config/i,
+      });
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'false'
       );
 
       await advancedConfigHeader.click();
 
-      await expect(advancedConfigPanel).toHaveClass(/ant-collapse-item-active/);
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
 
       await advancedConfigHeader.click();
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'false'
       );
     });
 
@@ -696,64 +695,93 @@ test.describe('SSO Configuration Tests', () => {
       await selectSSOProvider(page, 'ldap');
 
       const addMappingButton = page.getByTestId('add-mapping-btn');
+      const mappingCards = page.locator('[data-testid^="mapping-card-"]');
       const ldapGroupInputs = page.locator(
         '[data-testid^="ldap-group-input-"]'
       );
-      const rolesSelects = page.locator('[data-testid^="roles-select-"]');
       const errorMessages = page.locator('[data-testid^="ldap-group-error-"]');
 
+      // Every mapping row carries its own generated id in its test ids. Capturing
+      // that id when the row is added keeps each interaction bound to one
+      // specific mapping, so later rows cannot shift what an earlier step edits.
+      const mappingIds = () =>
+        mappingCards.evaluateAll((cards) =>
+          cards.map((card) =>
+            (card.getAttribute('data-testid') ?? '').replace(
+              'mapping-card-',
+              ''
+            )
+          )
+        );
+
+      const addMapping = async () => {
+        const before = await mappingIds();
+        await addMappingButton.click();
+        await expect(mappingCards).toHaveCount(before.length + 1);
+
+        const added = (await mappingIds()).find((id) => !before.includes(id));
+
+        return {
+          input: page.getByTestId(`ldap-group-input-${added}`),
+          rolesSelect: page.getByTestId(`roles-select-${added}`),
+          removeButton: page.getByTestId(`remove-mapping-btn-${added}`),
+        };
+      };
+
       // Add first mapping — inputs and roles select appear; fill DN value persists
-      await addMappingButton.click();
-      await expect(ldapGroupInputs.first()).toBeVisible();
-      await expect(rolesSelects.first()).toBeVisible();
-      await ldapGroupInputs.first().fill('cn=admins,dc=example,dc=com');
-      await expect(ldapGroupInputs.first()).toHaveValue(
+      const adminsMapping = await addMapping();
+      await expect(adminsMapping.input).toBeVisible();
+      await expect(adminsMapping.rolesSelect).toBeVisible();
+      await adminsMapping.input.fill('cn=admins,dc=example,dc=com');
+      await expect(adminsMapping.input).toHaveValue(
         'cn=admins,dc=example,dc=com'
       );
 
       // Open the roles dropdown — options are loaded from the API
-      await rolesSelects.first().click();
-      const roleOptions = page.locator('.ant-select-item-option');
-
-      if ((await roleOptions.count()) > 0) {
-        await expect(roleOptions.first()).toBeVisible();
-      }
-
-      await page.keyboard.press('Escape');
+      const roleInput = adminsMapping.rolesSelect.getByRole('combobox');
+      await roleInput.click();
+      const roleOption = page.getByRole('option', {
+        name: 'Data Consumer',
+        exact: true,
+      });
+      await expect(roleOption).toBeVisible();
+      await roleOption.click();
+      await roleInput.press('Escape');
+      await expect(
+        adminsMapping.rolesSelect.getByTestId('autocomplete-selected-item')
+      ).toHaveText('Data Consumer');
 
       // Add a second mapping with a duplicate DN — both rows show an error
-      await addMappingButton.click();
-      await ldapGroupInputs.last().fill('cn=admins,dc=example,dc=com');
+      const duplicateMapping = await addMapping();
+      await duplicateMapping.input.fill('cn=admins,dc=example,dc=com');
       await expect(errorMessages).toHaveCount(2);
-      await expect(errorMessages.first()).toContainText(
-        /already mapped|duplicate/i
-      );
+      await expect(errorMessages).toHaveText([
+        /already mapped|duplicate/i,
+        /already mapped|duplicate/i,
+      ]);
 
       // Fix the duplicate — errors clear; case-insensitive and whitespace variants also trigger errors
-      await ldapGroupInputs.last().clear();
-      await ldapGroupInputs.last().fill('cn=unique,dc=example,dc=com');
+      await duplicateMapping.input.clear();
+      await duplicateMapping.input.fill('cn=unique,dc=example,dc=com');
       await expect(errorMessages).toHaveCount(0);
 
-      await ldapGroupInputs.last().clear();
-      await ldapGroupInputs.last().fill('CN=ADMINS,DC=EXAMPLE,DC=COM');
+      await duplicateMapping.input.clear();
+      await duplicateMapping.input.fill('CN=ADMINS,DC=EXAMPLE,DC=COM');
       await expect(errorMessages).toHaveCount(2);
 
-      await ldapGroupInputs.last().clear();
-      await ldapGroupInputs.last().fill('  cn=admins,dc=example,dc=com  ');
+      await duplicateMapping.input.clear();
+      await duplicateMapping.input.fill('  cn=admins,dc=example,dc=com  ');
       await expect(errorMessages).toHaveCount(2);
 
       // Add a third unique mapping — no errors with three distinct DNs
-      await ldapGroupInputs.last().clear();
-      await ldapGroupInputs.last().fill('cn=users,dc=example,dc=com');
-      await addMappingButton.click();
-      await ldapGroupInputs.last().fill('cn=guests,dc=example,dc=com');
+      await duplicateMapping.input.clear();
+      await duplicateMapping.input.fill('cn=users,dc=example,dc=com');
+      const guestsMapping = await addMapping();
+      await guestsMapping.input.fill('cn=guests,dc=example,dc=com');
       await expect(errorMessages).toHaveCount(0);
 
       // Remove the first mapping — row disappears
-      await page
-        .locator('[data-testid^="remove-mapping-btn-"]')
-        .first()
-        .click();
+      await adminsMapping.removeButton.click();
       await expect(ldapGroupInputs).toHaveCount(2);
     });
 
@@ -765,54 +793,50 @@ test.describe('SSO Configuration Tests', () => {
       const field = page.getByTestId(
         'sso-configuration-form-array-field-template-authReassignRoles'
       );
-      const dropdown = page.locator('.ant-select-dropdown').last();
+      const dropdown = page.getByRole('listbox');
+      const selectedRoles = field.getByTestId('autocomplete-selected-item');
 
       // Field renders as a combobox (not a plain tags input)
       await expect(field).toBeVisible();
       await expect(field.getByRole('combobox')).toBeVisible();
 
       // Opening the dropdown shows API-fetched role options
-      await field.click();
+      await field.getByRole('combobox').click();
       await expect(dropdown).toBeVisible();
-      await expect(dropdown.locator('.ant-select-item-option')).not.toHaveCount(
-        0
-      );
+      await expect(dropdown.getByRole('option')).not.toHaveCount(0);
 
-      // Select the first available role — it appears as a selection tag
+      // Select a named role — it appears as a selection tag
       await dropdown
-        .locator(
-          '.ant-select-item-option:not(.ant-select-item-option-disabled)'
-        )
-        .first()
+        .getByRole('option', { name: 'Data Consumer', exact: true })
         .click();
-      await expect(field.locator('.ant-select-selection-item')).toHaveCount(1);
+      await expect(selectedRoles).toHaveCount(1);
 
-      // Remove the selected role via its remove button
-      await field.locator('.ant-select-selection-item-remove').click();
-      await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
+      // Remove the selected role via its remove button; the open list hides
+      // the chips from the accessibility tree, so close it first.
+      await field.getByRole('combobox').press('Escape');
+      await selectedRoles.getByRole('button').click();
+      await expect(selectedRoles).toHaveCount(0);
 
       // Typing filters the visible options
-      await field.click();
+      await field.getByRole('combobox').click();
       const dataRoleSearchResponse = page.waitForResponse(
         '/api/v1/roles/search?*'
       );
-      await field.locator('input').fill('Data');
+      await field.getByRole('combobox').fill('Data');
       await dataRoleSearchResponse;
-      await expect(
-        dropdown.locator(
-          '.ant-select-item-option:not(.ant-select-item-option-disabled)'
-        )
-      ).not.toHaveCount(0, { timeout: 15000 });
+      await expect(dropdown.getByRole('option')).not.toHaveCount(0, {
+        timeout: 15000,
+      });
 
       // Pressing Enter on a non-existent value does not create an arbitrary tag
-      await field.locator('input').clear();
+      await field.getByRole('combobox').clear();
       const missingRoleSearchResponse = page.waitForResponse(
         '/api/v1/roles/search?*'
       );
-      await field.locator('input').fill('NonExistentRoleXYZ123');
+      await field.getByRole('combobox').fill('NonExistentRoleXYZ123');
       await missingRoleSearchResponse;
-      await field.locator('input').press('Enter');
-      await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
+      await field.getByRole('combobox').press('Enter');
+      await expect(selectedRoles).toHaveCount(0);
     });
 
     test('should not display role mapping widget for non-LDAP providers', async ({
@@ -831,7 +855,7 @@ test.describe('SAML Metadata XML Upload', () => {
     await enableSSOEditMode(page);
     await selectSSOProvider(page, 'saml');
 
-    const dropZone = page.getByTestId('file-upload-drop-zone');
+    const dropZone = page.getByTestId('file-uploader');
 
     await expect(dropZone).toBeVisible();
     await expect(
@@ -852,8 +876,8 @@ test.describe('SAML Metadata XML Upload', () => {
     await selectSSOProvider(page, 'saml');
 
     await test.step('Wait for drop zone and upload valid SAML metadata XML', async () => {
-      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
-      const fileInput = page.getByTestId('file-uploader');
+      await expect(page.getByTestId('file-uploader')).toBeVisible();
+      const fileInput = page.getByTestId('file-upload-input');
 
       await fileInput.setInputFiles(VALID_SAML_XML);
     });
@@ -891,9 +915,9 @@ test.describe('SAML Metadata XML Upload', () => {
 
     await test.step('Click change file and upload invalid SAML metadata XML', async () => {
       await page.getByTestId('change-metadata-xml-btn').click();
-      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
+      await expect(page.getByTestId('file-uploader')).toBeVisible();
 
-      const fileInput = page.getByTestId('file-uploader');
+      const fileInput = page.getByTestId('file-upload-input');
 
       await fileInput.setInputFiles(INVALID_SAML_XML);
     });
@@ -947,9 +971,9 @@ test.describe('SAML Metadata XML Upload', () => {
     await selectSSOProvider(page, 'saml');
 
     await test.step('Upload Okta SAML metadata XML', async () => {
-      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
+      await expect(page.getByTestId('file-uploader')).toBeVisible();
 
-      await page.getByTestId('file-uploader').setInputFiles(OKTA_SAML_XML);
+      await page.getByTestId('file-upload-input').setInputFiles(OKTA_SAML_XML);
 
       await expect(page.getByTestId('change-metadata-xml-btn')).toBeVisible();
       await expect(
@@ -966,7 +990,8 @@ test.describe('SAML Metadata XML Upload', () => {
           response.request().method() === 'POST'
       );
 
-      await page.getByTestId('save-sso-configuration').click();
+      // A new configuration is held until Test Login passes; this test only needs the submit.
+      await page.getByTestId('save-anyway-sso-configuration').click();
 
       const errors = (await (await validateResponse).json())?.errors ?? [];
       const certificateError = errors.find(
@@ -1019,16 +1044,18 @@ test.describe('SSO Back Navigation', () => {
     });
 
     // Establish /settings as the history entry just before /settings/sso
-    await page.goto('/settings');
-    await page.goto('/settings/sso');
+    await page.goto('/settings', { waitUntil: 'domcontentloaded' });
+    await page.goto('/settings/sso', { waitUntil: 'domcontentloaded' });
 
     // Component detects existing Okta config and replaces /settings/sso with /settings/sso?provider=okta
-    await page.waitForURL('**/settings/sso?provider=okta');
+    await page.waitForURL('**/settings/sso?provider=okta', {
+      waitUntil: 'domcontentloaded',
+    });
 
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
 
     // Should land on /settings, skipping /settings/sso entirely
-    await page.waitForURL(/\/settings$/);
+    await page.waitForURL(/\/settings$/, { waitUntil: 'domcontentloaded' });
 
     expect(page.url()).not.toContain('/settings/sso');
   });
@@ -1074,13 +1101,13 @@ test.describe('SSO Back Navigation', () => {
         response.request().method() === 'GET'
     );
 
-    await page.goto('/settings/sso');
+    await page.goto('/settings/sso', { waitUntil: 'domcontentloaded' });
     const response = await configResponse;
 
     expect(response.status()).toBe(200);
 
     // With basic config, URL stays at /settings/sso and shows provider selector
-    await page.waitForURL('**/settings/sso');
+    await page.waitForURL('**/settings/sso', { waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('.provider-selector-container')).toBeVisible();
 
@@ -1088,78 +1115,216 @@ test.describe('SSO Back Navigation', () => {
   });
 });
 
-test.describe('SSO Test Configuration', () => {
-  const VALIDATE_URL = '**/system/security/validate';
+test.describe('SSO configuration source', () => {
+  const AUTHORIZER_CONFIGURATION = {
+    className: 'org.openmetadata.service.security.DefaultAuthorizer',
+    containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+    adminPrincipals: ['admin'],
+    principalDomain: 'open-metadata.org',
+    enforcePrincipalDomain: false,
+    enableSecureSocketConnection: false,
+  };
 
-  const mockValidate = (page: Page, body: Record<string, unknown>) =>
-    page.route(VALIDATE_URL, async (route) => {
-      if (route.request().method() === 'POST') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(body),
-        });
-      } else {
-        await route.continue();
-      }
-    });
+  const OKTA_CONFIG = {
+    authenticationConfiguration: {
+      provider: 'okta',
+      providerName: 'Okta',
+      clientType: 'confidential',
+      authority: 'https://test.okta.com',
+      clientId: 'okta-client-id',
+      callbackUrl: 'http://localhost:8585/callback',
+      publicKeyUrls: [],
+      jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
+      enableSelfSignup: false,
+      oidcConfiguration: {
+        type: 'okta',
+        id: 'okta-client-id',
+        secret: '*********',
+        discoveryUri: 'https://test.okta.com/.well-known/openid-configuration',
+        callbackUrl: 'http://localhost:8585/callback',
+        serverUrl: 'http://localhost:8585',
+      },
+    },
+    authorizerConfiguration: AUTHORIZER_CONFIGURATION,
+  };
 
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-    await enableSSOEditMode(page);
-  });
+  const BASIC_CONFIG = {
+    authenticationConfiguration: {
+      provider: 'basic',
+      providerName: 'basic',
+      authority: '',
+      clientId: '',
+      callbackUrl: '',
+      publicKeyUrls: [],
+      jwtPrincipalClaims: [],
+      enableSelfSignup: true,
+    },
+    authorizerConfiguration: AUTHORIZER_CONFIGURATION,
+  };
 
-  test('should show the Test Configuration button and lockout warning for a new configuration', async ({
-    page,
-  }) => {
-    await selectSSOProvider(page, 'google');
+  const envSecuritySources = (
+    authenticationPaths: string[],
+    authorizerPaths: string[]
+  ): MockSettingSource[] => [
+    {
+      configType: 'authenticationConfiguration',
+      source: 'ENV',
+      sourceVariable: 'SECURITY_CONFIG_SOURCE',
+      editable: false,
+      managedPaths: authenticationPaths,
+    },
+    {
+      configType: 'authorizerConfiguration',
+      source: 'ENV',
+      sourceVariable: 'SECURITY_CONFIG_SOURCE',
+      editable: false,
+      managedPaths: authorizerPaths,
+    },
+  ];
 
-    await expect(page.getByTestId('test-sso-configuration')).toBeVisible();
-    await expect(page.locator('.sso-save-warning')).toBeVisible();
-  });
+  const CLIENT_ID_FIELD =
+    '[id="root/authenticationConfiguration/oidcConfiguration/id"]';
+  const CLIENT_SECRET_FIELD =
+    '[id="root/authenticationConfiguration/oidcConfiguration/secret"]';
 
-  test('should validate the configuration without saving and show a success banner', async ({
-    page,
-  }) => {
-    await mockValidate(page, { status: 'success' });
-    await selectSSOProvider(page, 'google');
-
-    const validateResponse = page.waitForResponse(VALIDATE_URL);
-    await page.getByTestId('test-sso-configuration').click();
-    await validateResponse;
-
-    await expect(page.locator('.sso-test-result.success-alert')).toBeVisible();
-    await expect(page.locator('.sso-test-result')).toContainText(
-      /valid and reachable/i
+  // Every write is answered locally: no test here may change how the shared server signs users in.
+  const serveSecurityConfig = (page: Page, config: object) =>
+    page.route('**/api/v1/system/security/config', (route) =>
+      route.fulfill({ json: config })
     );
 
-    // Testing must never sign the admin out or leave the form
-    await expect(page).toHaveURL(/settings\/sso/);
-    await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
-  });
+  const openSsoSettings = async (page: Page) => {
+    await page.goto('/settings/sso', { waitUntil: 'domcontentloaded' });
+  };
 
-  test('should surface validation errors when the test fails', async ({
+  test('locks the fields the deployment configuration owns', async ({
     page,
   }) => {
-    await mockValidate(page, {
-      status: 'failed',
-      errors: [
+    await serveSecurityConfig(page, OKTA_CONFIG);
+    await mockSettingsSource(
+      page,
+      envSecuritySources(
+        [
+          '/provider',
+          '/clientType',
+          '/enableSelfSignup',
+          '/oidcConfiguration/id',
+          '/oidcConfiguration/discoveryUri',
+        ],
+        ['/adminPrincipals']
+      )
+    );
+    await openSsoSettings(page);
+
+    await test.step('One banner names the variable for both settings', async () => {
+      await expect(page.getByTestId('settings-source-env-alert')).toContainText(
+        'SECURITY_CONFIG_SOURCE=ENV'
+      );
+      await expect(page.getByTestId('settings-source-env-alert')).toHaveCount(
+        1
+      );
+    });
+
+    await test.step('Self signup cannot be switched', async () => {
+      await expect(
+        page.locator('.enable-sso-card-container').getByRole('switch')
+      ).toBeDisabled();
+    });
+
+    await test.step('Only the managed fields are read-only', async () => {
+      await page.getByRole('tab', { name: 'Configure' }).click();
+
+      await expect(page.locator(CLIENT_SECRET_FIELD)).toBeEnabled();
+      await expect(page.locator(CLIENT_ID_FIELD)).toBeDisabled();
+      await expect(page.locator(CLIENT_ID_FIELD)).toHaveValue('okta-client-id');
+      await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
+    });
+  });
+
+  test('shows the configuration read-only when the deployment owns all of it', async ({
+    page,
+  }) => {
+    await serveSecurityConfig(page, OKTA_CONFIG);
+    await mockSettingsSource(page, envSecuritySources(['/'], ['/']));
+    await openSsoSettings(page);
+
+    await expect(page.getByTestId('settings-source-env-alert')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Configure' }).click();
+
+    await expect(page.locator(CLIENT_ID_FIELD)).toHaveValue('okta-client-id');
+    await expect(page.locator(CLIENT_ID_FIELD)).toBeDisabled();
+    await expect(page.locator(CLIENT_SECRET_FIELD)).toBeDisabled();
+    await expect(page.getByTestId('save-sso-configuration')).not.toBeVisible();
+  });
+
+  test('offers no provider to choose when the deployment sets the provider', async ({
+    page,
+  }) => {
+    await serveSecurityConfig(page, BASIC_CONFIG);
+    await mockSettingsSource(page, envSecuritySources(['/provider'], []));
+    await openSsoSettings(page);
+
+    await expect(page.getByTestId('settings-source-env-alert')).toContainText(
+      'SECURITY_CONFIG_SOURCE=ENV'
+    );
+    await expect(
+      page.locator('.provider-selector-container')
+    ).not.toBeVisible();
+  });
+
+  test('replaces saved values with the deployment values on request', async ({
+    page,
+  }) => {
+    await serveSecurityConfig(page, OKTA_CONFIG);
+    const adoptRequests = await mockSettingsSource(page, [
+      {
+        configType: 'authenticationConfiguration',
+        source: 'AUTO',
+        sourceVariable: 'SECURITY_CONFIG_SOURCE',
+        editable: true,
+        overriddenFields: [
+          {
+            path: '/oidcConfiguration/clientAuthenticationMethod',
+            envVariable: 'OIDC_CLIENT_AUTH_METHOD',
+          },
+        ],
+      },
+    ]);
+    await openSsoSettings(page);
+
+    const overriddenAlert = page.getByTestId(
+      'settings-source-overridden-alert'
+    );
+
+    await expect(overriddenAlert).toContainText(
+      '/oidcConfiguration/clientAuthenticationMethod (set by OIDC_CLIENT_AUTH_METHOD)'
+    );
+
+    await overriddenAlert
+      .getByRole('button', { name: 'Use deployment value' })
+      .click();
+
+    const configReload = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().endsWith('/api/v1/system/security/config')
+    );
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Use deployment value' })
+      .click();
+    await configReload;
+
+    await expect
+      .poll(() => adoptRequests)
+      .toEqual([
         {
-          field: 'authenticationConfiguration.authority',
-          error: 'Authority is required',
+          configType: 'authenticationConfiguration',
+          paths: ['/oidcConfiguration/clientAuthenticationMethod'],
         },
-      ],
-    });
-    await selectSSOProvider(page, 'google');
-
-    const validateResponse = page.waitForResponse(VALIDATE_URL);
-    await page.getByTestId('test-sso-configuration').click();
-    await validateResponse;
-
-    await expect(page.locator('.sso-test-result.error-alert')).toBeVisible();
-    await expect(page.locator('.sso-test-result')).toContainText(
-      /validation failed/i
-    );
-    await expect(page).toHaveURL(/settings\/sso/);
+      ]);
+    await expect(page.getByRole('tab', { name: 'Configure' })).toBeVisible();
+    await expect(overriddenAlert).not.toBeVisible();
   });
 });

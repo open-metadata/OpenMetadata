@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Space, Typography } from 'antd';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toString } from 'lodash';
@@ -87,17 +87,22 @@ const DirectoryVersion = ({
     [currentVersionData.fullyQualifiedName ?? '']
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          changeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        changeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [changeDescription, owners, tier, domains]
+  );
 
   const handleTabChange = (activeKey: string) => {
     navigate(
@@ -145,7 +150,9 @@ const DirectoryVersion = ({
         dataIndex: 'name',
         key: 'name',
         render: (_, record) => (
-          <Typography.Text>{getEntityName(record)}</Typography.Text>
+          <Typography className="tw:text-primary">
+            {getEntityName(record)}
+          </Typography>
         ),
       },
       {
@@ -193,7 +200,13 @@ const DirectoryVersion = ({
             <div
               className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
               data-testid="entity-right-panel">
-              <Space className="w-full" direction="vertical" size="large">
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={6}
+                itemClassName="layout-space-item">
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
@@ -211,7 +224,7 @@ const DirectoryVersion = ({
                     tagType={TagSource[tagType as TagSource]}
                   />
                 ))}
-              </Space>
+              </Box>
             </div>
           </Box>
         ),
@@ -293,6 +306,7 @@ const DirectoryVersion = ({
                 deleted={deleted}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
+                domains={domainRef}
                 entityType={EntityType.DIRECTORY}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

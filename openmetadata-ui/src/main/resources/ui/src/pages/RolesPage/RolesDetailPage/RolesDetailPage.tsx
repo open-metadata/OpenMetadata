@@ -12,8 +12,14 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Button, Card, Modal, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  SimpleModal,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -269,30 +275,32 @@ const RolesDetailPage = () => {
         label: t('label.policy-plural'),
         children: (
           <Card>
-            <div className="flex justify-end m-b-md">
-              <Button
-                data-testid="add-policy"
-                type="primary"
-                onClick={() =>
-                  setAddAttribute({
-                    type: EntityType.POLICY,
-                    selectedData: role.policies || [],
-                  })
-                }>
-                {t('label.add-entity', {
-                  entity: t('label.policy'),
-                })}
-              </Button>
-            </div>
+            <Card.Content>
+              <div className="flex justify-end m-b-md">
+                <Button
+                  color="primary"
+                  data-testid="add-policy"
+                  onClick={() =>
+                    setAddAttribute({
+                      type: EntityType.POLICY,
+                      selectedData: role.policies || [],
+                    })
+                  }>
+                  {t('label.add-entity', {
+                    entity: t('label.policy'),
+                  })}
+                </Button>
+              </div>
 
-            <RolesDetailPageList
-              hasAccess
-              list={role.policies ?? []}
-              type="policy"
-              onDelete={(record) =>
-                setEntity({ record, attribute: 'policies' })
-              }
-            />
+              <RolesDetailPageList
+                hasAccess
+                list={role.policies ?? []}
+                type="policy"
+                onDelete={(record) =>
+                  setEntity({ record, attribute: 'policies' })
+                }
+              />
+            </Card.Content>
           </Card>
         ),
       },
@@ -360,9 +368,8 @@ const RolesDetailPage = () => {
                 })}
               </p>
               <Button
-                ghost
-                className="m-t-sm"
-                type="primary"
+                className="tw:mt-3"
+                color="secondary-brand"
                 onClick={() => navigate(rolesPath)}>
                 {t('label.go-back')}
               </Button>
@@ -439,13 +446,11 @@ const RolesDetailPage = () => {
         )}
 
         {selectedEntity && (
-          <Modal
-            centered
-            closable={false}
-            confirmLoading={isLoadingOnSave}
-            maskClosable={false}
+          <SimpleModal
+            isDismissable={false}
+            isOkLoading={isLoadingOnSave}
+            isOpen={!isUndefined(selectedEntity.record)}
             okText={t('label.confirm')}
-            open={!isUndefined(selectedEntity.record)}
             title={`${t('label.remove-entity', {
               entity: getEntityName(selectedEntity.record),
             })} ${t('label.from-lowercase')} ${roleName}`}
@@ -457,13 +462,13 @@ const RolesDetailPage = () => {
               );
               setEntity(undefined);
             }}>
-            <Typography.Text>
+            <Typography>
               {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
                 child: getEntityName(selectedEntity.record),
                 parent: roleName,
               })}
-            </Typography.Text>
-          </Modal>
+            </Typography>
+          </SimpleModal>
         )}
         {addAttribute && (
           <AddAttributeModal

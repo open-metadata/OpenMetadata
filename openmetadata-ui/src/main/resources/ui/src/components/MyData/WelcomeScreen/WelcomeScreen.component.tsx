@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Divider,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { split } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,8 +29,6 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import './welcome-screen.style.less';
-
-const { Paragraph, Text } = Typography;
 
 interface WelcomeScreenProps {
   onClose: () => void;
@@ -45,54 +50,68 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   }, [t]);
 
   return (
-    <Card
-      className="welcome-screen-container card-body-border-none card-padding-0"
-      data-testid="welcome-screen"
-      extra={
+    <Card className="welcome-screen-container" data-testid="welcome-screen">
+      <div className="tw:flex tw:justify-end tw:px-4 tw:pt-4">
         <Button
-          className="flex-center welcome-screen-close-btn"
+          aria-label={t('label.close')}
+          color="tertiary"
           data-testid="welcome-screen-close-btn"
-          icon={<CloseIcon height={12} width={12} />}
-          type="text"
+          iconLeading={<CloseIcon height={12} width={12} />}
           onClick={onClose}
         />
-      }>
-      <Row className="p-md welcome-screen-full-height">
-        <Col className="flex-center" span={12}>
-          <img
-            alt="welcome screen"
-            className="welcome-screen-img"
-            data-testid="welcome-screen-img"
-            loading="lazy"
-            src={welcomeScreenImg}
-          />
-        </Col>
-        <Col span={12}>
-          <Space className="m-y-xlg" direction="vertical">
-            <div>
-              <Paragraph className="welcome-screen-header-first-line m-b-0">
-                {t('message.hi-user-welcome-to', {
-                  user: userName || t('label.user'),
-                })}
-              </Paragraph>
-              <Paragraph className="welcome-screen-header-second-line m-b-0">
-                {`${title}! 🎉`}
-              </Paragraph>
-            </div>
-            <Divider className="welcome-screen-header-divider" />
+      </div>
+      <div className="welcome-screen-body">
+        <Grid className="layout-row layout-grid p-md welcome-screen-full-height">
+          <Grid.Item className="layout-column flex-center" span={12}>
+            <img
+              alt="welcome screen"
+              className="welcome-screen-img"
+              data-testid="welcome-screen-img"
+              loading="lazy"
+              src={welcomeScreenImg}
+            />
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={12}>
+            <Box
+              inline
+              align="stretch"
+              className="layout-space m-y-xlg"
+              direction="col"
+              gap={2}
+              itemClassName="layout-space-item">
+              <div>
+                <Typography
+                  as="p"
+                  className="welcome-screen-header-first-line m-b-0">
+                  {t('message.hi-user-welcome-to', {
+                    user: userName || t('label.user'),
+                  })}
+                </Typography>
+                <Typography
+                  as="p"
+                  className="welcome-screen-header-second-line m-b-0">
+                  {`${title}! 🎉`}
+                </Typography>
+              </div>
+              <Divider className="welcome-screen-header-divider" />
 
-            <Paragraph className="m-b-0 text-base">
-              {t('message.welcome-screen-message')}
-            </Paragraph>
-            <Link className="flex items-center gap-2 p-0" to={ROUTES.TOUR}>
-              <Text className="welcome-screen-button-text">
-                {t('message.take-quick-product-tour')}
-              </Text>
-              <LineArrowRight className="text-primary" height={14} width={18} />
-            </Link>
-          </Space>
-        </Col>
-      </Row>
+              <Typography as="p" className="m-b-0 text-base">
+                {t('message.welcome-screen-message')}
+              </Typography>
+              <Link className="flex items-center gap-2 p-0" to={ROUTES.TOUR}>
+                <Typography className="welcome-screen-button-text">
+                  {t('message.take-quick-product-tour')}
+                </Typography>
+                <LineArrowRight
+                  className="text-primary"
+                  height={14}
+                  width={18}
+                />
+              </Link>
+            </Box>
+          </Grid.Item>
+        </Grid>
+      </div>
     </Card>
   );
 };

@@ -78,6 +78,7 @@ from metadata.ingestion.source.database.glue.models import (
     GlueTable,
     StorageDetails,
     TablePage,
+    TableParameters,
 )
 from metadata.ingestion.source.database.glue.utils import get_schema_definition
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
@@ -328,6 +329,11 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
                         # iceberg tables need to pass a key/value pair in the DDL `'table_type'='ICEBERG'`
                         # https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html
                         table_type = TableType.Iceberg
+                    elif table.TableType != "VIRTUAL_VIEW" and self._is_delta_table(parameters):
+                        # Kept after the Iceberg check so a UniForm table carrying both markers
+                        # stays Iceberg. Athena DDL writes table_type=DELTA, Spark and the crawler
+                        # write spark.sql.sources.provider=delta; producers disagree on case.
+                        table_type = TableType.DeltaLake
                     elif table.TableType == "EXTERNAL_TABLE":
                         table_type = TableType.External
                     elif table.TableType == "VIRTUAL_VIEW":
@@ -358,10 +364,7 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         database_name = self.context.get().database
         schema_name = self.context.get().database_schema
         if storage_descriptor.Location:
-            # s3a doesn't occur as a path in containers, so it needs to be replaced for lineage to work
-            self.external_location_map[(database_name, schema_name, table_name)] = storage_descriptor.Location.replace(
-                "s3a://", "s3://"
-            )
+            self.external_location_map[(database_name, schema_name, table_name)] = storage_descriptor.Location
         try:
             columns = self.get_columns(storage_descriptor)
             # An Iceberg view is typed Iceberg rather than View, so keying off the Glue type
@@ -471,15 +474,33 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         Iceberg keeps a dropped field in the table schema flagged current=false, so emitting
         every column would resurrect it. GetTables already carries that flag on each column,
         which is why this needs neither a per-table GetTable nor a glue:GetTable grant.
+        Only regular columns can carry it: Glue rejects parameters on a partition key, and
+        Iceberg writes every field, partition sources included, to StorageDescriptor.Columns.
         """
         table = self.context.get().table_data
         is_iceberg = bool(table.Parameters and table.Parameters.table_type == "ICEBERG")
         # Glue sends an explicit null rather than an empty list for a table with neither.
-        for column in [*(column_data.Columns or []), *(table.PartitionKeys or [])]:
+        for column in column_data.Columns or []:
             if is_iceberg and not column.is_current_iceberg_field():
                 logger.debug("Table [%s]: dropping retired Iceberg column [%s].", table.Name, column.Name)
                 continue
             yield self._get_column_object(column)
+        for column in table.PartitionKeys or []:
+            yield self._get_column_object(column)
+
+    @staticmethod
+    def _is_delta_table(parameters: TableParameters | None) -> bool:
+        """A Glue Delta table is marked by table_type=DELTA (Athena DDL) or
+        spark.sql.sources.provider=delta (Spark/crawler). Producers disagree on case, so both
+        keys are compared case-insensitively. The provider key is dotted, so it is only reachable
+        through the extra-allowed dump, not attribute access."""
+        if not parameters:
+            return False
+        values = parameters.model_dump()
+        return any(
+            isinstance(values.get(key), str) and values[key].lower() == "delta"
+            for key in ("table_type", "spark.sql.sources.provider")
+        )
 
     @classmethod
     def get_format(cls, storage: StorageDetails) -> FileFormat | None:

@@ -4,7 +4,7 @@ import type { SelectItemType } from '@/components/base/select/select';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { fontSizeClass } from '@/utils/tailwindClasses';
-import { Check } from '@untitledui/icons';
+import { Check } from '../../../icons';
 import type { ReactNode } from 'react';
 import { isValidElement, useContext } from 'react';
 import type {

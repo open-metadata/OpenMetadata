@@ -19,11 +19,14 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { User } from '../../../generated/entity/teams/user';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { restoreUser } from '../../../rest/userAPI';
 import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
@@ -42,7 +45,11 @@ import {
   ActivityFeedTabs,
 } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { DomainLabelNew } from '../../common/DomainLabel/DomainLabelNew';
+import {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import AssetsTabs from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
@@ -63,6 +70,16 @@ const EntitySummaryPanel = withSuspenseFallback(
       import('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
   )
 );
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
 
 const Users = ({
   afterDeleteAction,
@@ -131,6 +148,22 @@ const Users = ({
     handleTabRedirection();
     initLimits();
   }, []);
+
+  const { canViewCustomFields, canEditCustomFields } = useEntityPermissions(
+    ResourceEntity.USER,
+    decodedUsername,
+    { deleted: userData.deleted }
+  );
+
+  const onUserExtensionUpdate = useCallback(
+    async (updatedUser: User) => {
+      await updateUserDetails(
+        { extension: updatedUser.extension },
+        'extension'
+      );
+    },
+    [updateUserDetails]
+  );
 
   const tabDataRender = useCallback(
     (props: {
@@ -270,6 +303,25 @@ const Users = ({
           />
         ),
       },
+      {
+        label: (
+          <TabsLabel
+            id={UserPageTabs.CUSTOM_PROPERTIES}
+            isActive={activeTab === UserPageTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: UserPageTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable<EntityType.USER>
+            entityDetails={userData}
+            entityType={EntityType.USER}
+            hasEditAccess={canEditCustomFields}
+            hasPermission={canViewCustomFields}
+            onEntityUpdate={onUserExtensionUpdate}
+          />
+        ),
+      },
       ...(isLoggedInUser
         ? [
             {
@@ -294,15 +346,18 @@ const Users = ({
         : []),
     ],
     [
+      activeTab,
       currentTab,
-      userData.id,
-      userData.name,
+      userData,
       decodedUsername,
       setPreviewAsset,
       tabDataRender,
       disableFields,
       subTab,
       isLoggedInUser,
+      canViewCustomFields,
+      canEditCustomFields,
+      onUserExtensionUpdate,
     ]
   );
 
@@ -393,7 +448,7 @@ const Users = ({
               updateUserDetails={updateUserDetails}
               userData={userData}
             />
-            <DomainLabelNew
+            <DomainLabel
               multiple
               domains={userData?.domains ?? []}
               entityFqn={userData.fullyQualifiedName ?? ''}
@@ -402,6 +457,7 @@ const Users = ({
               hasPermission={Boolean(isAdminUser) && !userData.deleted}
               textClassName="text-sm text-grey-muted"
               userData={userData}
+              variant="card"
             />
             <UserProfileTeams
               isDeletedUser={userData.deleted}

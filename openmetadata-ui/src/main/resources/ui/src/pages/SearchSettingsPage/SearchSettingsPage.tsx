@@ -11,9 +11,19 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Collapse, Row, Slider, Switch, Typography } from 'antd';
+import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Box,
+  Button,
+  Grid,
+  Slider,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -21,11 +31,11 @@ import { ReactComponent as PlusOutlined } from '../../assets/svg/plus-outlined.s
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import FieldValueBoostDialog from '../../components/discovery/personal-space/Profile/tabs/platform-settings/search/FieldValueBoostDialog';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import FieldValueBoostList from '../../components/SearchSettings/FieldValueBoostList/FieldValueBoostList';
-import FieldValueBoostModal from '../../components/SearchSettings/FieldValueBoostModal/FieldValueBoostModal';
 import { GlobalSettingItem } from '../../components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem';
 import TermBoostList from '../../components/SearchSettings/TermBoostList/TermBoostList';
 import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
@@ -46,6 +56,7 @@ import {
   restoreSettingsConfig,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingsPathWithFqn } from '../../utils/RouterUtils';
 import searchSettingsClassBase from '../../utils/SearchSettingsClassBase';
@@ -88,97 +99,122 @@ const SearchBoostsSection = ({
   const { t } = useTranslation();
 
   return (
-    <Row className="boosts-section m-t-lg" gutter={[0, 16]}>
-      <Collapse
-        accordion
-        bordered={false}
-        className="w-full search-settings-collapse">
-        <Collapse.Panel
-          className="term-boost-panel"
-          header={
-            <Row className="d-flex items-center justify-between w-full">
-              <Col className="d-flex items-center gap-4">
-                <Typography.Text className="text-sm font-semibold m-0">
-                  {t('label.term-boost')}
-                </Typography.Text>
-                <span className="count-label">
-                  {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
-                </span>
-              </Col>
-              <Col className="d-flex items-center gap-2">
+    <Box
+      className="layout-row boosts-section m-t-lg"
+      style={getLayoutGutter(0, 16)}
+      wrap="wrap">
+      <Accordion className="w-full search-settings-collapse">
+        <AccordionItem className="term-boost-panel" id="1" key="1">
+          <Box align="center" className="tw:w-full" gap={2}>
+            {/* The core header's flex child is its heading wrapper, so give
+                the wrapper the remaining width and the whole row toggles. */}
+            <div className="tw:min-w-0 tw:flex-1">
+              <AccordionHeader>
+                <Box
+                  className="layout-row d-flex items-center justify-between w-full"
+                  wrap="wrap">
+                  <Box className="layout-column d-flex items-center gap-4">
+                    <Typography className="text-sm font-semibold m-0 tw:text-primary">
+                      {t('label.term-boost')}
+                    </Typography>
+                    <Typography className="count-label">
+                      {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
+                    </Typography>
+                  </Box>
+                </Box>
+              </AccordionHeader>
+            </div>
+            <Box className="tw:ms-auto tw:pe-4">
+              <Box className="layout-column d-flex items-center gap-2">
                 <Button
-                  className="term-boost-save-btn"
+                  color="secondary"
                   data-testid="term-boost-save-btn"
-                  disabled={!termBoostsChanged}
+                  isDisabled={!termBoostsChanged}
                   onClick={onSaveTermBoost}>
                   {t('label.save')}
                 </Button>
                 <Button
-                  className="term-boost-add-btn"
+                  color="primary"
                   data-testid="term-boost-add-btn"
-                  disabled={isUpdating || showNewTermBoost}
-                  icon={<Icon className="text-sm" component={PlusOutlined} />}
-                  type="primary"
+                  iconLeading={<Icon component={PlusOutlined} />}
+                  isDisabled={isUpdating || showNewTermBoost}
                   onClick={onAddNewTermBoost}>
                   {t('label.add')}
                 </Button>
-              </Col>
-            </Row>
-          }
-          key="1">
-          <Col span={24}>
-            <TermBoostList
-              handleDeleteTermBoost={onDeleteTermBoost}
-              handleTermBoostChange={onTermBoostChange}
-              showNewTermBoost={showNewTermBoost}
-              termBoostCardClassName="settings-term-boost-card"
-              termBoosts={searchConfig?.globalSettings?.termBoosts ?? []}
-            />
-          </Col>
-        </Collapse.Panel>
-        <Collapse.Panel
-          className="field-value-boost-panel"
-          header={
-            <Row className="d-flex items-center justify-between w-full">
-              <Col className="d-flex items-center gap-4">
-                <Typography.Text className="text-sm font-semibold m-0">
-                  {t('label.field-value-boost')}
-                </Typography.Text>
-                <span className="count-label">
-                  {searchConfig?.globalSettings?.fieldValueBoosts?.length ?? 0}
-                </span>
-              </Col>
-              <Col className="d-flex items-center gap-2">
+              </Box>
+            </Box>
+          </Box>
+          <AccordionPanel>
+            <Grid.Item className="layout-column" span={24}>
+              <TermBoostList
+                handleDeleteTermBoost={onDeleteTermBoost}
+                handleTermBoostChange={onTermBoostChange}
+                showNewTermBoost={showNewTermBoost}
+                termBoosts={searchConfig?.globalSettings?.termBoosts ?? []}
+              />
+            </Grid.Item>
+          </AccordionPanel>
+        </AccordionItem>
+        <AccordionItem className="field-value-boost-panel" id="2" key="2">
+          <Box align="center" className="tw:w-full" gap={2}>
+            {/* The core header's flex child is its heading wrapper, so give
+                the wrapper the remaining width and the whole row toggles. */}
+            <div className="tw:min-w-0 tw:flex-1">
+              <AccordionHeader>
+                <Box
+                  className="layout-row d-flex items-center justify-between w-full"
+                  wrap="wrap">
+                  <Box className="layout-column d-flex items-center gap-4">
+                    <Typography className="text-sm font-semibold m-0 tw:text-primary">
+                      {t('label.field-value-boost')}
+                    </Typography>
+                    <Typography className="count-label">
+                      {searchConfig?.globalSettings?.fieldValueBoosts?.length ??
+                        0}
+                    </Typography>
+                  </Box>
+                </Box>
+              </AccordionHeader>
+            </div>
+            <Box className="tw:ms-auto tw:pe-4">
+              <Box className="layout-column d-flex items-center gap-2">
                 <Button
-                  className="field-value-boost-add-btn"
+                  color="secondary"
                   data-testid="add-field-value-boost-btn"
-                  disabled={isUpdating || showFieldValueBoostModal}
-                  icon={<Icon className="text-sm" component={PlusOutlined} />}
+                  iconLeading={
+                    <Icon className="text-sm" component={PlusOutlined} />
+                  }
+                  isDisabled={isUpdating || showFieldValueBoostModal}
                   onClick={onAddFieldValueBoost}>
                   {t('label.add')}
                 </Button>
-              </Col>
-            </Row>
-          }
-          key="2">
-          <Row className="p-t-sm w-full">
-            <div className="field-value-boost-table-container">
-              <FieldValueBoostList
-                dataTestId="field-value-boost-table"
-                fieldValueBoosts={
-                  searchConfig?.globalSettings?.fieldValueBoosts ?? []
-                }
-                handleDeleteFieldValueBoost={onDeleteFieldValueBoost}
-                handleEditFieldValueBoost={onEditFieldValueBoost}
-                isLoading={isLoading}
-              />
-            </div>
-          </Row>
-        </Collapse.Panel>
-      </Collapse>
-    </Row>
+              </Box>
+            </Box>
+          </Box>
+          <AccordionPanel>
+            <Box className="layout-row p-t-sm w-full" wrap="wrap">
+              <div className="field-value-boost-table-container">
+                <FieldValueBoostList
+                  dataTestId="field-value-boost-table"
+                  fieldValueBoosts={
+                    searchConfig?.globalSettings?.fieldValueBoosts ?? []
+                  }
+                  handleDeleteFieldValueBoost={onDeleteFieldValueBoost}
+                  handleEditFieldValueBoost={onEditFieldValueBoost}
+                  isLoading={isLoading}
+                />
+              </div>
+            </Box>
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
+    </Box>
   );
 };
+
+// Installs that predate the setting have no stored value, and they index columns.
+const isColumnIndexingEnabled = (searchConfig?: SearchSettings) =>
+  searchConfig?.globalSettings?.enableColumnIndexing ?? true;
 
 const SearchSettingsPage = () => {
   const { t } = useTranslation();
@@ -200,6 +236,8 @@ const SearchSettingsPage = () => {
   const [hybridWeightsChanged, setHybridWeightsChanged] =
     useState<boolean>(false);
   const [showResetModal, setShowResetModal] = useState<boolean>(false);
+  const [showDisableColumnIndexingModal, setShowDisableColumnIndexingModal] =
+    useState<boolean>(false);
 
   const settingCategoryData = useMemo(
     () => getSearchSettingCategories(permissions, isAdminUser ?? false),
@@ -212,7 +250,7 @@ const SearchSettingsPage = () => {
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.search')
       ),
-    []
+    [t]
   );
 
   const showHybridSearchWeights = useMemo(
@@ -220,15 +258,13 @@ const SearchSettingsPage = () => {
     []
   );
 
-  const fieldValueBoostOptions = useMemo(() => {
-    if (!isEmpty(searchConfig?.allowedFieldValueBoosts)) {
-      return searchConfig?.allowedFieldValueBoosts?.[0].fields?.map(
+  const fieldValueBoostOptions = useMemo(
+    () =>
+      searchConfig?.allowedFieldValueBoosts?.[0]?.fields?.map(
         (field) => field.name
-      );
-    }
-
-    return [];
-  }, [searchConfig]);
+      ) ?? [],
+    [searchConfig]
+  );
 
   const fetchSearchConfig = async () => {
     try {
@@ -252,6 +288,7 @@ const SearchSettingsPage = () => {
     enabled,
     field,
     value,
+    successMessage,
   }: UpdateConfigParams = {}) => {
     try {
       setIsUpdating(true);
@@ -286,15 +323,37 @@ const SearchSettingsPage = () => {
       }
 
       showSuccessToast(
-        t('server.update-entity-success', {
-          entity: t('label.search-setting-plural'),
-        })
+        successMessage ??
+          t('server.update-entity-success', {
+            entity: t('label.search-setting-plural'),
+          })
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  // Turning column indexing off deletes the column index, so it waits for a confirmation.
+  const handleColumnIndexingToggle = () => {
+    if (isColumnIndexingEnabled(searchConfig)) {
+      setShowDisableColumnIndexingModal(true);
+    } else {
+      void handleUpdateSearchConfig({
+        enabled: true,
+        field: 'enableColumnIndexing',
+        successMessage: t('message.column-indexing-enabled-reindex'),
+      });
+    }
+  };
+
+  const handleDisableColumnIndexing = async () => {
+    await handleUpdateSearchConfig({
+      enabled: false,
+      field: 'enableColumnIndexing',
+    });
+    setShowDisableColumnIndexingModal(false);
   };
 
   const handleResetToDefault = async () => {
@@ -494,46 +553,63 @@ const SearchSettingsPage = () => {
       className="search-settings"
       mainContainerClassName="p-t-0"
       pageTitle={t('label.search')}>
-      <Row className="p-md settings-row m-0" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-md settings-row m-0"
+        style={getLayoutGutter(0, 16)}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <PageHeader
             data={{
               header: t(PAGE_HEADERS.SEARCH_SETTINGS.header),
               subHeader: t(PAGE_HEADERS.SEARCH_SETTINGS.subHeader),
             }}
           />
-        </Col>
-      </Row>
-      <Row className="p-md settings-row m-x-0" gutter={[0, 16]}>
-        <Col span={24}>
-          <Row align="middle" justify="space-between">
-            <Typography.Title className="text-sm font-semibold m-b-0" level={5}>
+        </Grid.Item>
+      </Grid>
+      <Grid
+        className="layout-row layout-grid p-md settings-row m-x-0"
+        style={getLayoutGutter(0, 16)}>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="center"
+            className="layout-row"
+            justify="between"
+            wrap="wrap">
+            <Typography
+              as="h5"
+              className="text-sm font-semibold m-b-0"
+              size="text-md"
+              weight="semibold">
               {t('label.global-setting-plural')}
-            </Typography.Title>
+            </Typography>
             {isAdminUser && (
               <Button
+                color="secondary"
                 data-testid="reset-search-settings-btn"
-                disabled={isUpdating}
+                isDisabled={isUpdating}
                 onClick={() => setShowResetModal(true)}>
                 {t('label.reset')}
               </Button>
             )}
-          </Row>
-        </Col>
-        <Col span={24}>
-          <Row className="p-x-xs global-settings-cards-container" gutter={0}>
-            <Col className="global-setting-card">
-              <Typography.Text className="global-setting-card__content">
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            className="layout-row p-x-xs global-settings-cards-container"
+            wrap="wrap">
+            <Box className="layout-column tw:block global-setting-card">
+              <Typography className="global-setting-card__content">
                 {t('label.enable-roles-polices-in-search')}
-              </Typography.Text>
-              <Switch
-                checked={searchConfig?.globalSettings?.enableAccessControl}
+              </Typography>
+              <Toggle
                 className="m-l-xlg global-setting-card__action"
                 data-testid="enable-roles-polices-in-search-switch"
-                disabled={isUpdating}
+                isDisabled={isUpdating}
+                isSelected={Boolean(
+                  searchConfig?.globalSettings?.enableAccessControl
+                )}
                 onChange={() =>
                   handleUpdateSearchConfig({
                     enabled: !searchConfig?.globalSettings?.enableAccessControl,
@@ -541,9 +617,28 @@ const SearchSettingsPage = () => {
                   })
                 }
               />
-            </Col>
+            </Box>
+            <Box className="layout-column tw:block global-setting-card">
+              <Typography className="global-setting-card__content">
+                {t('label.enable-entity', {
+                  entity: t('label.column-indexing'),
+                })}
+              </Typography>
+              <Toggle
+                aria-label={t('label.enable-entity', {
+                  entity: t('label.column-indexing'),
+                })}
+                className="global-setting-card__action tw:ml-12"
+                data-testid="enable-column-indexing-switch"
+                isDisabled={isUpdating}
+                isSelected={isColumnIndexingEnabled(searchConfig)}
+                onChange={handleColumnIndexingToggle}
+              />
+            </Box>
             {globalSettings.map(({ key, label, max, min }) => (
-              <Col className="global-setting-card" key={key}>
+              <Box
+                className="layout-column tw:block global-setting-card"
+                key={key}>
                 <GlobalSettingItem
                   label={t(label)}
                   max={max}
@@ -556,52 +651,65 @@ const SearchSettingsPage = () => {
                     })
                   }
                 />
-              </Col>
+              </Box>
             ))}
-          </Row>
+          </Box>
           {showHybridSearchWeights && (
-            <Row className="p-x-xs m-t-lg" gutter={0}>
-              <Col span={24}>
-                <Row align="middle" justify="space-between">
-                  <Typography.Title
+            <Grid className="layout-row layout-grid p-x-xs m-t-lg">
+              <Grid.Item className="layout-column" span={24}>
+                <Box
+                  align="center"
+                  className="layout-row"
+                  justify="between"
+                  wrap="wrap">
+                  <Typography
+                    as="h5"
                     className="text-sm font-semibold m-b-0"
-                    level={5}>
+                    size="text-md"
+                    weight="semibold">
                     {t('label.hybrid-search-weight-plural')}
-                  </Typography.Title>
+                  </Typography>
                   <Button
+                    color="primary"
                     data-testid="hybrid-weights-save-btn"
-                    disabled={!hybridWeightsChanged || isUpdating}
-                    loading={isUpdating}
-                    type="primary"
+                    isDisabled={!hybridWeightsChanged || isUpdating}
+                    isLoading={isUpdating}
                     onClick={onHybridWeightSave}>
                     {t('label.save')}
                   </Button>
-                </Row>
-              </Col>
-              <Col span={24}>
-                <Row align="middle" className="p-y-xs" gutter={16}>
-                  <Col flex="100px">
-                    <Typography.Text>
+                </Box>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={24}>
+                <Box
+                  align="center"
+                  className="layout-row p-y-xs"
+                  style={getLayoutGutter(16)}
+                  wrap="wrap">
+                  <Box
+                    className="layout-column tw:block"
+                    style={{ flex: '0 0 100px' }}>
+                    <Typography>
                       {t('label.keyword')}:{' '}
                       {(
                         1 -
                         (searchConfig?.globalSettings?.semanticWeight ?? 0.4)
                       ).toFixed(1)}
-                    </Typography.Text>
-                  </Col>
-                  <Col flex="auto">
+                    </Typography>
+                  </Box>
+                  <Box
+                    className="layout-column tw:block"
+                    style={{ flex: 'auto' }}>
                     <Slider
-                      disabled={isUpdating}
-                      max={1}
-                      min={0}
+                      aria-label={t('label.value')}
+                      isDisabled={isUpdating}
+                      maxValue={1}
+                      minValue={0}
                       step={0.1}
-                      tooltip={{
-                        formatter: (val) => `${t('label.semantic')}: ${val}`,
-                      }}
                       value={
                         searchConfig?.globalSettings?.semanticWeight ?? 0.4
                       }
-                      onChange={(val: number) => {
+                      onChange={(value) => {
+                        const val = Array.isArray(value) ? value[0] : value;
                         if (!searchConfig) {
                           return;
                         }
@@ -616,18 +724,20 @@ const SearchSettingsPage = () => {
                         setHybridWeightsChanged(true);
                       }}
                     />
-                  </Col>
-                  <Col flex="100px">
-                    <Typography.Text>
+                  </Box>
+                  <Box
+                    className="layout-column tw:block"
+                    style={{ flex: '0 0 100px' }}>
+                    <Typography>
                       {t('label.semantic')}:{' '}
                       {(
                         searchConfig?.globalSettings?.semanticWeight ?? 0.4
                       ).toFixed(1)}
-                    </Typography.Text>
-                  </Col>
-                </Row>
-              </Col>
-            </Row>
+                    </Typography>
+                  </Box>
+                </Box>
+              </Grid.Item>
+            </Grid>
           )}
           <SearchBoostsSection
             isLoading={isLoading}
@@ -644,26 +754,31 @@ const SearchSettingsPage = () => {
             onSaveTermBoost={handleSaveTermBoost}
             onTermBoostChange={handleTermBoostChange}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
-      <Row className="p-b-md m-x-0" gutter={[16, 16]}>
+      <Grid
+        className="layout-row layout-grid p-b-md m-x-0"
+        style={getLayoutGutter(16, 16)}>
         {settingCategoryData?.map((data) => (
-          <Col key={data.key} lg={8} md={12} sm={24}>
+          <Grid.Item
+            className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 tw:min-[992px]:col-span-8"
+            key={data.key}>
             <SettingItemCard data={data} onClick={handleViewDetailClick} />
-          </Col>
+          </Grid.Item>
         ))}
-      </Row>
-      <FieldValueBoostModal
-        entityOptions={fieldValueBoostOptions ?? []}
-        open={showFieldValueBoostModal}
-        selectedBoost={selectedFieldValueBoost}
-        onCancel={() => {
-          setShowFieldValueBoostModal(false);
-          setSelectedFieldValueBoost(undefined);
-        }}
-        onSave={handleSaveFieldValueBoost}
-      />
+      </Grid>
+      {showFieldValueBoostModal && (
+        <FieldValueBoostDialog
+          boost={selectedFieldValueBoost}
+          fieldOptions={fieldValueBoostOptions}
+          onClose={() => {
+            setShowFieldValueBoostModal(false);
+            setSelectedFieldValueBoost(undefined);
+          }}
+          onSave={handleSaveFieldValueBoost}
+        />
+      )}
       {showResetModal && (
         <ConfirmationModal
           bodyText={t('message.reset-search-settings-confirmation')}
@@ -676,6 +791,16 @@ const SearchSettingsPage = () => {
           onConfirm={handleResetToDefault}
         />
       )}
+      <ConfirmationModal
+        bodyText={t('message.disable-column-indexing-confirmation')}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.disable')}
+        header={t('label.column-indexing')}
+        isLoading={isUpdating}
+        visible={showDisableColumnIndexingModal}
+        onCancel={() => setShowDisableColumnIndexingModal(false)}
+        onConfirm={handleDisableColumnIndexing}
+      />
     </PageLayoutV1>
   );
 };

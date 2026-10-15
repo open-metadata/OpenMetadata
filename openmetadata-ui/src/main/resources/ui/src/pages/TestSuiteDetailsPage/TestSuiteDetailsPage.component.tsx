@@ -24,7 +24,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@untitledui/icons';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ComponentProps, useCallback, useMemo } from 'react';
@@ -183,18 +183,27 @@ const AddTestCaseDialogTrigger = ({
         <Modal>
           <Dialog
             showCloseButton
+            dividers="scroll"
             title={t('label.add-entity', {
               entity: testCasePluralLabel,
             })}
             onClose={() => setIsTestCaseModalOpen(false)}>
-            <Dialog.Content>
-              <AddTestCaseList
-                existingTest={existingTest}
-                getPopupContainer={getAddTestCasePopupContainer}
-                onCancel={() => setIsTestCaseModalOpen(false)}
-                onSubmit={onSubmit}
-              />
-            </Dialog.Content>
+            <AddTestCaseList
+              existingTest={existingTest}
+              getPopupContainer={getAddTestCasePopupContainer}
+              renderLayout={(content, actions) => (
+                <>
+                  <Dialog.Content>
+                    <Box direction="col" gap={2}>
+                      {content}
+                    </Box>
+                  </Dialog.Content>
+                  <Dialog.Footer>{actions}</Dialog.Footer>
+                </>
+              )}
+              onCancel={() => setIsTestCaseModalOpen(false)}
+              onSubmit={onSubmit}
+            />
           </Dialog>
         </Modal>
       </ModalOverlay>
@@ -230,7 +239,7 @@ const TestSuiteDetailsPage = () => {
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
-    fetchTestCases,
+    handleTestCasesRemoved,
     handleTestCaseSearch,
     handleSortTestCase,
     handleAddTestCaseSubmit,
@@ -326,7 +335,7 @@ const TestSuiteDetailsPage = () => {
             {renderDescription()}
             <div className="tw:w-full">
               <DataQualityTab
-                afterDeleteAction={fetchTestCases}
+                afterDeleteAction={handleTestCasesRemoved}
                 breadcrumbData={incidentUrlState}
                 fetchTestCases={handleSortTestCase}
                 hasActiveFilters={Boolean(testCaseSearchQuery.trim())}
@@ -377,7 +386,7 @@ const TestSuiteDetailsPage = () => {
     permissions.hasEditDescriptionPermission,
     onDescriptionUpdate,
     flags,
-    fetchTestCases,
+    handleTestCasesRemoved,
     incidentUrlState,
     handleSortTestCase,
     isLoading,

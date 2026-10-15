@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { FunctionComponent, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -52,20 +52,20 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
         to={getExplorePath({ search: searchText })}
         onClick={() => setIsOpen(false)}>
         {searchText}
-        <Typography.Text>{t('label.in-open-metadata')}</Typography.Text>
+        <Typography>{t('label.in-open-metadata')}</Typography>
       </Link>
       {options.map((option) => (
         <Button
-          className="d-flex justify-between text-sm w-full p-x-0"
+          className="tw:w-full"
+          color="tertiary"
           data-testid="InPage"
           key={option}
-          type="text"
           onClick={() => {
             selectOption(searchText);
             setIsOpen(false);
           }}>
           {searchText}
-          <Typography.Text>{option}</Typography.Text>
+          <Typography>{option}</Typography>
         </Button>
       ))}
     </div>

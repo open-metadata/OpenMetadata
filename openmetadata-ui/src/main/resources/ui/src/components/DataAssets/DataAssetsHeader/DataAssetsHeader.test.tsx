@@ -20,6 +20,10 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
+import {
+  TourContext,
+  TourProviderContextProps,
+} from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
@@ -174,8 +178,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Owner: jest.fn().mockImplementation(() => <div>Owner.component</div>),
   ClassificationTag: jest
     .fn()
-    .mockImplementation(({ label, 'data-testid': testId }) => (
-      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
+    .mockImplementation(({ label, href, 'data-testid': testId }) => (
+      <a data-testid={testId ?? 'classification-tag'} href={href}>
+        {label}
+      </a>
     )),
 }));
 jest.mock('../../../components/common/TierCard/TierCard', () =>
@@ -212,18 +218,19 @@ jest.mock(
         )
       )
 );
-// `onViewAll` exposed as a clickable trigger (not just an opaque div) so tests can drive the
+// `onItemClick` exposed as a clickable trigger (not just an opaque div) so tests can drive the
 // drawer open through the *widget* path — the reachable path for a deleted entity, since
 // ManageButton's announcement menu item is independently gated on `!deleted` inside
 // ManageButton itself (ManageButton.tsx), regardless of the `onAnnouncementClick` value
-// DataAssetsHeader passes in.
+// DataAssetsHeader passes in. The widget lost its View all button when the banner replaced
+// the list, so the announcement itself is now what opens the drawer.
 jest.mock(
   '../../../components/common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component',
   () =>
     jest
       .fn()
-      .mockImplementation(({ onViewAll }: { onViewAll?: () => void }) => (
-        <button data-testid="announcements-widget-view-all" onClick={onViewAll}>
+      .mockImplementation(({ onItemClick }: { onItemClick?: () => void }) => (
+        <button data-testid="announcements-widget-item" onClick={onItemClick}>
           AnnouncementsWidgetV3Body.component
         </button>
       ))
@@ -543,6 +550,26 @@ describe('DataAssetsHeader component', () => {
     expect(screen.getByTestId('Tier')).toBeInTheDocument();
   });
 
+  it('should show the Tier description tooltip on the Tier chip', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          tags: [MOCK_TIER_DATA],
+        }}
+      />
+    );
+
+    act(() => {
+      screen.getByTestId('Tier').focus();
+    });
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      MOCK_TIER_DATA.tagFQN
+    );
+  });
+
   it('should not render the Tier data if not  present', () => {
     render(<DataAssetsHeader {...mockProps} dataAsset={mockProps.dataAsset} />);
 
@@ -652,6 +679,20 @@ describe('DataAssetsHeader component', () => {
     expect(screen.getByText('label.view-in-service-type')).toBeInTheDocument();
   });
 
+  it('should not render source URL button when sourceUrl is not http(s)', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          sourceUrl: 'javascript:alert(1)',
+        }}
+      />
+    );
+
+    expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
+  });
+
   it('should show the source URL tooltip when the link receives focus', async () => {
     render(
       <DataAssetsHeader
@@ -672,6 +713,17 @@ describe('DataAssetsHeader component', () => {
 
     expect(sourceUrlButton).toHaveFocus();
     expect(await screen.findByText('label.source-url')).toBeVisible();
+  });
+
+  it('should render entity-specific header actions next to the manage menu', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        headerActions={<button data-testid="custom-header-action">Add</button>}
+      />
+    );
+
+    expect(screen.getByTestId('custom-header-action')).toBeInTheDocument();
   });
 
   it('should not render source URL button when sourceUrl is not present', () => {
@@ -1061,12 +1113,12 @@ describe('DataAssetsHeader component', () => {
 
   // Behavior parity with base commit 9cf866cd23: `createPermission={permissions?.EditAll}`
   // is unconditional — never gated by `deleted`. Driven through the AnnouncementsWidgetV3Body
-  // "view all" click rather than ManageButton — that's the reachable path for a *deleted*
+  // banner click rather than ManageButton — that's the reachable path for a *deleted*
   // entity, since ManageButton's own `onAnnouncementClick` menu item is independently gated
   // on `!deleted` inside ManageButton itself and would never surface the drawer for a
   // deleted entity in the first place.
   describe('AnnouncementDrawer.createPermission wiring', () => {
-    it('grants createPermission for a soft-deleted entity reached via the AnnouncementsWidgetV3Body view-all click, when EditAll is granted', async () => {
+    it('grants createPermission for a soft-deleted entity reached by clicking the announcement banner, when EditAll is granted', async () => {
       (getActiveAnnouncements as jest.Mock).mockResolvedValueOnce({
         data: [{ id: 'announcement-1' }],
       });
@@ -1079,9 +1131,7 @@ describe('DataAssetsHeader component', () => {
         />
       );
 
-      fireEvent.click(
-        await screen.findByTestId('announcements-widget-view-all')
-      );
+      fireEvent.click(await screen.findByTestId('announcements-widget-item'));
 
       expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
         'data-create-permission',
@@ -1102,9 +1152,7 @@ describe('DataAssetsHeader component', () => {
         />
       );
 
-      fireEvent.click(
-        await screen.findByTestId('announcements-widget-view-all')
-      );
+      fireEvent.click(await screen.findByTestId('announcements-widget-item'));
 
       expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
         'data-create-permission',
@@ -1189,6 +1237,25 @@ describe('DataAssetsHeader component', () => {
       getDataContractStatusIcon as jest.Mock;
     const mockUseCustomPages = useCustomPages as jest.Mock;
     const mockGetEntityDetailsPath = getEntityDetailsPath as jest.Mock;
+
+    it('should not fetch a data contract for the tour mock entity', async () => {
+      (getContractByEntityId as jest.Mock).mockClear();
+
+      await act(async () => {
+        render(
+          <TourContext.Provider
+            value={
+              {
+                isTourPage: true,
+              } as Partial<TourProviderContextProps> as TourProviderContextProps
+            }>
+            <DataAssetsHeader {...mockProps} />
+          </TourContext.Provider>
+        );
+      });
+
+      expect(getContractByEntityId).not.toHaveBeenCalled();
+    });
 
     it('should render data contract button when contract tab is visible and status is in allowed list', async () => {
       mockUseCustomPages.mockReturnValue({

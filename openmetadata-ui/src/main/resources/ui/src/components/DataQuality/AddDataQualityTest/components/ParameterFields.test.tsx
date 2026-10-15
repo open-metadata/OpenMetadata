@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
 import { Table } from '../../../../generated/entity/data/table';
@@ -28,7 +29,7 @@ import {
 import ParameterFields from './ParameterFields';
 import { FormValues } from './TestCaseFormV1.interface';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Trash01: () => <span data-testid="trash-icon" />,
 }));
 
@@ -36,10 +37,12 @@ const renderWithForm = (
   definition: TestDefinition,
   table?: Table,
   onSubmit?: (values: FormValues) => void,
-  testDefinitionDoc?: string
+  testDefinitionDoc?: string,
+  isDimensionalTest?: boolean,
+  defaultValues?: Partial<FormValues>
 ) => {
   const Wrapper = () => {
-    const form = useForm<FormValues>();
+    const form = useForm<FormValues>({ defaultValues });
     const handleSubmit = onSubmit ?? jest.fn();
 
     return (
@@ -53,6 +56,7 @@ const renderWithForm = (
         <ParameterFields
           definition={definition}
           form={form}
+          isDimensionalTest={isDimensionalTest}
           table={table}
           testDefinitionDoc={testDefinitionDoc}
         />
@@ -442,6 +446,125 @@ describe('ParameterFields', () => {
     expect(screen.getAllByTestId('parameter-thresholdUnit')).toHaveLength(1);
   });
 
+  describe('dimensionFailurePolicy', () => {
+    const definition = {
+      name: 'columnValuesToBeNotNull',
+      parameterDefinition: [
+        {
+          name: 'threshold',
+          displayName: 'Failure Threshold',
+          dataType: TestDataType.Number,
+        },
+        {
+          name: 'dimensionFailurePolicy',
+          displayName: 'Dimension Failure Policy',
+          dataType: TestDataType.String,
+          optionValues: ['OVERALL_ONLY', 'ANY_DIMENSION'],
+        },
+      ],
+    } as TestDefinition;
+
+    it('is hidden on a table or column test', () => {
+      renderWithForm(definition);
+
+      expect(screen.getByTestId('parameter-threshold')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('parameter-dimensionFailurePolicy')
+      ).not.toBeInTheDocument();
+    });
+
+    it('is shown on a dimension-level test, with its options as sentences', () => {
+      renderWithForm(definition, undefined, undefined, undefined, true);
+
+      expect(
+        screen.getByTestId('parameter-dimensionFailurePolicy')
+      ).toBeInTheDocument();
+
+      const options = screen
+        .getAllByRole('option', { hidden: true })
+        .map((option) => option.textContent);
+
+      expect(options).toContain('label.dimension-failure-policy-overall-only');
+      expect(options).toContain('label.dimension-failure-policy-any-dimension');
+      expect(options).not.toContain('ANY_DIMENSION');
+    });
+  });
+
+  describe('minRowsPerDimension', () => {
+    const definition = {
+      name: 'columnValuesToBeNotNull',
+      parameterDefinition: [
+        {
+          name: 'dimensionFailurePolicy',
+          displayName: 'Dimension Failure Policy',
+          dataType: TestDataType.String,
+          optionValues: ['OVERALL_ONLY', 'ANY_DIMENSION'],
+        },
+        {
+          name: 'minRowsPerDimension',
+          displayName: 'Minimum Rows per Dimension',
+          dataType: TestDataType.Int,
+        },
+      ],
+    } as TestDefinition;
+
+    const renderWithRollUp = (
+      params: Record<string, string>,
+      isDimensionalTest = true
+    ) =>
+      renderWithForm(
+        definition,
+        undefined,
+        undefined,
+        undefined,
+        isDimensionalTest,
+        { params } as Partial<FormValues>
+      );
+
+    it('is shown under ANY_DIMENSION with a PERCENTAGE threshold', () => {
+      renderWithRollUp({
+        dimensionFailurePolicy: 'ANY_DIMENSION',
+        thresholdUnit: 'PERCENTAGE',
+      });
+
+      expect(
+        screen.getByTestId('parameter-minRowsPerDimension')
+      ).toBeInTheDocument();
+    });
+
+    it.each([
+      [
+        'under OVERALL_ONLY',
+        { dimensionFailurePolicy: 'OVERALL_ONLY', thresholdUnit: 'PERCENTAGE' },
+        true,
+      ],
+      [
+        'with an ABSOLUTE threshold',
+        { dimensionFailurePolicy: 'ANY_DIMENSION', thresholdUnit: 'ABSOLUTE' },
+        true,
+      ],
+      [
+        'without a threshold unit',
+        { dimensionFailurePolicy: 'ANY_DIMENSION' },
+        true,
+      ],
+      [
+        'on a test without dimensions',
+        {
+          dimensionFailurePolicy: 'ANY_DIMENSION',
+          thresholdUnit: 'PERCENTAGE',
+        },
+        false,
+      ],
+    ])('is hidden %s', (_, params, isDimensionalTest) => {
+      renderWithRollUp(params, isDimensionalTest);
+
+      expect(
+        screen.queryByTestId('parameter-minRowsPerDimension')
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it.each([
     [
       'columnValuesToMatchRegex',
@@ -481,6 +604,41 @@ describe('ParameterFields', () => {
       expect(options).not.toContain('ABSOLUTE');
     }
   );
+
+  it('lets custom SQL pick a percentage threshold unit', async () => {
+    const definition = {
+      name: 'tableCustomSQLQuery',
+      parameterDefinition: [
+        {
+          name: 'thresholdUnit',
+          displayName: 'Threshold Unit',
+          dataType: TestDataType.String,
+          optionValues: ['ABSOLUTE', 'PERCENTAGE'],
+        },
+      ],
+    } as TestDefinition;
+
+    renderWithForm(definition);
+
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByTestId('parameter-thresholdUnit')).getByRole(
+          'button'
+        )
+      );
+    });
+
+    const percentage = screen
+      .getAllByRole('option')
+      .find(
+        (option) =>
+          option.textContent === 'label.threshold-unit-percentage' &&
+          !(option instanceof HTMLOptionElement)
+      );
+
+    expect(percentage).toBeDefined();
+    expect(percentage).not.toHaveAttribute('aria-disabled', 'true');
+  });
 
   it('shows a threshold unit id it has no sentence for as stored', () => {
     const definition = {

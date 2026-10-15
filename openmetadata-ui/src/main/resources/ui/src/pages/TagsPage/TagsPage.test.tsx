@@ -476,8 +476,8 @@ jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
 });
 
-jest.mock('../../components/DataAssets/DomainLabelV2/DomainLabelV2', () => ({
-  DomainLabelV2: jest
+jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => ({
+  DomainLabel: jest
     .fn()
     .mockImplementation(() => <div data-testid="domain-label-v2" />),
 }));
@@ -499,7 +499,7 @@ jest.mock('../../utils/LazyTagComponents', () => ({
   LazyCommonWidgets: jest
     .fn()
     .mockImplementation(() => <div data-testid="common-widgets" />),
-  LazyDomainLabelV2: jest
+  LazyDomainLabel: jest
     .fn()
     .mockImplementation(() => <div data-testid="domain-label-v2" />),
   LazyOwnerLabelV2: jest

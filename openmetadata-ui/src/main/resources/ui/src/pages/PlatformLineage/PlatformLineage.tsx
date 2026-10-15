@@ -12,17 +12,21 @@
  */
 import {
   ButtonUtility,
+  Card,
   Grid,
+  Select,
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { Expand05, Home02, Minimize02 } from '@untitledui/icons';
-import { Card, Select } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
+import {
+  Expand05,
+  Home02,
+  Minimize02,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, startCase } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
@@ -33,7 +37,8 @@ import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/As
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntitySuggestionOption from '../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component';
 import LineageConfigModal from '../../components/Entity/EntityLineage/LineageConfigModal';
-import Lineage from '../../components/Lineage/Lineage.component';
+import LineageComponent from '../../components/Lineage/Lineage.component';
+import { Lineage } from '../../components/Lineage/Lineage/Lineage';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
@@ -47,12 +52,11 @@ import {
 } from '../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import LineageProvider from '../../context/LineageProvider/LineageProvider';
-import { LineagePlatformView } from '../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/entity/type';
+import { LineagePlatformView } from '../../hooks/lineage/types';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
@@ -80,15 +84,14 @@ const PlatformLineage = () => {
   const { fqn: decodedFqn } = useFqn();
   const [selectedEntity, setSelectedEntity] = useState<SourceType>();
   const [isEntityLoading, setIsEntityLoading] = useState(false);
-  const [options, setOptions] = useState<DefaultOptionType[]>([]);
-  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<SourceType[]>([]);
   const [defaultValue, setDefaultValue] = useState<string | undefined>(
     decodedFqn || undefined
   );
-  // Config lives in the Zustand store — LineageProvider's fetch effect
-  // depends on it, so writing here triggers a refetch. Local useState here
-  // would leave the store untouched and the depth change would never
-  // reach the network.
+  const [searchText, setSearchText] = useState(defaultValue ?? '');
+  // Config lives in the Zustand store — Lineage's fetch effect depends on
+  // it, so writing here triggers a refetch. Local useState here would leave
+  // the store untouched and the depth change would never reach the network.
   const lineageConfig = useLineageStore((state) => state.lineageConfig);
   const setLineageConfig = useLineageStore((state) => state.setLineageConfig);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -164,46 +167,27 @@ const PlatformLineage = () => {
   const runSearch = useMemo(
     () =>
       debounce(async (value: string, request: number) => {
-        try {
-          setIsSearchLoading(true);
-          const searchIndices = [
-            SearchIndex.DATA_ASSET,
-            SearchIndex.DOMAIN,
-            SearchIndex.SERVICE,
-          ];
+        const searchIndices = [
+          SearchIndex.DATA_ASSET,
+          SearchIndex.DOMAIN,
+          SearchIndex.SERVICE,
+        ];
 
-          const response = await searchQuery({
-            query: escapeESReservedCharacters(value),
-            searchIndex: searchIndices,
-            pageSize: PAGE_SIZE_BASE,
-            queryFilter: getLineageEntityExclusionFilter(),
-            includeDeleted: false,
-          });
+        const response = await searchQuery({
+          query: escapeESReservedCharacters(value),
+          searchIndex: searchIndices,
+          pageSize: PAGE_SIZE_BASE,
+          queryFilter: getLineageEntityExclusionFilter(),
+          includeDeleted: false,
+        });
 
-          if (request !== searchOrder.current) {
-            return;
-          }
-
-          setOptions(
-            response.hits.hits.map((hit) => ({
-              value: hit._source.fullyQualifiedName ?? '',
-              label: (
-                <EntitySuggestionOption
-                  showEntityTypeBadge
-                  entity={hit._source as EntityReference}
-                  onSelectHandler={handleEntitySelect}
-                />
-              ),
-              data: hit,
-            }))
+        if (request === searchOrder.current) {
+          setSearchResults(
+            response.hits.hits.map((hit) => hit._source as SourceType)
           );
-        } finally {
-          if (request === searchOrder.current) {
-            setIsSearchLoading(false);
-          }
         }
       }, 300),
-    [handleEntitySelect]
+    []
   );
 
   const debouncedSearch = useCallback(
@@ -212,6 +196,35 @@ const PlatformLineage = () => {
       runSearch(value, request);
     },
     [runSearch]
+  );
+
+  const searchItems = useMemo(
+    () =>
+      searchResults.map((entity) => ({
+        id: entity.fullyQualifiedName ?? '',
+        label: getEntityName(entity),
+      })),
+    [searchResults]
+  );
+
+  const handleSearchInputChange = useCallback(
+    (value: string) => {
+      setSearchText(value);
+      debouncedSearch(value);
+    },
+    [debouncedSearch]
+  );
+
+  const handleSearchSelect = useCallback(
+    (key: Key | null) => {
+      const entity = searchResults.find(
+        (result) => result.fullyQualifiedName === key
+      );
+      if (entity) {
+        handleEntitySelect(entity as EntityReference);
+      }
+    },
+    [searchResults, handleEntitySelect]
   );
 
   const init = useCallback(async () => {
@@ -228,6 +241,7 @@ const PlatformLineage = () => {
       )(decodedFqn);
       setSelectedEntity(entityResponse);
       setDefaultValue(decodedFqn || undefined);
+      setSearchText(decodedFqn ?? '');
     } catch {
       // Old code awaited this via Promise.allSettled alongside the permission fetch, so a
       // rejection (or a synchronous throw from an unsupported entityType) never reached a
@@ -248,7 +262,7 @@ const PlatformLineage = () => {
       viewport: getViewportForLineageExport([], LINEAGE_EXPORT_SELECTOR),
       onExport: async () => '',
     });
-  }, []);
+  }, [showModal, t]);
 
   useEffect(() => {
     init();
@@ -269,22 +283,41 @@ const PlatformLineage = () => {
   const header = useMemo(() => {
     return (
       <div className="d-flex justify-between items-center">
-        <Select
-          showSearch
-          className="w-max-500"
+        <Select.ComboBox
+          allowsCustomValue
+          allowsEmptyCollection
+          aria-label={t('label.search-entity-for-lineage', {
+            entity: 'entity',
+          })}
+          className="tw:w-1/2 tw:max-w-125"
           data-testid="search-entity-select"
-          filterOption={false}
-          loading={isSearchLoading}
-          optionLabelProp="value"
-          options={options}
+          inputValue={searchText}
+          items={searchItems}
           placeholder={t('label.search-entity-for-lineage', {
             entity: 'entity',
           })}
-          style={{ width: '50%' }}
-          value={defaultValue}
+          selectedKey={null}
+          shortcut={false}
           onFocus={() => !defaultValue && debouncedSearch('')}
-          onSearch={debouncedSearch}
-        />
+          onInputChange={handleSearchInputChange}
+          onSelectionChange={handleSearchSelect}>
+          {(item) => (
+            <Select.Item
+              data-testid={`node-suggestion-${item.id}`}
+              id={item.id}
+              key={item.id}
+              textValue={item.label}>
+              <EntitySuggestionOption
+                showEntityTypeBadge
+                entity={
+                  searchResults.find(
+                    (result) => result.fullyQualifiedName === item.id
+                  ) as EntityReference
+                }
+              />
+            </Select.Item>
+          )}
+        </Select.ComboBox>
         <div className="d-flex gap-2">
           <Tooltip
             placement="top"
@@ -329,12 +362,16 @@ const PlatformLineage = () => {
       </div>
     );
   }, [
-    isFullScreen,
-    options,
+    searchItems,
+    searchResults,
+    searchText,
+    t,
     defaultValue,
     debouncedSearch,
-    isSearchLoading,
+    handleSearchInputChange,
+    handleSearchSelect,
     handleExport,
+    isFullScreen,
     navigate,
     queryParams,
   ]);
@@ -345,17 +382,21 @@ const PlatformLineage = () => {
     }
 
     return (
-      <LineageProvider>
-        <Lineage
+      <Lineage
+        isPlatformLineage
+        entity={selectedEntity}
+        entityFqn={decodedFqn}
+        entityType={entityType}>
+        <LineageComponent
           isPlatformLineage
           entity={selectedEntity}
           entityType={entityType}
           hasEditAccess={canEditLineage}
           platformHeader={header}
         />
-      </LineageProvider>
+      </Lineage>
     );
-  }, [selectedEntity, loading, canEditLineage, entityType, header]);
+  }, [selectedEntity, loading, canEditLineage, entityType, header, decodedFqn]);
 
   return (
     <PageLayoutV1
@@ -391,16 +432,18 @@ const PlatformLineage = () => {
 
             <Grid.Item span={24}>
               <Card>
-                <PageHeader
-                  data={{
-                    header: t('label.platform-type-lineage', {
-                      platformType: startCase(platformView),
-                    }),
-                    subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
-                  }}
-                  learningPageId={LEARNING_PAGE_IDS.LINEAGE}
-                  title={t('label.lineage')}
-                />
+                <Card.Content>
+                  <PageHeader
+                    data={{
+                      header: t('label.platform-type-lineage', {
+                        platformType: startCase(platformView),
+                      }),
+                      subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
+                    }}
+                    learningPageId={LEARNING_PAGE_IDS.LINEAGE}
+                    title={t('label.lineage')}
+                  />
+                </Card.Content>
               </Card>
             </Grid.Item>
           </>

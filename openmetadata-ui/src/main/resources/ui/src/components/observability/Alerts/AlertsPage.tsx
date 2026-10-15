@@ -12,8 +12,8 @@
  */
 
 import { Button, PageLayout } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,13 +28,13 @@ import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useObservabilityAlerts } from '../../../pages/ObservabilityAlertsPage/hooks/useObservabilityAlerts';
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 import AlertEditModal from './AlertEditModal.component';
 import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
 import ObservabilityAlertsAiTable from './ObservabilityAlertsAiTable.component';
-import { invalidateQueriesWithoutInitialRace } from './queryCacheUtils';
 
 interface AlertsPageProps {
   /** Which alerts this page serves; Settings → Notifications passes its kind. */

@@ -284,7 +284,8 @@
     "indexName": "domain_search_index",
     "indexMappingFile": "/elasticsearch/%s/domain_index_mapping.json",
     "alias": "domain",
-    "parentAliases": ["all", "marketplace"],
+    "parentAliases": ["all", "dataAssetEmbeddings",
+      "marketplace"],
     "childAliases": ["dataProduct"]
   },
   "metric": {
@@ -617,6 +618,13 @@
     "parentAliases": [
       "all"
     ],
+    "childAliases": []
+  },
+  "dataContract": {
+    "indexName": "data_contract_search_index",
+    "indexMappingFile": "/elasticsearch/%s/data_contract_index_mapping.json",
+    "alias": "dataContract",
+    "parentAliases": [],
     "childAliases": []
   },
   "mcpServer": {

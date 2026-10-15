@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Icon as ImageIcon } from '@openmetadata/ui-core-components/icon';
-import { Space, Typography } from 'antd';
+
 import { noop } from 'lodash';
 import { lazy } from 'react';
 import {
@@ -396,7 +397,7 @@ export const getDataProductDetailTabs = ({
         />
       ),
       key: EntityTabs.DOCUMENTATION,
-      children: <GenericTab type={PageType.DataProduct} variant="flat" />,
+      children: <GenericTab type={PageType.DataProduct} />,
     },
     ...(isVersionsView
       ? []
@@ -449,21 +450,33 @@ export const getDataProductDetailTabs = ({
 
 export const DataProductListItemRenderer = (props: EntityReference) => {
   return (
-    <Space direction="vertical" size={0}>
-      <Space>
+    <Box
+      inline
+      align="stretch"
+      className="layout-space"
+      direction="col"
+      gap={0}
+      itemClassName="layout-space-item">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={2}
+        itemClassName="layout-space-item">
         <Icon component={DataProductIcon} style={{ fontSize: '16px' }} />
-        <Typography.Text>{getEntityName(props)}</Typography.Text>
-      </Space>
+        <Typography>{getEntityName(props)}</Typography>
+      </Box>
       {props.description && (
-        <Typography.Paragraph
+        <Typography
+          as="div"
           className="data-product-list-description"
           ellipsis={{
             tooltip: props.description,
             rows: 2,
           }}>
           <RichTextEditorPreviewerV1 markdown={props.description} />
-        </Typography.Paragraph>
+        </Typography>
       )}
-    </Space>
+    </Box>
   );
 };

@@ -100,8 +100,22 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   GridMock.Item = jest.fn(({ children }: GridProps) => <div>{children}</div>);
 
+  const CardMock = Object.assign(
+    ({ children }: GridProps) => <div>{children}</div>,
+    {
+      Content: ({ children }: GridProps) => <div>{children}</div>,
+    }
+  );
+
+  const SelectMock = Object.assign(jest.fn(), {
+    ComboBox: jest.fn(() => <div>Select</div>),
+    Item: ({ children }: GridProps) => <div>{children}</div>,
+  });
+
   return {
+    Card: CardMock,
     Grid: GridMock,
+    Select: SelectMock,
     Tooltip: jest
       .fn()
       .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -243,9 +257,8 @@ jest.mock('../../components/Lineage/Lineage.component', () => ({
   default: jest.fn(() => <div>Lineage</div>),
 }));
 
-jest.mock('../../context/LineageProvider/LineageProvider', () => ({
-  __esModule: true,
-  default: jest.fn(({ children }: { children: React.ReactNode }) => (
+jest.mock('../../components/Lineage/Lineage/Lineage', () => ({
+  Lineage: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
 }));
@@ -259,14 +272,15 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
 
 const mockLineage = require('../../components/Lineage/Lineage.component')
   .default as jest.Mock;
-const mockLineageProvider =
-  require('../../context/LineageProvider/LineageProvider').default as jest.Mock;
+const mockLineageWrapper = require('../../components/Lineage/Lineage/Lineage')
+  .Lineage as jest.Mock;
 const mockPageLayoutV1 = require('../../components/PageLayoutV1/PageLayoutV1')
   .default as jest.Mock;
 const mockEntitySuggestionOption =
   require('../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component')
     .default as jest.Mock;
-const mockSelect = require('antd').Select as jest.Mock;
+const mockSelect = require('@openmetadata/ui-core-components').Select
+  .ComboBox as jest.Mock;
 
 jest.mock('../../components/Entity/EntityLineage/LineageConfigModal', () => ({
   __esModule: true,
@@ -303,16 +317,6 @@ jest.mock(
   })
 );
 
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Select: jest.fn(() => <div>Select</div>),
-    Card: jest.fn(({ children }) => <div>{children}</div>),
-  };
-});
-
 jest.mock('../../assets/svg/ic-download.svg', () => ({
   ReactComponent: () => <div>DownloadIcon</div>,
 }));
@@ -321,7 +325,7 @@ jest.mock('../../assets/svg/ic-settings-gear.svg', () => ({
   ReactComponent: () => <div>SettingsIcon</div>,
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Expand05: () => <div>Expand05</div>,
   Home02: () => <div>Home02</div>,
   Minimize02: () => <div>Minimize02</div>,
@@ -361,7 +365,7 @@ describe('PlatformLineage Component Logic', () => {
       <div>EntitySuggestionOption</div>
     ));
     mockLineage.mockImplementation(() => <div>Lineage</div>);
-    mockLineageProvider.mockImplementation(
+    mockLineageWrapper.mockImplementation(
       ({ children }: { children: React.ReactNode }) => <div>{children}</div>
     );
     mockPageLayoutV1.mockImplementation(
@@ -621,23 +625,25 @@ describe('PlatformLineage Component Logic', () => {
       // one drives: focus, typing, and the option list it is handed.
       mockSelect.mockImplementation(
         ({
-          options,
+          items,
+          children,
           onFocus,
-          onSearch,
+          onInputChange,
         }: {
-          options?: { value: string; label: React.ReactNode }[];
+          items?: { id: string; label: string }[];
+          children: (item: { id: string; label: string }) => React.ReactNode;
           onFocus?: () => void;
-          onSearch?: (value: string) => void;
+          onInputChange?: (value: string) => void;
         }) => (
           <div>
             <input
               aria-label="Search entity"
               data-testid="entity-search-input"
-              onChange={(event) => onSearch?.(event.target.value)}
+              onChange={(event) => onInputChange?.(event.target.value)}
               onFocus={() => onFocus?.()}
             />
-            {options?.map((option) => (
-              <div key={option.value}>{option.label}</div>
+            {items?.map((item) => (
+              <div key={item.id}>{children(item)}</div>
             ))}
           </div>
         )
@@ -926,11 +932,11 @@ describe('PlatformLineage Component Logic', () => {
       });
     });
 
-    it('should wrap Lineage in LineageProvider', async () => {
+    it('should wrap Lineage in the Lineage provider component', async () => {
       render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
-        expect(mockLineageProvider).toHaveBeenCalled();
+        expect(mockLineageWrapper).toHaveBeenCalled();
         expect(mockLineage).toHaveBeenCalled();
       });
     });

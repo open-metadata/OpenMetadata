@@ -28,6 +28,7 @@ import type { Key, Selection } from 'react-aria-components';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
 import { getLineageDropdownItems } from '../../constants/AdvancedSearch.constants';
@@ -42,7 +43,6 @@ import {
   IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS,
   IMPACT_ANALYSIS_STATIC_COLUMNS,
 } from '../../constants/Lineage.constants';
-import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -57,8 +57,8 @@ import {
   EdgeFromToData,
   LineageNodeType,
 } from '../../interface/lineage.interface';
+import { QueryFieldInterface } from '../../interface/queryFilter.interface';
 import { SearchSourceAlias } from '../../interface/search.interface';
-import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
   getLineageByEntityCount,
   getLineageDataByFQN,
@@ -92,6 +92,7 @@ import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import { LineageNode } from '../Lineage/Lineage.interface';
+import { useLineageHandlers } from '../Lineage/Lineage/LineageHandlersContext';
 import {
   SearchedDataProps,
   SourceType,
@@ -114,8 +115,13 @@ const LINEAGE_IMPACT_OPTION_ICONS: Record<
 ) as Record<EImpactLevel, FC<{ className?: string }>>;
 
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
-  const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
-    useLineageProvider();
+  const { updateEntityData } = useLineageHandlers();
+  const { selectedQuickFilters, setSelectedQuickFilters } = useLineageStore(
+    useShallow((s) => ({
+      selectedQuickFilters: s.selectedQuickFilters,
+      setSelectedQuickFilters: s.setSelectedQuickFilters,
+    }))
+  );
 
   const { lineageConfig } = useLineageStore();
   const { fqn } = useFqn();
@@ -331,7 +337,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           const value = [...(keys as Set<LineageDirection>)][0];
           if (value) {
             handlePageChange(1);
-            updateURLParams({ dir: value });
+            updateURLParams({
+              dir: value,
+              depth:
+                value === LineageDirection.Upstream
+                  ? lineageConfig.upstreamDepth
+                  : lineageConfig.downstreamDepth,
+            });
           }
         }}>
         {radioGroupOptions.map((option) => (
@@ -344,7 +356,14 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         ))}
       </ButtonGroup>
     );
-  }, [handlePageChange, lineageDirection, radioGroupOptions, updateURLParams]);
+  }, [
+    handlePageChange,
+    lineageConfig.downstreamDepth,
+    lineageConfig.upstreamDepth,
+    lineageDirection,
+    radioGroupOptions,
+    updateURLParams,
+  ]);
 
   // Column-level filter keys used for column_filter post-processing
   // On Table-level: only COLUMN goes to column_filter (for Column dropdown in post-processing)
@@ -482,6 +501,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     impactLevel,
     setSelectedImpactLevel,
     streamButtonGroup,
+    t,
   ]);
 
   // Function to fetch nodes based on current filters and pagination
@@ -600,16 +620,21 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       setLoading(false);
     }
   }, [
+    lineageConfig,
     lineageDirection,
-    queryFilter,
-    entityType,
-    fqn,
     nodeDepth,
+    fqn,
+    entityType,
+    queryFilter,
+    columnFilterValue,
+    setColumnLineageNodes,
+    handlePagingChange,
     currentPage,
     pageSize,
+    setFilterNodes,
+    setLineagePagingInfo,
+    setLoading,
     impactLevel,
-    lineageConfig,
-    columnFilterValue,
   ]);
 
   // Table-level lineage: fetch on all dependencies
@@ -617,24 +642,12 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     void fetchNodes();
   }, [fetchNodes, impactLevel]);
 
-  useEffect(() => {
-    updateEntityData(entityType, entity, false);
-  }, [entityType, entity]);
+  const updateEntityDataRef = useRef(updateEntityData);
+  updateEntityDataRef.current = updateEntityData;
 
-  // Sync node depth with lineageConfig
   useEffect(() => {
-    updateURLParams({
-      depth:
-        lineageDirection === LineageDirection.Upstream
-          ? lineageConfig.upstreamDepth
-          : lineageConfig.downstreamDepth,
-    });
-  }, [
-    lineageConfig.downstreamDepth,
-    lineageConfig.upstreamDepth,
-    lineageDirection,
-    updateURLParams,
-  ]);
+    updateEntityDataRef.current(entityType, entity, false);
+  }, [entityType, entity]);
 
   const nodeDepthOptions = useMemo(() => {
     return (
@@ -692,7 +705,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     );
   }, [
     searchValue,
-    lineagePagingInfo,
     nodeDepthOptions,
     filterNodeIds,
     impactLevel,
@@ -834,7 +846,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           ),
       },
     ],
-    [t, renderName]
+    [t, renderName, entityType]
   );
 
   // Render function for column names with search highlighting
@@ -910,7 +922,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       },
       ...tableColumns.slice(1),
     ],
-    [t, tableColumns, lineageDirection, columnNameRender, searchValue]
+    [t, tableColumns, columnNameRender, searchValue]
   );
 
   // Initialize quick filters on component mount
@@ -919,9 +931,11 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       impactLevel === EImpactLevel.ColumnLevel
     );
     const updatedQuickFilters = items.map((selectedFilterItem) => {
-      const originalFilterItem = selectedQuickFilters?.find(
-        (filter) => filter.key === selectedFilterItem.key
-      );
+      const originalFilterItem = useLineageStore
+        .getState()
+        .selectedQuickFilters?.find(
+          (filter) => filter.key === selectedFilterItem.key
+        );
 
       return {
         ...(originalFilterItem || selectedFilterItem),
@@ -934,7 +948,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     if (updatedQuickFilters.length > 0) {
       setSelectedQuickFilters(updatedQuickFilters);
     }
-  }, [impactLevel]);
+  }, [impactLevel, setSelectedQuickFilters]);
 
   // Determine columns and dataSource based on impactLevel
   const { columns, dataSource } = useMemo(() => {
@@ -985,7 +999,14 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         handlePageChange(data.currentPage);
       },
     };
-  }, [pageSize, currentPage, showPagination, paging, handlePageSizeChange]);
+  }, [
+    paging,
+    pageSize,
+    currentPage,
+    showPagination,
+    handlePageSizeChange,
+    handlePageChange,
+  ]);
 
   return (
     <Card

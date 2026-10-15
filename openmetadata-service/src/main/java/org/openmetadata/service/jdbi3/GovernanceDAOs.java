@@ -60,9 +60,15 @@ public interface GovernanceDAOs {
       return false;
     }
 
+    /** Ids of the domain with {@code fqnHash} and of every domain nested under it. */
+    @SqlQuery(
+        "SELECT id FROM domain_entity WHERE fqnHash = :fqnHash OR fqnHash LIKE :fqnHashPrefix")
+    List<String> listSubtreeIds(
+        @Bind("fqnHash") String fqnHash, @Bind("fqnHashPrefix") String fqnHashPrefix);
+
     @Override
     default int listCount(ListFilter filter) {
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
       String hierarchyFilter = filter.getQueryParam("hierarchyFilter");
 
@@ -87,7 +93,7 @@ public interface GovernanceDAOs {
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
       String hierarchyFilter = filter.getQueryParam("hierarchyFilter");
 
@@ -112,7 +118,7 @@ public interface GovernanceDAOs {
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
       String hierarchyFilter = filter.getQueryParam("hierarchyFilter");
       String offsetParam = filter.getQueryParam("offset");
