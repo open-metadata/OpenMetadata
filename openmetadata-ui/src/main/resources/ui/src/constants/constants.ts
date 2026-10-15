@@ -45,6 +45,9 @@ export const HOVER_CHART_OPACITY = 0.3;
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 export const DOMAIN_STORAGE_KEY = 'om_domains';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
+// Marks a request whose results must not be narrowed to the selected navbar domain; the
+// domain-filter interceptor reads and removes it before the request is sent.
+export const SKIP_DOMAIN_FILTER_HEADER = 'X-Skip-Domain-Filter';
 export const DOMAIN_ONLY_ACCESS_ROLE = 'DomainOnlyAccessRole';
 export const REFRESH_TOKEN_KEY = 'refreshToken';
 
@@ -326,6 +329,10 @@ export const ROUTES = {
   NOTIFICATION_ALERT_LIST: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}`,
   NOTIFICATION_ALERT_DETAILS_WITH_TAB: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
+  SETTINGS_ANNOUNCEMENTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}`,
+  SETTINGS_ANNOUNCEMENT_ADD: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/add`,
+  SETTINGS_ANNOUNCEMENT_EDIT: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/edit/${PLACEHOLDER_ROUTE_ID}`,
+  SETTINGS_ANNOUNCEMENT_DUPLICATE: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/duplicate/${PLACEHOLDER_ROUTE_ID}`,
 
   // Metric Entity
   METRICS: '/metrics',
