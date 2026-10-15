@@ -338,6 +338,7 @@ const ContractDetail: React.FC<{
               {(contract as ContractWithInheritance & { inherited?: boolean })
                 .inherited && (
                 <ButtonUtility
+                  className="inherit-icon"
                   icon={InheritIcon}
                   tooltip={t('label.inherited-entity', {
                     entity: t('label.contract'),
@@ -754,6 +755,7 @@ const ContractDetail: React.FC<{
 
                 const inheritedIcon = isInherited ? (
                   <ButtonUtility
+                    className="inherit-icon"
                     icon={InheritIcon}
                     tooltip={t('label.inherited-entity', {
                       entity: t('label.terms-of-service'),
@@ -793,6 +795,7 @@ const ContractDetail: React.FC<{
                 (() => {
                   const inheritedIcon = contract.security?.inherited ? (
                     <ButtonUtility
+                      className="inherit-icon"
                       icon={InheritIcon}
                       tooltip={t('label.inherited-entity', {
                         entity: t('label.security'),

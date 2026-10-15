@@ -443,6 +443,7 @@ export const CsvJobsTray = () => {
 
     return (
       <ButtonUtility
+        className="csv-jobs-tray-dismiss"
         icon={XClose}
         size="sm"
         tooltip={t('label.dismiss')}

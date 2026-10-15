@@ -592,7 +592,7 @@ const getFirstVisibleFixtureMetricRow = async (
 };
 
 const getMetricActionsMenu = (page: Page) =>
-  page.getByRole('menu', { name: 'Open menu' });
+  page.getByRole('menu', { name: 'Actions' });
 
 const openMetricActions = async (page: Page) => {
   await page.getByTestId('metric-actions').click();
