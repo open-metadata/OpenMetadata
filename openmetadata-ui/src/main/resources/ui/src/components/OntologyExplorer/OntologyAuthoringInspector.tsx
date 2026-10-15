@@ -23,7 +23,14 @@ import {
   SelectItemType,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { BookClosed, ChevronRight, Edit01, LinkExternal01, Plus, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  BookClosed,
+  ChevronRight,
+  Edit01,
+  LinkExternal01,
+  Plus,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
