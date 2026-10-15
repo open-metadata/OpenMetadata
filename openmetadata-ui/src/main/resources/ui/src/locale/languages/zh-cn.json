@@ -4737,7 +4737,7 @@
     "key-pair-auth-doc-description": "Recommended for service accounts. Add a passphrase only if the key itself is encrypted.",
     "kg-columns-scope": "所选表的列，包括业务术语和分类标签。",
     "kg-concept-scope": "业务概念模型及其映射的资产。",
-    "kg-coverage-scope": "覆盖情况描述已返回的连接。“未知”表示邻域不完整或超出当前层级范围。",
+    "kg-coverage-scope": "当前范围内缺少术语表术语的资产。映射术语以解决。",
     "kg-entity-scope": "血缘、结构、治理和业务本体连接。",
     "kg-group-explanation": "{{count}} 条独立关系共享此谓词。分组会保留每条原始陈述。",
     "kg-load-error": "无法加载请求的连接，请重试。",

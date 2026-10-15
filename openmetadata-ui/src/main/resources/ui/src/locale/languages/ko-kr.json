@@ -4737,7 +4737,7 @@
     "key-pair-auth-doc-description": "Recommended for service accounts. Add a passphrase only if the key itself is encrypted.",
     "kg-columns-scope": "선택한 테이블의 열과 비즈니스 용어 및 분류 태그입니다.",
     "kg-concept-scope": "비즈니스 개념 모델과 매핑된 자산입니다.",
-    "kg-coverage-scope": "매핑 범위는 반환된 연결을 설명합니다. 알 수 없음은 주변 연결이 불완전하거나 이 수준의 범위를 벗어났음을 의미합니다.",
+    "kg-coverage-scope": "현재 범위에서 용어집 용어가 없는 자산입니다. 용어를 매핑하여 해결하세요.",
     "kg-entity-scope": "계보, 구조, 거버넌스 및 비즈니스 온톨로지 연결입니다.",
     "kg-group-explanation": "{{count}}개의 개별 관계가 이 술어를 공유합니다. 그룹화해도 모든 원래 문장이 보존됩니다.",
     "kg-load-error": "요청한 연결을 불러올 수 없습니다. 다시 시도하세요.",

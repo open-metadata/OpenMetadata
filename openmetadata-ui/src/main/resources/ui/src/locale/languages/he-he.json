@@ -4737,7 +4737,7 @@
     "key-pair-auth-doc-description": "Recommended for service accounts. Add a passphrase only if the key itself is encrypted.",
     "kg-columns-scope": "עמודות הטבלה שנבחרה, כולל מונחים עסקיים ותגיות סיווג.",
     "kg-concept-scope": "מודל המושגים העסקיים והנכסים הממופים אליו.",
-    "kg-coverage-scope": "הכיסוי מתאר את הקשרים שהוחזרו. לא ידוע מציין שהסביבה אינה שלמה או מחוץ לרמה זו.",
+    "kg-coverage-scope": "נכסים ללא מונח מילון במתחם הנוכחי. מפו מונח כדי לפתור.",
     "kg-entity-scope": "קשרי שושלת נתונים, מבנה, ממשל ואונטולוגיה עסקית.",
     "kg-group-explanation": "{{count}} קשרים נפרדים חולקים נשוא זה. הקיבוץ שומר על כל טענה מקורית.",
     "kg-load-error": "לא ניתן לטעון את הקשרים המבוקשים. יש לנסות שוב.",

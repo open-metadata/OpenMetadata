@@ -4737,7 +4737,7 @@
     "key-pair-auth-doc-description": "Recommended for service accounts. Add a passphrase only if the key itself is encrypted.",
     "kg-columns-scope": "Colonnes de la table sélectionnée, avec leurs termes métier et étiquettes de classification.",
     "kg-concept-scope": "Le modèle de concepts métier et les ressources associées.",
-    "kg-coverage-scope": "La couverture décrit les connexions renvoyées. Inconnu signifie que le voisinage est incomplet ou hors de ce niveau.",
+    "kg-coverage-scope": "Actifs sans terme de glossaire dans la portée actuelle. Associez un terme pour résoudre.",
     "kg-entity-scope": "Connexions de lignage, de structure, de gouvernance et d’ontologie métier.",
     "kg-group-explanation": "{{count}} relations individuelles partagent ce prédicat. Le regroupement conserve chaque assertion originale.",
     "kg-load-error": "Impossible de charger les connexions demandées. Veuillez réessayer.",

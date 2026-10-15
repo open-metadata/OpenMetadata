@@ -4737,7 +4737,7 @@
     "key-pair-auth-doc-description": "Recommended for service accounts. Add a passphrase only if the key itself is encrypted.",
     "kg-columns-scope": "選択したテーブルの列と、そのビジネス用語および分類タグ。",
     "kg-concept-scope": "ビジネス概念モデルと、マッピングされたアセット。",
-    "kg-coverage-scope": "カバレッジは取得された接続を示します。不明は、近傍が不完全か、このレベルの範囲外であることを意味します。",
+    "kg-coverage-scope": "現在のスコープで用語集の用語が欠落しているアセット。用語をマッピングして解決します。",
     "kg-entity-scope": "リネージ、構造、ガバナンス、ビジネスオントロジーの接続。",
     "kg-group-explanation": "{{count}} 件の個別の関係がこの述語を共有しています。グループ化しても元の各ステートメントは保持されます。",
     "kg-load-error": "要求された接続を読み込めませんでした。再試行してください。",

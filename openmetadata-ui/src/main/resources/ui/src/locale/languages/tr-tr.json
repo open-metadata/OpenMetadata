@@ -4737,7 +4737,7 @@
     "key-pair-auth-doc-description": "Recommended for service accounts. Add a passphrase only if the key itself is encrypted.",
     "kg-columns-scope": "Seçilen tablonun sütunları, iş terimleri ve sınıflandırma etiketleriyle birlikte.",
     "kg-concept-scope": "İş kavramı modeli ve eşlenen varlıkları.",
-    "kg-coverage-scope": "Kapsama, döndürülen bağlantıları açıklar. Bilinmiyor, komşuluğun eksik veya bu düzeyin dışında olduğu anlamına gelir.",
+    "kg-coverage-scope": "Geçerli kapsamda sözlük terimi eksik olan varlıklar. Çözmek için bir terim eşleyin.",
     "kg-entity-scope": "Veri kökeni, yapı, yönetişim ve iş ontolojisi bağlantıları.",
     "kg-group-explanation": "{{count}} ayrı ilişki bu yüklemi paylaşır. Gruplama her özgün ifadeyi korur.",
     "kg-load-error": "İstenen bağlantılar yüklenemedi. Lütfen yeniden deneyin.",

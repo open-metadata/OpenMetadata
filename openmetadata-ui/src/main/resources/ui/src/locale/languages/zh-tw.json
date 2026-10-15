@@ -4737,7 +4737,7 @@
     "key-pair-auth-doc-description": "Recommended for service accounts. Add a passphrase only if the key itself is encrypted.",
     "kg-columns-scope": "所選資料表的資料行，包括業務詞彙和分類標籤。",
     "kg-concept-scope": "業務概念模型及其對應的資產。",
-    "kg-coverage-scope": "涵蓋情況描述已傳回的連線。「未知」表示鄰域不完整或超出目前層級範圍。",
+    "kg-coverage-scope": "目前範圍內缺少術語表術語的資產。對應術語以解決。",
     "kg-entity-scope": "沿襲、結構、治理和業務本體連線。",
     "kg-group-explanation": "{{count}} 條獨立關係共用此述詞。分組會保留每條原始陳述。",
     "kg-load-error": "無法載入要求的連線，請重試。",

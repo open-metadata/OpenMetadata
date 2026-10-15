@@ -4737,7 +4737,7 @@
     "key-pair-auth-doc-description": "Recommended for service accounts. Add a passphrase only if the key itself is encrypted.",
     "kg-columns-scope": "Spalten der ausgewählten Tabelle einschließlich ihrer Geschäftsbegriffe und Klassifizierungs-Tags.",
     "kg-concept-scope": "Das Geschäftskonzeptmodell und seine zugeordneten Datenbestände.",
-    "kg-coverage-scope": "Die Abdeckung beschreibt die zurückgegebenen Verbindungen. Unbekannt bedeutet, dass die Nachbarschaft unvollständig ist oder außerhalb dieser Ebene liegt.",
+    "kg-coverage-scope": "Assets ohne Glossarbegriff im aktuellen Bereich. Ordnen Sie einen Begriff zu, um das Problem zu beheben.",
     "kg-entity-scope": "Verbindungen zu Herkunft, Struktur, Governance und Geschäftsontologie.",
     "kg-group-explanation": "{{count}} einzelne Beziehungen teilen dieses Prädikat. Die Gruppierung erhält jede ursprüngliche Aussage.",
     "kg-load-error": "Die angeforderten Verbindungen konnten nicht geladen werden. Bitte erneut versuchen.",

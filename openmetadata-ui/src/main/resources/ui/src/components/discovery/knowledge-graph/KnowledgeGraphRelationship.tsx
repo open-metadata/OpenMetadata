@@ -20,6 +20,7 @@ import {
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getColorSetForType } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
+import { getGraphNodeHref } from '../../../utils/discovery/knowledge-graph/knowledgeGraphNavigation.utils';
 import {
     getGroupMemberLabelKey,
     getSharedMemberType
@@ -104,7 +105,12 @@ const resolveAggregateType = (
   return memberNodes[0]?.type ?? fallbackType ?? 'other';
 };
 
-/** Build the member rows for a bundle-edge inspector. */
+/**
+ * Build the member rows for a bundle-edge inspector. Each row navigates to
+ * the member entity's page (new tab) so the bundle inspector stays usable
+ * for jumping into any one of the aggregated relationships; rows without a
+ * resolvable href render disabled so the chevron doesn't lie about navigation.
+ */
 const buildMemberRows = (
   members: NonNullable<KnowledgeGraphG6Edge['data']['members']>,
   nodes: ReadonlyMap<string, GraphNode>,
@@ -115,6 +121,7 @@ const buildMemberRows = (
     const fromNode = nodes.get(member.from);
     const toNode = nodes.get(member.to);
     const memberNode = sourceIsAggregate ? fromNode : toNode;
+    const href = getGraphNodeHref(memberNode);
     const key = JSON.stringify([
       member.from,
       member.relationType ?? member.label,
@@ -123,11 +130,17 @@ const buildMemberRows = (
 
     return (
       <InspectorRelationshipRow
+        isDisabled={!href}
         key={key}
         object={toNode?.label ?? member.to}
         predicate={member.label}
         subject={fromNode?.label ?? member.from}
         tile={entityTile(memberNode?.type ?? aggregateType, 'sm')}
+        onPress={
+          href
+            ? () => window.open(href, '_blank', 'noopener,noreferrer')
+            : undefined
+        }
       />
     );
   });
@@ -149,7 +162,10 @@ const resolveBundleTypes = (
     sourceIsAggregate,
     aggregateNode?.type ?? ''
   );
-  const aggregateType = resolveAggregateType(memberNodes, aggregateNode?.type ?? '');
+  const aggregateType = resolveAggregateType(
+    memberNodes,
+    aggregateNode?.type ?? ''
+  );
   const memberKey = getGroupMemberLabelKey(memberNodes, peerNode?.type ?? '');
   const memberType = memberKey
     ? t(memberKey)

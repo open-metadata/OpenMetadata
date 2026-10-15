@@ -4737,7 +4737,7 @@
     "key-pair-auth-doc-description": "Recommended for service accounts. Add a passphrase only if the key itself is encrypted.",
     "kg-columns-scope": "أعمدة الجدول المحدد، بما فيها مصطلحات الأعمال ووسوم التصنيف.",
     "kg-concept-scope": "نموذج مفاهيم الأعمال والأصول المعيّنة إليه.",
-    "kg-coverage-scope": "تصف التغطية الاتصالات المسترجعة. غير معروف يعني أن الجوار غير مكتمل أو خارج هذا المستوى.",
+    "kg-coverage-scope": "الأصول التي تفتقر إلى مصطلح مسرد في النطاق الحالي. اربط مصطلحًا لحلها.",
     "kg-entity-scope": "اتصالات تسلسل البيانات والبنية والحوكمة وأنطولوجيا الأعمال.",
     "kg-group-explanation": "تشترك {{count}} علاقة منفردة في هذا المحمول. يحافظ التجميع على كل عبارة أصلية.",
     "kg-load-error": "تعذر تحميل الاتصالات المطلوبة. يرجى إعادة المحاولة.",

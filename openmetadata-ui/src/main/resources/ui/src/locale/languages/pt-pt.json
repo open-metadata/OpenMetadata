@@ -4737,7 +4737,7 @@
     "key-pair-auth-doc-description": "Recommended for service accounts. Add a passphrase only if the key itself is encrypted.",
     "kg-columns-scope": "Colunas da tabela selecionada, incluindo termos de negócio e etiquetas de classificação.",
     "kg-concept-scope": "O modelo de conceitos de negócio e os seus ativos mapeados.",
-    "kg-coverage-scope": "A cobertura descreve as ligações devolvidas. Desconhecido significa que a vizinhança está incompleta ou fora deste nível.",
+    "kg-coverage-scope": "Ativos sem termo de glossário no âmbito atual. Mapeie um termo para resolver.",
     "kg-entity-scope": "Ligações de linhagem, estrutura, governação e ontologia de negócio.",
     "kg-group-explanation": "{{count}} relações individuais partilham este predicado. O agrupamento preserva cada declaração original.",
     "kg-load-error": "Não foi possível carregar as ligações pedidas. Tente novamente.",

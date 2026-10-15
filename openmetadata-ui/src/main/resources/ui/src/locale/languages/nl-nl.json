@@ -4737,7 +4737,7 @@
     "key-pair-auth-doc-description": "Recommended for service accounts. Add a passphrase only if the key itself is encrypted.",
     "kg-columns-scope": "Kolommen van de geselecteerde tabel, inclusief bedrijfsbegrippen en classificatietags.",
     "kg-concept-scope": "Het bedrijfsconceptmodel en de gekoppelde assets.",
-    "kg-coverage-scope": "De dekking beschrijft de geretourneerde verbindingen. Onbekend betekent dat de omgeving onvolledig is of buiten dit niveau valt.",
+    "kg-coverage-scope": "Assets zonder woordenlijstterm in het huidige bereik. Koppel een term om op te lossen.",
     "kg-entity-scope": "Verbindingen voor herkomst, structuur, governance en bedrijfsontologie.",
     "kg-group-explanation": "{{count}} afzonderlijke relaties delen dit predicaat. Groeperen behoudt elke oorspronkelijke uitspraak.",
     "kg-load-error": "De gevraagde verbindingen konden niet worden geladen. Probeer het opnieuw.",

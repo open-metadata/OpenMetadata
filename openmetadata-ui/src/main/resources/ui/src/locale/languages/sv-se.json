@@ -4737,7 +4737,7 @@
     "key-pair-auth-doc-description": "Rekommenderas för tjänstkonton. Lägg till en lösenfras endast om nyckeln i sig är krypterad.",
     "kg-columns-scope": "Kolumner i den valda tabellen, inklusive affärstermer och klassificeringstaggar.",
     "kg-concept-scope": "Affärskonceptmodellen och dess mappade tillgångar.",
-    "kg-coverage-scope": "Täckningen beskriver de returnerade anslutningarna. Okänd innebär att grannskapet är ofullständigt eller utanför denna nivå.",
+    "kg-coverage-scope": "Tillgångar som saknar ordlistebegrepp i aktuellt omfång. Koppla ett begrepp för att lösa.",
     "kg-entity-scope": "Anslutningar för härkomst, struktur, styrning och affärsontologi.",
     "kg-group-explanation": "{{count}} enskilda relationer delar detta predikat. Grupperingen bevarar varje ursprungligt påstående.",
     "kg-load-error": "De begärda kopplingarna kunde inte läsas in. Försök igen.",
