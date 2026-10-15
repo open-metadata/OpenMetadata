@@ -59,6 +59,25 @@ class TopicResolutionResult(BaseModel):
     )
 
 
+class ConfluentTelemetryRow(BaseModel):
+    """
+    One topic/client pair from Confluent's telemetry Data Flow dataset.
+
+    The API returns its group_by fields under dotted names, which are not valid Python
+    identifiers, so both are read through aliases. The metric value is deliberately absent:
+    only the pairing carries meaning here, since the question is which client wrote to
+    which topic and not how much it wrote.
+
+    Both halves are required and non-empty, because a row missing either one attributes a
+    topic to no connector or a connector to no topic, and neither can become lineage.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    client_id: str = Field(..., min_length=1, alias="metric.client_id", description="Producer or consumer client id")
+    topic: str = Field(..., min_length=1, alias="metric.topic", description="Topic the client wrote to")
+
+
 class KafkaConnectColumnMapping(BaseModel):
     """Model for column-level mapping between source and target"""
 
@@ -76,6 +95,17 @@ class KafkaConnectDatasetDetails(BaseModel):
     schema: str | None = None
     parent_container: str | None = None
     container_name: str | None = None
+    source_topic: str | None = Field(
+        default=None,
+        description="Topic this dataset was derived from. Set by resolvers that know the "
+        "topic->table pairing, so matching does not have to re-derive it by name.",
+    )
+    fully_qualified: bool = Field(
+        default=False,
+        description="True when database is a real Snowflake-style name, so the table FQN uses "
+        "the database slot even when schema is missing. CDC resolvers leave this False because their "
+        "'database' is a logical server name.",
+    )
     column_mappings: list[KafkaConnectColumnMapping] = Field(
         default_factory=list, description="Column-level mappings if available"
     )

@@ -6,7 +6,8 @@ paths: "openmetadata-ui/src/main/resources/ui/**/*.{ts,tsx}"
 # Frontend React/TypeScript conventions
 
 Applies to UI `*.{ts,tsx}`. Styling/tokens are in `frontend-styling.md`; component-library choice in
-`component-library.md`; strings/i18n in `i18n.md`; Playwright in `frontend-playwright.md`. For the
+`component-library.md`; strings/i18n in `i18n.md`; Playwright in `frontend-playwright.md`;
+reading permissions in `frontend-permissions.md`. For the
 **formatting procedure** invoke the `ui-checkstyle` skill — do not hand-edit formatting.
 **Folder structure and file naming for new code:
 `openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md`** — read it before creating any new
@@ -22,6 +23,9 @@ file. Forms reference `openmetadata-ui/src/main/resources/ui/docs/formutils.md`.
   `.constants.ts`, `.style.less`, `.test.tsx`, `.mock.ts`. Pure logic goes in `*.utils.ts` (no React,
   no JSX) so it is testable without rendering.
   *(Legacy uses `.component.tsx`/`.interface.ts` — don't rename; the suffix marks migration status.)*
+- **Component files hold only the component** (plus its props type). Module-level constants go in a
+  sibling `.constants.ts`, helpers in a sibling `.utils.ts` — or in root `constants/`/`utils/` when
+  shared. Importers then never pull a component module for a value, which avoids import cycles.
 - **No `index.ts` barrel** inside a component folder — `no-internal-barrel-imports` reports it.
 - **Functional components only** — no class components.
 - **State**: `useState` with proper typing; multiple loading states as one object

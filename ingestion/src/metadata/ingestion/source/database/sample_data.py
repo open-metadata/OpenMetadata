@@ -275,6 +275,10 @@ def get_lineage_details(
     if edge.get("temp_lineage_tables"):
         temp_tables = [TempLineageTable(**table) for table in edge["temp_lineage_tables"]]
 
+    columns_lineage = [
+        ColumnLineage(**column_lineage)
+        for column_lineage in (edge.get("columnsLineage") or edge.get("columns_lineage") or [])
+    ]
     created_at = get_lineage_timestamp(edge, "createdAt", "created_at_days_ago", reference_time)
     updated_at = get_lineage_timestamp(edge, "updatedAt", "updated_at_days_ago", reference_time)
 
@@ -283,6 +287,7 @@ def get_lineage_details(
             edge_entity_ref,
             edge.get("sql_query"),
             temp_tables,
+            columns_lineage,
             edge.get("source"),
             created_at is not None,
             edge.get("createdBy"),
@@ -296,6 +301,7 @@ def get_lineage_details(
         "pipeline": edge_entity_ref if edge_entity_ref else None,
         "sqlQuery": edge.get("sql_query"),
         "tempLineageTables": temp_tables,
+        "columnsLineage": columns_lineage or None,
     }
 
     if edge.get("source") is not None:
@@ -2175,7 +2181,6 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         - ML Store (S3 storage + ECR image repository)
 
         NOTE: Tags, description, displayName are NOT extracted by the connector
-        even though _get_tags() method exists (it's never called).
         """
 
         for model in self.sagemaker_models:

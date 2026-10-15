@@ -22,10 +22,6 @@
   border-radius: var(--om-radius-xl);
   border: 1px solid var(--om-color-gray-blue-100);
   background-color: var(--tw-color-bg-primary);
-
-  .ant-card-body {
-    padding: var(--om-space-20);
-  }
 }
 
 .profile-section {
@@ -112,7 +108,8 @@
 
 .user-profile-card {
   background: white;
-  padding: var(--om-space-20) var(--om-space-20) var(--om-space-10) var(--om-space-20);
+  padding: var(--om-space-20) var(--om-space-20) var(--om-space-10)
+    var(--om-space-20);
   border-radius: var(--om-radius-xl);
   margin-bottom: var(--om-space-20);
   border: 1px solid var(--om-color-gray-blue-100);
@@ -160,28 +157,8 @@
 }
 
 .profile-edit-popover-card {
-  .ant-popover {
-    overflow: visible !important;
-    z-index: var(--om-z-1050);
-  }
-
-  .ant-popover-inner {
-    border-radius: var(--om-radius-xl);
-  }
-
-  .ant-popover-inner-content {
-    border-radius: var(--om-radius-xl);
-    padding: var(--om-space-20);
-    width: 379px;
-    box-shadow: 0px 4px 4px 0px var(--om-legacy-color-0-0-0-0-25);
-  }
-
   .ant-select-selection-search-input {
     position: relative !important;
-  }
-
-  .ant-popover-arrow {
-    display: none;
   }
 
   .ant-select {
@@ -235,53 +212,6 @@
   background: none !important;
 }
 
-.profile-edit-save,
-.profile-edit-cancel {
-  width: 30px;
-  height: 30px;
-  background: '#0950C5' !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.profile-edit-save:hover,
-.profile-edit-save:focus,
-.profile-edit-save:focus {
-  background-color: @primary-color !important;
-  color: @white !important;
-}
-
-.profile-edit-cancel:hover,
-.profile-edit-cancel:focus,
-.profile-edit-cancel:focus {
-  background-color: @primary-color !important;
-  color: @white !important;
-}
-
-.persona-profile-edit-cancel.ant-btn-icon-only.ant-btn-sm {
-  width: 30px;
-  height: 30px;
-  background: var(--om-legacy-color-0950c5);
-  position: absolute;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.persona-profile-edit-save.ant-btn-icon-only.ant-btn-sm {
-  width: 30px;
-  height: 30px;
-  background: var(--om-legacy-color-0950c5);
-  position: absolute;
-  bottom: 0;
-  right: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .max-tag-text {
   font-family: Inter;
   font-size: var(--om-font-size-xs);
@@ -330,7 +260,8 @@
   line-height: 20px;
   border-radius: var(--om-radius-2xl);
   background: @red-9;
-  padding: var(--om-space-2) var(--om-space-8) var(--om-space-2) var(--om-space-10);
+  padding: var(--om-space-2) var(--om-space-8) var(--om-space-2)
+    var(--om-space-10);
   margin-top: @margin-xs;
 
   svg {

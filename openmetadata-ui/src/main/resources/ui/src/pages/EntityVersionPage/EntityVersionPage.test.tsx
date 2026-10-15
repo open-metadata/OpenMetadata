@@ -14,6 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import EntityVersionPage from './EntityVersionPage.component';
 
 let mockParams = {
@@ -113,12 +114,23 @@ jest.mock('../../rest/dataModelsAPI', () => ({
     .mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: jest
-      .fn()
-      .mockImplementation(() => ENTITY_PERMISSIONS),
-  })),
+// EntityVersionPage now fetches its own permissions via useEntityPermissions (Task 8
+// batch-final) rather than an imperative usePermissionProvider().getEntityPermissionByFqn
+// call — mock the hook directly, mirroring ServiceVersionPage.test.tsx's setMockPermissions
+// helper. Sticky (mockReturnValue): every test here wants the same full-access grant that
+// the old mock provided uniformly regardless of entityType/fqn.
+const mockUseEntityPermissions = jest.fn();
+mockUseEntityPermissions.mockReturnValue({
+  permissions: ENTITY_PERMISSIONS,
+  isLoading: false,
+  error: null,
+  refresh: jest.fn(),
+  ...getDerivedPermissionFlags(ENTITY_PERMISSIONS, false),
+});
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
 describe('Test EntityVersionPage component', () => {

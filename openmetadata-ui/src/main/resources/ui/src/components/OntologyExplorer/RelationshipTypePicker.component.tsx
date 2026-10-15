@@ -12,7 +12,11 @@
  */
 
 import { Button, ButtonUtility, Input } from '@openmetadata/ui-core-components';
-import { ArrowRight, SearchMd, XClose } from '@untitledui/icons';
+import {
+  ArrowRight,
+  Search,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -40,7 +44,7 @@ const PALETTE_CLASSES: Record<PaletteKey, string> = {
 };
 
 const SearchInputIcon = ({ className }: { className?: string }) => (
-  <SearchMd aria-hidden="true" className={className} />
+  <Search aria-hidden="true" className={className} />
 );
 
 const renderGroup = (
@@ -137,6 +141,45 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
 
   const hasResults = systemTypes.length > 0 || customTypes.length > 0;
 
+  const renderRelationTypeList = () => {
+    if (isLoading) {
+      return (
+        <span className="tw:p-2 tw:font-body tw:text-xs tw:text-tertiary">
+          {t('label.loading')}
+        </span>
+      );
+    }
+
+    if (hasResults) {
+      return (
+        <>
+          {renderGroup(
+            t('label.core-owl-skos'),
+            'system-defined',
+            systemTypes,
+            onSelect,
+            t('label.inverse')
+          )}
+          {renderGroup(
+            t('label.custom-admin-defined'),
+            'custom',
+            customTypes,
+            onSelect,
+            t('label.inverse')
+          )}
+        </>
+      );
+    }
+
+    return (
+      <span
+        className="tw:p-2 tw:font-body tw:text-xs tw:text-tertiary"
+        data-testid="no-relation-types">
+        {t('message.no-data-available')}
+      </span>
+    );
+  };
+
   return (
     <div
       className={classNames(
@@ -183,34 +226,7 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
       </div>
 
       <div className="tw:flex tw:max-h-64 tw:flex-col tw:overflow-auto tw:p-1.5">
-        {isLoading ? (
-          <span className="tw:p-2 tw:font-body tw:text-xs tw:text-tertiary">
-            {t('label.loading')}
-          </span>
-        ) : hasResults ? (
-          <>
-            {renderGroup(
-              t('label.core-owl-skos'),
-              'system-defined',
-              systemTypes,
-              onSelect,
-              t('label.inverse')
-            )}
-            {renderGroup(
-              t('label.custom-admin-defined'),
-              'custom',
-              customTypes,
-              onSelect,
-              t('label.inverse')
-            )}
-          </>
-        ) : (
-          <span
-            className="tw:p-2 tw:font-body tw:text-xs tw:text-tertiary"
-            data-testid="no-relation-types">
-            {t('message.no-data-available')}
-          </span>
-        )}
+        {renderRelationTypeList()}
       </div>
     </div>
   );

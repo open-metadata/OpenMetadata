@@ -16,7 +16,6 @@ import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { Table } from '../../../generated/entity/data/table';
 import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TagLabel } from '../../../generated/tests/testCase';
-import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { ListTestCaseParamsBySearch } from '../../../rest/testAPI';
 
@@ -71,11 +70,6 @@ export type SelectTestSuiteType = {
   isNewTestSuite: boolean;
 };
 
-export interface ParameterFormProps {
-  definition: TestDefinition;
-  table?: Table;
-}
-
 export type TestCaseFormType = {
   testName: string;
   params: Record<string, string | { [key: string]: string }[]>;
@@ -88,4 +82,6 @@ export type TestCaseFormType = {
   glossaryTerms?: TagLabel[];
   dimensionColumns?: string[];
   topDimensions?: number;
+  /** Name of the data quality dimension entity selected for this test case. */
+  dataQualityDimension?: string;
 };

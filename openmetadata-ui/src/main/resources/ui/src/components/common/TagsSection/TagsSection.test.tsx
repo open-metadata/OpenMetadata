@@ -19,7 +19,6 @@ import {
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
-import { TagSelectableList } from '../TagSelectableList/TagSelectableList.component';
 import TagsSection from './TagsSection';
 
 // Mock @react-awesome-query-builder/ui
@@ -69,31 +68,13 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Mock antd components
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Button: jest
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  ClassificationTag: jest
     .fn()
-    .mockImplementation(
-      ({ children, onClick, className, size, type, ...props }) => (
-        <button
-          className={className}
-          data-size={size}
-          data-testid="button"
-          data-type={type}
-          onClick={onClick}
-          {...props}>
-          {children}
-        </button>
-      )
-    ),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <span className={className} data-testid="typography-text" {...props}>
-        {children}
-      </span>
+    .mockImplementation(({ label, 'data-testid': testId }) => (
+      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
     )),
-  },
 }));
 
 // Mock SVG components
@@ -117,72 +98,63 @@ jest.mock('../../../assets/svg/classification.svg', () => ({
   ),
 }));
 
-// Mock TagSelectableList component
-jest.mock('../TagSelectableList/TagSelectableList.component', () => ({
-  TagSelectableList: jest
+jest.mock('../ClassificationTagPicker/ClassificationTagPicker', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockImplementation(
       ({
-        onCancel,
-        onUpdate,
-        selectedTags,
-        children,
+        isOpen,
+        onOpenChange,
+        onChange,
+        renderTrigger,
+        value,
       }: {
-        onCancel?: () => void;
-        onUpdate?: (tags: TagLabel[]) => void;
-        selectedTags: TagLabel[];
-        children: React.ReactNode;
+        isOpen?: boolean;
+        onOpenChange?: (open: boolean) => void;
+        onChange?: (tags: TagLabel[]) => void;
+        renderTrigger: (props: { toggle: () => void }) => React.ReactNode;
+        value: TagLabel[];
       }) => {
         const [inputValue, setInputValue] = React.useState(
-          selectedTags.map((t) => t.tagFQN).join(', ')
+          value.map((t) => t.tagFQN).join(', ')
         );
 
         return (
-          <div data-testid="tag-selectable-list">
-            <div className="tag-selector" data-testid="async-select-list">
-              {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
-              <input
-                data-testid="tag-selector-input"
-                value={inputValue}
-                onChange={(e) => {
-                  setInputValue(e.target.value);
-                  const tagFQNs = e.target.value
-                    .split(',')
-                    .map((t: string) => t.trim())
-                    .filter(Boolean);
-                  const newTags = tagFQNs.map((fqn: string) => ({
-                    tagFQN: fqn,
-                    name: fqn,
-                    displayName: fqn,
-                    source: TagSource.Classification,
-                    labelType: 'Manual' as LabelType,
-                    state: 'Confirmed' as State,
-                  }));
-                  onUpdate?.(newTags);
-                }}
-              />
-            </div>
-            <button data-testid="tag-cancel" onClick={() => onCancel?.()}>
-              Cancel
-            </button>
-            <button
-              data-testid="tag-update"
-              onClick={() =>
-                onUpdate?.([
-                  {
-                    tagFQN: 'newTag',
-                    name: 'New Tag',
-                    displayName: 'New Tag',
-                    source: TagSource.Classification,
-                    labelType: 'Manual' as LabelType,
-                    state: 'Confirmed' as State,
-                  },
-                ])
-              }>
-              Update
-            </button>
-            {children}
-          </div>
+          <>
+            {renderTrigger({ toggle: () => onOpenChange?.(!isOpen) })}
+            {isOpen && (
+              <div className="tag-selector" data-testid="async-select-list">
+                <input
+                  aria-label="tag-selector-input"
+                  data-testid="tag-selector-input"
+                  value={inputValue}
+                  onChange={(e) => {
+                    setInputValue(e.target.value);
+                    onChange?.(
+                      e.target.value
+                        .split(',')
+                        .map((t: string) => t.trim())
+                        .filter(Boolean)
+                        .map((fqn: string) => ({
+                          tagFQN: fqn,
+                          name: fqn,
+                          displayName: fqn,
+                          source: TagSource.Classification,
+                          labelType: LabelType.Manual,
+                          state: State.Confirmed,
+                        }))
+                    );
+                  }}
+                />
+                <button
+                  data-testid="tag-cancel"
+                  onClick={() => onOpenChange?.(false)}>
+                  Cancel
+                </button>
+              </div>
+            )}
+          </>
         );
       }
     ),
@@ -371,7 +343,6 @@ describe('TagsSection', () => {
     it('should render without crashing', () => {
       render(<TagsSection {...defaultProps} />);
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.tag-plural')).toBeInTheDocument();
     });
 
@@ -441,15 +412,15 @@ describe('TagsSection', () => {
     });
 
     it('should render tag items with correct structure', () => {
-      const { container } = render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />);
 
-      const tagItems = container.querySelectorAll('.tag-item');
+      const visibleTags = mockTags.slice(0, defaultProps.maxDisplayCount);
 
-      expect(tagItems).toHaveLength(3); // maxDisplayCount
+      visibleTags.forEach((tag) => {
+        const tagItem = screen.getByTestId(`tag-${tag.tagFQN}`);
 
-      tagItems.forEach((item) => {
-        expect(item.querySelector('.tag-icon')).toBeInTheDocument();
-        expect(item.querySelector('.tag-name')).toBeInTheDocument();
+        expect(tagItem).toBeInTheDocument();
+        expect(tagItem).toHaveTextContent(tag.displayName ?? '');
       });
     });
   });
@@ -922,19 +893,57 @@ describe('TagsSection', () => {
     });
   });
 
-  describe('popover anchoring', () => {
-    it('should anchor the popover to the left edge of the selector, not centre it', async () => {
-      // The anchor is the full-width `.tag-selector-display` div, so a centred placement ('top')
-      // throws the popover into the middle of a wide container. `bottomLeft` pins it to the
-      // anchor's left edge, matching how GlossaryTermsSection anchors its own popover.
-      render(<TagsSection {...defaultProps} />);
+  describe('Preserving other tag sources', () => {
+    it('should keep tier and glossary tags when saving classification tags', async () => {
+      const mockOnTagsUpdate = jest.fn().mockResolvedValue(undefined);
+      const tierTag: TagLabel = {
+        tagFQN: 'Tier.Tier1',
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      };
+      const glossaryTag: TagLabel = {
+        tagFQN: 'Glossary.Term',
+        source: TagSource.Glossary,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      };
+
+      render(
+        <TagsSection
+          {...defaultProps}
+          tags={[tierTag, glossaryTag, mockTags[0]]}
+          onTagsUpdate={mockOnTagsUpdate}
+        />
+      );
 
       await enterEditMode();
 
-      const { popoverProps } = (TagSelectableList as unknown as jest.Mock).mock
-        .calls[0][0];
+      expect(screen.getByTestId('tag-selector-input')).toHaveValue('tag1');
 
-      expect(popoverProps.placement).toBe('bottomLeft');
+      fireEvent.change(screen.getByTestId('tag-selector-input'), {
+        target: { value: 'tag2' },
+      });
+
+      await waitFor(() => {
+        expect(mockOnTagsUpdate).toHaveBeenCalledWith([
+          tierTag,
+          glossaryTag,
+          expect.objectContaining({ tagFQN: 'tag2' }),
+        ]);
+      });
+    });
+
+    it('should close the picker without saving on cancel', async () => {
+      const mockOnTagsUpdate = jest.fn();
+
+      render(<TagsSection {...defaultProps} onTagsUpdate={mockOnTagsUpdate} />);
+
+      await enterEditMode();
+      fireEvent.click(screen.getByTestId('tag-cancel'));
+
+      expect(screen.queryByTestId('async-select-list')).not.toBeInTheDocument();
+      expect(mockOnTagsUpdate).not.toHaveBeenCalled();
     });
   });
 });

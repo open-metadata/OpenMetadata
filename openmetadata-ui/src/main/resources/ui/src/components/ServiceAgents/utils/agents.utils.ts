@@ -19,7 +19,7 @@ import {
   LayersThree01,
   Shield01,
   Zap,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { ReactComponent as LineageIcon } from '../../../assets/svg/agents/lineage.svg';
 import { ReactComponent as SparkleIcon } from '../../../assets/svg/agents/sparkle.svg';
@@ -109,6 +109,21 @@ export const getUnitLabelKey = (unit: string): string =>
 
 export const getUnitVerbLabelKey = (verb: string): string =>
   UNIT_VERB_LABEL_KEY[verb] ?? 'label.assets-ingested';
+
+// An agent shows its last completed run's metric once it has succeeded, or
+// (for an agent that has never run in this session) once it has some history
+// to report — either processed assets or a recorded finish time.
+export const shouldShowLastRunMetric = (
+  agent: Agent,
+  isSuccess: boolean,
+  isNone: boolean
+): boolean =>
+  isSuccess || (isNone && (agent.assets > 0 || Boolean(agent.finishedAt)));
+
+export const getFinishedSuffix = (agent: Agent, t: TFunction): string =>
+  agent.finishedAt
+    ? ` · ${t('label.finished-lowercase')} ${agent.finishedAt}`
+    : '';
 
 const EM_DASH = '—';
 

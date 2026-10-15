@@ -10,9 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, InputNumber, Row, Select, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  FormField,
+  Grid,
+  HookForm,
+  Input,
+  Select,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
@@ -20,7 +30,6 @@ import ResizablePanels from '../../components/common/ResizablePanels/ResizablePa
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../../constants/service-guide.constant';
 import {
@@ -35,16 +44,34 @@ import {
   getSettingsByType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+
+interface LineageConfigFormValues {
+  upstreamDepth: string;
+  downstreamDepth: string;
+  lineageLayer?: LineageLayer;
+  pipelineViewMode?: PipelineViewMode;
+}
+
+type DepthField = 'upstreamDepth' | 'downstreamDepth';
+
+const toFormValues = (config?: LineageSettings): LineageConfigFormValues => ({
+  upstreamDepth: String(config?.upstreamDepth ?? ''),
+  downstreamDepth: String(config?.downstreamDepth ?? ''),
+  lineageLayer: config?.lineageLayer,
+  pipelineViewMode: config?.pipelineViewMode,
+});
 
 const LineageConfigPage = () => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [activeField, setActiveField] = useState<string>('');
-  const [lineageConfig, setLineageConfig] = useState<LineageSettings>();
   const [isUpdating, setIsUpdating] = useState(false);
-  const [form] = Form.useForm();
+  const form = useForm<LineageConfigFormValues>({
+    defaultValues: toFormValues(),
+  });
   const navigate = useNavigate();
   const { setAppPreferences, appPreferences } = useApplicationStore();
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
@@ -61,7 +88,7 @@ const LineageConfigPage = () => {
       setIsLoading(true);
 
       const config = await getSettingsByType(SettingType.LineageSettings);
-      setLineageConfig(config as LineageSettings);
+      form.reset(toFormValues(config as LineageSettings));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -69,11 +96,11 @@ const LineageConfigPage = () => {
     }
   };
 
-  const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
+  const handleFieldFocus = useCallback((event: FocusEvent<HTMLElement>) => {
     setActiveField(event.target.id);
   }, []);
 
-  const handleSave = useCallback(async (values: LineageSettings) => {
+  const handleSave = async (values: LineageConfigFormValues) => {
     try {
       setIsUpdating(true);
 
@@ -95,7 +122,7 @@ const LineageConfigPage = () => {
       );
 
       const lineageConfig = data.config_value as LineageSettings;
-      setLineageConfig(lineageConfig);
+      form.reset(toFormValues(lineageConfig));
 
       // Update lineage config in store
       setAppPreferences({
@@ -107,11 +134,62 @@ const LineageConfigPage = () => {
     } finally {
       setIsUpdating(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     fetchSearchConfig();
   }, []);
+
+  const layerItems = [
+    { id: LineageLayer.EntityLineage, label: t('label.entity-lineage') },
+    {
+      id: LineageLayer.ColumnLevelLineage,
+      label: t('label.column-level-lineage'),
+    },
+    {
+      id: LineageLayer.DataObservability,
+      label: t('label.data-observability'),
+    },
+  ];
+  const viewModeItems = [
+    { id: PipelineViewMode.Edge, label: t('label.edge') },
+    { id: PipelineViewMode.Node, label: t('label.node') },
+  ];
+
+  const renderDepthField = (
+    name: DepthField,
+    label: string,
+    testId: string
+  ) => (
+    <FormField
+      control={form.control}
+      name={name}
+      rules={{
+        required: t('label.field-required', { field: label }),
+        min: {
+          value: 0,
+          message: t('message.entity-size-less-than', {
+            entity: label,
+            min: 0,
+          }),
+        },
+      }}>
+      {({ field, fieldState }) => (
+        <Input
+          isRequired
+          hint={fieldState.error?.message}
+          id={`root/${name}`}
+          inputDataTestId={testId}
+          isInvalid={fieldState.invalid}
+          label={label}
+          type="number"
+          value={field.value}
+          onBlur={field.onBlur}
+          onChange={field.onChange}
+        />
+      )}
+    </FormField>
+  );
 
   if (isLoading) {
     return <Loader />;
@@ -127,119 +205,101 @@ const LineageConfigPage = () => {
           allowScroll: true,
           children: (
             <div data-testid="add-metric-container">
-              <Row gutter={[16, 16]}>
-                <Col span={24}>
+              <Grid
+                className="layout-row layout-grid"
+                style={{ ...getLayoutGutter(16, 16) }}>
+                <Grid.Item className="layout-column" span={24}>
                   <TitleBreadcrumb titleLinks={breadcrumbs} />
-                </Col>
+                </Grid.Item>
 
-                <Col span={24}>
-                  <Typography.Title
+                <Grid.Item className="layout-column" span={24}>
+                  <Typography
+                    as="h5"
                     className="m-b-0"
                     data-testid="heading"
-                    level={5}>
+                    size="text-md"
+                    weight="semibold">
                     {t('label.lineage')}
-                  </Typography.Title>
-                </Col>
-                <Col span={24}>
-                  <Form
-                    form={form}
-                    id="lineage-config"
-                    initialValues={lineageConfig}
-                    layout="vertical"
-                    validateMessages={VALIDATION_MESSAGES}
-                    onFinish={handleSave}
-                    onFocus={handleFieldFocus}>
-                    <Form.Item
-                      id="root/upstreamDepth"
-                      label={t('label.upstream-depth')}
-                      name="upstreamDepth"
-                      rules={[
-                        {
-                          required: true,
-                        },
-                        {
-                          type: 'number',
-                          min: 0,
-                        },
-                      ]}>
-                      <InputNumber
-                        className="w-full"
-                        data-testid="field-upstream"
-                      />
-                    </Form.Item>
-
-                    <Form.Item
-                      className="m-t-sm"
-                      id="root/downstreamDepth"
-                      label={t('label.downstream-depth')}
-                      name="downstreamDepth"
-                      rules={[
-                        {
-                          required: true,
-                        },
-                        {
-                          type: 'number',
-                          min: 0,
-                        },
-                      ]}>
-                      <InputNumber
-                        className="w-full"
-                        data-testid="field-downstream"
-                      />
-                    </Form.Item>
-
-                    <Form.Item
-                      className="m-t-sm"
-                      id="root/lineageLayer"
-                      label={t('label.lineage-layer')}
-                      name="lineageLayer">
-                      <Select data-testid="field-lineage-layer">
-                        <Select.Option value={LineageLayer.EntityLineage}>
-                          {t('label.entity-lineage')}
-                        </Select.Option>
-                        <Select.Option value={LineageLayer.ColumnLevelLineage}>
-                          {t('label.column-level-lineage')}
-                        </Select.Option>
-                        <Select.Option value={LineageLayer.DataObservability}>
-                          {t('label.data-observability')}
-                        </Select.Option>
-                      </Select>
-                    </Form.Item>
-
-                    <Form.Item
-                      className="m-t-sm"
-                      id="root/pipelineViewMode"
-                      label={t('label.pipeline-view-mode')}
-                      name="pipelineViewMode">
-                      <Select data-testid="field-pipeline-view-mode">
-                        <Select.Option value={PipelineViewMode.Edge}>
-                          {t('label.edge')}
-                        </Select.Option>
-                        <Select.Option value={PipelineViewMode.Node}>
-                          {t('label.node')}
-                        </Select.Option>
-                      </Select>
-                    </Form.Item>
-                  </Form>
-                  <Row className="m-b-xl" justify="end">
-                    <Col className="d-flex justify-end gap-2" span={24}>
+                  </Typography>
+                </Grid.Item>
+                <Grid.Item className="layout-column" span={24}>
+                  {/* Tracks the focused field for the doc panel; focus events bubble. */}
+                  <div role="presentation" onFocus={handleFieldFocus}>
+                    <HookForm
+                      className="tw:flex tw:flex-col tw:gap-4"
+                      form={form}
+                      id="lineage-config"
+                      onSubmit={form.handleSubmit(handleSave)}>
+                      {renderDepthField(
+                        'upstreamDepth',
+                        t('label.upstream-depth'),
+                        'field-upstream'
+                      )}
+                      {renderDepthField(
+                        'downstreamDepth',
+                        t('label.downstream-depth'),
+                        'field-downstream'
+                      )}
+                      <FormField control={form.control} name="lineageLayer">
+                        {({ field }) => (
+                          <Select
+                            data-testid="field-lineage-layer"
+                            id="root/lineageLayer"
+                            items={layerItems}
+                            label={t('label.lineage-layer')}
+                            selectedKey={field.value ?? null}
+                            onSelectionChange={(key) =>
+                              key !== null &&
+                              field.onChange(key as LineageLayer)
+                            }>
+                            {(item) => (
+                              <Select.Item id={item.id} label={item.label} />
+                            )}
+                          </Select>
+                        )}
+                      </FormField>
+                      <FormField control={form.control} name="pipelineViewMode">
+                        {({ field }) => (
+                          <Select
+                            data-testid="field-pipeline-view-mode"
+                            id="root/pipelineViewMode"
+                            items={viewModeItems}
+                            label={t('label.pipeline-view-mode')}
+                            selectedKey={field.value ?? null}
+                            onSelectionChange={(key) =>
+                              key !== null &&
+                              field.onChange(key as PipelineViewMode)
+                            }>
+                            {(item) => (
+                              <Select.Item id={item.id} label={item.label} />
+                            )}
+                          </Select>
+                        )}
+                      </FormField>
+                    </HookForm>
+                  </div>
+                  <Box className="layout-row m-b-xl" justify="end" wrap="wrap">
+                    <Box
+                      className="layout-column d-flex justify-end gap-2"
+                      style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                       <Button
+                        color="secondary"
                         data-testid="cancel-button"
                         onClick={() => navigate(-1)}>
                         {t('label.cancel')}
                       </Button>
                       <Button
+                        color="primary"
                         data-testid="save-button"
                         form="lineage-config"
-                        htmlType="submit"
-                        loading={isUpdating}
-                        type="primary">
+                        isLoading={isUpdating}
+                        type="submit">
                         {t('label.save')}
                       </Button>
-                    </Col>
-                  </Row>
-                </Col>
-              </Row>
+                    </Box>
+                  </Box>
+                </Grid.Item>
+              </Grid>
             </div>
           ),
           minWidth: 700,

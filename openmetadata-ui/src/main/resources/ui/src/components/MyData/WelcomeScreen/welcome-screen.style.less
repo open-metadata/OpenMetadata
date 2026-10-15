@@ -13,18 +13,7 @@
 @import '../../../styles/variables.less';
 
 .welcome-screen-container {
-  .ant-card-head {
-    padding-top: var(--om-space-16);
-    border-bottom: unset;
-
-    .welcome-screen-close-btn {
-      color: @primary-color;
-      &:hover {
-        background-color: @primary-1;
-      }
-    }
-  }
-  .ant-card-body {
+  .welcome-screen-body {
     height: @welcome-page-height;
     display: flex;
     align-items: center;
@@ -47,7 +36,8 @@
 .welcome-screen-header-divider {
   min-width: 90%;
   width: 90%;
-  border-top: 1.5px solid var(--om-legacy-color-113-71-232-0-35);
+  height: 1.5px;
+  background: var(--om-legacy-color-113-71-232-0-35);
   margin: var(--om-space-8) 0;
 }
 

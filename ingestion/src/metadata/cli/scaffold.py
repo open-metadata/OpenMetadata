@@ -434,7 +434,7 @@ def generate_connection_schema(p: ConnectorProfile) -> dict:
 
     schema: dict = {
         "$id": f"https://open-metadata.org/schema/entity/services/connections/{p.service_type}/{p.module_name}Connection.json",
-        "$schema": "http://json-schema.org/draft-07/schema#",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": title,
         "description": p.description or f"{camel} Connection Config",
         "type": "object",
@@ -1622,7 +1622,8 @@ def write_file(path: Path, content: str) -> None:
     if path.exists():
         logger.warning(f"File already exists, skipping: {path}")
         return
-    path.write_text(content)
+    # Paths are composed only from fixed service types and regex-validated connector names.
+    path.write_text(content)  # NOSONAR(S8707)
     logger.info(f"  Created: {path.relative_to(Path.cwd()) if path.is_relative_to(Path.cwd()) else path}")
 
 

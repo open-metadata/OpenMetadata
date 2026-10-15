@@ -83,6 +83,10 @@ public record CatalogSecurityContext(
     return principal;
   }
 
+  /**
+   * Never use this to decide a role sync - it flattens null (nothing to sync from) into an empty set
+   * (the provider revoked every role). Read the {@code userRoles} component directly.
+   */
   public Set<String> getUserRoles() {
     if (nullOrEmpty(userRoles)) {
       return new HashSet<>();

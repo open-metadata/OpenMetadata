@@ -15,11 +15,14 @@ Base class for ingesting database services
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from contextlib import closing
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
+from cachetools import LRUCache
 from pydantic import BaseModel, Field
 
+from metadata.domain.tags import TagDefinition, TagRegistry
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineState
@@ -38,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.pipelineObservability import PipelineObservability
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
@@ -54,6 +58,7 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
@@ -69,6 +74,11 @@ from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+# Table entities resolved while building lineage are reused by the observability
+# stage that runs right after, so the cache only needs to span a single pipeline's
+# tables. Anything beyond that is a cross-pipeline bonus hit.
+TABLE_ENTITY_CACHE_SIZE = 1024
 
 
 class PipelineUsage(BaseModel):
@@ -114,16 +124,15 @@ class PipelineServiceTopology(ServiceTopology):
     pipeline: Annotated[TopologyNode, Field(description="Processing Pipelines Node")] = TopologyNode(
         producer="get_pipeline",
         stages=[
-            NodeStage(
+            NodeStage(  # pyright: ignore[reportCallIssue]
                 type_=OMetaTagAndClassification,
-                context="tags",
-                processor="yield_tag",
+                processor="yield_tag_details",
                 nullable=True,
             ),
             NodeStage(
                 type_=Pipeline,
                 context="pipeline",
-                processor="yield_pipeline",
+                processor="yield_pipeline_details",
                 consumer=["pipeline_service"],
             ),
             NodeStage(
@@ -170,6 +179,15 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     context = TopologyContextManager(topology)
     pipeline_source_state: set = set()  # noqa: RUF012
 
+    @property
+    def tags_registry(self) -> TagRegistry:
+        """Per-source registry for tag definitions and pipeline/task labels."""
+        instance_dict = vars(self)
+        cached = instance_dict.get("tags_registry")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
+
     @retry_with_docker_host()
     def __init__(
         self,
@@ -182,6 +200,8 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         self.today = datetime.now().strftime("%Y-%m-%d")
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: PipelineServiceMetadataPipeline = self.config.sourceConfig.config
+
+        self._table_entity_cache: LRUCache = LRUCache(maxsize=TABLE_ENTITY_CACHE_SIZE)
 
         self._connection = create_connection(self.service_connection)
         self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
@@ -349,6 +369,77 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_tag(self, pipeline_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
         """Method to fetch pipeline tags"""
 
+    def get_pipeline_fqn(self, pipeline_details: Any) -> str:
+        """Return the FQN of the pipeline represented by the source item."""
+        return cast(
+            "str",
+            fqn.build(
+                self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,  # pyright: ignore[reportAttributeAccessIssue]
+                pipeline_name=self.get_pipeline_name(pipeline_details),
+            ),
+        )
+
+    def register_tag(
+        self, *, entity_fqn: str, definition: TagDefinition
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Register an attachment, yielding individual registration failures."""
+        if not self.source_config.includeTags or not definition.tag_name or not definition.tag_name.strip():
+            return
+        if not (
+            fqn.is_valid_entity_name(definition.classification_name) and fqn.is_valid_entity_name(definition.tag_name)
+        ):
+            logger.warning(
+                "%s: Skipped invalid tag %r in classification %r",
+                entity_fqn,
+                definition.tag_name,
+                definition.classification_name,
+            )
+            return
+        try:
+            self.tags_registry.define(definition)
+            self.tags_registry.attach(entity_fqn=entity_fqn, tag=definition)
+        except Exception as exc:
+            yield Either(
+                right=None,
+                left=StackTraceError(
+                    name="Tags and Classifications",
+                    error=f"Failed to register tag [{definition.tag_name}] due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                ),
+            )
+
+    def get_tag_by_fqn(self, entity_fqn: str) -> list[TagLabel] | None:
+        """Return the existing labels attached to an entity."""
+        if not self.source_config.includeTags:
+            return None
+        return self.tags_registry.labels_for(entity_fqn) or None
+
+    def yield_tag_details(self, pipeline_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Publish definitions before creating the pipeline."""
+        if not self.source_config.includeTags:
+            return
+        completed = False
+        try:
+            yield from self.yield_tag(pipeline_details) or []
+            if registry := vars(self).get("tags_registry"):
+                with closing(registry.drain()) as definitions:
+                    for record in definitions:
+                        yield Either(right=record, left=None)
+            completed = True
+        finally:
+            if not completed and (registry := vars(self).get("tags_registry")):
+                registry.clear_scope(self.get_pipeline_fqn(pipeline_details))
+
+    def yield_pipeline_details(self, pipeline_details: Any) -> Iterable[Either[CreatePipelineRequest]]:
+        """Create the pipeline and release its tag attachments when consumed."""
+        try:
+            yield from self.yield_pipeline(pipeline_details)
+        finally:
+            if registry := vars(self).get("tags_registry"):
+                registry.clear_scope(self.get_pipeline_fqn(pipeline_details))
+
     def close(self):
         """Method to implement any required logic after the ingestion process is completed"""
         if self._connection is not None:
@@ -390,12 +481,30 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         This method should be implemented by each pipeline service.
         """
 
+    def cache_table_entity(self, table: Table) -> None:
+        """
+        Register a Table already resolved by the lineage stage so the observability
+        stage that follows can reuse it. Without this the same entity is re-fetched
+        once per table, per pipeline.
+        """
+        if table is not None and table.fullyQualifiedName is not None:
+            self._table_entity_cache[model_str(table.fullyQualifiedName)] = table
+
+    def _get_observability_table(self, table_fqn: str) -> Table | None:
+        """Resolve a Table for the observability stage, preferring the lineage cache."""
+        table = self._table_entity_cache.get(table_fqn)
+        if table is None:
+            table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+            if table is not None:
+                self.cache_table_entity(table)
+        return table
+
     def yield_pipeline_observability(self, pipeline_details: Any) -> Iterable[Either[TablePipelineObservability]]:
         """Method to fetch pipeline observability data"""
         try:
             for table_observability_map in self.get_table_pipeline_observability(pipeline_details) or []:
                 for table_fqn, observability_list in table_observability_map.items():
-                    table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                    table = self._get_observability_table(table_fqn)
                     if table:
                         yield Either(
                             right=TablePipelineObservability(table=table, observability_data=observability_list)
@@ -467,6 +576,26 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         return (
             (self.source_config.lineageInformation.messagingServiceNames or [])
+            if self.source_config.lineageInformation
+            else []
+        )
+
+    def get_api_service_names(self) -> list[str]:
+        """
+        Get the list of api service names
+        """
+        return (
+            (self.source_config.lineageInformation.apiServiceNames or [])
+            if self.source_config.lineageInformation
+            else []
+        )
+
+    def get_search_service_names(self) -> list[str]:
+        """
+        Get the list of search service names
+        """
+        return (
+            (self.source_config.lineageInformation.searchServiceNames or [])
             if self.source_config.lineageInformation
             else []
         )

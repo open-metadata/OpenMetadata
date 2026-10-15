@@ -20,7 +20,10 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CheckCircle, Lightbulb05 } from '@untitledui/icons';
+import {
+  CheckCircle,
+  Lightbulb05,
+} from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -146,6 +149,15 @@ export const AiFormModal: FC<AiFormModalProps> = ({
   const { t } = useTranslation();
   const hasHintColumn = hintOpen !== undefined;
 
+  let modalWidth: number;
+  if (!hasHintColumn) {
+    modalWidth = WIDTH_NO_HINT_COLUMN;
+  } else if (hintOpen) {
+    modalWidth = WIDTH_WITH_HINT;
+  } else {
+    modalWidth = WIDTH_WITHOUT_HINT;
+  }
+
   // The submit handler surfaces failures via an inline alert in the form body
   // and resolves so the modal stays open; swallow the rejection here so React
   // does not log an unhandled promise rejection.
@@ -180,13 +192,7 @@ export const AiFormModal: FC<AiFormModalProps> = ({
           <Dialog
             showCloseButton
             panelClassName="tw:transition-[max-width] tw:duration-[240ms] tw:ease-in-out"
-            width={
-              hasHintColumn
-                ? hintOpen
-                  ? WIDTH_WITH_HINT
-                  : WIDTH_WITHOUT_HINT
-                : WIDTH_NO_HINT_COLUMN
-            }
+            width={modalWidth}
             onClose={onClose}>
             {/* The Request Data Access modal's header verbatim, that form being
                 the reference design named:

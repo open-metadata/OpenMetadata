@@ -10,19 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SearchOutlined } from '@ant-design/icons';
-import { Input } from 'antd';
+import { Input } from '@openmetadata/ui-core-components';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BORDER_COLOR } from '../../../../constants/constants';
 import {
   LINEAGE_CHILD_ITEMS_PER_PAGE,
   LINEAGE_COLUMN_NODE_SUPPORTED,
@@ -33,10 +26,11 @@ import {
   TestSummary,
 } from '../../../../generated/tests/testCase';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
+import { EntityChildren } from '../../../../interface/lineage.interface';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
+import { NodeChildrenProps } from './NodeChildren.interface';
 import VirtualColumnList from './VirtualColumnList.component';
 
 const NodeChildren = ({
@@ -44,6 +38,8 @@ const NodeChildren = ({
   isConnectable,
   isChildrenListExpanded,
   isOnlyShowColumnsWithLineageFilterActive,
+  onColumnHover,
+  onColumnSelect,
 }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const {
@@ -97,9 +93,7 @@ const NodeChildren = ({
   }, [currentNodeColumnsWithLineage]);
 
   const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      e.stopPropagation();
-      const searchQuery = e.target.value;
+    (searchQuery: string) => {
       setSearchValue(searchQuery);
       const currentNodeColumnsToSearch =
         isOnlyShowColumnsWithLineageFilterActive && !isEditMode
@@ -193,16 +187,21 @@ const NodeChildren = ({
         )}
         data-testid="column-container">
         <div className="search-box">
-          <Input
-            data-testid="search-column-input"
-            placeholder={t('label.search-entity', {
-              entity: childrenHeading,
-            })}
-            suffix={<SearchOutlined color={BORDER_COLOR} />}
-            value={searchValue}
-            onChange={handleSearchChange}
-            onClick={(e) => e.stopPropagation()}
-          />
+          {/* The field sits inside a React Flow node; a click must not select the node. */}
+          <div role="presentation" onClick={(e) => e.stopPropagation()}>
+            <Input
+              aria-label={t('label.search-entity', {
+                entity: childrenHeading,
+              })}
+              icon={Search}
+              inputDataTestId="search-column-input"
+              placeholder={t('label.search-entity', {
+                entity: childrenHeading,
+              })}
+              value={searchValue}
+              onChange={handleSearchChange}
+            />
+          </div>
 
           <section className="m-t-md" id="table-columns">
             <div className="rounded-4 overflow-hidden">
@@ -214,6 +213,8 @@ const NodeChildren = ({
                 pageSize={pageSize}
                 showDataObservabilitySummary={showDataObservabilitySummary}
                 summary={summary}
+                onColumnHover={onColumnHover}
+                onColumnSelect={onColumnSelect}
               />
             </div>
           </section>

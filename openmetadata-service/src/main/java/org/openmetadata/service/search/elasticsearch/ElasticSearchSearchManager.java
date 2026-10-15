@@ -14,6 +14,8 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.ErrorCause;
@@ -23,12 +25,14 @@ import es.co.elastic.clients.elasticsearch._types.SortOrder;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
-import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
+import es.co.elastic.clients.elasticsearch._types.mapping.Property;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
+import es.co.elastic.clients.elasticsearch.indices.GetMappingResponse;
 import es.co.elastic.clients.json.JsonData;
+import es.co.elastic.clients.json.JsonpDeserializer;
 import es.co.elastic.clients.json.JsonpMapper;
 import io.micrometer.core.instrument.Timer;
 import jakarta.json.Json;
@@ -44,6 +48,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -60,6 +65,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
@@ -70,9 +76,11 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
-import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.QueryFilterShape;
+import org.openmetadata.service.search.SearchEngineErrors;
+import org.openmetadata.service.search.SearchEntityTypeCounts;
 import org.openmetadata.service.search.SearchManagementClient;
 import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -84,6 +92,7 @@ import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -95,6 +104,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
  */
 @Slf4j
 public class ElasticSearchSearchManager implements SearchManagementClient {
+  private static final String EMPTY_JSON_OBJECT = "{}";
+
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
   private final String clusterAlias;
@@ -106,6 +117,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private static final String SORT_TYPE_KEYWORD = "keyword";
   private static final String SORT_FIELD_NAME_KEYWORD = "name.keyword";
   private static final String SORT_FIELD_ID_KEYWORD = "id.keyword";
+  private static final int EXPORT_SEARCH_MAX_ATTEMPTS = 3;
+  private static final long EXPORT_SEARCH_RETRY_DELAY_MILLIS = 100L;
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
           "suggest",
@@ -182,22 +195,112 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
     }
-
-    Query fieldQuery =
+    Query query =
         Query.of(
             q ->
                 q.bool(
                     b ->
                         b.must(m -> m.wildcard(w -> w.field(fieldName).value(fieldValue)))
                             .filter(f -> f.term(t -> t.field("deleted").value(deleted)))));
-    SearchRequest searchRequest =
+    SearchRequest request =
         SearchRequest.of(
-            s ->
-                s.index(Entity.getSearchRepository().getIndexOrAliasName(index))
+            search ->
+                search
+                    .index(Entity.getSearchRepository().getIndexOrAliasName(index))
                     .from(from)
                     .size(size)
-                    .query(restrictToOrgWideMemories(fieldQuery)));
+                    .query(restrictToOrgWideMemories(query)));
+    return executeSearchRequest(request);
+  }
 
+  @Override
+  public Response searchByFieldWithOptions(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      String requiredExistsField,
+      boolean trackTotalHits)
+      throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("Elasticsearch client is not available");
+    }
+
+    List<Query> mustQueries = new ArrayList<>();
+    mustQueries.add(
+        Query.of(q -> q.wildcard(w -> w.field(fieldName).value(fieldValue).caseInsensitive(true))));
+    if (!nullOrEmpty(requiredExistsField)) {
+      mustQueries.add(Query.of(q -> q.exists(e -> e.field(requiredExistsField))));
+    }
+    Query query =
+        Query.of(
+            q ->
+                q.bool(
+                    b ->
+                        b.must(mustQueries)
+                            .filter(f -> f.term(t -> t.field("deleted").value(deleted)))));
+
+    return executeSceneSearch(query, index, from, size, sourceIncludes, trackTotalHits);
+  }
+
+  @Override
+  public Response searchByTerms(
+      String fieldName,
+      List<String> fieldValues,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("Elasticsearch client is not available");
+    }
+
+    List<FieldValue> values = fieldValues.stream().map(FieldValue::of).toList();
+    Query query =
+        Query.of(
+            q ->
+                q.bool(
+                    b ->
+                        b.must(
+                                m ->
+                                    m.terms(
+                                        t ->
+                                            t.field(fieldName).terms(terms -> terms.value(values))))
+                            .filter(f -> f.term(t -> t.field("deleted").value(deleted)))));
+
+    return executeSceneSearch(query, index, from, size, sourceIncludes, trackTotalHits);
+  }
+
+  private Response executeSceneSearch(
+      Query query,
+      String index,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException {
+    ElasticSearchRequestBuilder requestBuilder =
+        new ElasticSearchRequestBuilder()
+            .query(restrictToOrgWideMemories(query))
+            .from(from)
+            .size(size)
+            .sort(SORT_FIELD_NAME_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD)
+            .trackTotalHits(trackTotalHits);
+    if (!nullOrEmpty(sourceIncludes)) {
+      requestBuilder.fetchSource(sourceIncludes.toArray(String[]::new), new String[0]);
+    }
+    SearchRequest searchRequest =
+        requestBuilder.build(Entity.getSearchRepository().getIndexOrAliasName(index));
+    return executeSearchRequest(searchRequest);
+  }
+
+  private Response executeSearchRequest(SearchRequest searchRequest) throws IOException {
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
     try {
@@ -209,6 +312,44 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
     String responseJson = serializeSearchResponse(response);
     return Response.status(OK).entity(responseJson).build();
+  }
+
+  @Override
+  public boolean isFieldMappedInIndex(String index, String fieldPath) throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("Elasticsearch client is not available");
+    }
+    GetMappingResponse response =
+        client
+            .indices()
+            .getMapping(
+                request -> request.index(Entity.getSearchRepository().getIndexOrAliasName(index)));
+    String[] path = fieldPath.split("\\.");
+    return response.mappings().values().stream()
+        .anyMatch(mapping -> hasMappedField(mapping.mappings().properties(), path, 0));
+  }
+
+  private static boolean hasMappedField(
+      Map<String, Property> properties, String[] path, int index) {
+    if (properties == null || index >= path.length) {
+      return false;
+    }
+    Property property = properties.get(path[index]);
+    if (property == null) {
+      return false;
+    }
+    if (index == path.length - 1) {
+      return true;
+    }
+    Map<String, Property> children = null;
+    if (property.isObject()) {
+      children = property.object().properties();
+    } else if (property.isNested()) {
+      children = property.nested().properties();
+    } else if (property.isText()) {
+      children = property.text().fields();
+    }
+    return hasMappedField(children, path, index + 1);
   }
 
   @Override
@@ -265,7 +406,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       SearchSortFilter searchSortFilter,
       String q,
       String queryString,
-      SubjectContext subjectContext)
+      SubjectContext subjectContext,
+      List<ContextMemoryStatus> statuses)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
@@ -296,7 +438,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       applySearchFilter(filter, requestBuilder);
     }
 
-    applyRbacCondition(subjectContext, requestBuilder);
+    applyRbacCondition(
+        subjectContext, requestBuilder, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -384,29 +527,19 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private void applyQueryFilter(
       ElasticSearchRequestBuilder requestBuilder,
       org.openmetadata.schema.search.SearchRequest request) {
-    if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
-      try {
-        String queryToProcess = EsUtils.parseJsonQuery(request.getQueryFilter());
-        Query filterQuery = Query.of(q -> q.withJson(new StringReader(queryToProcess)));
-        Query existingQuery = requestBuilder.query();
-        if (existingQuery != null) {
-          Query combinedQuery =
-              Query.of(
-                  q ->
-                      q.bool(
-                          b -> {
-                            b.must(existingQuery);
-                            b.filter(filterQuery);
-                            return b;
-                          }));
-          requestBuilder.query(combinedQuery);
-        } else {
-          requestBuilder.query(filterQuery);
-        }
-      } catch (Exception ex) {
-        LOG.error("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
+    String queryFilter = request.getQueryFilter();
+    if (nullOrEmpty(queryFilter) || EMPTY_JSON_OBJECT.equals(queryFilter)) {
+      return;
     }
+    String queryDsl = QueryFilterShape.requireQueryDsl(queryFilter);
+    Query filterQuery = Query.of(q -> q.withJson(new StringReader(queryDsl)));
+    Query existingQuery = requestBuilder.query();
+    requestBuilder.query(
+        existingQuery == null ? filterQuery : filteredBy(existingQuery, filterQuery));
+  }
+
+  private static Query filteredBy(Query existingQuery, Query filterQuery) {
+    return Query.of(q -> q.bool(b -> b.must(existingQuery).filter(filterQuery)));
   }
 
   /**
@@ -490,7 +623,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     requestBuilder.size(request.getSize());
 
     // applyRbacCondition already applies the ContextMemory visibility filter.
-    applyRbacCondition(subjectContext, requestBuilder);
+    applyRbacCondition(subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
     applyQueryFilter(requestBuilder, request);
     // Strip any clusterAlias prefix first, the same way doSearch does — the deleted filter compares
     // this against the dataAsset/all aliases.
@@ -500,7 +633,21 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   private void applyRbacCondition(
-      SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      Collection<String> pinnedAnchorIds) {
+    applyRbacCondition(
+        subjectContext,
+        requestBuilder,
+        ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+        pinnedAnchorIds);
+  }
+
+  private void applyRbacCondition(
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      List<ContextMemoryStatus> statuses,
+      Collection<String> pinnedAnchorIds) {
     if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQueryBuilder != null) {
@@ -522,7 +669,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
     }
-    applyContextMemoryVisibility(subjectContext, requestBuilder);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, statuses, pinnedAnchorIds);
   }
 
   /**
@@ -546,15 +693,18 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
    * memories. Non-memory documents are left untouched.
    */
   private void applyContextMemoryVisibility(
-      SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      List<ContextMemoryStatus> statuses,
+      Collection<String> pinnedAnchorIds) {
     OMQueryBuilder visibilityBuilder =
-        contextMemoryVisibility.buildVisibilityFilter(subjectContext);
+        contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses, pinnedAnchorIds);
     if (visibilityBuilder != null) {
       requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
     }
-    // Admins get no filter but are still resolved. An unidentifiable subject is NOT resolved, so
-    // ElasticSearchRequestBuilder#build falls back to its org-wide-only default instead of running
-    // the search unfiltered.
+    // Admins skip visibility but keep the status filter. An unidentifiable subject is NOT
+    // resolved, so ElasticSearchRequestBuilder#build falls back to its org-wide-only default
+    // instead of running the search unfiltered.
     if (contextMemoryVisibility.isSubjectResolvable(subjectContext)) {
       requestBuilder.contextMemoryVisibilityResolved();
     }
@@ -810,7 +960,11 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
 
-      applyContextMemoryVisibility(subjectContext, requestBuilder);
+      applyContextMemoryVisibility(
+          subjectContext,
+          requestBuilder,
+          ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+          ContextMemoryAnchorPins.of(request));
 
       // Add aggregations if needed
       ElasticSearchSourceBuilderFactory factory = getSearchBuilderFactory();
@@ -895,17 +1049,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       throws IOException {
     Map<String, Map<String, Object>> allNodes = new HashMap<>();
     Map<String, List<EsLineageData>> allEdges = new HashMap<>();
-    Set<String> nodesWithFailures = new HashSet<>();
-
     collectNodesAndEdgesForDQ(
-        fqn,
-        upstreamDepth,
-        queryFilter,
-        deleted,
-        allEdges,
-        allNodes,
-        nodesWithFailures,
-        new HashSet<>());
+        fqn, upstreamDepth, queryFilter, deleted, allEdges, allNodes, new HashSet<>());
+    Set<String> nodesWithFailures = SearchUtils.nodeIdsWithFailingTests(allNodes, deleted);
     for (String nodeWithFailure : nodesWithFailures) {
       traceBackDQLineage(
           nodeWithFailure, nodesWithFailures, allEdges, allNodes, nodes, edges, new HashSet<>());
@@ -919,10 +1065,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       boolean deleted,
       Map<String, List<EsLineageData>> allEdges,
       Map<String, Map<String, Object>> allNodes,
-      Set<String> nodesWithFailure,
       Set<String> processedNode)
       throws IOException {
-    TestCaseResultRepository testCaseResultRepository = new TestCaseResultRepository();
     if (upstreamDepth <= 0 || processedNode.contains(fqn)) {
       return;
     }
@@ -937,9 +1081,6 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       for (Map<String, Object> doc : docs) {
         String nodeId = doc.get("id").toString();
         allNodes.put(nodeId, doc);
-        if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
-          nodesWithFailure.add(nodeId);
-        }
 
         List<EsLineageData> lineageDataList =
             JsonUtils.readOrConvertValues(doc.get("upstreamLineage"), EsLineageData.class);
@@ -954,7 +1095,6 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
               deleted,
               allEdges,
               allNodes,
-              nodesWithFailure,
               processedNode);
         }
       }
@@ -1178,6 +1318,81 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
   }
 
+  public Response getEntityTypeCounts(
+      org.openmetadata.schema.search.SearchRequest request,
+      String index,
+      SubjectContext subjectContext)
+      throws IOException {
+    SearchSettings settings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    try {
+      return new SearchEntityTypeCounts(
+              Entity.getSearchRepository(),
+              (perType, configured) -> prepareCountQuery(perType, subjectContext, configured),
+              (body, indexes) -> executeCountAggregation(body, indexes, subjectContext),
+              hint -> doSearch(hint, subjectContext, settings, clusterAlias))
+          .search(request, index, settings);
+    } catch (ElasticsearchException e) {
+      throw buildSearchException(e);
+    }
+  }
+
+  private ObjectNode prepareCountQuery(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      SearchSettings settings)
+      throws IOException {
+    SearchRequest prepared =
+        buildSearchRequestBuilder(request, subjectContext, settings, clusterAlias)
+            .build(request.getIndex());
+    return SearchEntityTypeCounts.toJson(
+        client._transport().jsonpMapper().jsonProvider(),
+        generator -> prepared.serialize(generator, client._transport().jsonpMapper()));
+  }
+
+  private ObjectNode executeCountAggregation(
+      ObjectNode body, String index, SubjectContext subjectContext) throws IOException {
+    SearchRequest request = countRequest(body, index, subjectContext);
+    Timer.Sample timer = RequestLatencyContext.startSearchOperation();
+    try {
+      SearchResponse<JsonData> response = client.search(request, JsonData.class);
+      return SearchEntityTypeCounts.toJson(
+          client._transport().jsonpMapper().jsonProvider(),
+          generator -> response.serialize(generator, client._transport().jsonpMapper()));
+    } finally {
+      if (timer != null) {
+        RequestLatencyContext.endSearchOperation(timer);
+      }
+    }
+  }
+
+  private SearchRequest countRequest(ObjectNode body, String index, SubjectContext subjectContext) {
+    ElasticSearchRequestBuilder builder =
+        new ElasticSearchRequestBuilder()
+            .query(readCountJson(body.path("query"), Query._DESERIALIZER))
+            .from(0)
+            .size(0)
+            .fetchSource(false)
+            .trackTotalHits(false)
+            .timeout("30s")
+            .preference(SearchUtils.searchPreferenceFor(subjectContext))
+            .contextMemoryVisibilityResolved();
+    body.path("aggs")
+        .fields()
+        .forEachRemaining(
+            entry ->
+                builder.aggregation(
+                    entry.getKey(), readCountJson(entry.getValue(), Aggregation._DESERIALIZER)));
+    return builder.build(index);
+  }
+
+  private <T> T readCountJson(JsonNode node, JsonpDeserializer<T> deserializer) {
+    var mapper = client._transport().jsonpMapper();
+    try (var parser = mapper.jsonProvider().createParser(new StringReader(node.toString()))) {
+      return deserializer.deserialize(parser, mapper);
+    }
+  }
+
   /**
    * Runs the ranked query, then re-runs it without the fuzzy stage when the query turns out to name
    * an entity exactly.
@@ -1198,43 +1413,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       String clusterAlias)
       throws IOException {
     return SearchRankingHelper.searchWithIdentifierPrecision(
-        request.getQuery(),
+        request,
         searchSettings,
-        new SearchRankingHelper.SearchWindow(
-            request.getFrom() == null ? 0 : request.getFrom(),
-            request.getSize() == null ? 0 : request.getSize(),
-            !nullOrEmpty(request.getSearchAfter())),
         (settings, window) ->
-            executeSearchRequest(windowed(request, window), subjectContext, settings, clusterAlias),
+            executeSearchRequest(
+                SearchRankingHelper.windowed(request, window),
+                subjectContext,
+                settings,
+                clusterAlias),
         ElasticSearchSearchManager::hitIdentifiers);
-  }
-
-  /**
-   * The same request restricted to a different window, so the identity probe can read the top of
-   * the ranking whichever page was asked for. The probe window is not cursor paged, so it drops any
-   * {@code search_after}: leaving the cursor on would scroll the probe to wherever the caller had
-   * got to and it would judge the same window the caller asked for, which is the tear it exists to
-   * prevent. Returns the original when nothing needs changing, which is the common case.
-   */
-  private static org.openmetadata.schema.search.SearchRequest windowed(
-      org.openmetadata.schema.search.SearchRequest request,
-      SearchRankingHelper.SearchWindow window) {
-    Integer currentFrom = request.getFrom();
-    Integer currentSize = request.getSize();
-    boolean sameWindow =
-        currentFrom != null
-            && currentFrom == window.from()
-            && currentSize != null
-            && currentSize == window.size();
-    boolean keepsCursor = window.cursorPaged() || nullOrEmpty(request.getSearchAfter());
-    if (sameWindow && keepsCursor) {
-      return request;
-    }
-    org.openmetadata.schema.search.SearchRequest copy =
-        JsonUtils.deepCopy(request, org.openmetadata.schema.search.SearchRequest.class)
-            .withFrom(window.from())
-            .withSize(window.size());
-    return window.cursorPaged() ? copy : copy.withSearchAfter(List.of());
   }
 
   /**
@@ -1284,7 +1471,12 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     try {
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+      SearchResponse<JsonData> response =
+          searchForCompleteExportResponse(searchRequest, request.getIndex());
+
+      if (response.timedOut() || response.shards().failed().intValue() > 0) {
+        throw new IOException("Incomplete search export for " + request.getIndex());
+      }
 
       List<Map<String, Object>> results = new ArrayList<>();
       Object[] lastHitSortValues = null;
@@ -1316,6 +1508,40 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       } else {
         throw buildSearchException(e);
       }
+    }
+  }
+
+  private SearchResponse<JsonData> searchForCompleteExportResponse(
+      SearchRequest searchRequest, String index) throws IOException {
+    for (int attempt = 1; attempt <= EXPORT_SEARCH_MAX_ATTEMPTS; attempt++) {
+      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+      int failedShards = response.shards().failed().intValue();
+      if (!response.timedOut() && failedShards == 0) {
+        return response;
+      }
+      if (attempt == EXPORT_SEARCH_MAX_ATTEMPTS) {
+        throw new IOException(
+            "Incomplete search export for %s after %d attempts (timedOut=%s, failedShards=%d)"
+                .formatted(index, attempt, response.timedOut(), failedShards));
+      }
+      LOG.warn(
+          "Incomplete search export response for {} (timedOut={}, failedShards={}); retrying ({}/{})",
+          index,
+          response.timedOut(),
+          failedShards,
+          attempt,
+          EXPORT_SEARCH_MAX_ATTEMPTS);
+      waitBeforeExportRetry(attempt, index);
+    }
+    throw new IllegalStateException("Export search retry loop terminated unexpectedly");
+  }
+
+  private static void waitBeforeExportRetry(int attempt, String index) throws IOException {
+    try {
+      Thread.sleep(EXPORT_SEARCH_RETRY_DELAY_MILLIS * attempt);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new IOException("Interrupted while retrying search export for " + index, ex);
     }
   }
 
@@ -1361,7 +1587,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         requestBuilder.query());
 
     // Apply RBAC query
-    applyRbacCondition(subjectContext, requestBuilder);
+    applyRbacCondition(subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
 
     applyQueryFilter(requestBuilder, request);
 
@@ -1447,16 +1673,14 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   private static SearchException buildSearchException(ElasticsearchException e) {
-    String detail = e.getMessage();
-    ErrorCause error = e.error();
-    if (error != null && error.rootCause() != null && !error.rootCause().isEmpty()) {
-      String rootCauses =
-          error.rootCause().stream()
-              .map(c -> c.type() + ": " + c.reason())
-              .collect(Collectors.joining("; "));
-      detail = String.format("%s | Root cause: [%s]", detail, rootCauses);
+    return SearchEngineErrors.searchFailure(e.status(), e.getMessage(), rootCauses(e.error()));
+  }
+
+  private static List<String> rootCauses(ErrorCause error) {
+    if (error == null || error.rootCause() == null) {
+      return List.of();
     }
-    return new SearchException(String.format("Search failed due to %s", detail));
+    return error.rootCause().stream().map(c -> c.type() + ": " + c.reason()).toList();
   }
 
   private ElasticSearchRequestBuilder buildHierarchyQuery(
@@ -1568,7 +1792,12 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                           // Add the original query as a should clause to preserve high scores
                           b.should(originalQuery);
                           // Add parent term queries as should clauses to fetch hierarchy
-                          parentTermQueries.forEach(b::should);
+                          if (indexName.equalsIgnoreCase(glossaryTermIndex)
+                              || indexName.equalsIgnoreCase(glossaryTermAlias)) {
+                            b.should(withZeroScore(parentTermQueries));
+                          } else {
+                            parentTermQueries.forEach(b::should);
+                          }
                           if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
                             b.must(m -> m.match(ma -> ma.field("entityStatus").query("Approved")));
                           }
@@ -1605,7 +1834,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     if (indexName.equalsIgnoreCase(glossaryTermIndex)
         || indexName.equalsIgnoreCase(glossaryTermAlias)) {
-      response = buildGlossaryTermSearchHierarchy(searchResponse);
+      response = buildGlossaryTermSearchHierarchy(indexName, searchResponse);
     } else if (indexName.equalsIgnoreCase(domainIndex) || indexName.equalsIgnoreCase(domainAlias)) {
       response = buildDomainSearchHierarchy(searchResponse);
     }
@@ -1613,7 +1842,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   private List<EntityHierarchy> buildGlossaryTermSearchHierarchy(
-      SearchResponse<JsonData> searchResponse) {
+      String indexName, SearchResponse<JsonData> searchResponse) {
     Map<String, EntityHierarchy> termMap = new LinkedHashMap<>();
     Map<String, EntityHierarchy> rootTerms = new LinkedHashMap<>();
 
@@ -1637,6 +1866,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       termMap.putIfAbsent(term.getFullyQualifiedName(), term);
     }
 
+    addMissingParents(indexName, termMap);
     termMap.putAll(rootTerms);
 
     termMap
@@ -1662,6 +1892,69 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             });
 
     return new ArrayList<>(rootTerms.values());
+  }
+
+  // Parents only draw the tree, so they must not take page slots from real matches (the ones that
+  // miss the page are fetched by addMissingParents)
+  private static Query withZeroScore(List<Query> parentTermQueries) {
+    return Query.of(
+        q ->
+            q.constantScore(
+                c ->
+                    c.filter(f -> f.bool(b -> b.should(parentTermQueries).minimumShouldMatch("1")))
+                        .boost(0f)));
+  }
+
+  // A hit whose parent ranked below the page cut would otherwise be dropped from the tree
+  private void addMissingParents(String indexName, Map<String, EntityHierarchy> termMap) {
+    List<FieldValue> missing =
+        termMap.keySet().stream()
+            .flatMap(fqn -> parentTermFqns(fqn).stream())
+            .filter(fqn -> !termMap.containsKey(fqn))
+            .distinct()
+            .map(FieldValue::of)
+            .toList();
+    if (!missing.isEmpty()) {
+      for (EntityHierarchy parent : fetchApprovedTermsByFqn(indexName, missing)) {
+        parent.setChildren(new ArrayList<>());
+        termMap.putIfAbsent(parent.getFullyQualifiedName(), parent);
+      }
+    }
+  }
+
+  private List<EntityHierarchy> fetchApprovedTermsByFqn(String indexName, List<FieldValue> fqns) {
+    Query byFqn =
+        Query.of(q -> q.terms(t -> t.field("fullyQualifiedName").terms(tv -> tv.value(fqns))));
+    Query approved = Query.of(q -> q.match(m -> m.field("entityStatus").query("Approved")));
+    try {
+      return client
+          .search(
+              s ->
+                  s.index(indexName)
+                      .size(fqns.size())
+                      .query(q -> q.bool(b -> b.filter(List.of(byFqn, approved)))),
+              JsonData.class)
+          .hits()
+          .hits()
+          .stream()
+          .filter(hit -> hit.source() != null)
+          .map(hit -> JsonUtils.readValue(hit.source().toJson().toString(), EntityHierarchy.class))
+          .toList();
+    } catch (IOException | ElasticsearchException e) {
+      LOG.warn("Could not fetch parent glossary terms for the search hierarchy", e);
+      return List.of();
+    }
+  }
+
+  // Term-level parents only: the glossary (single-part FQN) is the root and comes from each hit
+  private static List<String> parentTermFqns(String fqn) {
+    List<String> parents = new ArrayList<>();
+    for (String parent = getParentFQN(fqn);
+        parent != null && getParentFQN(parent) != null;
+        parent = getParentFQN(parent)) {
+      parents.add(parent);
+    }
+    return parents;
   }
 
   private List<EntityHierarchy> buildDomainSearchHierarchy(
@@ -1700,70 +1993,14 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   /**
-   * Fallback to basic query_string search when NLQ transformation fails or is unavailable.
-   * Uses the new Java API client for query execution.
+   * Answers an NLQ request that could not be translated with the regular keyword search, so it gets
+   * the configured fields, boosts, filters and clause budget of /search/query.
    */
   private Response fallbackToBasicSearch(
       org.openmetadata.schema.search.SearchRequest request, SubjectContext subjectContext) {
     try {
-      LOG.debug("Falling back to basic query_string search for NLQ: {}", request.getQuery());
-
-      ElasticSearchRequestBuilder requestBuilder = new ElasticSearchRequestBuilder();
-
-      // Build basic query_string query using new API
-      Query queryStringQuery =
-          Query.of(
-              q -> q.queryString(qs -> qs.query(request.getQuery()).defaultOperator(Operator.And)));
-
-      requestBuilder.query(queryStringQuery);
-      requestBuilder.from(request.getFrom());
-      requestBuilder.size(request.getSize());
-
-      // Apply RBAC constraints using new API
-      if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-        OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
-        if (rbacQueryBuilder != null) {
-          Query rbacQuery =
-              ((org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder)
-                      rbacQueryBuilder)
-                  .buildV2();
-          Query existingQuery = requestBuilder.query();
-          if (existingQuery != null) {
-            Query combinedQuery =
-                Query.of(
-                    qb ->
-                        qb.bool(
-                            b -> {
-                              b.must(existingQuery);
-                              b.filter(rbacQuery);
-                              return b;
-                            }));
-            requestBuilder.query(combinedQuery);
-          } else {
-            requestBuilder.query(rbacQuery);
-          }
-        }
-      }
-
-      applyContextMemoryVisibility(subjectContext, requestBuilder);
-
-      // Add aggregations for fallback NLQ search
-      addAggregationsToNLQQuery(requestBuilder, request.getIndex());
-
-      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
-      SearchResponse<JsonData> searchResponse;
-      try {
-        searchResponse = client.search(searchRequest, JsonData.class);
-      } finally {
-        if (searchTimerSample != null) {
-          RequestLatencyContext.endSearchOperation(searchTimerSample);
-        }
-      }
-
-      return Response.status(Response.Status.OK)
-          .entity(serializeSearchResponse(searchResponse))
-          .build();
+      LOG.debug("Falling back to keyword search for NLQ: {}", request.getQuery());
+      return search(request, subjectContext);
     } catch (Exception e) {
       LOG.error("Error in fallback search: {}", e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

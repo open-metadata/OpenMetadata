@@ -20,6 +20,7 @@ import { DataType } from '../../../generated/tests/testDefinition';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getColumnByFQN } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnDetailPanel } from './ColumnDetailPanel.component';
 
 jest.mock('react-i18next', () => ({
@@ -83,16 +84,10 @@ jest.mock('antd', () => ({
       {children}
     </div>
   )),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children, ...props }) => (
-      <span data-testid="typography-text" {...props}>
-        {children}
-      </span>
-    )),
-  },
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Button: jest.fn().mockImplementation(
     ({
       children,
@@ -110,6 +105,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+  Tooltip: ({ children }: React.PropsWithChildren) => children,
 }));
 
 jest.mock('@ant-design/icons', () => ({
@@ -136,20 +132,24 @@ jest.mock('../../common/DescriptionSection/DescriptionSection', () => ({
   __esModule: true,
   default: jest
     .fn()
-    .mockImplementation(({ onDescriptionUpdate, description }) => (
-      <div data-testid="description-section">
-        <span>Description: {description || 'No description'}</span>
-        {onDescriptionUpdate && (
-          <button
-            data-testid="update-description"
-            onClick={async () => {
-              await onDescriptionUpdate('Updated description');
-            }}>
-            Update Description
-          </button>
-        )}
-      </div>
-    )),
+    .mockImplementation(
+      ({ onDescriptionUpdate, description, hasPermission }) => (
+        <div
+          data-has-permission={String(hasPermission)}
+          data-testid="description-section">
+          <span>Description: {description || 'No description'}</span>
+          {onDescriptionUpdate && (
+            <button
+              data-testid="update-description"
+              onClick={async () => {
+                await onDescriptionUpdate('Updated description');
+              }}>
+              Update Description
+            </button>
+          )}
+        </div>
+      )
+    ),
 }));
 
 jest.mock('../../common/TagsSection/TagsSection', () => ({
@@ -224,15 +224,6 @@ jest.mock('../../common/Loader/Loader', () => ({
   )),
 }));
 
-jest.mock('../../AlertBar/AlertBar', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(({ message, type }) => (
-    <div data-testid="alert-bar" data-type={type}>
-      {message}
-    </div>
-  )),
-}));
-
 jest.mock('../../Entity/EntityRightPanel/EntityRightPanelVerticalNav', () => ({
   __esModule: true,
   default: jest
@@ -266,13 +257,19 @@ jest.mock(
   })
 );
 
-jest.mock('../../Explore/EntitySummaryPanel/LineageTab', () => ({
-  LineageTabContent: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="lineage-tab">Lineage Tab</div>),
-}));
+jest.mock(
+  '../../Explore/EntitySummaryPanel/LineageTab/LineageTabContent',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="lineage-tab">Lineage Tab</div>
+      )),
+  })
+);
 
-jest.mock('./KeyProfileMetrics', () => ({
+jest.mock('./KeyProfileMetrics/KeyProfileMetrics.component', () => ({
   KeyProfileMetrics: jest
     .fn()
     .mockImplementation(() => (
@@ -396,7 +393,6 @@ jest.mock('../../../utils/EntitySummaryPanelUtils', () => ({
 }));
 
 jest.mock('../../../utils/StringUtils', () => ({
-  stringToHTML: jest.fn().mockImplementation((str) => str),
   getErrorText: jest
     .fn()
     .mockImplementation(
@@ -405,6 +401,10 @@ jest.mock('../../../utils/StringUtils', () => ({
     ),
   getEncodedFqn: jest.fn().mockImplementation((fqn: string) => fqn),
   getDecodedFqn: jest.fn().mockImplementation((fqn: string) => fqn),
+}));
+
+jest.mock('../../../utils/RichTextStringUtils', () => ({
+  stringToHTML: jest.fn().mockImplementation((str) => str),
 }));
 
 jest.mock('../../../utils/TablePureUtils', () => ({
@@ -507,10 +507,11 @@ describe('ColumnDetailPanel', () => {
 
   describe('Component Rendering', () => {
     it('should render drawer when isOpen is true', async () => {
-      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
+      const { getByTestId, getByRole } = render(
+        <ColumnDetailPanel {...mockProps} />
+      );
 
-      expect(getByTestId('drawer')).toBeInTheDocument();
-      expect(getByTestId('drawer')).toHaveAttribute('data-open', 'true');
+      expect(getByRole('dialog')).toBeInTheDocument();
 
       await waitFor(() => {
         expect(getByTestId('description-section')).toBeInTheDocument();
@@ -518,11 +519,11 @@ describe('ColumnDetailPanel', () => {
     });
 
     it('should not render drawer when isOpen is false', () => {
-      const { getByTestId } = render(
+      const { queryByRole } = render(
         <ColumnDetailPanel {...mockProps} isOpen={false} />
       );
 
-      expect(getByTestId('drawer')).toHaveAttribute('data-open', 'false');
+      expect(queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('should render all sections in overview tab', async () => {
@@ -954,11 +955,12 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(
         () => {
           expect(onColumnFieldUpdate).toHaveBeenCalled();
-          expect(getByTestId('alert-bar')).toBeInTheDocument();
-          expect(getByTestId('alert-bar')).toHaveTextContent('Update failed');
+          expect(showErrorToast).toHaveBeenCalled();
           expect(getByTestId('description-section')).toBeInTheDocument();
         },
         { timeout: 300 }
@@ -1064,11 +1066,15 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(
         () => {
           expect(onColumnFieldUpdate).toHaveBeenCalled();
-          expect(getByTestId('alert-bar')).toBeInTheDocument();
-          expect(getByTestId('alert-bar')).toHaveTextContent('Network error');
+          expect(showErrorToast).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'Network error' }),
+            expect.any(String)
+          );
           expect(getByTestId('description-section')).toBeInTheDocument();
         },
         { timeout: 300 }
@@ -1097,11 +1103,13 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
-        expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveTextContent(
-          'Tags update failed'
+        expect(showErrorToast).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Tags update failed' }),
+          expect.any(String)
         );
       });
     });
@@ -1128,18 +1136,20 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
-        expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveTextContent(
-          'Glossary terms update failed'
+        expect(showErrorToast).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Glossary terms update failed' }),
+          expect.any(String)
         );
       });
     });
   });
 
-  describe('AlertBar Functionality', () => {
-    it('should show success alert on successful description update', async () => {
+  describe('Toast Functionality', () => {
+    it('should show success toast on successful description update', async () => {
       const onColumnFieldUpdate = jest.fn().mockResolvedValue(mockColumn);
 
       const { getByTestId } = render(
@@ -1159,16 +1169,19 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showSuccessToast } = jest.requireMock(
+        '../../../utils/ToastUtils'
+      );
+
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
-        expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveTextContent(
+        expect(showSuccessToast).toHaveBeenCalledWith(
           'server.update-entity-success - {"entity":"label.description"}'
         );
       });
     });
 
-    it('should show success alert on successful tags update', async () => {
+    it('should show success toast on successful tags update', async () => {
       const onColumnFieldUpdate = jest.fn().mockResolvedValue(mockColumn);
 
       const { getByTestId } = render(
@@ -1188,16 +1201,19 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showSuccessToast } = jest.requireMock(
+        '../../../utils/ToastUtils'
+      );
+
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
-        expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveTextContent(
+        expect(showSuccessToast).toHaveBeenCalledWith(
           'server.update-entity-success - {"entity":"label.tag-plural"}'
         );
       });
     });
 
-    it('should show error alert with correct message on update failure', async () => {
+    it('should show error toast with correct message on update failure', async () => {
       const errorMessage = 'Custom error message';
       const onColumnFieldUpdate = jest.fn().mockImplementation(
         () =>
@@ -1225,28 +1241,70 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(
         () => {
-          const alertBar = getByTestId('alert-bar');
-
-          expect(alertBar).toBeInTheDocument();
-          expect(alertBar).toHaveAttribute('data-type', 'error');
-          expect(alertBar).toHaveTextContent(errorMessage);
+          expect(showErrorToast).toHaveBeenCalledWith(
+            expect.objectContaining({ message: errorMessage }),
+            expect.any(String)
+          );
         },
         { timeout: 200 }
       );
     });
 
-    it('should not show alert bar initially', async () => {
-      const { queryByTestId, getByTestId } = render(
-        <ColumnDetailPanel {...mockProps} />
+    it('should not show a toast initially', async () => {
+      const { showErrorToast, showSuccessToast } = jest.requireMock(
+        '../../../utils/ToastUtils'
       );
+      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
 
       await waitFor(() => {
         expect(getByTestId('description-section')).toBeInTheDocument();
       });
 
-      expect(queryByTestId('alert-bar')).not.toBeInTheDocument();
+      expect(showErrorToast).not.toHaveBeenCalled();
+      expect(showSuccessToast).not.toHaveBeenCalled();
+    });
+  });
+
+  // Task 8 Batch 3: hasEditPermission.description's raw
+  // `(permissions.EditDescription || permissions.EditAll) && !deleted` ->
+  // canEditDescription (getDerivedPermissionFlags). Documented explicit-deny-wins behavior
+  // change (Task 6 Finding 1 / Task 8 Batch 2 precedent): an explicit `EditDescription: false`
+  // now wins over a bare `EditAll: true` grant, where the old raw OR granted regardless.
+  describe('Permission derivation (explicit-deny-wins)', () => {
+    it('grants description edit access via EditAll when EditDescription is not present', async () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        permissions: { EditAll: true },
+        changeSummary: {},
+      });
+
+      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
+
+      await waitFor(() => {
+        expect(getByTestId('description-section')).toHaveAttribute(
+          'data-has-permission',
+          'true'
+        );
+      });
+    });
+
+    it('denies description edit access when EditDescription is explicitly false, even with EditAll true', async () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        permissions: { EditAll: true, EditDescription: false },
+        changeSummary: {},
+      });
+
+      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
+
+      await waitFor(() => {
+        expect(getByTestId('description-section')).toHaveAttribute(
+          'data-has-permission',
+          'false'
+        );
+      });
     });
   });
 });

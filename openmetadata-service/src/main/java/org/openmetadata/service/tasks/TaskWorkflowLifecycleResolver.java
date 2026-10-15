@@ -237,6 +237,9 @@ public final class TaskWorkflowLifecycleResolver {
       case DataQualityReview -> "DataQualityReviewTaskWorkflow";
       case RecognizerFeedbackApproval -> "RecognizerFeedbackReviewWorkflow";
       case CustomTask -> "CustomTaskWorkflow";
+        // The server opens it and applies its decision synchronously; no workflow drives it
+        // (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
+      case MemoryConflictReview -> null;
       default -> "CustomTaskWorkflow";
     };
   }
@@ -285,7 +288,10 @@ public final class TaskWorkflowLifecycleResolver {
       case GlossaryApproval, RequestApproval -> TaskCategory.Approval;
       case DataAccessRequest -> TaskCategory.DataAccess;
       case IncidentResolution, TestCaseResolution -> TaskCategory.Incident;
-      case DataQualityReview, PipelineReview, RecognizerFeedbackApproval -> TaskCategory.Review;
+      case DataQualityReview,
+          PipelineReview,
+          RecognizerFeedbackApproval,
+          MemoryConflictReview -> TaskCategory.Review;
       case CustomTask -> TaskCategory.Custom;
     };
   }
@@ -428,6 +434,15 @@ public final class TaskWorkflowLifecycleResolver {
               .orElse(null);
     }
     return match;
+  }
+
+  /**
+   * Identify an approval transition by its target status rather than its `id` string. Every
+   * approve transition in our seeded workflows has `targetTaskStatus=Approved`, so this avoids
+   * coupling callers to the literal `"approve"` id that the workflow JSON happens to use.
+   */
+  public static boolean isApproveTransition(TaskAvailableTransition transition) {
+    return transition != null && transition.getTargetTaskStatus() == TaskEntityStatus.Approved;
   }
 
   /**

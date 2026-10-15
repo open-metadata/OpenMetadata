@@ -29,7 +29,9 @@ def merge_and_clean_protobuf_schema(schema_text: str | None) -> str | None:
         lines = schema_text.splitlines() if schema_text else []
         new_lines = []
         for i, line in enumerate(lines):
-            if not re.search(r'import ".*";', line) and not re.search(r"option .*;", line):
+            is_import = re.search(r'import ".*";', line)
+            is_well_known_type_import = re.search(r'import "google/protobuf/.*\.proto";', line)
+            if (not is_import or is_well_known_type_import) and not re.search(r"option .*;", line):
                 if re.search(r'\s*syntax\s*=\s*"proto\d+";\s*', line) and i != 0:
                     continue
                 new_lines.append(line)

@@ -26,6 +26,9 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_account_usage_schema,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY,
     SNOWFLAKE_QUERY_LOG_QUERY,
@@ -145,7 +148,7 @@ class SnowflakeQueryLogEntry(BaseModel):
         rows = session.execute(
             text(
                 SNOWFLAKE_QUERY_LOG_QUERY.format(
-                    account_usage_schema=service_connection_config.accountUsageSchema,
+                    account_usage_schema=quote_account_usage_schema(service_connection_config.accountUsageSchema),
                     tablename=tablename,  # type: ignore
                     insert=DatabaseDMLOperations.INSERT.value,
                     update=DatabaseDMLOperations.UPDATE.value,
@@ -206,7 +209,7 @@ class SnowflakeDynamicTableRefreshEntry(BaseModel):
         rows = session.execute(
             text(
                 SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY.format(
-                    account_usage_schema=service_connection_config.accountUsageSchema,
+                    account_usage_schema=quote_account_usage_schema(service_connection_config.accountUsageSchema),
                     tablename=tablename,
                 )
             )

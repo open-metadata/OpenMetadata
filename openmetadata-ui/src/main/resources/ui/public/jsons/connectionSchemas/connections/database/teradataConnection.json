@@ -1,0 +1,245 @@
+{
+  "title": "TeradataConnection",
+  "description": "Teradata Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.TeradataConnection",
+  "definitions": {
+    "teradataType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Teradata"
+      ],
+      "default": "Teradata"
+    },
+    "teradataScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "teradatasql"
+      ],
+      "default": "teradatasql"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Teradata",
+      "type": "string",
+      "enum": [
+        "Teradata"
+      ]
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "default": "teradatasql",
+      "type": "string",
+      "enum": [
+        "teradatasql"
+      ]
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Teradata. This user should have privileges to read all the metadata in Teradata.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Teradata.",
+      "type": "string",
+      "format": "password"
+    },
+    "logmech": {
+      "title": "LOGMECH",
+      "description": "Specifies the logon authentication method. Possible values are TD2 (the default), JWT, LDAP, KRB5 for Kerberos, or TDNEGO",
+      "type": "string",
+      "enum": [
+        "TD2",
+        "LDAP",
+        "JWT",
+        "KRB5",
+        "CUSTOM",
+        "TDNEGO"
+      ],
+      "default": "TD2"
+    },
+    "logdata": {
+      "title": "Extra data for the chosen logon authentication method (LOGDATA)",
+      "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism.",
+      "type": "string"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Teradata service.",
+      "type": "string"
+    },
+    "tmode": {
+      "title": "Transaction mode",
+      "description": "Specifies the transaction mode for the connection",
+      "type": "string",
+      "enum": [
+        "ANSI",
+        "TERA",
+        "DEFAULT"
+      ],
+      "default": "DEFAULT"
+    },
+    "account": {
+      "title": "Teradata Database account",
+      "description": "Specifies an account string to override the default account string defined for the database user. Accounts are used by the database for workload management and resource usage monitoring.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options to build the URL that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": {
+          "type": "string"
+        }
+      }
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "storedProcedureFilterPattern": {
+      "title": "Default Stored Procedure Filter Pattern",
+      "description": "Regex to only include/exclude stored procedures that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "description": "Supports Profiler",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsViewLineageExtraction": {
+      "description": "Supports View Lineage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsLineageExtraction": {
+      "description": "Supports Lineage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsUsageExtraction": {
+      "description": "Supports Usage Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username"
+  ]
+}

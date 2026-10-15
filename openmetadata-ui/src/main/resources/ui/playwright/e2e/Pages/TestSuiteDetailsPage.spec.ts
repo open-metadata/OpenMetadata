@@ -12,9 +12,10 @@
  */
 import { expect } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
+import { BundleTestSuiteClass } from '../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  addTestCaseListFilterByFirstColumnInAddTestCasesDialog,
+  addTestCaseListFilterByColumnInAddTestCasesDialog,
   addTestCaseListFilterByStatusInAddTestCasesDialog,
   addTestCaseListFilterByTableInAddTestCasesDialog,
   addTestCaseListFilterByTestTypeInAddTestCasesDialog,
@@ -23,7 +24,7 @@ import {
 } from '../../utils/addTestCaseList';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -64,13 +65,15 @@ test(
       const initialListResponse = page.waitForResponse(
         `/api/v1/dataQuality/testCases/search/list*`
       );
-      await page.goto('/data-quality/test-suites/bundle-suites');
+      await page.goto('/data-quality/test-suites/bundle-suites', {
+        waitUntil: 'domcontentloaded',
+      });
       await page.click('[data-testid="add-test-suite-btn"]');
       await initialListResponse;
       await page
         .locator('[data-testid="test-suite-name"] input')
         .fill(NEW_TEST_SUITE.name);
-      await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
+      await fillDescriptionBox(page, NEW_TEST_SUITE.description);
       await page.waitForSelector(
         "[data-testid='test-case-selection-card'] [data-testid='loader']",
         { state: 'detached' }
@@ -97,7 +100,9 @@ test(
     });
 
     await test.step('Find and open the test suite from the bundle suite list', async () => {
-      await page.goto('/data-quality/test-suites/bundle-suites');
+      await page.goto('/data-quality/test-suites/bundle-suites', {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(page);
 
       const testSuiteSearchResponse = page.waitForResponse(
@@ -109,7 +114,8 @@ test(
       await testSuiteSearchResponse;
 
       const testSuiteDetailsPage = page.waitForURL(
-        (url) => url.pathname === `/test-suites/${NEW_TEST_SUITE.name}`
+        (url) => url.pathname === `/test-suites/${NEW_TEST_SUITE.name}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await page
         .getByRole('link', { exact: true, name: NEW_TEST_SUITE.name })
@@ -142,6 +148,45 @@ test(
       );
       await page.getByTestId('add-test-case-btn').click();
       await modalListResponse;
+      const submit = page
+        .getByRole('dialog', ADD_TEST_CASES_DIALOG)
+        .getByTestId('submit');
+      await expect(submit).toBeInViewport();
+      const cancel = page
+        .getByRole('dialog', ADD_TEST_CASES_DIALOG)
+        .getByTestId('cancel');
+      await expect
+        .poll(async () => {
+          const cancelBounds = await cancel.boundingBox();
+          const submitBounds = await submit.boundingBox();
+
+          return cancelBounds && submitBounds
+            ? Math.abs(
+                cancelBounds.y +
+                  cancelBounds.height / 2 -
+                  (submitBounds.y + submitBounds.height / 2)
+              )
+            : Number.POSITIVE_INFINITY;
+        })
+        .toBeLessThan(1);
+      expect(
+        await submit.evaluate((button) => {
+          for (
+            let parent = button.parentElement;
+            parent;
+            parent = parent.parentElement
+          ) {
+            if (
+              /auto|scroll/.test(getComputedStyle(parent).overflowY) &&
+              parent.scrollHeight > parent.clientHeight
+            ) {
+              return true;
+            }
+          }
+
+          return false;
+        })
+      ).toBe(false);
       await page
         .getByRole('dialog', ADD_TEST_CASES_DIALOG)
         .locator(
@@ -174,13 +219,17 @@ test(
     });
 
     await test.step('Filter by Column and wait for API', async () => {
-      await addTestCaseListFilterByFirstColumnInAddTestCasesDialog(page);
+      await addTestCaseListFilterByColumnInAddTestCasesDialog(
+        page,
+        table.columnsName[0]
+      );
     });
 
     await test.step('Reset Test Type to All and clear filters, wait for API', async () => {
       await addTestCaseListResetFiltersInAddTestCasesDialog(
         page,
-        table.entityResponseData?.fullyQualifiedName ?? ''
+        table.entityResponseData?.fullyQualifiedName ?? '',
+        table.columnsName[0]
       );
     });
 
@@ -218,3 +267,99 @@ test(
     });
   }
 );
+
+test.describe('Bulk remove test cases from a bundle suite', () => {
+  let bulkRemoveTable: TableClass;
+  let bulkRemoveSuite: BundleTestSuiteClass;
+  let testCaseNames: string[];
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    bulkRemoveTable = new TableClass();
+    bulkRemoveSuite = new BundleTestSuiteClass();
+    await bulkRemoveTable.create(apiContext);
+    const testCases = [
+      await bulkRemoveTable.createTestCase(apiContext),
+      await bulkRemoveTable.createTestCase(apiContext),
+      await bulkRemoveTable.createTestCase(apiContext),
+    ];
+    testCaseNames = testCases.map((testCase) => testCase.name as string);
+    await bulkRemoveSuite.createBundleTestSuite(apiContext);
+    const addResponse = await bulkRemoveSuite.addTestCases(
+      apiContext,
+      testCases.map((testCase) => testCase.id as string)
+    );
+    expect(addResponse.status()).toBe(200);
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await bulkRemoveSuite.delete(apiContext);
+    await bulkRemoveTable.delete(apiContext);
+    await afterAction();
+  });
+
+  test('removes the selected test cases and keeps the rest', async ({
+    page,
+  }) => {
+    const suiteFqn =
+      bulkRemoveSuite.bundleTestSuiteResponseData.fullyQualifiedName ?? '';
+    const [keptName, ...removedNames] = testCaseNames;
+    const testCaseTable = page.getByTestId('test-case-table');
+    const testCaseRow = (name: string) =>
+      testCaseTable.locator('tbody tr[data-key]').filter({ hasText: name });
+
+    await test.step('Open the bundle suite', async () => {
+      const listResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/search/list*'
+      );
+      await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await listResponse;
+      await verifyBundleSuitePageLoaded(page, suiteFqn, 3);
+    });
+
+    await test.step('Select two test cases', async () => {
+      for (const name of removedNames) {
+        await testCaseRow(name).locator('label[slot="selection"]').click();
+      }
+
+      await expect(page.getByText('2 test case(s) selected')).toBeVisible();
+      await expect(
+        page.getByTestId('add-selected-to-bundle-suite')
+      ).not.toBeVisible();
+    });
+
+    await test.step('Remove them from the suite', async () => {
+      await page.getByTestId('bulk-remove-test-cases').click();
+
+      const removeResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/logicalTestCases/bulk/remove') &&
+          response.request().method() === 'POST'
+      );
+      await page.getByRole('dialog').getByTestId('save-button').click();
+
+      expect((await removeResponse).status()).toBe(200);
+      await toastNotification(
+        page,
+        'Test cases were removed from the test suite successfully.'
+      );
+    });
+
+    await test.step('Only the unselected test case remains', async () => {
+      for (const name of removedNames) {
+        await expect(testCaseRow(name)).toHaveCount(0);
+      }
+      await expect(testCaseRow(keptName)).toHaveCount(1);
+      await expect(
+        page.getByTestId('test-cases').getByTestId('count')
+      ).toHaveText('1');
+      await expect(
+        page.getByTestId('bulk-remove-test-cases')
+      ).not.toBeVisible();
+    });
+  });
+});

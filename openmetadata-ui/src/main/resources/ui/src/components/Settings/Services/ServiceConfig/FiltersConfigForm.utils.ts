@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Table } from '@untitledui/icons';
+import { Table } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../../../../constants/ServiceConnection.constants';
 import { ServiceConnectionFilterPatternFields } from '../../../../enums/ServiceConnection.enum';
@@ -147,6 +147,9 @@ export const conditionToRegex = (condition: FilterCondition) => {
 export const conditionKey = (condition: FilterCondition) =>
   `${condition.op}:${conditionToRegex(condition).toLowerCase()}`;
 
+const isNonArrayObject = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
 export const isFilterPatternConfig = (
   value: unknown
 ): value is FilterPatternConfig => {
@@ -163,7 +166,7 @@ export const isFilterSchemaProperty = (
   fieldName: string,
   property: unknown
 ): property is FilterSchemaProperty => {
-  if (!property || typeof property !== 'object' || Array.isArray(property)) {
+  if (!isNonArrayObject(property)) {
     return false;
   }
 

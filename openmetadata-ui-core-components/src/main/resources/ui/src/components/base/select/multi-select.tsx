@@ -7,12 +7,13 @@ import { type SelectItemType, sizes } from '@/components/base/select/select';
 import { TagCloseX } from '@/components/base/tags/base-components/tag-close-x';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '../../../icons';
 import type {
   FocusEventHandler,
   KeyboardEvent,
   PointerEventHandler,
   RefAttributes,
+  RefObject,
 } from 'react';
 import {
   createContext,
@@ -39,10 +40,11 @@ import {
 import type { ListData } from 'react-stately';
 import { SelectItem } from './select-item';
 
-interface ComboBoxValueProps
-  extends AriaGroupProps,
-    RefAttributes<HTMLDivElement> {
+// The trigger ref is a named prop, not `ref`: React 18 does not pass `ref` to a
+// function component, so the popover would have no trigger to anchor to.
+interface ComboBoxValueProps extends AriaGroupProps {
   size: 'sm' | 'md';
+  triggerRef: RefObject<HTMLDivElement>;
   shortcut?: boolean;
   isDisabled?: boolean;
   placeholder?: string;
@@ -169,11 +171,11 @@ const InnerMultiSelect = ({
   const isSelectionEmpty = comboBoxContext?.selectedItems?.items?.length === 0;
 
   return (
-    <div className="tw:relative tw:flex tw:w-full tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
+    <div className="tw:relative tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
       {!isSelectionEmpty &&
         comboBoxContext?.selectedItems?.items?.map((value) => (
           <span
-            className="tw:flex tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
+            className="tw:flex tw:max-w-full tw:min-w-0 tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
             key={value.id}>
             <Avatar alt={value?.label} size="xxs" src={value?.avatarUrl} />
 
@@ -199,7 +201,7 @@ const InnerMultiSelect = ({
           shortcut && 'tw:min-w-[30%]'
         )}>
         <AriaInput
-          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-md tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
+          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-md tw:text-ellipsis tw:text-primary tw:caret-text-primary tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
           onKeyDown={handleInputKeyDown}
           onMouseDown={handleInputMouseDown}
@@ -231,9 +233,10 @@ export const MultiSelectTagsValue = ({
   shortcut,
   placeholder,
   shortcutClassName,
-  icon: Icon = SearchLg,
+  icon: Icon = Search,
   // Omit this prop to avoid invalid HTML attribute warning
   isDisabled: _isDisabled,
+  triggerRef,
   ...otherProps
 }: ComboBoxValueProps) => {
   return (
@@ -249,7 +252,8 @@ export const MultiSelectTagsValue = ({
           isFocusWithin && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
           sizes[size].root
         )
-      }>
+      }
+      ref={triggerRef}>
       {({ isDisabled }) => (
         <>
           {Icon && (
@@ -322,8 +326,27 @@ export const MultiSelectBase = ({
     [selectedItems, onItemCleared]
   );
 
+  // react-aria commits the focused option on blur/Tab, and the listbox focuses
+  // whatever the pointer last passed over — so leaving the field inserted an
+  // option the user never picked. Only a press or Enter adds a value.
+  const isLeavingRef = useRef(false);
+  const suppressCommit = useCallback(() => {
+    isLeavingRef.current = true;
+    queueMicrotask(() => {
+      isLeavingRef.current = false;
+    });
+  }, []);
+  const onKeyDownCapture = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        suppressCommit();
+      }
+    },
+    [suppressCommit]
+  );
+
   const onSelectionChange = (id: Key | null) => {
-    if (!id) {
+    if (!id || isLeavingRef.current) {
       return;
     }
 
@@ -388,7 +411,10 @@ export const MultiSelectBase = ({
         onInputChange={onInputChange}
         onSelectionChange={onSelectionChange}>
         {(state) => (
-          <div className="tw:flex tw:flex-col tw:gap-1.5">
+          <div
+            className="tw:flex tw:flex-col tw:gap-1.5"
+            onBlurCapture={suppressCommit}
+            onKeyDownCapture={onKeyDownCapture}>
             {props.label && (
               <Label isRequired={state.isRequired} tooltip={props.tooltip}>
                 {props.label}
@@ -397,9 +423,9 @@ export const MultiSelectBase = ({
 
             <MultiSelectTagsValue
               placeholder={placeholder}
-              ref={placeholderRef}
               shortcut={shortcut}
               size={size}
+              triggerRef={placeholderRef}
               // This is a workaround to correctly calculating the trigger width
               // while using ResizeObserver wasn't 100% reliable.
               onFocus={onResize}

@@ -15,15 +15,38 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter, useParams } from 'react-router-dom';
 import { useTestCaseIncidentHeader } from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TestCase } from '../../../generated/tests/testCase';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
 import { getNextCronRunTimestamp } from '../../../utils/CronUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import IncidentManagerDetailPage from './IncidentManagerDetailPage';
 import { UseTestCaseStoreInterface } from './useTestCase.store';
+
+// useTestCaseDetailPage (Task 8 Batch 9) now sources permissions from
+// useEntityPermissions rather than reading testCasePermission off the mocked store —
+// mock the hook directly, same pattern as useTestCaseDetailPage.test.tsx itself.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (permissions: OperationPermission) => {
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 const TEST_CASE_FQN =
   'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals';
@@ -98,6 +121,11 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
   isTabExpanded: false,
   setIsTabExpanded: jest.fn(),
 };
+jest.mock('../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
+
 jest.mock('./useTestCase.store', () => ({
   useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),
 }));
@@ -223,11 +251,16 @@ jest.mock(
   '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
-jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="owner-label" />),
-}));
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+
+  return {
+    ...actual,
+    Owner: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="owner-label" />),
+  };
+});
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   convertMillisecondsToHumanReadableFormat: jest.fn().mockReturnValue('23m'),
   customFormatDateTime: jest.fn().mockReturnValue('Jan 01, 2024'),
@@ -259,6 +292,7 @@ describe('IncidentManagerDetailPage', () => {
   beforeEach(() => {
     mockLocation.state = { breadcrumbData: [] };
     mockUseTestCase.testCase = mockTestCaseData;
+    setMockPermissions(MOCK_PERMISSIONS);
     jest.mocked(useParams).mockReturnValue({
       fqn: TEST_CASE_FQN,
       tab: TestCasePageTabs.TEST_CASE_RESULTS,
@@ -374,6 +408,23 @@ describe('IncidentManagerDetailPage', () => {
     );
   });
 
+  it('puts the tab content on a white panel in classic mode only', async () => {
+    const { rerender } = render(<IncidentManagerDetailPage />, {
+      wrapper: Wrapper,
+    });
+
+    expect(await screen.findByRole('tabpanel')).toHaveClass('tw:bg-surface');
+
+    jest.mocked(useIsAiMode).mockReturnValue(true);
+    rerender(<IncidentManagerDetailPage />);
+
+    expect(await screen.findByRole('tabpanel')).not.toHaveClass(
+      'tw:bg-surface'
+    );
+
+    jest.mocked(useIsAiMode).mockReturnValue(false);
+  });
+
   it('should show the next run from the enabled test suite schedule', async () => {
     const dateNowSpy = jest
       .spyOn(Date, 'now')
@@ -420,7 +471,7 @@ describe('IncidentManagerDetailPage', () => {
   });
 
   it("should render no permission message if user doesn't have permission", async () => {
-    mockUseTestCase.testCasePermission = DEFAULT_ENTITY_PERMISSION;
+    setMockPermissions(DEFAULT_ENTITY_PERMISSION);
     await act(async () => {
       render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
     });
@@ -429,7 +480,7 @@ describe('IncidentManagerDetailPage', () => {
       await screen.findByTestId(ERROR_PLACEHOLDER_TEST_ID)
     ).toHaveAttribute('data-type', 'PERMISSION');
 
-    mockUseTestCase.testCasePermission = MOCK_PERMISSIONS;
+    setMockPermissions(MOCK_PERMISSIONS);
   });
 
   it('should render no data placeholder message if there is no data', async () => {

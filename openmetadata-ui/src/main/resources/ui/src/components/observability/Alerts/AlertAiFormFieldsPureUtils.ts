@@ -12,9 +12,10 @@
  */
 
 import { TFunction } from 'i18next';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
 import {
+  AlertType,
   ArgumentsInput,
   Effect,
   EventFilterRule,
@@ -25,7 +26,9 @@ import {
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
+  ObservabilityFilterResourceDescriptor,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { getConfigFieldFromDestinationType } from '../../../utils/ObservabilityUtils';
 import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
 import {
   AlertAiFormFieldsProps,
@@ -57,8 +60,13 @@ export const isWebhookDestination = (
   destinationType === SubscriptionType.Webhook;
 
 /** Normalizes API string/string-array values into arrays for multi-value inputs. */
-export const getStringArrayValue = (value?: string | string[]) =>
-  Array.isArray(value) ? value : value ? [value] : [];
+export const getStringArrayValue = (value?: string | string[]) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  return value ? [value] : [];
+};
 
 /** Splits comma-separated text input into the string-array payload expected by alert rules. */
 export const getCommaSeparatedStringArray = (value: string) =>
@@ -85,7 +93,7 @@ export const getCommaSeparatedValues = (value?: string | string[]) =>
 
 /** Normalizes scalar or array values for Core UI multi-select selected item state. */
 export const getListValue = (value?: string | string[]) =>
-  Array.isArray(value) ? value : value ? [value] : [];
+  getStringArrayValue(value);
 
 /** Reads the selected alert source from create/edit form values or existing alert details. */
 export const getAlertAiResources = (
@@ -101,6 +109,71 @@ export const getAlertAiResources = (
   }
 
   return 'filteringRules' in value ? value.filteringRules?.resources ?? [] : [];
+};
+
+/** Resolves whether a rule section should display, accounting for view-mode descriptor availability. */
+const resolveSectionDisplay = (
+  isViewOnly: boolean | undefined,
+  selectedSource: string | undefined,
+  selectedSupported: EventFilterRule[] | undefined,
+  shouldShowSection: boolean
+): boolean => {
+  if (isViewOnly && isUndefined(selectedSupported)) {
+    return shouldShowSection;
+  }
+
+  if (selectedSource) {
+    return !isEmpty(selectedSupported);
+  }
+
+  return shouldShowSection;
+};
+
+/** Derives the selected rules and section-visibility inputs for the AI alert form fields. */
+export const getAlertAiSectionInputs = ({
+  value,
+  isViewOnly,
+  selectedSource,
+  selectedFilterResource,
+  supportedFilters,
+  supportedTriggers,
+  shouldShowActionsSection,
+  shouldShowFiltersSection,
+}: {
+  value: AlertAiFormValue;
+  isViewOnly?: boolean;
+  selectedSource?: string;
+  selectedFilterResource?: ObservabilityFilterResourceDescriptor;
+  supportedFilters?: EventFilterRule[];
+  supportedTriggers?: EventFilterRule[];
+  shouldShowActionsSection: boolean;
+  shouldShowFiltersSection: boolean;
+}) => {
+  const selectedFilters = value.input?.filters ?? [];
+  const selectedTriggers = value.input?.actions ?? [];
+  const selectedSupportedFilters =
+    selectedFilterResource?.supportedFilters ?? supportedFilters;
+  const selectedSupportedTriggers =
+    selectedFilterResource?.supportedActions ?? supportedTriggers;
+
+  return {
+    selectedFilters,
+    selectedTriggers,
+    selectedSupportedFilters,
+    selectedSupportedTriggers,
+    shouldDisplayFiltersSection: resolveSectionDisplay(
+      isViewOnly,
+      selectedSource,
+      selectedSupportedFilters,
+      shouldShowFiltersSection
+    ),
+    shouldDisplayActionsSection: resolveSectionDisplay(
+      isViewOnly,
+      selectedSource,
+      selectedSupportedTriggers,
+      shouldShowActionsSection
+    ),
+  };
 };
 
 /** Computes which configuration sections should render in edit and read-only modes. */
@@ -126,52 +199,61 @@ export const getAlertAiSectionVisibility = ({
   shouldRenderSourceSection: !isViewOnly || !isEmpty(selectedSource),
 });
 
-/** Returns a cloned form value with a nested path updated, creating containers as needed. */
+/**
+ * Returns a copy of `source` with `path` set to `nextValue`, cloning only the nodes along the path
+ * and sharing every off-path branch by reference — a cheaper immutable update than deep-cloning the
+ * whole form value on each keystroke. (It does not reduce re-renders: the destination rows are
+ * index-keyed and unmemoized. The functional `updateAlertAiValue` below is the real write fix.)
+ * Missing containers are created as array or object based on the next path segment.
+ */
 export const setValueAtPath = (
   source: AlertAiFormValue,
   path: (string | number)[],
   nextValue: unknown
 ): AlertAiFormValue => {
-  const clone = structuredClone(source);
-  let current: Record<string, unknown> | unknown[] = clone as unknown as Record<
-    string,
+  if (path.length === 0) {
+    return nextValue as AlertAiFormValue;
+  }
+
+  const [head, ...rest] = path;
+  const src = source as unknown;
+  const container = (Array.isArray(src)
+    ? [...src]
+    : { ...(src as Record<string, unknown>) }) as unknown as Record<
+    string | number,
     unknown
   >;
 
-  path.forEach((pathItem, index) => {
-    if (index === path.length - 1) {
-      (current as Record<string | number, unknown>)[pathItem] = nextValue;
+  const currentChild = container[head];
+  const emptyContainer = typeof rest[0] === 'number' ? [] : {};
+  const child =
+    currentChild === undefined || currentChild === null
+      ? emptyContainer
+      : currentChild;
 
-      return;
-    }
+  container[head] =
+    rest.length === 0
+      ? nextValue
+      : setValueAtPath(child as AlertAiFormValue, rest, nextValue);
 
-    const nextPathItem = path[index + 1];
-    const currentValue = (current as Record<string | number, unknown>)[
-      pathItem
-    ];
-
-    if (currentValue === undefined || currentValue === null) {
-      (current as Record<string | number, unknown>)[pathItem] =
-        typeof nextPathItem === 'number' ? [] : {};
-    }
-
-    current = (current as Record<string | number, unknown>)[pathItem] as
-      | Record<string, unknown>
-      | unknown[];
-  });
-
-  return clone;
+  return container as unknown as AlertAiFormValue;
 };
 
-/** Applies an immutable nested update and emits the create-alert form value shape. */
+/**
+ * Applies an immutable nested update via a functional updater so rapid successive writes compose
+ * against the LATEST state instead of a captured render-time snapshot — without this two quick
+ * fills (header key then value) clobber each other and emit an empty header key the backend rejects.
+ * `_value` is retained for call-site compatibility and intentionally unused.
+ */
 export const updateAlertAiValue = (
-  value: AlertAiFormValue,
+  _value: AlertAiFormValue,
   onChange: AlertAiFormFieldsProps['onChange'] | undefined,
   path: (string | number)[],
   nextValue: unknown
 ) => {
   onChange?.(
-    setValueAtPath(value, path, nextValue) as ModifiedCreateEventSubscription
+    (prev) =>
+      setValueAtPath(prev, path, nextValue) as ModifiedCreateEventSubscription
   );
 };
 
@@ -237,6 +319,31 @@ export const getTextArgumentCopy = (argument: string, t: TFunction) => {
         }),
       };
   }
+};
+
+/** Computes add-rule affordance flags for a filter or trigger rule section. */
+export const getRuleSectionFlags = ({
+  field,
+  isViewOnly,
+  selectedRules,
+  selectedSource,
+  supportedRules,
+}: {
+  field: RuleSectionField;
+  isViewOnly?: boolean;
+  selectedRules: ArgumentsInput[];
+  selectedSource?: string;
+  supportedRules?: EventFilterRule[];
+}) => {
+  const maxRules = field === 'actions' ? 1 : supportedRules?.length ?? 0;
+
+  return {
+    canAddRule:
+      Boolean(supportedRules?.length) && selectedRules.length < maxRules,
+    isAddDisabled: isEmpty(selectedSource),
+    showAddButton:
+      !isViewOnly && (field === 'filters' || selectedRules.length === 0),
+  };
 };
 
 /** Builds rule dropdown items and disables rules that are already selected. */
@@ -360,19 +467,22 @@ export const getDestinationTypeUpdate = (
   const destinationType = nextDestinationType as
     | SubscriptionCategory
     | SubscriptionType;
+  const configField = getConfigFieldFromDestinationType(nextDestinationType);
   const nextDestination: Omit<ModifiedDestination, 'type'> & {
     type?: SubscriptionType;
   } = {
-    ...destination,
     category: isInternalDestinationType
       ? (nextDestinationType as SubscriptionCategory)
       : SubscriptionCategory.External,
     destinationType,
+    config: configField ? { [configField]: true } : undefined,
+    downstreamDepth: undefined,
+    notifyDownstream: undefined,
   };
 
-  if (!isInternalDestinationType) {
-    nextDestination.type = nextDestinationType as SubscriptionType;
-  }
+  nextDestination.type = isInternalDestinationType
+    ? undefined
+    : (nextDestinationType as SubscriptionType);
 
   return nextDestination as ModifiedDestination;
 };
@@ -388,3 +498,16 @@ export const getDestinationWithNotifyDownstream = (
     : undefined,
   notifyDownstream,
 });
+
+/**
+ * Event types offered by the event-type filter. Only the Settings → Notifications
+ * flow narrows them to the source's supported types (classic
+ * `AddNotificationPage`); the Observability flow always offered every type.
+ */
+export const getRuleEventTypes = (
+  alertType: AlertType | undefined,
+  resource?: ObservabilityFilterResourceDescriptor
+) =>
+  alertType === AlertType.Notification
+    ? resource?.supportedEventTypes
+    : undefined;

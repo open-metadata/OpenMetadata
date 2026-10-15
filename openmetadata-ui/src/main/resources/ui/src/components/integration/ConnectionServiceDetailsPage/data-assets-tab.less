@@ -1,0 +1,80 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.data-assets-tab {
+  .data-assets-table-wrapper {
+    // The OSS tab body sizes itself off the viewport (@entity-details-tab-height) because in
+    // Classic mode it owns the page scroll. Here it is nested inside the details page's own
+    // scroll container, so that fixed height leaves dead space below a short table and adds a
+    // second scrollbar. Let the content set the height and keep the outer container the only
+    // scroller.
+    .tab-content-height-with-resizable-panel {
+      height: auto;
+      overflow: visible;
+    }
+
+    // Classic paints this grey behind its cards. With the table as the only card, the grey would
+    // show as a strip under it.
+    .resizable-panels-layout {
+      background-color: transparent;
+    }
+
+    [data-testid='description-container'] {
+      display: none;
+    }
+
+    .entity-resizable-right-panel-container {
+      display: none;
+    }
+
+    .entity-resizable-panel-container {
+      min-width: 100%;
+      max-width: 100%;
+      width: 100%;
+      // Same reason as the wrapper above: OSS pins this to the viewport height and scrolls it.
+      height: auto;
+      overflow-y: visible;
+    }
+  }
+  .schema-description {
+    gap: 12px !important;
+  }
+  .glossary-terms-section {
+    border-bottom: none;
+    .glossary-terms-header,
+    .glossary-terms-content {
+      padding: 0;
+    }
+  }
+  // Built for the summary panel's padded cards; here it sits flush with the sections around it.
+  // Its title keeps the 12px below it that the glossary-terms and tags titles have (this section
+  // spaces it with padding, theirs with margin); the gap after it comes from the tab's own stack.
+  .data-products-section {
+    .data-products-header,
+    .data-products-content {
+      padding-left: 0;
+      padding-right: 0;
+    }
+    .data-products-content {
+      padding-bottom: 0;
+    }
+  }
+  .tags-section {
+    border-bottom: none;
+    padding-bottom: 0;
+    .tags-header,
+    .tags-content {
+      padding-left: 0;
+    }
+  }
+}

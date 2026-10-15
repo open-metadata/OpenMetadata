@@ -13,6 +13,7 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
@@ -91,7 +92,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -115,7 +117,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -139,7 +142,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -162,7 +166,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -186,7 +191,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -210,7 +216,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -232,9 +239,22 @@ test.describe('Explore Assets Discovery', () => {
 
     await page.getByTestId('delete-modal').waitFor();
 
-    await page.getByTestId('confirm-button').click();
+    // Wait for the soft delete to land before reloading. Reloading straight
+    // after the click races the request: if the server has not applied the
+    // delete yet, the reloaded page renders the table as live, no deleted-badge
+    // is ever mounted, and the assertion below burns its full timeout. Passes
+    // locally where the delete returns in milliseconds; loses the race under
+    // merge-queue load.
+    const softDelete = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'DELETE' &&
+        response.url().includes(`/api/v1/${EntityTypeEndpoint.Table}/`)
+    );
 
-    await page.reload();
+    await page.getByTestId('confirm-button').click();
+    await softDelete;
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -242,12 +262,29 @@ test.describe('Explore Assets Discovery', () => {
 
     await redirectToHomePage(page);
 
+    const suggestionsRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('exclude_source_fields=dataModel')
+    );
+
     await page.getByTestId('searchBox').click();
     await page.getByTestId('searchBox').fill(table1.entityResponseData.name);
+    await suggestionsRes;
 
-    await expect(page.locator('.ant-popover-inner-content')).not.toContainText(
-      table1.entityResponseData.name
-    );
+    // The navbar search is the only search box on the home page now; its
+    // popover is there even with no suggestions, which is the case here.
+    const suggestionsPopover = page.getByTestId('global-search-popover');
+
+    await expect(suggestionsPopover).toBeVisible();
+    // Each suggestion is a `data-name` link labelled with the entity's FQN;
+    // the popover's "Press Enter to find …" hint also echoes the typed name,
+    // so assert on the suggestion links, not the popover text.
+    await expect(
+      suggestionsPopover
+        .getByTestId('data-name')
+        .filter({ hasText: table1.entityResponseData.fullyQualifiedName })
+    ).toHaveCount(0);
   });
 
   test('Should not display domain and owner of deleted asset in suggestions when showDeleted is off', async ({
@@ -404,10 +441,7 @@ test.describe('Explore Assets Discovery', () => {
     // Only the table option should be visible for the data assets filter when the deleted switch is on
     // with the owner and domain filter applied
     await page.click('[data-testid="search-dropdown-Data Assets"]');
-    await page
-      .getByTestId('drop-down-menu')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
 
     await expect(
       page.getByTestId('drop-down-menu').getByTestId('table')

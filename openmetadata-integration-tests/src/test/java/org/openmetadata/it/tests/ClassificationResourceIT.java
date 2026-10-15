@@ -28,9 +28,12 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
@@ -273,6 +276,60 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
         InvalidRequestException.class,
         () -> deleteEntity(tierId),
         "Deleting system classification should fail");
+  }
+
+  @Test
+  void patch_systemClassificationProvider_rejected(TestNamespace ns) throws Exception {
+    // #29974: flipping a system classification's provider to user via PATCH must be rejected -
+    // otherwise it loses its delete protection and system metadata can be removed, leaving the
+    // instance in a partially-deleted inconsistent state.
+    Classification tier = SdkClients.adminClient().classifications().getByName("Tier");
+    assertEquals(ProviderType.SYSTEM, tier.getProvider());
+
+    JsonNode providerToUser =
+        new ObjectMapper()
+            .readTree("[{\"op\":\"replace\",\"path\":\"/provider\",\"value\":\"user\"}]");
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PATCH,
+                    "/v1/classifications/" + tier.getId(),
+                    providerToUser,
+                    Classification.class),
+        "Changing the provider of a system classification should be rejected");
+
+    Classification reloaded = SdkClients.adminClient().classifications().getByName("Tier");
+    assertEquals(
+        ProviderType.SYSTEM, reloaded.getProvider(), "System provider must remain unchanged");
+  }
+
+  @Test
+  void put_systemClassificationProvider_preserved(TestNamespace ns) throws Exception {
+    // A PUT carrying a user provider must not downgrade a system classification - the system
+    // provider is preserved silently instead of stored as user.
+    Classification tier = SdkClients.adminClient().classifications().getByName("Tier");
+    assertEquals(ProviderType.SYSTEM, tier.getProvider());
+
+    CreateClassification putBody =
+        new CreateClassification()
+            .withName(tier.getName())
+            .withDescription(tier.getDescription())
+            .withMutuallyExclusive(tier.getMutuallyExclusive())
+            .withProvider(ProviderType.USER);
+    Classification updated =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, "/v1/classifications", putBody, Classification.class);
+    assertEquals(
+        ProviderType.SYSTEM, updated.getProvider(), "PUT must not downgrade the system provider");
+
+    // Reload to confirm the system provider was persisted, not just reflected in the response.
+    Classification reloaded = SdkClients.adminClient().classifications().getByName("Tier");
+    assertEquals(
+        ProviderType.SYSTEM, reloaded.getProvider(), "System provider must remain persisted");
   }
 
   @Test
@@ -1068,6 +1125,61 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     assertEquals(
         "#123456", updated.getStyle().getColor(), "Empty style must preserve the existing value");
     assertEquals("updated desc", updated.getDescription());
+  }
+
+  /**
+   * An import row is matched from stored JSON, which holds no reviewers, so the import loads them
+   * before the reviewer rule decides who may move a tag out of review.
+   */
+  @Test
+  void test_importClassificationCsv_onlyAReviewerApprovesATagInReview(TestNamespace ns) {
+    Classification classification = createEntity(createMinimalRequest(ns));
+    EntityReference admin =
+        SdkClients.adminClient().users().getByName("admin").getEntityReference();
+    Tag reviewedByOthers =
+        tagInReview(classification, ns.prefix("reviewedByOthers"), testUser1Ref());
+    Tag reviewedByAdmin = tagInReview(classification, ns.prefix("reviewedByAdmin"), admin);
+    String csv =
+        "parent,name*,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n"
+            + ",%s,,,,,APPROVED,,,,\n".formatted(reviewedByOthers.getName())
+            + ",%s,,,,,APPROVED,,,,\n".formatted(reviewedByAdmin.getName());
+
+    CsvImportResult result =
+        JsonUtils.readValue(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PUT,
+                    "/v1/classifications/name/"
+                        + classification.getFullyQualifiedName()
+                        + "/import?dryRun=false",
+                    csv),
+            CsvImportResult.class);
+
+    assertEquals(1, result.getNumberOfRowsFailed(), result.getImportResultsCsv());
+    assertTrue(
+        result.getImportResultsCsv().contains("is not a reviewer"), result.getImportResultsCsv());
+    assertEquals(EntityStatus.IN_REVIEW, stageOf(reviewedByOthers));
+    assertEquals(EntityStatus.APPROVED, stageOf(reviewedByAdmin));
+  }
+
+  private static Tag tagInReview(
+      Classification classification, String name, EntityReference reviewer) {
+    Tag tag =
+        SdkClients.adminClient()
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(name)
+                    .withDescription("Tag that only its reviewer approves")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withReviewers(List.of(reviewer)));
+    tag.setEntityStatus(EntityStatus.IN_REVIEW);
+    return SdkClients.adminClient().tags().update(tag.getId().toString(), tag);
+  }
+
+  private static EntityStatus stageOf(Tag tag) {
+    return SdkClients.adminClient().tags().get(tag.getId().toString()).getEntityStatus();
   }
 
   @Test

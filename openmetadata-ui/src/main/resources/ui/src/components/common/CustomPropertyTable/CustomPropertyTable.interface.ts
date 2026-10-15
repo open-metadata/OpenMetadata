@@ -34,9 +34,11 @@ import { Topic } from '../../../generated/entity/data/topic';
 import { Worksheet } from '../../../generated/entity/data/worksheet';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { Team } from '../../../generated/entity/teams/team';
+import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/entity/type';
 import { Hyperlink } from '../../../generated/type/customProperties/complexTypes';
-import { CustomProperty } from '../../../generated/type/customProperty';
+import type { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget/CustomPropertiesWidget.interface';
 
 export type ExtentionEntities = {
   [EntityType.TABLE]: Table;
@@ -61,6 +63,8 @@ export type ExtentionEntities = {
   [EntityType.FILE]: File;
   [EntityType.SPREADSHEET]: Spreadsheet;
   [EntityType.WORKSHEET]: Worksheet;
+  [EntityType.TEAM]: Team;
+  [EntityType.USER]: User;
 };
 
 export type ExtentionEntitiesKeys = keyof ExtentionEntities;
@@ -73,16 +77,20 @@ export interface CustomPropertyProps<T extends ExtentionEntitiesKeys> {
   hasPermission: boolean;
   maxDataCap?: number;
   isRenderedInRightPanel?: boolean;
-}
-
-export interface PropertyValueProps {
-  property: CustomProperty;
-  extension: Table['extension'];
-  hasEditPermissions: boolean;
-  versionDataKeys?: string[];
-  isVersionView?: boolean;
-  isRenderedInRightPanel?: boolean;
-  onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
+  /**
+   * Team and user detail pages are not part of the customizable-page system, so they have
+   * no GenericProvider to read the entity from. They pass it and its update handler here
+   * instead; every other caller keeps using the surrounding generic context.
+   */
+  entityDetails?: ExtentionEntities[T];
+  onEntityUpdate?: (
+    updatedData: ExtentionEntities[T],
+    key?: keyof ExtentionEntities[T]
+  ) => Promise<void>;
+  /** Persona widget settings; only read with isRenderedInRightPanel. */
+  widgetSettings?: CustomPropertiesWidgetSettings;
+  /** Layout id of the persona widget instance, used to hide it when empty. */
+  widgetKey?: string;
 }
 
 export type TimeIntervalType = {

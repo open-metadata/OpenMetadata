@@ -1,0 +1,143 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import type { CSSProperties, FC, ReactNode } from 'react';
+
+export interface FilterSelectOption {
+  /** Raw filter value (aggregation bucket key, FQN, …) — what onChange reports. */
+  value: string;
+  /** Display name — resolved by the consumer, never derived from `value` here. */
+  label: ReactNode;
+  /** Plain text for typeahead and local search when `label` is not a string. */
+  textValue?: string;
+  /** Result count shown as a trailing badge on the row. */
+  count?: number;
+  /**
+   * Extra content under the row, shown and hidden by a chevron (or
+   * ArrowRight / ArrowLeft) without selecting the row.
+   */
+  details?: ReactNode;
+  /**
+   * Leading icon (service logo, domain color chip, entity icon, …) — an icon
+   * component, or an already-rendered node.
+   */
+  icon?: FC<{ className?: string }> | ReactNode;
+}
+
+export type FilterSelectTriggerVariant = 'button' | 'chip' | 'input';
+
+/**
+ * How the input-variant trigger echoes a multi selection: 'count' (default)
+ * renders a count badge; 'chips' renders each value as a removable chip in
+ * the field. Removing a chip commits through onChange immediately.
+ */
+export type FilterSelectTriggerDisplay = 'count' | 'chips';
+
+export type FilterSelectSelectionMode = 'single' | 'multiple';
+
+/**
+ * 'immediate' calls onChange on every toggle; 'staged' collects toggles and
+ * commits them on Apply (Cancel discards). Single select always applies
+ * immediately and closes.
+ */
+export type FilterSelectCommitMode = 'immediate' | 'staged';
+
+export interface FilterSelectProps {
+  /** Filter name — trigger text, menu aria-label, and input-variant caption. */
+  label: string;
+  options: FilterSelectOption[];
+  selectedValues: string[];
+  onChange: (values: string[]) => void;
+  /**
+   * Draw the button-variant trigger as a bordered secondary button. Defaults
+   * to a borderless text button — the quick-filter look.
+   */
+  bordered?: boolean;
+  /**
+   * Size of the input-variant trigger, on the core Select scale: `sm` (default)
+   * or `md`, as tall as a Select, Input or Button of that size.
+   */
+  size?: 'sm' | 'md';
+  /** Classes for the trigger — the built-in one, or the wrapper of a custom one. */
+  className?: string;
+  commitMode?: FilterSelectCommitMode;
+  'data-testid'?: string;
+  emptyState?: ReactNode;
+  /** Muted helper line rendered under the search box. */
+  helperText?: ReactNode;
+  hideCounts?: boolean;
+  /** Disables the built-in trigger, e.g. in a read-only form. */
+  isDisabled?: boolean;
+  isLoading?: boolean;
+  isOpen?: boolean;
+  /**
+   * Pinned row above the value rows (e.g. "No Owner"). Rendered through the
+   * same row component as value rows, so it cannot drift visually.
+   */
+  nullOption?: FilterSelectOption;
+  /** Input-variant text when nothing is selected; defaults to `label`. */
+  placeholder?: string;
+  popoverClassName?: string;
+  popoverStyle?: CSSProperties;
+  /**
+   * Label for a selected value missing from `options` (e.g. restored from a
+   * URL before its option page is fetched). Defaults to the raw value.
+   */
+  resolveMissingLabel?: (value: string) => ReactNode;
+  searchable?: boolean;
+  selectionMode?: FilterSelectSelectionMode;
+  /**
+   * Single select: mark rows with a radio instead of the brand-tinted selected
+   * row, plus a footer with the selection count and a Clear action. A picked
+   * radio row can't be unpicked by clicking it, so the footer is how it clears.
+   */
+  showRadio?: boolean;
+  /**
+   * `false` drops the selection-count footer and its Clear action, for a
+   * value that is required once set (e.g. a radio picker). Defaults to `true`.
+   */
+  isClearable?: boolean;
+  /**
+   * Tri-state header row that toggles every currently displayed value row
+   * (the filtered list). The null option is an explicit choice and is not
+   * included.
+   */
+  showSelectAll?: boolean;
+  /**
+   * Trigger label font weight: 'medium' (default) or 'regular'. Menu rows
+   * always render regular.
+   */
+  typography?: 'regular' | 'medium';
+  /**
+   * Caller-supplied trigger (an edit button, a value pill, …) used in place of
+   * the built-in one; the popover anchors to it. It is not a menu trigger:
+   * clicking it opens the popover. `null` or `undefined` keeps the built-in one.
+   */
+  trigger?: ReactNode;
+  /** Labels the built-in trigger, e.g. by a form field's visible label. */
+  'aria-labelledby'?: string;
+  /** Multi-selection echo on the input-variant trigger; default 'count'. */
+  triggerDisplay?: FilterSelectTriggerDisplay;
+  /** Leading icon on the button-variant trigger. */
+  triggerIcon?: FC<{ className?: string }>;
+  triggerVariant?: FilterSelectTriggerVariant;
+  onOpenChange?: (open: boolean) => void;
+  /** Async search — when set the parent filters `options`; otherwise local. */
+  onSearch?: (text: string) => void;
+  /**
+   * Called when the option list is scrolled to its end, to append the next
+   * page. The parent tracks whether there is one and whether it is loading.
+   */
+  onLoadMore?: () => void;
+  /** Shows a loading row under the options while the next page loads. */
+  isLoadingMore?: boolean;
+}

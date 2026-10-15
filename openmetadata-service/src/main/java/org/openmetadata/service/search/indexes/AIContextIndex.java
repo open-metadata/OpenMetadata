@@ -28,7 +28,7 @@ import org.openmetadata.service.aicontext.AIContextBuilder;
 public interface AIContextIndex extends SearchIndex {
 
   default void applyAIContextFields(Map<String, Object> doc) {
-    if (getEntity() instanceof EntityInterface entity) {
+    if (getEntity() instanceof EntityInterface<?> entity) {
       AIContextBuilder.applySearchFields(doc, entity);
     }
   }

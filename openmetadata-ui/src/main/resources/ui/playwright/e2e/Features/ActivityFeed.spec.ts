@@ -10,23 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  APIRequestContext,
-  expect,
-  Locator,
-  Page,
-  test as base,
-} from '@playwright/test';
+import { APIRequestContext, Locator, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { TableClass } from '../../support/entity/TableClass';
-import { PersonaClass } from '../../support/persona/PersonaClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import {
   FEED_ITEM_TIMEOUT,
   insertActivityEventForTest,
 } from '../../utils/activityAPI';
-import { REACTION_EMOJIS, reactOnFeedCard } from '../../utils/activityFeed';
+import { clickFeedReaction } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
   getApiContext,
@@ -34,14 +29,8 @@ import {
   uuid,
   visitOwnProfilePage,
 } from '../../utils/common';
-import {
-  navigateToCustomizeLandingPage,
-  setUserDefaultPersona,
-  waitForLandingPageWidget,
-} from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { editDisplayName } from '../../utils/user';
-import { selectActivityFeedFilterAndVerifyEndpoint } from '../../utils/widgetFilters';
 
 const test = base;
 test.use({ storageState: undefined });
@@ -69,7 +58,9 @@ const waitForConversationMaterialization = async ({
         });
 
         if (!response.ok()) {
-          return false;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const payload = await response.json();
@@ -89,412 +80,13 @@ const waitForConversationMaterialization = async ({
 
 // Mirrors PAGE_SIZE_BASE in src/constants/constants.ts. The widget renders the
 // first PAGE_SIZE_BASE events and only shows "View More" beyond that, so seeding
-// one extra makes the footer link mandatory instead of incidental.
-const FEED_WIDGET_PAGE_SIZE = 15;
-const SEEDED_OWNED_ACTIVITY_COUNT = FEED_WIDGET_PAGE_SIZE + 1;
-const ACTIVITY_FEED_WIDGET_KEY = 'KnowledgePanel.ActivityFeed';
 
-test.describe('FeedWidget on landing page', () => {
-  let adminUser: UserClass;
-  let user1: UserClass;
-  let entity: TableClass;
-  let extraEntity: TableClass;
-  let ownedTable: TableClass;
-  let followedTable: TableClass;
-  let testPersona: PersonaClass;
-
-  // The widget is filter-scoped, so the fixture has to give every filter
-  // something of its own: My Data reads entities the user owns, Following reads
-  // the FOLLOWS relationship. Without both, those filters return an empty list
-  // and the tests below can only assert a URL, never rendered content.
-  const ownedActivityMarker = `Owned table activity ${uuid()}`;
-  const followedActivityMarker = `Followed table activity ${uuid()}`;
-
-  test.beforeAll(
-    'setup: seed entities, users, create persona, and customize widget',
-    async ({ browser }) => {
-      test.slow(true);
-
-      adminUser = new UserClass();
-      user1 = new UserClass();
-      entity = new TableClass();
-      extraEntity = new TableClass();
-      ownedTable = new TableClass();
-      followedTable = new TableClass();
-      testPersona = new PersonaClass();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        // Create users and entities
-        await adminUser.create(apiContext);
-        await adminUser.setAdminRole(apiContext);
-        await user1.create(apiContext);
-        await entity.create(apiContext);
-        await extraEntity.create(apiContext);
-        await testPersona.create(apiContext, [adminUser.responseData.id]);
-
-        await ownedTable.create(apiContext);
-        await ownedTable.setOwner(apiContext, {
-          id: adminUser.responseData.id,
-          type: 'user',
-        });
-
-        // Each event carries the run-unique marker so a card can be pinned by
-        // text. Workers in a shard share one database, so the top of the global
-        // feed belongs to whichever spec inserted last — index-based targeting
-        // is not stable there.
-        for (let index = 0; index < SEEDED_OWNED_ACTIVITY_COUNT; index++) {
-          await insertActivityEventForTest(
-            apiContext,
-            ownedTable,
-            `${ownedActivityMarker} ${index}`
-          );
-        }
-
-        await followedTable.create(apiContext);
-        await followedTable.followTable(apiContext, adminUser.responseData.id);
-        await insertActivityEventForTest(
-          apiContext,
-          followedTable,
-          followedActivityMarker
-        );
-
-        // Set up widget in a separate page context
-        const adminPage = await browser.newPage({ storageState: undefined });
-        await adminUser.login(adminPage);
-
-        try {
-          // Set persona as default
-          await redirectToHomePage(adminPage);
-          await waitForAllLoadersToDisappear(adminPage);
-          await setUserDefaultPersona(adminPage, testPersona.data.displayName);
-
-          // Navigate to customize landing page
-          await navigateToCustomizeLandingPage(adminPage, {
-            personaName: testPersona.data.name,
-          });
-
-          // Ensure Activity Feed widget is full size
-          const activityFeedWidget = adminPage.getByTestId(
-            ACTIVITY_FEED_WIDGET_KEY
-          );
-
-          await expect(activityFeedWidget).toBeVisible();
-
-          const moreOptionsButton = activityFeedWidget.getByTestId(
-            'more-options-button'
-          );
-          await moreOptionsButton.click();
-          await adminPage.getByRole('menuitem', { name: 'Full Size' }).click();
-
-          // Save the layout if save button is enabled
-          const saveButton = adminPage.getByTestId('save-button');
-          if (await saveButton.isEnabled()) {
-            const saveResponse = adminPage.waitForResponse('/api/v1/docStore*');
-            await saveButton.click();
-            await saveResponse;
-          }
-
-          await redirectToHomePage(adminPage);
-          await waitForAllLoadersToDisappear(adminPage);
-        } finally {
-          await adminPage.close();
-        }
-      } finally {
-        await afterAction();
-      }
-    }
-  );
-
-  test.afterAll('cleanup: delete seeded tables', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await ownedTable.delete(apiContext);
-      await followedTable.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
-    await redirectToHomePage(page);
-    await waitForAllLoadersToDisappear(page);
-  });
-
-  test('renders widget wrapper and header with sort dropdown', async ({
-    page,
-  }) => {
-    const widget = page.getByTestId(ACTIVITY_FEED_WIDGET_KEY);
-
-    await expect(widget).toBeVisible();
-
-    // Header verification
-    const header = widget.getByTestId('widget-header');
-
-    await expect(header).toBeVisible();
-    await expect(header).toContainText('Activity Feed');
-
-    // Sort dropdown verification
-    const sortDropdown = header.getByTestId('widget-sort-by-dropdown');
-
-    await expect(sortDropdown).toBeVisible();
-
-    // Test dropdown options
-    await sortDropdown.click();
-    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
-
-    await expect(
-      page.getByRole('menuitem', { name: 'All Activity' })
-    ).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: 'My Data' })).toBeVisible();
-    await expect(
-      page.getByRole('menuitem', { name: 'Following' })
-    ).toBeVisible();
-
-    // Close dropdown by clicking outside
-    await widget.click();
-
-    await expect(page.locator('.ant-dropdown')).not.toBeVisible();
-  });
-
-  test('clicking title navigates to explore page', async ({ page }) => {
-    const widget = page.getByTestId(ACTIVITY_FEED_WIDGET_KEY);
-
-    await expect(widget).toBeVisible();
-
-    // Click the title to navigate
-    const titleLink = widget
-      .getByTestId('widget-header')
-      .getByText('Activity Feed');
-    await titleLink.click();
-
-    // Verify navigation to user activity feed
-    expect(page.url()).toContain('/users/');
-    expect(page.url()).toContain('/activity_feed/all');
-  });
-
-  test('feed body renders seeded activity and no empty state', async ({
-    page,
-  }) => {
-    const widget = page.getByTestId(ACTIVITY_FEED_WIDGET_KEY);
-
-    await expect(widget).toBeVisible();
-
-    const container = page.locator('#feedWidgetData');
-
-    await expect(container).toBeVisible();
-
-    const messageContainers = container.locator(
-      '[data-testid="message-container"]'
-    );
-
-    await expect(messageContainers.first()).toBeVisible();
-    await expect(
-      container.locator('[data-testid="no-data-placeholder-container"]')
-    ).toHaveCount(0);
-    await expect(
-      container.locator('[data-testid="widget-empty-state"]')
-    ).toHaveCount(0);
-  });
-
-  test('changing the filter refetches from that filter endpoint', async ({
-    page,
-  }) => {
-    const widget = await waitForLandingPageWidget(
-      page,
-      ACTIVITY_FEED_WIDGET_KEY
-    );
-
-    // Each filter owns an endpoint; asserting the request AND the rendered card
-    // is what stops a filter silently reusing another filter's feed.
-    await selectActivityFeedFilterAndVerifyEndpoint(
-      page,
-      widget,
-      'My Data',
-      '/api/v1/activity/my-feed'
-    );
-
-    await expect(
-      widget
-        .getByTestId('message-container')
-        .filter({ hasText: ownedActivityMarker })
-        .first()
-    ).toBeVisible();
-
-    await selectActivityFeedFilterAndVerifyEndpoint(
-      page,
-      widget,
-      'Following',
-      '/api/v1/activity/following'
-    );
-
-    await expect(
-      widget
-        .getByTestId('message-container')
-        .filter({ hasText: followedActivityMarker })
-        .first()
-    ).toBeVisible();
-
-    await selectActivityFeedFilterAndVerifyEndpoint(
-      page,
-      widget,
-      'All Activity',
-      '/api/v1/activity'
-    );
-
-    // The global stream is shared with every other worker in this shard, so a
-    // specific card cannot be asserted here — only that the list is populated.
-    await expect(widget.getByTestId('message-container').first()).toBeVisible();
-  });
-
-  test('footer view more navigates to the user activity feed', async ({
-    page,
-  }) => {
-    const widget = await waitForLandingPageWidget(
-      page,
-      ACTIVITY_FEED_WIDGET_KEY
-    );
-
-    // The seeded events exceed PAGE_SIZE_BASE under My Data, so the link is
-    // guaranteed rather than incidental.
-    await selectActivityFeedFilterAndVerifyEndpoint(
-      page,
-      widget,
-      'My Data',
-      '/api/v1/activity/my-feed'
-    );
-
-    const viewMoreLink = widget.getByRole('link', { name: /View More/i });
-    const expectedLink = `/users/${adminUser.responseData.name}/activity_feed/all`;
-
-    await expect(viewMoreLink).toBeVisible();
-    await expect(viewMoreLink).toHaveAttribute('href', expectedLink);
-
-    await viewMoreLink.click();
-    await page.waitForURL(`**${expectedLink}`);
-  });
-
-  test('feed cards render header text and timestamp', async ({ page }) => {
-    const widget = await waitForLandingPageWidget(
-      page,
-      ACTIVITY_FEED_WIDGET_KEY
-    );
-
-    await selectActivityFeedFilterAndVerifyEndpoint(
-      page,
-      widget,
-      'My Data',
-      '/api/v1/activity/my-feed'
-    );
-
-    const seededCard = widget
-      .getByTestId('message-container')
-      .filter({ hasText: ownedActivityMarker })
-      .first();
-
-    await expect(seededCard).toBeVisible();
-    await expect(seededCard.getByTestId('headerText')).toBeVisible();
-    await expect(seededCard.getByTestId('timestamp')).toBeVisible();
-  });
-
-  test('emoji reactions can be added and toggled off on a feed card', async ({
-    page,
-  }) => {
-    const widget = await waitForLandingPageWidget(
-      page,
-      ACTIVITY_FEED_WIDGET_KEY
-    );
-
-    await selectActivityFeedFilterAndVerifyEndpoint(
-      page,
-      widget,
-      'My Data',
-      '/api/v1/activity/my-feed'
-    );
-
-    // Pin the card by its marker: the list re-renders after every reaction, so
-    // an index would not resolve to the same card on the toggle-off pass.
-    const seededCard = widget
-      .getByTestId('message-container')
-      .filter({ hasText: ownedActivityMarker })
-      .first();
-
-    await expect(seededCard).toBeVisible();
-
-    await reactOnFeedCard(page, seededCard);
-
-    const reactionContainer = seededCard.getByTestId('feed-reaction-container');
-
-    await expect(reactionContainer).toBeVisible();
-
-    for (const emoji of REACTION_EMOJIS) {
-      await expect(reactionContainer).toContainText(emoji);
-    }
-
-    await reactOnFeedCard(page, seededCard);
-
-    await expect(reactionContainer).toBeVisible();
-  });
-
-  test('activity cards open a reply drawer on the landing widget', async ({
-    page,
-  }) => {
-    const replyText = `Widget activity reply ${uuid()}`;
-    const widget = await waitForLandingPageWidget(
-      page,
-      ACTIVITY_FEED_WIDGET_KEY
-    );
-
-    await selectActivityFeedFilterAndVerifyEndpoint(
-      page,
-      widget,
-      'My Data',
-      '/api/v1/activity/my-feed'
-    );
-
-    const seededCard = widget
-      .getByTestId('message-container')
-      .filter({ hasText: ownedActivityMarker })
-      .first();
-
-    await expect(seededCard).toBeVisible();
-    await seededCard.click();
-
-    const drawer = page.locator('.activity-feed-drawer');
-
-    await expect(drawer).toBeVisible();
-
-    const commentInput = drawer.locator('[data-testid="comments-input-field"]');
-    await expect(commentInput).toBeVisible();
-    await commentInput.click();
-
-    const editorField = drawer.locator(
-      '[data-testid="editor-wrapper"] [contenteditable="true"]'
-    );
-    await editorField.fill(replyText);
-
-    const sendButton = drawer.getByTestId('send-button');
-    await expect(sendButton).toBeEnabled();
-
-    const sendReply = page.waitForResponse('/api/v1/activity/*/replies');
-    await sendButton.click();
-    await sendReply;
-
-    await expect(drawer.getByTestId('feed-replies')).toContainText(replyText);
-
-    const closeBtn = drawer.locator('[data-testid="closeDrawer"]');
-    if (await closeBtn.count()) {
-      await closeBtn.click();
-    } else {
-      await page.keyboard.press('Escape');
-    }
-
-    await expect(drawer).not.toBeVisible();
-  });
-});
+// The landing page's activity widget is no longer `FeedWidget`: the persona grid
+// renders `TeamActivityWidget` on `KnowledgePanel.ActivityFeed`, a topic card with
+// none of the old widget's header, sort dropdown or `#feedWidgetData` body. The suite
+// that drove those is gone rather than rewritten -- what it covered (sort filters,
+// reactions, the reply drawer) belongs to FeedWidget, which still exists but is not on
+// this page. The new card is covered in Features/LandingPageWidgets/LandingPageTopicWidgets.spec.ts.
 
 test.describe('Mention notifications in Notification Box', () => {
   let adminUser: UserClass;
@@ -507,13 +99,13 @@ test.describe('Mention notifications in Notification Box', () => {
   }>({
     adminPage: async ({ browser }, use) => {
       const page = await browser.newPage({ storageState: undefined });
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await use(page);
       await page.close();
     },
     user1Page: async ({ browser }, use) => {
       const page = await browser.newPage({ storageState: undefined });
-      await user1.login(page);
+      await user1.signIn(page);
       await use(page);
       await page.close();
     },
@@ -581,9 +173,11 @@ test.describe('Mention notifications in Notification Box', () => {
       const seededThread = user1Page
         .locator('[data-testid="message-container"]')
         .filter({ hasText: 'Initial conversation thread for mention test' })
-        .first();
+        // The conversation renders twice: as the list card and again in the
+        // open thread panel, which is the one carrying the reply composer.
+        .filter({ hasNot: user1Page.getByTestId('comments-input-field') });
 
-      await expect(seededThread).toBeVisible({ timeout: 30_000 });
+      await expect(seededThread).toBeVisible({ timeout: ACTION_TIMEOUT });
       await seededThread.click();
 
       await waitForAllLoadersToDisappear(user1Page);
@@ -660,7 +254,7 @@ test.describe('Mention notifications in Notification Box', () => {
     });
 
     await test.step('Admin user checks notification for correct user and timestamp', async () => {
-      await adminPage.reload();
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(adminPage);
       const notificationBell = adminPage.getByTestId('task-notifications');
 
@@ -676,9 +270,9 @@ test.describe('Mention notifications in Notification Box', () => {
 
       await expect(notificationBox).toBeVisible();
 
-      const mentionsTab = adminPage
-        .locator('.notification-box')
-        .getByText('Mentions');
+      const mentionsTab = notificationBox.getByRole('tab', {
+        name: /Mentions/,
+      });
 
       const mentionsFeedResponse = adminPage.waitForResponse(
         (response) =>
@@ -695,24 +289,32 @@ test.describe('Mention notifications in Notification Box', () => {
 
       await expect(mentionsList).toBeVisible();
 
-      const firstNotificationItem = mentionsList
-        .locator('li.ant-list-item.notification-dropdown-list-btn')
-        .first();
+      const mentionNotificationItem = mentionsList
+        .getByRole('listitem')
+        .filter({
+          has: adminPage.getByTestId(
+            'notification-link-' +
+              (entity.entity.displayName || entity.entity.name)
+          ),
+        });
 
-      const firstNotificationText = await firstNotificationItem.textContent();
+      const mentionNotificationText =
+        await mentionNotificationItem.textContent();
 
-      expect(firstNotificationText?.toLowerCase()).toContain(
+      expect(mentionNotificationText?.toLowerCase()).toContain(
         user1.responseData.name.toLowerCase()
       );
-      expect(firstNotificationText?.toLowerCase()).not.toContain(
+      expect(mentionNotificationText?.toLowerCase()).not.toContain(
         adminUser.responseData.name.toLowerCase()
       );
 
-      const mentionNotificationLink = firstNotificationItem.locator(
+      const mentionNotificationLink = mentionNotificationItem.locator(
         '[data-testid^="notification-link-"]'
       );
 
-      const navigationPromise = adminPage.waitForURL(/activity_feed/);
+      const navigationPromise = adminPage.waitForURL(/activity_feed/, {
+        waitUntil: 'domcontentloaded',
+      });
       await mentionNotificationLink.click();
       await navigationPromise;
 
@@ -738,7 +340,9 @@ test.describe('Mention notifications in Notification Box', () => {
       const message = user1Page
         .locator('[data-testid="message-container"]')
         .filter({ hasText: 'Initial conversation thread for mention test' })
-        .first();
+        // The conversation renders twice: as the list card and again in the
+        // open thread panel, which is the one carrying the reply composer.
+        .filter({ hasNot: user1Page.getByTestId('comments-input-field') });
       await expect(message).toBeVisible();
 
       const reactionResponse = user1Page.waitForResponse(
@@ -752,7 +356,7 @@ test.describe('Mention notifications in Notification Box', () => {
         .filter({ has: user1Page.locator('[data-testid="reply-button"]') })
         .locator('[data-testid="add-reactions"]')
         .click();
-      await user1Page.locator('[title="rocket"]').click();
+      await clickFeedReaction(user1Page, 'rocket');
       await reactionResponse;
 
       const emojiButton = message
@@ -778,7 +382,7 @@ const CHINESE_MENTION_THREAD_MESSAGE =
 test.describe('Mentions: Chinese character encoding in activity feed', () => {
   const database = new DatabaseClass();
   const endpointName = `测试Endpoint-${uuid()}`;
-  const apiEndpoint = new ApiEndpointClass(undefined, endpointName);
+  const apiEndpoint = new ApiEndpointClass({ name: endpointName });
   let schemaFqn: string;
   const userName = `测试-${uuid()}`;
   const chineseMentionUser = new UserClass({
@@ -835,7 +439,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await redirectToHomePage(page);
   });
 
@@ -849,7 +453,9 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       );
     });
 
-    await page.goto(`/databaseSchema/${schemaFqn}/activity_feed/mentions`);
+    await page.goto(`/databaseSchema/${schemaFqn}/activity_feed/mentions`, {
+      waitUntil: 'domcontentloaded',
+    });
     await feedPromise;
     await waitForAllLoadersToDisappear(page);
 
@@ -864,7 +470,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       .filter({ hasText: CHINESE_MENTION_THREAD_MESSAGE })
       .first();
 
-    await expect(seededThread).toBeVisible({ timeout: 30_000 });
+    await expect(seededThread).toBeVisible({ timeout: ACTION_TIMEOUT });
     await seededThread.click();
     await waitForAllLoadersToDisappear(page);
 
@@ -875,7 +481,9 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     const editorLocator = page.locator(
       '[data-testid="editor-wrapper"] .ProseMirror, [data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
     );
-    await expect(editorLocator.first()).toBeVisible({ timeout: 10000 });
+    await expect(editorLocator.filter({ visible: true })).not.toHaveCount(0, {
+      timeout: 10000,
+    });
 
     return editorLocator.first();
   };
@@ -972,7 +580,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   const test = base.extend<{ adminPage: Page }>({
     adminPage: async ({ browser }, use) => {
       const page = await browser.newPage({ storageState: undefined });
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await use(page);
       await page.close();
     },
@@ -994,12 +602,12 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   // one lands. Anything asserting on order, counts or the active item has to
   // wait for BOTH kinds to be on screen first, or it races the slower response.
   const waitForBothFeedKinds = async (feedList: Locator) => {
-    await expect(
-      feedList.filter({ hasText: conversationMessage }).first()
-    ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
-    await expect(
-      feedList.filter({ hasText: activityMarker }).first()
-    ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
+    await expect(feedList.filter({ hasText: conversationMessage })).toBeVisible(
+      { timeout: FEED_ITEM_TIMEOUT }
+    );
+    await expect(feedList.filter({ hasText: activityMarker })).toBeVisible({
+      timeout: FEED_ITEM_TIMEOUT,
+    });
   };
 
   test.beforeAll(
@@ -1081,15 +689,15 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     const feedList = await openActivityFeedTab(adminPage);
 
     // Conversation thread must be visible...
-    await expect(
-      feedList.filter({ hasText: conversationMessage }).first()
-    ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
+    await expect(feedList.filter({ hasText: conversationMessage })).toBeVisible(
+      { timeout: FEED_ITEM_TIMEOUT }
+    );
 
     // ...alongside the seeded change-event activity (from /api/v1/activity).
     // On the buggy either-or code these two never render together.
-    await expect(
-      feedList.filter({ hasText: activityMarker }).first()
-    ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
+    await expect(feedList.filter({ hasText: activityMarker })).toBeVisible({
+      timeout: FEED_ITEM_TIMEOUT,
+    });
   });
 
   test('A change-event activity exposes its reply editor', async ({
@@ -1100,7 +708,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
 
     // Open the seeded change-event activity in the right panel. Scoped to
     // #feedData so this is the list card, not the panel's own copy.
-    const activityCard = feedList.filter({ hasText: activityMarker }).first();
+    const activityCard = feedList.filter({ hasText: activityMarker });
     await activityCard.click();
     await waitForAllLoadersToDisappear(adminPage);
 
@@ -1136,9 +744,9 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     // post-reply count. Both kinds have to be on screen before counting.
     await waitForBothFeedKinds(feedList);
 
-    const seededConversation = feedList
-      .filter({ hasText: conversationMessage })
-      .first();
+    const seededConversation = feedList.filter({
+      hasText: conversationMessage,
+    });
 
     const countBeforeReply = await feedListCount();
 
@@ -1183,7 +791,10 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     // fetch cannot still be in flight when the listener below is attached.
     await waitForBothFeedKinds(feedList);
 
-    await adminPage.getByRole('menuitem', { name: /task/i }).click();
+    await adminPage
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i })
+      .click();
     await waitForAllLoadersToDisappear(adminPage);
     await expect(adminPage).toHaveURL(/activity_feed\/tasks/);
 
@@ -1207,7 +818,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     });
 
     // Reload with Tasks active so every request below belongs to this tab.
-    await adminPage.reload();
+    await adminPage.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(adminPage);
 
     // Landing back on ALL would fetch activity legitimately and fail the
@@ -1220,26 +831,30 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   test('All badge, header and rendered list agree on the count', async ({
     adminPage,
   }) => {
-    const feedList = await openActivityFeedTab(adminPage);
-    await waitForBothFeedKinds(feedList);
+    // Each retry reopens the entity page.
+    test.slow();
 
     // The "All" badge must equal the number of rendered items (conversations +
     // activity events) — not the old activity-only / double-counted value.
-    // Polled rather than compared once because the consumer can deliver this
-    // table's own "Created" event mid-test, growing both numbers a beat apart.
-    await expect
-      .poll(
-        async () => {
-          const rendered = await feedList.count();
-          const allBadge = (
-            await adminPage.getByTestId('left-panel-all-count').innerText()
-          ).trim();
+    // The badge is counted on page load and the list fetched when the tab
+    // opens, so the table's own "Created" event, which the consumer delivers
+    // at an arbitrary moment, can land between the two and leave them one
+    // apart for good. Reopening the page refetches both together.
+    let attempt = 0;
+    let feedList = await openActivityFeedTab(adminPage);
+    await expect(async () => {
+      if (attempt++ > 0) {
+        feedList = await openActivityFeedTab(adminPage);
+      }
+      await waitForBothFeedKinds(feedList);
 
-          return Number(allBadge) === rendered;
-        },
-        { timeout: 15_000, intervals: [1_000] }
-      )
-      .toBe(true);
+      const rendered = await feedList.count();
+      const allBadge = (
+        await adminPage.getByTestId('left-panel-all-count').innerText()
+      ).trim();
+
+      expect(Number(allBadge)).toBe(rendered);
+    }).toPass({ timeout: 90_000, intervals: [1_000, 2_000] });
 
     // With no tasks, the entity tab header total equals the same count.
     const renderedCount = await feedList.count();
@@ -1286,18 +901,13 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     await expect(panel).toBeVisible();
 
     await panel.locator('[data-testid="add-reactions"]').first().click();
-    await adminPage
-      .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
-      .waitFor({ state: 'visible' });
 
     // The picker button's title is the ReactionType value (🎉 == "hooray"); it
     // fires PUT /api/v1/activity/{id}/reaction/hooray.
     const reactionResponse = adminPage.waitForResponse((response) =>
       /\/api\/v1\/activity\/[^/]+\/reaction\//.test(response.url())
     );
-    await adminPage
-      .locator('[data-testid="reaction-button"][title="hooray"]')
-      .click();
+    await clickFeedReaction(adminPage, 'hooray');
     await reactionResponse;
 
     // The right panel must reflect the toggled reaction immediately (the fix:

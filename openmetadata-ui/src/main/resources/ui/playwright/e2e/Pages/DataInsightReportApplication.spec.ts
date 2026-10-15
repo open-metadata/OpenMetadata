@@ -10,14 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/base';
 import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import {
+  expectScheduleFrequencySelected,
+  selectScheduleDayOfWeek,
+  selectScheduleFrequency,
+  setScheduleTime,
+} from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -62,14 +68,8 @@ test.describe.serial('Data Insight Report Application', () => {
     await page.click('[data-testid="save-button"]');
     await page.click('[data-testid="submit-btn"]');
 
-    await expect(
-      page.getByTestId('cron-type').getByText('Week')
-    ).toBeAttached();
-
-    await page
-      .locator('#schedular-form_dow .week-selector-buttons')
-      .getByText('F')
-      .click();
+    await expectScheduleFrequencySelected(page, 'week');
+    await selectScheduleDayOfWeek(page, 'Friday');
     await page.click('[data-testid="deploy-button"]');
 
     await toastNotification(page, 'Application installed successfully');
@@ -85,14 +85,17 @@ test.describe.serial('Data Insight Report Application', () => {
     );
 
     await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="cron-type"]');
+    await selectScheduleFrequency(page, 'week');
+    await selectScheduleDayOfWeek(page, 'Wednesday');
+    await setScheduleTime(page, {
+      hour: '01',
+      minute: '00',
+      period: 'AM',
+    });
     await page
-      .locator('#schedular-form_dow .week-selector-buttons')
-      .getByText('W')
+      .getByTestId('update-schedule-modal')
+      .getByTestId('deploy-button')
       .click();
-    await page.click('[data-testid="hour-options"]');
-    await page.click('[title="01"]');
-    await page.click('.ant-modal-body [data-testid="deploy-button"]');
     await toastNotification(page, 'Schedule saved successfully');
 
     // Validate update config in the application
@@ -101,8 +104,13 @@ test.describe.serial('Data Insight Report Application', () => {
     );
 
     await page.click('[data-testid="configuration"]');
-    await page.click('#root\\/sendToAdmins');
-    await page.click('#root\\/sendToTeams');
+    // The switch input carries the field id but is visually hidden; click its label.
+    await page
+      .locator('label', { has: page.locator('#root\\/sendToAdmins') })
+      .click();
+    await page
+      .locator('label', { has: page.locator('#root\\/sendToTeams') })
+      .click();
     await page.click('[data-testid="submit-btn"]');
 
     await toastNotification(page, 'Configuration saved successfully');
@@ -132,7 +140,11 @@ test.describe.serial('Data Insight Report Application', () => {
             )
             .then((res) => res.json());
 
-          return response.data[0].status;
+          // The status list is empty until the triggered run records its first
+          // state. expect.poll does not swallow exceptions, so indexing into it
+          // unguarded turns "not started yet" into an immediate TypeError
+          // instead of another poll iteration.
+          return response.data?.[0]?.status;
         },
         {
           message:
@@ -143,7 +155,7 @@ test.describe.serial('Data Insight Report Application', () => {
       )
       .toBe('success');
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await expect(page.getByTestId('logs')).toBeVisible();
 

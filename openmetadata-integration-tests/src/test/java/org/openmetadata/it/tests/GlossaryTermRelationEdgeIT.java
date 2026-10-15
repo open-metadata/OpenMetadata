@@ -289,6 +289,67 @@ public class GlossaryTermRelationEdgeIT {
     assertEquals(1, edgeBounded.getEdges().size());
   }
 
+  @Test
+  void customInverseRelationTypesPreserveCorrectPerspective() throws Exception {
+    GlossaryTerm termA = createTerm("InvA");
+    GlossaryTerm termB = createTerm("InvB");
+    GlossaryTerm termC = createTerm("InvC");
+
+    postRelation(termA.getId(), termB.getId(), "narrower", RelationProvenance.MANUAL);
+    postRelation(termA.getId(), termC.getId(), "narrower", RelationProvenance.MANUAL);
+
+    GlossaryTerm reloadedA =
+        client.glossaryTerms().getByName(termA.getFullyQualifiedName(), "relatedTerms");
+    TermRelation aToB = firstEdgeTo(reloadedA, termB.getId());
+    TermRelation aToC = firstEdgeTo(reloadedA, termC.getId());
+    assertNotNull(aToB, "A should have relation to B");
+    assertNotNull(aToC, "A should have relation to C");
+    assertEquals("narrower", aToB.getRelationType(), "A should see 'narrower' toward B");
+    assertEquals("narrower", aToC.getRelationType(), "A should see 'narrower' toward C");
+
+    GlossaryTerm reloadedB =
+        client.glossaryTerms().getByName(termB.getFullyQualifiedName(), "relatedTerms");
+    TermRelation bToA = firstEdgeTo(reloadedB, termA.getId());
+    assertNotNull(bToA, "B should have inverse relation to A");
+    assertEquals("broader", bToA.getRelationType(), "B should see inverse 'broader' toward A");
+
+    GlossaryTerm reloadedC =
+        client.glossaryTerms().getByName(termC.getFullyQualifiedName(), "relatedTerms");
+    TermRelation cToA = firstEdgeTo(reloadedC, termA.getId());
+    assertNotNull(cToA, "C should have inverse relation to A");
+    assertEquals("broader", cToA.getRelationType(), "C should see inverse 'broader' toward A");
+  }
+
+  @Test
+  void addTermRelationDetectsDuplicateAcrossInverse() throws Exception {
+    GlossaryTerm termA = createTerm("DupInvA");
+    GlossaryTerm termB = createTerm("DupInvB");
+
+    postRelation(termA.getId(), termB.getId(), "narrower", RelationProvenance.MANUAL);
+
+    GlossaryTerm reloadedB =
+        client.glossaryTerms().getByName(termB.getFullyQualifiedName(), "relatedTerms");
+    TermRelation bToA = firstEdgeTo(reloadedB, termA.getId());
+    assertNotNull(bToA, "B should see A via inverse");
+    assertEquals("broader", bToA.getRelationType());
+
+    HttpResponse<String> duplicateResponse =
+        postRelationResponse(termB.getId(), termA.getId(), "broader", RelationProvenance.MANUAL);
+    assertTrue(
+        duplicateResponse.statusCode() >= 200 && duplicateResponse.statusCode() < 300,
+        "Duplicate-via-inverse POST should not fail: " + duplicateResponse.body());
+
+    GlossaryTerm reReloadedB =
+        client.glossaryTerms().getByName(termB.getFullyQualifiedName(), "relatedTerms");
+    long countBtoA =
+        reReloadedB.getRelatedTerms() == null
+            ? 0
+            : reReloadedB.getRelatedTerms().stream()
+                .filter(r -> r.getTerm() != null && termA.getId().equals(r.getTerm().getId()))
+                .count();
+    assertEquals(1, countBtoA, "B should have exactly one relation to A, not a duplicate");
+  }
+
   private GlossaryTerm createTerm(String prefix) throws Exception {
     String name = prefix + "_" + UUID.randomUUID().toString().substring(0, 8);
     return client

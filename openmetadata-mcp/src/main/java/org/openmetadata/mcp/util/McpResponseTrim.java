@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
  * Shared payload-trimming primitives for MCP tools. The truncation budgets, the response size cap,
@@ -42,6 +44,18 @@ public final class McpResponseTrim {
   public static final int MAX_RESPONSE_CHARS = 100_000;
 
   /**
+   * The cap in force: the MCP server's {@code maxResponseChars} setting when an admin set one,
+   * otherwise {@link #MAX_RESPONSE_CHARS}. Read per call, so a saved change applies without a
+   * restart.
+   */
+  public static int maxResponseChars() {
+    MCPConfiguration config = SecurityConfigurationManager.getCurrentMcpConfig();
+    return config == null || config.getMaxResponseChars() == null
+        ? MAX_RESPONSE_CHARS
+        : config.getMaxResponseChars();
+  }
+
+  /**
    * Machine-readable marker keys shared by tools, the dispatch layer and MCP clients. A tool signals
    * a logical failure with {@link #ERROR_KEY} (optionally {@link #STATUS_CODE_KEY}); a partial-but-
    * successful response with {@link #TRUNCATED_KEY} (dispatch floor) or {@link #HAS_MORE_KEY} plus
@@ -60,6 +74,14 @@ public final class McpResponseTrim {
   public static final String NEXT_CURSOR_KEY = "nextCursor";
   public static final String TOTAL_KEY = "total";
   public static final String MESSAGE_KEY = "message";
+
+  /**
+   * Set by the lineage tools when the per-node permission filter removed nodes. Centralized here
+   * with the other markers so the tool output and the callers that read it cannot drift apart.
+   */
+  public static final String HIDDEN_NODES_KEY = "hiddenNodes";
+
+  public static final String HIDDEN_UNCHECKED_KEY = "hiddenNodesUnchecked";
 
   /**
    * Elasticsearch index-only document fields — the embedding vector and the RAG source/context text
@@ -251,7 +273,7 @@ public final class McpResponseTrim {
     }
     envelope.put(TRUNCATED_KEY, Boolean.TRUE);
     envelope.put(RESPONSE_SIZE_CHARS_KEY, sizeChars);
-    envelope.put(MAX_RESPONSE_CHARS_KEY, MAX_RESPONSE_CHARS);
+    envelope.put(MAX_RESPONSE_CHARS_KEY, maxResponseChars());
     envelope.put(MESSAGE_KEY, advice);
     return envelope;
   }

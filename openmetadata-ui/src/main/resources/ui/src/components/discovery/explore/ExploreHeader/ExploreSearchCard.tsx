@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, PageLayout } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import HeaderShell from '../../../../components/common/HeaderShell/HeaderShell.component';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { useCurrentUserPreferences } from '../../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -141,11 +140,10 @@ export const ExploreSearchCard = () => {
   const handleQuickFilterClick = useCallback(
     (filter: QuickFilter) => {
       const ownerName = currentUser?.displayName || currentUser?.name;
-      const quickFilter = filter.quickFilterFn
-        ? ownerName
-          ? filter.quickFilterFn(ownerName)
-          : undefined
-        : filter.quickFilter;
+      let quickFilter: string | undefined = filter.quickFilter;
+      if (filter.quickFilterFn) {
+        quickFilter = ownerName ? filter.quickFilterFn(ownerName) : undefined;
+      }
 
       if (filter.quickFilterFn && !quickFilter) {
         return;
@@ -214,11 +212,11 @@ export const ExploreSearchCard = () => {
   }, [debouncedSuggestionSearch, navigate]);
 
   // Keep the inset on the shared wrapper so the search and quick filters stay
-  // aligned. The 896px cap minus 48px per side leaves the requested 800px
-  // usable width without introducing another arbitrary outer width.
+  // aligned. Centred, at least 56rem (the old 800px usable width) and 55% of
+  // the header row beyond that, so it grows on wide screens without spanning it.
   const searchActions = (
     <Box
-      className="tw:mx-auto tw:flex tw:w-full tw:max-w-4xl tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-3 tw:px-12"
+      className="tw:mx-auto tw:flex tw:w-full tw:max-w-[max(56rem,55%)] tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-3 tw:px-12"
       data-testid="explore-search-actions"
       direction="col">
       <ExploreSearchInput
@@ -255,10 +253,9 @@ export const ExploreSearchCard = () => {
   );
 
   return (
-    <HeaderShell
+    <PageLayout.PageHeader
       className="tw:min-h-[108px] tw:w-full tw:overflow-hidden tw:rounded-xl"
       data-testid="explore-search-card"
-      padding="comfortable"
       title={headerLayout}
       variant="gradient"
     />

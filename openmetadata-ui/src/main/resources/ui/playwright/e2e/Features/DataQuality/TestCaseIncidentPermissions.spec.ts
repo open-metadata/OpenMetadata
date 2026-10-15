@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   CONSUMER_LIKE_POLICY,
@@ -22,6 +22,7 @@ import {
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
@@ -71,31 +72,31 @@ const test = base.extend<{
   },
   viewIncidentsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await viewIncidentsUser.login(page);
+    await viewIncidentsUser.signIn(page);
     await use(page);
     await page.close();
   },
   editIncidentsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await editIncidentsUser.login(page);
+    await editIncidentsUser.signIn(page);
     await use(page);
     await page.close();
   },
   tableEditIncidentsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await tableEditIncidentsUser.login(page);
+    await tableEditIncidentsUser.signIn(page);
     await use(page);
     await page.close();
   },
   tableViewIncidentsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await tableViewIncidentsUser.login(page);
+    await tableViewIncidentsUser.signIn(page);
     await use(page);
     await page.close();
   },
   consumerLikePage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await consumerLikeUser.login(page);
+    await consumerLikeUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -317,7 +318,7 @@ test.describe(
         await visitTestCaseIncidentPage(editIncidentsPage);
         await expect(editIncidentsPage.getByTestId('open-task')).toBeVisible();
         const editIcon = editIncidentsPage.getByTestId('edit-resolution-icon');
-        await expect(editIcon.first()).toBeVisible();
+        await expect(editIcon.filter({ visible: true })).not.toHaveCount(0);
       });
 
       test('User with TABLE.EDIT_TESTS can see edit icon on incidents (alternative)', async ({
@@ -330,7 +331,7 @@ test.describe(
         const editIcon = tableEditIncidentsPage.getByTestId(
           'edit-resolution-icon'
         );
-        await expect(editIcon.first()).toBeVisible();
+        await expect(editIcon.filter({ visible: true })).not.toHaveCount(0);
       });
     });
 

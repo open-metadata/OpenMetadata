@@ -12,10 +12,10 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
-import { Fragment } from 'react';
+import { FC, Fragment } from 'react';
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
 import { ReactComponent as IconBitmap } from '../assets/svg/data-type-icon/bitmap.svg';
@@ -82,6 +82,58 @@ export {
 } from './EntityIconUtils';
 export { getServiceIcon } from './EntityServiceIconUtils';
 
+interface ConstraintIconConfig {
+  getTitle: () => string;
+  icon: SvgComponent;
+  deletedIcon: SvgComponent;
+  dataTestId: string;
+}
+
+const CONSTRAINT_ICON_CONFIG: Record<string, ConstraintIconConfig> = {
+  [ConstraintTypes.PRIMARY_KEY]: {
+    getTitle: () => t('label.primary-key'),
+    icon: IconKey,
+    deletedIcon: IconKeyLineThrough,
+    dataTestId: 'primary-key',
+  },
+  [ConstraintTypes.UNIQUE]: {
+    getTitle: () => t('label.unique'),
+    icon: IconUnique,
+    deletedIcon: IconUniqueLineThrough,
+    dataTestId: 'unique',
+  },
+  [ConstraintTypes.NOT_NULL]: {
+    getTitle: () => t('label.not-null'),
+    icon: IconNotNull,
+    deletedIcon: IconNotNullLineThrough,
+    dataTestId: 'not-null',
+  },
+  [ConstraintTypes.FOREIGN_KEY]: {
+    getTitle: () => t('label.foreign-key'),
+    icon: IconForeignKey,
+    deletedIcon: IconForeignKeyLineThrough,
+    dataTestId: 'foreign-key',
+  },
+  [ConstraintType.DistKey]: {
+    getTitle: () => t('label.entity-key', { entity: t('label.dist') }),
+    icon: IconDistKey,
+    deletedIcon: IconDistLineThrough,
+    dataTestId: 'dist-key',
+  },
+  [ConstraintType.SortKey]: {
+    getTitle: () => t('label.entity-key', { entity: t('label.sort') }),
+    icon: IconSortKey,
+    deletedIcon: IconSortLineThrough,
+    dataTestId: 'sort-key',
+  },
+  [ConstraintType.ClusterKey]: {
+    getTitle: () => t('label.entity-key', { entity: t('label.cluster') }),
+    icon: IconDistKey,
+    deletedIcon: IconDistLineThrough,
+    dataTestId: 'cluster-key',
+  },
+};
+
 export const getConstraintIcon = ({
   constraint = '',
   className = '',
@@ -95,73 +147,22 @@ export const getConstraintIcon = ({
   isConstraintAdded?: boolean;
   isConstraintDeleted?: boolean;
 }) => {
-  let title: string, icon: SvgComponent, dataTestId: string;
-  switch (constraint) {
-    case ConstraintTypes.PRIMARY_KEY: {
-      title = t('label.primary-key');
-      icon = isConstraintDeleted ? IconKeyLineThrough : IconKey;
-      dataTestId = 'primary-key';
-
-      break;
-    }
-    case ConstraintTypes.UNIQUE: {
-      title = t('label.unique');
-      icon = isConstraintDeleted ? IconUniqueLineThrough : IconUnique;
-      dataTestId = 'unique';
-
-      break;
-    }
-    case ConstraintTypes.NOT_NULL: {
-      title = t('label.not-null');
-      icon = isConstraintDeleted ? IconNotNullLineThrough : IconNotNull;
-      dataTestId = 'not-null';
-
-      break;
-    }
-    case ConstraintTypes.FOREIGN_KEY: {
-      title = t('label.foreign-key');
-      icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
-      dataTestId = 'foreign-key';
-
-      break;
-    }
-    case ConstraintType.DistKey: {
-      title = t('label.entity-key', {
-        entity: t('label.dist'),
-      });
-      icon = isConstraintDeleted ? IconDistLineThrough : IconDistKey;
-      dataTestId = 'dist-key';
-
-      break;
-    }
-    case ConstraintType.SortKey: {
-      title = t('label.entity-key', {
-        entity: t('label.sort'),
-      });
-      icon = isConstraintDeleted ? IconSortLineThrough : IconSortKey;
-      dataTestId = 'sort-key';
-
-      break;
-    }
-    case ConstraintType.ClusterKey: {
-      title = t('label.entity-key', {
-        entity: t('label.cluster'),
-      });
-      icon = isConstraintDeleted ? IconDistLineThrough : IconDistKey;
-      dataTestId = 'cluster-key';
-
-      break;
-    }
-    default:
-      return null;
+  const config = CONSTRAINT_ICON_CONFIG[constraint];
+  if (!config) {
+    return null;
   }
+
+  const title = config.getTitle();
+  const icon = isConstraintDeleted ? config.deletedIcon : config.icon;
+  const dataTestId = config.dataTestId;
 
   return (
     <Tooltip
-      className={classNames(className)}
+      arrow
+      excludeTriggerFromTabOrder
       placement="bottom"
       title={title}
-      trigger="hover">
+      triggerClassName={classNames('tw:inline-flex', className)}>
       <Icon
         alt={title}
         className={classNames({
@@ -242,13 +243,14 @@ export const getColumnDataTypeIcon = ({
 
 export function getTableExpandableConfig<T>(
   isDraggable?: boolean,
-  expandIconClass?: string
+  expandIconClass?: string,
+  DragIcon: FC<{ className?: string }> = IconDrag
 ): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
         <>
-          {isDraggable && <IconDrag className="drag-icon" />}
+          {isDraggable && <DragIcon className="drag-icon" />}
           <Icon
             className={classNames(
               'table-expand-icon vertical-baseline',
@@ -262,7 +264,7 @@ export function getTableExpandableConfig<T>(
       ) : (
         isDraggable && (
           <>
-            <IconDrag className="drag-icon" />
+            <DragIcon className="drag-icon" />
             <span className="expand-cell-empty-icon-container" />
           </>
         )
@@ -340,13 +342,16 @@ export const tableConstraintRendererBasedOnType = (
 
   return (
     <div
-      className="d-flex constraint-columns"
+      className="d-flex constraint-columns tw:bg-(--om-legacy-color-f8f8f8) tw:dark:bg-transparent"
       data-testid={`${constraintType}-container`}
       key={constraintType}>
-      <Space
-        className="constraint-icon-container"
-        direction="vertical"
-        size={0}>
+      <Box
+        inline
+        align="stretch"
+        className="layout-space constraint-icon-container"
+        direction="col"
+        gap={0}
+        itemClassName="layout-space-item">
         {columns?.map((column, index) => (
           <Fragment key={column}>
             {(columns?.length ?? 0) - 1 !== index || isSingleColumn ? (
@@ -357,15 +362,21 @@ export const tableConstraintRendererBasedOnType = (
             ) : null}
           </Fragment>
         ))}
-      </Space>
+      </Box>
 
-      <Space direction="vertical" size={16}>
+      <Box
+        inline
+        align="stretch"
+        className="layout-space"
+        direction="col"
+        gap={4}
+        itemClassName="layout-space-item">
         {columns?.map((column) => (
-          <Typography.Text ellipsis={{ tooltip: true }} key={column}>
+          <Typography ellipsis={{ tooltip: true }} key={column}>
             {column}
-          </Typography.Text>
+          </Typography>
         ))}
-      </Space>
+      </Box>
     </div>
   );
 };

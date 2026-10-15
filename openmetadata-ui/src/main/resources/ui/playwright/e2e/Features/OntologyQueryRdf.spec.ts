@@ -11,15 +11,17 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import {
   SavedSparqlQueries,
   SavedSparqlQuery,
 } from '../../../src/generated/api/rdf/savedSparqlQueries';
+import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';
-import { uuid } from '../../utils/common';
+import { fillCodeEditor } from '../../utils/codeEditor';
+import { selectOptionWithRetry, uuid } from '../../utils/common';
 import {
   navigateToOntologyStudio,
   readGraphEdges,
@@ -27,12 +29,6 @@ import {
 
 interface SparqlAskResult {
   boolean: boolean;
-}
-
-interface CodeMirrorElement extends HTMLElement {
-  CodeMirror?: {
-    setValue: (value: string) => void;
-  };
 }
 
 const suffix = uuid().replaceAll('-', '');
@@ -93,16 +89,7 @@ async function removeSavedQuery(apiContext: APIRequestContext): Promise<void> {
 }
 
 async function setSparqlEditorValue(page: Page, query: string): Promise<void> {
-  await page
-    .getByTestId('ontology-sparql-editor')
-    .locator('.CodeMirror')
-    .evaluate((element, value) => {
-      const codeMirrorElement = element as CodeMirrorElement;
-      if (!codeMirrorElement.CodeMirror) {
-        throw new Error('SPARQL CodeMirror instance is unavailable');
-      }
-      codeMirrorElement.CodeMirror.setValue(value);
-    }, query);
+  await fillCodeEditor(page, page.getByTestId('ontology-sparql-editor'), query);
 }
 
 test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
@@ -220,8 +207,10 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
         page.getByTestId('ontology-visual-query-builder')
       ).toBeVisible();
 
-      await page.getByTestId('ontology-builder-relation').click();
-      await page.getByRole('option', { name: 'Related To' }).click();
+      await selectOptionWithRetry(
+        page.getByTestId('ontology-builder-relation'),
+        page.getByRole('option', { name: 'Related To' })
+      );
       await page.getByTestId('ontology-builder-target').click();
       await page
         .getByRole('option', { name: target.responseData.displayName })
@@ -293,7 +282,11 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
         page.getByTestId('ontology-sparql-result-graph')
       ).toBeVisible();
 
-      const edges = await readGraphEdges(page);
+      const edges = await readGraphEdges(
+        page,
+        1,
+        '[data-testid="ontology-sparql-result-graph"] .ontology-g6-container'
+      );
       expect(edges).toContainEqual(
         expect.objectContaining({
           from: sourceIri,

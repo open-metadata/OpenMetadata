@@ -21,6 +21,7 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     TableConstraint,
 )
+from metadata.generated.schema.type.assetCertification import AssetCertification
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
@@ -39,6 +40,19 @@ from metadata.utils.source_hash import (
     _sort_columns,
     generate_source_hash,
 )
+
+
+def _certification(tag_fqn: str = "Certification.Bronze") -> AssetCertification:
+    return AssetCertification(
+        tagLabel=TagLabel(
+            tagFQN=tag_fqn,
+            source=TagSource.Classification,
+            labelType=LabelType.Automated,
+            state=State.Confirmed,
+        ),
+        appliedDate=1700000000000,
+        expiryDate=1731536000000,
+    )
 
 
 class TestNormalizeWhitespace:
@@ -467,6 +481,90 @@ class TestGenerateSourceHash:
             databaseSchema="service.db.schema",
             columns=[Column(name="id", dataType=DataType.INT)],
             sourceHash="xyz789",
+        )
+        assert generate_source_hash(request1) == generate_source_hash(request2)
+
+    def test_hash_changes_with_certification_added(self):
+        request1 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+        )
+        request2 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=_certification("Certification.Bronze"),
+        )
+        assert generate_source_hash(request1) != generate_source_hash(request2)
+
+    def test_hash_changes_with_certification_value_change(self):
+        request1 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=_certification("Certification.Bronze"),
+        )
+        request2 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=_certification("Certification.Gold"),
+        )
+        assert generate_source_hash(request1) != generate_source_hash(request2)
+
+    def test_hash_stable_when_certification_omitted(self):
+        request1 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+        )
+        request2 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=None,
+        )
+        assert generate_source_hash(request1) == generate_source_hash(request2)
+
+    def test_hash_stable_with_equivalent_certification_payload(self):
+        request1 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=_certification("Certification.Silver"),
+        )
+        request2 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=_certification("Certification.Silver"),
+        )
+        assert generate_source_hash(request1) == generate_source_hash(request2)
+
+    def test_hash_stable_across_certification_applied_and_expiry_dates(self):
+        """appliedDate/expiryDate are always recomputed server-side from
+        AssetCertificationSettings when a certification is applied, so a
+        connector populating them with a run-time-relative value (e.g. now())
+        must not defeat the bulk fast-path when the certification itself is
+        unchanged. Only tagLabel is a real change-detection signal."""
+        tag_label = TagLabel(
+            tagFQN="Certification.Gold",
+            source=TagSource.Classification,
+            labelType=LabelType.Automated,
+            state=State.Confirmed,
+        )
+        request1 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=AssetCertification(tagLabel=tag_label, appliedDate=1700000000000, expiryDate=1731536000000),
+        )
+        request2 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=AssetCertification(tagLabel=tag_label, appliedDate=1800000000000, expiryDate=1999999999999),
         )
         assert generate_source_hash(request1) == generate_source_hash(request2)
 

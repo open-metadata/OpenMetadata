@@ -34,10 +34,18 @@ jest.mock('@antv/g6', () => ({
 
 import { PaletteKey } from '../../../generated/entity/data/relationshipType';
 import { createRelationshipTypeMock } from '../../../mocks/Ontology.mock';
-import { RELATION_META } from '../OntologyExplorer.constants';
 import {
+  COLOR_META_BY_HEX,
+  RELATION_META,
+} from '../OntologyExplorer.constants';
+import {
+  buildComboStyle,
+  buildDataModeAssetNodeStyle,
+  buildDataModeTermNodeStyle,
+  buildDefaultRectNodeStyle,
   formatRelationLabel,
   getCanvasColor,
+  getEdgeRelationLabelStyle,
   getEffectiveRelationColor,
   truncateHierarchyBadgeToFitWidth,
 } from './graphStyles';
@@ -50,9 +58,152 @@ const mockComputedStyle = (
   propertyValue = ''
 ): CSSStyleDeclaration =>
   ({
+    backgroundColor: color,
     color,
     getPropertyValue: () => propertyValue,
   } as unknown as CSSStyleDeclaration);
+
+const resolveSemanticColor = (color: string, fallback: string): string =>
+  ({
+    'var(--tw-color-bg-primary)': 'rgb(12, 14, 18)',
+    'var(--tw-color-bg-secondary)': 'rgb(24, 27, 33)',
+    'var(--tw-color-border-primary)': 'rgb(55, 58, 65)',
+    'var(--tw-color-border-secondary)': 'rgb(34, 38, 47)',
+    'var(--tw-color-text-primary)': 'rgb(247, 247, 247)',
+    'var(--tw-color-text-tertiary)': 'rgb(148, 153, 162)',
+    'var(--tw-color-text-white)': 'rgb(255, 255, 255)',
+  }[color] ?? fallback);
+
+describe('theme-aware graph styles', () => {
+  it('finds palette backgrounds for both saved hex colors and built-in theme tokens', () => {
+    expect(COLOR_META_BY_HEX['#1570ef'].color).toBe(
+      RELATION_META.relatedTo.color
+    );
+
+    for (const { color, background } of Object.values(RELATION_META)) {
+      expect(COLOR_META_BY_HEX[color]).toMatchObject({ color, background });
+    }
+  });
+
+  it('keeps a built-in studio badge border in the relation palette', () => {
+    const colors: Record<string, string> = {
+      'var(--tw-color-utility-error-200)': 'rgb(145, 32, 24)',
+      'var(--tw-color-utility-error-700)': 'rgb(249, 112, 102)',
+    };
+    const style = getEdgeRelationLabelStyle(
+      'SYNONYM',
+      'synonym',
+      RELATION_META.synonym.color,
+      true,
+      (color, fallback) =>
+        colors[color] ?? resolveSemanticColor(color, fallback)
+    );
+
+    expect(style.labelBackgroundStroke).toBe('rgb(145, 32, 24)');
+    expect(style.labelFill).toBe('rgb(249, 112, 102)');
+  });
+
+  it('uses the active canvas surface for studio relation badges', () => {
+    const style = getEdgeRelationLabelStyle(
+      'RELATED TO',
+      undefined,
+      undefined,
+      true,
+      resolveSemanticColor
+    );
+
+    expect(style.labelBackgroundFill).toBe('rgb(24, 27, 33)');
+    expect(style.labelBackgroundStroke).toBe('rgb(55, 58, 65)');
+  });
+
+  it('resolves semantic surface colors before returning a rectangular canvas node', () => {
+    const style = buildDefaultRectNodeStyle(
+      resolveSemanticColor,
+      'Customer',
+      [180, 40]
+    );
+
+    expect(style).toMatchObject({
+      fill: 'rgb(12, 14, 18)',
+      labelFill: 'rgb(247, 247, 247)',
+      shadowColor: 'rgb(34, 38, 47)',
+      stroke: 'rgb(34, 38, 47)',
+    });
+  });
+
+  it('resolves semantic chrome colors before returning a data-mode term node', () => {
+    const style = buildDataModeTermNodeStyle(
+      resolveSemanticColor,
+      'Customer',
+      '#1570ef'
+    );
+
+    expect(style).toMatchObject({
+      haloShadowColor: 'rgb(34, 38, 47)',
+      haloStroke: 'rgb(34, 38, 47)',
+      labelBackgroundShadowColor: 'rgb(34, 38, 47)',
+      labelBackgroundStroke: 'rgb(12, 14, 18)',
+      labelFill: 'rgb(255, 255, 255)',
+      shadowColor: 'rgb(55, 58, 65)',
+      stroke: 'rgb(12, 14, 18)',
+    });
+  });
+
+  it('resolves semantic card colors before returning a data-mode asset node', () => {
+    const getContextSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(null);
+    const style = buildDataModeAssetNodeStyle(
+      resolveSemanticColor,
+      'Customer table',
+      '#1570ef'
+    );
+    getContextSpy.mockRestore();
+
+    expect(style).toMatchObject({
+      fill: 'rgb(12, 14, 18)',
+      labelBackgroundFill: 'rgb(12, 14, 18)',
+      labelBackgroundStroke: 'rgb(34, 38, 47)',
+      labelFill: 'rgb(247, 247, 247)',
+    });
+  });
+
+  it('resolves semantic colors before returning a generic edge label', () => {
+    const style = getEdgeRelationLabelStyle(
+      'RELATED TO',
+      undefined,
+      undefined,
+      false,
+      resolveSemanticColor
+    );
+
+    expect(style).toMatchObject({
+      labelBackgroundFill: 'rgb(24, 27, 33)',
+      labelBackgroundShadowColor: 'rgb(34, 38, 47)',
+      labelBackgroundStroke: 'rgb(12, 14, 18)',
+      labelFill: 'rgb(148, 153, 162)',
+    });
+  });
+
+  it('resolves semantic colors before returning a glossary combo', () => {
+    const getContextSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(null);
+    const style = buildComboStyle(
+      'Marketing',
+      'var(--tw-color-border-primary)',
+      0,
+      resolveSemanticColor
+    );
+    getContextSpy.mockRestore();
+
+    expect(style).toMatchObject({
+      fill: 'rgb(12, 14, 18)',
+      labelFill: 'rgb(55, 58, 65)',
+      stroke: 'rgb(55, 58, 65)',
+    });
+  });
+});
 
 describe('getEffectiveRelationColor', () => {
   it('prefers RELATION_META over the configured palette for system relations', () => {
@@ -150,7 +301,9 @@ describe('getCanvasColor', () => {
       .spyOn(globalThis, 'document', 'get')
       .mockReturnValue(undefined as unknown as Document);
 
-    expect(getCanvasColor('var(--color-missing)', '#abcdef')).toBe('#abcdef');
+    expect(getCanvasColor('var(--tw-color-missing)', '#abcdef')).toBe(
+      '#abcdef'
+    );
   });
 
   it('returns the input unchanged when it is not a var() token', () => {
@@ -163,12 +316,12 @@ describe('getCanvasColor', () => {
       .spyOn(window, 'getComputedStyle')
       .mockReturnValue(mockComputedStyle('rgb(1, 2, 3)'));
 
-    const first = getCanvasColor('var(--color-cache-probe)', '#zzzzzz');
+    const first = getCanvasColor('var(--tw-color-cache-probe)', '#zzzzzz');
 
     expect(first).toBe('rgb(1, 2, 3)');
 
     spy.mockReturnValue(mockComputedStyle('rgb(9, 9, 9)'));
-    const second = getCanvasColor('var(--color-cache-probe)', '#zzzzzz');
+    const second = getCanvasColor('var(--tw-color-cache-probe)', '#zzzzzz');
 
     expect(second).toBe('rgb(1, 2, 3)');
   });
@@ -176,9 +329,9 @@ describe('getCanvasColor', () => {
   it('returns the fallback hex when the token resolves to a transparent or non-color value', () => {
     jest
       .spyOn(window, 'getComputedStyle')
-      .mockReturnValue(mockComputedStyle('rgba(0, 0, 0, 0)', 'oklch(0 0 0)'));
+      .mockReturnValue(mockComputedStyle('rgba(0, 0, 0, 0)', '12px'));
 
-    expect(getCanvasColor('var(--color-unresolvable)', '#fedcba')).toBe(
+    expect(getCanvasColor('var(--tw-color-unresolvable)', '#fedcba')).toBe(
       '#fedcba'
     );
   });

@@ -17,19 +17,15 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { IChangeEvent } from '@rjsf/core';
-import { RJSFSchema } from '@rjsf/utils';
 import {
+  Box,
   Button,
-  Col,
-  Dropdown,
-  Row,
-  Space,
   Tabs,
   Tooltip,
   Typography,
-} from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+} from '@openmetadata/ui-core-components';
+import { IChangeEvent } from '@rjsf/core';
+import { RJSFSchema } from '@rjsf/utils';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -39,7 +35,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
@@ -71,6 +66,10 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
@@ -86,6 +85,38 @@ import McpApplicationConfiguration from '../McpApplicationConfiguration/McpAppli
 import './app-details.less';
 import { AppAction } from './AppDetails.interface';
 import applicationsClassBase from './ApplicationsClassBase';
+
+// The MCP app stores no configuration of its own. Its settings live in the `mcpConfiguration`
+// system setting, which is admin-only, so its tab uses a dedicated component and is hidden
+// from non-admins rather than letting them submit a request the server will reject.
+// Extracted so these checks don't add to the cyclomatic complexity of the
+// `tabs` memo that calls them.
+const getShowMcpConfigTab = (
+  appData: App | undefined,
+  isAdminUser: boolean | undefined,
+  jsonSchema: RJSFSchema | undefined,
+  isRuntimeDisabled: boolean
+) =>
+  Boolean(
+    isMcpApplication(appData?.name) &&
+      isAdminUser &&
+      jsonSchema &&
+      !isRuntimeDisabled
+  );
+
+const getShowAppConfigTab = (
+  appData: App | undefined,
+  showMcpConfigTab: boolean,
+  jsonSchema: RJSFSchema | undefined,
+  isRuntimeDisabled: boolean
+) => {
+  const hasAppConfiguration =
+    !showMcpConfigTab &&
+    appData?.appConfiguration &&
+    appData.allowConfiguration;
+
+  return Boolean(hasAppConfiguration && jsonSchema && !isRuntimeDisabled);
+};
 
 const AppDetails = () => {
   const { t } = useTranslation();
@@ -105,12 +136,21 @@ const AppDetails = () => {
   const { getResourceLimit } = useLimitStore();
   const { plugins } = useApplicationsProvider();
   const { isAdminUser } = useAuth();
-  const isRuntimeDisabled = appData?.enabled === false && !appData.deleted;
-  const runtimeDisabledReason =
-    isRuntimeDisabled && isCacheWarmupApplication(appData?.name)
-      ? t('message.cache-service-not-configured-message')
-      : undefined;
-  const isAppUnavailable = Boolean(appData?.deleted) || isRuntimeDisabled;
+  const isRuntimeDisabled = useMemo(
+    () => appData?.enabled === false && !appData.deleted,
+    [appData]
+  );
+  const runtimeDisabledReason = useMemo(
+    () =>
+      isRuntimeDisabled && isCacheWarmupApplication(appData?.name)
+        ? t('message.cache-service-not-configured-message')
+        : undefined,
+    [isRuntimeDisabled, appData?.name, t]
+  );
+  const isAppUnavailable = useMemo(
+    () => Boolean(appData?.deleted) || isRuntimeDisabled,
+    [appData?.deleted, isRuntimeDisabled]
+  );
 
   const fetchAppDetails = useCallback(async () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
@@ -163,7 +203,7 @@ const AppDetails = () => {
     try {
       setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
       if (action === AppAction.ENABLE) {
-        handleRestore();
+        await handleRestore();
       } else {
         await uninstallApp(
           appData?.fullyQualifiedName ?? '',
@@ -196,72 +236,75 @@ const AppDetails = () => {
     t,
   ]);
 
-  const manageButtonContent: ItemType[] = [
-    ...(appData?.deleted
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.restore-action-description', {
-                  entityType: getEntityName(appData),
-                })}
-                icon={IconRestore}
-                id="restore-button"
-                name={t('label.restore')}
-              />
-            ),
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setShowActions(false);
-              setAction(AppAction.ENABLE);
-              setShowDeleteModel(true);
+  const manageButtonContent: ManageMenuItem[] = useMemo(
+    () => [
+      ...(appData?.deleted
+        ? ([
+            {
+              label: (
+                <ManageButtonItemLabel
+                  description={t('message.restore-action-description', {
+                    entityType: getEntityName(appData),
+                  })}
+                  icon={IconRestore}
+                  id="restore-button"
+                  name={t('label.restore')}
+                />
+              ),
+              onClick: (e) => {
+                e.domEvent.stopPropagation();
+                setShowActions(false);
+                setAction(AppAction.ENABLE);
+                setShowDeleteModel(true);
+              },
+              key: 'restore-button',
             },
-            key: 'restore-button',
-          },
-        ] as ItemType[])
-      : [
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.disable-app', {
-                  app: getEntityName(appData),
-                })}
-                icon={StopOutlined as SvgComponent}
-                id="disable-button"
-                name={t('label.disable')}
-              />
-            ),
-            key: 'disable-button',
-            onClick: () => {
-              setShowDeleteModel(true);
-              setShowActions(false);
-              setAction(AppAction.DISABLE);
+          ] as ManageMenuItem[])
+        : [
+            {
+              label: (
+                <ManageButtonItemLabel
+                  description={t('message.disable-app', {
+                    app: getEntityName(appData),
+                  })}
+                  icon={StopOutlined as SvgComponent}
+                  id="disable-button"
+                  name={t('label.disable')}
+                />
+              ),
+              key: 'disable-button',
+              onClick: () => {
+                setShowDeleteModel(true);
+                setShowActions(false);
+                setAction(AppAction.DISABLE);
+              },
             },
-          },
-        ]),
-    ...(appData?.system
-      ? []
-      : [
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.uninstall-app', {
-                  app: getEntityName(appData),
-                })}
-                icon={DeleteIcon}
-                id="uninstall-button"
-                name={t('label.uninstall')}
-              />
-            ),
-            key: 'uninstall-button',
-            onClick: () => {
-              setShowDeleteModel(true);
-              setShowActions(false);
-              setAction(AppAction.UNINSTALL);
+          ]),
+      ...(appData?.system
+        ? []
+        : [
+            {
+              label: (
+                <ManageButtonItemLabel
+                  description={t('message.uninstall-app', {
+                    app: getEntityName(appData),
+                  })}
+                  icon={DeleteIcon}
+                  id="uninstall-button"
+                  name={t('label.uninstall')}
+                />
+              ),
+              key: 'uninstall-button',
+              onClick: () => {
+                setShowDeleteModel(true);
+                setShowActions(false);
+                setAction(AppAction.UNINSTALL);
+              },
             },
-          },
-        ]),
-  ];
+          ]),
+    ],
+    [appData, t]
+  );
 
   const onConfigSave = useCallback(
     async (data: IChangeEvent & { ingestionRunner?: EntityReference }) => {
@@ -375,121 +418,143 @@ const AppDetails = () => {
   }, [appData?.name, plugins]);
 
   const tabs = useMemo(() => {
-    const ApplicationConfigurationComponent =
-      applicationsClassBase.getApplicationConfigurationComponent();
     const showScheduleTab = appData?.scheduleType !== ScheduleType.NoSchedule;
+    const showMcpConfigTab = getShowMcpConfigTab(
+      appData,
+      isAdminUser,
+      jsonSchema,
+      isRuntimeDisabled
+    );
+    const showAppConfigTab = getShowAppConfigTab(
+      appData,
+      showMcpConfigTab,
+      jsonSchema,
+      isRuntimeDisabled
+    );
 
-    // The MCP app stores no configuration of its own. Its settings live in the `mcpConfiguration`
-    // system setting, which is admin-only, so its tab uses a dedicated component and is hidden
-    // from non-admins rather than letting them submit a request the server will reject.
-    const showMcpConfigTab = Boolean(
-      isMcpApplication(appData?.name) &&
-        isAdminUser &&
-        jsonSchema &&
-        !isRuntimeDisabled
-    );
-    const showAppConfigTab = Boolean(
-      !showMcpConfigTab &&
-        appData?.appConfiguration &&
-        appData.allowConfiguration &&
-        jsonSchema &&
-        !isRuntimeDisabled
-    );
-    const tabConfiguration =
-      showMcpConfigTab || showAppConfigTab
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  id={ApplicationTabs.CONFIGURATION}
-                  name={t('label.configuration')}
-                />
-              ),
-              key: ApplicationTabs.CONFIGURATION,
-              children: showMcpConfigTab ? (
-                <McpApplicationConfiguration
-                  appName={appData?.name ?? ''}
+    // Each build* helper below is its own function scope, so its internal
+    // branch doesn't add to this memo's cyclomatic complexity. Pure
+    // extraction of the tab-building logic — same conditions, same order,
+    // same output.
+    const buildConfigurationTab = () => {
+      if (!showMcpConfigTab && !showAppConfigTab) {
+        return [];
+      }
+
+      const ApplicationConfigurationComponent =
+        applicationsClassBase.getApplicationConfigurationComponent();
+
+      return [
+        {
+          label: (
+            <TabsLabel
+              id={ApplicationTabs.CONFIGURATION}
+              name={t('label.configuration')}
+            />
+          ),
+          key: ApplicationTabs.CONFIGURATION,
+          children: showMcpConfigTab ? (
+            <McpApplicationConfiguration
+              appName={appData?.name ?? ''}
+              jsonSchema={jsonSchema as RJSFSchema}
+            />
+          ) : (
+            <ApplicationConfigurationComponent
+              appData={appData as App}
+              isLoading={loadingState.isSaveLoading}
+              jsonSchema={jsonSchema as RJSFSchema}
+              onConfigSave={onConfigSave}
+            />
+          ),
+        },
+      ];
+    };
+
+    const buildScheduleTab = () => {
+      if (!showScheduleTab) {
+        return [];
+      }
+
+      return [
+        {
+          label: (
+            <TabsLabel
+              id={ApplicationTabs.SCHEDULE}
+              name={t('label.schedule')}
+            />
+          ),
+          key: ApplicationTabs.SCHEDULE,
+          children: (
+            <div className="bg-white p-lg border-default border-radius-sm">
+              {appData && (
+                <AppSchedule
+                  appData={appData}
+                  disabled={isRuntimeDisabled}
+                  disabledReason={runtimeDisabledReason}
                   jsonSchema={jsonSchema as RJSFSchema}
+                  loading={{
+                    isRunLoading: loadingState.isRunLoading,
+                    isDeployLoading: loadingState.isDeployLoading,
+                  }}
+                  onDemandTrigger={onDemandTrigger}
+                  onDeployTrigger={onDeployTrigger}
+                  onSave={onAppScheduleSave}
                 />
-              ) : (
-                <ApplicationConfigurationComponent
-                  appData={appData as App}
-                  isLoading={loadingState.isSaveLoading}
-                  jsonSchema={jsonSchema as RJSFSchema}
-                  onConfigSave={onConfigSave}
-                />
-              ),
-            },
-          ]
-        : [];
+              )}
+            </div>
+          ),
+        },
+      ];
+    };
+
+    const buildRecentRunsTab = () => {
+      if (isAppUnavailable || !showScheduleTab) {
+        return [];
+      }
+
+      return [
+        {
+          label: (
+            <TabsLabel
+              id={ApplicationTabs.RECENT_RUNS}
+              name={t('label.recent-run-plural')}
+            />
+          ),
+          key: ApplicationTabs.RECENT_RUNS,
+          children: (
+            <AppRunsHistory
+              appData={appData}
+              jsonSchema={jsonSchema as RJSFSchema}
+            />
+          ),
+        },
+      ];
+    };
+
+    const buildLiveIndexingTab = () => {
+      if (isAppUnavailable || appData?.name !== 'SearchIndexingApplication') {
+        return [];
+      }
+
+      return [
+        {
+          label: (
+            <TabsLabel
+              id={ApplicationTabs.LIVE_INDEXING}
+              name={t('label.live-indexing')}
+            />
+          ),
+          key: ApplicationTabs.LIVE_INDEXING,
+          children: <AppLiveIndexing appData={appData} />,
+        },
+      ];
+    };
 
     return [
-      ...(showScheduleTab
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  id={ApplicationTabs.SCHEDULE}
-                  name={t('label.schedule')}
-                />
-              ),
-              key: ApplicationTabs.SCHEDULE,
-              children: (
-                <div className="bg-white p-lg border-default border-radius-sm">
-                  {appData && (
-                    <AppSchedule
-                      appData={appData}
-                      disabled={isRuntimeDisabled}
-                      disabledReason={runtimeDisabledReason}
-                      jsonSchema={jsonSchema as RJSFSchema}
-                      loading={{
-                        isRunLoading: loadingState.isRunLoading,
-                        isDeployLoading: loadingState.isDeployLoading,
-                      }}
-                      onDemandTrigger={onDemandTrigger}
-                      onDeployTrigger={onDeployTrigger}
-                      onSave={onAppScheduleSave}
-                    />
-                  )}
-                </div>
-              ),
-            },
-          ]
-        : []),
-      ...tabConfiguration,
-      ...(!isAppUnavailable && showScheduleTab
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  id={ApplicationTabs.RECENT_RUNS}
-                  name={t('label.recent-run-plural')}
-                />
-              ),
-              key: ApplicationTabs.RECENT_RUNS,
-              children: (
-                <AppRunsHistory
-                  appData={appData}
-                  jsonSchema={jsonSchema as RJSFSchema}
-                />
-              ),
-            },
-          ]
-        : []),
-      ...(!isAppUnavailable && appData?.name === 'SearchIndexingApplication'
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  id={ApplicationTabs.LIVE_INDEXING}
-                  name={t('label.live-indexing')}
-                />
-              ),
-              key: ApplicationTabs.LIVE_INDEXING,
-              children: <AppLiveIndexing appData={appData} />,
-            },
-          ]
-        : []),
+      ...buildScheduleTab(),
+      ...buildConfigurationTab(),
+      ...buildRecentRunsTab(),
+      ...buildLiveIndexingTab(),
     ];
   }, [
     appData,
@@ -525,6 +590,86 @@ const AppDetails = () => {
     fetchAppDetails();
   }, [fqn]);
 
+  // Each render* helper below is its own function scope, so its internal
+  // branch doesn't add to AppDetails' own cyclomatic complexity. Pure
+  // extraction of the JSX that used to live inline.
+  const renderRuntimeDisabledBadge = () => {
+    if (!isRuntimeDisabled) {
+      return null;
+    }
+
+    return (
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={runtimeDisabledReason}
+        triggerClassName="tw:inline-flex">
+        <div
+          className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
+          data-testid="runtime-disabled-badge">
+          <StopOutlined className="d-flex m-r-xss font-medium text-xs" />
+          {t('label.disabled')}
+        </div>
+      </Tooltip>
+    );
+  };
+
+  const renderDeveloperUrl = () => {
+    if (!appData?.developerUrl) {
+      return null;
+    }
+
+    return (
+      <div className="flex-center gap-2">
+        <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+        <Typography>
+          <a
+            className="text-xs"
+            href={appData?.developerUrl}
+            rel="noopener noreferrer"
+            target="_blank">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              {t('label.visit-developer-website')}
+            </Box>
+          </a>
+        </Typography>
+      </div>
+    );
+  };
+
+  const renderAppDetailsBody = () => {
+    if (pluginAppDetailsComponent) {
+      // Render plugin's custom app details component
+      return React.createElement(pluginAppDetailsComponent);
+    }
+
+    // Render default tabs interface
+    return (
+      <Tabs
+        className="tw:gap-3"
+        data-testid="tabs"
+        defaultSelectedKey={tabs[0]?.key}>
+        <Tabs.List size="sm" type="underline" variant="card">
+          {tabs.map(({ key, label }) => (
+            <Tabs.Item id={key} key={key}>
+              {label}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {tabs.map(({ key, children }) => (
+          <Tabs.Panel id={key} key={key}>
+            {children}
+          </Tabs.Panel>
+        ))}
+      </Tabs>
+    );
+  };
+
   if (loadingState.isFetchLoading) {
     return <Loader />;
   }
@@ -533,120 +678,82 @@ const AppDetails = () => {
     <PageLayoutV1
       className="app-details-page-layout"
       pageTitle={getEntityName(appData) || t('label.application-plural')}>
-      <Row>
-        <Col className="d-flex" flex="auto">
+      <Box>
+        <div className="d-flex tw:min-w-0 tw:flex-auto">
           <Button
-            className="p-0"
-            icon={<LeftOutlined />}
-            size="small"
-            type="text"
+            color="tertiary"
+            iconLeading={<LeftOutlined />}
+            size="xs"
             onClick={onBrowseAppsClick}>
-            <Typography.Text className="font-medium">
+            <Typography className="font-medium">
               {t('label.browse-app-plural')}
-            </Typography.Text>
+            </Typography>
           </Button>
-        </Col>
-        <Col flex="360px">
+        </div>
+        <div className="tw:flex-[0_0_360px]">
           <div className="d-flex gap-2 justify-end">
-            <Dropdown
-              align={{ targetOffset: [-12, 0] }}
-              className="m-l-xs"
-              menu={{
-                items: manageButtonContent,
-              }}
-              open={showActions}
-              overlayClassName="glossary-manage-dropdown-list-container"
-              overlayStyle={{ width: '350px' }}
-              placement="bottomRight"
-              trigger={['click']}
-              onOpenChange={setShowActions}>
-              <Tooltip
-                placement="topRight"
-                title={t('label.manage-entity', {
-                  entity: t('label.application'),
-                })}>
-                <Button
-                  className="glossary-manage-dropdown-button p-x-xs"
-                  data-testid="manage-button"
-                  icon={
-                    <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                  }
-                  onClick={() => setShowActions(true)}
-                />
-              </Tooltip>
-            </Dropdown>
+            <ManageMenu
+              isOpen={showActions}
+              items={manageButtonContent}
+              label={t('label.manage-entity', {
+                entity: t('label.application'),
+              })}
+              triggerClassName="m-l-xs"
+              onOpenChange={setShowActions}
+            />
           </div>
-        </Col>
-      </Row>
-      <Row>
-        <Col span={24}>
-          <Space className="app-details-header w-full" size={24}>
+        </div>
+      </Box>
+      <Box direction="col">
+        <div>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal app-details-header w-full"
+            gap={6}
+            itemClassName="layout-space-item">
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
-              <Typography.Title level={4}>
-                {getEntityName(appData)}
-              </Typography.Title>
-              {isRuntimeDisabled && (
-                <Tooltip title={runtimeDisabledReason}>
-                  <div
-                    className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
-                    data-testid="runtime-disabled-badge">
-                    <StopOutlined className="d-flex m-r-xss font-medium text-xs" />
-                    {t('label.disabled')}
-                  </div>
-                </Tooltip>
-              )}
+              <Typography as="h4">{getEntityName(appData)}</Typography>
+              {renderRuntimeDisabledBadge()}
 
               <div className="d-flex items-center flex-wrap gap-6">
-                <Space size={8}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <ClockCircleOutlined />
-                  <Typography.Text className="text-xs text-grey-muted">
+                  <Typography className="text-xs" color="secondary">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
                     )}`}
-                  </Typography.Text>
-                </Space>
+                  </Typography>
+                </Box>
 
-                <Space size={8}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <UserOutlined />
-                  <Typography.Text className="text-xs text-grey-muted">
+                  <Typography className="text-xs" color="secondary">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,
                     })}
-                  </Typography.Text>
-                </Space>
+                  </Typography>
+                </Box>
 
-                {appData?.developerUrl && (
-                  <div className="flex-center gap-2">
-                    <Icon component={IconExternalLink} style={ICON_DIMENSION} />
-                    <Typography.Link
-                      className="text-xs"
-                      href={appData?.developerUrl}
-                      target="_blank">
-                      <Space>{t('label.visit-developer-website')}</Space>
-                    </Typography.Link>
-                  </div>
-                )}
+                {renderDeveloperUrl()}
               </div>
             </div>
-          </Space>
-        </Col>
-        <Col className="app-details-page-tabs" span={24}>
-          {pluginAppDetailsComponent ? (
-            // Render plugin's custom app details component
-            React.createElement(pluginAppDetailsComponent)
-          ) : (
-            // Render default tabs interface
-            <Tabs
-              destroyInactiveTabPane
-              className="tabs-new"
-              data-testid="tabs"
-              items={tabs}
-            />
-          )}
-        </Col>
-      </Row>
+          </Box>
+        </div>
+        <div>{renderAppDetailsBody()}</div>
+      </Box>
 
       <ConfirmationModal
         bodyText={t('message.are-you-sure-action-property', {

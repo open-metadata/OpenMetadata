@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Card, Typography } from 'antd';
+import { Badge, Card, Typography } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,22 +42,27 @@ const SettingItemCard = ({
       className={classNames('setting-card-item', className)}
       data-testid={data.key}
       onClick={handleOnClick}>
-      <div className="setting-card-icon">
-        <Icon component={data.icon} />
-        {Boolean(data?.isBeta) && (
-          <Badge className="service-beta-tag" count={t('label.beta')} />
-        )}
-      </div>
-      <div className="setting-card-content">
-        <Typography.Text className="font-semibold">
-          {data.category ?? data.label}
-        </Typography.Text>
-        <Typography.Paragraph
-          className="font-normal text-sm"
-          ellipsis={{ rows: 2 }}>
-          {data.description}
-        </Typography.Paragraph>
-      </div>
+      <Card.Content className="tw:flex tw:items-center tw:gap-4">
+        <div className="setting-card-icon">
+          <Icon component={data.icon} />
+          {Boolean(data?.isBeta) && (
+            <Badge className="service-beta-tag" color="brand" size="sm">
+              {t('label.beta')}
+            </Badge>
+          )}
+        </div>
+        <div className="setting-card-content">
+          <Typography className="setting-card-title font-semibold">
+            {data.category ?? data.label}
+          </Typography>
+          <Typography
+            as="p"
+            className="setting-card-description font-normal text-sm"
+            ellipsis={{ rows: 2 }}>
+            {data.description}
+          </Typography>
+        </div>
+      </Card.Content>
     </Card>
   );
 };

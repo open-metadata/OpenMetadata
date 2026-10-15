@@ -11,9 +11,17 @@
  *  limitations under the License.
  */
 
-import { act, findByTestId, fireEvent, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  fireEvent,
+  render,
+  waitFor,
+} from '@testing-library/react';
 import { KeyboardEventHandler } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { getUserByName } from '../../../rest/userAPI';
+import { suggestions } from '../../../utils/FeedUtils';
 import { FeedEditor } from './FeedEditor';
 
 const onSave = jest.fn();
@@ -26,6 +34,12 @@ interface MentionModule {
   onSelect: (
     item: Record<string, unknown>,
     insertItem: (item: unknown) => void
+  ) => void;
+  renderItem: (item: Record<string, unknown>) => HTMLElement;
+  source: (
+    searchTerm: string,
+    renderList: (matches: unknown[], search: string) => void,
+    mentionChar: string
   ) => void;
 }
 
@@ -96,6 +110,34 @@ jest.mock('../../../utils/QuillLink/QuillLink', () => {
   return jest.fn();
 });
 
+// Only the search is stubbed: every mention search in this file finds nothing.
+jest.mock('../../../utils/FeedUtils', () => ({
+  ...jest.requireActual('../../../utils/FeedUtils'),
+  suggestions: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('../../../rest/userAPI', () => ({
+  getUserByName: jest.fn(),
+}));
+
+// Typed handles onto the module-level jest mocks above. The repo's Jest type
+// defs predate `jest.mocked`, so cast to `jest.Mock` (the idiomatic, type-clean
+// pattern used across the test suite) instead of calling `jest.mocked(...)`.
+const mockSuggestions = suggestions as jest.Mock;
+const mockGetUserByName = getUserByName as jest.Mock;
+
+// Runs the debounced mention search and returns what it handed quill-mention.
+const searchMentions = async (searchTerm: string) => {
+  const renderList = jest.fn();
+  mentionModule().source(searchTerm, renderList, '@');
+  await act(async () => {
+    jest.advanceTimersByTime(300);
+  });
+  await waitFor(() => expect(renderList).toHaveBeenCalled());
+
+  return renderList.mock.calls[0];
+};
+
 describe('Test FeedEditor Component', () => {
   beforeEach(() => {
     onSave.mockClear();
@@ -110,6 +152,25 @@ describe('Test FeedEditor Component', () => {
     const editorWrapper = await findByTestId(container, 'editor-wrapper');
 
     expect(editorWrapper).toBeInTheDocument();
+  });
+
+  it('renders entity mention names and breadcrumbs as text', () => {
+    render(<FeedEditor {...mockFeedEditorProp} />, {
+      wrapper: MemoryRouter,
+    });
+    const payload = '<img src=x onerror="alert(1)">';
+
+    const suggestion = mentionModule().renderItem({
+      id: 'entity-id',
+      value: 'entity-fqn',
+      link: '/table/entity-fqn',
+      name: payload,
+      type: 'table',
+      breadcrumbs: [{ name: payload }],
+    });
+
+    expect(suggestion.querySelector('img')).not.toBeInTheDocument();
+    expect(suggestion).toHaveTextContent(`${payload}${payload}`);
   });
 
   it("Should call onSave method on 'Enter' keydown", async () => {
@@ -217,5 +278,253 @@ describe('Test FeedEditor Component', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it('escapes HTML in entity names rendered in the mention suggestion list', async () => {
+    const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {
+      wrapper: MemoryRouter,
+    });
+    await findByTestId(container, 'react-quill');
+
+    const payload = '<img src=x onerror=alert(1)>';
+    const wrapper = mentionModule().renderItem({
+      type: 'table',
+      name: payload,
+      breadcrumbs: [{ name: payload }],
+    });
+
+    // The payload must appear as literal text, never as parsed markup.
+    expect(wrapper.querySelector('img')).toBeNull();
+    expect(wrapper.textContent).toContain(payload);
+  });
+
+  describe('when a mention search finds nothing', () => {
+    beforeEach(() => jest.useFakeTimers());
+
+    afterEach(() => jest.useRealTimers());
+
+    it('shows the empty text as a row that cannot be picked', async () => {
+      render(
+        <FeedEditor
+          {...mockFeedEditorProp}
+          emptyMentionText="No match found"
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      const [matches, searchTerm] = await searchMentions('zz');
+
+      expect(searchTerm).toBe('zz');
+      expect(matches).toEqual([
+        expect.objectContaining({ value: 'No match found', disabled: true }),
+      ]);
+      expect(mentionModule().renderItem(matches[0])).toHaveTextContent(
+        'No match found'
+      );
+    });
+
+    it('closes the list when no empty text is given', async () => {
+      render(<FeedEditor {...mockFeedEditorProp} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const [matches] = await searchMentions('zz');
+
+      expect(matches).toEqual([]);
+    });
+
+    it('does not submit on Enter while the disabled no-match row keeps the dropdown open', async () => {
+      const { container } = render(
+        <FeedEditor
+          {...mockFeedEditorProp}
+          emptyMentionText="No match found"
+        />,
+        { wrapper: MemoryRouter }
+      );
+      const reactQuill = await findByTestId(container, 'react-quill');
+
+      // 1. Drive the real source() path: a failed mention search produces a
+      //    single disabled "No match found" row (commit 36729ad778). Reverting
+      //    that commit yields [] here, which fails this assertion — so the
+      //    test is sensitive to the commit, not just the fix.
+      const [matches] = await searchMentions('zz');
+
+      expect(matches).toEqual([
+        expect.objectContaining({ value: 'No match found', disabled: true }),
+      ]);
+
+      // 2. quill-mention's renderList fires showMentionList -> setIsOpen(true)
+      //    -> onOpen for a non-empty list. The mock stubs quill-mention, so
+      //    simulate that callback to mirror the real dropdown state: a
+      //    disabled row keeps the dropdown open (selectItem returns early for
+      //    a disabled item, so hideMentionList / onClose never fires).
+      act(() => {
+        mentionModule().onOpen();
+      });
+
+      // 3. First Enter: the list is open, so it must not submit.
+      fireEvent.keyDown(reactQuill, { key: 'Enter', shiftKey: false });
+
+      expect(onSave).not.toHaveBeenCalled();
+
+      // 4. Second Enter: the dropdown is still on screen. With the fix,
+      //    isMentionListOpen stayed true (only onClose flips it false, and it
+      //    never fired), so this Enter must not submit either. With the bug,
+      //    the first Enter's unconditional toggleMentionList(false) left the
+      //    flag false even though the dropdown stayed open, letting this
+      //    Enter post the comment.
+      fireEvent.keyDown(reactQuill, { key: 'Enter', shiftKey: false });
+
+      expect(onSave).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('when a mention search returns users whose avatar fetch rejects', () => {
+    beforeEach(() => jest.useFakeTimers());
+
+    afterEach(() => {
+      // Restore the file-wide default so the "finds nothing" suite is unaffected.
+      mockSuggestions.mockResolvedValue([]);
+      mockGetUserByName.mockReset();
+      jest.useRealTimers();
+    });
+
+    it('produces a dense array (no holes) when one user fetch rejects among all-user results', async () => {
+      mockSuggestions.mockResolvedValue([
+        {
+          id: '1',
+          value: '@john',
+          link: '/users/john',
+          name: 'john',
+          type: 'user',
+          breadcrumbs: [],
+        },
+        {
+          id: '2',
+          value: '@jane',
+          link: '/users/jane',
+          name: 'jane',
+          type: 'user',
+          breadcrumbs: [],
+        },
+      ]);
+      mockGetUserByName.mockImplementation((name: string) =>
+        name === 'john'
+          ? Promise.reject(new Error('Not Found'))
+          : Promise.resolve({ id: '2', name: 'jane' })
+      );
+
+      render(<FeedEditor {...mockFeedEditorProp} />, { wrapper: MemoryRouter });
+
+      const [matches] = await searchMentions('j');
+
+      // Without the fix, index 0 is an undefined hole (getUserByName rejected
+      // and no .catch fallback existed), so quill-mention's renderList would
+      // throw a TypeError on data[0].disabled.
+      expect(matches).toHaveLength(2);
+      expect(matches).not.toContain(undefined);
+      expect(matches[0]).toEqual(
+        expect.objectContaining({ value: '@john', name: 'john', type: 'user' })
+      );
+      expect(matches[1]).toEqual(
+        expect.objectContaining({ value: '@jane', name: 'jane', type: 'user' })
+      );
+      // The rejected user still gets a fallback avatar element — no hole.
+      expect(matches[0].avatarEle).toBeInstanceOf(HTMLDivElement);
+      expect(matches[1].avatarEle).toBeInstanceOf(HTMLDivElement);
+    });
+
+    it('preserves display-name order across mixed USER/TEAM results when a user fetch rejects at a lower index', async () => {
+      mockSuggestions.mockResolvedValue([
+        {
+          id: '1',
+          value: '@john',
+          link: '/users/john',
+          name: 'john',
+          type: 'user',
+          breadcrumbs: [],
+        },
+        {
+          id: '2',
+          value: '@team-alpha',
+          link: '/teams/team-alpha',
+          name: 'team-alpha',
+          type: 'team',
+          breadcrumbs: [],
+        },
+        {
+          id: '3',
+          value: '@jane',
+          link: '/users/jane',
+          name: 'jane',
+          type: 'user',
+          breadcrumbs: [],
+        },
+      ]);
+      mockGetUserByName.mockImplementation((name: string) =>
+        name === 'john'
+          ? Promise.reject(new Error('Not Found'))
+          : Promise.resolve({ id: '3', name: 'jane' })
+      );
+
+      render(<FeedEditor {...mockFeedEditorProp} />, { wrapper: MemoryRouter });
+
+      const [matches] = await searchMentions('j');
+
+      // A team entry at a higher index than a failing user is the exact
+      // configuration that crashed quill-mention pre-fix (hole within
+      // [0, length)). Every index must be populated and in the original order.
+      expect(matches).toHaveLength(3);
+      expect(matches).not.toContain(undefined);
+      expect(matches[0]).toEqual(
+        expect.objectContaining({ value: '@john', type: 'user' })
+      );
+      expect(matches[1]).toEqual(
+        expect.objectContaining({ value: '@team-alpha', type: 'team' })
+      );
+      expect(matches[2]).toEqual(
+        expect.objectContaining({ value: '@jane', type: 'user' })
+      );
+    });
+
+    it('renders a fallback entry for every user when all avatar fetches reject', async () => {
+      mockSuggestions.mockResolvedValue([
+        {
+          id: '1',
+          value: '@john',
+          link: '/users/john',
+          name: 'john',
+          type: 'user',
+          breadcrumbs: [],
+        },
+        {
+          id: '2',
+          value: '@jane',
+          link: '/users/jane',
+          name: 'jane',
+          type: 'user',
+          breadcrumbs: [],
+        },
+      ]);
+      mockGetUserByName.mockImplementation(() =>
+        Promise.reject(new Error('Server Error'))
+      );
+
+      render(<FeedEditor {...mockFeedEditorProp} />, { wrapper: MemoryRouter });
+
+      const [matches] = await searchMentions('j');
+
+      // All fetches reject; the .catch fallback still populates every index,
+      // so the array is dense (no crash, no holey-array TypeError).
+      expect(matches).toHaveLength(2);
+      expect(matches).not.toContain(undefined);
+      expect(matches[0]).toEqual(
+        expect.objectContaining({ value: '@john', type: 'user' })
+      );
+      expect(matches[1]).toEqual(
+        expect.objectContaining({ value: '@jane', type: 'user' })
+      );
+      expect(matches[0].avatarEle).toBeInstanceOf(HTMLDivElement);
+    });
   });
 });

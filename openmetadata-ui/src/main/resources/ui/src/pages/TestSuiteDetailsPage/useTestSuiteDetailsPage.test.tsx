@@ -13,6 +13,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
@@ -22,6 +23,7 @@ import {
   getTestSuiteByName,
   updateTestSuiteById,
 } from '../../rest/testAPI';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useTestSuiteDetailsPage } from './useTestSuiteDetailsPage';
 
@@ -48,9 +50,34 @@ const mockPermissions = {
   Delete: true,
 };
 
-const mockGetEntityPermissionByFqn = jest
-  .fn()
-  .mockImplementation(() => Promise.resolve(mockPermissions));
+// The hook now reads its own permissions via useEntityPermissions rather than the raw
+// PermissionProvider context, so mocking that hook (instead of the old
+// getEntityPermissionByFqn REST boundary) drives its permission-derived behavior in these
+// tests — same approach as TableDetailsPageV1.test.tsx.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
+
 let mockTestSuiteFQN = 'bundle_suite_fqn';
 let queryClient: QueryClient;
 
@@ -82,7 +109,6 @@ jest.mock('../../rest/ingestionPipelineAPI');
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({
-    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
     permissions: {},
   }),
 }));
@@ -146,6 +172,7 @@ describe('useTestSuiteDetailsPage', () => {
       },
     });
     mockTestSuiteFQN = 'bundle_suite_fqn';
+    setMockPermissions(mockPermissions);
     (getTestSuiteByName as jest.Mock).mockResolvedValue(mockTestSuite);
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: [{ id: 'tc-1', name: 'tc_1' }],
@@ -166,7 +193,7 @@ describe('useTestSuiteDetailsPage', () => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
     });
 
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
       'testSuite',
       'bundle_suite_fqn'
     );
@@ -349,16 +376,36 @@ describe('useTestSuiteDetailsPage', () => {
     expect(result.current.canAddMultipleTeamOwner).toBe(false);
   });
 
-  it('should not fetch the suite without view permission', async () => {
-    mockGetEntityPermissionByFqn.mockResolvedValueOnce({
-      ViewAll: false,
-      ViewBasic: false,
+  it('denies owner/description edit when explicitly false, even with EditAll true', async () => {
+    // Explicit-deny-wins: an explicit `false` on the field-level permission must win over
+    // a `true` EditAll, not be overridden by it (Task 6 Finding 1).
+    setMockPermissions({
+      ViewAll: true,
+      ViewBasic: true,
+      EditAll: true,
+      EditOwners: false,
+      EditDescription: false,
     });
+
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.permissions.hasViewPermission).toBe(true);
+    });
+
+    expect(result.current.permissions.hasEditOwnerPermission).toBe(false);
+    expect(result.current.permissions.hasEditDescriptionPermission).toBe(false);
+    // The bare-EditAll flag is unaffected by the field-specific denies.
+    expect(result.current.permissions.hasEditPermission).toBe(true);
+  });
+
+  it('should not fetch the suite without view permission', async () => {
+    setMockPermissions({ ViewAll: false, ViewBasic: false });
 
     renderTestSuiteDetailsHook();
 
     await waitFor(() => {
-      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+      expect(mockUseEntityPermissions).toHaveBeenCalled();
     });
 
     expect(getTestSuiteByName).not.toHaveBeenCalled();
@@ -862,6 +909,105 @@ describe('useTestSuiteDetailsPage', () => {
     expect(result.current.testSuite?.fullyQualifiedName).toBe(
       'another_suite_fqn'
     );
+  });
+
+  it('should keep refreshing after a removal until the index drops the removed rows', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testCaseResult).toHaveLength(1);
+    });
+
+    (getTestSuiteByName as jest.Mock).mockResolvedValue({
+      ...mockTestSuite,
+      tests: [],
+    });
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+    (getListTestCaseBySearch as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [{ id: 'tc-1', name: 'tc_1' }],
+        paging: { total: 1 },
+      })
+      .mockResolvedValue({ data: [], paging: { total: 0 } });
+
+    const setTimeoutSpy = runTimeoutsImmediately();
+
+    try {
+      await act(async () => {
+        await result.current.handleTestCasesRemoved();
+      });
+
+      expect(
+        setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 500)
+      ).toHaveLength(1);
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+
+    expect(result.current.testCaseResult).toEqual([]);
+    expect(result.current.pagingData.paging.total).toBe(0);
+    expect(result.current.isTestCaseLoading).toBe(false);
+  });
+
+  it('should report a failure to reload the suite after a removal', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+    });
+
+    const error = new Error('suite fetch failed');
+    (getTestSuiteByName as jest.Mock).mockRejectedValueOnce(error);
+
+    await act(async () => {
+      await result.current.handleTestCasesRemoved();
+    });
+
+    expect(showErrorToast).toHaveBeenCalledWith(error);
+  });
+
+  it('should step back a page when the current page past the first comes back empty', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockImplementation(
+      async ({ offset }: { offset?: number }) =>
+        offset
+          ? { data: [], paging: { total: 1 } }
+          : { data: [{ id: 'tc-1', name: 'tc_1' }], paging: { total: 1 } }
+    );
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testCaseResult).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.pagingData.pagingHandler({ currentPage: 2 });
+    });
+
+    await waitFor(() => {
+      expect(result.current.pagingData.currentPage).toBe(1);
+      expect(result.current.testCaseResult).toHaveLength(1);
+    });
+
+    expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 0 }),
+      expect.any(Object)
+    );
+  });
+
+  it('should stay on the first page when it comes back empty', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1);
+    });
+
+    expect(result.current.pagingData.currentPage).toBe(1);
+    expect(result.current.testCaseResult).toEqual([]);
   });
 
   it('should surface suite fetch errors via toast', async () => {

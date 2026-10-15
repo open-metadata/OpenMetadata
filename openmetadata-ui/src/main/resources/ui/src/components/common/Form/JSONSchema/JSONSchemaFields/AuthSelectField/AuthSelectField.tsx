@@ -12,12 +12,12 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import {
   FieldProps,
   getDiscriminatorFieldFromSchema,
   RJSFSchema,
 } from '@rjsf/utils';
-import { InfoCircle } from '@untitledui/icons';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -47,6 +47,12 @@ const getSafeOptionIndex = (option: number, optionCount: number) => {
 
   return option >= 0 && option < optionCount ? option : 0;
 };
+
+const getAuthFieldLabel = (
+  label: string | undefined,
+  schemaTitle: string | undefined,
+  name: string
+) => label ?? schemaTitle ?? startCase(name);
 
 /**
  * Generic RJSF field that renders a `oneOf` of credential branches (e.g. an
@@ -191,7 +197,7 @@ const AuthSelectField = (props: FieldProps) => {
     }
   };
 
-  const fieldLabel = label ?? schema.title ?? startCase(name);
+  const fieldLabel = getAuthFieldLabel(label, schema.title, name);
   const activeTitle = getOptionTitle(
     selectedSchema,
     Math.max(safeSelectedOption, 0)

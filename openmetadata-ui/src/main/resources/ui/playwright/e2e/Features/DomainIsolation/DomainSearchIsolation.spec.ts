@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
@@ -43,7 +44,7 @@ const test = base.extend<{
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -52,7 +53,7 @@ const test = base.extend<{
   userAPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await userA.login(page);
+      await userA.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -61,7 +62,7 @@ const test = base.extend<{
   userBPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await userB.login(page);
+      await userB.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -103,8 +104,6 @@ const searchHitsAsUser = async (
 };
 
 test.describe('Domain isolation - search and explore @domain-isolation', () => {
-  test.slow(true);
-
   test.beforeAll(
     'Setup domains, tables, users and role binding',
     async ({ browser }) => {

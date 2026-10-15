@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { Form } from 'antd';
-import React from 'react';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { AddTestSuitePipelineProps } from '../AddDataQualityTest.interface';
@@ -48,15 +46,6 @@ jest.mock(
   () => jest.fn().mockImplementation((props) => mockScheduleInterval(props))
 );
 
-jest.mock('../../../../utils/SchedularUtils', () => ({
-  getRaiseOnErrorFormField: () => ({
-    name: 'raiseOnError',
-    label: 'Raise On Error',
-    type: 'switch',
-    required: false,
-  }),
-}));
-
 const mockProps: AddTestSuitePipelineProps = {
   isLoading: false,
   onSubmit: jest.fn(),
@@ -69,42 +58,27 @@ describe('AddTestSuitePipeline', () => {
       search: '?testSuiteId=test-suite-id',
     });
     mockUseFqn.mockReturnValue({ ingestionFQN: '' });
-    mockScheduleInterval.mockImplementation(
-      ({ children, topChildren, onDeploy, onBack }) => (
-        <div>
-          ScheduleInterval
-          {topChildren}
-          {children}
-          <button type="button" onClick={onDeploy}>
-            submit
-          </button>
-          <button type="button" onClick={onBack}>
-            cancel
-          </button>
-        </div>
-      )
-    );
+    mockScheduleInterval.mockImplementation(({ onChange }) => (
+      <div>
+        ScheduleInterval
+        <button type="button" onClick={() => onChange('0 12 * * *')}>
+          Change schedule
+        </button>
+      </div>
+    ));
   });
 
   it('renders form fields', () => {
-    render(
-      <Form>
-        <AddTestSuitePipeline {...mockProps} />
-      </Form>
-    );
+    render(<AddTestSuitePipeline {...mockProps} />);
 
     expect(screen.getByTestId('pipeline-name')).toBeInTheDocument();
     expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
-    expect(screen.getByText('submit')).toBeInTheDocument();
-    expect(screen.getByText('cancel')).toBeInTheDocument();
+    expect(screen.getByTestId('deploy-button')).toBeInTheDocument();
+    expect(screen.getByTestId('back-button')).toBeInTheDocument();
   });
 
   it('calls onSubmit when submit button is clicked', async () => {
-    render(
-      <Form>
-        <AddTestSuitePipeline {...mockProps} />
-      </Form>
-    );
+    render(<AddTestSuitePipeline {...mockProps} />);
 
     fireEvent.change(screen.getByTestId('pipeline-name'), {
       target: { value: 'Test Suite pipeline' },
@@ -113,65 +87,38 @@ describe('AddTestSuitePipeline', () => {
       fireEvent.click(screen.getByTestId('select-all-test-cases'));
     });
     await act(async () => {
-      fireEvent.click(screen.getByText('submit'));
+      fireEvent.click(screen.getByText('Change schedule'));
+      fireEvent.click(screen.getByTestId('deploy-button'));
     });
 
-    expect(mockProps.onSubmit).toHaveBeenCalled();
+    expect(mockProps.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ cron: '0 12 * * *' })
+    );
   });
 
   it('calls onCancel when cancel button is clicked and onCancel button is provided', async () => {
     const mockOnCancel = jest.fn();
-    render(
-      <Form>
-        <AddTestSuitePipeline {...mockProps} onCancel={mockOnCancel} />
-      </Form>
-    );
+    render(<AddTestSuitePipeline {...mockProps} onCancel={mockOnCancel} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByText('cancel'));
+      fireEvent.click(screen.getByTestId('back-button'));
     });
 
     expect(mockOnCancel).toHaveBeenCalled();
   });
 
   it('calls navigate(-1) when cancel button is clicked and onCancel button is not provided', async () => {
-    render(
-      <Form>
-        <AddTestSuitePipeline {...mockProps} />
-      </Form>
-    );
+    render(<AddTestSuitePipeline {...mockProps} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByText('cancel'));
+      fireEvent.click(screen.getByTestId('back-button'));
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 
   it('Hide AddTestCaseList after clicking on select-all-test-cases switch', async () => {
-    jest.spyOn(Form, 'Provider').mockImplementation(
-      jest.fn().mockImplementation(({ onFormChange, children }) => (
-        <div
-          role="presentation"
-          onClick={() =>
-            onFormChange('', {
-              forms: {
-                'schedular-form': {
-                  getFieldValue: jest.fn().mockImplementation(() => true),
-                  setFieldsValue: jest.fn(),
-                },
-              },
-            })
-          }>
-          {children}
-        </div>
-      ))
-    );
-    render(
-      <Form>
-        <AddTestSuitePipeline {...mockProps} />
-      </Form>
-    );
+    render(<AddTestSuitePipeline {...mockProps} />);
 
     expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
 
@@ -186,13 +133,15 @@ describe('AddTestSuitePipeline', () => {
     it('includes raiseOnError field in form submission', async () => {
       const mockOnSubmit = jest.fn();
       render(
-        <Form>
-          <AddTestSuitePipeline {...mockProps} onSubmit={mockOnSubmit} />
-        </Form>
+        <AddTestSuitePipeline
+          {...mockProps}
+          initialData={{ selectAllTestCases: true }}
+          onSubmit={mockOnSubmit}
+        />
       );
 
       await act(async () => {
-        fireEvent.click(screen.getByText('submit'));
+        fireEvent.click(screen.getByTestId('deploy-button'));
       });
 
       expect(mockOnSubmit).toHaveBeenCalledWith(
@@ -209,42 +158,16 @@ describe('AddTestSuitePipeline', () => {
         selectAllTestCases: true,
       };
 
-      mockScheduleInterval.mockImplementationOnce(
-        ({
-          children,
-          onDeploy,
-        }: {
-          children: React.ReactNode;
-          onDeploy: (values: unknown) => void;
-        }) => (
-          <div>
-            {children}
-            <div
-              role="presentation"
-              onClick={() =>
-                onDeploy({
-                  raiseOnError: true,
-                  selectAllTestCases: true,
-                })
-              }>
-              submit
-            </div>
-          </div>
-        )
-      );
-
       render(
-        <Form>
-          <AddTestSuitePipeline
-            {...mockProps}
-            initialData={initialData}
-            onSubmit={mockOnSubmit}
-          />
-        </Form>
+        <AddTestSuitePipeline
+          {...mockProps}
+          initialData={initialData}
+          onSubmit={mockOnSubmit}
+        />
       );
 
       await act(async () => {
-        fireEvent.click(screen.getByText('submit'));
+        fireEvent.click(screen.getByTestId('deploy-button'));
       });
 
       expect(mockOnSubmit).toHaveBeenCalledWith(
@@ -264,37 +187,22 @@ describe('AddTestSuitePipeline', () => {
         fullyQualifiedName: 'test.case.object',
       } as TestCase;
 
-      mockScheduleInterval.mockImplementationOnce(
-        ({
-          children,
-          onDeploy,
-        }: {
-          children: React.ReactNode;
-          onDeploy: (values: unknown) => void;
-        }) => (
-          <div>
-            {children}
-            <div
-              role="presentation"
-              onClick={() =>
-                onDeploy({
-                  testCases: [testCaseObject, 'test-case-string'],
-                })
-              }>
-              submit
-            </div>
-          </div>
-        )
-      );
-
       render(
-        <Form>
-          <AddTestSuitePipeline {...mockProps} onSubmit={mockOnSubmit} />
-        </Form>
+        <AddTestSuitePipeline
+          {...mockProps}
+          initialData={{
+            selectAllTestCases: false,
+            testCases: [
+              testCaseObject,
+              'test-case-string',
+            ] as unknown as string[],
+          }}
+          onSubmit={mockOnSubmit}
+        />
       );
 
       await act(async () => {
-        fireEvent.click(screen.getByText('submit'));
+        fireEvent.click(screen.getByTestId('deploy-button'));
       });
 
       expect(mockOnSubmit).toHaveBeenCalledWith(
@@ -307,42 +215,16 @@ describe('AddTestSuitePipeline', () => {
     it('handles undefined testCases array', async () => {
       const mockOnSubmit = jest.fn();
 
-      mockScheduleInterval.mockImplementationOnce(
-        ({
-          children,
-          onDeploy,
-        }: {
-          children: React.ReactNode;
-          onDeploy: (values: unknown) => void;
-        }) => (
-          <div>
-            {children}
-            <div
-              role="presentation"
-              onClick={() =>
-                onDeploy({
-                  testCases: undefined,
-                  selectAllTestCases: true,
-                })
-              }>
-              submit
-            </div>
-          </div>
-        )
-      );
-
       render(
-        <Form>
-          <AddTestSuitePipeline
-            {...mockProps}
-            initialData={{ selectAllTestCases: true }}
-            onSubmit={mockOnSubmit}
-          />
-        </Form>
+        <AddTestSuitePipeline
+          {...mockProps}
+          initialData={{ selectAllTestCases: true }}
+          onSubmit={mockOnSubmit}
+        />
       );
 
       await act(async () => {
-        fireEvent.click(screen.getByText('submit'));
+        fireEvent.click(screen.getByTestId('deploy-button'));
       });
 
       expect(mockOnSubmit).toHaveBeenCalledWith(
@@ -366,37 +248,23 @@ describe('AddTestSuitePipeline', () => {
         fullyQualifiedName: 'test.case.2',
       } as TestCase;
 
-      mockScheduleInterval.mockImplementationOnce(
-        ({
-          children,
-          onDeploy,
-        }: {
-          children: React.ReactNode;
-          onDeploy: (values: unknown) => void;
-        }) => (
-          <div>
-            {children}
-            <div
-              role="presentation"
-              onClick={() =>
-                onDeploy({
-                  testCases: [testCase1, 'string-test', testCase2],
-                })
-              }>
-              submit
-            </div>
-          </div>
-        )
-      );
-
       render(
-        <Form>
-          <AddTestSuitePipeline {...mockProps} onSubmit={mockOnSubmit} />
-        </Form>
+        <AddTestSuitePipeline
+          {...mockProps}
+          initialData={{
+            selectAllTestCases: false,
+            testCases: [
+              testCase1,
+              'string-test',
+              testCase2,
+            ] as unknown as string[],
+          }}
+          onSubmit={mockOnSubmit}
+        />
       );
 
       await act(async () => {
-        fireEvent.click(screen.getByText('submit'));
+        fireEvent.click(screen.getByTestId('deploy-button'));
       });
 
       expect(mockOnSubmit).toHaveBeenCalledWith(
@@ -411,11 +279,7 @@ describe('AddTestSuitePipeline', () => {
     it('uses testSuiteId from testSuite prop when available', () => {
       const testSuite = { id: 'prop-test-suite-id' } as TestSuite;
 
-      render(
-        <Form>
-          <AddTestSuitePipeline {...mockProps} testSuite={testSuite} />
-        </Form>
-      );
+      render(<AddTestSuitePipeline {...mockProps} testSuite={testSuite} />);
 
       expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
     });
@@ -425,11 +289,7 @@ describe('AddTestSuitePipeline', () => {
         search: '?testSuiteId=url-test-suite-id',
       });
 
-      render(
-        <Form>
-          <AddTestSuitePipeline {...mockProps} />
-        </Form>
-      );
+      render(<AddTestSuitePipeline {...mockProps} />);
 
       expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
     });
@@ -439,11 +299,7 @@ describe('AddTestSuitePipeline', () => {
         search: 'testSuiteId=no-question-mark-id',
       });
 
-      render(
-        <Form>
-          <AddTestSuitePipeline {...mockProps} />
-        </Form>
-      );
+      render(<AddTestSuitePipeline {...mockProps} />);
 
       expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
     });
@@ -455,11 +311,7 @@ describe('AddTestSuitePipeline', () => {
 
       const testSuite = { id: 'prop-id' } as TestSuite;
 
-      render(
-        <Form>
-          <AddTestSuitePipeline {...mockProps} testSuite={testSuite} />
-        </Form>
-      );
+      render(<AddTestSuitePipeline {...mockProps} testSuite={testSuite} />);
 
       expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
     });
@@ -481,13 +333,11 @@ describe('AddTestSuitePipeline', () => {
       } as TestSuite;
 
       render(
-        <Form>
-          <AddTestSuitePipeline
-            {...mockProps}
-            initialData={{ selectAllTestCases: false }}
-            testSuite={testSuite}
-          />
-        </Form>
+        <AddTestSuitePipeline
+          {...mockProps}
+          initialData={{ selectAllTestCases: false }}
+          testSuite={testSuite}
+        />
       );
 
       expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
@@ -517,13 +367,11 @@ describe('AddTestSuitePipeline', () => {
       const testSuite = { id: 'logical-suite-id', basic: false } as TestSuite;
 
       render(
-        <Form>
-          <AddTestSuitePipeline
-            {...mockProps}
-            initialData={{ selectAllTestCases: false }}
-            testSuite={testSuite}
-          />
-        </Form>
+        <AddTestSuitePipeline
+          {...mockProps}
+          initialData={{ selectAllTestCases: false }}
+          testSuite={testSuite}
+        />
       );
 
       const lastCall =
@@ -543,136 +391,25 @@ describe('AddTestSuitePipeline', () => {
     });
   });
 
-  describe('Form state management', () => {
-    it('clears testCases field when selectAllTestCases is enabled', async () => {
-      const mockSetFieldsValue = jest.fn();
-      const mockGetFieldValue = jest.fn().mockReturnValue(true);
-
-      jest.spyOn(Form, 'Provider').mockImplementation(
-        jest.fn().mockImplementation(({ onFormChange, children }) => (
-          <div>
-            {children}
-            <button
-              data-testid="trigger-form-change"
-              onClick={() =>
-                onFormChange('', {
-                  forms: {
-                    'schedular-form': {
-                      getFieldValue: mockGetFieldValue,
-                      setFieldsValue: mockSetFieldsValue,
-                    },
-                  },
-                })
-              }>
-              Trigger Change
-            </button>
-          </div>
-        ))
-      );
-
-      render(
-        <Form>
-          <AddTestSuitePipeline {...mockProps} />
-        </Form>
-      );
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('trigger-form-change'));
-      });
-
-      expect(mockGetFieldValue).toHaveBeenCalledWith('selectAllTestCases');
-      expect(mockSetFieldsValue).toHaveBeenCalledWith({ testCases: undefined });
-    });
-
-    it('does not clear testCases when selectAllTestCases is false', async () => {
-      const mockSetFieldsValue = jest.fn();
-      const mockGetFieldValue = jest.fn().mockReturnValue(false);
-
-      jest.spyOn(Form, 'Provider').mockImplementation(
-        jest.fn().mockImplementation(({ onFormChange, children }) => (
-          <div>
-            {children}
-            <button
-              data-testid="trigger-form-change"
-              onClick={() =>
-                onFormChange('', {
-                  forms: {
-                    'schedular-form': {
-                      getFieldValue: mockGetFieldValue,
-                      setFieldsValue: mockSetFieldsValue,
-                    },
-                  },
-                })
-              }>
-              Trigger Change
-            </button>
-          </div>
-        ))
-      );
-
-      render(
-        <Form>
-          <AddTestSuitePipeline {...mockProps} />
-        </Form>
-      );
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('trigger-form-change'));
-      });
-
-      expect(mockGetFieldValue).toHaveBeenCalledWith('selectAllTestCases');
-      expect(mockSetFieldsValue).not.toHaveBeenCalled();
-    });
-
-    it('updates selectAllTestCases state when form changes', async () => {
-      const { rerender } = render(
-        <Form>
-          <AddTestSuitePipeline {...mockProps} />
-        </Form>
-      );
-
-      expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
-
-      const propsWithInitialData = {
-        ...mockProps,
-        initialData: { selectAllTestCases: true },
-      };
-
-      rerender(
-        <Form>
-          <AddTestSuitePipeline {...propsWithInitialData} />
-        </Form>
-      );
-
-      await act(async () => {
-        // Form state should reflect the initial data
-      });
-    });
-  });
-
   describe('Edit mode behavior', () => {
     it('displays Save button in edit mode', () => {
-      mockUseFqn.mockReturnValueOnce({ ingestionFQN: 'test-ingestion-fqn' });
+      mockUseFqn.mockReturnValue({ ingestionFQN: 'test-ingestion-fqn' });
 
-      render(
-        <Form>
-          <AddTestSuitePipeline {...mockProps} />
-        </Form>
-      );
+      render(<AddTestSuitePipeline {...mockProps} />);
 
-      expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'label.save' })
+      ).toBeInTheDocument();
     });
 
     it('displays Create button when not in edit mode', () => {
-      mockUseFqn.mockReturnValueOnce({ ingestionFQN: '' });
+      mockUseFqn.mockReturnValue({ ingestionFQN: '' });
 
-      render(
-        <Form>
-          <AddTestSuitePipeline {...mockProps} />
-        </Form>
-      );
+      render(<AddTestSuitePipeline {...mockProps} />);
 
-      expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'label.create' })
+      ).toBeInTheDocument();
     });
   });
 
@@ -685,44 +422,19 @@ describe('AddTestSuitePipeline', () => {
         enableDebugLog: true,
         selectAllTestCases: false,
         raiseOnError: true,
+        testCases: ['test-1', 'test-2'],
       };
 
-      mockScheduleInterval.mockImplementationOnce(
-        ({
-          children,
-          onDeploy,
-        }: {
-          children: React.ReactNode;
-          onDeploy: (values: unknown) => void;
-        }) => (
-          <div>
-            {children}
-            <div
-              role="presentation"
-              onClick={() =>
-                onDeploy({
-                  ...initialData,
-                  testCases: ['test-1', 'test-2'],
-                })
-              }>
-              submit
-            </div>
-          </div>
-        )
-      );
-
       render(
-        <Form>
-          <AddTestSuitePipeline
-            {...mockProps}
-            initialData={initialData}
-            onSubmit={mockOnSubmit}
-          />
-        </Form>
+        <AddTestSuitePipeline
+          {...mockProps}
+          initialData={initialData}
+          onSubmit={mockOnSubmit}
+        />
       );
 
       await act(async () => {
-        fireEvent.click(screen.getByText('submit'));
+        fireEvent.click(screen.getByTestId('deploy-button'));
       });
 
       expect(mockOnSubmit).toHaveBeenCalledWith({

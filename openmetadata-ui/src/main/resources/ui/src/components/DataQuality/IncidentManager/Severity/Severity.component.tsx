@@ -16,10 +16,9 @@ import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
@@ -52,11 +51,20 @@ const Severity = ({
   const onCancel = useCallback(() => setIsEditSeverity(false), []);
 
   const handleSubmit = useCallback(
-    async (data: Severities) => {
+    async (data?: Severities) => {
       await onSubmit?.(data);
       onCancel();
     },
     [onSubmit]
+  );
+
+  const canEditSeverity = onSubmit && hasEditPermission;
+  const severityModal = isEditSeverity && (
+    <SeverityModal
+      initialSeverity={severity}
+      onCancel={onCancel}
+      onSubmit={handleSubmit}
+    />
   );
 
   if (isInline) {
@@ -80,10 +88,9 @@ const Severity = ({
             weight="medium">
             {headerName}
           </Typography>
-          {onSubmit && hasEditPermission && (
+          {canEditSeverity && (
             <EditIconButton
               data-testid="edit-severity-icon"
-              icon={<EditIcon width="12px" />}
               newLook={newLook}
               size="small"
               title={t('label.edit-entity', {
@@ -104,13 +111,7 @@ const Severity = ({
           )}
         </div>
 
-        {isEditSeverity && (
-          <SeverityModal
-            initialSeverity={severity}
-            onCancel={onCancel}
-            onSubmit={handleSubmit}
-          />
-        )}
+        {severityModal}
       </div>
     );
   }
@@ -126,7 +127,7 @@ const Severity = ({
         ) : (
           NO_DATA_PLACEHOLDER
         )}
-        {onSubmit && hasEditPermission && (
+        {canEditSeverity && (
           <EditIconButton
             newLook
             className="flex-center"
@@ -141,13 +142,7 @@ const Severity = ({
         )}
       </div>
 
-      {isEditSeverity && (
-        <SeverityModal
-          initialSeverity={severity}
-          onCancel={onCancel}
-          onSubmit={handleSubmit}
-        />
-      )}
+      {severityModal}
     </>
   );
 };

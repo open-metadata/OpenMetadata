@@ -12,6 +12,7 @@
  */
 import {
   Alert,
+  Card,
   FieldProp,
   FieldTypes,
   FormField,
@@ -30,7 +31,7 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { getScheduleOptionsFromSchedules } from '../../../utils/CronExpressionUtils';
 import { getPopupContainer } from '../../../utils/formPureUtils';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
-import ScheduleIntervalV1 from '../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';
+import ScheduleInterval from '../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { AddTestCaseList } from '../AddTestCaseList/AddTestCaseList.component';
 import { AddTestCaseListChangePayload } from '../AddTestCaseList/AddTestCaseList.interface';
 import {
@@ -203,24 +204,26 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
         </div>
       )}
 
-      <div className="form-card-section" data-testid="basic-info-card">
-        {getField(nameField)}
+      <Card className="form-card-section" data-testid="basic-info-card">
+        <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+          {getField(nameField)}
 
-        <FormField control={form.control} name="description">
-          {({ field }) => (
-            <div
-              className="tw:flex tw:flex-col tw:gap-1"
-              data-testid="test-suite-description"
-              id="root/description">
-              <FormItemLabel label={t('label.description')} />
-              <RichTextEditor
-                initialValue={field.value ?? ''}
-                onTextChange={field.onChange}
-              />
-            </div>
-          )}
-        </FormField>
-      </div>
+          <FormField control={form.control} name="description">
+            {({ field }) => (
+              <div
+                className="tw:flex tw:flex-col tw:gap-1"
+                data-testid="test-suite-description"
+                id="root/description">
+                <FormItemLabel label={t('label.description')} />
+                <RichTextEditor
+                  initialValue={field.value ?? ''}
+                  onTextChange={field.onChange}
+                />
+              </div>
+            )}
+          </FormField>
+        </Card.Content>
+      </Card>
 
       <FormField
         control={form.control}
@@ -238,67 +241,71 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
           },
         }}>
         {() => (
-          <div
+          <Card
             className="form-card-section bundle-suite-form-test-case-selection-card"
             data-testid="test-case-selection-card">
-            <FormItemLabel required label={t('label.test-case-plural')} />
-            <AddTestCaseList
-              // The drawer renders inside a react-aria overlay (fixed inset-0)
-              // that intercepts pointer events. Render the filter dropdowns
-              // within the drawer body so their menus stack above the overlay
-              // instead of portaling to document.body underneath it.
-              getPopupContainer={getPopupContainer}
-              selectedTest={selectedTestNames}
-              showButton={false}
-              onChange={handleTestCaseSelection}
-            />
-          </div>
+            <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+              <FormItemLabel required label={t('label.test-case-plural')} />
+              <AddTestCaseList
+                // The drawer renders inside a react-aria overlay (fixed inset-0)
+                // that intercepts pointer events. Render the filter dropdowns
+                // within the drawer body so their menus stack above the overlay
+                // instead of portaling to document.body underneath it.
+                getPopupContainer={getPopupContainer}
+                selectedTest={selectedTestNames}
+                showButton={false}
+                onChange={handleTestCaseSelection}
+              />
+            </Card.Content>
+          </Card>
         )}
       </FormField>
 
       {ingestionPipeline.Create && (
-        <div
+        <Card
           className="form-card-section scheduler-section"
           data-testid="scheduler-card">
-          <div className="card-title-container d-flex items-center gap-3">
-            {getField(enableSchedulerField)}
-            <div>
-              <p className="card-title-text m-0">
-                {t('label.create-entity', { entity: t('label.pipeline') })}
-              </p>
-              <p className="card-title-description m-0">
-                {`${t('message.pipeline-entity-description', {
-                  entity: t('label.bundle-suite'),
-                })} (${t('label.optional')})`}
-              </p>
+          <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+            <div className="card-title-container d-flex items-center gap-3">
+              {getField(enableSchedulerField)}
+              <div>
+                <p className="card-title-text m-0">
+                  {t('label.create-entity', { entity: t('label.pipeline') })}
+                </p>
+                <p className="card-title-description m-0">
+                  {`${t('message.pipeline-entity-description', {
+                    entity: t('label.bundle-suite'),
+                  })} (${t('label.optional')})`}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {enableScheduler && (
-            <>
-              {getField(pipelineNameField)}
+            {enableScheduler && (
+              <>
+                {getField(pipelineNameField)}
 
-              <FormField control={form.control} name="cron">
-                {({ field }) => (
-                  <div>
-                    <FormItemLabel label={t('label.schedule-interval')} />
-                    <ScheduleIntervalV1
-                      defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
-                      entity={t('label.test-suite')}
-                      includePeriodOptions={schedulerOptions}
-                      value={field.value || undefined}
-                      onChange={(cron) => field.onChange(cron ?? '')}
-                    />
-                  </div>
-                )}
-              </FormField>
+                <FormField control={form.control} name="cron">
+                  {({ field }) => (
+                    <div>
+                      <FormItemLabel label={t('label.schedule-interval')} />
+                      <ScheduleInterval
+                        defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
+                        entity={t('label.test-suite')}
+                        includePeriodOptions={schedulerOptions}
+                        value={field.value || undefined}
+                        onChange={(cron) => field.onChange(cron ?? '')}
+                      />
+                    </div>
+                  )}
+                </FormField>
 
-              {getField(enableDebugLogField)}
+                {getField(enableDebugLogField)}
 
-              {getField(raiseOnErrorField)}
-            </>
-          )}
-        </div>
+                {getField(raiseOnErrorField)}
+              </>
+            )}
+          </Card.Content>
+        </Card>
       )}
     </div>
   );

@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navbarSearchItems, selectOption } from '../../utils/navbar';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -28,7 +30,19 @@ for (const searchItem of navbarSearchItems) {
     PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
     async ({ page }) => {
       await redirectToHomePage(page);
+      // Typing while Explore is still loading lets its first render close the
+      // suggestions popover before the debounced search fires, and with the
+      // popover closed no suggestion query is ever sent.
+      const exploreLoaded = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.request().method() === 'GET',
+        200
+      );
       await sidebarClick(page, SidebarItem.EXPLORE);
+      await exploreLoaded;
+      await waitForAllLoadersToDisappear(page);
 
       await selectOption(
         page,
@@ -36,12 +50,22 @@ for (const searchItem of navbarSearchItems) {
         label
       );
 
-      await expect(page.getByTestId('global-search-selector')).toContainText(
-        label
-      );
+      await expect(
+        page.getByTestId('global-search-selector').getByRole('button')
+      ).toHaveText(label);
 
-      const searchRes = page.waitForResponse(
-        `/api/v1/search/query?q=*&index=${searchIndex}**`
+      const searchRes = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+
+          return (
+            url.pathname.endsWith('/api/v1/search/query') &&
+            url.searchParams.get('index') === searchIndex &&
+            url.searchParams.get('q') === 'dim'
+          );
+        },
+        200
       );
       await page.getByTestId('searchBox').fill('dim');
       await searchRes;

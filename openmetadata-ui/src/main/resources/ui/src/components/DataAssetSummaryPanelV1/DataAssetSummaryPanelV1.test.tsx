@@ -77,6 +77,14 @@ jest.mock('../../hooks/useChangeSummary', () => ({
   useChangeSummary: jest.fn(),
 }));
 
+jest.mock('../../hooks/useEntityRules', () => ({
+  useEntityRules: () => ({
+    rules: [],
+    entityRules: {},
+    isFetched: true,
+  }),
+}));
+
 jest.mock('../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
 }));
@@ -239,13 +247,71 @@ jest.mock('../common/DataQualitySection/DataQualitySection', () => {
   ));
 });
 
-jest.mock('../common/OwnersSection/OwnersSection', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="owners-section">Owners Section</div>
-    ));
+/* eslint-disable @typescript-eslint/no-explicit-any */
+jest.mock('@openmetadata/ui-core-components', () => {
+  const div =
+    (testId?: string) =>
+    ({ children, ...rest }: any) =>
+      (
+        <div data-testid={testId} {...rest}>
+          {children}
+        </div>
+      );
+
+  const TabsList = ({ children }: any) => <div role="tablist">{children}</div>;
+  const TabsItem = ({ children, label, id: _id, ...rest }: any) => (
+    <button role="tab" {...rest}>
+      {label ?? children}
+    </button>
+  );
+  const TabsPanel = ({ children }: any) => (
+    <div role="tabpanel">{children}</div>
+  );
+  const Tabs = Object.assign(div(), {
+    List: TabsList,
+    Item: TabsItem,
+    Panel: TabsPanel,
+  });
+
+  return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Owner: () => <div data-testid="owners-section">Owners Section</div>,
+    Button: ({ children, onPress, onClick, ...rest }: any) => (
+      <button onClick={onPress ?? onClick} {...rest}>
+        {children}
+      </button>
+    ),
+    Divider: () => <hr />,
+    Tabs,
+    Typography: ({ children, as: As = 'span', ...rest }: any) => (
+      <As {...rest}>{children}</As>
+    ),
+    Tooltip: ({ children }: any) => <>{children}</>,
+    TooltipTrigger: ({ children }: any) => <>{children}</>,
+    Badge: div(),
+    Box: div(),
+    PopoverTrigger: ({ children }: any) => <>{children}</>,
+    Popover: div(),
+    Input: ({ onChange, placeholder, value, ...rest }: any) => (
+      <input
+        placeholder={placeholder}
+        value={value ?? ''}
+        onChange={onChange}
+        {...rest}
+      />
+    ),
+    CheckboxBase: ({ isSelected }: any) => (
+      <input
+        readOnly
+        aria-label="checkbox"
+        checked={isSelected ?? false}
+        type="checkbox"
+      />
+    ),
+    Avatar: ({ name, ...rest }: any) => <span {...rest}>{name}</span>,
+  };
 });
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 jest.mock('../common/DomainsSection/DomainsSection', () => {
   return jest
@@ -642,6 +708,13 @@ describe('DataAssetSummaryPanelV1', () => {
       await waitFor(() => {
         expect(mockGetEntityPermission).not.toHaveBeenCalled();
       });
+
+      // An empty entity id keeps useChangeSummary from requesting the mock entity's history.
+      expect(useChangeSummary).toHaveBeenLastCalledWith(
+        expect.anything(),
+        '',
+        expect.anything()
+      );
     });
   });
 
@@ -913,6 +986,49 @@ describe('DataAssetSummaryPanelV1', () => {
         expect(getListTestCaseIncidentStatus).not.toHaveBeenCalled();
       });
     });
+
+    it('denies description edit when EditDescription is explicitly false, even with EditAll true', async () => {
+      // Explicit-deny-wins: an explicit `false` on the field-level permission must win over
+      // a `true` EditAll, not be overridden by it.
+      const explicitDenyPermissions = {
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: false,
+      };
+
+      mockGetEntityPermission.mockResolvedValue(explicitDenyPermissions);
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('description-section')).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('update-description-btn')
+      ).not.toBeInTheDocument();
+    });
+
+    it('grants description edit via EditAll when EditDescription is absent', async () => {
+      const editAllOnlyPermissions = {
+        ViewAll: true,
+        EditAll: true,
+      };
+
+      mockGetEntityPermission.mockResolvedValue(editAllOnlyPermissions);
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('update-description-btn')
+        ).toBeInTheDocument();
+      });
+    });
   });
 
   describe('Component Updates', () => {
@@ -972,5 +1088,72 @@ describe('DataAssetSummaryPanelV1', () => {
         ).not.toBeInTheDocument();
       });
     });
+  });
+
+  describe('i18n: stale section headers after language switch', () => {
+    // Regression test for the missing `t` in the `commonEntitySummaryInfo`
+    // `useMemo` dependency array. When the UI language changes, react-i18next
+    // hands the component a new `t` function instance. If `t` is not listed as
+    // a dependency, the memo returns the previously cached JSX and the owners
+    // section header (e.g. "Owners") keeps rendering in the previous language
+    // until some other dependency changes. All four summary branches bake
+    // `t('label.owner-plural')` into the memoized output, so each must
+    // recompute when `t`'s identity changes.
+    const branches: Array<{ name: string; summaryEntityType: EntityType }> = [
+      // DATABASE exercises the common-layout branch. It is intentionally NOT
+      // TABLE: `fetchTestCases`/`fetchIncidentCount` early-return when the
+      // `entityType` prop is not TABLE, which keeps init's async chain shallow
+      // (only `setEntityPermissions` lands post-mount). With TABLE, the deeper
+      // `listTestCases`/incident `setState`s can land after the `t` switch below
+      // and force a memo recompute that masks the missing-`t`-dep bug.
+      { name: 'common layout', summaryEntityType: EntityType.DATABASE },
+      { name: 'knowledge page', summaryEntityType: EntityType.KNOWLEDGE_PAGE },
+      { name: 'data product', summaryEntityType: EntityType.DATA_PRODUCT },
+      { name: 'misc layout', summaryEntityType: EntityType.USER },
+    ];
+
+    it.each(branches)(
+      'recomputes the owners-title header for the $name branch after `t` identity changes',
+      async ({ summaryEntityType }) => {
+        const tEN = jest.fn((key: string) => `EN:${key}`);
+        const tFR = jest.fn((key: string) => `FR:${key}`);
+
+        (useTranslation as jest.Mock).mockReturnValue({ t: tEN });
+
+        const { rerender } = render(
+          <DataAssetSummaryPanelV1
+            {...defaultProps}
+            entityType={summaryEntityType}
+            summaryEntityType={summaryEntityType}
+          />
+        );
+
+        await waitFor(() => {
+          expect(screen.getByText('EN:label.owner-plural')).toBeInTheDocument();
+        });
+
+        // Simulate the `languageChanged` event: react-i18next replaces `t`
+        // with a new function instance while every other memo dep is unchanged.
+        (useTranslation as jest.Mock).mockReturnValue({ t: tFR });
+
+        await act(async () => {
+          rerender(
+            <DataAssetSummaryPanelV1
+              {...defaultProps}
+              entityType={summaryEntityType}
+              summaryEntityType={summaryEntityType}
+            />
+          );
+        });
+
+        await waitFor(() => {
+          expect(screen.getByText('FR:label.owner-plural')).toBeInTheDocument();
+        });
+
+        expect(
+          screen.queryByText('EN:label.owner-plural')
+        ).not.toBeInTheDocument();
+      }
+    );
   });
 });

@@ -17,7 +17,7 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Stars02 } from '@untitledui/icons';
+import { Stars02 } from '@openmetadata/ui-core-components/icons';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyRelationshipSuggestion } from '../../generated/api/data/ontologyRelationshipSuggestionList';
@@ -115,6 +115,9 @@ const OntologyAiRelationshipPanel = ({
     }
   };
 
+  const handleDismiss = (id: string) =>
+    setSuggestions((current) => current.filter((item) => item.id !== id));
+
   return (
     <div className="tw:flex tw:flex-col tw:gap-4">
       <div>
@@ -175,11 +178,7 @@ const OntologyAiRelationshipPanel = ({
               testId={`relationship-suggestion-${suggestion.id}`}
               title={title}
               onAccept={() => void handleAccept(suggestion)}
-              onDismiss={() =>
-                setSuggestions((current) =>
-                  current.filter((item) => item.id !== suggestion.id)
-                )
-              }
+              onDismiss={() => handleDismiss(suggestion.id)}
             />
           );
         })}

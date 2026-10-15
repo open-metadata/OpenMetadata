@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Check } from '@untitledui/icons';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -118,6 +118,8 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
     return null;
   }
 
+  const getNodeLabel = (nodeId: string) => nodeLabels[nodeId] ?? nodeId;
+
   const lineStart = pendingRelation?.from ?? armedAt;
   const lineEnd = pendingRelation?.to ?? cursor;
 
@@ -139,7 +141,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
           </span>
           <span>
             {t('message.click-another-term-to-draw-connection', {
-              term: nodeLabels[armedFromId] ?? armedFromId,
+              term: getNodeLabel(armedFromId),
             })}
           </span>
         </div>
@@ -151,7 +153,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
           style={{ overflow: 'visible' }}>
           <line
             data-testid="ontology-connection-line"
-            stroke="var(--color-bg-brand-solid)"
+            stroke="var(--tw-color-bg-brand-solid)"
             strokeDasharray="6 5"
             strokeWidth={2.4}
             x1={lineStart.x}
@@ -172,12 +174,8 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
             transform: 'translate(-50%, 16px)',
           }}>
           <RelationshipTypePicker
-            sourceLabel={
-              nodeLabels[pendingRelation.fromId] ?? pendingRelation.fromId
-            }
-            targetLabel={
-              nodeLabels[pendingRelation.toId] ?? pendingRelation.toId
-            }
+            sourceLabel={getNodeLabel(pendingRelation.fromId)}
+            targetLabel={getNodeLabel(pendingRelation.toId)}
             onCancel={dismissPending}
             onSelect={(relationType) => confirmRelationType(relationType)}
           />

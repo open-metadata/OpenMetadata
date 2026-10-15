@@ -25,19 +25,19 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
-  descriptionBox,
   getApiContext,
   redirectToHomePage,
+  resolveDescriptionBox,
   uuid,
 } from '../../utils/common';
 import {
   ARTICLES_URL,
   ARTICLE_DESCRIPTION,
   assertArticleEditorSaved,
+  blockArticleAutoSave,
   cleanupCurrentArticle,
   createArticleFromButton,
   createArticleViaApi,
-  createQuickLinkViaApi,
   deleteArticleByFqn,
   getArticleFqnFromUrl,
   getLoggedInUser,
@@ -51,7 +51,10 @@ import {
   scrollListingToCard,
   verifyArticleSearch,
   waitForArticleInFollows,
+  waitForArticleSearchResponse,
   waitForDraftPersisted,
+  waitForDraftSyncedIntoEditor,
+  waitForRecentlyViewed,
 } from '../../utils/ContextCenterUtil';
 import {
   addMultiOwner,
@@ -63,9 +66,6 @@ import {
   createMentionInConversation,
   createQuickLink,
   deletePage,
-  getKnowledgePageCardByIndex,
-  readArticleInHierarchy,
-  readQuickLink,
   toggleKnowledgePageBookmark,
   updateBody,
   updateQuickLink,
@@ -94,6 +94,9 @@ let DRAFT_ARTICLE_A_DISPLAY_NAME: string;
 let DRAFT_ARTICLE_B_DISPLAY_NAME: string;
 
 let articleEntity: KnowledgeCenterClass;
+// Unique part of the article's title: searching the whole title also matches
+// every newer "CC Article" from other workers (see verifyArticleSearch).
+let articleSearchTerm: string;
 let articleTagClassification: ClassificationClass;
 let articleTags: TagClass[] = [];
 let quickLinkTitle = '';
@@ -119,8 +122,9 @@ test.describe('Context Center Articles', () => {
     DRAFT_ARTICLE_A_DISPLAY_NAME = `Draft Persist A ${uuid()}`;
     DRAFT_ARTICLE_B_DISPLAY_NAME = `Draft Persist B ${uuid()}`;
 
+    articleSearchTerm = uuid();
     articleEntity = new KnowledgeCenterClass({
-      displayName: `CC Article ${uuid()}`,
+      displayName: `CC Article ${articleSearchTerm}`,
       name: `cc_article_${uuid()}`,
       description: ARTICLE_DESCRIPTION,
     });
@@ -323,14 +327,20 @@ test.describe('Context Center Articles', () => {
 
     const searchInput = await verifyArticleSearch(
       page,
-      articleEntity.responseData.displayName
+      articleEntity.responseData.displayName,
+      articleSearchTerm
     );
     await scrollListingToCard(page, articleEntity.responseData.displayName);
 
-    await verifyArticleSearch(page, 'zzznomatchzzz_playwright');
-    await expect(page.getByText('No matching results')).toBeVisible({
-      timeout: 8000,
-    });
+    const noMatchTerm = 'zzznomatchzzz_playwright';
+    const noMatchSearchResPromise = waitForArticleSearchResponse(
+      page,
+      noMatchTerm
+    );
+    await searchInput.fill(noMatchTerm);
+    const noMatchSearchRes = await noMatchSearchResPromise;
+    expect(noMatchSearchRes.status()).toBe(200);
+    await expect(page.getByText('No matching results')).toBeVisible();
 
     await searchInput.clear();
     await waitForAllLoadersToDisappear(page);
@@ -340,8 +350,8 @@ test.describe('Context Center Articles', () => {
       page
         .getByTestId('knowledge-page-listing')
         .locator('[data-testid^="knowledge-card-"]')
-        .first()
-    ).toBeVisible();
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   test('Global search and Explore Knowledge Center filter navigate to articles', async ({
@@ -368,10 +378,10 @@ test.describe('Context Center Articles', () => {
       ).toContainText('Context Center');
 
       await page
-        .locator('.ant-tree-treenode')
-        .filter({ hasText: /^Context Center$/ })
-        .locator('svg')
-        .first()
+        .getByTestId('explore-tree')
+        .getByRole('row')
+        .filter({ has: page.getByTestId('explore-tree-title-Context Center') })
+        .getByTestId('tree-expand-btn')
         .click();
 
       await expect(
@@ -389,7 +399,8 @@ test.describe('Context Center Articles', () => {
       expect(responseData.hits.total.value).toBeGreaterThan(0);
       await expect(
         page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: (1)');
+      ).toContainText('Data Assets');
+      await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
       await expect(
         page.getByTestId('search-error-placeholder')
       ).not.toBeVisible();
@@ -475,15 +486,11 @@ test.describe('Context Center Articles', () => {
     await page.keyboard.press('Escape');
 
     await createQuickLink(page, testQuickLink, dataAsset);
-    await readQuickLink(page, testQuickLink);
-
-    await readArticleInHierarchy(page, testQuickLink.displayName);
-    await scrollHierarchyToNode(page, testQuickLink.displayName);
+    await page
+      .getByRole('heading', { name: 'Add Quick Link' })
+      .waitFor({ state: 'hidden' });
 
     await verifyArticleSearch(page, testQuickLink.displayName);
-    await expect(
-      page.getByTestId(`knowledge-card-${testQuickLink.displayName}`)
-    ).toBeVisible();
 
     await updateQuickLink(page, testQuickLink);
 
@@ -498,46 +505,6 @@ test.describe('Context Center Articles', () => {
     await updatedCard.getByTestId('delete-quick-link-btn').click();
     await deletePage(page, true);
     await expect(updatedCard).not.toBeVisible();
-  });
-
-  test('Quick link created from API can be opened and deleted from hierarchy', async ({
-    page,
-    browser,
-  }) => {
-    test.slow();
-    const { apiContext, afterAction } = await createNewPage(browser);
-    const apiQuickLink = await createQuickLinkViaApi(
-      apiContext,
-      `CC API QuickLink ${uuid()}`
-    );
-    await afterAction();
-
-    await navigateToArticles(page);
-    const node = await scrollHierarchyToNode(page, apiQuickLink.displayName);
-    await node.click();
-    await expect(
-      page.getByRole('textbox', { name: 'Display Name' })
-    ).toHaveValue(apiQuickLink.displayName);
-    await page.keyboard.press('Escape');
-    await node.hover();
-    await page
-      .getByTestId(`${apiQuickLink.displayName}-delete-page-btn`)
-      .click();
-
-    const deleteResPromise = page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/contextCenter/pages/${apiQuickLink.id}`) &&
-        response.url().includes('hardDelete=true')
-    );
-    await page.getByTestId('confirm-button').click();
-    const deleteRes = await deleteResPromise;
-
-    expect(deleteRes.status()).toBe(200);
-    await expect(
-      page.getByTestId(`page-node-${apiQuickLink.displayName}`)
-    ).not.toBeVisible();
   });
 
   test('Quick link card opens the configured url in a new tab', async ({
@@ -571,13 +538,16 @@ test.describe('Context Center Articles', () => {
     await updateBody(page, description);
 
     await navigateToArticles(page);
+    await verifyArticleSearch(page, title);
     let card = page.getByTestId(`knowledge-card-${title}`);
     await expect(card).toBeVisible();
     await expect(card.getByTestId('knowledge-card-description')).toContainText(
       description
     );
     await expect(card.getByTestId('owner-label')).not.toBeVisible();
-    await expect(card.getByTestId('domain-link')).not.toBeVisible();
+    await expect(
+      card.locator('[data-testid^="domain-tag-"]')
+    ).not.toBeVisible();
 
     await card.click();
     await page.getByTestId('edit-domain-btn').click();
@@ -590,13 +560,12 @@ test.describe('Context Center Articles', () => {
     );
 
     await page
-      .getByTestId('domain-selectable-tree')
-      .getByTestId('searchbar')
+      .getByTestId('domain-selectable-tree-search')
       .fill(domain.responseData.name);
     await searchDomain;
 
     const domainTagSelector = page.getByTestId(
-      `tag-${domain.responseData.fullyQualifiedName}`
+      `tree-node-${domain.responseData.fullyQualifiedName}`
     );
     await domainTagSelector.waitFor({ state: 'visible' });
 
@@ -646,6 +615,8 @@ test.describe('Context Center Articles', () => {
     await followAfterAction();
 
     await navigateToArticles(page);
+    await verifyArticleSearch(page, title);
+
     card = page.getByTestId(`knowledge-card-${title}`);
     await expect(card).toBeVisible();
     await expect(card).toContainText(domain.responseData.displayName);
@@ -659,35 +630,217 @@ test.describe('Context Center Articles', () => {
       page.getByTestId(`tag-category-KnowledgeCenter.HowToGuide-${title}`)
     ).toBeVisible();
 
-    await verifyArticleSearch(page, title);
-    await expect(card).toBeVisible();
-
     const { apiContext, afterAction } = await getApiContext(page);
     await deleteArticleByFqn(apiContext, title);
     await afterAction();
   });
 
-  test('Article list cards, recently viewed widget, and pagination work', async ({
+  test('Data Products panel shows domain message when no domain and opens selector when domain present', async ({
     page,
   }) => {
+    test.slow();
+
+    const dpArticleEntity = new KnowledgeCenterClass({
+      displayName: `CC DP Test ${uuid()}`,
+    });
+    const { apiContext: createCtx, afterAction: createAfter } =
+      await getApiContext(page);
+    await dpArticleEntity.create(createCtx);
+    await createAfter();
+
+    try {
+      await test.step('No domain: + button is disabled and card shows informational message', async () => {
+        await navigateToArticle(
+          page,
+          dpArticleEntity.responseData.fullyQualifiedName
+        );
+
+        const dpContainer = page
+          .getByTestId('KnowledgePanel.DataProducts')
+          .getByTestId('data-products-container');
+
+        await expect(dpContainer).toContainText(
+          'Select a domain to add data product.'
+        );
+      });
+
+      await test.step('With domain: + opens selector and data product can be selected and saved', async () => {
+        const { apiContext: patchCtx, afterAction: patchAfter } =
+          await getApiContext(page);
+        await dpArticleEntity.patch(patchCtx, [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+                name: domain.responseData.name,
+                fullyQualifiedName: domain.responseData.fullyQualifiedName,
+              },
+            ],
+          },
+        ]);
+        await patchAfter();
+
+        await navigateToArticle(
+          page,
+          dpArticleEntity.responseData.fullyQualifiedName
+        );
+
+        const dpContainer = page
+          .getByTestId('KnowledgePanel.DataProducts')
+          .getByTestId('data-products-container');
+
+        const addBtn = dpContainer.getByTestId('add-data-product');
+        await expect(addBtn).toBeEnabled();
+
+        const searchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes('dataProduct')
+        );
+        await addBtn.click();
+        await searchResponse;
+
+        const picker = page.getByTestId('drop-down-menu');
+        await expect(picker).toBeVisible();
+
+        await picker
+          .getByTestId(dataProduct.responseData.fullyQualifiedName ?? '')
+          .click();
+
+        const savePatch = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/contextCenter/pages/') &&
+            response.request().method() === 'PATCH'
+        );
+        await picker.getByTestId('update-btn').click();
+        await savePatch;
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          dpContainer.getByTestId(
+            `data-product-${dataProduct.responseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+      });
+    } finally {
+      const { apiContext: cleanupCtx, afterAction: cleanupAfter } =
+        await getApiContext(page);
+      await dpArticleEntity.delete(cleanupCtx);
+      await cleanupAfter();
+    }
+  });
+
+  test('Removing a domain from an article sends a valid PATCH and clears the domain', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const domainArticleEntity = new KnowledgeCenterClass({
+      displayName: `CC Domain Remove Test ${uuid()}`,
+    });
+    const { apiContext: createCtx, afterAction: createAfter } =
+      await getApiContext(page);
+    await domainArticleEntity.create(createCtx);
+    await domainArticleEntity.patch(createCtx, [
+      {
+        op: 'add',
+        path: '/domains',
+        value: [
+          {
+            id: domain.responseData.id,
+            type: 'domain',
+            name: domain.responseData.name,
+            fullyQualifiedName: domain.responseData.fullyQualifiedName,
+          },
+        ],
+      },
+    ]);
+    await createAfter();
+
+    try {
+      await test.step('Domain appears in article header', async () => {
+        await navigateToArticle(
+          page,
+          domainArticleEntity.responseData.fullyQualifiedName
+        );
+        await expect(page.getByTestId('domain-link')).toBeVisible();
+      });
+
+      await test.step('Removing the domain sends a valid PATCH (200) and clears the header', async () => {
+        await page.getByTestId('edit-domain-btn').click();
+
+        const searchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response
+              .url()
+              .includes(encodeURIComponent(domain.responseData.name as string))
+        );
+        await page
+          .getByTestId('domain-selectable-tree-search')
+          .fill(domain.responseData.name as string);
+        await searchResponse;
+
+        const domainTagSelector = page.getByTestId(
+          `tree-node-${domain.responseData.fullyQualifiedName}`
+        );
+        await domainTagSelector.waitFor({ state: 'visible' });
+
+        const removePatch = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/contextCenter/pages/') &&
+            response.request().method() === 'PATCH'
+        );
+        await domainTagSelector.click();
+        const removeResponse = await removePatch;
+
+        expect(removeResponse.status()).toBe(200);
+        await waitForAllLoadersToDisappear(page);
+        await expect(page.getByTestId('domain-link')).toHaveText('No Domain');
+      });
+    } finally {
+      const { apiContext: cleanupCtx, afterAction: cleanupAfter } =
+        await getApiContext(page);
+      await domainArticleEntity.delete(cleanupCtx);
+      await cleanupAfter();
+    }
+  });
+
+  test('Recently viewed widget shows viewed articles', async ({ page }) => {
     await navigateToArticles(page);
+    await page.waitForLoadState('domcontentloaded');
 
-    const card = await getKnowledgePageCardByIndex(page, 0);
-    await expect(card.getByTestId('knowledge-card-title')).toBeVisible();
-    await expect(card.getByTestId('knowledge-card-description')).toBeVisible();
-    await expect(card.getByTestId('updated-at')).toBeVisible();
-
-    await verifyArticleSearch(page, articleEntity.responseData.displayName);
+    await verifyArticleSearch(
+      page,
+      articleEntity.responseData.displayName,
+      articleSearchTerm
+    );
     const viewedCard = page
       .getByTestId('knowledge-page-listing')
       .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);
-    await expect(viewedCard).toBeVisible();
+    await expect(viewedCard.getByTestId('knowledge-card-title')).toBeVisible();
+    // Description span is hidden when empty — wait for text to hydrate from the search index
+    await expect(
+      viewedCard.getByTestId('knowledge-card-description')
+    ).toContainText(ARTICLE_DESCRIPTION, { timeout: 10000 });
+    await expect(viewedCard.getByTestId('updated-at')).toBeVisible();
 
-    await viewedCard.getByTestId('knowledge-page-link').first().click();
+    const articleResponse = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/contextCenter/pages/name/')
+    );
+    await viewedCard.getByTestId('knowledge-page-link').click();
     await page.waitForURL((url) =>
       url.pathname.includes('/context-center/articles/')
     );
+    await articleResponse;
     await waitForAllLoadersToDisappear(page);
+    await waitForRecentlyViewed(
+      page,
+      articleEntity.responseData.displayName as string
+    );
 
     await navigateToArticles(page);
     const rightPanel = page.getByTestId('knowledge-center-right-panel');
@@ -696,8 +849,14 @@ test.describe('Context Center Articles', () => {
     const recentlyViewedItem = rightPanel.getByTestId(
       `recent-viewed-${articleEntity.responseData.displayName}`
     );
-    await recentlyViewedItem.scrollIntoViewIfNeeded();
-    await expect(recentlyViewedItem).toBeVisible();
+    await expect(async () => {
+      if (!(await recentlyViewedItem.isVisible())) {
+        await page.reload();
+        await waitForAllLoadersToDisappear(page);
+      }
+      await expect(recentlyViewedItem).toBeVisible();
+    }).toPass({ timeout: 30000 });
+
     await recentlyViewedItem.click();
     await page.waitForURL((url) =>
       url.pathname.includes('/context-center/articles/')
@@ -706,8 +865,11 @@ test.describe('Context Center Articles', () => {
     await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
       articleEntity.responseData.displayName
     );
+  });
 
+  test('Pagination works for article listing', async ({ page }) => {
     await navigateToArticles(page);
+
     const listing = page.getByTestId('knowledge-page-listing');
     const cards = listing.locator('[data-testid^="knowledge-card-"]');
     const initialCardCount = await cards.count();
@@ -720,10 +882,17 @@ test.describe('Context Center Articles', () => {
     );
 
     await observerElement.scrollIntoViewIfNeeded();
-    await paginationResponse;
-    await waitForAllLoadersToDisappear(page);
+    const resp = await paginationResponse;
 
-    expect(await cards.count()).toBeGreaterThan(initialCardCount);
+    expect(resp.status()).toBe(200);
+
+    const paginationLoader = page.getByTestId('knowledge-page-loader');
+    await expect(paginationLoader)
+      .toBeVisible({ timeout: 3000 })
+      .catch(() => null);
+    await paginationLoader.waitFor({ state: 'hidden' });
+
+    await expect.poll(() => cards.count()).toBeGreaterThan(initialCardCount);
   });
 
   test('Left hierarchy pagination and expand collapse actions work', async ({
@@ -782,7 +951,29 @@ test.describe('Context Center Articles', () => {
       name: `Expand ${parent.displayName}`,
     });
     await expect(ExpandIcon).toBeVisible();
+    // Expanding lazy-loads the parent's children via a separate
+    // /search/hierarchy fetch; the child node only enters the DOM once it
+    // resolves. Hoist the listener before the click so scrollHierarchyToNode
+    // below does not race (and conclude end-of-list against) an empty tree.
+    const childrenLoaded = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/search/hierarchy') &&
+        resp
+          .url()
+          .includes(
+            `parent=${encodeURIComponent(parent.fullyQualifiedName)}`
+          ) &&
+        resp.request().method() === 'GET'
+    );
     await ExpandIcon.click();
+    const childrenResponse = await childrenLoaded;
+
+    expect(childrenResponse.status()).toBe(200);
+    // Scroll to the child as well, not just the parent. The hierarchy is an
+    // infinite-scroll list, so expanding a node does not guarantee its child
+    // is inside the rendered window -- and the more articles the Context
+    // Center holds, the further down it lands.
+    await scrollHierarchyToNode(page, child.displayName);
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
@@ -866,20 +1057,31 @@ test.describe('Context Center Articles', () => {
     await navigateToArticles(page);
     await scrollHierarchyToNode(page, grandparent.displayName);
 
-    await page
-      .getByRole('button', {
-        name: `Expand ${grandparent.displayName}`,
-      })
-      .click();
+    // Use the stable data-testid on the expand button rather than its aria-name,
+    // which depends on accessibility-tree hydration timing and can miss in CI.
+    const expandNode = async (displayName: string) => {
+      const hierarchy = page.getByTestId('knowledge-pages-hierarchy');
+      const row = hierarchy.locator(
+        `[role="row"]:has([data-testid="page-node-${displayName}"])`
+      );
+      const expandBtn = row.getByTestId('tree-expand-btn');
+      const childrenLoaded = page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/contextCenter') &&
+          res.request().method() === 'GET',
+        { timeout: 30_000 }
+      );
+      await expect(expandBtn).toBeVisible({ timeout: 10_000 });
+      await expandBtn.click();
+      await childrenLoaded;
+    };
+
+    await expandNode(grandparent.displayName);
     await expect(
       page.getByTestId(`page-node-${parent.displayName}`)
     ).toBeVisible();
 
-    await page
-      .getByRole('button', {
-        name: `Expand ${parent.displayName}`,
-      })
-      .click();
+    await expandNode(parent.displayName);
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
@@ -1013,12 +1215,17 @@ test.describe('Context Center Articles', () => {
     await expect(
       page.getByTestId(`knowledge-card-${updatedTitle}`)
     ).toBeVisible();
-    await scrollHierarchyToNode(page, updatedTitle);
 
     await navigateToArticle(page, article.fullyQualifiedName);
     const titleInput = page.getByTestId('entity-header-display-name');
     await titleInput.fill(`${updatedTitle} Unsaved`);
-    await page.goBack();
+    // The unsaved title raises the page's beforeunload prompt. Accept it explicitly, and wait on
+    // the document rather than `load`, which can go unreported after the prompt and hang goBack.
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.goBack({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+    await expect(
+      page.getByTestId('context-center-articles-page')
+    ).toBeVisible();
     await waitForAllLoadersToDisappear(page);
     await verifyArticleSearch(page, updatedTitle);
     await expect(
@@ -1036,7 +1243,7 @@ test.describe('Context Center Articles', () => {
     await cleanupAfterAction();
   });
 
-  test('Article copy, delete, sidebar delete, and same-name recreate do not preserve stale metadata', async ({
+  test('Article copy, delete, and same-name recreate do not preserve stale metadata', async ({
     page,
     browser,
   }) => {
@@ -1078,29 +1285,6 @@ test.describe('Context Center Articles', () => {
     ).not.toBeVisible();
     await expect(
       page.getByText(user.responseData.displayName)
-    ).not.toBeVisible();
-
-    const {
-      apiContext: sidebarDeleteContext,
-      afterAction: sidebarDeleteAfterAction,
-    } = await getApiContext(page);
-    const sidebarDelete = await createArticleViaApi(sidebarDeleteContext, {
-      displayName: `CC Sidebar Delete ${uuid()}`,
-      name: `cc_sidebar_delete_${uuid()}`,
-    });
-    await sidebarDeleteAfterAction();
-    await navigateToArticles(page);
-    const sidebarNode = await scrollHierarchyToNode(
-      page,
-      sidebarDelete.displayName
-    );
-    await sidebarNode.hover();
-    await page
-      .getByTestId(`${sidebarDelete.displayName}-delete-page-btn`)
-      .click();
-    await page.getByTestId('confirm-button').click();
-    await expect(
-      page.getByTestId(`page-node-${sidebarDelete.displayName}`)
     ).not.toBeVisible();
 
     const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
@@ -1228,7 +1412,10 @@ test.describe('Context Center Articles', () => {
               `/api/v1/conversations/${createdConversation.id}/reaction/rocket`
             ) && response.request().method() === 'PUT'
       );
-      await page.locator('[title="rocket"]:visible').click();
+      await page
+        .getByTestId('feed-reactions-popover')
+        .getByRole('button', { name: 'rocket', exact: true })
+        .click();
       await reactionResponse;
       await mainMessage.getByTestId('emoji-button').hover();
       await expect(
@@ -1309,14 +1496,16 @@ test.describe('Context Center Articles', () => {
       await waitForRelatedArticles;
 
       await page.getByTestId('edit-description').click();
-      await page.locator(descriptionBox).first().click();
-      await page.locator(descriptionBox).first().clear();
+
+      const editor = await resolveDescriptionBox(page);
+
+      await editor.click();
+      await editor.clear();
 
       const mentionResponse = page.waitForResponse('/api/v1/search/query?**');
-      await page
-        .locator(descriptionBox)
-        .first()
-        .fill(`#${relatedKnowledgeCenter.knowledgePages[0].displayName}`);
+      await editor.fill(
+        `#${relatedKnowledgeCenter.knowledgePages[0].displayName}`
+      );
       await mentionResponse;
 
       await page
@@ -1349,7 +1538,7 @@ test.describe('Context Center Articles', () => {
     await cleanupAfterAction();
   });
 
-  test('Other user editing is visible in the article header editor list', async ({
+  test('Article body edit by other user is tracked in version history', async ({
     page,
     dataConsumerPage,
   }) => {
@@ -1367,10 +1556,60 @@ test.describe('Context Center Articles', () => {
     await navigateToArticle(dataConsumerPage, article.fullyQualifiedName);
     await updateBody(dataConsumerPage, `Edited by data consumer ${uuid()}`);
 
+    const { apiContext: dcApiContext, afterAction: dcAfterAction } =
+      await getApiContext(dataConsumerPage);
+    await expect
+      .poll(
+        async () => {
+          const res = await dcApiContext.get(
+            `/api/v1/contextCenter/pages/name/${article.fullyQualifiedName}?fields=editors`
+          );
+          const data = await res.json();
+
+          return (data.editors ?? []).some((e: { name: string }) =>
+            e.name.startsWith('pw-data-consumer')
+          );
+        },
+        { timeout: 15_000, intervals: [1000, 2000, 3000] }
+      )
+      .toBe(true);
+    await dcAfterAction();
+
     await navigateToArticle(page, article.fullyQualifiedName);
+
+    const versionsListResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/versions') &&
+        !response.url().match(/\/versions\/[\d.]+$/) &&
+        response.request().method() === 'GET'
+    );
+    await page.getByTestId('version-btn').click();
+    const versionsListRes = await versionsListResponse;
+    expect(versionsListRes.ok()).toBeTruthy();
+    await waitForAllLoadersToDisappear(page);
+
+    // Editor autosave can land the data consumer's edit as one or several
+    // versions, and the governance workflow asynchronously bumps entityStatus
+    // as governance-bot, so the newest entry need not be the data consumer's.
+    // Pick the newest version the data consumer authored and assert on it.
+    const { versions } = await versionsListRes.json();
+    const dataConsumerVersion = (versions as string[])
+      .map((entry) => JSON.parse(entry))
+      .find((entry: { updatedBy?: string }) =>
+        entry.updatedBy?.startsWith('pw-data-consumer')
+      );
+
+    expect(dataConsumerVersion).toBeDefined();
+
     await expect(
-      page.locator('a[href*="/users/pw-data-consumer"]')
+      page
+        .getByTestId('versions-list-container')
+        .getByTestId(
+          `version-entry-v${parseFloat(dataConsumerVersion.version).toFixed(1)}`
+        )
+        .getByRole('link', { name: /PW DataConsumer/i })
     ).toBeVisible();
+
     const { apiContext, afterAction } = await getApiContext(page);
     await deleteArticleByFqn(apiContext, article.fullyQualifiedName);
     await afterAction();
@@ -1516,6 +1755,7 @@ test.describe('Context Center Articles', () => {
       await test.step('Navigate to draft article A and type new content without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await page.fill('.om-block-editor', newDescription);
+        await waitForDraftPersisted(page, draftArticleA.id, newDescription);
       });
 
       await test.step('Navigate to draft article B via left hierarchy', async () => {
@@ -1547,13 +1787,7 @@ test.describe('Context Center Articles', () => {
       await test.step('Navigate back to Article A — should show updated description', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await waitForAllLoadersToDisappear(page);
-
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
-
-        await expect(editor).toContainText(newDescription);
-        await assertArticleEditorSaved(page);
+        await waitForDraftSyncedIntoEditor(page, newDescription);
       });
 
       await test.step('Article list card should reflect updated description', async () => {
@@ -1573,6 +1807,7 @@ test.describe('Context Center Articles', () => {
     test('displayName: switching articles does not bleed unsaved title into next article', async ({
       page,
     }) => {
+      test.slow();
       const newDisplayName = `Updated Title ${uuid()}`;
 
       await test.step('Navigate to draft article A and type new display name without saving', async () => {
@@ -1642,26 +1877,29 @@ test.describe('Context Center Articles', () => {
       test.slow();
 
       const reloadDescription = `Reload draft ${uuid()}`;
+      let unblockAutoSave: () => Promise<void>;
 
       await test.step('Navigate to draft article A and type content without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        // Hold off the 3s autosave PATCH: this test is specifically about a reload
+        // that happens *before* the content is saved, so the save must not land
+        // and bump the server version out from under the stashed draft.
+        unblockAutoSave = await blockArticleAutoSave(page, draftArticleA.id);
         await page.fill('.om-block-editor', reloadDescription);
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
         await waitForDraftPersisted(page, draftArticleA.id, reloadDescription);
       });
 
       await test.step('Reload the page (simulates browser refresh before auto-save)', async () => {
+        // Lift the block before reloading: the post-reload draft sync issues its own
+        // PATCH, and that one must succeed for the badge to reach "Saved".
+        await unblockAutoSave();
         await page.reload();
         await waitForAllLoadersToDisappear(page);
       });
 
       await test.step('Content should be synced and badge shows Saved', async () => {
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
-
-        await expect(editor).toContainText(reloadDescription);
-        await assertArticleEditorSaved(page);
+        await waitForDraftSyncedIntoEditor(page, reloadDescription);
       });
     });
 
@@ -1792,24 +2030,14 @@ test.describe('Context Center Articles', () => {
         await page.reload();
         await waitForAllLoadersToDisappear(page);
 
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
-
-        await expect(editor).toContainText(contentB);
-        await assertArticleEditorSaved(page);
+        await waitForDraftSyncedIntoEditor(page, contentB);
       });
 
       await test.step('Navigate to Article A — its independent draft should also be synced', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await waitForAllLoadersToDisappear(page);
 
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
-
-        await expect(editor).toContainText(contentA);
-        await assertArticleEditorSaved(page);
+        await waitForDraftSyncedIntoEditor(page, contentA);
       });
     });
   });

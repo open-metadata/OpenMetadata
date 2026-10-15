@@ -14,11 +14,8 @@ NATS source connection handler
 
 import asyncio
 import json
-import os
 import ssl
-import tempfile
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 import nats
@@ -44,6 +41,10 @@ from metadata.ingestion.connections.test_connections import test_connection_step
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.secure_tempfile import (
+    remove_secret_temp_file,
+    write_secret_temp_file,
+)
 
 logger = ingestion_logger()
 
@@ -73,43 +74,21 @@ class SchemaKvBucketNotConfiguredError(ConnectionError):
 
 
 def _write_temp_cert(secret_value: str, temp_files: list[str]) -> str:
-    fd, path = tempfile.mkstemp(suffix=".pem")
+    """
+    Materialise a certificate for the connection's lifetime.
+
+    ``ssl.SSLContext.load_cert_chain`` only takes paths, and the context outlives
+    this call, so the file is tracked in ``temp_files`` and removed by
+    :func:`_cleanup_temp_certs` on teardown rather than by a ``with`` block.
+    """
+    path = str(write_secret_temp_file(secret_value, suffix=".pem"))
     temp_files.append(path)
-    try:
-        try:
-            payload = secret_value.encode()
-            written = 0
-            while written < len(payload):
-                count = os.write(fd, payload[written:])
-                if count == 0:
-                    raise OSError("Could not write the temporary certificate")
-                written += count
-        finally:
-            os.close(fd)
-    except Exception:
-        try:
-            Path(path).unlink()
-        except OSError as cleanup_exc:
-            logger.warning(
-                "Could not remove incomplete temporary NATS certificate %s: %s",
-                path,
-                cleanup_exc,
-            )
-        else:
-            temp_files.remove(path)
-        raise
+
     return path
 
 
 def _cleanup_temp_certs(temp_files: list[str]) -> None:
-    remaining = []
-    for path in temp_files:
-        try:
-            Path(path).unlink(missing_ok=True)
-        except OSError as exc:
-            logger.warning("Could not remove temporary NATS certificate %s: %s", path, exc)
-            remaining.append(path)
-    temp_files[:] = remaining
+    temp_files[:] = [path for path in temp_files if not remove_secret_temp_file(path)]
 
 
 @dataclass

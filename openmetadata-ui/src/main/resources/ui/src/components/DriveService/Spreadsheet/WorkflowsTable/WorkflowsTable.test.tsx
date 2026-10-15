@@ -34,7 +34,7 @@ jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
     <div data-testid="rich-text-preview">{markdown}</div>
   ))
 );
-jest.mock('../../../common/Table/Table', () =>
+jest.mock('../../../common/Table/TableV2', () =>
   jest.fn(({ columns, dataSource, locale }) => (
     <div data-testid="container-list-table">
       <div data-testid="table-columns-count">{columns?.length || 0}</div>

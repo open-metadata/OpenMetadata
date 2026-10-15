@@ -23,7 +23,7 @@ import {
   Flag04,
   MessageTextSquare01,
   UsersRight,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -44,17 +44,24 @@ interface FeedbackApprovalTaskProps {
   task: Task;
 }
 
-const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
-  const { t } = useTranslation();
+const getFeedbackTaskData = (
+  task: Task
+): { feedback?: RecognizerFeedback; recognizerName: string } => {
   const payload =
     task?.payload && typeof task.payload === 'object'
       ? (task.payload as Record<string, unknown>)
       : undefined;
   const feedback = payload?.feedback as RecognizerFeedback | undefined;
-  const recognizer =
-    (payload?.recognizer as { recognizerName?: string } | undefined) ??
-    undefined;
-  const recognizerName = recognizer?.recognizerName || '';
+  const recognizer = payload?.recognizer as
+    | { recognizerName?: string }
+    | undefined;
+
+  return { feedback, recognizerName: recognizer?.recognizerName || '' };
+};
+
+const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
+  const { t } = useTranslation();
+  const { feedback, recognizerName } = getFeedbackTaskData(task);
 
   const feedbackTypeLabel = useMemo(() => {
     if (!feedback?.feedbackType) {

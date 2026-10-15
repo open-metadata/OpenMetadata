@@ -16,29 +16,48 @@ package org.openmetadata.mcp.tools;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.ForbiddenException;
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Pins {@link GetEntityTool#cleanEntityResponse}. The entity-level description must always be
@@ -48,6 +67,9 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
  * both table and column level.
  */
 class GetEntityToolTest {
+  static final String GIT_TOKEN = "ghp_rawGitToken123";
+  static final String SIGNING_KEY = "rawPgpPrivateKeyMaterial";
+  static final String SIGNING_PASSPHRASE = "rawSigningPassphrase";
 
   @Test
   void contentOnlyPreservesViewBasicAuthorization() throws Exception {
@@ -85,6 +107,266 @@ class GetEntityToolTest {
     assertEquals(fqn, result.get("fullyQualifiedName"));
     assertThat(castMap(result.get("content")).get("content")).isEqualTo("full article body");
     assertThat(result).doesNotContainKey("description");
+  }
+
+  /**
+   * A context memory's visibility comes from its own shareConfig rather than from a role or policy,
+   * so a read by name applies that rule on top of the operation check - the same answer the REST
+   * endpoint gives.
+   */
+  @Test
+  void plainReadDeniesAnotherUsersPrivateMemory() {
+    String fqn = "alices-private-note";
+    ContextMemory memory = privateMemoryOwnedBy("alice", fqn);
+    CatalogSecurityContext securityContext = securityContextFor("bob");
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
+      entities
+          .when(
+              () -> Entity.getEntityByName(eq(Entity.CONTEXT_MEMORY), eq(fqn), anyString(), any()))
+          .thenReturn(memory);
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(new User().withName("bob"), null, null));
+
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              new GetEntityTool()
+                  .execute(
+                      mock(Authorizer.class),
+                      securityContext,
+                      Map.of("entityType", Entity.CONTEXT_MEMORY, "fqn", fqn)));
+    }
+  }
+
+  @Test
+  void contentReadDeniesAnotherUsersPrivateMemory() {
+    String fqn = "alices-private-note";
+    ContextMemory memory = privateMemoryOwnedBy("alice", fqn);
+    CatalogSecurityContext securityContext = securityContextFor("bob");
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
+      entities
+          .when(
+              () -> Entity.getEntityByName(eq(Entity.CONTEXT_MEMORY), eq(fqn), anyString(), any()))
+          .thenReturn(memory);
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(new User().withName("bob"), null, null));
+
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              new GetEntityTool()
+                  .execute(
+                      mock(Authorizer.class),
+                      securityContext,
+                      Map.of(
+                          "entityType",
+                          Entity.CONTEXT_MEMORY,
+                          "fqn",
+                          fqn,
+                          "include",
+                          List.of("content"))));
+    }
+  }
+
+  /**
+   * The read must fetch the relationship fields used by the memory visibility decision. Omitting
+   * owners would deny the owner their private memory; omitting primaryEntity would expose an
+   * anchored Entity memory as org-wide.
+   */
+  @Test
+  void contentReadFetchesVisibilityFieldsSoTheOwnerKeepsTheirPrivateMemory() throws Exception {
+    String fqn = "alices-private-note";
+    ContextMemory memory = privateMemoryOwnedBy("alice", fqn);
+    CatalogSecurityContext securityContext = securityContextFor("alice");
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.CONTEXT_MEMORY, fqn, "owners,primaryEntity", Include.NON_DELETED))
+          .thenReturn(memory);
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(new User().withName("alice"), null, null));
+
+      result =
+          new GetEntityTool()
+              .execute(
+                  mock(Authorizer.class),
+                  securityContext,
+                  Map.of(
+                      "entityType",
+                      Entity.CONTEXT_MEMORY,
+                      "fqn",
+                      fqn,
+                      "include",
+                      List.of("content")));
+    }
+
+    assertThat(castMap(result.get("content")).get("content")).isEqualTo("the secret answer");
+  }
+
+  /**
+   * A workflow definition's sink credentials sit in a free-form sinkConfig that the generic entity
+   * read returns as stored; the MCP read path masks them the way the REST resource does.
+   */
+  @Test
+  void entityDetailsMaskWorkflowSinkSecrets() throws Exception {
+    String fqn = "gitExport";
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.WORKFLOW_DEFINITION), eq(fqn), anyString(), any()))
+          .thenReturn(gitSinkWorkflow(fqn));
+      result =
+          new GetEntityTool()
+              .execute(
+                  mock(Authorizer.class),
+                  securityContextFor("alice"),
+                  Map.of("entityType", Entity.WORKFLOW_DEFINITION, "fqn", fqn));
+    }
+
+    JsonNode sinkConfig = JsonUtils.valueToTree(result).at("/nodes/0/config/sinkConfig");
+    assertEquals(PasswordEntityMasker.PASSWORD_MASK, sinkConfig.at("/credentials/token").asText());
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK, sinkConfig.at("/signingKey/privateKey").asText());
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK, sinkConfig.at("/signingKey/passphrase").asText());
+    assertEquals("https://github.com/org/repo.git", sinkConfig.at("/repositoryUrl").asText());
+    assertThat(JsonUtils.pojoToJson(result))
+        .doesNotContain(GIT_TOKEN)
+        .doesNotContain(SIGNING_KEY)
+        .doesNotContain(SIGNING_PASSPHRASE);
+  }
+
+  static WorkflowDefinition gitSinkWorkflow(String name) {
+    String json =
+        """
+        {
+          "id": "%s",
+          "name": "%s",
+          "fullyQualifiedName": "%s",
+          "nodes": [
+            {
+              "type": "automatedTask",
+              "subType": "sinkTask",
+              "name": "gitSink",
+              "config": {
+                "sinkType": "git",
+                "sinkConfig": {
+                  "repositoryUrl": "https://github.com/org/repo.git",
+                  "credentials": {"type": "token", "token": "%s"},
+                  "signingKey": {"privateKey": "%s", "passphrase": "%s"}
+                }
+              }
+            }
+          ]
+        }
+        """
+            .formatted(UUID.randomUUID(), name, name, GIT_TOKEN, SIGNING_KEY, SIGNING_PASSPHRASE);
+    return JsonUtils.readValue(json, WorkflowDefinition.class);
+  }
+
+  @Test
+  void contentQuerySearchesTheMemorysPassagesAsTheCaller() throws Exception {
+    SubjectContext alice = new SubjectContext(new User().withName("alice"), null, null);
+
+    Map<String, Object> result = readMemoryContentWithQuery(alice, List.of("the matching passage"));
+
+    assertThat(castMap(result.get("content")).get("content")).isEqualTo("the matching passage");
+  }
+
+  @Test
+  void contentQueryFallsBackToTheFullBodyWhenSearchReturnsNoPassage() throws Exception {
+    SubjectContext alice = new SubjectContext(new User().withName("alice"), null, null);
+
+    Map<String, Object> result = readMemoryContentWithQuery(alice, List.of());
+
+    assertThat(castMap(result.get("content")).get("content")).isEqualTo("the secret answer");
+  }
+
+  /**
+   * The memory read is already authorized, so chunk search must not hide it again: it runs as the
+   * caller, and when search still withholds every chunk (an anchored or retired memory, or one not
+   * chunked yet) the caller gets the full body instead of nothing.
+   */
+  private static Map<String, Object> readMemoryContentWithQuery(
+      SubjectContext caller, List<String> passages) throws Exception {
+    String fqn = "alices-private-note";
+    ContextMemory memory = privateMemoryOwnedBy("alice", fqn);
+    CatalogSecurityContext securityContext = securityContextFor("alice");
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(vectorService.searchChunksByParent(memory.getId().toString(), "retention", 2, caller))
+        .thenReturn(passages);
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class);
+        MockedStatic<OpenSearchVectorService> vectors = mockStatic(OpenSearchVectorService.class)) {
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.CONTEXT_MEMORY, fqn, "owners,primaryEntity", Include.NON_DELETED))
+          .thenReturn(memory);
+      entities.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      subjects.when(() -> DefaultAuthorizer.getSubjectContext(securityContext)).thenReturn(caller);
+      vectors.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+
+      return new GetEntityTool()
+          .execute(
+              mock(Authorizer.class),
+              securityContext,
+              Map.of(
+                  "entityType",
+                  Entity.CONTEXT_MEMORY,
+                  "fqn",
+                  fqn,
+                  "include",
+                  List.of("content"),
+                  "query",
+                  "retention",
+                  "passages",
+                  2));
+    }
+  }
+
+  private static ContextMemory privateMemoryOwnedBy(String owner, String fqn) {
+    return new ContextMemory()
+        .withId(java.util.UUID.randomUUID())
+        .withName(fqn)
+        .withFullyQualifiedName(fqn)
+        .withAnswer("the secret answer")
+        .withOwners(
+            List.of(
+                new EntityReference()
+                    .withId(java.util.UUID.randomUUID())
+                    .withType(Entity.USER)
+                    .withName(owner)
+                    .withFullyQualifiedName(owner)))
+        .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+  }
+
+  private static CatalogSecurityContext securityContextFor(String userName) {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn(userName);
+    CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
+    when(securityContext.getUserPrincipal()).thenReturn(principal);
+    return securityContext;
   }
 
   private static Map<String, Object> column(String name, String description) {

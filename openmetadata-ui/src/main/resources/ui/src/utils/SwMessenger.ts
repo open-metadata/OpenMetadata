@@ -21,6 +21,16 @@ type ServiceWorkerMessage =
 
 let requestCounter = 0;
 
+function waitForWorkerActivation(worker: ServiceWorker): Promise<void> {
+  return new Promise<void>((resolve) => {
+    worker.addEventListener('statechange', function (this: ServiceWorker) {
+      if (this.state === 'activated') {
+        resolve();
+      }
+    });
+  });
+}
+
 export function waitForServiceWorkerController(): Promise<ServiceWorker> {
   return new Promise((resolve, reject) => {
     if (navigator.serviceWorker.controller) {
@@ -49,26 +59,13 @@ export function waitForServiceWorkerController(): Promise<ServiceWorker> {
 
         // Wait for the service worker to be ready
         if (registration.installing) {
-          const installingWorker = registration.installing;
-          await new Promise<void>((resolve) => {
-            installingWorker.addEventListener('statechange', function () {
-              if (this.state === 'activated') {
-                resolve();
-              }
-            });
-          });
+          await waitForWorkerActivation(registration.installing);
         }
 
         if (registration.waiting) {
           const waitingWorker = registration.waiting;
           waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-          await new Promise<void>((resolve) => {
-            waitingWorker.addEventListener('statechange', function () {
-              if (this.state === 'activated') {
-                resolve();
-              }
-            });
-          });
+          await waitForWorkerActivation(waitingWorker);
         }
 
         // If the active service worker is not the controller, post a message to skip waiting

@@ -13,6 +13,16 @@
 
 import { DataAssetFilter } from '../interface/workflow-builder-components.interface';
 
+// Drops filters whose asset type is no longer selected.
+export const reconcileDataAssetFilters = (
+  filters: DataAssetFilter[] | undefined,
+  selectedDataAssets: string[] | undefined
+): DataAssetFilter[] => {
+  const assets = selectedDataAssets ?? [];
+
+  return (filters ?? []).filter((filter) => assets.includes(filter.dataAsset));
+};
+
 export const serializeDataAssetFilters = (filters: DataAssetFilter[]) => {
   return filters.length > 0
     ? filters.map((df) => ({
@@ -100,4 +110,28 @@ export const deserializeEventBasedFilters = (
   const firstKey = Object.keys(filterObj)[0];
 
   return firstKey ? filterObj[firstKey] || '' : '';
+};
+
+// FQNs may contain commas, so multi-value fields are stored as a JSON array.
+// ADR:2026-10-13-set-action-multi-fqn-field-values-are-json-arrays
+export const serializeFqnList = (fqns: string[]): string =>
+  fqns.length > 0 ? JSON.stringify(fqns) : '';
+
+// Reads the JSON array, or the comma-separated format older workflows were saved with.
+export const parseFqnList = (value: string): string[] => {
+  if (!value) {
+    return [];
+  }
+  if (value.trim().startsWith('[')) {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map(String);
+      }
+    } catch {
+      // not JSON, fall back to the legacy format
+    }
+  }
+
+  return value.split(',').map((fqn) => fqn.trim());
 };

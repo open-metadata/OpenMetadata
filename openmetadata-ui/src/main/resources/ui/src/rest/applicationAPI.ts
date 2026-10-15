@@ -13,7 +13,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { DataInsightLatestRun } from '../components/Settings/Applications/AppDetails/AppDetails.interface';
 import { AgentType, App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
@@ -24,8 +23,9 @@ import {
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/type';
 import { ListParams } from '../interface/API.interface';
+import { DataInsightLatestRun } from '../interface/platform/application.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/apps';
 

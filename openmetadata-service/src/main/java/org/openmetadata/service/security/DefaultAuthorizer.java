@@ -14,7 +14,6 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 
@@ -22,28 +21,74 @@ import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourcePermission;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
+  private static final DefaultAuthorizer DIRECT_READ_AUTHORIZER = new DefaultAuthorizer();
 
   @Override
   public void init(OpenMetadataApplicationConfig config) {
-    LOG.info("Initializing DefaultAuthorizer with config {}", config.getAuthorizerConfiguration());
+    AuthorizerConfiguration current = SecurityConfigurationManager.getCurrentAuthzConfig();
+    AuthorizerConfiguration inEffect =
+        current == null ? config.getAuthorizerConfiguration() : current;
+    LOG.info("Initializing DefaultAuthorizer with config {}", inEffect);
+    logDeprecationWarnings(inEffect);
+  }
+
+  private void logDeprecationWarnings(AuthorizerConfiguration config) {
+    if (config == null) {
+      return;
+    }
+    // adminPrincipals and principalDomain both ship with non-empty defaults and still drive
+    // behaviour until their replacements are set, so warn only once the replacement exists and
+    // the deprecated setting has become redundant. Otherwise every untouched deployment is told
+    // to remove configuration it still relies on.
+    if (!nullOrEmpty(config.getAdminEmails()) && !nullOrEmpty(config.getAdminPrincipals())) {
+      LOG.warn(
+          "DEPRECATED: 'adminPrincipals' is deprecated and 'adminEmails' is already configured. "
+              + "Move any remaining principals to 'adminEmails'; this will be removed in a "
+              + "future version.");
+    }
+
+    if ((!nullOrEmpty(config.getAllowedEmailDomains()) || !nullOrEmpty(config.getBotDomain()))
+        && !nullOrEmpty(config.getPrincipalDomain())) {
+      LOG.warn(
+          "DEPRECATED: 'principalDomain' is deprecated. Use 'botDomain' for bots and "
+              + "'allowedEmailDomains' for domain restrictions; this will be removed in a "
+              + "future version.");
+    }
+
+    if (!nullOrEmpty(config.getAllowedDomains())) {
+      LOG.warn(
+          "DEPRECATED: 'allowedDomains' configuration is deprecated. "
+              + "Use 'allowedEmailDomains' instead. This will be removed in a future version.");
+    }
+
+    if (Boolean.TRUE.equals(config.getEnforcePrincipalDomain())) {
+      LOG.warn(
+          "DEPRECATED: 'enforcePrincipalDomain' configuration is deprecated. "
+              + "Restrict logins with 'allowedEmailDomains' instead. "
+              + "This will be removed in a future version.");
+    }
+
+    if (!nullOrEmpty(config.getBotPrincipals())) {
+      LOG.warn(
+          "DEPRECATED: 'botPrincipals' configuration is deprecated and no longer used. "
+              + "Bots are identified by their user entity; use 'botDomain' for bot email "
+              + "construction. This will be removed in a future version.");
+    }
   }
 
   @Override
@@ -85,17 +130,27 @@ public class DefaultAuthorizer implements Authorizer {
       ResourceContextInterface resourceContext) {
     Timer.Sample authSample = RequestLatencyContext.startAuthOperation();
     try {
-      SubjectContext subjectContext = getSubjectContext(securityContext);
-      if (subjectContext.isAdmin()) {
-        return;
-      }
-      if (isReviewer(resourceContext, subjectContext)) {
-        return;
-      }
-
-      PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
+      authorizeSubject(getSubjectContext(securityContext), operationContext, resourceContext);
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);
+    }
+  }
+
+  /** Authorize a resolved user on read paths that do not carry the JAX-RS security context. */
+  public static void authorizeUser(
+      String userName,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    DIRECT_READ_AUTHORIZER.authorizeSubject(
+        subjectContextForUserName(userName), operationContext, resourceContext);
+  }
+
+  private void authorizeSubject(
+      SubjectContext subjectContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    if (!subjectContext.isAdmin() && !isReviewer(resourceContext, subjectContext)) {
+      PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
     }
   }
 
@@ -263,65 +318,6 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   private static void checkImpersonationAuthorization(SubjectContext subjectContext) {
-    String botName = subjectContext.impersonatedBy();
-    String targetUser = subjectContext.user().getName();
-    if (ImpersonationContext.isValidated(botName, targetUser)) {
-      return;
-    }
-    User bot = getImpersonatingBot(botName);
-
-    if (!Boolean.TRUE.equals(bot.getIsBot()) || !Boolean.TRUE.equals(bot.getAllowImpersonation())) {
-      LOG.warn(
-          "Impersonation denied: bot={} does not have allowImpersonation enabled", bot.getName());
-      throw new AuthorizationException(
-          "Bot " + bot.getName() + " does not have impersonation enabled");
-    }
-
-    authorizeImpersonationTarget(bot.getName(), subjectContext.user());
-    ImpersonationContext.markValidated(botName, targetUser);
-  }
-
-  private static User getImpersonatingBot(String botName) {
-    User bot;
-    try {
-      bot = Entity.getEntityByName(Entity.USER, botName, "id,name,isBot,allowImpersonation", ALL);
-    } catch (Exception e) {
-      LOG.error("Failed to get bot user: {}", botName, e);
-      throw new AuthorizationException("Bot user not found: " + botName);
-    }
-    if (bot == null) {
-      LOG.warn("Impersonation denied: bot user {} was not found", botName);
-      throw new AuthorizationException("Bot user not found: " + botName);
-    }
-    return bot;
-  }
-
-  /**
-   * Evaluates the bot's policies for the {@code Impersonate} operation with the target user as the
-   * resource. Policies scope who can be impersonated - for example, a deny rule with the {@code
-   * isAdminUser()} condition blocks impersonating admins.
-   */
-  private static void authorizeImpersonationTarget(String botName, User targetUser) {
-    SubjectContext botSubjectContext = SubjectContext.getSubjectContext(botName);
-    OperationContext operationContext =
-        new OperationContext(Entity.USER, MetadataOperation.IMPERSONATE);
-    ResourceContextInterface targetResourceContext = targetUserResourceContext(targetUser);
-    try {
-      PolicyEvaluator.hasPermission(botSubjectContext, targetResourceContext, operationContext);
-    } catch (AuthorizationException e) {
-      LOG.warn(
-          "Impersonation denied: bot={} is not authorized to impersonate user={}",
-          botName,
-          targetUser.getName());
-      throw new AuthorizationException(
-          "Bot " + botName + " is not authorized to impersonate user " + targetUser.getName());
-    }
-  }
-
-  @SuppressWarnings("unchecked")
-  private static ResourceContextInterface targetUserResourceContext(User targetUser) {
-    EntityRepository<User> userRepository =
-        (EntityRepository<User>) Entity.getEntityRepository(Entity.USER);
-    return new ResourceContext<>(Entity.USER, targetUser, userRepository);
+    ImpersonationAuthorizer.authorize(subjectContext.impersonatedBy(), subjectContext.user());
   }
 }

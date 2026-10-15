@@ -63,6 +63,7 @@ export const useColumnGridListingData = (
   allRows: ColumnGridRowData[];
   setAllRows: React.Dispatch<React.SetStateAction<ColumnGridRowData[]>>;
   gridItems: ColumnGridItem[];
+  isBuildingRows: boolean;
   setGridItems: React.Dispatch<React.SetStateAction<ColumnGridItem[]>>;
   setSelectedEntities: (ids: string[] | ((prev: string[]) => string[])) => void;
   clearEditedValues: () => void;
@@ -73,7 +74,6 @@ export const useColumnGridListingData = (
     props.externalFilters || {}
   );
   const [loading, setLoading] = useState(false);
-  const [entities, setEntities] = useState<ColumnGridRowData[]>([]);
   const [totalUniqueColumns, setTotalUniqueColumns] = useState(0);
   const [totalOccurrences, setTotalOccurrences] = useState(0);
   const [gridItems, setGridItems] = useState<ColumnGridItem[]>([]);
@@ -136,7 +136,7 @@ export const useColumnGridListingData = (
   }, [urlState.filters]);
 
   // Selection state
-  const selectionState = useSelectionState(entities);
+  const selectionState = useSelectionState(allRows);
 
   // Pagination state - use backend total (client-side filters work on current page only)
   const effectiveTotal = totalUniqueColumnsRef.current || totalUniqueColumns;
@@ -184,6 +184,28 @@ export const useColumnGridListingData = (
     ) => {
       const requestId = ++latestRequestIdRef.current;
       setLoading(true);
+
+      const handleLoadError = (error: unknown) => {
+        if (requestId !== latestRequestIdRef.current) {
+          return;
+        }
+        if (!options?.rethrowOnError) {
+          showErrorToast(
+            error as AxiosError,
+            t('server.entity-fetch-error', {
+              entity: t('label.column-lowercase-plural'),
+            })
+          );
+        }
+        if (process.env.NODE_ENV === 'development') {
+          // eslint-disable-next-line no-console
+          console.error('Error loading column grid:', error);
+        }
+        if (options?.rethrowOnError) {
+          throw error;
+        }
+      };
+
       try {
         // For page 1, start fresh (no cursor). For other pages, use stored cursor from previous page
         const pageCursor =
@@ -235,36 +257,12 @@ export const useColumnGridListingData = (
           setTotalOccurrences(totalOccurrencesRef.current);
         }
       } catch (error) {
-        if (requestId !== latestRequestIdRef.current) {
-          return;
-        }
-        if (!options?.rethrowOnError) {
-          showErrorToast(
-            error as AxiosError,
-            t('server.entity-fetch-error', {
-              entity: t('label.column-lowercase-plural'),
-            })
-          );
-        }
-        if (process.env.NODE_ENV === 'development') {
-          // eslint-disable-next-line no-console
-          console.error('Error loading column grid:', error);
-        }
-        if (options?.rethrowOnError) {
-          throw error;
-        }
+        handleLoadError(error);
       } finally {
         if (requestId === latestRequestIdRef.current) {
           setLoading(false);
         }
       }
-    },
-    []
-  );
-
-  const applyClientSideFilters = useCallback(
-    (rows: ColumnGridRowData[]): ColumnGridRowData[] => {
-      return rows;
     },
     []
   );
@@ -312,10 +310,6 @@ export const useColumnGridListingData = (
     expandedStructRows,
     props.transformGridItemsToRows,
   ]);
-
-  useEffect(() => {
-    setEntities(applyClientSideFilters(allRows));
-  }, [allRows, applyClientSideFilters]);
 
   useEffect(() => {
     allRows.forEach((row) => {
@@ -466,6 +460,49 @@ export const useColumnGridListingData = (
       );
     };
 
+    const chainToPage = async (
+      effectivePage: number,
+      savedCursors: Map<number, string>,
+      skipGrid: { skipGridItemsUpdate: boolean }
+    ) => {
+      const cachedCursor = savedCursors.get(effectivePage - 1);
+      let usedCachedCursor = false;
+
+      if (cachedCursor) {
+        try {
+          cursorsByPageRef.current.set(effectivePage - 1, cachedCursor);
+          await loadData(
+            effectivePage,
+            urlState.searchQuery,
+            columnGridFilters,
+            urlState.pageSize,
+            { rethrowOnError: true }
+          );
+          usedCachedCursor = true;
+        } catch {
+          cursorsByPageRef.current.delete(effectivePage - 1);
+        }
+      }
+
+      if (!usedCachedCursor) {
+        for (let page = 2; page < effectivePage; page++) {
+          await loadData(
+            page,
+            urlState.searchQuery,
+            columnGridFilters,
+            urlState.pageSize,
+            { ...skipGrid, rethrowOnError: true }
+          );
+        }
+        await loadData(
+          effectivePage,
+          urlState.searchQuery,
+          columnGridFilters,
+          urlState.pageSize
+        );
+      }
+    };
+
     try {
       const pageToRestore = urlState.currentPage;
       const savedCursors = new Map(cursorsByPageRef.current);
@@ -492,42 +529,7 @@ export const useColumnGridListingData = (
           }
           showErrorToast(t('message.please-refresh-the-page'));
         } else if (effectivePage > 1) {
-          const cachedCursor = savedCursors.get(effectivePage - 1);
-          let usedCachedCursor = false;
-
-          if (cachedCursor) {
-            try {
-              cursorsByPageRef.current.set(effectivePage - 1, cachedCursor);
-              await loadData(
-                effectivePage,
-                urlState.searchQuery,
-                columnGridFilters,
-                urlState.pageSize,
-                { rethrowOnError: true }
-              );
-              usedCachedCursor = true;
-            } catch {
-              cursorsByPageRef.current.delete(effectivePage - 1);
-            }
-          }
-
-          if (!usedCachedCursor) {
-            for (let page = 2; page < effectivePage; page++) {
-              await loadData(
-                page,
-                urlState.searchQuery,
-                columnGridFilters,
-                urlState.pageSize,
-                { ...skipGrid, rethrowOnError: true }
-              );
-            }
-            await loadData(
-              effectivePage,
-              urlState.searchQuery,
-              columnGridFilters,
-              urlState.pageSize
-            );
-          }
+          await chainToPage(effectivePage, savedCursors, skipGrid);
         } else if (pageToRestore > 1) {
           const page1Items = itemsByPageRef.current.get(1);
           if (page1Items) {
@@ -559,7 +561,7 @@ export const useColumnGridListingData = (
   }, []);
 
   return {
-    entities,
+    entities: allRows,
     loading,
     totalEntities: totalUniqueColumns,
     currentPage: paginationState.currentPage,
@@ -597,6 +599,8 @@ export const useColumnGridListingData = (
     setExpandedStructRows,
     allRows,
     setAllRows,
+    // Rows are built from `gridItems` one effect later.
+    isBuildingRows: gridItems.length > 0 && allRows.length === 0,
     gridItems,
     setGridItems,
   };

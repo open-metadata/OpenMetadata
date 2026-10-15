@@ -16,6 +16,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     PipelineStatus,
 )
 from metadata.utils.helpers import datetime_to_ts
+from openmetadata_managed_apis.utils.pipeline_run_id import pipeline_run_id
 
 
 class ApiResponse:
@@ -28,6 +29,7 @@ class ApiResponse:
     STATUS_UNAUTHORIZED = 401
     STATUS_NOT_FOUND = 404
     STATUS_SERVER_ERROR = 500
+    UNEXPECTED_ERROR = "An unexpected problem occurred"
 
     @staticmethod
     def standard_response(status, response_obj) -> Response:
@@ -43,6 +45,10 @@ class ApiResponse:
 
     @staticmethod
     def error(status, error):
+        if not isinstance(status, int):
+            status = ApiResponse.STATUS_SERVER_ERROR
+        if status >= ApiResponse.STATUS_SERVER_ERROR:
+            error = ApiResponse.UNEXPECTED_ERROR
         return ApiResponse.standard_response(status, {"error": error})
 
     @staticmethod
@@ -58,8 +64,8 @@ class ApiResponse:
         return ApiResponse.error(ApiResponse.STATUS_UNAUTHORIZED, error)
 
     @staticmethod
-    def server_error(error="An unexpected problem occurred"):
-        return ApiResponse.error(ApiResponse.STATUS_SERVER_ERROR, error)
+    def server_error():
+        return ApiResponse.error(ApiResponse.STATUS_SERVER_ERROR, ApiResponse.UNEXPECTED_ERROR)
 
 
 class ResponseFormat:
@@ -76,7 +82,7 @@ class ResponseFormat:
         logical_date = getattr(dag_run, "logical_date", None) or getattr(dag_run, "execution_date", None)
         return PipelineStatus(
             pipelineState=dag_run.get_state(),
-            runId=dag_run.run_id,
+            runId=str(pipeline_run_id(dag_run.dag_id, dag_run.run_id)),
             startDate=datetime_to_ts(dag_run.start_date),
             endDate=datetime_to_ts(dag_run.end_date),
             timestamp=datetime_to_ts(logical_date),

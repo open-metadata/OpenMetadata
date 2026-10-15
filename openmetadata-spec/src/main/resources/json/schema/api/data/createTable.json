@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/createTable.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateTableRequest",
   "description": "Schema corresponding to a table that belongs to a database",
   "type": "object",
@@ -42,6 +42,14 @@
       "type": "array",
       "items": {
         "$ref": "../../entity/data/table.json#/definitions/tableConstraint"
+      },
+      "default": null
+    },
+    "aliases": {
+      "description": "Alternate fully qualified SQL names that resolve to this table, such as SQL Server synonyms. Source-managed: the ingestion connector recomputes and overwrites this list on every run.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       },
       "default": null
     },
@@ -112,6 +120,10 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "certification": {
+      "description": "Certification for a table",
+      "$ref": "../../type/assetCertification.json"
     }
   },
   "required": ["name", "columns", "databaseSchema"],

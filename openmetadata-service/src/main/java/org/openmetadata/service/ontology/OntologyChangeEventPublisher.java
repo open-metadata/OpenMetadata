@@ -40,7 +40,7 @@ public final class OntologyChangeEventPublisher {
   }
 
   public void publish(
-      final EventType eventType, final EntityInterface entity, final String userName) {
+      final EventType eventType, final EntityInterface<?> entity, final String userName) {
     final String entityType = entityType(eventType);
     final ChangeEvent event = event(eventType, entityType, entity, userName);
     try {
@@ -58,7 +58,7 @@ public final class OntologyChangeEventPublisher {
   private ChangeEvent event(
       final EventType eventType,
       final String entityType,
-      final EntityInterface entity,
+      final EntityInterface<?> entity,
       final String userName) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())

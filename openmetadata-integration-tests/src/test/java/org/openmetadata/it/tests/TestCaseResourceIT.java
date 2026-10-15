@@ -20,6 +20,7 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -39,6 +40,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
@@ -53,16 +55,23 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.DimensionValue;
+import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
+import org.openmetadata.schema.tests.type.TestCaseErrorDetails;
+import org.openmetadata.schema.tests.type.TestCaseEvaluationScope;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableProfile.ProfileSampleType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -75,6 +84,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,6 +99,8 @@ import org.slf4j.LoggerFactory;
 public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   private static final Logger LOG = LoggerFactory.getLogger(TestCaseResourceIT.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  // The `fields` example documented on the testCaseResults search endpoints
+  private static final String TEST_CASE_RESULT_FIELDS = "testCase,testDefinition";
   private static final RetryConfig DEADLOCK_RETRY_CONFIG =
       RetryConfig.custom()
           .maxAttempts(3)
@@ -1131,6 +1143,217 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                     logicalSuite.getId());
               });
     }
+  }
+
+  @Test
+  void test_bulkRemoveTestCasesFromLogicalTestSuite(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase1 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("bulk_remove_1"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    TestCase testCase2 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("bulk_remove_2"))
+            .forTable(table)
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "2")
+            .create();
+
+    CreateTestSuite suiteReq = new CreateTestSuite();
+    suiteReq.setName(ns.prefix("logical_bulk_remove"));
+    TestSuite logicalSuite = client.testSuites().create(suiteReq);
+
+    addTestCasesToLogicalTestSuite(
+        client, logicalSuite.getId(), List.of(testCase1.getId(), testCase2.getId()));
+
+    bulkRemoveFromLogicalTestSuite(client, logicalSuite.getId(), List.of(testCase1.getId()));
+
+    TestSuite suiteWithTests = client.testSuites().get(logicalSuite.getId().toString(), "tests");
+    assertNotNull(suiteWithTests.getTests());
+    assertEquals(1, suiteWithTests.getTests().size());
+    assertEquals(testCase2.getId(), suiteWithTests.getTests().get(0).getId());
+
+    TestCase removed = client.testCases().get(testCase1.getId().toString(), "testSuites");
+    assertTrue(
+        removed.getTestSuites().stream().noneMatch(ts -> ts.getId().equals(logicalSuite.getId())),
+        "testCase1 should no longer belong to the logical suite");
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("test case removed from the logical suite is reindexed")
+          .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                assertSearchDocContainsTestSuite(
+                    queryTestCaseSearchSource(searchClient, testCase2.getId()),
+                    logicalSuite.getId());
+                JsonNode removedSource = queryTestCaseSearchSource(searchClient, testCase1.getId());
+                assertFalse(
+                    searchDocContainsTestSuite(removedSource, logicalSuite.getId()),
+                    "removed test case should not list the logical suite in search");
+              });
+    }
+  }
+
+  @Test
+  void test_bulkRemoveIgnoresIdsTheLogicalSuiteDoesNotContain(TestNamespace ns) {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+
+    // USER2 has no roles, so its only delete permission on these test cases comes from owning the
+    // table they hang off. It cannot edit the logical suite, which is what makes this exercise the
+    // per test case branch of the authorization check rather than the suite-wide one.
+    Table ownedTable = createTable(ns);
+    Table foreignTable = createTable(ns);
+    Table fetchedOwnedTable = adminClient.tables().get(ownedTable.getId().toString(), "owners");
+    fetchedOwnedTable.setOwners(List.of(shared.USER2_REF));
+    adminClient.tables().update(fetchedOwnedTable.getId().toString(), fetchedOwnedTable);
+
+    TestCase memberToRemove =
+        TestCaseBuilder.create(adminClient)
+            .name(ns.prefix("bulk_remove_member"))
+            .forTable(ownedTable)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    TestCase memberToKeep =
+        TestCaseBuilder.create(adminClient)
+            .name(ns.prefix("bulk_remove_keep"))
+            .forTable(ownedTable)
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "2")
+            .create();
+
+    // Never added to the suite, and owned by nobody, so USER2 cannot delete it either
+    TestCase nonMember =
+        TestCaseBuilder.create(adminClient)
+            .name(ns.prefix("bulk_remove_non_member"))
+            .forTable(foreignTable)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    CreateTestSuite suiteReq = new CreateTestSuite();
+    suiteReq.setName(ns.prefix("logical_bulk_remove_partial"));
+    TestSuite logicalSuite = adminClient.testSuites().create(suiteReq);
+    addTestCasesToLogicalTestSuite(
+        adminClient, logicalSuite.getId(), List.of(memberToRemove.getId(), memberToKeep.getId()));
+
+    // A member USER2 may remove, a test case the suite does not contain, and an id that does not
+    // resolve at all. The last two are ignored instead of failing the whole request.
+    bulkRemoveFromLogicalTestSuite(
+        SdkClients.user2Client(),
+        logicalSuite.getId(),
+        List.of(memberToRemove.getId(), nonMember.getId(), UUID.randomUUID()));
+
+    TestSuite suiteWithTests =
+        adminClient.testSuites().get(logicalSuite.getId().toString(), "tests");
+    assertNotNull(suiteWithTests.getTests());
+    assertEquals(1, suiteWithTests.getTests().size());
+    assertEquals(memberToKeep.getId(), suiteWithTests.getTests().get(0).getId());
+
+    // A member USER2 cannot delete still fails, so the ids above were skipped because the suite
+    // does not contain them and not because the authorization check stopped being applied
+    addTestCasesToLogicalTestSuite(adminClient, logicalSuite.getId(), List.of(nonMember.getId()));
+    assertThrows(
+        Exception.class,
+        () ->
+            bulkRemoveFromLogicalTestSuite(
+                SdkClients.user2Client(), logicalSuite.getId(), List.of(nonMember.getId())),
+        "USER2 should not be able to remove a test case it has no delete permission on");
+  }
+
+  @Test
+  void test_bulkAddAllRespectsSearchFilter(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table matchingTable = createTable(ns);
+    Table otherTable = createTable(ns);
+
+    TestCase matching1 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("filtered_all_1"))
+            .forTable(matchingTable)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    TestCase matching2 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("filtered_all_2"))
+            .forTable(matchingTable)
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "2")
+            .create();
+    TestCase excluded =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("filtered_all_other"))
+            .forTable(otherTable)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Filtered "all" resolves matches from the search index, so the test cases must be
+    // indexed before the bulk add runs.
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("test cases indexed before filtered bulk add")
+          .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                assertNotNull(queryTestCaseSearchSource(searchClient, matching1.getId()));
+                assertNotNull(queryTestCaseSearchSource(searchClient, matching2.getId()));
+                assertNotNull(queryTestCaseSearchSource(searchClient, excluded.getId()));
+              });
+    }
+
+    CreateTestSuite suiteReq = new CreateTestSuite();
+    suiteReq.setName(ns.prefix("logical_filtered_all"));
+    TestSuite logicalSuite = client.testSuites().create(suiteReq);
+
+    Map<String, Object> request = new HashMap<>();
+    request.put("testSuiteId", logicalSuite.getId().toString());
+    request.put("mode", "all");
+    request.put(
+        "selection",
+        Map.of(
+            "filter",
+            Map.of(
+                "entityLink",
+                "<#E::table::" + matchingTable.getFullyQualifiedName() + ">",
+                "includeAllTests",
+                true)));
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/dataQuality/testCases/logicalTestCases/bulk",
+            request,
+            RequestOptions.builder().build());
+
+    Awaitility.await("only the filtered subset is added to the logical suite")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              TestSuite updated = client.testSuites().get(logicalSuite.getId().toString(), "tests");
+              assertNotNull(updated.getTests());
+              List<UUID> ids = updated.getTests().stream().map(ref -> ref.getId()).toList();
+              assertEquals(2, ids.size(), "only the two matching-table test cases should be added");
+              assertTrue(ids.contains(matching1.getId()));
+              assertTrue(ids.contains(matching2.getId()));
+              assertFalse(
+                  ids.contains(excluded.getId()), "test case from other table must not be added");
+            });
   }
 
   @Test
@@ -2624,6 +2847,129 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     }
   }
 
+  /**
+   * A dimension result reports the bounds it was evaluated against, which differ from the
+   * configured ones once a failure threshold widens them. They have to survive the write and the
+   * read, or the dimension charts fall back to the configured range.
+   */
+  @Test
+  void test_dimensionResultKeepsTheBoundsItWasEvaluatedAgainst(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("dimension_bounds"))
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "90")
+            .parameter("maxValue", "120")
+            .create();
+    long timestamp = System.currentTimeMillis();
+
+    TestCaseDimensionResult dimensionResult =
+        new TestCaseDimensionResult()
+            .withId(UUID.randomUUID())
+            .withTestCaseResultId(UUID.randomUUID())
+            .withTimestamp(timestamp)
+            .withDimensionKey("channel=phone")
+            .withDimensionValues(
+                List.of(new DimensionValue().withName("channel").withValue("phone")))
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withMinBound(63.0)
+            .withMaxBound(156.0);
+    CreateTestCaseResult result = new CreateTestCaseResult();
+    result.setTimestamp(timestamp);
+    result.setTestCaseStatus(TestCaseStatus.Success);
+    result.setResult("passed");
+    result.setMinBound(63.0);
+    result.setMaxBound(156.0);
+    result.setDimensionResults(List.of(dimensionResult));
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/dimensionResults/"
+                    + URLEncoder.encode(testCase.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                        .replace("+", "%20"),
+                null,
+                RequestOptions.builder()
+                    .queryParam("startTs", String.valueOf(timestamp - 1))
+                    .queryParam("endTs", String.valueOf(timestamp + 1))
+                    .build());
+    TestCaseDimensionResult stored =
+        JsonUtils.readValue(response, new TypeReference<ResultList<TestCaseDimensionResult>>() {})
+            .getData()
+            .stream()
+            .filter(dim -> "channel=phone".equals(dim.getDimensionKey()))
+            .findFirst()
+            .orElseThrow();
+
+    assertEquals(63.0, stored.getMinBound());
+    assertEquals(156.0, stored.getMaxBound());
+  }
+
+  /**
+   * The UI shows which rows a verdict was measured on from the result's scope, never from its
+   * English message. The scope has to survive the write, and every dimension of the run inherits
+   * it: ingestion sends it once, on the run.
+   */
+  @Test
+  void post_testCaseResultWithEvaluationScope_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "result_evaluation_scope");
+    long timestamp = System.currentTimeMillis();
+    TestCaseEvaluationScope scope =
+        new TestCaseEvaluationScope()
+            .withSampled(true)
+            .withProfileSample(10.0)
+            .withProfileSampleType(ProfileSampleType.PERCENTAGE)
+            .withPartitioned(true)
+            .withPartitionColumnName("event_date");
+
+    CreateTestCaseResult create = new CreateTestCaseResult();
+    create.setTimestamp(timestamp);
+    create.setTestCaseStatus(TestCaseStatus.Failed);
+    create.setResult("failed");
+    create.setEvaluationScope(scope);
+    create.setDimensionResults(
+        List.of(
+            new TestCaseDimensionResult()
+                .withId(UUID.randomUUID())
+                .withTestCaseResultId(UUID.randomUUID())
+                .withTimestamp(timestamp)
+                .withDimensionKey("channel=web")
+                .withDimensionValues(
+                    List.of(new DimensionValue().withName("channel").withValue("web")))
+                .withTestCaseStatus(TestCaseStatus.Failed)));
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    assertEquals(
+        scope,
+        listTestCaseResults(testCase.getFullyQualifiedName()).getFirst().getEvaluationScope());
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/dimensionResults/"
+                    + URLEncoder.encode(testCase.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                        .replace("+", "%20"),
+                null,
+                RequestOptions.builder()
+                    .queryParam("startTs", String.valueOf(timestamp - 1))
+                    .queryParam("endTs", String.valueOf(timestamp + 1))
+                    .build());
+    TestCaseDimensionResult dimension =
+        JsonUtils.readValue(response, new TypeReference<ResultList<TestCaseDimensionResult>>() {})
+            .getData()
+            .getFirst();
+    assertEquals(scope, dimension.getEvaluationScope());
+  }
+
   private String searchTestCaseResults(String path, String query) {
     return SdkClients.adminClient()
         .getHttpClient()
@@ -2632,6 +2978,70 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             "/v1/dataQuality/testCases/testCaseResults" + path,
             null,
             RequestOptions.builder().queryParam("q", query).queryParam("limit", "10").build());
+  }
+
+  /**
+   * {@code testCaseResults/search/latest} validated its {@code fields} param against a placeholder
+   * allowed-fields set, so every real field name — including the endpoint's own documented example
+   * {@code testCase,testDefinition} — came back as HTTP 400. Pins the parity with the sibling
+   * {@code /search/list}, which resolves the allowed fields from the repository.
+   */
+  @Test
+  void test_testCaseResultSearchLatestWithFields(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("result_latest_fields"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    CreateTestCaseResult result = new CreateTestCaseResult();
+    result.setTimestamp(System.currentTimeMillis());
+    result.setTestCaseStatus(TestCaseStatus.Failed);
+    result.setResult("failed");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+
+    String testCaseFQN = testCase.getFullyQualifiedName();
+    // Independent of search convergence: the documented `fields` example must not be rejected.
+    assertDoesNotThrow(
+        () -> searchLatestTestCaseResult(testCaseFQN, TEST_CASE_RESULT_FIELDS),
+        "testCaseResults/search/latest must accept fields=" + TEST_CASE_RESULT_FIELDS);
+
+    Awaitility.await()
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              String response = searchLatestTestCaseResult(testCaseFQN, TEST_CASE_RESULT_FIELDS);
+              assertTrue(
+                  response != null && !response.isBlank(),
+                  "latest test case result must be returned once indexed");
+              JsonNode latest = JsonUtils.readTree(response);
+              assertEquals(testCaseFQN, latest.path("testCaseFQN").asText());
+              assertEquals(
+                  testCase.getId().toString(),
+                  latest.path("testCase").path("id").asText(),
+                  "the requested `testCase` field must be resolved, got: " + response);
+              assertFalse(
+                  latest.path("testDefinition").path("id").asText().isEmpty(),
+                  "the requested `testDefinition` field must be resolved, got: " + response);
+            });
+  }
+
+  private String searchLatestTestCaseResult(String testCaseFQN, String fields) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET,
+            "/v1/dataQuality/testCases/testCaseResults/search/latest",
+            null,
+            RequestOptions.builder()
+                .queryParam("testCaseFQN", testCaseFQN)
+                .queryParam("fields", fields)
+                .build());
   }
 
   /**
@@ -2747,6 +3157,54 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertThrows(
         org.openmetadata.sdk.exceptions.OpenMetadataException.class,
         () -> client.testCases().getFailedRowsSample(testCase.getId().toString()));
+  }
+
+  @Test
+  void test_failedRowsSampleMasksPiiColumnsNamedWithDifferentCase(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    Table withPii = client.tables().get(table.getId().toString(), "columns,tags");
+    withPii
+        .getColumns()
+        .get(1)
+        .setTags(
+            List.of(
+                new TagLabel()
+                    .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+                    .withSource(TagLabel.TagSource.CLASSIFICATION)));
+    client.tables().update(withPii.getId().toString(), withPii);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("pii_failed_rows_case"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new org.openmetadata.schema.api.tests.CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+                .withResult("Row count mismatch"));
+    // Failed-row samples validate column names ignoring case, so "NAME" is accepted for "name".
+    client
+        .testCases()
+        .addFailedRowsSample(
+            testCase.getId().toString(),
+            new org.openmetadata.schema.type.TableData()
+                .withColumns(List.of("ID", "NAME"))
+                .withRows(List.of(List.of("1", "Alice"))));
+    User reader = UserTestFactory.createUser(ns, "pii_failed_rows_reader");
+    OpenMetadataClient readerClient =
+        SdkClients.createClient(reader.getEmail(), reader.getEmail(), new String[] {});
+
+    org.openmetadata.schema.type.TableData masked =
+        readerClient.testCases().getFailedRowsSample(testCase.getId().toString());
+
+    assertEquals(List.of("ID", "NAME [MASKED]"), masked.getColumns());
+    assertEquals(List.of("1", PIIMasker.MASKED_VALUE), masked.getRows().getFirst());
   }
 
   private Table createTableWithName(TestNamespace ns, String nameSuffix) {
@@ -2905,7 +3363,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     request.setTestDefinition("tableRowCountToEqual");
     request.setParameterValues(
         List.of(new TestCaseParameterValue().withName("value").withValue("100")));
-    // TEAM11 is a Group team (TEAM1 is Department which can't own entities)
+    // TEAM11 aliases the shared Group team used for direct ownership.
     request.setOwners(List.of(shared.TEAM11.getEntityReference()));
 
     TestCase testCase = client.testCases().create(request);
@@ -3053,7 +3511,8 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 .withTestCaseReference(testCase.getFullyQualifiedName())
                 .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
                 .withTestCaseResolutionStatusDetails(
-                    new org.openmetadata.schema.tests.type.Resolved()));
+                    new org.openmetadata.schema.tests.type.Resolved()
+                        .withTestCaseFailureComment("Resolved by integration test")));
 
     // A resolve carries no test result, so only the targeted search update can clear the pointer.
     Awaitility.await("search/list incidentId cleared after resolve")
@@ -3279,7 +3738,9 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .withTestCaseReference(testCase.getFullyQualifiedName())
             .withTestCaseResolutionStatusType(
                 org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Resolved)
-            .withTestCaseResolutionStatusDetails(new org.openmetadata.schema.tests.type.Resolved());
+            .withTestCaseResolutionStatusDetails(
+                new org.openmetadata.schema.tests.type.Resolved()
+                    .withTestCaseFailureComment("Resolved by integration test"));
     client.testCaseResolutionStatuses().create(resolvedStatus);
 
     Awaitility.await()
@@ -3432,7 +3893,8 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 .withTestCaseReference(testCase.getFullyQualifiedName())
                 .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
                 .withTestCaseResolutionStatusDetails(
-                    new org.openmetadata.schema.tests.type.Resolved()));
+                    new org.openmetadata.schema.tests.type.Resolved()
+                        .withTestCaseFailureComment("Resolved by integration test")));
 
     Awaitility.await("Resolved clears the ongoing incident pointer")
         .atMost(90, TimeUnit.SECONDS)
@@ -3791,6 +4253,142 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void post_testWithInvalidFailureThreshold_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+    String columnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
+
+    InvalidRequestException negative =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createEntity(
+                    thresholdRequest(
+                        ns,
+                        "negative_threshold",
+                        columnLink,
+                        "columnValuesToBeNotNull",
+                        new TestCaseParameterValue().withName("threshold").withValue("-1"))));
+    assertTrue(
+        negative.getMessage().contains("threshold")
+            && negative.getMessage().contains("must not be negative"),
+        "The error must explain the negative threshold but was: " + negative.getMessage());
+
+    // A percentage of the failing rows cannot go past 100 for a row-countable test.
+    InvalidRequestException overHundred =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createEntity(
+                    thresholdRequest(
+                        ns,
+                        "percentage_over_100",
+                        columnLink,
+                        "columnValuesToBeNotNull",
+                        new TestCaseParameterValue().withName("threshold").withValue("150"),
+                        new TestCaseParameterValue()
+                            .withName("thresholdUnit")
+                            .withValue("PERCENTAGE"))));
+    assertTrue(
+        overHundred.getMessage().contains("cannot exceed 100"),
+        "The error must explain the 100% cap but was: " + overHundred.getMessage());
+
+    // A row tolerance means nothing on the `matchEnum: false` branch.
+    InvalidRequestException withoutMatchEnum =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createEntity(
+                    thresholdRequest(
+                        ns,
+                        "in_set_without_match_enum",
+                        columnLink,
+                        "columnValuesToBeInSet",
+                        new TestCaseParameterValue().withName("allowedValues").withValue("[1,2]"),
+                        new TestCaseParameterValue().withName("matchEnum").withValue("false"),
+                        new TestCaseParameterValue().withName("threshold").withValue("10"))));
+    assertTrue(
+        withoutMatchEnum.getMessage().contains("matchEnum"),
+        "The error must name matchEnum but was: " + withoutMatchEnum.getMessage());
+  }
+
+  @Test
+  void post_testWithStatisticalPercentageThresholdOver100_200(TestNamespace ns) {
+    Table table = createTable(ns);
+    String columnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
+
+    // The threshold is a deviation from the bounds here, not a share of the rows, so tolerating the
+    // mean being 200% off is loose but coherent — the cap is class-aware, not a blanket range
+    // check.
+    TestCase testCase =
+        createEntity(
+            thresholdRequest(
+                ns,
+                "mean_percentage_over_100",
+                columnLink,
+                "columnValueMeanToBeBetween",
+                new TestCaseParameterValue().withName("minValueForMeanInCol").withValue("10"),
+                new TestCaseParameterValue().withName("maxValueForMeanInCol").withValue("20"),
+                new TestCaseParameterValue().withName("threshold").withValue("200"),
+                new TestCaseParameterValue().withName("thresholdUnit").withValue("PERCENTAGE")));
+
+    assertNotNull(testCase.getId());
+  }
+
+  @Test
+  void post_and_put_testWithNegativeCustomSqlComparisonBound_200(TestNamespace ns) {
+    Table table = createTable(ns);
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    // `tableCustomSQLQuery` declares `thresholdUnit`, but its `threshold` is the bound the SQL
+    // result is compared against through `operator` rather than a failure tolerance, so a signed
+    // delta compared with `>=` legitimately carries a negative one.
+    TestCase testCase =
+        createEntity(
+            thresholdRequest(
+                ns,
+                "custom_sql_negative_bound",
+                tableLink,
+                "tableCustomSQLQuery",
+                new TestCaseParameterValue()
+                    .withName("sqlExpression")
+                    .withValue("SELECT SUM(c1) - SUM(c2) FROM t"),
+                new TestCaseParameterValue().withName("operator").withValue(">="),
+                new TestCaseParameterValue().withName("threshold").withValue("-25")));
+    assertNotNull(testCase.getId());
+
+    // `validateTestParameters` runs on update too, so the bound must also survive a PUT.
+    CreateTestCase update =
+        thresholdRequest(
+            ns,
+            "custom_sql_negative_bound",
+            tableLink,
+            "tableCustomSQLQuery",
+            new TestCaseParameterValue()
+                .withName("sqlExpression")
+                .withValue("SELECT SUM(c1) - SUM(c2) FROM t"),
+            new TestCaseParameterValue().withName("operator").withValue(">="),
+            new TestCaseParameterValue().withName("threshold").withValue("-50"));
+    update.setDescription("Tolerating a wider negative delta");
+    assertNotNull(updateEntity(testCase.getId().toString(), update).getId());
+  }
+
+  private CreateTestCase thresholdRequest(
+      TestNamespace ns,
+      String name,
+      String entityLink,
+      String testDefinition,
+      TestCaseParameterValue... parameterValues) {
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix(name));
+    request.setEntityLink(entityLink);
+    request.setTestDefinition(testDefinition);
+    request.setParameterValues(List.of(parameterValues));
+    return request;
+  }
+
+  @Test
   void post_testWithWrongCaseColumnName_4xx(TestNamespace ns) {
     // Note: The original test uses "C1" literal against column "c'_+# 1" - completely different
     // strings
@@ -3858,6 +4456,139 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   org.openmetadata.schema.tests.type.TestCaseStatus.Failed,
                   fetchedCase.getTestCaseResult().getTestCaseStatus());
             });
+  }
+
+  @Test
+  void post_testCaseResultWithDurationAndErrorDetails_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "result_error_details");
+    CreateTestCaseResult create = abortedResultWithErrorDetails();
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    assertDurationAndErrorDetails(
+        create,
+        client.testCases().get(testCase.getId().toString(), "testCaseResult").getTestCaseResult());
+
+    List<TestCaseResult> stored = listTestCaseResults(testCase.getFullyQualifiedName());
+    assertEquals(1, stored.size());
+    assertDurationAndErrorDetails(create, stored.getFirst());
+  }
+
+  @Test
+  void post_testCaseResultWithoutDurationOrErrorDetails_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "result_legacy_shape");
+    CreateTestCaseResult create = new CreateTestCaseResult();
+    create.setTimestamp(System.currentTimeMillis());
+    create.setTestCaseStatus(TestCaseStatus.Success);
+    create.setResult("legacy result");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    TestCaseResult stored = listTestCaseResults(testCase.getFullyQualifiedName()).getFirst();
+    assertEquals("legacy result", stored.getResult());
+    assertNull(stored.getDuration());
+    assertNull(stored.getErrorDetails());
+  }
+
+  @Test
+  void get_testCaseResultSearchLatestWithDurationAndErrorDetails_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "result_latest_error_details");
+    CreateTestCaseResult create = abortedResultWithErrorDetails();
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    Awaitility.await()
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              String response =
+                  searchLatestTestCaseResult(
+                      testCase.getFullyQualifiedName(), TEST_CASE_RESULT_FIELDS);
+              assertTrue(
+                  response != null && !response.isBlank(),
+                  "latest test case result must be returned once indexed");
+              assertDurationAndErrorDetails(
+                  create, JsonUtils.readValue(response, TestCaseResult.class));
+            });
+  }
+
+  @Test
+  void get_testCaseResultSearchLatestWithEvaluationScope_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "result_latest_evaluation_scope");
+    TestCaseEvaluationScope scope =
+        new TestCaseEvaluationScope()
+            .withSampled(true)
+            .withProfileSample(1000.0)
+            .withProfileSampleType(ProfileSampleType.ROWS);
+    CreateTestCaseResult create = new CreateTestCaseResult();
+    create.setTimestamp(System.currentTimeMillis());
+    create.setTestCaseStatus(TestCaseStatus.Success);
+    create.setResult("passed");
+    create.setEvaluationScope(scope);
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    Awaitility.await()
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              String response =
+                  searchLatestTestCaseResult(
+                      testCase.getFullyQualifiedName(), TEST_CASE_RESULT_FIELDS);
+              assertTrue(
+                  response != null && !response.isBlank(),
+                  "latest test case result must be returned once indexed");
+              assertEquals(
+                  scope, JsonUtils.readValue(response, TestCaseResult.class).getEvaluationScope());
+            });
+  }
+
+  private TestCase createRowCountTestCase(
+      OpenMetadataClient client, TestNamespace ns, String name) {
+    return TestCaseBuilder.create(client)
+        .name(ns.prefix(name))
+        .forTable(createTable(ns))
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+  }
+
+  /** The SDK's list call deserializes into raw maps, so read the typed payload directly. */
+  private List<TestCaseResult> listTestCaseResults(String testCaseFQN) {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/testCaseResults/" + testCaseFQN,
+                null,
+                RequestOptions.builder().build());
+    return JsonUtils.readValue(response, new TypeReference<ResultList<TestCaseResult>>() {})
+        .getData();
+  }
+
+  private static CreateTestCaseResult abortedResultWithErrorDetails() {
+    CreateTestCaseResult create = new CreateTestCaseResult();
+    create.setTimestamp(System.currentTimeMillis());
+    create.setTestCaseStatus(TestCaseStatus.Aborted);
+    create.setResult("Error computing tableRowCountToEqual: connection refused");
+    create.setDuration(1234.5);
+    create.setErrorDetails(
+        new TestCaseErrorDetails()
+            .withErrorType("OperationalError")
+            .withMessage("connection refused")
+            .withStackTrace("Traceback (most recent call last):\n  ...\nOperationalError"));
+    return create;
+  }
+
+  private static void assertDurationAndErrorDetails(
+      CreateTestCaseResult expected, TestCaseResult actual) {
+    assertNotNull(actual);
+    assertEquals(expected.getResult(), actual.getResult());
+    assertEquals(expected.getDuration(), actual.getDuration());
+    assertEquals(expected.getErrorDetails(), actual.getErrorDetails());
   }
 
   @Test
@@ -5665,6 +6396,21 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             RequestOptions.builder().build());
   }
 
+  private void bulkRemoveFromLogicalTestSuite(
+      OpenMetadataClient client, UUID testSuiteId, List<UUID> testCaseIds) {
+    Map<String, Object> request = new HashMap<>();
+    request.put("testSuiteId", testSuiteId.toString());
+    request.put("testCaseIds", testCaseIds.stream().map(UUID::toString).toList());
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/dataQuality/testCases/logicalTestCases/bulk/remove",
+            request,
+            RequestOptions.builder().build());
+  }
+
   private JsonNode queryTestCaseSearchSource(Rest5Client searchClient, UUID testCaseId)
       throws Exception {
     return querySearchSource(searchClient, getTestCaseSearchIndexName(), testCaseId);
@@ -5707,16 +6453,23 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   private void assertSearchDocContainsTestSuite(JsonNode source, UUID testSuiteId) {
     assertNotNull(source);
-    JsonNode testSuites = source.path("testSuites");
-    assertTrue(testSuites.isArray(), "testSuites should be indexed in the search document");
-    boolean found = false;
-    for (JsonNode suite : testSuites) {
+    assertTrue(
+        source.path("testSuites").isArray(), "testSuites should be indexed in the search document");
+    assertTrue(
+        searchDocContainsTestSuite(source, testSuiteId),
+        "search document testSuites should contain " + testSuiteId);
+  }
+
+  private boolean searchDocContainsTestSuite(JsonNode source, UUID testSuiteId) {
+    if (source == null) {
+      return false;
+    }
+    for (JsonNode suite : source.path("testSuites")) {
       if (testSuiteId.toString().equals(suite.path("id").asText())) {
-        found = true;
-        break;
+        return true;
       }
     }
-    assertTrue(found, "search document testSuites should contain " + testSuiteId);
+    return false;
   }
 
   private void assertSearchDocContainsTestCase(JsonNode source, UUID testCaseId) {

@@ -12,16 +12,14 @@
  */
 
 import {
-  Badge,
   Box,
-  Button,
   EmptyPlaceholder,
-  Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CheckCircle, Edit01, Trash01, XCircle } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import React, {
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -30,16 +28,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
-import DeleteModal from '../../../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { UserTeamSelectableList } from '../../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { Operation } from '../../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
   Task,
@@ -48,40 +40,53 @@ import {
   TaskType,
 } from '../../../../../generated/entity/tasks/task';
 import { EntityReference } from '../../../../../generated/entity/teams/user';
-import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
-import { TestCasePageTabs } from '../../../../../pages/IncidentManager/IncidentManager.interface';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
 import {
   addTaskComment,
-  deleteTaskComment,
-  editTaskComment,
   getTaskById,
   resolveTask,
-  TaskComment,
 } from '../../../../../rest/tasksAPI';
 import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import {
-  getFrontEndFormat,
-  MarkdownToHTMLConverter,
-} from '../../../../../utils/FeedUtilsPure';
-import { getTestCaseDetailPagePath } from '../../../../../utils/RouterUtils';
+  EXTENSION_POINTS,
+  InboxTaskPanelContribution,
+} from '../../../../../utils/ExtensionPointTypes';
 import { getPermissionErrorText } from '../../../../../utils/StringUtils';
 import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUtils';
-import { getTaskDetailPathFromTask } from '../../../../../utils/TaskNavigationUtils';
+import { getTaskAboutPath } from '../../../../../utils/TaskNavigationUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import { getTaskStatusBadge } from '../taskResolution.utils';
+import { useApplicationsProvider } from '../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { formatInboxDate, isTaskOpen } from '../inbox.utils';
 import {
+  getTaskDetailDescriptor,
+  resolveIncidentTestCaseFqn,
+  withExistingValues,
+} from '../taskDetail.utils';
+import {
+  getTaskStatusBadge,
+  getTaskStatusLabel,
+} from '../taskResolution.utils';
+import {
+  applyActionLabels,
   buildResolveBody,
+  getReassignBlocker,
   getTaskResolveActions,
   TaskResolveAction,
 } from '../taskResolve.utils';
-import { getTaskTitle } from '../taskTitle.utils';
+import { getTaskTitleParts } from '../taskTitle.utils';
+import { useCurrentUserIds } from '../useCurrentUserIds';
+import { useIsScrolled } from '../useIsScrolled';
+import { useTaskAboutEntity } from '../useTaskAboutEntity';
+import ClampedText from './ClampedText';
 import InboxCommentComposer from './InboxCommentComposer';
 import TaskActionCommentModal from './TaskActionCommentModal';
 import TaskActivityTimeline from './TaskActivityTimeline';
+import TaskAssetCard from './TaskAssetCard';
+import TaskDetailHeader from './TaskDetailHeader';
 import TaskDetailSkeleton from './TaskDetailSkeleton';
-import TaskOverview from './TaskOverview';
+import TaskDetailSummary from './TaskDetailSummary';
+import TaskTitleEntityBadge from './TaskTitleEntityBadge';
 
 const TASK_FIELDS =
   'about,createdBy,reviewers,assignees,resolution,approvedBy,approvedAt,availableTransitions,payload,comments';
@@ -139,147 +144,129 @@ const matchAssetToken = (
   return null;
 };
 
-interface TaskCommentRowProps {
-  comment: TaskComment;
-  taskId: string;
-  // Reload the task after an edit or delete so the comment list stays in sync.
-  onChanged: () => void;
+// The title reads as plain text in the heading's font and colour; only the
+// hover underline says it links to the asset. `!` beats the legacy
+// `.prose-typography a` rule (fonts.less), which makes Typography's links 14px
+// and blue.
+const TITLE_LINK_CLASS =
+  'tw:[font:inherit]! tw:text-inherit! tw:no-underline! tw:hover:underline!';
+
+interface AssetSpan {
+  index: number;
+  end: number;
 }
 
+// Locates the title token (display name, raw name, or last FQN segment) that
+// carries the asset, so both "…dim_address_clean" and
+// "…dim_address_clean_changed" colour the whole trailing identifier.
+const computeAssetSpan = (
+  task: Task,
+  titleText: string,
+  aboutPath: string,
+  incidentTestCaseFqn: string
+): AssetSpan => {
+  if (!aboutPath) {
+    return { index: -1, end: -1 };
+  }
+
+  const aboutRef = task.about;
+  const assetCandidates = aboutRef
+    ? [
+        getEntityName(aboutRef),
+        aboutRef.name,
+        aboutRef.fullyQualifiedName?.split('.').pop(),
+      ]
+    : [incidentTestCaseFqn.split('.').pop()];
+  const assetMatch = assetCandidates
+    .map((candidate) =>
+      candidate ? matchAssetToken(titleText, candidate) : null
+    )
+    .find((match) => match);
+
+  return assetMatch
+    ? { index: assetMatch.index, end: assetMatch.index + assetMatch.length }
+    : { index: -1, end: -1 };
+};
+
 /**
- * A single task comment with author, message and timestamp. The comment's author
- * can edit or delete it (admins can also delete); the actions surface on hover.
- * Mirrors the activity-drawer CommentRow, but drives the task comment endpoints.
+ * The task title with its asset token (or the whole title, if no token is
+ * found) turned into a link to the about entity's Activity Feed → Tasks tab —
+ * or, for an incident with no `about`, the derived test case's Issues tab.
  */
-const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
-  comment,
-  taskId,
-  onChanged,
-}) => {
-  const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
-  const authorName = getEntityName(comment.author);
-
-  const isAuthor =
-    Boolean(currentUser?.name) && comment.author?.name === currentUser?.name;
-  const canEdit = isAuthor;
-  const canDelete = isAuthor || Boolean(currentUser?.isAdmin);
-
-  const [isHovered, setIsHovered] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleEditSave = useCallback(
-    async (message: string) => {
-      if (!message) {
-        return;
-      }
-      try {
-        await editTaskComment(taskId, comment.id, message);
-        setIsEditing(false);
-        onChanged();
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    },
-    [taskId, comment.id, onChanged]
+const resolveTaskAboutTitle = (task: Task, titleText: string): ReactNode => {
+  const incidentTestCaseFqn = resolveIncidentTestCaseFqn(task);
+  const aboutPath = getTaskAboutPath(task, incidentTestCaseFqn);
+  const { index: assetIndex, end: assetEnd } = computeAssetSpan(
+    task,
+    titleText,
+    aboutPath,
+    incidentTestCaseFqn
   );
 
-  const handleDelete = useCallback(async () => {
-    setIsDeleting(true);
-    try {
-      await deleteTaskComment(taskId, comment.id);
-      setShowDeleteDialog(false);
-      onChanged();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsDeleting(false);
-    }
-  }, [taskId, comment.id, onChanged]);
+  if (assetIndex >= 0) {
+    return (
+      <>
+        {titleText.slice(0, assetIndex)}
+        <Link
+          className={TITLE_LINK_CLASS}
+          data-testid="task-about-link"
+          to={aboutPath}>
+          {titleText.slice(assetIndex, assetEnd)}
+        </Link>
+        {titleText.slice(assetEnd)}
+      </>
+    );
+  }
+
+  if (aboutPath) {
+    // No asset token in the title: the whole title links to the asset.
+    return (
+      <Link
+        className={TITLE_LINK_CLASS}
+        data-testid="task-about-link"
+        to={aboutPath}>
+        {titleText}
+      </Link>
+    );
+  }
+
+  return titleText;
+};
+
+/** Who raised the task and when, led by their avatar. */
+const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
+  task,
+  subtitleKey,
+}) => {
+  const { t } = useTranslation();
+  // A closed task reads as its outcome — "Rejected by harsh.soni on Jul 21,
+  // 2026" — led by whoever decided it, rather than by its request.
+  const resolver = isTaskOpen(task) ? undefined : task.resolution?.resolvedBy;
+  const person = resolver ?? task.createdBy;
+  const text = resolver
+    ? t('message.task-outcome-by-on', {
+        status: getTaskStatusBadge(task, t)?.label,
+        user: getEntityName(resolver),
+        date: formatInboxDate(task.resolution?.resolvedAt),
+      })
+    : t(subtitleKey, {
+        user: getEntityName(task.createdBy),
+        time: getRelativeTime(task.createdAt),
+      });
 
   return (
-    <Box
-      className="tw:relative"
-      data-testid="task-comment-card"
-      direction="col"
-      gap={2}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
-      <Box align="center" className="tw:justify-between" gap={2}>
-        <Box align="center" gap={2}>
-          <ProfilePicture
-            displayName={authorName}
-            name={comment.author?.name ?? ''}
-            width="28"
-          />
-          <Typography size="text-sm" weight="semibold">
-            {authorName}
-          </Typography>
-        </Box>
-        {isHovered && !isEditing && (canEdit || canDelete) && (
-          <Box align="center" data-testid="task-comment-actions" gap={1}>
-            {canEdit && (
-              <Edit01
-                className="tw:cursor-pointer tw:text-secondary"
-                data-testid="edit-task-comment"
-                height={16}
-                width={16}
-                onClick={() => setIsEditing(true)}
-              />
-            )}
-            {canDelete && (
-              <Trash01
-                className="tw:cursor-pointer tw:text-error-primary"
-                data-testid="delete-task-comment"
-                height={16}
-                width={16}
-                onClick={() => setShowDeleteDialog(true)}
-              />
-            )}
-          </Box>
-        )}
-      </Box>
-      {isEditing ? (
-        <Box data-testid="edit-task-comment-editor" direction="col" gap={2}>
-          <ActivityFeedEditorNew
-            focused
-            defaultValue={MarkdownToHTMLConverter.makeHtml(
-              getFrontEndFormat(comment.message)
-            )}
-            onSave={handleEditSave}
-          />
-          <Box align="center" className="tw:justify-end">
-            <Button
-              color="link-gray"
-              data-testid="cancel-edit-task-comment"
-              size="sm"
-              onPress={() => setIsEditing(false)}>
-              {t('label.cancel')}
-            </Button>
-          </Box>
-        </Box>
-      ) : (
-        <Box className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-utility-gray-blue-50 tw:px-4 tw:py-3">
-          <RichTextEditorPreviewerV1
-            className="inbox-feed-message tw:text-sm"
-            markdown={getFrontEndFormat(comment.message)}
-          />
-        </Box>
+    <Box align="center" gap={2}>
+      {person && (
+        <ProfilePicture
+          matchRingToFill
+          displayName={getEntityName(person)}
+          name={person.name ?? ''}
+          width="20"
+        />
       )}
-      <Typography className="tw:text-secondary" size="text-xs">
-        {getRelativeTime(comment.createdAt)}
+      <Typography className="tw:text-tertiary" size="text-sm">
+        {text}
       </Typography>
-
-      <DeleteModal
-        entityTitle={t('label.comment')}
-        isDeleting={isDeleting}
-        message={t('message.confirm-delete-message')}
-        open={showDeleteDialog}
-        onCancel={() => setShowDeleteDialog(false)}
-        onDelete={handleDelete}
-      />
     </Box>
   );
 };
@@ -292,9 +279,16 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   onCommentsChanged,
 }) => {
   const { t } = useTranslation();
+  const { isScrolled: isBodyScrolled, onScroll: onBodyScroll } =
+    useIsScrolled();
   const { getEntityPermission } = usePermissionProvider();
+  const { extensionRegistry } = useApplicationsProvider();
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
+  // The task id whose full record has loaded. The list row the panel opens with
+  // lacks availableTransitions, so actions wait for it — but only the first
+  // time: a reload after a comment keeps the buttons and status steady.
+  const [loadedTaskId, setLoadedTaskId] = useState<string>();
   // Gates DAR approve/reject/resolve so a self-approval deny (isTaskFiler) hides
   // the buttons. Fail closed: false until the permission resolves so a self-filed
   // DAR never flashes the buttons. Non-DAR tasks are never gated below.
@@ -316,6 +310,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     try {
       const res = await getTaskById(taskId, { fields: TASK_FIELDS });
       setTask(res.data);
+      setLoadedTaskId(taskId);
       result = res.data;
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -388,14 +383,42 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     };
   }, [isLegacyTask, taskType, taskCategory]);
 
+  // A plugin can refine how a task type it owns renders — its summary rows, its
+  // stat tiles — without owning the pane. The first matching contribution wins.
+  const contribution = useMemo(
+    () =>
+      task
+        ? extensionRegistry
+            .getContributions<InboxTaskPanelContribution>(
+              EXTENSION_POINTS.INBOX_TASK_PANELS
+            )
+            .find((panel) => panel.condition(task))
+        : undefined,
+    [extensionRegistry, task]
+  );
+
+  const descriptor = useMemo(
+    () =>
+      task
+        ? getTaskDetailDescriptor(task, t, contribution?.describe?.(task, t))
+        : undefined,
+    [task, contribution, t]
+  );
+
+  // Actions wait for the full task: from the list row alone a workflow task
+  // would offer the legacy resolve path.
+  const hasFullTask = loadedTaskId === taskId;
   const actions = useMemo(() => {
-    if (!task || isSyncingTransitions) {
+    if (!task || !hasFullTask || isSyncingTransitions) {
       return [];
     }
-    const effective = getTaskResolveActions(
-      task,
-      { approve: t('label.approve'), reject: t('label.reject') },
-      formSchema
+    const effective = applyActionLabels(
+      getTaskResolveActions(
+        task,
+        { approve: t('label.approve'), reject: t('label.reject') },
+        formSchema
+      ),
+      descriptor?.actionLabels
     ).filter((action) => !consumedTransitionIdsRef.current.has(action.id));
 
     // Drop resolve actions when ResolveTask is denied (self-approval); keep
@@ -410,7 +433,15 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     }
 
     return effective;
-  }, [task, isSyncingTransitions, canResolveTask, formSchema, t]);
+  }, [
+    task,
+    hasFullTask,
+    isSyncingTransitions,
+    canResolveTask,
+    formSchema,
+    descriptor,
+    t,
+  ]);
 
   // Stop an in-flight sync on unmount: no state set, no timer left behind.
   useEffect(
@@ -433,32 +464,42 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       const run = syncRunRef.current + 1;
       syncRunRef.current = run;
       const isStale = () => syncRunRef.current !== run;
+
+      // One re-read after `delayMs`. True once the engine has moved past the
+      // consumed transition, which ends the sync.
+      const hasAdvanced = async (delayMs: number): Promise<boolean> => {
+        await new Promise((resolve) => {
+          syncTimerRef.current = setTimeout(resolve, delayMs);
+        });
+        if (isStale()) {
+          return true;
+        }
+        const { data: fresh } = await getTaskById(taskId, {
+          fields: TASK_FIELDS,
+        });
+        if (isStale()) {
+          return true;
+        }
+        const stillEchoed = (fresh.availableTransitions ?? []).some(
+          (transition: TaskAvailableTransition) => transition.id === consumedId
+        );
+        if (stillEchoed) {
+          return false;
+        }
+        consumedTransitionIdsRef.current.delete(consumedId);
+        setTask(fresh);
+
+        return true;
+      };
+
       setIsSyncingTransitions(true);
       try {
-        for (const interval of TRANSITION_SYNC_INTERVALS_MS) {
-          await new Promise((resolve) => {
-            syncTimerRef.current = setTimeout(resolve, interval);
-          });
-          if (isStale()) {
-            return;
-          }
-          const { data: fresh } = await getTaskById(taskId, {
-            fields: TASK_FIELDS,
-          });
-          if (isStale()) {
-            return;
-          }
-          const stillEchoed = (fresh.availableTransitions ?? []).some(
-            (transition: TaskAvailableTransition) =>
-              transition.id === consumedId
-          );
-          if (!stillEchoed) {
-            consumedTransitionIdsRef.current.delete(consumedId);
-            setTask(fresh);
-
-            return;
-          }
+        // Two attempts, written out rather than looped: this polls one task for
+        // a state change, which is not the per-item fetching a loop would imply.
+        if (await hasAdvanced(TRANSITION_SYNC_INTERVALS_MS[0])) {
+          return;
         }
+        await hasAdvanced(TRANSITION_SYNC_INTERVALS_MS[1]);
       } catch {
         // Keep the consumed transition hidden; the task itself still renders.
       } finally {
@@ -550,14 +591,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           displayName,
         })
       );
-      // A workflow user-task needs an assignee; reject an empty selection with
-      // feedback instead of firing a no-op reassign.
-      if (assignees.length === 0) {
-        showErrorToast(
-          t('message.field-text-is-required', {
-            fieldText: t('label.assignee-plural'),
-          })
-        );
+      // A reassign that would leave the task unassigned, or assigned to the
+      // same people, says why instead of reaching the workflow.
+      const blocker = getReassignBlocker(task?.assignees ?? [], assignees, t);
+      if (blocker) {
+        showErrorToast(blocker);
 
         return;
       }
@@ -566,7 +604,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         isAssigneeChange: true,
       });
     },
-    [runTransition, t]
+    [runTransition, t, task?.assignees]
   );
 
   const handleAddComment = useCallback(
@@ -574,17 +612,25 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       if (!task || !message) {
         return;
       }
+      // A refused comment rejects, so the composer puts the draft back; the
+      // refresh after a saved one does not.
       try {
         await addTaskComment(task.id, message);
-        await handleCommentMutated();
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        throw error;
       }
+      await handleCommentMutated();
     },
     [task, handleCommentMutated]
   );
 
-  if (!task) {
+  const { about, isLoading: isAboutLoading } = useTaskAboutEntity(task);
+
+  const currentUserIds = useCurrentUserIds();
+
+  if (!task || !descriptor) {
     return isLoading ? (
       <TaskDetailSkeleton />
     ) : (
@@ -598,215 +644,98 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     );
   }
 
-  const comments = [...(task.comments ?? [])].sort(
-    (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)
-  );
-  const statusBadge = getTaskStatusBadge(task, t);
+  const statusBadge = getTaskStatusLabel(task, currentUserIds, t);
   // Titleless tasks (governance workflows) carry the taskId as their name, so
-  // getTaskTitle composes a title from the task type and the entity it is about
+  // getTaskTitleParts composes a title from the task type and the entity it is about
   // instead of repeating the id.
-  const titleText = getTaskTitle(task, t);
-  const aboutRef = task.about;
-  // Incident tasks carry no `about`; the failing test case FQN only appears in
-  // the description ("New incident for test case: <fqn>") as the trailing token.
-  const incidentTestCaseFqn =
-    !aboutRef?.fullyQualifiedName && task.category === TaskCategory.Incident
-      ? (task.description ?? '').trim().split(/\s+/).pop() ?? ''
-      : '';
-  // getTaskDetailPathFromTask maps the about entity to its Activity Feed → Tasks
-  // tab, honouring per-type routes (glossaryTerm → /glossary, testCase, user, …).
-  // Incidents fall back to the derived test case's Issues tab.
-  const aboutPath = aboutRef?.fullyQualifiedName
-    ? getTaskDetailPathFromTask(task)
-    : incidentTestCaseFqn.includes('.')
-    ? getTestCaseDetailPagePath(incidentTestCaseFqn, TestCasePageTabs.ISSUES)
-    : '';
-  // Highlight the title token (display name, raw name, or last FQN segment)
-  // that carries the asset, so both "…dim_address_clean" and
-  // "…dim_address_clean_changed" colour the whole trailing identifier.
-  const assetCandidates = aboutRef
-    ? [
-        getEntityName(aboutRef),
-        aboutRef.name,
-        aboutRef.fullyQualifiedName?.split('.').pop(),
-      ]
-    : [incidentTestCaseFqn.split('.').pop()];
-  const assetMatch = aboutPath
-    ? assetCandidates
-        .map((candidate) =>
-          candidate ? matchAssetToken(titleText, candidate) : null
-        )
-        .find((match) => match)
-    : null;
-  const assetIndex = assetMatch?.index ?? -1;
-  const assetEnd = assetMatch ? assetMatch.index + assetMatch.length : -1;
-  const titleNode =
-    assetIndex >= 0 ? (
-      <>
-        {titleText.slice(0, assetIndex)}
-        <Link
-          className="tw:text-utility-blue-dark-500 tw:no-underline! tw:font-medium! tw:hover:underline!"
-          data-testid="task-about-link"
-          to={aboutPath}>
-          {titleText.slice(assetIndex, assetEnd)}
-        </Link>
-        {titleText.slice(assetEnd)}
-      </>
-    ) : aboutPath ? (
-      // No asset token in the title — keep the whole title in normal colour
-      // (still clickable), so the header never turns fully blue.
-      <Link
-        className="tw:text-inherit tw:no-underline! tw:hover:underline!"
-        data-testid="task-about-link"
-        to={aboutPath}>
-        {titleText}
-      </Link>
-    ) : (
-      titleText
-    );
-  // Not using Typography's `ellipsis` here: it wraps content in a pressable and
-  // stringifies children, which would drop the asset Link. A plain line-clamp
-  // keeps the two-row clamp while preserving the inline link.
+  const { title: titleText, entityType: titleEntityType } = getTaskTitleParts(
+    task,
+    t
+  );
+  // Two lines, the full title in a tooltip when clamped; see ClampedText for
+  // why Typography's own `ellipsis` cannot hold the inline asset link.
   const title = titleText ? (
-    <Typography
-      className="tw:line-clamp-2 tw:break-words tw:text-left"
-      size="text-lg"
-      weight="semibold">
-      {titleNode}
-    </Typography>
+    <ClampedText text={titleText}>
+      <Typography size="text-md" weight="medium">
+        {resolveTaskAboutTitle(task, titleText)}
+      </Typography>
+      <TaskTitleEntityBadge entityType={titleEntityType} />
+    </ClampedText>
   ) : null;
+  const LegacyPanel = contribution?.component;
 
   return (
     <Box
-      className="tw:h-full tw:w-full"
+      className="tw:h-full tw:w-full tw:min-h-0"
       data-testid="task-detail-panel"
-      direction="col"
-      gap={4}>
-      <Box align="start" className="tw:justify-between tw:gap-3">
-        <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-          <Box align="center" gap={2}>
-            <Typography className="tw:text-secondary" size="text-xs">
-              {`#${task.taskId ?? ''}`}
-            </Typography>
-            {statusBadge && (
-              <Badge
-                color={statusBadge.tone}
-                data-testid="task-status-badge"
-                size="sm"
-                type="color">
-                {statusBadge.label}
-              </Badge>
-            )}
-          </Box>
+      direction="col">
+      {/* Lifts off the body with a light shadow once it scrolls under it. */}
+      <Box
+        className={classNames(
+          'tw:relative tw:z-10 tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:py-5 tw:transition-shadow',
+          isBodyScrolled && 'tw:shadow-sm'
+        )}
+        direction="col">
+        <TaskDetailHeader
+          actions={actions}
+          loadingTransitionId={loadingTransitionId}
+          statusBadge={statusBadge}
+          task={task}
+          typeBadge={descriptor.typeBadge}
+          onAssigneeUpdate={handleAssigneeTransition}
+          onTransition={handleTransition}
+        />
+
+        <Box direction="col" gap={2}>
           {title}
-        </Box>
-        <Box align="center" className="tw:shrink-0" gap={2}>
-          {actions.map((action) => {
-            const approve = action.kind === 'approve';
-            const reject = action.kind === 'reject';
-            const isBusy = loadingTransitionId === action.id;
-            const isDisabled =
-              loadingTransitionId !== undefined &&
-              loadingTransitionId !== action.id;
-
-            // Native button trigger: the AntD Popover injects onClick via
-            // cloneElement, which the react-aria Button would swallow.
-            if (action.kind === 'assignee') {
-              return (
-                <UserTeamSelectableList
-                  hasPermission
-                  key={action.id}
-                  label={t('label.assignee-plural')}
-                  multiple={{ user: false, team: false }}
-                  owner={task.assignees ?? []}
-                  onUpdate={handleAssigneeTransition(action)}>
-                  <button
-                    className={
-                      'tw:cursor-pointer tw:rounded-md tw:border tw:border-secondary ' +
-                      'tw:bg-primary tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold ' +
-                      'tw:text-secondary tw:shadow-xs tw:hover:bg-secondary ' +
-                      'tw:disabled:cursor-not-allowed tw:disabled:opacity-50'
-                    }
-                    data-testid={`task-transition-${action.id}`}
-                    disabled={isDisabled || isBusy}
-                    type="button">
-                    {action.label}
-                  </button>
-                </UserTeamSelectableList>
-              );
-            }
-
-            return (
-              <Button
-                color={
-                  reject
-                    ? 'secondary-destructive'
-                    : approve || action.id === 'resolve'
-                    ? 'primary'
-                    : 'secondary'
-                }
-                data-testid={
-                  approve
-                    ? 'task-approve'
-                    : reject
-                    ? 'task-reject'
-                    : `task-transition-${action.id}`
-                }
-                iconLeading={
-                  approve ? (
-                    <CheckCircle height={16} width={16} />
-                  ) : reject ? (
-                    <XCircle height={16} width={16} />
-                  ) : undefined
-                }
-                isDisabled={isDisabled}
-                isLoading={isBusy}
-                key={action.id}
-                size="sm"
-                onClick={handleTransition(action)}>
-                {action.label}
-              </Button>
-            );
-          })}
+          <TaskByline subtitleKey={descriptor.subtitleKey} task={task} />
         </Box>
       </Box>
 
-      <Tabs defaultSelectedKey="overview">
-        <Tabs.List
-          className="tw:bg-primary tw:-mx-5 tw:px-5"
-          size="sm"
-          type="underline">
-          <Tabs.Item id="overview" label={t('label.overview')} />
-          <Tabs.Item id="activity" label={t('label.activity')} />
-        </Tabs.List>
+      {/* Sections keep their height and the body scrolls: a flex child with
+          overflow-hidden (the asset card) would otherwise shrink to nothing. */}
+      <Box
+        className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-7 tw:py-6 tw:*:shrink-0"
+        direction="col"
+        gap={6}
+        onScroll={onBodyScroll}>
+        <TaskAssetCard
+          StatTiles={contribution?.stats}
+          about={about}
+          isLoading={isAboutLoading}
+          task={task}
+        />
 
-        <Tabs.Panel id="overview">
-          <Box className="tw:pb-6 tw:pt-5" direction="col" gap={5}>
-            <TaskOverview task={task} />
+        {LegacyPanel ? (
+          <LegacyPanel id={task.id} task={task} />
+        ) : (
+          <TaskDetailSummary
+            callout={descriptor.callout}
+            change={withExistingValues(descriptor.change, task, about?.entity)}
+            rows={descriptor.rows}
+          />
+        )}
 
-            <Box direction="col" gap={4}>
-              <Typography weight="medium">
-                {t('label.comment-plural')}
-              </Typography>
-              <InboxCommentComposer onSave={handleAddComment} />
-              {comments.map((comment: TaskComment) => (
-                <TaskCommentRow
-                  comment={comment}
-                  key={comment.id}
-                  taskId={task.id}
-                  onChanged={handleCommentMutated}
-                />
-              ))}
-            </Box>
-          </Box>
-        </Tabs.Panel>
+        <TaskActivityTimeline
+          createdEvent={descriptor.createdEvent}
+          incidentStatuses={about?.incidentStatuses}
+          task={task}
+          onCommentChanged={handleCommentMutated}
+        />
+      </Box>
 
-        <Tabs.Panel id="activity">
-          <Box className="tw:pt-5">
-            <TaskActivityTimeline task={task} />
-          </Box>
-        </Tabs.Panel>
-      </Tabs>
+      <Box
+        className="tw:relative tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4 tw:dark:bg-secondary"
+        direction="col"
+        gap={2}>
+        {/* A soft shade above the footer, so the activity reads as scrolling
+            under the composer rather than stopping at a line. */}
+        <span
+          aria-hidden
+          className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-full tw:h-8 tw:bg-linear-to-t tw:from-secondary tw:to-transparent"
+        />
+        <InboxCommentComposer onSave={handleAddComment} />
+      </Box>
 
       <TaskActionCommentModal
         actionLabel={commentAction?.label ?? t('label.submit')}

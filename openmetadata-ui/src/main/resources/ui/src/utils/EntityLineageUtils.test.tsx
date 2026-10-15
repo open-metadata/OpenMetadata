@@ -12,15 +12,15 @@
  */
 
 import { Edge, Node } from 'reactflow';
-import {
-  EdgeDetails,
-  LineageData,
-  LineageNodeType,
-} from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage, ColumnLineage } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
+import {
+  EdgeDetails,
+  LineageData,
+  LineageNodeType,
+} from '../interface/lineage.interface';
 import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
 import {
@@ -1014,6 +1014,25 @@ describe('Test EntityLineageUtils utility', () => {
       expect(result).toEqual({
         children: [],
         childrenHeading: 'label.field-plural',
+        childrenCount: 0,
+      });
+    });
+
+    it('should expose a METRIC entity as its own single lineage endpoint', () => {
+      const node = {
+        id: 'metric-id',
+        type: EntityType.METRIC,
+        entityType: EntityType.METRIC,
+        name: 'total_sales',
+        fullyQualifiedName: 'metricService.total_sales',
+      };
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
+
+      expect(result).toEqual({
+        children: [node],
+        childrenHeading: 'label.metric',
         childrenCount: 0,
       });
     });

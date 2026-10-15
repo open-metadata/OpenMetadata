@@ -9,6 +9,8 @@ import com.cronutils.parser.CronParser;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppSchedule;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -22,28 +24,27 @@ public class MigrationUtil {
   }
 
   public static void migrateCronExpression(CollectionDAO daoCollection) {
-    try {
-      CronMapper quartzToUnixMapper = CronMapper.fromQuartzToUnix();
-      CronParser quartzParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
-      ListFilter filter = new ListFilter(Include.ALL);
-      List<String> jsons =
-          daoCollection.applicationDAO().listAfter(filter, Integer.MAX_VALUE, "", "");
-      for (String jsonStr : jsons) {
+    CronMapper quartzToUnixMapper = CronMapper.fromQuartzToUnix();
+    CronParser quartzParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
+    ListFilter filter = new ListFilter(Include.ALL);
+    List<String> jsons =
+        daoCollection.applicationDAO().listAfter(filter, Integer.MAX_VALUE, "", "");
+    for (String jsonStr : jsons) {
+      try {
         App application = JsonUtils.readValue(jsonStr, App.class);
-        String cronExpression = application.getAppSchedule().getCronExpression();
-        Cron quartzCronExpression = quartzParser.parse(cronExpression);
+        AppSchedule appSchedule = application.getAppSchedule();
+        if (appSchedule == null
+            || appSchedule.getScheduleTimeline() != ScheduleTimeline.CUSTOM
+            || appSchedule.getCronExpression() == null) {
+          continue;
+        }
+        Cron quartzCronExpression = quartzParser.parse(appSchedule.getCronExpression());
         String unixCron = quartzToUnixMapper.map(quartzCronExpression).asString();
-        application.getAppSchedule().setCronExpression(unixCron);
+        appSchedule.setCronExpression(unixCron);
         daoCollection.applicationDAO().update(application);
+      } catch (Exception ex) {
+        LOG.warn("Skipping cron migration for an app due to: {}", ex.getMessage());
       }
-    } catch (IllegalArgumentException e) {
-      LOG.warn(
-          "Got IllegalArgumentExpr Cron Expression might already be Migrated. Message : {}",
-          e.getMessage());
-    } catch (Exception ex) {
-      LOG.error(
-          "Error while migrating cron expression, Logging and moving further : {} ",
-          ex.getMessage());
     }
   }
 }

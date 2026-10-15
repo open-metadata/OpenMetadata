@@ -12,6 +12,9 @@
 Clickhouse lineage module
 """
 
+from metadata.ingestion.source.database.clickhouse.lineage_utils import (
+    get_mv_target_lineage,
+)
 from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_SQL_STATEMENT,
 )
@@ -19,6 +22,7 @@ from metadata.ingestion.source.database.clickhouse.query_parser import (
     ClickhouseQueryParserSource,
 )
 from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.utils.db_utils import ViewLineageExtension
 
 
 class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
@@ -39,3 +43,9 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
     database_field = ""
 
     schema_field = "databases"
+
+    def get_view_lineage_extension(self) -> ViewLineageExtension | None:
+        """
+        Materialized views created with a `TO` clause write into their target table
+        """
+        return get_mv_target_lineage

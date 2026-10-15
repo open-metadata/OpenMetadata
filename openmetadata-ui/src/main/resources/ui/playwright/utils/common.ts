@@ -22,12 +22,18 @@ import { randomUUID } from 'crypto';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { toLower } from 'lodash';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
+import { okJson } from './apiResponse';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForSearchIndexed } from './polling';
 import { sidebarClick } from './sidebar';
+import { claimFirstBoot } from './storageStateRecovery';
 import { getToken as getTokenFromStorage } from './tokenStorage';
+import { clickUntilVisible } from './waitHelpers';
 
 export const uuid = () => randomUUID().split('-')[0];
 export const fullUuid = () => randomUUID();
@@ -39,6 +45,95 @@ let workerAdminAPIContext: Promise<APIRequestContext> | undefined;
 export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
   '.om-block-editor[contenteditable="false"]';
+
+/**
+ * Resolve the description editor that belongs to `scope`.
+ *
+ * `descriptionBox` is page-global, so it matches every editable block editor
+ * currently mounted. Any page that has more than one at a time — an entity page
+ * with a form drawer or description modal overlaid on it, or two drawers
+ * overlapping while one plays its exit animation — turns an unscoped
+ * `page.locator(descriptionBox)` into a strict mode violation. Pass the form,
+ * drawer or modal the editor lives in instead.
+ *
+ * A `Page` is accepted too, for the callers that have no narrower container to
+ * hand; {@link resolveDescriptionBox} is what makes that case safe.
+ */
+export const getDescriptionBox = (scope: Page | Locator): Locator =>
+  scope.locator(descriptionBox);
+
+/**
+ * Resolve the description editor that an `edit-description` click just opened.
+ *
+ * Editing a description can mount the editor inline on the page or inside a
+ * modal, and on an entity page both can be present at once. `.first()` picks
+ * whichever comes first in the DOM — the inline editor *behind* the overlay. It
+ * is visible, so `toBeVisible()` passes, and the click then fails on
+ * "ant-modal-wrap ... intercepts pointer events" and retries until the test
+ * times out; the trace shows a 45s click on an editor nothing could reach.
+ *
+ * Prefers the editor inside the dialog whenever the edit opened one. Retrying
+ * covers the modal's enter animation, during which the dialog is not yet
+ * attached.
+ */
+export const resolveDescriptionBox = async (page: Page): Promise<Locator> => {
+  const descriptionDialog = page
+    .locator('[role="dialog"]')
+    .filter({ has: getDescriptionBox(page) });
+
+  let editor = getDescriptionBox(page);
+
+  await expect(async () => {
+    if (await descriptionDialog.count()) {
+      editor = getDescriptionBox(descriptionDialog);
+
+      // The one place a single-editor invariant actually holds. Two editors in
+      // one open dialog means the dialog selector matched something it should
+      // not have, which is worth failing on.
+      await expect(editor).toHaveCount(1);
+    } else {
+      // No dialog: a page legitimately hosts several editors at once — an entity
+      // description alongside per-column ones — so there is nothing to assert
+      // and nothing better to discriminate on. This is the long-standing
+      // behaviour, and it was never the bug: the bug was taking the first match
+      // *while a modal was open*, which the branch above now handles.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- a page may hold several description editors; with no dialog to scope to there is no better discriminator
+      editor = getDescriptionBox(page).first();
+    }
+
+    await expect(editor).toBeVisible();
+  }).toPass({ timeout: 15_000 });
+
+  return editor;
+};
+
+/**
+ * Fill the description editor for `scope`.
+ *
+ * An explicit `Locator` is a container the author chose — a form, a modal —
+ * where exactly one editor is a real invariant, so the count assertion from
+ * #32599 stands: failing here names the scope that needs narrowing rather than
+ * typing into an arbitrary editor.
+ *
+ * A `Page` means no container was chosen, and a page may legitimately hold
+ * several editors, so asserting there would fail on ordinary pages. Resolve
+ * instead — the dialog's editor when the edit opened one, first match otherwise.
+ */
+export const fillDescriptionBox = async (
+  scope: Page | Locator,
+  value: string
+) => {
+  if ('goto' in scope) {
+    await (await resolveDescriptionBox(scope)).fill(value);
+
+    return;
+  }
+
+  const editor = getDescriptionBox(scope);
+
+  await expect(editor).toHaveCount(1);
+  await editor.fill(value);
+};
 
 export const INVALID_NAMES = {
   MAX_LENGTH:
@@ -59,21 +154,78 @@ export const getToken = async (page: Page) => {
   return await getTokenFromStorage(page);
 };
 
+// Transport-layer failures where the connection died without the client
+// receiving a response. These strings do NOT reliably distinguish
+// "request never reached the server" from "server processed it and then the
+// connection dropped before the response landed" -- ECONNRESET/socket hang up
+// can be either. Retrying is therefore only safe for idempotent methods
+// (GET/HEAD/PUT); repeating a POST/PATCH/DELETE risks a duplicate write, a
+// second application of an array patch, or a spurious 404 on cleanup.
+const UNSENT_REQUEST_ERROR =
+  /socket hang up|ECONNRESET|EPIPE|socket disconnected|other side closed/i;
+
+// Idempotent methods only. POST/PATCH/DELETE deliberately excluded -- see the
+// comment on UNSENT_REQUEST_ERROR above. A POST fixture-setup call that hits
+// this race should be wrapped explicitly (e.g. via createOrFetch, which has
+// 409 recovery) rather than silently double-fired.
+const RETRIABLE_METHODS = new Set(['get', 'head', 'put']);
+
+/**
+ * Re-sends an idempotent request that died with the connection rather than
+ * with a response.
+ *
+ * `conf/openmetadata.yaml` closes idle connections after `SERVER_IDLE_TIMEOUT`
+ * (60s), while this context asks for `Connection: keep-alive`. A request handed
+ * to a connection the server is closing in the same instant loses that race and
+ * surfaces as `apiRequestContext.get: socket hang up`. Retrying once on a fresh
+ * connection is the only fix available on this side, and only safe for methods
+ * where a duplicate application is a no-op.
+ */
+const retryUnsentRequests = (context: APIRequestContext): APIRequestContext =>
+  new Proxy(context, {
+    get(target, property) {
+      // Read against the target, not the proxy: a getter that used `this`
+      // would otherwise re-enter this trap.
+      const value = Reflect.get(target, property);
+
+      if (typeof value !== 'function') {
+        return value;
+      }
+      if (!RETRIABLE_METHODS.has(String(property))) {
+        return value.bind(target);
+      }
+
+      return async (...args: unknown[]) => {
+        try {
+          return await value.apply(target, args);
+        } catch (error) {
+          if (!UNSENT_REQUEST_ERROR.test(String(error))) {
+            throw error;
+          }
+
+          return await value.apply(target, args);
+        }
+      };
+    },
+  });
+
 export const getAuthContext = async (token: string) => {
   const isH2Mode = process.env.PW_PROTOCOL === 'h2';
 
-  return await request.newContext({
-    baseURL:
-      process.env.PLAYWRIGHT_TEST_BASE_URL ??
-      (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
-    // Default timeout is 30s making it to 1m for AUTs
-    timeout: 90000,
-    ignoreHTTPSErrors: isH2Mode,
-    extraHTTPHeaders: {
-      ...(isH2Mode ? {} : { Connection: 'keep-alive' }),
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  return retryUnsentRequests(
+    await request.newContext({
+      baseURL:
+        process.env.PLAYWRIGHT_TEST_BASE_URL ??
+        (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
+      // Default timeout is 30s making it to 1m for AUTs
+      timeout: 90000,
+      ignoreHTTPSErrors: isH2Mode,
+      extraHTTPHeaders: {
+        ...(isH2Mode ? {} : { Connection: 'keep-alive' }),
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  );
 };
 
 const DISABLE_ETAG_CONDITIONAL_READS_KEY = 'OM_DISABLE_ETAG_CONDITIONAL_READS';
@@ -141,7 +293,17 @@ export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
+  // Every spec funnels through here, including the ones that build their own
+  // page with browser.newPage() and so never touch the `context` fixture. This
+  // is the only hook that reaches all of them; the call is idempotent.
+  await installServerLoadReducers(page.context());
   await disableEtagConditionalReads(page);
+  // Claimed before goto so it cannot miss the boot's auth decision. The
+  // waitForURL below resolves before a signed-out boot redirects to /signin,
+  // and the loader check passes on the login page too, so without this a lost
+  // storageState token surfaces 60s later as an unrelated-looking failure.
+  // Undefined unless this is the context's first navigation.
+  const firstBootRecovery = claimFirstBoot(page, '/my-data');
   await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
   });
@@ -149,14 +311,21 @@ export const redirectToHomePage = async (
     waitUntil: 'domcontentloaded',
   });
 
+  if (await firstBootRecovery) {
+    await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
+  }
+
   if (_waitForLoaders) {
     await waitForAllLoadersToDisappear(page);
   }
 };
 
 export const redirectToExplorePage = async (page: Page) => {
-  await page.goto('/explore');
-  await page.waitForURL('**/explore');
+  // `load` (the default) also waits for every image, font and stylesheet; on a
+  // slow runner that alone can exceed the navigation timeout. Callers depend
+  // only on the DOM and the loader wait below.
+  await page.goto('/explore', { waitUntil: 'domcontentloaded' });
+  await page.waitForURL('**/explore', { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -238,6 +407,7 @@ export async function createNewPage(
         ? adminStorageStateFile
         : undefined,
     });
+    await installServerLoadReducers(page.context());
     await redirectToHomePage(page);
   }
 
@@ -345,11 +515,13 @@ export const toastNotification = async (
   const toast = page
     .getByTestId('alert-bar')
     .filter({ hasText: message })
-    .first();
+    .filter({ visible: true });
 
-  await toast.waitFor({ state: 'visible', timeout });
-
-  await expect(toast.getByTestId('alert-icon')).toBeVisible();
+  // Two saves in quick succession legitimately stack two identical toasts, so
+  // "the toast appeared" is a count assertion, not a single-element one.
+  // Toasts auto-dismiss, so match on the filtered text only — asserting an
+  // internal icon races the toast detaching between resolve and check.
+  await expect(toast).not.toHaveCount(0, { timeout });
 };
 
 /**
@@ -366,11 +538,42 @@ export const waitForToastToDisappear = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await page
-    .getByTestId('alert-bar')
-    .filter({ hasText: message })
-    .first()
-    .waitFor({ state: 'detached', timeout });
+  // Identical toasts can stack, so waitFor() would be a strict-mode error here;
+  // "the toast is gone" is a count-0 condition anyway.
+  await expect(
+    page.getByTestId('alert-bar').filter({ hasText: message })
+  ).toHaveCount(0, { timeout });
+};
+
+/**
+ * Activates `locator` with the keyboard instead of the mouse.
+ *
+ * Reach for this whenever a control can sit under the toast stack: pagination
+ * rows, dialog footers (Test Connection's Done/OK), anything near the bottom of
+ * the viewport. The toast region renders fixed at bottom-center, and the backend
+ * fans async-delete/job notifications from parallel workers' cleanup out to every
+ * socket of the logged-in user, so an unrelated "…deleted successfully!" toast can
+ * cover a button and swallow the click.
+ *
+ * Waiting for the stack to drain first does not work: it is refilled by processes
+ * this test does not control, so emptiness is a race no timeout wins. `click({
+ * force: true })` does not work either: it only silences the hit-target check, and
+ * the browser still delivers the event to whatever occupies that coordinate — the
+ * toast. A key press is delivered to the focused element instead of to a point, so
+ * nothing drawn on top is on its path, and on a button the browser turns Enter into
+ * the same click event the mouse would have produced.
+ *
+ * Only for controls the browser activates with Enter (buttons, links, menu items).
+ * A checkbox needs Space, and a custom widget may need its own key.
+ */
+export const clickIgnoringToasts = async (locator: Locator) => {
+  // Asserted explicitly because `press` runs no actionability checks of its own —
+  // it is `focus()` plus a key, and focusing a hidden or detached element is a
+  // silent no-op that sends the key to the body and fails much later, somewhere
+  // confusing. These two make a broken control fail here, saying why.
+  await expect(locator).toBeVisible();
+  await expect(locator).toBeEnabled();
+  await locator.press('Enter');
 };
 
 /**
@@ -454,220 +657,9 @@ export const visitOwnProfilePage = async (page: Page) => {
   const userResponse = page.waitForResponse(
     '/api/v1/users/name/*?fields=*&include=all'
   );
-  await page.getByRole('link', { name: 'View Profile' }).click();
+  await page.getByTestId('user-name').click();
   await userResponse;
   await clickOutside(page);
-};
-
-export const assignDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  checkSelectedDomain = true
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
-
-  await searchDomain;
-
-  // Wait for the tag element to be visible and ensure page is still valid
-  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
-  await tagSelector.waitFor({ state: 'visible' });
-  await tagSelector.click();
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('saveAssociatedTag')
-    .click();
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  if (checkSelectedDomain) {
-    const hasMultipleDomains = await page
-      .getByTestId('domain-count-button')
-      .isVisible();
-    if (hasMultipleDomains) {
-      await expect(page.getByTestId('domain-count-button')).toBeVisible();
-    } else {
-      await expect(page.getByTestId('domain-link')).toContainText(
-        domain.displayName
-      );
-    }
-  }
-};
-
-export const assignSingleSelectDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
-
-  await searchDomain;
-
-  // Wait for the tag element to be visible and ensure page is still valid
-  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
-  await tagSelector.waitFor({ state: 'visible' });
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await tagSelector.click();
-
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(page.getByTestId('domain-link')).toContainText(
-    domain.displayName
-  );
-};
-
-export const updateDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .clear();
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
-  await searchDomain;
-
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('saveAssociatedTag')
-    .click();
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(page.getByTestId('header-domain-container')).toContainText('+1');
-
-  await page.getByTestId('header-domain-container').getByText('+1').hover();
-
-  await expect(
-    page.getByRole('menuitem', { name: domain.displayName })
-  ).toBeVisible();
-};
-
-export const removeDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  showDashPlaceholder = true
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
-  await searchDomain;
-
-  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
-  await tagSelector.waitFor({ state: 'visible' });
-  await tagSelector.click();
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('saveAssociatedTag')
-    .click();
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(page.getByTestId('no-domain-text')).toContainText(
-    showDashPlaceholder ? '--' : 'No Domains'
-  );
-};
-
-export const removeSingleSelectDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  showDashPlaceholder = true
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .clear();
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
-  await searchDomain;
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
-
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(page.getByTestId('no-domain-text')).toContainText(
-    showDashPlaceholder ? '--' : 'No Domains'
-  );
 };
 
 export const assignDataProduct = async (
@@ -693,7 +685,7 @@ export const assignDataProduct = async (
           await waitForAllLoadersToDisappear(page);
 
           return page
-            .getByTestId('domain-link')
+            .getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
             .textContent()
             .catch(() => null);
         },
@@ -706,14 +698,14 @@ export const assignDataProduct = async (
       .toContain(domain.displayName);
   } else {
     const hasMultipleDomains = await page
-      .getByTestId('domain-count-button')
+      .getByTestId('show-all-domains')
       .isVisible();
     if (hasMultipleDomains) {
-      await expect(page.getByTestId('domain-count-button')).toBeVisible();
+      await expect(page.getByTestId('show-all-domains')).toBeVisible();
     } else {
-      await expect(page.getByTestId('domain-link')).toContainText(
-        domain.displayName
-      );
+      await expect(
+        page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
+      ).toContainText(domain.displayName);
     }
   }
 
@@ -723,45 +715,37 @@ export const assignDataProduct = async (
     .getByTestId(action === 'Add' ? 'add-data-product' : 'edit-button')
     .click();
 
+  const picker = page.getByTestId('drop-down-menu');
+  await expect(picker).toBeVisible();
+
   for (const dataProduct of dataProducts) {
-    const tagLocator = page.getByTestId(
-      `tag-${dataProduct.fullyQualifiedName}`
-    );
+    const row = picker.getByTestId(dataProduct.fullyQualifiedName ?? '');
 
     await expect(async () => {
-      // Match any Data Product search response. The dropdown filters by the
+      // Match any Data Product search response. The picker filters by the
       // asset's domain only when the "Data Product Domain Validation" rule is
       // enabled; when it is disabled the query carries no domain, so we cannot
-      // key the wait on the domain name. The tag visibility check below is the
+      // key the wait on the domain name. The row visibility check below is the
       // real synchronization guard.
       const searchDataProduct = page.waitForResponse((response) =>
         response.url().includes('/api/v1/search/query')
       );
-      await page.locator('[data-testid="data-product-selector"] input').clear();
-      await page
-        .locator('[data-testid="data-product-selector"] input')
-        .fill(dataProduct.displayName);
+      await picker.getByTestId('search-input').clear();
+      await picker.getByTestId('search-input').fill(dataProduct.displayName);
       await searchDataProduct;
-      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
+      await expect(row).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
 
-    await tagLocator.click();
+    await row.click();
   }
 
-  await expect(
-    page
-      .getByTestId('data-product-dropdown-actions')
-      .getByTestId('saveAssociatedTag')
-  ).toBeEnabled();
+  await expect(picker.getByTestId('update-btn')).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page
-    .getByTestId('data-product-dropdown-actions')
-    .getByTestId('saveAssociatedTag')
-    .click();
+  await picker.getByTestId('update-btn').click();
   await patchReq;
 
   if (pollForInheritance) {
@@ -813,40 +797,34 @@ export const removeDataProduct = async (
     .getByTestId('edit-button')
     .click();
 
-  await waitForAllLoadersToDisappear(page);
+  const picker = page.getByTestId('drop-down-menu');
+  await expect(picker).toBeVisible();
 
-  await page
-    .getByTestId(`selected-tag-${dataProduct.fullyQualifiedName}`)
-    .getByTestId('remove-tags')
-    .locator('svg')
-    .click();
+  // Search it up, since the selection may sit past the first page, then
+  // uncheck it.
+  const searchDataProduct = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/search/query')
+  );
+  await picker.getByTestId('search-input').fill(dataProduct.displayName);
+  await searchDataProduct;
+  const row = picker.getByTestId(dataProduct.fullyQualifiedName ?? '');
+  // A single-select picker's radio row can't be unpicked; Clear all drops it.
+  if ((await row.getAttribute('role')) === 'menuitemradio') {
+    await picker.getByTestId('clear-filter-btn').click();
+  } else {
+    await row.click();
+  }
 
-  await expect(
-    page
-      .getByTestId('data-product-dropdown-actions')
-      .getByTestId('saveAssociatedTag')
-  ).toBeEnabled();
+  await expect(picker.getByTestId('update-btn')).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page
-    .getByTestId('data-product-dropdown-actions')
-    .getByTestId('saveAssociatedTag')
-    .click();
+  await picker.getByTestId('update-btn').click();
   await patchReq;
 
-  await page
-    .getByTestId('data-product-dropdown-actions')
-    .getByTestId('saveAssociatedTag')
-    .locator('[data-icon="loading"]')
-    .waitFor({ state: 'detached' });
-  await expect(
-    page
-      .getByTestId('data-product-dropdown-actions')
-      .getByTestId('saveAssociatedTag')
-  ).not.toBeVisible();
+  await expect(picker).not.toBeVisible();
 
   await expect(
     page
@@ -864,8 +842,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await waitForAllLoadersToDisappear(page);
   await page
     .getByTestId('glossary-left-panel')
-    .getByRole('menuitem', { name: glossaryName, exact: true })
-    .click({ timeout: 30000 });
+    .getByRole('link', { name: glossaryName, exact: true })
+    .click({ timeout: ACTION_TIMEOUT });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -913,9 +891,11 @@ export const verifyDomainLinkInCard = async (
   entityCard: Locator,
   domain: Domain['responseData']
 ) => {
-  const domainLink = entityCard.getByTestId('domain-link').filter({
-    hasText: domain.displayName,
-  });
+  const domainLink = entityCard
+    .getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
+    .filter({
+      hasText: domain.displayName,
+    });
 
   await expect(domainLink).toBeVisible();
   await expect(domainLink).toContainText(domain.displayName);
@@ -1030,12 +1010,15 @@ export const verifyDomainPropagation = async (
   await waitForAllLoadersToDisappear(page);
 
   if (exploreTabName) {
-    await page.getByRole('menuitem', { name: exploreTabName }).click();
+    await page
+      .getByTestId('explore-left-panel')
+      .getByRole('tab', { name: exploreTabName })
+      .click();
     await waitForAllLoadersToDisappear(page);
   }
 
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
-  await expect(entityCard).toBeVisible({ timeout: 30_000 });
+  await expect(entityCard).toBeVisible({ timeout: ACTION_TIMEOUT });
   await expect(entityCard).toContainText(domain.displayName);
 };
 
@@ -1359,19 +1342,6 @@ type ResponseWithRequest = {
   url: () => string;
 };
 
-type MetricSearchHit = {
-  _source?: {
-    displayName?: string;
-    name?: string;
-  };
-};
-
-type MetricSearchResponse = {
-  hits?: {
-    hits?: MetricSearchHit[];
-  };
-};
-
 type CsvAsyncJob = {
   jobId: string;
   status: string;
@@ -1381,128 +1351,96 @@ export const fetchCompletedCsvAsyncJobResult = async (
   apiContext: APIRequestContext,
   jobId: string
 ) => {
+  if (!jobId) {
+    throw new Error('CSV export returned no job ID');
+  }
+
+  const jobUrl = `/api/v1/csvAsyncJobs/${encodeURIComponent(jobId)}`;
   await expect
     .poll(
       async () => {
-        const response = await apiContext.get('/api/v1/csvAsyncJobs?limit=50');
-
-        if (!response.ok()) {
-          return undefined;
+        const response = await apiContext.get(jobUrl);
+        const job = await okJson<CsvAsyncJob>(response, `CSV export ${jobId}`);
+        if (job.jobId !== jobId) {
+          throw new Error(
+            `CSV export ${jobId}: received a different job ${job.jobId}`
+          );
+        }
+        if (!['QUEUED', 'RUNNING', 'COMPLETED'].includes(job.status)) {
+          throw new Error(
+            `CSV export ${jobId} ended with ${job.status}; expected COMPLETED`
+          );
         }
 
-        const jobs = (await response.json()) as CsvAsyncJob[];
-
-        return jobs.find((job) => job.jobId === jobId)?.status;
+        return job.status;
       },
-      { timeout: 90_000 }
+      {
+        timeout: 90_000,
+        message: `CSV export ${jobId} must complete successfully`,
+      }
     )
     .toBe('COMPLETED');
 
-  const resultResponse = await apiContext.get(
-    `/api/v1/csvAsyncJobs/${jobId}/result`,
-    {
-      headers: { Accept: 'text/csv' },
-    }
-  );
+  const resultResponse = await apiContext.get(`${jobUrl}/result`, {
+    headers: { Accept: 'text/csv' },
+  });
 
-  expect(resultResponse.ok()).toBeTruthy();
+  if (!resultResponse.ok()) {
+    throw new Error(
+      `CSV export ${jobId} result: HTTP ${resultResponse.status()}`
+    );
+  }
 
   return resultResponse.text();
 };
 
-export const isMetricsSearchResponse = (response: ResponseWithRequest) => {
+export const isMetricsListingResponse = (response: ResponseWithRequest) => {
   const url = new URL(response.url());
 
   return (
     response.request().method() === 'GET' &&
-    url.pathname.endsWith('/api/v1/search/query') &&
-    url.searchParams.get('index') === 'metric'
+    (url.pathname.endsWith('/api/v1/metrics/hierarchy') ||
+      (url.pathname.endsWith('/api/v1/search/query') &&
+        url.searchParams.get('index') === 'metric'))
   );
 };
 
-export const waitForMetricsSearchResponse = (page: Page) =>
-  page.waitForResponse(isMetricsSearchResponse);
+export const waitForMetricsListingResponse = (page: Page) =>
+  page.waitForResponse(isMetricsListingResponse);
 
 export const testMetricsPaginationNavigation = async (page: Page) => {
-  const page1ResponsePromise = waitForMetricsSearchResponse(page);
+  const page1ResponsePromise = waitForMetricsListingResponse(page);
 
-  await page.goto('/metrics?pageSize=15');
+  await page.goto('/metrics', { waitUntil: 'domcontentloaded' });
 
   const page1Response = await page1ResponsePromise;
   expect(page1Response.status()).toBe(200);
+  const page1Url = new URL(page1Response.url());
+  expect(page1Url.pathname).toContain('/api/v1/metrics/hierarchy');
+  expect(page1Url.searchParams.get('limit')).toBe('20');
+  expect(page1Url.searchParams.get('offset')).toBe('0');
 
   await page.locator('table').waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 
-  const page1Data: MetricSearchResponse = await page1Response.json();
-  const page1FirstItem = page1Data.hits?.hits?.[0]?._source;
-  const page1FirstItemName =
-    page1FirstItem?.displayName ?? page1FirstItem?.name;
-
-  await expect(page.getByTestId('previous')).toBeDisabled();
-  const nextButton = page.getByTestId('next');
+  await expect(page.getByTestId('metric-page-previous')).toBeDisabled();
+  const nextButton = page.getByTestId('metric-page-next');
   await expect(nextButton).toBeEnabled();
 
   const [page2Response] = await Promise.all([
-    waitForMetricsSearchResponse(page),
+    waitForMetricsListingResponse(page),
     nextButton.click(),
   ]);
   expect(page2Response.status()).toBe(200);
+  const page2Url = new URL(page2Response.url());
+  expect(page2Url.searchParams.get('limit')).toBe('20');
+  expect(page2Url.searchParams.get('offset')).toBe('20');
 
   await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('previous')).toBeEnabled();
-  expect(new URL(page.url()).searchParams.get('currentPage')).toBe('2');
-
-  const paginationText = page.locator('[data-testid="page-indicator"]');
-  await expect(paginationText).toBeVisible();
-  expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
-
-  if (page1FirstItemName) {
-    await expect(page.locator('tbody tr').first()).not.toContainText(
-      page1FirstItemName
-    );
-  }
-
-  const reloadResponsePromise = waitForMetricsSearchResponse(page);
-
-  await page.reload();
-
-  const reloadResponse = await reloadResponsePromise;
-  expect(reloadResponse.status()).toBe(200);
-
-  await page.locator('table').waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('previous')).toBeEnabled();
-  expect(new URL(page.url()).searchParams.get('currentPage')).toBe('2');
-  expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
-
-  const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-  await expect(pageSizeDropdown).toHaveText('15 / Page');
-
-  const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-  await pageSizeDropdown.hover();
-  const isMenuVisibleAfterHover = await menuItem.isVisible();
-  if (!isMenuVisibleAfterHover) {
-    await pageSizeDropdown.click();
-  }
-  await menuItem.waitFor({ state: 'visible' });
-
-  const pageSizeChangeResponsePromise = waitForMetricsSearchResponse(page);
-  await menuItem.click();
-
-  const pageSizeChangeResponse = await pageSizeChangeResponsePromise;
-  expect(pageSizeChangeResponse.status()).toBe(200);
-  expect(new URL(pageSizeChangeResponse.url()).searchParams.get('size')).toBe(
-    '25'
+  await expect(page.getByTestId('metric-page-previous')).toBeEnabled();
+  await expect(page.getByTestId('metric-page-indicator')).toHaveText(
+    /2\s*of\s*\d+/
   );
-
-  await waitForAllLoadersToDisappear(page);
-  await expect(pageSizeDropdown).toHaveText('25 / Page');
-
-  const newRowCount = await page
-    .locator('tbody > tr[data-row-key]:visible')
-    .count();
-  expect(newRowCount).toBeLessThanOrEqual(25);
 };
 
 export const testClientSidePaginationNavigation = async (
@@ -1584,6 +1522,9 @@ export interface PaginationTestConfig {
   searchParamName?: string;
   waitForLoadSelector?: string;
   deleteBtnTestId?: string;
+  // Set true when the search value is kept in component state rather than the
+  // URL (e.g. Impact Analysis), so the URL-param check after search is skipped.
+  skipUrlParamCheck?: boolean;
 }
 
 export const testCompletePaginationWithSearch = async (
@@ -1598,6 +1539,7 @@ export const testCompletePaginationWithSearch = async (
     searchParamName = 'endpoint',
     waitForLoadSelector = 'table',
     deleteBtnTestId = 'show-deleted',
+    skipUrlParamCheck = false,
   } = config;
 
   await page.goto(`${baseUrl}`);
@@ -1606,13 +1548,18 @@ export const testCompletePaginationWithSearch = async (
   await waitForAllLoadersToDisappear(page);
 
   const nextButton = page.locator('[data-testid="next"]');
+  const page2Indicator = page
+    .getByTestId('page-indicator')
+    .filter({ hasText: /\b2 of \d+/ });
   await expect(page.getByTestId('previous')).toBeDisabled();
 
   const page2ResponsePromise = page.waitForResponse((response) =>
     response.url().includes(normalApiPattern)
   );
 
-  await nextButton.click();
+  // Late-mounting content above the table can shift Next between pointerdown
+  // and pointerup, and react-aria then drops the press without firing onPress.
+  await clickUntilVisible(nextButton, page2Indicator);
   const page2Response = await page2ResponsePromise;
   expect(page2Response.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
@@ -1631,8 +1578,12 @@ export const testCompletePaginationWithSearch = async (
   const searchResponse = await searchResponsePromise;
   expect(searchResponse.status()).toBe(200);
 
-  const urlAfterSearch = new URL(page.url());
-  expect(urlAfterSearch.searchParams.get(searchParamName)).toBe(searchTestTerm);
+  if (!skipUrlParamCheck) {
+    const urlAfterSearch = new URL(page.url());
+    expect(urlAfterSearch.searchParams.get(searchParamName)).toBe(
+      searchTestTerm
+    );
+  }
 
   await expect(page.getByTestId('previous')).toBeDisabled();
   const paginationAfterSearch = page.locator('[data-testid="page-indicator"]');
@@ -1646,7 +1597,7 @@ export const testCompletePaginationWithSearch = async (
     response.url().includes(searchApiPattern)
   );
 
-  await nextButtonAfterSearch.click();
+  await clickUntilVisible(nextButtonAfterSearch, page2Indicator);
   const searchPage2Response = await searchPage2Promise;
   expect(searchPage2Response.status()).toBe(200);
 
@@ -1767,11 +1718,141 @@ export const testTableSearch = async (
     await waitForSearchResponse;
     await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByText(searchTerm).first()).toBeVisible({
-      timeout: 5_000,
-    });
-    await expect(page.getByText(notVisibleText).first()).not.toBeVisible({
-      timeout: 5_000,
-    });
+    // The term also appears in the search box, so assert on presence/absence
+    // of *visible* matches rather than on a single element.
+    await expect(
+      page.getByText(searchTerm).filter({ visible: true })
+    ).not.toHaveCount(0, { timeout: 5_000 });
+    await expect(
+      page.getByText(notVisibleText).filter({ visible: true })
+    ).toHaveCount(0, { timeout: 5_000 });
   }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
+};
+
+// React-aria closes a non-modal popover (Select, ComboBox) when an ancestor of
+// its trigger scrolls, and the browser delivers `scroll` a frame after the
+// scroll itself. If a trigger is even partly clipped by a scroll container,
+// Playwright's click scrolls it just before pointerdown; the event then lands
+// after pointerdown has opened the popover and closes it again. Centre the
+// element -- `scrollIntoViewIfNeeded` only reveals the minimum and can leave the
+// click point clipped, so Playwright scrolls again at click time -- and let two
+// frames run so the scroll is delivered before anything opens.
+export const scrollIntoViewAndSettle = async (locator: Locator) => {
+  await locator.evaluate(async (element) => {
+    element.scrollIntoView({ block: 'center', inline: 'nearest' });
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve))
+    );
+  });
+};
+
+/**
+ * Opens a React Aria Select or ComboBox and clicks one of its options, reopening
+ * it if the popover closed first. `open` defaults to a click; a ComboBox that
+ * does not always reopen on click can pass its own.
+ */
+export const selectOptionWithRetry = async (
+  trigger: Locator,
+  option: Locator,
+  open: () => Promise<void> = () => trigger.click()
+) => {
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await scrollIntoViewAndSettle(trigger);
+      await open();
+    }
+
+    await option.click({ timeout: 2000 });
+  }).toPass({ timeout: 15000 });
+};
+
+export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
+  await expect(trigger).toBeVisible();
+  const nestedControl = trigger.locator(
+    'input[role="combobox"], button[aria-haspopup="listbox"]'
+  );
+  const control = (await nestedControl.count()) === 1 ? nestedControl : trigger;
+  await control.focus();
+
+  // The listbox popup is a non-modal react-aria popover, and that is exactly
+  // what wires useCloseOnScroll: while it is open, ANY capture-phase scroll
+  // whose target contains the trigger closes it — a drawer body, a scrollable
+  // form panel, the document, or the scroll Playwright performs itself as part
+  // of a click's actionability checks. A one-shot open-then-click therefore
+  // dismisses the popup as often as it selects from it, and nothing reopens
+  // it, so the option click waits out the entire test timeout on a node that
+  // was detached mid-click. Centring the control before opening removes the
+  // actionability scroll that would close it; the retry remains for a popup
+  // dismissed by anything else, with a short option timeout so a detached
+  // option reopens quickly instead of waiting out a long click.
+  await expect(async () => {
+    if ((await control.getAttribute('aria-expanded')) !== 'true') {
+      await scrollIntoViewAndSettle(control);
+      if ((await control.getAttribute('role')) === 'combobox') {
+        await control.press('ArrowDown');
+      } else {
+        await control.click({ timeout: 5_000 });
+      }
+    }
+    await expect(option).toBeVisible({ timeout: 5_000 });
+    await option.click({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+};
+
+export const dismissHoverPopovers = async (page: Page) => {
+  await page.mouse.move(0, 0);
+  await expect(
+    page.locator('.ant-popover:not(.ant-popover-hidden)')
+  ).toHaveCount(0);
+};
+
+export const dismissToasts = async (page: Page) => {
+  // Re-query between passes: closing one toast re-lays out the stack, and the
+  // handles collected before the click go stale.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const closeIcons = await page.getByTestId('alert-icon-close').all();
+
+    if (closeIcons.length === 0) {
+      return;
+    }
+
+    for (const closeIcon of closeIcons) {
+      await closeIcon.click({ timeout: 2_000 }).catch(() => undefined);
+    }
+  }
+};
+
+export const searchDataProductOptions = async (
+  page: Page,
+  dataProduct: { displayName: string; fullyQualifiedName?: string }
+): Promise<Locator> => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    await waitForSearchIndexed(
+      apiContext,
+      dataProduct.fullyQualifiedName,
+      'dataProduct'
+    );
+  } finally {
+    await afterAction();
+  }
+  const picker = page.getByTestId('drop-down-menu');
+  const input = picker.getByTestId('search-input');
+  if ((await input.inputValue()) === dataProduct.displayName) {
+    await input.clear();
+  }
+  const responsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/v1/search/query' &&
+      url.searchParams.get('index') === 'dataProduct' &&
+      url.searchParams.get('q') ===
+        dataProduct.displayName.replaceAll('"', '\\"')
+    );
+  });
+  await input.fill(dataProduct.displayName);
+  expect((await responsePromise).status()).toBe(200);
+  await waitForAllLoadersToDisappear(page);
+  return picker.getByTestId(dataProduct.fullyQualifiedName ?? '');
 };

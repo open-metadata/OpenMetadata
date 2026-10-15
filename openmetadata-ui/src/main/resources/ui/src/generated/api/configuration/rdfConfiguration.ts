@@ -18,11 +18,22 @@ export interface RDFConfiguration {
      * Expose optional AI-assisted Ontology flows. Manual authoring remains available when
      * disabled.
      */
+    aiEnabled?: boolean;
+    /**
+     * Deprecated alias of aiEnabled, accepted so existing configuration files keep loading.
+     * Either flag enables AI-assisted Ontology flows.
+     */
     askCollateEnabled?: boolean;
     /**
      * Base URI for RDF resources
      */
     baseUri?: string;
+    /**
+     * Maximum number of entity models written in a single insert-only (append) bulk request.
+     * Acts as a guard alongside maxAppendPayloadBytes so a chunk of very small entities cannot
+     * grow without bound.
+     */
+    bulkAppendEntityBatchSize?: number;
     /**
      * Maximum number of entity models written to RDF storage in a single bulk request.
      */
@@ -36,8 +47,7 @@ export interface RDFConfiguration {
      */
     bulkRelationshipSourceBatchSize?: number;
     /**
-     * Cache bounded in-memory inference models for better query performance. Cached models
-     * expire after 60 seconds.
+     * [DEPRECATED: ignored] OpenMetadata no longer builds in-memory inference models.
      */
     cacheInferredTriples?: boolean;
     /**
@@ -49,9 +59,8 @@ export interface RDFConfiguration {
      */
     dataset?: string;
     /**
-     * Default reasoning level for SPARQL queries when inference is enabled. CUSTOM provides
-     * OpenMetadata-specific inference rules including transitive lineage traversal and inverse
-     * relationships.
+     * [DEPRECATED: ignored] SPARQL queries use no inference unless they request 'custom', which
+     * reads materialized rule output.
      */
     defaultInferenceLevel?: ReasoningLevel;
     /**
@@ -69,20 +78,43 @@ export interface RDFConfiguration {
      */
     federation?: Federation;
     /**
-     * Enable inference/reasoning on SPARQL queries. When enabled, SPARQL queries will use the
-     * inference engine to derive additional triples based on the reasoning level.
+     * Compress streamed insert-only request bodies with gzip. The backend reads the request
+     * body inside its single-writer transaction, so on network-constrained links compression
+     * directly shortens writer-lock hold time. Off by default; enable after verifying
+     * throughput on your deployment. Only gzip is ever used - deflate is intentionally
+     * unsupported.
+     */
+    gzipRequests?: boolean;
+    /**
+     * [DEPRECATED: ignored] OpenMetadata no longer runs reasoners in its own process. Use
+     * materializedInferenceEnabled for rule-based inference inside the RDF store.
      */
     inferenceEnabled?: boolean;
     /**
-     * Use durable per-rule inferred named graphs produced inside the RDF store instead of
-     * building an in-memory Jena inference model for CUSTOM inference queries.
+     * Materialize inference rules into durable per-rule named graphs inside the RDF store, so
+     * SPARQL queries can request 'custom' inference. Requires FUSEKI storage.
      */
     materializedInferenceEnabled?: boolean;
     /**
-     * Maximum RDF store size for in-process inference. Queries requesting inference fall back
-     * to direct SPARQL execution when the store exceeds this limit.
+     * Approximate maximum serialized payload size in bytes for an insert-only (append) bulk RDF
+     * write. Append writes carry no DELETE statements and are parsed by the streaming RDF
+     * parser rather than the SPARQL grammar, so they tolerate much larger bodies than
+     * reconciling updates; larger bodies mean fewer storage transactions, which is the main
+     * throughput lever on a single-writer store. Raising this also raises peak heap in the
+     * indexer, since a whole chunk is materialized as an in-memory model before it is sent.
+     */
+    maxAppendPayloadBytes?: number;
+    /**
+     * [DEPRECATED: ignored] OpenMetadata no longer builds in-memory inference models.
      */
     maxInMemoryInferenceTriples?: number;
+    /**
+     * Approximate maximum serialized payload size in bytes for a single bulk RDF write request.
+     * Chunks are budgeted by estimated triple size and split when the serialized body exceeds
+     * this cap, so wide entities cannot produce requests that overwhelm the storage backend. A
+     * single entity larger than the cap is still sent alone.
+     */
+    maxUpdatePayloadBytes?: number;
     /**
      * Password for RDF storage authentication
      */
@@ -100,6 +132,13 @@ export interface RDFConfiguration {
      * Type of RDF storage backend
      */
     storageType: StorageType;
+    /**
+     * Stream insert-only bulk appends to the storage backend (per-entity models written
+     * incrementally into the request body) instead of materializing a combined in-memory model
+     * first. Streaming keeps indexer memory constant regardless of chunk size; disable only to
+     * fall back to the library upload path when diagnosing transport issues.
+     */
+    streamingAppendEnabled?: boolean;
     /**
      * Reject authored axioms that violate the supported OWL 2 DL profile guardrails.
      */
@@ -123,9 +162,8 @@ export interface RDFConfiguration {
 }
 
 /**
- * Default reasoning level for SPARQL queries when inference is enabled. CUSTOM provides
- * OpenMetadata-specific inference rules including transitive lineage traversal and inverse
- * relationships.
+ * [DEPRECATED: ignored] SPARQL queries use no inference unless they request 'custom', which
+ * reads materialized rule output.
  *
  * Level of reasoning/inference to apply to SPARQL queries
  */

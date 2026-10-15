@@ -154,6 +154,22 @@ public interface EntityManagementClient {
       throws IOException;
 
   /**
+   * Like {@link #updateChildren(List, String, List, Pair)}, but matches documents by id ({@code
+   * docIds}) or where {@code field} under any of {@code nestedPaths}, nested or not, equals any of
+   * {@code values}. A path an index does not map is ignored for that index.
+   */
+  default void updateChildrenByNestedField(
+      List<String> indexNames,
+      List<String> docIds,
+      List<String> nestedPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    throw new UnsupportedOperationException("Nested-field child updates are not supported");
+  }
+
+  /**
    * Gets a document by ID from the specified index.
    *
    * @param indexName the name of the index
@@ -271,6 +287,13 @@ public interface EntityManagementClient {
    * @param deletedColumns list of column FQNs to be deleted
    */
   void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns);
+
+  /**
+   * Applies a column diff in one search write per matching document, so a rename cannot invalidate
+   * the snapshot used to delete another column in the same diff.
+   */
+  void reconcileColumnsInUpstreamLineage(
+      String indexName, Map<String, String> renamedColumns, List<String> deletedColumns);
 
   /**
    * Updates glossary term tags by FQN prefix in the specified index.

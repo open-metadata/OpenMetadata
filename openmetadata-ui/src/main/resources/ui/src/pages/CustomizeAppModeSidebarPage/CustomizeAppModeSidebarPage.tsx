@@ -21,7 +21,7 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { DotsGrid } from '@untitledui/icons';
+import { DotsGrid } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEqual } from 'lodash';
@@ -56,7 +56,6 @@ import {
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { getPersonaDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import '../SettingsNavigationPage/settings-navigation-page.less';
 import {
   getSidebarHiddenKeys,
   getSidebarNavigationItems,

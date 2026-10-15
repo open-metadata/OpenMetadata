@@ -19,11 +19,12 @@ import {
   Select,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@untitledui/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isEqual, isUndefined, omitBy } from 'lodash';
 import {
   ComponentProps,
   ComponentType,
+  Fragment,
   useEffect,
   useMemo,
   useState,
@@ -68,6 +69,7 @@ const AlertAiDestinationItem = ({
   isDestinationStatusLoading,
   name,
   onChange,
+  recipientCategories,
   remove,
   validationErrors,
   value,
@@ -87,19 +89,24 @@ const AlertAiDestinationItem = ({
       getValidationPath('destinations', name, 'downstreamDepth')
     ];
   const destinationStatusDetails = useMemo(() => {
+    const statusDestination = destinationsWithStatus?.[name];
+
+    if (!statusDestination) {
+      return undefined;
+    }
     const { category, config, type } = destination;
 
-    return destinationsWithStatus?.find((statusDestination) =>
-      isEqual(
-        { category, config: omitBy(config, isUndefined), type },
-        {
-          category: statusDestination.category,
-          config: normalizeDestinationConfig(statusDestination.config),
-          type: statusDestination.type,
-        }
-      )
-    )?.statusDetails;
-  }, [destination, destinationsWithStatus]);
+    return isEqual(
+      { category, config: omitBy(config, isUndefined), type },
+      {
+        category: statusDestination.category,
+        config: normalizeDestinationConfig(statusDestination.config),
+        type: statusDestination.type,
+      }
+    )
+      ? statusDestination.statusDetails
+      : undefined;
+  }, [destination, destinationsWithStatus, name]);
   const isSuccessStatus = destinationStatusDetails?.status === 'Success';
   const destinationStatusLabel = isSuccessStatus
     ? t('label.success')
@@ -114,13 +121,22 @@ const AlertAiDestinationItem = ({
     [destinationType]
   );
   const destinationCategoryItems = useMemo(
-    () => getDestinationCategoryItems(t),
-    [t]
+    () =>
+      getDestinationCategoryItems(
+        t,
+        recipientCategories,
+        isInternal ? destinationType : undefined
+      ),
+    [recipientCategories, isInternal, destinationType, t]
   );
 
   /** Rebuilds destination category/type fields to match OSS destination behavior. */
   const handleDestinationChange = (key: Key | null) => {
-    const nextDestinationType = key ? String(key) : '';
+    if (!key) {
+      return;
+    }
+
+    const nextDestinationType = String(key);
 
     if (nextDestinationType.startsWith('header-')) {
       return;
@@ -152,15 +168,66 @@ const AlertAiDestinationItem = ({
     </Select.Item>
   );
 
-  return (
-    <Box
-      className={ALERT_AI_FORM_CLASS_NAMES.destinationCard}
-      data-testid={`destination-${name}`}
-      direction="col"
-      gap={4}>
-      {isViewOnly && isInternal && destinationType ? (
-        <div className={ALERT_AI_FORM_CLASS_NAMES.twoColumnGrid}>
-          <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
+  const renderReadOnlyInternalTypes = () => (
+    <div className={ALERT_AI_FORM_CLASS_NAMES.twoColumnGrid}>
+      <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
+        <Select
+          isDisabled
+          data-testid={`destination-category-select-${name}`}
+          fontSize="sm"
+          hint={destinationTypeError}
+          isInvalid={Boolean(destinationTypeError)}
+          items={destinationCategoryItems}
+          label={t('label.destination')}
+          placeholder={t('label.select-field', {
+            field: t('label.destination'),
+          })}
+          selectedKey={destinationType ?? null}
+          size="sm">
+          {renderDestinationCategoryItem}
+        </Select>
+      </div>
+      <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
+        <Select
+          isDisabled
+          data-testid={`destination-type-select-${name}`}
+          fontSize="sm"
+          hint={internalTypeError}
+          isInvalid={Boolean(internalTypeError)}
+          items={subscriptionItems}
+          label={t('label.type')}
+          placeholder={t('label.select-field', {
+            field: t('label.destination'),
+          })}
+          selectedKey={destination?.type ?? null}
+          size="sm"
+          onSelectionChange={(key) =>
+            updateAlertAiValue(
+              value,
+              onChange,
+              ['destinations', name, 'type'],
+              key ? String(key) : undefined
+            )
+          }>
+          {renderSelectItem}
+        </Select>
+      </div>
+    </div>
+  );
+
+  const renderDestinationSelectorRow = () => (
+    <div
+      className={
+        isViewOnly
+          ? ALERT_AI_FORM_CLASS_NAMES.ruleControlGroupFull
+          : ALERT_AI_FORM_CLASS_NAMES.ruleControlGroup
+      }>
+      <Box
+        className={ALERT_AI_FORM_CLASS_NAMES.ruleControlRow}
+        direction="row"
+        gap={3}>
+        <div className={ALERT_AI_FORM_CLASS_NAMES.fieldFill}>
+          {isViewOnly ? (
             <Select
               isDisabled
               data-testid={`destination-category-select-${name}`}
@@ -176,146 +243,180 @@ const AlertAiDestinationItem = ({
               size="sm">
               {renderDestinationCategoryItem}
             </Select>
-          </div>
-          <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
-            <Select
-              isDisabled
-              data-testid={`destination-type-select-${name}`}
+          ) : (
+            <ComboBox
+              allowsEmptyCollection
+              data-testid={`destination-category-select-${name}`}
               fontSize="sm"
-              hint={internalTypeError}
-              isInvalid={Boolean(internalTypeError)}
-              items={subscriptionItems}
-              label={t('label.type')}
+              hint={destinationTypeError}
+              isInvalid={Boolean(destinationTypeError)}
+              items={destinationCategoryItems}
+              label={t('label.destination')}
               placeholder={t('label.select-field', {
                 field: t('label.destination'),
               })}
-              selectedKey={destination?.type ?? null}
+              selectedKey={destinationType ?? null}
+              shortcut={false}
+              showSearchIcon={false}
               size="sm"
-              onSelectionChange={(key) =>
-                updateAlertAiValue(
-                  value,
-                  onChange,
-                  ['destinations', name, 'type'],
-                  key ? String(key) : undefined
-                )
-              }>
-              {renderSelectItem}
-            </Select>
-          </div>
+              onSelectionChange={handleDestinationChange}>
+              {renderDestinationCategoryItem}
+            </ComboBox>
+          )}
         </div>
-      ) : (
-        <div
-          className={
-            isViewOnly
-              ? ALERT_AI_FORM_CLASS_NAMES.ruleControlGroupFull
-              : ALERT_AI_FORM_CLASS_NAMES.ruleControlGroup
+        {!isViewOnly && (
+          <Button
+            className={ALERT_AI_FORM_CLASS_NAMES.removeButton}
+            color="secondary"
+            data-testid={`remove-destination-${name}`}
+            iconLeading={Trash01}
+            size="sm"
+            onPress={() => remove?.(name)}
+          />
+        )}
+      </Box>
+    </div>
+  );
+
+  const renderInternalTypeSelect = () => {
+    if (isViewOnly) {
+      return null;
+    }
+
+    return (
+      <div className={ALERT_AI_FORM_CLASS_NAMES.ruleControlField}>
+        <Select
+          data-testid={`destination-type-select-${name}`}
+          fontSize="sm"
+          hint={internalTypeError}
+          isDisabled={isViewOnly}
+          isInvalid={Boolean(internalTypeError)}
+          items={subscriptionItems}
+          label={t('label.type')}
+          placeholder={t('label.select-field', {
+            field: t('label.destination'),
+          })}
+          selectedKey={destination?.type ?? null}
+          size="sm"
+          onSelectionChange={(key) =>
+            updateAlertAiValue(
+              value,
+              onChange,
+              ['destinations', name, 'type'],
+              key ? String(key) : undefined
+            )
           }>
-          <Box
-            className={ALERT_AI_FORM_CLASS_NAMES.ruleControlRow}
-            direction="row"
-            gap={3}>
-            <div className={ALERT_AI_FORM_CLASS_NAMES.fieldFill}>
-              {isViewOnly ? (
-                <Select
-                  isDisabled
-                  data-testid={`destination-category-select-${name}`}
-                  fontSize="sm"
-                  hint={destinationTypeError}
-                  isInvalid={Boolean(destinationTypeError)}
-                  items={destinationCategoryItems}
-                  label={t('label.destination')}
-                  placeholder={t('label.select-field', {
-                    field: t('label.destination'),
-                  })}
-                  selectedKey={destinationType ?? null}
-                  size="sm">
-                  {renderDestinationCategoryItem}
-                </Select>
-              ) : (
-                <ComboBox
-                  allowsEmptyCollection
-                  data-testid={`destination-category-select-${name}`}
-                  fontSize="sm"
-                  hint={destinationTypeError}
-                  isInvalid={Boolean(destinationTypeError)}
-                  items={destinationCategoryItems}
-                  label={t('label.destination')}
-                  placeholder={t('label.select-field', {
-                    field: t('label.destination'),
-                  })}
-                  selectedKey={destinationType ?? null}
-                  shortcut={false}
-                  showSearchIcon={false}
-                  size="sm"
-                  onSelectionChange={handleDestinationChange}>
-                  {renderDestinationCategoryItem}
-                </ComboBox>
-              )}
-            </div>
-            {!isViewOnly && (
-              <Button
-                className={ALERT_AI_FORM_CLASS_NAMES.removeButton}
-                color="secondary"
-                data-testid={`remove-destination-${name}`}
-                iconLeading={Trash01}
-                size="sm"
-                onPress={() => remove?.(name)}
-              />
-            )}
-          </Box>
-        </div>
-      )}
+          {renderSelectItem}
+        </Select>
+      </div>
+    );
+  };
+
+  const renderInternalTypeWarning = () => {
+    if (isViewOnly || !destinationType || !destination?.type) {
+      return null;
+    }
+
+    const isOwnerNonEmailDestination =
+      destinationType === SubscriptionCategory.Owners &&
+      destination.type !== SubscriptionType.Email;
+
+    const message = isOwnerNonEmailDestination
+      ? t('message.destination-owner-selection-warning', {
+          subscriptionCategory: destinationType,
+          subscriptionType: destination.type,
+        })
+      : t('message.destination-selection-warning', {
+          subscriptionCategory: destinationType,
+          subscriptionType: destination.type,
+        });
+
+    return (
+      // A one-line notice reads as body copy with a small icon; as a bold
+      // title with the md solid-in-dark icon it outweighs the form fields.
+      <Alert
+        closable
+        className={ALERT_AI_FORM_CLASS_NAMES.destinationAlert}
+        iconSize="sm"
+        variant="warning">
+        {message}
+      </Alert>
+    );
+  };
+
+  const renderDownstreamDepthField = () => {
+    if (!notifyDownstream) {
+      return null;
+    }
+
+    return (
+      <div
+        className={ALERT_AI_FORM_CLASS_NAMES.downstreamDepthField}
+        data-testid={`destination-downstream-depth-field-${name}`}>
+        <Input
+          data-testid={`destination-downstream-depth-${name}`}
+          hint={downstreamDepthError}
+          isDisabled={isViewOnly}
+          isInvalid={Boolean(downstreamDepthError)}
+          label={t('label.downstream-depth')}
+          placeholder={t('label.downstream-depth')}
+          size="sm"
+          type="number"
+          value={String(
+            destination?.downstreamDepth ?? ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH
+          )}
+          onChange={(nextValue) =>
+            updateAlertAiValue(
+              value,
+              onChange,
+              ['destinations', name, 'downstreamDepth'],
+              Number(nextValue)
+            )
+          }
+        />
+      </div>
+    );
+  };
+
+  const renderDestinationStatus = () => {
+    if (isDestinationStatusLoading) {
+      return destination.category === SubscriptionCategory.External ? (
+        <div className="tw:h-8 tw:animate-pulse tw:rounded-lg tw:bg-secondary" />
+      ) : null;
+    }
+
+    if (isUndefined(destinationStatusDetails) || isStatusAlertDismissed) {
+      return null;
+    }
+
+    return (
+      <Alert
+        closable
+        title={`${t('label.status')}: ${
+          destinationStatusDetails?.statusCode
+        } ${destinationStatusLabel} ${destinationStatusDetails?.reason ?? ''}`}
+        variant={isSuccessStatus ? 'success' : 'error'}
+        onClose={() => setIsStatusAlertDismissed(true)}
+      />
+    );
+  };
+
+  return (
+    <Box
+      className={ALERT_AI_FORM_CLASS_NAMES.destinationCard}
+      data-testid={`destination-${name}`}
+      direction="col"
+      gap={4}>
+      {isViewOnly && isInternal && destinationType
+        ? renderReadOnlyInternalTypes()
+        : renderDestinationSelectorRow()}
       {destinationType && (
-        <>
+        <Fragment>
           {isInternal && (
-            <>
-              {!isViewOnly && (
-                <div className={ALERT_AI_FORM_CLASS_NAMES.ruleControlField}>
-                  <Select
-                    data-testid={`destination-type-select-${name}`}
-                    fontSize="sm"
-                    hint={internalTypeError}
-                    isDisabled={isViewOnly}
-                    isInvalid={Boolean(internalTypeError)}
-                    items={subscriptionItems}
-                    label={t('label.type')}
-                    placeholder={t('label.select-field', {
-                      field: t('label.destination'),
-                    })}
-                    selectedKey={destination?.type ?? null}
-                    size="sm"
-                    onSelectionChange={(key) =>
-                      updateAlertAiValue(
-                        value,
-                        onChange,
-                        ['destinations', name, 'type'],
-                        key ? String(key) : undefined
-                      )
-                    }>
-                    {renderSelectItem}
-                  </Select>
-                </div>
-              )}
-              {!isViewOnly && destinationType && destination?.type && (
-                <Alert
-                  closable
-                  className={ALERT_AI_FORM_CLASS_NAMES.destinationAlert}
-                  title={
-                    destinationType === SubscriptionCategory.Owners &&
-                    destination.type !== SubscriptionType.Email
-                      ? t('message.destination-owner-selection-warning', {
-                          subscriptionCategory: destinationType,
-                          subscriptionType: destination.type,
-                        })
-                      : t('message.destination-selection-warning', {
-                          subscriptionCategory: destinationType,
-                          subscriptionType: destination.type,
-                        })
-                  }
-                  variant="warning"
-                />
-              )}
-            </>
+            <Fragment>
+              {renderInternalTypeSelect()}
+              {renderInternalTypeWarning()}
+            </Fragment>
           )}
           <div className={ALERT_AI_FORM_CLASS_NAMES.twoColumnGrid}>
             <AlertAiDestinationConfigFields
@@ -341,53 +442,9 @@ const AlertAiDestinationItem = ({
               );
             }}
           />
-          {notifyDownstream && (
-            <div
-              className={ALERT_AI_FORM_CLASS_NAMES.downstreamDepthField}
-              data-testid={`destination-downstream-depth-field-${name}`}>
-              <Input
-                data-testid={`destination-downstream-depth-${name}`}
-                hint={downstreamDepthError}
-                isDisabled={isViewOnly}
-                isInvalid={Boolean(downstreamDepthError)}
-                label={t('label.downstream-depth')}
-                placeholder={t('label.downstream-depth')}
-                size="sm"
-                type="number"
-                value={String(
-                  destination?.downstreamDepth ??
-                    ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH
-                )}
-                onChange={(nextValue) =>
-                  updateAlertAiValue(
-                    value,
-                    onChange,
-                    ['destinations', name, 'downstreamDepth'],
-                    Number(nextValue)
-                  )
-                }
-              />
-            </div>
-          )}
-          {isDestinationStatusLoading &&
-            destination.category === SubscriptionCategory.External && (
-              <div className="tw:h-8 tw:animate-pulse tw:rounded-lg tw:bg-secondary" />
-            )}
-          {!isDestinationStatusLoading &&
-            !isUndefined(destinationStatusDetails) &&
-            !isStatusAlertDismissed && (
-              <Alert
-                closable
-                title={`${t('label.status')}: ${
-                  destinationStatusDetails?.statusCode
-                } ${destinationStatusLabel} ${
-                  destinationStatusDetails?.reason ?? ''
-                }`}
-                variant={isSuccessStatus ? 'success' : 'error'}
-                onClose={() => setIsStatusAlertDismissed(true)}
-              />
-            )}
-        </>
+          {renderDownstreamDepthField()}
+          {renderDestinationStatus()}
+        </Fragment>
       )}
     </Box>
   );

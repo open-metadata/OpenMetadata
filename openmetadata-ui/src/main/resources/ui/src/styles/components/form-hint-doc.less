@@ -44,13 +44,12 @@
     li {
       color: @grey-600;
     }
-
   }
 
   // Inline code spans carry parameter names, operators and literals in
   // TestCaseForm.md. Geist Mono is registered globally in
-  // styles/geist-mono-variable.css; the Tailwind `font-mono` token resolves to
-  // --font-mono, which does not include it, so the stack is spelled out here.
+  // styles/geist-mono-variable.css; this legacy Less surface does not consume
+  // the Tailwind `font-mono` utility, so the stack is spelled out here.
   //
   // Only `code` is mono, deliberately: the docs mark parameter names with
   // **bold**, but bold is also used for prose emphasis ("**Important Notes**"),

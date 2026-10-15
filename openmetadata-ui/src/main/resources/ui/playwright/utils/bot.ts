@@ -13,13 +13,14 @@
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
+import { getCellByName } from './scopedLocators';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 
@@ -92,9 +93,9 @@ export const createBot = async (page: Page) => {
 
   // Select expiry time
   await page.click('[data-testid="token-expiry"]');
-  await page.locator('[title="1 hour"] div').click();
+  await page.getByRole('option', { name: '1 hour', exact: true }).click();
 
-  await page.locator(descriptionBox).fill(BOT_DETAILS.description);
+  await fillDescriptionBox(page, BOT_DETAILS.description);
 
   const saveResponse = page.waitForResponse(
     (response) =>
@@ -111,9 +112,7 @@ export const createBot = async (page: Page) => {
     page.getByTestId(`bot-link-${BOT_DETAILS.botName}`)
   ).toBeVisible();
 
-  await expect(
-    page.getByRole('cell', { name: BOT_DETAILS.description })
-  ).toBeVisible();
+  await expect(getCellByName(page, BOT_DETAILS.description)).toBeVisible();
 
   // Get created bot
   await getCreatedBot(page, { botName });
@@ -166,7 +165,7 @@ export const updateBotDetails = async (page: Page) => {
 
   // Click on edit description button
   await page.getByTestId('edit-description').click();
-  await page.locator(descriptionBox).fill(BOT_DETAILS.updatedDescription);
+  await fillDescriptionBox(page, BOT_DETAILS.updatedDescription);
 
   const updateDescriptionResponse = page.waitForResponse(`api/v1/bots/*`);
   await page.getByTestId('save').click();
@@ -200,7 +199,10 @@ export const tokenExpirationForDays = async (page: Page) => {
 
     // Select the expiration period
     await page
-      .locator(`text=${expiryTime} day${expiryTime > 1 ? 's' : ''}`)
+      .getByRole('option', {
+        name: `${expiryTime} day${expiryTime > 1 ? 's' : ''}`,
+        exact: true,
+      })
       .click();
 
     // Save the updated date
@@ -250,7 +252,7 @@ export const verifyGenerateTokenAPIContract = async (page: Page) => {
 
   // Click on dropdown and select '7 days' expiry
   await page.click('[data-testid="token-expiry"]');
-  await page.locator('text=7 days').click();
+  await page.getByRole('option', { name: '7 days', exact: true }).click();
 
   // Intercept the POST /api/v1/users/generateToken call
   const generateTokenResponsePromise = page.waitForResponse(
@@ -300,7 +302,7 @@ export const tokenExpirationUnlimitedDays = async (page: Page) => {
   // Click on expiry token dropdown
   await page.click('[data-testid="token-expiry"]');
   // Select unlimited days
-  await page.getByText('Unlimited').click();
+  await page.getByRole('option', { name: 'Unlimited', exact: true }).click();
   // Wait for the new generateToken API endpoint
   const generateTokenResponse = page.waitForResponse(
     (response) =>
@@ -336,7 +338,7 @@ export const redirectToBotPage = async (page: Page) => {
 };
 
 export const resetTokenFromBotPage = async (page: Page, botName: string) => {
-  await page.goto(`/bots/${botName}`);
+  await page.goto(`/bots/${botName}`, { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('left-panel')).toBeVisible();
@@ -362,7 +364,7 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
   await expect(page.getByTestId('token-expiry')).toBeVisible();
 
   await page.getByTestId('token-expiry').click();
-  await page.getByText('Unlimited').click();
+  await page.getByRole('option', { name: 'Unlimited', exact: true }).click();
 
   await expect(page.getByTestId('save-edit')).toBeVisible();
 

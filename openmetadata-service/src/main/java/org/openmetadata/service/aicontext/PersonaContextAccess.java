@@ -29,11 +29,17 @@ public final class PersonaContextAccess {
 
   private PersonaContextAccess() {}
 
-  public static void authorize(SecurityContext securityContext, Persona persona) {
+  /** Admins and bots operate the context: they materialize it and see its cache diagnostics. */
+  public static boolean isAdminOrBot(SecurityContext securityContext) {
     SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
-    if (subject.isAdmin() || subject.isBot()) {
+    return subject.isAdmin() || subject.isBot();
+  }
+
+  public static void authorize(SecurityContext securityContext, Persona persona) {
+    if (isAdminOrBot(securityContext)) {
       return;
     }
+    SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
     if (!subject.hasPersona(persona.getId())) {
       throw new AuthorizationException(
           "User is not assigned to persona " + persona.getFullyQualifiedName());
@@ -68,8 +74,7 @@ public final class PersonaContextAccess {
   }
 
   public static void authorizeRefresh(SecurityContext securityContext) {
-    SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
-    if (!subject.isAdmin() && !subject.isBot()) {
+    if (!isAdminOrBot(securityContext)) {
       throw new AuthorizationException("Only admins and bots can refresh persona context");
     }
   }

@@ -13,10 +13,9 @@
 
 import { cloneDeep, isUndefined } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
-import {
-  MessagingConnection,
-  MessagingServiceType,
-} from '../generated/entity/services/messagingService';
+import type { MessagingConnection } from '../generated/entity/services/messagingService';
+import { MessagingServiceType } from '../generated/entity/services/messagingService';
+import { loadConnectionSchema } from './loadConnectionSchema';
 
 type SchemaModule =
   | { default: Record<string, unknown> }
@@ -27,29 +26,19 @@ const messagingSchemaLoaders: Partial<
   Record<MessagingServiceType, SchemaLoader>
 > = {
   [MessagingServiceType.Kafka]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/messaging/kafkaConnection.json'
-    ),
+    loadConnectionSchema('connections/messaging/kafkaConnection.json'),
   [MessagingServiceType.Redpanda]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/messaging/redpandaConnection.json'
-    ),
+    loadConnectionSchema('connections/messaging/redpandaConnection.json'),
   [MessagingServiceType.CustomMessaging]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/messaging/customMessagingConnection.json'
+    loadConnectionSchema(
+      'connections/messaging/customMessagingConnection.json'
     ),
   [MessagingServiceType.Kinesis]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/messaging/kinesisConnection.json'
-    ),
+    loadConnectionSchema('connections/messaging/kinesisConnection.json'),
   [MessagingServiceType.PubSub]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/messaging/pubSubConnection.json'
-    ),
+    loadConnectionSchema('connections/messaging/pubSubConnection.json'),
   [MessagingServiceType.Nats]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/messaging/natsConnection.json'
-    ),
+    loadConnectionSchema('connections/messaging/natsConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

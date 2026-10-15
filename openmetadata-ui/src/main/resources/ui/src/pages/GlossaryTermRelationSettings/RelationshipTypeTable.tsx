@@ -18,7 +18,13 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, Edit05, Lock01, Trash01, XClose } from '@untitledui/icons';
+import {
+  Check,
+  Edit01,
+  Lock01,
+  Trash01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import {
@@ -115,32 +121,20 @@ const getCharacteristicLabel = (
 };
 
 const getPaletteLabel = (palette: PaletteKey, t: TFunction): string => {
-  const label = (() => {
-    switch (palette) {
-      case PaletteKey.Amber:
-        return t('label.color-yellow');
-      case PaletteKey.Blue:
-        return t('label.color-blue');
-      case PaletteKey.Gray:
-        return t('label.color-gray');
-      case PaletteKey.Green:
-        return t('label.color-green');
-      case PaletteKey.Indigo:
-        return t('label.color-dark-blue');
-      case PaletteKey.Pink:
-        return t('label.color-pink');
-      case PaletteKey.Purple:
-        return t('label.color-purple');
-      case PaletteKey.Rose:
-        return t('label.color-rose');
-      case PaletteKey.Teal:
-        return t('label.color-teal');
-      case PaletteKey.Violet:
-        return t('label.color-violet');
-    }
-  })();
+  const paletteLabelKeys: Record<PaletteKey, string> = {
+    [PaletteKey.Amber]: 'label.color-yellow',
+    [PaletteKey.Blue]: 'label.color-blue',
+    [PaletteKey.Gray]: 'label.color-gray',
+    [PaletteKey.Green]: 'label.color-green',
+    [PaletteKey.Indigo]: 'label.color-dark-blue',
+    [PaletteKey.Pink]: 'label.color-pink',
+    [PaletteKey.Purple]: 'label.color-purple',
+    [PaletteKey.Rose]: 'label.color-rose',
+    [PaletteKey.Teal]: 'label.color-teal',
+    [PaletteKey.Violet]: 'label.color-violet',
+  };
 
-  return label;
+  return t(paletteLabelKeys[palette]);
 };
 
 const getDeleteTooltip = (usageCount: number, t: TFunction): string => {
@@ -249,7 +243,7 @@ const RelationshipTypeRow = ({
           <ButtonUtility
             color="tertiary"
             data-testid={`edit-${relationshipType.name}-btn`}
-            icon={Edit05}
+            icon={Edit01}
             isDisabled={!isAdminUser || relationshipType.systemDefined}
             size="sm"
             tooltip={

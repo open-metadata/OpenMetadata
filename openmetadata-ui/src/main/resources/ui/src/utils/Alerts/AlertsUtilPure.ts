@@ -13,13 +13,18 @@
 
 import type { RuleObject } from 'antd/lib/form';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { isEmpty, isEqual, isUndefined, map, omitBy, startCase } from 'lodash';
-import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import {
-  DESTINATION_DROPDOWN_TABS,
-  DESTINATION_SOURCE_ITEMS,
-  EXTERNAL_CATEGORY_OPTIONS,
-} from '../../constants/Alerts.constants';
+  isBoolean,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  map,
+  omitBy,
+  startCase,
+} from 'lodash';
+import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
+import { EXTERNAL_CATEGORY_OPTIONS } from '../../constants/Alerts.constants';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import type { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
@@ -38,32 +43,22 @@ import type { ModifiedDestination } from '../../pages/AddObservabilityPage/AddOb
 import { t } from '../i18next/LocalUtil';
 
 export const getFunctionDisplayName = (func: string): string => {
-  switch (func) {
-    case 'matchAnyEntityFqn':
-      return t('label.fqn-uppercase');
-    case 'matchAnyOwnerName':
-      return t('label.owner-plural');
-    case 'matchAnyEventType':
-      return t('label.event-type');
-    case 'matchTestResult':
-      return t('label.test-entity', {
-        entity: t('label.result-plural'),
-      });
-    case 'matchUpdatedBy':
-      return t('label.updated-by');
-    case 'matchAnyFieldChange':
-      return t('label.field-change');
-    case 'matchPipelineState':
-      return t('label.pipeline-state');
-    case 'matchIngestionPipelineState':
-      return t('label.pipeline-state');
-    case 'matchAnySource':
-      return t('label.source-match');
-    case 'matchAnyEntityId':
-      return t('label.entity-id-match');
-    default:
-      return '';
-  }
+  const displayNameByFunction: Record<string, string> = {
+    matchAnyEntityFqn: t('label.fqn-uppercase'),
+    matchAnyOwnerName: t('label.owner-plural'),
+    matchAnyEventType: t('label.event-type'),
+    matchTestResult: t('label.test-entity', {
+      entity: t('label.result-plural'),
+    }),
+    matchUpdatedBy: t('label.updated-by'),
+    matchAnyFieldChange: t('label.field-change'),
+    matchPipelineState: t('label.pipeline-state'),
+    matchIngestionPipelineState: t('label.pipeline-state'),
+    matchAnySource: t('label.source-match'),
+    matchAnyEntityId: t('label.entity-id-match'),
+  };
+
+  return displayNameByFunction[func] ?? '';
 };
 
 /**
@@ -224,17 +219,27 @@ export const getDestinationsWithTestStatus = <T extends Destination>(
   }));
 
 /**
- * @description Normalizes destination config for comparison by converting headers and queryParams to array format
+ * @description Normalizes API objects and form arrays to the same destination config shape for comparison.
  */
-export const normalizeDestinationConfig = (config?: Destination['config']) =>
-  omitBy(
+export const normalizeDestinationConfig = (
+  config?: Destination['config'] | ModifiedDestination['config']
+) => {
+  const headers = Array.isArray(config?.headers)
+    ? config.headers
+    : getConfigHeaderArrayFromObject(config?.headers);
+  const queryParams = Array.isArray(config?.queryParams)
+    ? config.queryParams
+    : getConfigQueryParamsArrayFromObject(config?.queryParams);
+
+  return omitBy(
     {
       ...config,
-      headers: getConfigHeaderArrayFromObject(config?.headers),
-      queryParams: getConfigQueryParamsArrayFromObject(config?.queryParams),
+      headers: isEmpty(headers) ? undefined : headers,
+      queryParams: isEmpty(queryParams) ? undefined : queryParams,
     },
     isUndefined
   );
+};
 
 export const getFormattedDestinations = (
   destinations?: ModifiedDestination[]
@@ -265,50 +270,6 @@ export const getFormattedDestinations = (
   });
 
   return formattedDestinations;
-};
-
-// Destination category exclusions by entity type
-const DESTINATION_CATEGORY_EXCLUDES: Record<string, SubscriptionCategory[]> = {
-  // Most entity events have neither participants nor mention recipients.
-  __default__: [SubscriptionCategory.Assignees, SubscriptionCategory.Mentions],
-  task: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-  ],
-  conversation: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-    SubscriptionCategory.Assignees,
-  ],
-  announcement: [SubscriptionCategory.Assignees],
-};
-
-export const getFilteredDestinationOptions = (
-  key: keyof typeof DESTINATION_SOURCE_ITEMS,
-  selectedSource: string
-) => {
-  const options = DESTINATION_SOURCE_ITEMS[key];
-  const isExternalDestination = !isEqual(
-    key,
-    DESTINATION_DROPDOWN_TABS.internal
-  );
-
-  if (isExternalDestination) {
-    return options;
-  }
-
-  const excludedCategories =
-    DESTINATION_CATEGORY_EXCLUDES[selectedSource] ||
-    DESTINATION_CATEGORY_EXCLUDES.__default__;
-
-  return options.filter(
-    (option) =>
-      !excludedCategories.includes(option.value as SubscriptionCategory)
-  );
 };
 
 export const getAlertEventsFilterLabels = (status: AlertRecentEventFilters) => {
@@ -355,21 +316,43 @@ export const getChangeEventDataFromTypedEvent = (
   changeEventData: ChangeEvent;
   changeEventDataToDisplay: AlertEventDetailsToDisplay;
 } => {
-  let changeEventData = typedEvent.data[0];
+  const outer = typedEvent.data[0];
+
+  if (!outer) {
+    // Status is part of the id so a failed and a successful unreadable row
+    // sharing a timestamp still get distinct React keys.
+    const fallbackId = `unreadable-${typedEvent.status}-${typedEvent.timestamp}`;
+
+    return {
+      changeEventData: {
+        id: fallbackId,
+        timestamp: typedEvent.timestamp,
+      },
+      changeEventDataToDisplay: {
+        eventType: undefined,
+        entityId: undefined,
+        userName: undefined,
+        previousVersion: undefined,
+        currentVersion: undefined,
+        reason: undefined,
+        source: undefined,
+        failingSubscriptionId: undefined,
+      },
+    };
+  }
+
+  let changeEventData: ChangeEvent = outer;
 
   // If the event is failed, the changeEventData object is nested inside the changeEventData object.
-  if (
-    typedEvent.status === Status.Failed &&
-    !isUndefined(changeEventData.changeEvent)
-  ) {
-    changeEventData = changeEventData.changeEvent;
+  if (typedEvent.status === Status.Failed && !isUndefined(outer.changeEvent)) {
+    changeEventData = outer.changeEvent;
   }
 
   const { eventType, entityId, userName, previousVersion, currentVersion } =
     changeEventData;
 
   // Extracting the reason, source, and failingSubscriptionId from the failed changeEventData object.
-  const { reason, source, failingSubscriptionId } = typedEvent.data[0];
+  const { reason, source, failingSubscriptionId } = outer;
 
   return {
     changeEventData,
@@ -421,6 +404,15 @@ export const getDiagnosticItems = (
   },
 ];
 
+/** Formats a diagnostic value for display: Yes/No for flags, a placeholder when unset. */
+export const formatDiagnosticValue = (value?: number | boolean) => {
+  if (isBoolean(value)) {
+    return t(value ? 'label.yes' : 'label.no');
+  }
+
+  return isUndefined(value) ? NO_DATA_PLACEHOLDER : String(value);
+};
+
 export const getRandomizedAlertName = () => {
   return `${OPEN_METADATA}_alert_${cryptoRandomString({
     length: 9,
@@ -429,100 +421,31 @@ export const getRandomizedAlertName = () => {
 };
 
 export const getMessageFromArgumentName = (argumentName: string) => {
-  switch (argumentName) {
-    case 'fqnList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.fqn-uppercase'),
-        }),
-      });
-    case 'domainList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.domain'),
-        }),
-      });
-    case 'tableNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.table'),
-          }),
-        }),
-      });
-    case 'entityNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.entity'),
-          }),
-        }),
-      });
-    case 'ownerNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.owner-plural'),
-          }),
-        }),
-      });
-    case 'updateByUserList':
-    case 'userList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.user'),
-          }),
-        }),
-      });
-    case 'eventTypeList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.event'),
-          }),
-        }),
-      });
-    case 'entityIdList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-id', {
-            entity: t('label.data-asset'),
-          }),
-        }),
-      });
-    case 'pipelineStateList':
-    case 'ingestionPipelineStateList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.pipeline-state'),
-        }),
-      });
-    case 'testStatusList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.test-suite-status'),
-        }),
-      });
-    case 'testResultList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.test-case-result'),
-        }),
-      });
-    case 'contractStatusList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.data-contract-status'),
-        }),
-      });
-    case 'testSuiteList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.test-suite'),
-        }),
-      });
-    default:
-      return '';
-  }
+  const requiredList = (entity: string) =>
+    t('message.field-text-is-required', {
+      fieldText: t('label.entity-list', { entity }),
+    });
+  const namedEntity = (entity: string) => t('label.entity-name', { entity });
+
+  const fieldTextEntityByArgument: Record<string, string> = {
+    fqnList: t('label.fqn-uppercase'),
+    domainList: t('label.domain'),
+    tableNameList: namedEntity(t('label.table')),
+    entityNameList: namedEntity(t('label.entity')),
+    ownerNameList: namedEntity(t('label.owner-plural')),
+    updateByUserList: namedEntity(t('label.user')),
+    userList: namedEntity(t('label.user')),
+    eventTypeList: namedEntity(t('label.event')),
+    entityIdList: t('label.entity-id', { entity: t('label.data-asset') }),
+    pipelineStateList: t('label.pipeline-state'),
+    ingestionPipelineStateList: t('label.pipeline-state'),
+    testStatusList: t('label.test-suite-status'),
+    testResultList: t('label.test-case-result'),
+    contractStatusList: t('label.data-contract-status'),
+    testSuiteList: t('label.test-suite'),
+  };
+
+  const entity = fieldTextEntityByArgument[argumentName];
+
+  return entity ? requiredList(entity) : '';
 };

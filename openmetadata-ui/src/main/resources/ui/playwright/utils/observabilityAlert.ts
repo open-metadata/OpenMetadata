@@ -30,11 +30,23 @@ import {
   addPipelineStatusUpdatesAction,
   checkRecentEventDetails,
   inputBasicAlertInformation,
+  replaceAlertSource,
+  sourceLabelOf,
   visitAlertDetailsPage,
   visitEditAlertPage,
   waitForRecentEventsToFinishExecution,
 } from './alert';
-import { clickOutside, descriptionBox, redirectToHomePage } from './common';
+import {
+  clickOutside,
+  fillDescriptionBox,
+  getDescriptionBox,
+  redirectToHomePage,
+} from './common';
+import {
+  ensureAccordionExpanded,
+  selectComboBoxOption,
+  selectDropdownOption,
+} from './destination';
 import {
   addMultiOwner,
   updateDescription,
@@ -74,7 +86,13 @@ export const visitObservabilityAlertPage = async (page: Page) => {
       await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
     }
 
-    await page.waitForURL('**/observability/alerts', { timeout: 10_000 });
+    // `commit`, not the default `load`: the route change is client-side, and
+    // `load` also waits on third-party subresources (the scarf.sh pixel in
+    // index.html) that can hang in CI after the page has fully rendered.
+    await page.waitForURL('**/observability/alerts', {
+      timeout: 10_000,
+      waitUntil: 'commit',
+    });
   }).toPass({ timeout: 30_000, intervals: [1_000, 2_000] });
 
   await getAlerts;
@@ -99,81 +117,54 @@ export const addExternalDestination = async ({
     queryParams?: Array<{ key: string; value: string }>;
   };
 }) => {
-  // Select destination category
-  await page.click(
-    `[data-testid="destination-category-select-${destinationNumber}"]`
-  );
-
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
+  await selectComboBoxOption({
+    page,
+    testId: `destination-category-select-${destinationNumber}`,
+    optionName: category,
   });
-  // Select external tab
-  const externalTab = page.locator(
-    `.ant-select-dropdown:visible [data-testid="destination-category-dropdown-${destinationNumber}"] [data-testid="tab-label-external"]`
-  );
-  await expect(externalTab).toBeVisible();
-  await externalTab.click();
 
-  // Select destination category option
-  await page.click(
-    `[data-testid="destination-category-dropdown-${destinationNumber}"]:visible [data-testid="${category}-external-option"]:visible`
-  );
-
-  // Input the destination receivers value
   if (category === 'Email') {
-    await page.fill(
-      `[data-testid="email-input-${destinationNumber}"] [role="combobox"]`,
-      input
-    );
+    await page
+      .getByTestId(`email-input-field-${destinationNumber}`)
+      .fill(input);
     await page.keyboard.press('Enter');
   } else {
-    await page.fill(
-      `[data-testid="endpoint-input-${destinationNumber}"]`,
-      input
-    );
+    await page
+      .getByTestId(`endpoint-input-field-${destinationNumber}`)
+      .fill(input);
   }
 
-  // Input the secret key value
   if (category === 'Webhook' && secretKey) {
-    await page
-      .getByTestId(`destination-${destinationNumber}`)
-      .getByText('Advanced Configuration')
-      .click();
-
-    const authTypeSelect = page.getByTestId(
-      `auth-type-select-${destinationNumber}`
-    );
-    await expect(authTypeSelect).toBeVisible();
-    await authTypeSelect.click();
-    await page.click(
-      `.ant-select-dropdown:visible [title="Bearer (HMAC Signature)"]:visible`
+    await ensureAccordionExpanded(
+      page.getByTestId(`destination-${destinationNumber}`),
+      'Advanced Configuration'
     );
 
-    await expect(
-      page.getByTestId(`secret-key-input-${destinationNumber}`)
-    ).toBeVisible();
+    await selectDropdownOption({
+      page,
+      testId: `auth-type-select-${destinationNumber}`,
+      optionName: 'Bearer (HMAC Signature)',
+    });
 
-    await page.fill(
-      `[data-testid="secret-key-input-${destinationNumber}"]`,
-      secretKey
-    );
+    const secretKeyInput = page
+      .getByTestId(`secret-key-input-${destinationNumber}`)
+      .locator('input');
+    await expect(secretKeyInput).toBeVisible();
+    await secretKeyInput.fill(secretKey);
   }
 
   if (advancedConfig) {
-    await page
-      .getByTestId(`destination-${destinationNumber}`)
-      .getByText('Advanced Configuration')
-      .click();
+    await ensureAccordionExpanded(
+      page.getByTestId(`destination-${destinationNumber}`),
+      'Advanced Configuration'
+    );
 
     if (advancedConfig.secretKey) {
-      await expect(
-        page.getByTestId(`secret-key-input-${destinationNumber}`)
-      ).toBeVisible();
-
-      await page.fill(
-        `[data-testid="secret-key-input-${destinationNumber}"]`,
-        advancedConfig.secretKey
-      );
+      const secretKeyInput = page
+        .getByTestId(`secret-key-input-${destinationNumber}`)
+        .locator('input');
+      await expect(secretKeyInput).toBeVisible();
+      await secretKeyInput.fill(advancedConfig.secretKey);
     }
 
     if (advancedConfig.headers) {
@@ -184,14 +175,17 @@ export const addExternalDestination = async ({
           .getByTestId(`add-header-button-${destinationNumber}`)
           .click();
 
-        await expect(page.getByTestId(`header-key-input-${i}`)).toBeVisible();
-        await expect(page.getByTestId(`header-value-input-${i}`)).toBeVisible();
-
-        await page.fill(`[data-testid="header-key-input-${i}"]`, header.key);
-        await page.fill(
-          `[data-testid="header-value-input-${i}"]`,
-          header.value
+        const headerKey = page.getByTestId(
+          `header-key-input-field-${destinationNumber}-${i}`
         );
+        const headerValue = page.getByTestId(
+          `header-value-input-field-${destinationNumber}-${i}`
+        );
+
+        await expect(headerKey).toBeVisible();
+        await expect(headerValue).toBeVisible();
+        await headerKey.fill(header.key);
+        await headerValue.fill(header.value);
       }
     }
 
@@ -204,20 +198,24 @@ export const addExternalDestination = async ({
           .click();
 
         await expect(
-          page.getByTestId(`query-param-key-input-${i}`)
+          page.getByTestId(
+            `query-param-key-input-field-${destinationNumber}-${i}`
+          )
         ).toBeVisible();
         await expect(
-          page.getByTestId(`query-param-value-input-${i}`)
+          page.getByTestId(
+            `query-param-value-input-field-${destinationNumber}-${i}`
+          )
         ).toBeVisible();
 
-        await page.fill(
-          `[data-testid="query-param-key-input-${i}"]`,
-          queryParam.key
-        );
-        await page.fill(
-          `[data-testid="query-param-value-input-${i}"]`,
-          queryParam.value
-        );
+        await page
+          .getByTestId(`query-param-key-input-field-${destinationNumber}-${i}`)
+          .fill(queryParam.key);
+        await page
+          .getByTestId(
+            `query-param-value-input-field-${destinationNumber}-${i}`
+          )
+          .fill(queryParam.value);
       }
     }
   }
@@ -485,15 +483,11 @@ export const editObservabilityAlert = async ({
   await visitEditAlertPage(page, alertDetails, false);
 
   // Update description
-  await page.locator(descriptionBox).clear();
-  await page.locator(descriptionBox).fill(ALERT_UPDATED_DESCRIPTION);
+  await getDescriptionBox(page).clear();
+  await fillDescriptionBox(page, ALERT_UPDATED_DESCRIPTION);
 
   // Update source
-  await page.click('[data-testid="source-select"]');
-  await page
-    .getByTestId(`${sourceName}-option`)
-    .getByText(sourceDisplayName)
-    .click();
+  await replaceAlertSource({ page, sourceName, sourceDisplayName });
 
   // Filters should reset after source change
   await expect(page.getByTestId('filter-select-0')).not.toBeAttached();
@@ -604,13 +598,8 @@ export const createCommonObservabilityAlert = async ({
 
     // Select filter
     await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-    await page.click(
-      `.ant-select-dropdown:visible [data-testid="${filter.name}-filter-option"]`
-    );
+    await page.getByRole('option', { name: filter.name, exact: true }).click();
 
-    // Focus the combobox first. Ant Design Select with mode="multiple" renders the
-    // search input as readonly until focused, which makes page.fill() fail. Click also
-    // opens the dropdown so the search query fires when we fill.
     await page.click(
       `[data-testid="${filter.inputSelector}"] [role="combobox"]`
     );
@@ -619,28 +608,23 @@ export const createCommonObservabilityAlert = async ({
     const searchOptions = page.waitForResponse('/api/v1/search/query?q=*');
     await page.fill(
       `[data-testid="${filter.inputSelector}"] [role="combobox"]`,
-      filter.inputValue,
-      {
-        force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
-      }
+      filter.inputValue
     );
 
     await searchOptions;
 
-    await page.click(
-      `.ant-select-dropdown:visible [title="${
-        filter.inputValueId ?? filter.inputValue
-      }"]`
-    );
+    await page
+      .getByRole('option', {
+        name: filter.inputValueId ?? filter.inputValue,
+        exact: true,
+      })
+      .click();
 
-    // Check if option is selected
     await expect(
-      page.locator(
-        `[data-testid="${filter.inputSelector}"] [title="${
-          filter.inputValueId ?? filter.inputValue
-        }"]`
-      )
-    ).toBeAttached();
+      page
+        .getByTestId(filter.inputSelector)
+        .getByText(filter.inputValueId ?? filter.inputValue, { exact: true })
+    ).toBeVisible();
 
     if (filter.exclude) {
       // Change filter effect
@@ -657,23 +641,12 @@ export const createCommonObservabilityAlert = async ({
     // Select action
     await page.click(`[data-testid="trigger-select-${actionNumber}"]`);
 
-    // Adding the dropdown visibility check to avoid flakiness here
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'visible',
-    });
-    await page.click(
-      `.ant-select-dropdown:visible [data-testid="${action.name}-filter-option"]:visible`
-    );
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'hidden',
-    });
+    await expect(page.getByRole('listbox')).toHaveCount(1);
+    await page.getByRole('option', { name: action.name, exact: true }).click();
+    await expect(page.getByRole('listbox')).toHaveCount(0);
 
     if (action.inputs && action.inputs.length > 0) {
       for (const input of action.inputs) {
-        // Focus the combobox first. Ant Design Select with mode="multiple" renders
-        // the search input as readonly until focused; without the click, page.fill()
-        // (even with force: true) doesn't trigger AsyncSelect's onSearch handler, so
-        // the API call never fires and no options appear in the dropdown.
         await page.click(
           `[data-testid="${input.inputSelector}"] [role="combobox"]`
         );
@@ -683,10 +656,7 @@ export const createCommonObservabilityAlert = async ({
         );
         await page.fill(
           `[data-testid="${input.inputSelector}"] [role="combobox"]`,
-          input.inputValue,
-          {
-            force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
-          }
+          input.inputValue
         );
         if (input.waitForAPI) {
           await getSearchResult;
@@ -694,11 +664,15 @@ export const createCommonObservabilityAlert = async ({
         // Click the option whose title is the rendered label. Use inputValueId
         // when the displayed label differs from the searched value.
         const optionTitle = input.inputValueId ?? input.inputValue;
-        await page.click(`[title="${optionTitle}"]:visible`);
+        await page
+          .getByRole('option', { name: optionTitle, exact: true })
+          .click();
 
-        await expect(page.getByTestId(input.inputSelector)).toHaveText(
-          optionTitle
-        );
+        await expect(
+          page
+            .getByTestId(input.inputSelector)
+            .getByText(optionTitle, { exact: true })
+        ).toBeVisible();
 
         await clickOutside(page);
       }
@@ -740,33 +714,35 @@ export const createCommonObservabilityAlert = async ({
 export const checkAlertConfigDetails = async ({
   page,
   sourceName,
+  destinationEndpoint,
   tableName,
 }: {
   page: Page;
   sourceName: string;
+  destinationEndpoint: string;
   tableName: string;
 }) => {
   // Verify alert configs
-  await expect(page.getByTestId('source-select')).toHaveText(sourceName);
+  await expect(page.getByTestId('source-select')).toHaveText(
+    sourceLabelOf(sourceName)
+  );
 
-  await expect(page.getByTestId('filter-select-0')).toHaveText('Table Name');
+  await expect(
+    page.getByTestId('filter-select-0').getByRole('button')
+  ).toHaveText('Table Name');
   await expect(
     page.getByTestId('fqn-list-select').getByTitle(tableName)
   ).toBeAttached();
 
   await expect(
-    page
-      .getByTestId('trigger-select-0')
-      .getByTestId('Get Schema Changes-filter-option')
-  ).toBeAttached();
+    page.getByTestId('trigger-select-0').getByRole('button')
+  ).toHaveText('Get Schema Changes');
 
   await expect(
-    page
-      .getByTestId('destination-category-select-0')
-      .getByTestId('Slack-external-option')
-  ).toBeAttached();
-  await expect(page.getByTestId('endpoint-input-0')).toHaveValue(
-    'https://slack.com'
+    page.getByTestId('destination-category-select-0').getByRole('combobox')
+  ).toHaveValue('Slack');
+  await expect(page.getByTestId('endpoint-input-field-0')).toHaveValue(
+    destinationEndpoint
   );
 };
 
@@ -774,11 +750,13 @@ export const checkAlertFlowForWithoutPermissionUser = async ({
   page,
   alertDetails,
   sourceName,
+  destinationEndpoint,
   table,
 }: {
   page: Page;
   alertDetails: AlertDetails;
   sourceName: string;
+  destinationEndpoint: string;
   table: TableClass;
 }) => {
   await visitObservabilityAlertPage(page);
@@ -809,6 +787,7 @@ export const checkAlertFlowForWithoutPermissionUser = async ({
   await checkAlertConfigDetails({
     page,
     sourceName,
+    destinationEndpoint,
     tableName: table.entity.name,
   });
   await checkRecentEventDetails({
@@ -823,12 +802,14 @@ export const checkAlertDetailsForWithPermissionUser = async ({
   page,
   alertDetails,
   sourceName,
+  destinationEndpoint,
   table,
   user,
 }: {
   page: Page;
   alertDetails: AlertDetails;
   sourceName: string;
+  destinationEndpoint: string;
   table: TableClass;
   user: UserClass;
 }) => {
@@ -851,6 +832,7 @@ export const checkAlertDetailsForWithPermissionUser = async ({
   await checkAlertConfigDetails({
     page,
     sourceName,
+    destinationEndpoint,
     tableName: table.entity.name,
   });
   await checkRecentEventDetails({

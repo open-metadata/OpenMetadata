@@ -32,3 +32,11 @@ export const isTestCaseListSynchronized = (
   indexedTotal === undefined ||
   authoritativeTotal === undefined ||
   indexedTotal >= authoritativeTotal;
+
+export const isTestCaseRemovalIndexed = (
+  indexedTotal: number | undefined,
+  authoritativeTotal: number | undefined
+) =>
+  indexedTotal === undefined ||
+  authoritativeTotal === undefined ||
+  indexedTotal <= authoritativeTotal;

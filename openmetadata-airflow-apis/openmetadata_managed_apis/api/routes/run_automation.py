@@ -24,6 +24,7 @@ from metadata.ingestion.api.parser import parse_automation_workflow_gracefully
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.utils.logger import routes_logger
+from openmetadata_managed_apis.utils.parser import parse_validation_err
 
 logger = routes_logger()
 
@@ -83,7 +84,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             logger.error(msg)
             return ApiResponse.error(
                 status=ApiResponse.STATUS_BAD_REQUEST,
-                error=msg,
+                error=parse_validation_err(err),
             )
 
         except Exception as exc:

@@ -37,6 +37,7 @@ import {
 import { Option } from '../../../../pages/TasksPage/TasksPage.interface';
 import {
   getListTestCaseIncidentByStateId,
+  INCIDENT_TRANSITION_ID,
   transitionIncident,
 } from '../../../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
@@ -55,6 +56,71 @@ import { InlineTestCaseIncidentStatusProps } from './TestCaseIncidentManagerStat
 
 const SELECTED_ITEM_CLASS =
   'tw:[&[data-selected]>div]:!bg-brand-solid tw:[&[data-selected]>div_*]:!text-white';
+
+interface StatusChangeAdditionalData {
+  assignee?: EntityReference;
+  reason?: TestCaseFailureReasonType;
+  comment?: string;
+}
+
+const buildAssignedResolveRequest = (
+  currentStatus: TestCaseResolutionStatusTypes,
+  additionalData?: StatusChangeAdditionalData
+): ResolveTask => {
+  const transitionId =
+    currentStatus === TestCaseResolutionStatusTypes.Assigned
+      ? INCIDENT_TRANSITION_ID.Reassign
+      : INCIDENT_TRANSITION_ID.Assign;
+  const assignee = additionalData?.assignee;
+
+  return {
+    transitionId,
+    payload: assignee
+      ? {
+          assignees: [
+            {
+              id: assignee.id,
+              type: assignee.type ?? EntityType.USER,
+              name: assignee.name,
+              fullyQualifiedName: assignee.fullyQualifiedName ?? assignee.name,
+              displayName: assignee.displayName,
+            },
+          ],
+        }
+      : undefined,
+  };
+};
+
+const buildResolveRequest = (
+  status: TestCaseResolutionStatusTypes,
+  currentStatus: TestCaseResolutionStatusTypes,
+  additionalData?: StatusChangeAdditionalData
+): ResolveTask | undefined => {
+  const requestByStatus: Partial<
+    Record<TestCaseResolutionStatusTypes, ResolveTask>
+  > = {
+    [TestCaseResolutionStatusTypes.New]: {
+      transitionId: INCIDENT_TRANSITION_ID.New,
+    },
+    [TestCaseResolutionStatusTypes.ACK]: {
+      transitionId: INCIDENT_TRANSITION_ID.Ack,
+    },
+    [TestCaseResolutionStatusTypes.Assigned]: buildAssignedResolveRequest(
+      currentStatus,
+      additionalData
+    ),
+    [TestCaseResolutionStatusTypes.Resolved]: {
+      transitionId: INCIDENT_TRANSITION_ID.Resolve,
+      resolutionType: TaskResolutionType.Completed,
+      comment: additionalData?.comment,
+      payload: additionalData?.reason
+        ? { testCaseFailureReason: additionalData.reason }
+        : undefined,
+    },
+  };
+
+  return requestByStatus[status];
+};
 
 const InlineTestCaseIncidentStatus = ({
   data,
@@ -214,44 +280,12 @@ const InlineTestCaseIncidentStatus = ({
         return;
       }
 
-      let resolveRequest: ResolveTask;
-      if (status === TestCaseResolutionStatusTypes.New) {
-        resolveRequest = { transitionId: 'new' };
-      } else if (status === TestCaseResolutionStatusTypes.ACK) {
-        resolveRequest = { transitionId: 'ack' };
-      } else if (status === TestCaseResolutionStatusTypes.Assigned) {
-        const transitionId =
-          currentStatus === TestCaseResolutionStatusTypes.Assigned
-            ? 'reassign'
-            : 'assign';
-        const assignee = additionalData?.assignee;
-        resolveRequest = {
-          transitionId,
-          payload: assignee
-            ? {
-                assignees: [
-                  {
-                    id: assignee.id,
-                    type: assignee.type ?? EntityType.USER,
-                    name: assignee.name,
-                    fullyQualifiedName:
-                      assignee.fullyQualifiedName ?? assignee.name,
-                    displayName: assignee.displayName,
-                  },
-                ],
-              }
-            : undefined,
-        };
-      } else if (status === TestCaseResolutionStatusTypes.Resolved) {
-        resolveRequest = {
-          transitionId: 'resolve',
-          resolutionType: TaskResolutionType.Completed,
-          comment: additionalData?.comment,
-          payload: additionalData?.reason
-            ? { testCaseFailureReason: additionalData.reason }
-            : undefined,
-        };
-      } else {
+      const resolveRequest = buildResolveRequest(
+        status,
+        currentStatus,
+        additionalData
+      );
+      if (!resolveRequest) {
         return;
       }
 

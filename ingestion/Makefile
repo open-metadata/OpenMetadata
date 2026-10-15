@@ -104,7 +104,7 @@ coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
 	coverage xml --rcfile $(INGESTION_DIR)/pyproject.toml -o $(INGESTION_DIR)/coverage.xml || true
-	sed 's|filename="[^"]*\(/metadata/[^"]*"\)|filename="src\1|g' $(INGESTION_DIR)/coverage.xml > $(INGESTION_DIR)/ci-coverage.xml
+	sed 's|filename="[^"]*/site-packages/metadata/|filename="src/metadata/|g' $(INGESTION_DIR)/coverage.xml > $(INGESTION_DIR)/ci-coverage.xml
 
 .PHONY: clean-nox
 clean-nox:

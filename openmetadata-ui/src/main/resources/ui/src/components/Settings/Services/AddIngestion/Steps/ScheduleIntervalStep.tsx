@@ -36,12 +36,12 @@ import {
   cronValidator,
   getDefaultScheduleValue,
 } from '../../../../../utils/CronExpressionUtils';
+import ScheduleInterval from './ScheduleInterval';
 import {
   IngestionExtraConfig,
   ScheduleIntervalHandle,
   WorkflowExtraConfig,
-} from './ScheduleInterval.interface';
-import ScheduleIntervalV1 from './ScheduleIntervalV1';
+} from './ScheduleInterval.types';
 
 export interface ScheduleIntervalStepProps {
   status: LoadingState;
@@ -191,7 +191,7 @@ const ScheduleIntervalStep = forwardRef<
         }}>
         {({ field, fieldState }) => (
           <>
-            <ScheduleIntervalV1
+            <ScheduleInterval
               defaultSchedule={defaultSchedule}
               disabled={disabled}
               entity={t('label.ingestion')}

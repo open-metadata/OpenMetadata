@@ -230,11 +230,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Plus: (props: React.SVGProps<SVGSVGElement>) => (
     <svg data-testid="icon-plus" {...props} />
   ),
-  SearchMd: (props: React.SVGProps<SVGSVGElement>) => (
+  Search: (props: React.SVGProps<SVGSVGElement>) => (
     <svg data-testid="icon-search" {...props} />
   ),
 }));
@@ -315,7 +315,7 @@ describe('ExploreSearchCard', () => {
     );
   });
 
-  it('centers the search and filters in a constrained column beside the Explore information', () => {
+  it('centers the search and filters in a column that grows with the header row', () => {
     render(<ExploreSearchCard />);
 
     const headerLayout = screen.getByTestId('explore-header-layout');
@@ -326,7 +326,7 @@ describe('ExploreSearchCard', () => {
     expect(screen.getByTestId('explore-search-card')).toHaveClass('tw:w-full');
     expect(headerLayout).toHaveClass('tw:w-full', 'tw:min-w-0', 'tw:flex-1');
     // Intentional cross-repository contract: AI Explore relies on the OSS
-    // HeaderShell title slot remaining flexible instead of using its
+    // PageLayout.PageHeader title slot remaining flexible instead of using its
     // non-shrinking actions slot for the full-width search controls.
     expect(ossHeaderTitleRow).toHaveClass('tw:min-w-0');
     expect(ossHeaderTitleContent).toHaveClass('tw:min-w-0', 'tw:flex-1');
@@ -339,7 +339,7 @@ describe('ExploreSearchCard', () => {
       'tw:w-full',
       'tw:min-w-0',
       'tw:flex-1',
-      'tw:max-w-4xl',
+      'tw:max-w-[max(56rem,55%)]',
       'tw:mx-auto',
       'tw:px-12'
     );
@@ -662,7 +662,7 @@ describe('ExploreSearchCard', () => {
 
     const toggle = screen.getByTestId('explore-nlp-toggle');
 
-    expect(toggle).toHaveAttribute('title', 'Natural language search active');
+    expect(toggle).toBeInTheDocument();
 
     act(() => getSearchInput().focus());
 

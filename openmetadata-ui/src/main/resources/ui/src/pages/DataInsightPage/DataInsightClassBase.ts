@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as AppAnalyticsIcon } from '../../assets/svg/app-analytics.svg';
 import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-asset.svg';
 import { ReactComponent as KPIIcon } from '../../assets/svg/kpi.svg';
+import { ManageMenuItem as ItemType } from '../../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import AppAnalyticsTab from '../../components/DataInsight/AppAnalyticsTab/AppAnalyticsTab.component';
 import DataAssetsTab from '../../components/DataInsight/DataAssetsTab/DataAssetsTab.component';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
@@ -21,6 +21,8 @@ import { getDataInsightPathWithFqn } from '../../utils/DataInsightPureUtils';
 import i18n from '../../utils/i18next/LocalUtil';
 import DataInsightLeftPanel from './DataInsightLeftPanel/DataInsightLeftPanel';
 import KPIList from './KPIList';
+
+const SIDE_PANEL_ICONS_CLASS = 'side-panel-icons';
 type LeftSideBarType = {
   key: DataInsightTabs;
   label: string;
@@ -40,7 +42,7 @@ class DataInsightClassBase {
         label: i18n.t('label.data-asset-plural'),
         icon: AppAnalyticsIcon,
         iconProps: {
-          className: 'side-panel-icons',
+          className: SIDE_PANEL_ICONS_CLASS,
         },
       },
       {
@@ -48,7 +50,7 @@ class DataInsightClassBase {
         label: i18n.t('label.app-analytic-plural'),
         icon: DataAssetsIcon,
         iconProps: {
-          className: 'side-panel-icons',
+          className: SIDE_PANEL_ICONS_CLASS,
         },
       },
       {
@@ -56,7 +58,7 @@ class DataInsightClassBase {
         label: i18n.t('label.kpi-uppercase-plural'),
         icon: KPIIcon,
         iconProps: {
-          className: 'side-panel-icons',
+          className: SIDE_PANEL_ICONS_CLASS,
         },
       },
     ];

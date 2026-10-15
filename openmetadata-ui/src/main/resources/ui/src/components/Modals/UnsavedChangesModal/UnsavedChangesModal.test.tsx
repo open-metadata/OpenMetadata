@@ -89,9 +89,9 @@ describe('UnsavedChangesModal', () => {
   it('should show loading state on save button', () => {
     render(<UnsavedChangesModal {...mockProps} loading />);
 
-    const saveButton = screen.getByText('Save changes');
-
-    expect(saveButton.closest('.ant-btn')).toHaveClass('ant-btn-loading');
+    expect(screen.getByTestId('unsaved-changes-modal-save')).toHaveAttribute(
+      'data-loading'
+    );
   });
 
   it('should not render when open is false', () => {

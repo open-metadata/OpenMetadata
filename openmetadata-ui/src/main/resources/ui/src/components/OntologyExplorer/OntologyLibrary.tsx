@@ -17,7 +17,11 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { BookOpen01, RefreshCcw01, XClose } from '@untitledui/icons';
+import {
+  BookOpen01,
+  RefreshCcw01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -47,7 +51,7 @@ interface OntologyLibraryProps {
 const EMPTY_INSTALLATIONS: OntologyPackInstallation[] = [];
 const LIBRARY_ICON_CLASS =
   'tw:grid tw:size-8 tw:shrink-0 tw:place-items-center tw:rounded-[9px] ' +
-  'tw:bg-[linear-gradient(160deg,var(--color-utility-blue-light-500),var(--color-bg-brand-solid))] tw:text-white';
+  'tw:bg-[linear-gradient(160deg,var(--tw-color-utility-blue-light-500),var(--tw-color-bg-brand-solid))] tw:text-white';
 const INSTALLED_COUNT_CLASS =
   'tw:inline-flex tw:shrink-0 tw:items-center tw:rounded-full tw:border ' +
   'tw:border-utility-success-200 tw:bg-utility-success-50 tw:px-[11px] tw:py-1 ' +
@@ -215,6 +219,66 @@ const OntologyLibrary = ({
     installations.map((installation) => installation.packId)
   ).size;
 
+  let libraryBody: JSX.Element;
+  if (isLoading) {
+    libraryBody = (
+      <Card data-testid="ontology-library-loading" size="lg">
+        <Card.Content>
+          <Typography as="p" className="tw:text-tertiary" size="text-sm">
+            {t('label.loading')}
+          </Typography>
+        </Card.Content>
+      </Card>
+    );
+  } else if (hasLoadError) {
+    libraryBody = (
+      <Alert
+        rightContent={
+          <Button
+            color="secondary"
+            iconLeading={RefreshCcw01}
+            size="sm"
+            onPress={() => void loadPacks()}>
+            {t('label.retry')}
+          </Button>
+        }
+        title={t('message.ontology-library-load-error')}
+        variant="error"
+      />
+    );
+  } else if (selectedPack) {
+    libraryBody = (
+      <OntologyLibraryDetail
+        activeAction={activeAction}
+        canInstall={canInstall}
+        installedResult={installedResult}
+        installedVersion={
+          installations.find(
+            (installation) => installation.packId === selectedPack.id
+          )?.version
+        }
+        pack={selectedPack}
+        previewResult={previewResult}
+        selectedModuleIds={selectedModuleIds}
+        targetGlossaryName={targetGlossaryName}
+        onBack={handleBack}
+        onInstall={() => void executeInstall(false)}
+        onModuleChange={handleModuleChange}
+        onOpenGlossary={handleOpenGlossary}
+        onPreview={() => void executeInstall(true)}
+        onTargetGlossaryChange={handleTargetGlossaryChange}
+      />
+    );
+  } else {
+    libraryBody = (
+      <OntologyLibraryCatalogue
+        installations={installations}
+        packs={packs}
+        onSelect={handleSelectPack}
+      />
+    );
+  }
+
   return createPortal(
     <div
       aria-labelledby="ontology-library-title"
@@ -259,58 +323,7 @@ const OntologyLibrary = ({
       </header>
 
       <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-6">
-        <div className="tw:mx-auto tw:max-w-[1040px]">
-          {isLoading ? (
-            <Card data-testid="ontology-library-loading" size="lg">
-              <Card.Content>
-                <Typography as="p" className="tw:text-tertiary" size="text-sm">
-                  {t('label.loading')}
-                </Typography>
-              </Card.Content>
-            </Card>
-          ) : hasLoadError ? (
-            <Alert
-              rightContent={
-                <Button
-                  color="secondary"
-                  iconLeading={RefreshCcw01}
-                  size="sm"
-                  onPress={() => void loadPacks()}>
-                  {t('label.retry')}
-                </Button>
-              }
-              title={t('message.ontology-library-load-error')}
-              variant="error"
-            />
-          ) : selectedPack ? (
-            <OntologyLibraryDetail
-              activeAction={activeAction}
-              canInstall={canInstall}
-              installedResult={installedResult}
-              installedVersion={
-                installations.find(
-                  (installation) => installation.packId === selectedPack.id
-                )?.version
-              }
-              pack={selectedPack}
-              previewResult={previewResult}
-              selectedModuleIds={selectedModuleIds}
-              targetGlossaryName={targetGlossaryName}
-              onBack={handleBack}
-              onInstall={() => void executeInstall(false)}
-              onModuleChange={handleModuleChange}
-              onOpenGlossary={handleOpenGlossary}
-              onPreview={() => void executeInstall(true)}
-              onTargetGlossaryChange={handleTargetGlossaryChange}
-            />
-          ) : (
-            <OntologyLibraryCatalogue
-              installations={installations}
-              packs={packs}
-              onSelect={handleSelectPack}
-            />
-          )}
-        </div>
+        <div className="tw:mx-auto tw:max-w-[1040px]">{libraryBody}</div>
       </div>
     </div>,
     document.body

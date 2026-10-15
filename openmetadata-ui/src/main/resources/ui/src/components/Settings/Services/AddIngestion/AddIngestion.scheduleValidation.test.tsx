@@ -34,6 +34,15 @@ jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ ingestionFQN: '' }),
 }));
 
+// Create flow — the owners permission is not consulted, but the hook still
+// needs a QueryClient it does not have here.
+jest.mock(
+  '../../../../hooks/useEntityPermissions/useEntityPermissions',
+  () => ({
+    useEntityPermissions: jest.fn().mockReturnValue({ canEditOwners: false }),
+  })
+);
+
 jest.mock('../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm', () =>
   jest.fn().mockImplementation(() => <div>Ingestion workflow form</div>)
 );

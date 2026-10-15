@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Response } from '@playwright/test';
+import test, { expect, Page, Response } from '@playwright/test';
 import {
   DOMAIN_TAGS,
   PLAYWRIGHT_INGESTION_TAG_OBJ,
@@ -18,6 +18,7 @@ import {
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import {
+  expectFormHint,
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
@@ -45,13 +46,19 @@ const NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN = {
   description: 'New table test case for Column Value Lengths To Be Between',
 };
 
+// Escape is not safe here: when the listbox has already closed (React Aria
+// closes it as the drawer body re-lays out) it bubbles to the drawer and
+// closes the form. An outside click can only dismiss the listbox.
+const closeDimensionsListbox = async (page: Page) => {
+  await page.getByTestId('form-heading').click();
+  await expect(page.getByRole('listbox')).toBeHidden();
+};
+
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table.create(apiContext);
   await afterAction();
 });
-
-test.slow();
 
 /**
  * Dimensionality Tests
@@ -86,20 +93,15 @@ test(
       await testCaseDoc;
 
       await page.click('[id="root\\/column"]');
-      await page.locator('[data-id="column"]').waitFor({ state: 'visible' });
-
-      await expect(page.locator('[data-id="column"]')).toBeVisible();
+      await expectFormHint(page, 'Select Column');
 
       await page
         .getByRole('option')
         .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column })
-        .first()
         .click();
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
-      await page.locator('[data-id="dimensionColumns"]').waitFor({
-        state: 'visible',
-      });
+      await expectFormHint(page, 'Select Dimensions');
 
       await expect(
         page
@@ -108,14 +110,10 @@ test(
       ).not.toBeVisible();
 
       for (const dimension of NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.dimensions) {
-        await page
-          .getByRole('option')
-          .filter({ hasText: dimension })
-          .first()
-          .click();
+        await page.getByRole('option').filter({ hasText: dimension }).click();
       }
 
-      await page.keyboard.press('Escape');
+      await closeDimensionsListbox(page);
 
       await page.locator('[data-testid="test-case-name"] input').click();
       await page.fill(
@@ -158,9 +156,7 @@ test(
       );
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
-      await page.locator('[data-id="dimensionColumns"]').waitFor({
-        state: 'visible',
-      });
+      await expectFormHint(page, 'Select Dimensions');
 
       await expect(
         page
@@ -173,10 +169,9 @@ test(
         .filter({
           hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0],
         })
-        .first()
         .click();
 
-      await page.keyboard.press('Escape');
+      await closeDimensionsListbox(page);
 
       const updateTestCaseResponse = page.waitForResponse(
         (response: Response) =>

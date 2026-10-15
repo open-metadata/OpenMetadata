@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -25,7 +26,7 @@ const user = new UserClass();
 const test = base.extend<{ userPage: Page }>({
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await use(page);
     await page.close();
   },
@@ -102,7 +103,7 @@ const reloadAndAwaitUser = async (page: Page) => {
   const loggedInUserResponse = page.waitForResponse(
     '/api/v1/users/loggedInUser*'
   );
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await loggedInUserResponse;
   await waitForAllLoadersToDisappear(page);
 };

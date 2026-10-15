@@ -14,8 +14,8 @@
 import { Operation } from 'fast-json-patch';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Paging } from '../../../generated/type/paging';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export interface PipeLineDetailsProp {
   updatePipelineDetailsState?: (data: DataAssetWithDomains) => void;

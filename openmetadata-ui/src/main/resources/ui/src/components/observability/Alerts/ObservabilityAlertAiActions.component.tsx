@@ -16,7 +16,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit03, Trash01 } from '@untitledui/icons';
+import { Edit03, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -69,6 +69,7 @@ function ObservabilityAlertAiActions({
           className={ACTION_BUTTON_CLASS_NAME}
           data-testid={`alert-edit-${record.name}`}
           icon={<Edit03 className={ACTION_ICON_CLASS_NAME} />}
+          isDisabled={record.provider === ProviderType.System}
           tooltip={t('label.edit')}
           onClick={(event: MouseEvent<HTMLButtonElement>) => {
             event.preventDefault();

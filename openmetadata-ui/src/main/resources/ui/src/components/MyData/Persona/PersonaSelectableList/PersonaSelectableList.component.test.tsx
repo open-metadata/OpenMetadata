@@ -11,22 +11,13 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import { ReactNode } from 'react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { EntityReference } from '../../../../generated/entity/type';
 import { PersonaSelectableList } from './PersonaSelectableList.component';
 
 const mockGetAllPersonas = jest.fn();
 const mockSearchPersonas = jest.fn();
-// Captures the Select's onChange so a test can emulate antd reporting the full
-// multi-select value (all FQNs), not just the option just clicked.
-let latestOnChange: ((value: string[]) => void) | undefined;
 
 jest.mock('../../../../rest/PersonaAPI', () => ({
   getAllPersonas: (...args: unknown[]) => mockGetAllPersonas(...args),
@@ -48,57 +39,6 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock('antd', () => {
-  const antd = jest.requireActual('antd');
-
-  return {
-    ...antd,
-    // Render the popover content inline so the Select mounts without a click.
-    Popover: ({
-      children,
-      content,
-    }: {
-      children?: ReactNode;
-      content?: ReactNode;
-    }) => (
-      <div>
-        {children}
-        {content}
-      </div>
-    ),
-    Select: ({
-      options,
-      onSearch,
-      onChange,
-    }: {
-      options?: { label: string; value: string }[];
-      onSearch?: (value: string) => void;
-      onChange?: (value: string[]) => void;
-    }) => {
-      latestOnChange = onChange;
-
-      return (
-        <div>
-          {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
-          <input
-            data-testid="persona-search"
-            onChange={(e) => onSearch?.(e.target.value)}
-          />
-          {(options ?? []).map((option: { label: string; value: string }) => (
-            <div
-              data-testid={`option-${option.value}`}
-              key={option.value}
-              role="presentation"
-              onClick={() => onChange?.([option.value])}>
-              {option.label}
-            </div>
-          ))}
-        </div>
-      );
-    },
-  };
-});
-
 const PERSONAS = [
   {
     id: 'p1',
@@ -113,6 +53,18 @@ const PERSONAS = [
     fullyQualifiedName: 'steward',
   },
 ];
+
+const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+const openAndType = async (text: string) => {
+  const input = screen.getByRole('combobox');
+  await user.clear(input);
+  await user.type(input, text);
+  // The search is debounced by 300ms.
+  await act(async () => {
+    jest.advanceTimersByTime(300);
+  });
+};
 
 describe('PersonaSelectableList', () => {
   beforeEach(() => {
@@ -149,9 +101,8 @@ describe('PersonaSelectableList', () => {
 
     await waitFor(() => expect(mockGetAllPersonas).toHaveBeenCalled());
 
-    fireEvent.change(screen.getByTestId('persona-search'), {
-      target: { value: 'ana' },
-    });
+    await user.click(screen.getByTestId('edit-user-persona'));
+    await openAndType('ana');
 
     await waitFor(() =>
       expect(mockSearchPersonas).toHaveBeenCalledWith('ana', 50)
@@ -168,25 +119,26 @@ describe('PersonaSelectableList', () => {
       />
     );
 
-    fireEvent.change(screen.getByTestId('persona-search'), {
-      target: { value: 'ana' },
-    });
+    await user.click(screen.getByTestId('edit-user-persona'));
+    await openAndType('ana');
 
     await waitFor(() =>
-      expect(screen.queryByTestId('option-steward')).not.toBeInTheDocument()
+      expect(
+        screen.queryByTestId('persona-option-Steward')
+      ).not.toBeInTheDocument()
     );
 
-    expect(screen.getByTestId('option-analyst')).toBeInTheDocument();
+    expect(screen.getByTestId('persona-option-Analyst')).toBeInTheDocument();
     expect(mockSearchPersonas).not.toHaveBeenCalled();
     expect(mockGetAllPersonas).not.toHaveBeenCalled();
   });
 
   it('retains a persona selected under a previous query when saving', async () => {
-    mockSearchPersonas.mockImplementation((query: string) =>
-      Promise.resolve(
-        query === 'ana' ? [PERSONAS[0]] : query === 'stew' ? [PERSONAS[1]] : []
-      )
-    );
+    mockSearchPersonas.mockImplementation((query: string) => {
+      const stewMatches = query === 'stew' ? [PERSONAS[1]] : [];
+
+      return Promise.resolve(query === 'ana' ? [PERSONAS[0]] : stewMatches);
+    });
     const onUpdate = jest.fn().mockResolvedValue(undefined);
 
     render(
@@ -198,23 +150,16 @@ describe('PersonaSelectableList', () => {
       />
     );
 
-    const searchInput = screen.getByTestId('persona-search');
+    await user.click(screen.getByTestId('edit-user-persona'));
 
-    fireEvent.change(searchInput, { target: { value: 'ana' } });
-    await waitFor(() =>
-      expect(screen.getByTestId('option-analyst')).toBeInTheDocument()
-    );
+    await openAndType('ana');
+    await user.click(await screen.findByTestId('persona-option-Analyst'));
 
-    fireEvent.change(searchInput, { target: { value: 'stew' } });
-    await waitFor(() =>
-      expect(screen.getByTestId('option-steward')).toBeInTheDocument()
-    );
+    // 'analyst' is not in the 'stew' results, yet it must survive the save.
+    await openAndType('stew');
+    await user.click(await screen.findByTestId('persona-option-Steward'));
 
-    // antd reports the full multi-select value; 'analyst' is no longer in the
-    // current search page, yet it must survive the save.
-    act(() => latestOnChange?.(['analyst', 'steward']));
-
-    fireEvent.click(screen.getByTestId('user-profile-persona-edit-save'));
+    await user.click(screen.getByTestId('user-profile-persona-edit-save'));
 
     await waitFor(() =>
       expect(onUpdate).toHaveBeenCalledWith([

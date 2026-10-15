@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import { OntologyPackInstallResult } from '../../../src/generated/api/data/ontologyPackInstallResult';
 import { Glossary } from '../../../src/generated/entity/data/glossary';
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
+import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { navigateToOntologyStudio } from '../../utils/ontologyStudio';
@@ -82,7 +84,7 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
   test('installs a dependency-aware FIBO pack with durable provenance and opens its graph', async ({
     browser,
   }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const { page, apiContext, afterAction } = await performAdminLogin(browser, {
       navigate: true,
     });
@@ -178,7 +180,7 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
 
       await page.getByTestId('ontology-pack-open-graph').click();
       await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
-        'aria-pressed',
+        'aria-selected',
         'true'
       );
       await expect(

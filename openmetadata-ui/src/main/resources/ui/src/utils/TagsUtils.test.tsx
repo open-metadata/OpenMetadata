@@ -12,8 +12,14 @@
  */
 import { render } from '@testing-library/react';
 import { getTermQuery } from './SearchPureUtils';
-import { getTagAssetsQueryFilter, getUsageCountLink } from './TagsPureUtils';
-import { getDeleteIcon } from './TagsUtils';
+import {
+  buildTagFqnIncludeRegex,
+  getTagAssetsQueryFilter,
+  getTagUsageAggregationField,
+  getUsageCountLink,
+  parseTagUsageBuckets,
+} from './TagsPureUtils';
+import { getDeleteIcon, getTagTooltip } from './TagsUtils';
 
 describe('getDeleteIcon', () => {
   it('renders CheckOutlined icon when deleteTagId matches id and status is "success"', () => {
@@ -126,5 +132,86 @@ describe('getTagAssetsQueryFilter', () => {
     const queryFilter = getTermQuery({ 'tags.tagFQN': tagFQN });
 
     expect(result).toEqual(queryFilter);
+  });
+});
+
+describe('getTagUsageAggregationField', () => {
+  it('should return the tier field for the Tier classification', () => {
+    expect(getTagUsageAggregationField('Tier')).toBe('tier.tagFQN');
+  });
+
+  it('should return the certification field for the Certification classification', () => {
+    expect(getTagUsageAggregationField('Certification')).toBe(
+      'certification.tagLabel.tagFQN'
+    );
+  });
+
+  it('should return the tags field for any other classification', () => {
+    expect(getTagUsageAggregationField('PII')).toBe('tags.tagFQN');
+  });
+});
+
+describe('buildTagFqnIncludeRegex', () => {
+  it('should lowercase and alternate the given FQNs inside a group', () => {
+    expect(buildTagFqnIncludeRegex(['PII.Sensitive', 'PII.NonSensitive'])).toBe(
+      '(pii\\.sensitive|pii\\.nonsensitive)'
+    );
+  });
+
+  it('should escape regex metacharacters so an FQN cannot widen the match', () => {
+    expect(buildTagFqnIncludeRegex(['PII."a.b"'])).toBe('(pii\\.\\"a\\.b\\")');
+  });
+
+  it('should return an empty group for an empty list', () => {
+    expect(buildTagFqnIncludeRegex([])).toBe('()');
+  });
+});
+
+describe('parseTagUsageBuckets', () => {
+  const field = 'tags.tagFQN';
+
+  it('should map the sterms-prefixed buckets to lowercased FQN counts', () => {
+    const result = parseTagUsageBuckets(
+      {
+        [`sterms#${field}`]: {
+          buckets: [
+            { key: 'pii.sensitive', doc_count: 7 },
+            { key: 'PII.NonSensitive', doc_count: 2 },
+          ],
+        },
+      },
+      field
+    );
+
+    expect(result).toEqual({ 'pii.sensitive': 7, 'pii.nonsensitive': 2 });
+  });
+
+  it('should return an empty map when there are no aggregations', () => {
+    expect(parseTagUsageBuckets(undefined, field)).toEqual({});
+  });
+});
+
+describe('getTagTooltip', () => {
+  it('renders the FQN in bold when the description is HTML with a list', () => {
+    const { container } = render(
+      getTagTooltip(
+        'PII.Sensitive',
+        '<p>Why:</p><ul><li><strong>Business-Critical</strong></li></ul>'
+      )
+    );
+
+    expect(container.querySelector('strong')).toHaveTextContent(
+      'PII.Sensitive'
+    );
+    expect(container).not.toHaveTextContent('**');
+  });
+
+  it('renders only the FQN when there is no description', () => {
+    const { container } = render(getTagTooltip('PII.Sensitive'));
+
+    expect(container).toHaveTextContent('PII.Sensitive');
+    expect(
+      container.querySelector('[data-testid="viewer-container"]')
+    ).not.toBeInTheDocument();
   });
 });

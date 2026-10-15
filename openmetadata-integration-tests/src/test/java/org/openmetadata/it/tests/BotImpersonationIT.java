@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -405,8 +406,8 @@ public class BotImpersonationIT {
                     .executeForString(HttpMethod.GET, "/v1/users/security/token", null),
             "Listing personal access tokens while impersonating must be rejected");
     assertTrue(
-        denied.getMessage().contains("while impersonated by"),
-        "List must be blocked by the impersonation guard: " + denied.getMessage());
+        denied.getMessage().contains("identity endpoint"),
+        "List must be blocked as an identity endpoint: " + denied.getMessage());
   }
 
   @Test
@@ -432,8 +433,8 @@ public class BotImpersonationIT {
                         "{\"tokenIds\":[\"" + UUID.randomUUID() + "\"]}"),
             "Revoking a personal access token while impersonating must be rejected");
     assertTrue(
-        denied.getMessage().contains("while impersonated by"),
-        "Revoke must be blocked by the impersonation guard: " + denied.getMessage());
+        denied.getMessage().contains("identity endpoint"),
+        "Revoke must be blocked as an identity endpoint: " + denied.getMessage());
   }
 
   @Test
@@ -461,6 +462,50 @@ public class BotImpersonationIT {
     assertTrue(
         denied.getMessage().contains("does not match the current bot's token"),
         "Rotated bot token must be rejected by bot-token validation: " + denied.getMessage());
+  }
+
+  @Test
+  void test_impersonation_cannotGenerateJwtForTarget(TestNamespace ns) {
+    User target = createRegularUser(ns, "jwtmint");
+    OpenMetadataClient asTarget = grantedBotImpersonating(ns, "jwtmint", target.getName());
+
+    assertThrows(
+        Exception.class,
+        () ->
+            asTarget
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.POST,
+                    "/v1/users/generateToken",
+                    Map.of("id", target.getId().toString(), "JWTTokenExpiry", "OneHour"),
+                    null),
+        "An impersonated request must not mint a JWT for the target");
+  }
+
+  @Test
+  void test_impersonation_cannotReachCredentialEndpointEvenWithGrant(TestNamespace ns) {
+    // The grant scopes who a bot may act as, not what it may take. generateRandomPwd is part of
+    // the credential surface, so it stays closed even for a fully authorized impersonation.
+    OpenMetadataClient asAdmin = grantedBotImpersonating(ns, "randompwd", "admin");
+
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () ->
+                asAdmin
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/users/generateRandomPwd", null),
+            "An impersonated request must not reach the credential surface");
+    assertTrue(
+        denied.getMessage().contains("identity endpoint"),
+        "Error should name the identity endpoint: " + denied.getMessage());
+  }
+
+  private OpenMetadataClient grantedBotImpersonating(
+      TestNamespace ns, String suffix, String targetUserName) {
+    User botUser = createBotUser(ns, suffix);
+    createBot(ns.prefix("imp_" + suffix + "_bot"), botUser, true);
+    return impersonationClient(generateBotToken(botUser), targetUserName);
   }
 
   private Bot putBot(

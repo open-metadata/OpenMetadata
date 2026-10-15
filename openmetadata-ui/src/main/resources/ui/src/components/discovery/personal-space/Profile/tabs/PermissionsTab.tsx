@@ -15,15 +15,19 @@ import {
   Badge,
   BadgeColor,
   Box,
+  Card,
   Divider,
+  FeaturedIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { UserCheck01 } from '@untitledui/icons';
+import {
+  Policy,
+  Teams,
+  UserCheck01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PoliciesIcon } from '../../../../../assets/svg/policies.svg';
-import { ReactComponent as TeamsIcon } from '../../../../../assets/svg/Teams.svg';
 import { User } from '../../../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import {
@@ -36,6 +40,7 @@ import DirectRolesSection from './permissions/DirectRolesSection';
 import InheritedPermissionsSection from './permissions/InheritedPermissionsSection';
 import MembershipSection from './permissions/MembershipSection';
 import TeamPermissionsSection from './permissions/TeamPermissionsSection';
+
 interface PermissionsTabProps {
   userData: User;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
@@ -50,7 +55,7 @@ interface SectionBlockProps {
 const SectionBlock: React.FC<SectionBlockProps> = ({ title, children }) => (
   <Box direction="col" gap={3}>
     <Typography
-      className="tw:text-primary-900 tw:uppercase"
+      className="tw:text-primary tw:uppercase"
       size="text-xs"
       weight="medium">
       {title}
@@ -63,7 +68,7 @@ interface StatTileProps {
   count: number;
   label: string;
   subLabel?: string;
-  icon?: React.ReactNode;
+  icon: FC<{ className?: string }>;
 }
 
 const StatTile: React.FC<StatTileProps> = ({
@@ -72,36 +77,39 @@ const StatTile: React.FC<StatTileProps> = ({
   subLabel,
   icon,
 }) => (
-  <Box
-    className="tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-4"
-    direction="col"
-    gap={2}>
-    <Box align="center" gap={2}>
-      <Box className="tw:rounded-md tw:bg-success-50 tw:h-8 tw:w-8 tw:flex tw:items-center tw:justify-center">
-        {icon}
+  <Card className="tw:flex-1" variant="muted">
+    <Card.Content className="tw:flex tw:flex-col tw:gap-2">
+      <Box align="center" gap={2}>
+        <FeaturedIcon
+          color="success"
+          icon={icon}
+          shape="square"
+          size="sm"
+          theme="light"
+        />
+        <Box direction="col">
+          <Typography className="tw:text-utility-gray-900" weight="semibold">
+            {count}
+          </Typography>
+          <Typography
+            className="tw:text-utility-gray-700"
+            size="text-sm"
+            weight="medium">
+            {label}
+          </Typography>
+        </Box>
       </Box>
-      <Box direction="col">
-        <Typography className="tw:text-utility-gray-900" weight="semibold">
-          {count}
-        </Typography>
+      <Divider className="tw:h-0 tw:bg-transparent tw:border-t tw:border-dashed tw:border-border-secondary tw:-mx-1" />
+      {subLabel && (
         <Typography
           className="tw:text-utility-gray-700"
-          size="text-sm"
-          weight="medium">
-          {label}
+          size="text-xs"
+          weight="regular">
+          {subLabel}
         </Typography>
-      </Box>
-    </Box>
-    <Divider className="tw:h-0 tw:bg-transparent tw:border-t tw:border-dashed tw:border-border-secondary tw:-mx-1" />
-    {subLabel && (
-      <Typography
-        className="tw:text-utility-gray-700"
-        size="text-xs"
-        weight="regular">
-        {subLabel}
-      </Typography>
-    )}
-  </Box>
+      )}
+    </Card.Content>
+  </Card>
 );
 
 const OperationChips: React.FC<{
@@ -116,6 +124,20 @@ const OperationChips: React.FC<{
     ))}
   </Box>
 );
+
+const getPermissionSummaryStats = (
+  summary?: PermissionDebugInfo['summary']
+) => ({
+  totalRoles: summary?.totalRoles ?? 0,
+  directRoles: summary?.directRoles ?? 0,
+  inheritedRoles: summary?.inheritedRoles ?? 0,
+  totalPolicies: summary?.totalPolicies ?? 0,
+  totalRules: summary?.totalRules ?? 0,
+  teamCount: summary?.teamCount ?? 0,
+  maxHierarchyDepth: summary?.maxHierarchyDepth ?? 0,
+  allowedOperations: summary?.effectiveOperations ?? [],
+  deniedOperations: summary?.deniedOperations ?? [],
+});
 
 const PermissionsTab: React.FC<PermissionsTabProps> = ({
   userData,
@@ -147,9 +169,8 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
     })();
   }, [isLoggedInUser, userData.name]);
 
-  const summary = debugInfo?.summary;
-  const allowedOperations = summary?.effectiveOperations ?? [];
-  const deniedOperations = summary?.deniedOperations ?? [];
+  const stats = getPermissionSummaryStats(debugInfo?.summary);
+  const { allowedOperations, deniedOperations } = stats;
 
   const sections: React.ReactNode[] = [
     <SectionBlock key="membership" title={t('label.membership')}>
@@ -162,34 +183,28 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
     <SectionBlock key="summary" title={t('label.permission-summary')}>
       <Box className="tw:flex-wrap" gap={3}>
         <StatTile
-          count={summary?.totalRoles ?? 0}
-          icon={
-            <UserCheck01
-              className="tw:text-success-600"
-              height={20}
-              width={20}
-            />
-          }
+          count={stats.totalRoles}
+          icon={UserCheck01}
           label={t('label.total-role-plural')}
           subLabel={t('label.direct-inherited-summary', {
-            direct: summary?.directRoles ?? 0,
-            inherited: summary?.inheritedRoles ?? 0,
+            direct: stats.directRoles,
+            inherited: stats.inheritedRoles,
           })}
         />
         <StatTile
-          count={summary?.totalPolicies ?? 0}
-          icon={<PoliciesIcon height={24} width={24} />}
+          count={stats.totalPolicies}
+          icon={Policy}
           label={t('label.policy-plural')}
           subLabel={t('label.rule-plural-count', {
-            count: summary?.totalRules ?? 0,
+            count: stats.totalRules,
           })}
         />
         <StatTile
-          count={summary?.teamCount ?? 0}
-          icon={<TeamsIcon height={24} width={24} />}
+          count={stats.teamCount}
+          icon={Teams}
           label={t('label.team-plural')}
           subLabel={t('label.max-hierarchy-depth-value', {
-            count: summary?.maxHierarchyDepth ?? 0,
+            count: stats.maxHierarchyDepth,
           })}
         />
       </Box>
@@ -235,7 +250,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
 
   return (
     <Box
-      className="tw:w-full tw:max-w-[800px] tw:rounded-b-[10px] tw:bg-primary"
+      className="tw:w-full tw:max-w-[800px]"
       data-testid="profile-permissions"
       direction="col"
       gap={6}>

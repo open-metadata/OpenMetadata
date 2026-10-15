@@ -143,6 +143,7 @@ export const LINEAGE_COLUMN_NODE_SUPPORTED = [
   EntityType.TOPIC,
   EntityType.SEARCH_INDEX,
   EntityType.API_ENDPOINT,
+  EntityType.METRIC,
 ];
 
 export const LINEAGE_EXPORT_HEADERS = [
@@ -159,8 +160,6 @@ export const LINEAGE_EXPORT_HEADERS = [
   { field: 'depth', title: 'Level' },
 ];
 
-export const INITIAL_NODE_ITEMS_LENGTH = 50;
-export const NODE_ITEMS_PAGE_SIZE = 50;
 export const DEBOUNCE_TIMEOUT = 300;
 
 export enum LINEAGE_TAB_VIEW {

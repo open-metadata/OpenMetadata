@@ -41,12 +41,13 @@ class RdfResourceLineageQueryTest {
         RdfGraphService.buildLineageQuery(
             entityId, "table", RdfGraphService.LineageDirection.BOTH, "https://open-metadata.org/");
 
-    assertTrue(upstream.contains("(prov:wasDerivedFrom|^om:UPSTREAM)+"));
-    assertTrue(downstream.contains("(om:UPSTREAM|^prov:wasDerivedFrom)+"));
+    assertTrue(upstream.contains("(om:upstream|^om:downstream|prov:wasDerivedFrom|^om:UPSTREAM)+"));
+    assertTrue(
+        downstream.contains("(om:downstream|^om:upstream|^prov:wasDerivedFrom|om:UPSTREAM)+"));
     assertFalse(upstream.contains("LIMIT"));
     assertFalse(downstream.contains("LIMIT"));
     assertFalse(both.contains("LIMIT"));
-    assertFalse(both.contains("om:upstream"));
+    assertTrue(both.contains("om:upstream"));
     QueryFactory.create(upstream);
     QueryFactory.create(downstream);
     QueryFactory.create(both);

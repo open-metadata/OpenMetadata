@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { descriptionBox } from './common';
+import { getDescriptionBox } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import { TaskDetails } from './task';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const REACTION_EMOJIS = ['🚀', '😕', '👀', '❤️', '🎉', '😄', '👎', '👍'];
 
@@ -40,20 +41,21 @@ export const checkDescriptionInEditModal = async (
 
   expect(taskContent).toContain(`Request to update description for`);
 
-  await page.getByRole('button', { name: 'down' }).click();
-  await page.locator('.ant-dropdown').waitFor({
-    state: 'visible',
-  });
+  await page.locator('[data-testid$="-task-action-trigger"]').click();
+  const taskActionMenu = page.locator('.task-action-dropdown');
+  await taskActionMenu.waitFor({ state: 'visible' });
 
-  await page.getByRole('menuitem', { name: 'edit' }).click();
+  await taskActionMenu.getByRole('menuitem', { name: 'edit' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+  const editTaskModal = page.getByTestId('suggestion-edit-task-modal');
 
-  await expect(page.locator('.ant-modal-title')).toContainText(
+  await expect(editTaskModal).toBeVisible();
+
+  await expect(editTaskModal.getByRole('heading')).toContainText(
     `Update description for table ${taskValue.term} columns/${taskValue.columnName}`
   );
 
-  await expect(page.locator(descriptionBox)).toContainText(
+  await expect(getDescriptionBox(page)).toContainText(
     taskValue.description ?? ''
   );
 
@@ -64,7 +66,7 @@ export const checkDescriptionInEditModal = async (
 
   await expect(
     taskDescriptionTabs
-      .locator('.ant-tabs-content-holder')
+      .getByRole('tabpanel')
       .getByTestId('markdown-parser')
       .first()
   ).toContainText(taskValue.oldDescription ?? '');
@@ -79,7 +81,12 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
 
   await page.locator('[data-testid="delete-message"]').click();
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  // Same here: the delete confirm is ConfirmationModal, now a core Dialog.
+  // `waitForAntdModalToSettle` counted animating `.ant-modal` elements, so it
+  // is a no-op against a core Dialog — wait for the button this flow clicks
+  // instead, which also covers the 300ms zoom-in.
+  await expect(page.getByTestId('confirmation-modal')).toBeVisible();
+  await expect(page.getByTestId('save-button')).toBeEnabled();
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/conversations/*/replies/*'
@@ -98,14 +105,37 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
  * activity events.
  */
 export const waitForReactionResponse = (page: Page, reaction: string) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (response) =>
+      ['PUT', 'DELETE'].includes(response.request().method()) &&
       (response.url().includes('/api/v1/activity') ||
         response.url().includes('/api/v1/conversations') ||
         response.url().includes('/api/v1/feed')) &&
-      response.url().includes(`/reaction/${reaction}`) &&
-      response.ok()
+      response.url().includes(`/reaction/${reaction}`),
+    'ok'
   );
+
+/**
+ * Click a reaction inside the feed-reactions popover.
+ *
+ * The popover animates in over several frames, and Playwright's two-frame
+ * stability check can land inside a lull in that transform: it then presses
+ * coordinates the popover has already moved on from, the press hits dead
+ * space, and no reaction request is ever sent — so the caller's hoisted
+ * waitForResponse waits out the whole test. react-aria removes
+ * `data-entering` once the entry animation ends, which makes its absence the
+ * deterministic "the popover has settled" signal.
+ */
+export const clickFeedReaction = async (page: Page, reaction: string) => {
+  const popup = page.getByTestId('feed-reactions-popover');
+  await expect(popup).toBeVisible();
+  await expect(popup).not.toHaveAttribute('data-entering');
+
+  await popup
+    .locator(`[data-testid="reaction-button"][aria-label="${reaction}"]`)
+    .click();
+};
 
 /**
  * Cycles every reaction on a specific card. Callers that react twice (add, then
@@ -124,15 +154,14 @@ export const reactOnFeedCard = async (page: Page, message: Locator) => {
 
     await addReactionButton.click();
 
-    await page
-      .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
-      .waitFor({ state: 'visible' });
+    const popup = page.getByTestId('feed-reactions-popover');
+    await expect(popup).toBeVisible();
+    await expect(popup).not.toHaveAttribute('data-entering');
 
     const reactionResponse = waitForReactionResponse(page, reaction);
-    await page
-      .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
-      .click();
+    await popup.getByRole('button', { name: reaction, exact: true }).click();
     await reactionResponse;
+    await expect(popup).toBeHidden();
   }
 };
 
@@ -233,10 +262,6 @@ export const reactOnActivity = async (
     await expect(addReactionButton).toBeVisible();
     await addReactionButton.click();
 
-    await page
-      .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
-      .waitFor({ state: 'visible' });
-
     // Activity API uses /api/v1/activity/*/reaction/* endpoint
     const waitForReactionResponse = page.waitForResponse(
       (response) =>
@@ -244,9 +269,7 @@ export const reactOnActivity = async (
         response.url().includes('/reaction')
     );
 
-    await page
-      .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
-      .click();
+    await clickFeedReaction(page, reaction);
     await waitForReactionResponse;
   }
 };
@@ -257,7 +280,7 @@ export const reactOnActivity = async (
 export const navigateToActivityFeedTab = async (page: Page) => {
   await page.getByTestId('activity_feed').click();
   await waitForPageLoaded(page);
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 /**

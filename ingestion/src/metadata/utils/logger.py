@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.datacontract.dataContractResult import (
 from metadata.generated.schema.type.queryParserData import QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries
 from metadata.ingestion.api.models import Entity
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -42,6 +43,8 @@ from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.utils import model_str
 
 METADATA_LOGGER = "metadata"
+# collate-data-diff logs a long Table Diff's progress here, at INFO: about once a minute, and when it completes
+DATA_DIFF_PROGRESS_LOGGER = "data_diff.progress"
 BASE_LOGGING_FORMAT = "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
 logging.basicConfig(format=BASE_LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 
@@ -211,6 +214,8 @@ def set_loggers_level(level: int | str = logging.INFO):
     :param level: logging level
     """
     logging.getLogger(METADATA_LOGGER).setLevel(level)
+    # data-diff's other loggers stay quiet below the root logger's WARNING: they log every segment
+    logging.getLogger(DATA_DIFF_PROGRESS_LOGGER).setLevel(level)
 
 
 def log_ansi_encoded_string(
@@ -276,6 +281,16 @@ def _(record: OMetaFQNLineageRequest) -> str:
         f"{type(record).__name__} "
         f"[{record.from_entity_type}: {record.from_entity_fqn} -> {record.to_entity_type}: {record.to_entity_fqn}]"
     )
+
+
+@get_log_name.register
+def _(record: Barrier) -> None:
+    """A Barrier is a control record, not an ingested asset.
+
+    Returning None keeps it out of Status.scanned, which would otherwise report the
+    flush as a scanned record and inflate the connector's record count.
+    """
+    return
 
 
 @get_log_name.register

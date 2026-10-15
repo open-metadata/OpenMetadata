@@ -412,6 +412,26 @@ public abstract class EntityServiceBase<T> {
     }
   }
 
+  /**
+   * Delete an entity by its fully qualified name, hitting the {@code DELETE
+   * basePath/name/{fqn}} endpoint. Mirrors {@link #getByName(String)} routing and uses the same
+   * path-encoding helper so FQNs with special characters are handled consistently. Query params
+   * (e.g. {@code recursive}, {@code hardDelete}) are forwarded as-is.
+   */
+  public void deleteByName(String name) throws OpenMetadataException {
+    httpClient.execute(HttpMethod.DELETE, buildPathWithEncodedName(name), null, Void.class);
+  }
+
+  public void deleteByName(String name, Map<String, String> params) throws OpenMetadataException {
+    if (params == null || params.isEmpty()) {
+      deleteByName(name);
+    } else {
+      RequestOptions options = RequestOptions.builder().queryParams(params).build();
+      httpClient.execute(
+          HttpMethod.DELETE, buildPathWithEncodedName(name), null, Void.class, options);
+    }
+  }
+
   public CompletableFuture<Void> deleteAsync(UUID id) {
     return deleteAsync(id.toString());
   }

@@ -35,6 +35,7 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
 
   // Bot has special requirements
   {
+    supportsEntityStatus = false;
     supportsFieldsQueryParam = false;
     supportsTags = false;
     supportsOwners = false; // Bot has bot user, not owners
@@ -192,6 +193,29 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
     assertNotNull(bot);
     assertNotNull(bot.getBotUser());
     assertEquals(botUser.getName().toLowerCase(), bot.getBotUser().getName().toLowerCase());
+  }
+
+  @Test
+  void get_entityListIncludesRequiredBotUser_200_OK(TestNamespace ns) {
+    User botUser = createBotUser(ns);
+    Bot created =
+        createEntity(
+            new CreateBot()
+                .withName(ns.prefix("listed_bot"))
+                .withDescription("Bot returned by the list endpoint")
+                .withBotUser(botUser.getName()));
+
+    ListParams params = new ListParams();
+    params.setLimit(1000000);
+    params.setFields("*");
+    Bot listed =
+        listEntities(params).getData().stream()
+            .filter(bot -> bot.getId().equals(created.getId()))
+            .findFirst()
+            .orElseThrow();
+
+    assertNotNull(listed.getBotUser(), "Listed bot must include its required bot user");
+    assertEquals(botUser.getId(), listed.getBotUser().getId());
   }
 
   @Test

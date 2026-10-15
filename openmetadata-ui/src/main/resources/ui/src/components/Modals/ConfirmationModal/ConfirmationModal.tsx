@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
-import Modal from 'antd/lib/modal/Modal';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmationModalProps } from './ConfirmationModal.interface';
 
@@ -39,52 +45,86 @@ const ConfirmationModal = ({
   visible,
 }: ConfirmationModalProps) => {
   const { t } = useTranslation();
+  const headerId = useId();
+  const bodyId = useId();
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      className={className}
-      closable={false}
-      closeIcon={null}
-      data-testid="confirmation-modal"
-      footer={
-        <div className={classNames('justify-end', footerClassName)}>
-          <Button
-            className={classNames('mr-2', cancelButtonCss)}
-            data-testid="cancel"
-            key="remove-edge-btn"
-            type="text"
-            onClick={onCancel}>
-            {cancelText}
-          </Button>
-          <Button
-            className={confirmButtonCss}
-            danger={confirmText === t('label.delete')}
-            data-testid={isLoading ? 'loading-button' : 'save-button'}
-            key="save-btn"
-            loading={isLoading}
-            type="primary"
-            onClick={onConfirm}>
-            {confirmText}
-          </Button>
-        </div>
-      }
-      maskClosable={false}
-      open={visible}
-      title={
-        <Typography.Text
-          strong
-          className={headerClassName}
-          data-testid="modal-header">
-          {header}
-        </Typography.Text>
-      }
-      onCancel={onCancel}>
-      <div className={classNames('h-20', bodyClassName)}>
-        <Typography.Text data-testid="body-text">{bodyText}</Typography.Text>
-      </div>
-    </Modal>
+    // `maskClosable={false}` -> `isDismissable={false}`: a confirmation is
+    // often destructive, so a stray backdrop click must not answer it.
+    <ModalOverlay
+      // Core's overlay is z-50; antd's Drawer and Modal roots are z-1000
+      // (@zindex-modal, and vite's `modifyVars` is empty so nothing lowers it).
+      // Callers still open this from inside one -- ActivityFeedDrawer and
+      // ActivityThreadPanel (antd Drawer) reach it through ActivityFeedActions,
+      // and TeamDetailsV1 (antd Modal) through AssetsTabs. Without this the
+      // prompt renders under their mask, so the click lands on the mask and
+      // dismisses the host instead of answering the prompt. Drop this once
+      // those overlays are on core.
+      className="tw:z-[1001]"
+      isDismissable={false}
+      isOpen={visible}
+      onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <Modal>
+        <Dialog
+          // react-aria names a Dialog from a title-slot Heading, which this
+          // does not use — the header is a node carrying a test id. Without
+          // this the dialog is announced unnamed and react-aria warns. The
+          // SCIM caller passes an empty header and titles itself in the body,
+          // so fall back to that.
+          aria-labelledby={header ? headerId : bodyId}
+          data-testid="confirmation-modal"
+          // antd's `className` landed on `.ant-modal`, which is the panel —
+          // core's `className` is the outer wrapper, so styling goes here.
+          panelClassName={className}
+          // Dialog defaults to 688; antd's Modal defaulted to 520. Keep the
+          // prompt the width every caller was already getting.
+          width={520}
+          onClose={onCancel}>
+          {/* Rendered only when there is a header: the SCIM delete prompt
+              passes an empty one and supplies its own heading in the body,
+              which antd handled by hiding the header with CSS. */}
+          {header && (
+            <Dialog.Header>
+              <Typography
+                className={headerClassName}
+                data-testid="modal-header"
+                id={headerId}
+                weight="semibold">
+                {header}
+              </Typography>
+            </Dialog.Header>
+          )}
+          <Dialog.Content>
+            <div className={classNames('h-20', bodyClassName)}>
+              <Typography data-testid="body-text" id={bodyId}>
+                {bodyText}
+              </Typography>
+            </div>
+          </Dialog.Content>
+          <Dialog.Footer className={classNames('justify-end', footerClassName)}>
+            <Button
+              className={classNames('mr-2', cancelButtonCss)}
+              color="tertiary"
+              data-testid="cancel"
+              onClick={onCancel}>
+              {cancelText}
+            </Button>
+            <Button
+              className={confirmButtonCss}
+              color={
+                confirmText === t('label.delete')
+                  ? 'primary-destructive'
+                  : 'primary'
+              }
+              data-testid={isLoading ? 'loading-button' : 'save-button'}
+              isLoading={isLoading}
+              onClick={onConfirm}>
+              {confirmText}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

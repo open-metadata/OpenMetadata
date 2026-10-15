@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { ECustomizedGovernance } from '../../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../../constant/settings';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
@@ -45,13 +46,13 @@ const test = base.extend<{
 }>({
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await use(page);
     await page.close();
   },
@@ -169,7 +170,7 @@ test.describe('Glossary persona customization', () => {
 
     await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
     await adminPage.getByText('Governance').click();
-    await adminPage.getByText('Glossary', { exact: true }).click();
+    await adminPage.getByTestId('Glossary').click();
 
     await waitForAllLoadersToDisappear(adminPage);
 
