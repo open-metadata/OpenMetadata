@@ -1031,6 +1031,34 @@
         "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts"
       ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Suggestions/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/EntityRouter*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/withSuggestions*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/entity/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/queries/mlModelQuery.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/queries/entityDetailQueryKeys.test.ts",
+        "openmetadata-ui/src/main/resources/ui/src/pages/APIEndpointPage/APIEndpointPage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ContainerPage/ContainerPage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/DashboardDetailsPage/DashboardDetailsPage.component.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/DirectoryDetailsPage/DirectoryDetailsPage*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/FileDetailsPage/FileDetailsPage*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/MlModelPage/MlModelPage.component*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/PipelineDetails/PipelineDetailsPage.component*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/SearchIndexDetailsPage/SearchIndexDetailsPage*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/SpreadsheetDetailsPage/SpreadsheetDetailsPage*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/TableDetailsPageV1/TableDetailsPageV1*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/TopicDetails/TopicDetailsPage.component*.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/WorksheetDetailsPage/WorksheetDetailsPage*.tsx"
+      ],
+      "projects": ["Basic"],
+      "specs": [
+        "playwright/e2e/Features/EntitySuggestions.spec.ts",
+        "playwright/e2e/Features/SuggestionsSliderPermissions.spec.ts",
+        "playwright/e2e/Features/TagsSuggestion.spec.ts"
+      ]
     }
   ]
 }
