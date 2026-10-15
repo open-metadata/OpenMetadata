@@ -393,8 +393,9 @@ class HistoryAllocation:
 class HistoryMemoryBudget:
     """Account for both retained history views and the batch currently being built.
 
-    Builders run under the same lock so their reservations cannot race. Older indexes
-    are evicted before a growing batch falls back to individual-table scans.
+    Builders run under the same lock so their reservations cannot race. Only older
+    batches may be evicted; preserving the current batch's other view avoids repeated
+    batch scans when the two views cannot fit together.
     """
 
     def __init__(self, max_bytes: int):
@@ -412,7 +413,7 @@ class HistoryMemoryBudget:
 
     def reserve(self, key: tuple[str, int], size_bytes: int) -> None:
         while self.used_bytes + size_bytes > self.max_bytes:
-            oldest = next((candidate for candidate in self._allocations if candidate != key), None)
+            oldest = next((candidate for candidate in self._allocations if candidate[1] < key[1]), None)
             if oldest is None:
                 raise HistoryBudgetExceededError
             self.discard(oldest)

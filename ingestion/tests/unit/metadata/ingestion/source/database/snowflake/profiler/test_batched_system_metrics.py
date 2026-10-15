@@ -506,7 +506,7 @@ def test_oversized_dynamic_batch_falls_back_without_losing_refreshes(monkeypatch
     assert budget.used_bytes == 0
 
 
-def test_history_views_share_one_budget_and_evict_old_history(monkeypatch):
+def test_older_batch_history_can_be_evicted_across_views(monkeypatch):
     budget = snowflake_system.HISTORY_MEMORY_BUDGET
     session = FakeSnowflakeSession(
         dynamic_refreshes=[(DATABASE, SCHEMA, "DYN_A", START, 1, 0) for _ in range(5)],
@@ -516,6 +516,7 @@ def test_history_views_share_one_budget_and_evict_old_history(monkeypatch):
     make_computer(session, "dyn_a", TableType.Dynamic).get_system_metrics()
     assert budget.used_bytes > 0
     monkeypatch.setattr(budget, "max_bytes", budget.used_bytes + 1)
+    TABLE_BATCH_WINDOW.register([table_fqn("orders")])
 
     profiles = make_computer(session, "orders").get_system_metrics()
 
@@ -610,3 +611,74 @@ def test_history_budget_setting_rejects_a_negative_limit(monkeypatch):
 
     with pytest.raises(ValidationError):
         SnowflakeSettings()
+
+
+@pytest.mark.parametrize("dynamic_first", [False, True])
+def test_mixed_batch_preserves_the_other_views_history_and_falls_back(monkeypatch, dynamic_first):
+    budget = snowflake_system.HISTORY_MEMORY_BUDGET
+    session = FakeSnowflakeSession(
+        query_history=[
+            *[dml(str(i), "INSERT INTO PROD.FINANCE.ORDERS VALUES (1)", "INSERT", inserted=1) for i in range(4)],
+            *[dml(str(i + 4), "UPDATE PROD.FINANCE.CUSTOMERS SET X = 1", "UPDATE", updated=2) for i in range(4)],
+        ],
+        dynamic_refreshes=[
+            *[(DATABASE, SCHEMA, "DYN_A", START, 3, 0) for _ in range(3)],
+            *[(DATABASE, SCHEMA, "DYN_B", START, 0, 4) for _ in range(3)],
+        ],
+    )
+    batch = TABLE_BATCH_WINDOW.register([table_fqn(name) for name in ("orders", "customers", "dyn_a", "dyn_b")])
+    make_computer(session, "orders").get_system_metrics()
+    dml_bytes = budget.used_bytes
+    QUERY_HISTORY_INDEX.clear()
+    make_computer(session, "dyn_a", TableType.Dynamic).get_system_metrics()
+    dynamic_bytes = budget.used_bytes
+    DYNAMIC_TABLE_REFRESH_INDEX.clear()
+    monkeypatch.setattr(
+        budget, "max_bytes", max(dml_bytes, dynamic_bytes) + snowflake_system.HISTORY_INDEX_OVERHEAD_BYTES
+    )
+    assert dml_bytes + dynamic_bytes > budget.max_bytes
+    session.statements.clear()
+
+    regular_tables = [("orders", TableType.Regular), ("customers", TableType.Regular)]
+    dynamic_tables = [("dyn_a", TableType.Dynamic), ("dyn_b", TableType.Dynamic)]
+    first, second = (dynamic_tables, regular_tables) if dynamic_first else (regular_tables, dynamic_tables)
+    profiles = {
+        name: make_computer(session, name, table_type).get_system_metrics()
+        for name, table_type in (first[0], second[0], first[1], second[1])
+    }
+
+    assert rows_affected(profiles["orders"], DmlOperationType.INSERT) == [1] * 4
+    assert rows_affected(profiles["customers"], DmlOperationType.UPDATE) == [2] * 4
+    assert rows_affected(profiles["dyn_a"], DmlOperationType.INSERT) == [3] * 3
+    assert rows_affected(profiles["dyn_b"], DmlOperationType.DELETE) == [4] * 3
+    assert len(session.scans("DYNAMIC_TABLE_REFRESH_HISTORY")) == (1 if dynamic_first else 3)
+    assert len(session.query_history_scans) == (3 if dynamic_first else 1)
+    cached, fallback = (
+        (DYNAMIC_TABLE_REFRESH_INDEX, QUERY_HISTORY_INDEX)
+        if dynamic_first
+        else (QUERY_HISTORY_INDEX, DYNAMIC_TABLE_REFRESH_INDEX)
+    )
+    assert cached._indexes[batch.batch_id] is not None
+    assert fallback._indexes[batch.batch_id] is None
+    assert budget.used_bytes == (dynamic_bytes if dynamic_first else dml_bytes)
+    assert all(result.closed for result in session.history_results)
+
+
+def test_an_older_batch_cannot_evict_newer_history(monkeypatch):
+    budget = snowflake_system.HISTORY_MEMORY_BUDGET
+    session = FakeSnowflakeSession(
+        dynamic_refreshes=[(DATABASE, SCHEMA, "DYN_A", START, 1, 0)],
+        query_history=[dml("1", "INSERT INTO PROD.FINANCE.ORDERS VALUES (1)", "INSERT", inserted=8)],
+    )
+    older = TABLE_BATCH_WINDOW.register([table_fqn("orders")])
+    newer = TABLE_BATCH_WINDOW.register([table_fqn("dyn_a")])
+    make_computer(session, "dyn_a", TableType.Dynamic).get_system_metrics()
+    retained_bytes = budget.used_bytes
+    monkeypatch.setattr(budget, "max_bytes", retained_bytes + 1)
+
+    profiles = make_computer(session, "orders").get_system_metrics()
+
+    assert rows_affected(profiles, DmlOperationType.INSERT) == [8]
+    assert DYNAMIC_TABLE_REFRESH_INDEX._indexes[newer.batch_id] is not None
+    assert QUERY_HISTORY_INDEX._indexes[older.batch_id] is None
+    assert budget.used_bytes == retained_bytes

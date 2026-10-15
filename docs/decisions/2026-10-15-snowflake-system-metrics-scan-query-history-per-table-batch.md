@@ -1,7 +1,7 @@
 # Snowflake system metrics scan QUERY_HISTORY once per batch of tables
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-15 (release completed batches) · v3 2026-10-15 (byte budget and per-table fallback)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-15 (release completed batches) · v3 2026-10-15 (byte budget and per-table fallback) · v4 2026-10-15 (protect active batch history)
 - **Deciders:** TeddyCr
 - **Guard:** `ingestion/tests/unit/metadata/ingestion/source/database/snowflake/profiler/test_batched_system_metrics.py`, `TestFetchTableBatches` in `ingestion/tests/unit/observability/profiler/test_entity_fetcher.py`
 - **Related:** open-metadata/openmetadata-collate#3029
@@ -69,3 +69,13 @@ Each table still reuses its own history for inserts, updates and deletes. No rec
 This sacrifices scan reduction for oversized histories: a batch can cost one interrupted scan plus
 one scan per table. Individual-table histories remain unconstrained by this shared cache budget,
 so one extremely busy table can still require substantial memory.
+
+## Amendment v4 — Protect the batch's other history view
+Budget eviction is restricted to strictly older batch IDs. The other history view of the batch
+being built, and any newer batch's history, remain cached. If the remaining budget cannot hold the
+new view, it records its per-table fallback marker instead. This prevents alternating regular and
+dynamic tables from repeatedly evicting each other's indexes and rescanning the entire batch.
+
+`test_mixed_batch_preserves_the_other_views_history_and_falls_back` guards both table orderings,
+metric values and scan counts. The older-batch eviction test still verifies that completed history
+can release capacity.
