@@ -47,6 +47,8 @@ T = TypeVar("T", bound=BaseModel)
 # keep the request line well under the server's default 8 KiB header limit
 SEARCH_TERMS_BATCH_SIZE = 100
 
+SERVICE_NAME_FIELD = "service.name.keyword"
+
 
 def _batched(values: Sequence[str], size: int) -> Iterator[list[str]]:
     for start in range(0, len(values), size):
@@ -386,7 +388,7 @@ class ESMixin(Generic[T]):
                 "bool": {
                     "must": [
                         {"term": {"processedLineage": True}},
-                        {"term": {"service.name.keyword": service_name}},
+                        {"term": {SERVICE_NAME_FIELD: service_name}},
                     ]
                 }
             }
@@ -428,7 +430,7 @@ class ESMixin(Generic[T]):
                     "bool": {
                         "must": [
                             {"term": {"processedLineage": True}},
-                            {"term": {"service.name.keyword": service_name}},
+                            {"term": {SERVICE_NAME_FIELD: service_name}},
                             {"terms": {"checksum.keyword": batch}},
                         ]
                     }
@@ -617,7 +619,7 @@ class ESMixin(Generic[T]):
             "query": {
                 "bool": {
                     "must": [
-                        {"bool": {"should": [{"term": {"service.name.keyword": service_name}}]}},
+                        {"bool": {"should": [{"term": {SERVICE_NAME_FIELD: service_name}}]}},
                         {
                             "bool": {
                                 "must": [
