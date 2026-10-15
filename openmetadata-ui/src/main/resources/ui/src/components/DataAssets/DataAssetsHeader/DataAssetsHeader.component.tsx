@@ -115,6 +115,7 @@ import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.comp
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { TagChipTooltip } from '../../Tag/TagChipTooltip/TagChipTooltip';
@@ -1281,6 +1282,10 @@ export const DataAssetsHeader = ({
             {dataContractLatestResultButton}
             {sourceUrlButton}
             {tableClassBase.getRequestDataAccessButton()}
+            <ChangeRequestsIndicator
+              entityId={dataAsset.id ?? ''}
+              entityType={entityType}
+            />
             {headerActions}
             {renderManageButton()}
           </div>

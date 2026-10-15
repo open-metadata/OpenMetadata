@@ -65,8 +65,8 @@ const openSelect = async (select: Locator) => {
 };
 
 /**
- * Closes an open popover without Escape, which would also close the modal, by clicking
- * the modal subtitle: static header text, identical in add and edit mode.
+ * Closes an open popover without Escape, which would also close the drawer, by clicking
+ * the drawer subtitle: static header text, identical in add and edit mode.
  */
 export const dismissPopover = async (dialog: Locator) => {
   await dialog
@@ -74,7 +74,7 @@ export const dismissPopover = async (dialog: Locator) => {
     .click();
 };
 
-export const openAddAlertModal = async (page: Page) => {
+export const openAddAlertDrawer = async (page: Page) => {
   await page.getByTestId('add-alert-button').click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -179,7 +179,7 @@ export const getFilterArgumentOptions = async (
   );
 };
 
-export const saveAlertModal = async (page: Page, dialog: Locator) => {
+export const saveAlertDrawer = async (page: Page, dialog: Locator) => {
   // The form also asks what its sources support with a POST to .../capabilities, which is not the save.
   const saveRequest = page.waitForRequest((request) => {
     const path = new URL(request.url()).pathname;
