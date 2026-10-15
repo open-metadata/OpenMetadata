@@ -1816,6 +1816,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         tableAfterChange.getDomains().getFirst().getFullyQualifiedName(),
         "Domain FQN should match the new domain");
 
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for search index to reflect domain migration")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -1885,6 +1886,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     dataProduct.setDomains(List.of(hr.getEntityReference()));
     patchEntity(dataProduct.getId().toString(), dataProduct);
 
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for inherited-domain search propagation to child tables")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -1943,6 +1945,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     dataProduct.setDomains(List.of(hr.getEntityReference()));
     patchEntity(dataProduct.getId().toString(), dataProduct);
 
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for multi-level inherited-domain search propagation")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -2231,6 +2234,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         tableAfter.getDomains().get(0).getFullyQualifiedName(),
         "Domain FQN should match the new domain after consolidation");
 
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for search index to reflect domain consolidation")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -4025,6 +4029,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
   private void awaitAssetDataProduct(
       OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedDpFqn) {
+    QueuedSearchWrites.await();
     Awaitility.await("asset " + tableId + " carries data product " + expectedDpFqn + " in search")
         .atMost(Duration.ofSeconds(60))
         .pollDelay(Duration.ofMillis(500))

@@ -439,6 +439,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
 
     createTestSuiteWithDisplayName(reservedSuite, reservedDisplayName);
 
+    QueuedSearchWrites.await();
     Awaitility.await("search matches a display name containing reserved characters")
         .atMost(SEARCH_CONVERGENCE_TIMEOUT)
         .pollInterval(Duration.ofSeconds(2))
@@ -955,6 +956,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     putPipelineStatus(client, pipeline, PipelineStatusType.SUCCESS);
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      QueuedSearchWrites.await();
       Awaitility.await("pipeline completion updates test suite and search index")
           .atMost(Duration.ofSeconds(30))
           .pollInterval(Duration.ofSeconds(2))

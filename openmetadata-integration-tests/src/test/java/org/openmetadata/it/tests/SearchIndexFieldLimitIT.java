@@ -25,6 +25,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -637,6 +638,7 @@ public class SearchIndexFieldLimitIT {
             "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"fullyQualifiedName\":\"%s\"}}]}}}",
             escapeJson(table.getFullyQualifiedName()));
 
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for table extension to be indexed")
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(1, TimeUnit.SECONDS)

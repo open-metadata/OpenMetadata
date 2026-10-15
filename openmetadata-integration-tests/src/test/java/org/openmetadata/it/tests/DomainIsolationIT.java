@@ -109,6 +109,7 @@ public class DomainIsolationIT {
       OpenMetadataClient restricted = createRestrictedUserClient(admin, p, d1, cleanup);
 
       // Wait until the admin view of the full chain is fully indexed before checking the prune.
+      QueuedSearchWrites.await();
       Awaitility.await()
           .atMost(Duration.ofSeconds(60))
           .ignoreExceptions()
@@ -280,6 +281,7 @@ public class DomainIsolationIT {
       String t1Fqn = t1.getFullyQualifiedName();
       OpenMetadataClient plainUser = createPlainUserClient(admin, p, cleanup);
 
+      QueuedSearchWrites.await();
       Awaitility.await()
           .atMost(Duration.ofSeconds(60))
           .ignoreExceptions()
@@ -524,6 +526,7 @@ public class DomainIsolationIT {
       String t2Fqn = t2.getFullyQualifiedName();
       OpenMetadataClient restrictedBot = createRestrictedBotClient(admin, p, d1, cleanup);
 
+      QueuedSearchWrites.await();
       Awaitility.await()
           .atMost(Duration.ofSeconds(60))
           .ignoreExceptions()

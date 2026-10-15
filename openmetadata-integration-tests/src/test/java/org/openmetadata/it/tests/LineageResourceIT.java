@@ -3723,6 +3723,7 @@ public class LineageResourceIT {
   }
 
   private void waitForEdgeInSearchLineage(OpenMetadataClient client, Table from, Table to) {
+    QueuedSearchWrites.await();
     Awaitility.await("ES index has edge " + from.getName() + " → " + to.getName())
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(2))

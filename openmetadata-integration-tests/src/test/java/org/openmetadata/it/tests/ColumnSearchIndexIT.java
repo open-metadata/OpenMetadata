@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -109,6 +110,7 @@ public class ColumnSearchIndexIT {
           "{\"query\":{\"term\":{\"fqnParts\":\""
               + userIdFqn.replace("\\", "\\\\").replace("\"", "\\\"")
               + "\"}}}";
+      QueuedSearchWrites.await();
       Awaitility.await("precise FQN column search")
           .pollInterval(POLL_INTERVAL)
           .atMost(POLL_AT_MOST)

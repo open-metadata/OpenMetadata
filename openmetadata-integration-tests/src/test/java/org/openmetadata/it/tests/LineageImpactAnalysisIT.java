@@ -23,6 +23,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -870,6 +871,7 @@ public class LineageImpactAnalysisIT {
     int downDepth = direction.equals("Downstream") ? depth : 0;
 
     String[] result = {null};
+    QueuedSearchWrites.await();
     Awaitility.await("searchLineageWithDirection")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))
@@ -991,6 +993,7 @@ public class LineageImpactAnalysisIT {
   }
 
   private void waitForSearchIndex(String fqn) {
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for ES index of " + fqn)
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(3))

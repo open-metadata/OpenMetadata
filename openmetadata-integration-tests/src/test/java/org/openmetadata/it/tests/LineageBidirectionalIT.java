@@ -21,6 +21,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -211,6 +212,7 @@ public class LineageBidirectionalIT {
       throws Exception {
     String[] result = {null};
 
+    QueuedSearchWrites.await();
     Awaitility.await("searchLineage bidirectional")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))
@@ -281,6 +283,7 @@ public class LineageBidirectionalIT {
   }
 
   private void waitForSearchIndex(String fqn) {
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for ES index of " + fqn)
         .atMost(Duration.ofSeconds(90))
         .pollInterval(Duration.ofSeconds(3))

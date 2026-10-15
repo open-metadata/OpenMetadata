@@ -32,6 +32,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -152,6 +153,7 @@ public class SearchIndexImmenseTermIT {
   }
 
   private void awaitContainerSearchable(String token, String containerId) {
+    QueuedSearchWrites.await();
     Awaitility.await("container indexed in search")
         .atMost(180, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)

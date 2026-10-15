@@ -28,6 +28,7 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.TopicTestFactory;
 import org.openmetadata.it.search.SearchClusterResetExtension;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SearchDocuments;
 import org.openmetadata.it.util.SearchRepairPasses;
@@ -87,6 +88,7 @@ class SearchIndexRecoveryIT {
 
   /** The type was rebuilt into a new index, promoted with its aliases, holding the topic. */
   private static void awaitRebuilt(final String topics, final Topic topic) {
+    QueuedSearchWrites.await();
     Awaitility.await("The repair rebuilt the topic index")
         .atMost(REBUILD_WAIT)
         .pollInterval(Duration.ofSeconds(2))

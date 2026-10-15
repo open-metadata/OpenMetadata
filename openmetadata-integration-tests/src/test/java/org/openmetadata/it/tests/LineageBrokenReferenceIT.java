@@ -22,6 +22,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -399,6 +400,7 @@ public class LineageBrokenReferenceIT {
         String.format(
             "{\"query\":{\"term\":{\"fullyQualifiedName\":\"%s\"}}}",
             table.getFullyQualifiedName());
+    QueuedSearchWrites.await();
     Awaitility.await("Entity should be searchable after reindex")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))

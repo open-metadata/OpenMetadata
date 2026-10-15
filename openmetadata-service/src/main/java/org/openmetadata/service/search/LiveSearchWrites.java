@@ -24,6 +24,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.events.lifecycle.KeyedTaskRunner;
 import org.openmetadata.service.events.lifecycle.OrderedLaneExecutor;
 import org.openmetadata.service.events.lifecycle.OrderedLaneExecutor.OrderedTask;
 import org.openmetadata.service.events.lifecycle.OrderedLaneTask;
@@ -58,7 +59,7 @@ public final class LiveSearchWrites implements AutoCloseable {
   private final SearchRepository repository;
   private final LongSupplier clock;
   private final OrderedLaneExecutor lanes;
-  private final OrderedLaneExecutor fanOuts;
+  private final KeyedTaskRunner fanOuts;
 
   LiveSearchWrites(final SearchRepository repository) {
     this(repository, System::currentTimeMillis);
@@ -68,7 +69,7 @@ public final class LiveSearchWrites implements AutoCloseable {
     this.repository = repository;
     this.clock = clock;
     this.lanes = new OrderedLaneExecutor(LiveSearchWrites::retryLater);
-    this.fanOuts = OrderedLaneExecutor.forWaitingTasks(LiveSearchWrites::retryLater);
+    this.fanOuts = KeyedTaskRunner.forWaitingTasks(LiveSearchWrites::retryLater);
   }
 
   public void createEntityIndex(final EntityInterface<?> entity) {
@@ -163,14 +164,15 @@ public final class LiveSearchWrites implements AutoCloseable {
 
   /** Whether the caller is applying a queued fan-out. */
   public boolean isApplyingFanOut() {
-    return fanOuts.currentLane() != OrderedLaneExecutor.NO_LANE;
+    return fanOuts.isRunningTask();
   }
 
   /**
    * Runs a fan-out to other documents (children, related assets) once every write queued before it
    * has been applied. Otherwise a child's own write, queued earlier but applied later, would put
-   * back what the fan-out changed. Fan-outs of one entity keep their order, and the wait happens off
-   * the write lanes, which never wait for anything.
+   * back what the fan-out changed. Fan-outs of one entity keep their order, fan-outs of different
+   * entities never wait for each other, and the wait happens off the write lanes, which never wait
+   * for anything.
    */
   public void applyAfterEarlierWrites(final UUID entityId, final OrderedLaneTask fanOut) {
     final int writerLane = lanes.currentLane();

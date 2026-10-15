@@ -79,6 +79,7 @@ class SearchReindexInPlaceIT {
     SdkClients.adminClient().pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), run);
     final String index = searchRepository().getIndexOrAliasName(PIPELINE_STATUS_INDEX);
     final String documentId = PipelineExecutionIndex.getDocumentId(pipeline, run);
+    QueuedSearchWrites.await();
     Awaitility.await("Pipeline execution indexed")
         .atMost(SEARCH_WAIT)
         .ignoreExceptions()
@@ -189,6 +190,7 @@ class SearchReindexInPlaceIT {
     final String id = live.getId().toString();
     final SearchDocumentUpdate late = preparedLiveWrite(live);
     SdkClients.adminClient().tables().delete(id);
+    QueuedSearchWrites.await();
     Awaitility.await("Soft delete indexed")
         .atMost(SEARCH_WAIT)
         .ignoreExceptions()
