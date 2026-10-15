@@ -1371,6 +1371,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     eioOptions.setAllowedCorsOrigins(null);
     eioOptions.setMaxTimeoutThreadPoolSize(8);
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
+    initializeWebSocketRelay(catalogConfig, environment);
     FilterHolder socketAddressFilterHolder = new FilterHolder();
     socketAddressFilterHolder.setFilter(socketAddressFilter);
     environment
@@ -1395,6 +1396,55 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
     }
+  }
+
+  // Selects the cross-pod WebSocket relay behind sendToOne: Redis pub/sub when a Redis cache is
+  // configured, otherwise the DB-poll relay. A Redis relay that cannot start fails boot loudly
+  // (below) rather than leaving cross-pod delivery silently off.
+  private void initializeWebSocketRelay(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    org.openmetadata.service.cache.CacheConfig cacheConfig = catalogConfig.getCacheConfig();
+    boolean redisConfigured =
+        cacheConfig != null
+            && cacheConfig.provider == org.openmetadata.service.cache.CacheConfig.Provider.redis;
+    org.openmetadata.service.socket.WebSocketRelay relay = null;
+    try {
+      if (redisConfigured) {
+        relay = new org.openmetadata.service.socket.RedisWebSocketRelay(cacheConfig);
+      } else {
+        relay =
+            new org.openmetadata.service.socket.DbWebSocketRelay(
+                Entity.getJdbi().onDemand(org.openmetadata.service.socket.WsRelayDAO.class));
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to initialize WebSocket relay; staying node-local", e);
+      return; // WebSocketManager keeps its no-op relay (node-local delivery).
+    }
+    relay.start();
+    if (redisConfigured && !relay.isRunning()) {
+      // Boot continues with the relay inert rather than failing. Log loudly so the condition is
+      // visible; cross-pod WebSocket delivery stays off until Redis is reachable.
+      LOG.warn(
+          "Redis WebSocket relay did not connect (CACHE_PROVIDER=redis); cross-pod WebSocket "
+              + "delivery is disabled until Redis is reachable. Check the Redis connection.");
+    }
+    WebSocketManager.getInstance().setRelay(relay);
+    org.openmetadata.service.socket.WebSocketRelay startedRelay = relay;
+    environment
+        .lifecycle()
+        .manage(
+            new Managed() {
+              @Override
+              public void start() {
+                // Already started above so it is active before the first frame.
+              }
+
+              @Override
+              public void stop() {
+                startedRelay.stop();
+              }
+            });
+    LOG.info("WebSocket relay enabled: {}", relay.getClass().getSimpleName());
   }
 
   protected void registerDistributedJobParticipant(Environment environment, Jdbi jdbi) {

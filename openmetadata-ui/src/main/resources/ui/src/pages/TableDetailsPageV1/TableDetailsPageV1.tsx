@@ -21,7 +21,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import { PageLoader } from '../../components/common/Loader/Loader';
@@ -1079,4 +1078,4 @@ const TableDetailsPageV1: React.FC = () => {
   );
 };
 
-export default withSuggestions(withActivityFeed(TableDetailsPageV1));
+export default withActivityFeed(TableDetailsPageV1);
