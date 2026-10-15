@@ -326,6 +326,20 @@ class TableClassBase {
           gridSizes: ['small'] as GridSizes[],
         },
       },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.PARTITIONED_KEYS,
+        name: i18n.t('label.table-partition-plural'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.TABLE_ALIASES,
+        name: i18n.t('label.alias-plural'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      },
       CUSTOM_PROPERTIES_WIDGET,
       KNOWLEDGE_ARTICLE_WIDGET,
     ];
