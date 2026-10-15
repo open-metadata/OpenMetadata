@@ -35,7 +35,8 @@ nor recorded what they missed.
   lane, so one slow task does not hold up other entities' writes. Fan-outs are ordered per entity
   only (`KeyedTaskRunner`): an entity's fan-outs run in turn, different entities' at the same time,
   up to four per processor (32 to 128) since they mostly wait on search, so a slow one holds up only
-  its own entity's later fan-outs.
+  its own entity's later fan-outs. At most 16,000 fan-outs are queued in total; one submitted when
+  the queue is full, or after shutdown begins, becomes a retry row for its entity instead.
 - The waits are bounded. A fan-out waits at most 2 minutes for the writes queued before it, then
   runs anyway; a document it overtook is corrected by its entity's next write or a repair. A write
   by query waits at most 30 minutes for its task, then cancels it and records the scope. A repair
