@@ -12,13 +12,13 @@
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { EntityStatus } from '../../../generated/entity/domains/domain';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../enums/permissions.enum';
+import { EntityStatus } from '../../../generated/entity/domains/domain';
 import { MOCK_DOMAIN } from '../../../mocks/Domains.mock';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
-import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import DomainDetails from './DomainDetails.component';

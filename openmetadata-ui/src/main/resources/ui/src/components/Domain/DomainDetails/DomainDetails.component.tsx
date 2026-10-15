@@ -87,6 +87,7 @@ import {
 } from '../../../utils/DomainFilterUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import {
@@ -98,7 +99,6 @@ import {
   setCreateEntityFieldError,
   submitAndClose,
 } from '../../../utils/FormDrawerUtils';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import Fqn from '../../../utils/Fqn';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
