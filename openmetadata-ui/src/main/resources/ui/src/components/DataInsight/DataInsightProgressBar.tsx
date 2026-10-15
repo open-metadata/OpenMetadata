@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Progress } from 'antd';
+import { ProgressBar } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { round } from 'lodash';
 import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
@@ -74,12 +75,13 @@ const DataInsightProgressBar = ({
 
       {showProgress && (
         <div className={classNames('flex', { 'm-t-sm': Boolean(target) })}>
-          <Progress
-            className="data-insight-progress-bar"
-            format={() => renderProgressTarget(target, suffix)}
-            percent={progress}
-            strokeColor={progressColor}
-          />
+          <div className="data-insight-progress-bar tw:relative tw:w-full">
+            <ProgressBar
+              color={progressColor}
+              value={Math.min(100, Math.max(0, progress || 0))}
+            />
+            {renderProgressTarget(target, suffix)}
+          </div>
           {showSuccessInfo && progress >= 100 && (
             <Icon
               className="align-middle m-l-xs"

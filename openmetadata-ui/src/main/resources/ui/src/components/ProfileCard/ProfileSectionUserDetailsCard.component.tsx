@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import {
+  BadgeWithDot,
   Button,
   ButtonUtility,
   Popover,
@@ -19,7 +20,6 @@ import {
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -259,7 +259,7 @@ const ProfileSectionUserDetailsCard = ({
             aria-label={t('label.manage-entity', {
               entity: t('label.profile'),
             })}
-            className="user-details-menu-icon tw:p-0"
+            className="user-details-menu-icon"
             color="tertiary"
             data-testid="user-profile-manage-btn"
             icon={<MenuDots height={24} width={24} />}
@@ -290,11 +290,11 @@ const ProfileSectionUserDetailsCard = ({
         {userEmailRender}
         {onlineStatus && (
           <div className="m-t-sm">
-            <Badge
-              data-testid="user-online-status"
-              status={onlineStatus.status}
-              text={onlineStatus.text}
-            />
+            <span data-testid="user-online-status">
+              <BadgeWithDot color="success" size="sm">
+                {onlineStatus.text}
+              </BadgeWithDot>
+            </span>
           </div>
         )}
       </div>
