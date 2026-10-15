@@ -8,6 +8,7 @@ from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -25,6 +26,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 )
 from metadata.generated.schema.type.classificationLanguages import ClassificationLanguage
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.classification import AutoClassificationWorkflow
@@ -248,5 +250,23 @@ def test_identifier_formats_are_persisted_by_classification_workflow(
         assert [label.tagFQN.root for label in by_name[name].tags] == tag_fqns
 
     if language is ClassificationLanguage.en:
-        assert any("ValidatedSgFinRecognizer" in (label.reason or "") for label in by_name["sg_nric"].tags)
-        assert all("ValidatedSgFinRecognizer" not in (label.reason or "") for label in by_name["sg_nric_typo"].tags)
+        recognizer_name = Name.SgFinRecognizer.value
+        tag = metadata.get_by_name(entity=Tag, fqn="PII.Sensitive", fields=["recognizers"])
+        configured_recognizer = next(
+            recognizer for recognizer in tag.recognizers if recognizer.name.root == recognizer_name
+        )
+        label = by_name["sg_nric"].tags[0]
+        assert f"Detected by `{recognizer_name}`" in (label.reason or "")
+        assert label.metadata is not None
+        evidence = label.metadata.recognizer
+        assert evidence.recognizerId == configured_recognizer.id
+        assert evidence.recognizerName == recognizer_name
+        assert evidence.score == 1.0
+        assert evidence.patterns
+        assert any(pattern.name == "Nric (medium)" for pattern in evidence.patterns)
+        assert all(0 < pattern.score <= 1.0 for pattern in evidence.patterns)
+        assert all(
+            f"Detected by `{recognizer_name}`" not in (label.reason or "")
+            and (label.metadata is None or label.metadata.recognizer.recognizerId != configured_recognizer.id)
+            for label in by_name["sg_nric_typo"].tags
+        )
