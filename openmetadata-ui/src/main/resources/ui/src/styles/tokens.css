@@ -369,6 +369,26 @@
   --om-color-transparent: transparent;
 }
 
+/* Login video panel and card. Fixed brand illustration colours (sampled from
+   the login videos) with no palette equivalent; dark values live in app.less
+   under `:root.dark-mode`. Collate overrides them via LoginClassCollate. */
+:root {
+  --om-login-panel-bg: linear-gradient(
+    165deg,
+    #f8f7fc 0%,
+    #f3effc 55%,
+    #ece5fb 100%
+  );
+  --om-login-card-bg: linear-gradient(
+    180deg,
+    #f2f1f5 0%,
+    #e3d9f8 55%,
+    #8a5cf0 100%
+  );
+  --om-login-card-shadow: 0 32px 80px -28px rgba(86, 54, 205, 0.38),
+    0 6px 20px -6px rgba(38, 24, 90, 0.12);
+}
+
 /* @tokens:generated-begin — DO NOT EDIT BY HAND.
    Regenerate: node scripts/design-tokens/gen-tokens.js
    Full upstream palette + the project legacy/off-scale/z/motion tokens

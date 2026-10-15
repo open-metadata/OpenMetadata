@@ -36,6 +36,23 @@ body {
   background: var(--tw-color-bg-primary);
 }
 
+// Login video panel and card in dark (light values: tokens.css). The panel
+// matches the form side; the card matches the dark video's frames, shown until
+// it paints. `:root.dark-mode` because tokens.css loads after this file.
+:root.dark-mode {
+  --om-login-panel-bg: linear-gradient(
+    var(--om-color-bg-primary),
+    var(--om-color-bg-primary)
+  );
+  --om-login-card-bg: linear-gradient(
+    180deg,
+    #07152b 0%,
+    #3b307f 50%,
+    #754ddb 100%
+  );
+  --om-login-card-shadow: none;
+}
+
 .main-container {
   display: flex;
   height: 100vh;
