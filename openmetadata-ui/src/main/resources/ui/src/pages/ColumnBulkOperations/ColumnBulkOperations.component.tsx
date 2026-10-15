@@ -61,8 +61,12 @@ const ColumnBulkOperations = () => {
             variant="gradient"
           />
         ) : (
-          <Box align="center" gap={2}>
-            <HeaderBreadcrumb items={breadcrumbItems} showHome={false} />
+          <Box align="center" className="tw:mb-3" gap={2}>
+            <HeaderBreadcrumb
+              noMargin
+              items={breadcrumbItems}
+              showHome={false}
+            />
             {deprecatedBadge}
           </Box>
         )}
