@@ -130,6 +130,8 @@ SAMPLE_DATA_DEFAULT_COUNT = 50
 # Auto-classification may read up to SAMPLE_DATA_MAX_COUNT rows, but only
 # SAMPLE_DATA_MAX_STORED_COUNT of them are persisted, so raising the classification
 # budget never grows the stored sample. Bounds rows returned, not database scan cost.
+# Enforced at run time only, never as a schema maximum:
+# ADR:2026-10-15-sample-data-count-is-capped-at-run-time-not-in-the-schema
 SAMPLE_DATA_MAX_COUNT = 1_000
 SAMPLE_DATA_MAX_STORED_COUNT = 50
 

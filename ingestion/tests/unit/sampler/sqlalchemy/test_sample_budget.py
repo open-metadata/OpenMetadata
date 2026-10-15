@@ -48,6 +48,12 @@ from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificati
     AutoClassificationConfigType,
     DatabaseServiceAutoClassificationPipeline,
 )
+from metadata.generated.schema.metadataIngestion.messagingServiceAutoClassificationPipeline import (
+    MessagingServiceAutoClassificationPipeline,
+)
+from metadata.generated.schema.metadataIngestion.storageServiceAutoClassificationPipeline import (
+    StorageServiceAutoClassificationPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Source,
@@ -174,6 +180,19 @@ def test_returns_min_of_budget_and_available_rows(
     sampler = make_sampler(row_count=row_count, sample_data_count=sample_data_count, sample_query=sample_query)
 
     assert len(sampler.generate_sample_data().rows) == expected_rows
+
+
+@pytest.mark.parametrize(
+    "pipeline_config",
+    [
+        DatabaseServiceAutoClassificationPipeline,
+        MessagingServiceAutoClassificationPipeline,
+        StorageServiceAutoClassificationPipeline,
+    ],
+)
+def test_schema_accepts_sample_data_count_above_runtime_cap(pipeline_config):
+    """Saved pipelines above the cap must keep validating (ADR:2026-10-15-sample-data-count-is-capped-at-run-time-not-in-the-schema)."""
+    assert pipeline_config(sampleDataCount=SAMPLE_DATA_MAX_COUNT + 1).sampleDataCount == SAMPLE_DATA_MAX_COUNT + 1
 
 
 def test_budget_above_maximum_is_clamped_with_warning(make_sampler, caplog):
