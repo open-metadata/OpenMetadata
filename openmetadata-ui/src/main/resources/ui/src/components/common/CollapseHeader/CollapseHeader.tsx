@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
+import { Box, Button, Dropdown } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
+import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export interface CollapseHeaderMenuItem {
@@ -21,7 +22,7 @@ export interface CollapseHeaderMenuItem {
 }
 
 interface CollapseHeaderProps {
-  title: string;
+  title: ReactNode;
   menuItems?: CollapseHeaderMenuItem[];
   handleAddNewBoost?: () => void;
   dataTestId?: string;
@@ -37,7 +38,7 @@ const CollapseHeader = ({
 
   return (
     <div className="d-flex items-center justify-between">
-      <Typography className="text-md font-semibold">{title}</Typography>
+      <Box className="tw:min-w-0 tw:flex-1">{title}</Box>
       {menuItems ? (
         <Dropdown.Root>
           <Button

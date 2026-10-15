@@ -31,7 +31,7 @@ export const clickOnLogo = async (page: Page) => {
 export const clickSidebarLink = async (page: Page, testId: string) => {
   const navigation = page
     .getByTestId('left-sidebar')
-    .or(page.locator('.ant-menu-submenu-popup'));
+    .or(page.getByRole('menu'));
   const targetElement = navigation
     .getByTestId(testId)
     .filter({ visible: true });

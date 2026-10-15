@@ -51,8 +51,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.TaskStateConflictException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.metadata.MetadataCollectionService;
@@ -836,7 +836,7 @@ public class TaskWorkflowHandler {
     }
     try {
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(user, changeType, entityInterface);
+          ChangeEvents.createChangeEventForEntity(user, changeType, entityInterface);
       Object entityForEvent = changeEvent.getEntity();
       changeEvent = ChangeEventHandler.copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entityForEvent));
@@ -1088,7 +1088,7 @@ public class TaskWorkflowHandler {
           entity.getEntityReference().getType(),
           user,
           action.entityField(),
-          value == null ? null : String.valueOf(value),
+          value == null || value instanceof String ? (String) value : JsonUtils.pojoToJson(value),
           true,
           WorkflowEventConsumer.GOVERNANCE_BOT);
     } catch (Exception e) {

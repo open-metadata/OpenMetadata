@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { reconcileDataAssetFilters } from './WorkflowSerializationUtils';
+import {
+  parseFqnList,
+  reconcileDataAssetFilters,
+  serializeFqnList,
+} from './WorkflowSerializationUtils';
 
 const filter = (id: number, dataAsset: string) => ({
   id,
@@ -48,5 +52,26 @@ describe('reconcileDataAssetFilters', () => {
     expect(reconcileDataAssetFilters([filter(1, 'table')], undefined)).toEqual(
       []
     );
+  });
+});
+
+describe('FQN list serialization', () => {
+  it('should round-trip FQNs that contain commas', () => {
+    const fqns = ['Data Procedures.GDPR, Personal', 'PII.Sensitive'];
+
+    expect(parseFqnList(serializeFqnList(fqns))).toEqual(fqns);
+  });
+
+  it('should store an empty selection as an empty string', () => {
+    expect(serializeFqnList([])).toBe('');
+    expect(parseFqnList('')).toEqual([]);
+  });
+
+  it('should read the legacy comma-separated format', () => {
+    expect(parseFqnList('PII.Sensitive, Tier.Tier1')).toEqual([
+      'PII.Sensitive',
+      'Tier.Tier1',
+    ]);
+    expect(parseFqnList('[PII].Sensitive')).toEqual(['[PII].Sensitive']);
   });
 });
