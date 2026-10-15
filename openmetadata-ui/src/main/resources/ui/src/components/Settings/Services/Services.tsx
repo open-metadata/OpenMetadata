@@ -12,13 +12,15 @@
  */
 
 import {
+  Box,
   Button,
+  Button as CoreButton,
+  Card,
   EmptyPlaceholder,
   Grid,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Tooltip } from 'antd';
-import Card from 'antd/lib/card/Card';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -451,60 +453,62 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Grid.Item
         className="layout-column tw:col-span-24 tw:min-[992px]:col-span-8 tw:min-[1200px]:col-span-6"
         key={service.name}>
-        <Card className="w-full" size="small">
-          <div
-            className="d-flex justify-between text-grey-muted"
-            data-testid="service-card">
-            <Grid
-              className="layout-row layout-grid"
-              style={{ ...getLayoutGutter(0, 6) }}>
-              <Grid.Item className="layout-column" span={24}>
-                <Link
-                  className="no-underline"
-                  to={getServiceDetailsPath(
-                    service.fullyQualifiedName ?? service.name,
-                    serviceName
-                  )}>
-                  <Typography
-                    className="text-base text-grey-body font-medium truncate w-48 d-inline-block"
-                    data-testid={`service-name-${service.name}`}
-                    title={getEntityName(service)}>
-                    {getEntityName(service)}
-                  </Typography>
-                </Link>
-                <div
-                  className="p-t-xs text-grey-body break-all description-text"
-                  data-testid="service-description">
-                  {service.description ? (
-                    <RichTextEditorPreviewerV1
-                      className="max-two-lines"
-                      enableSeeMoreVariant={false}
-                      markdown={service.description}
-                    />
-                  ) : (
-                    <span className="text-grey-muted">
-                      {t('label.no-description')}
+        <Card className="w-full" size="sm">
+          <Card.Content>
+            <div
+              className="d-flex justify-between text-grey-muted"
+              data-testid="service-card">
+              <Grid
+                className="layout-row layout-grid"
+                style={{ ...getLayoutGutter(0, 6) }}>
+                <Grid.Item className="layout-column" span={24}>
+                  <Link
+                    className="no-underline"
+                    to={getServiceDetailsPath(
+                      service.fullyQualifiedName ?? service.name,
+                      serviceName
+                    )}>
+                    <Typography
+                      className="text-base text-grey-body font-medium truncate w-48 d-inline-block"
+                      data-testid={`service-name-${service.name}`}
+                      title={getEntityName(service)}>
+                      {getEntityName(service)}
+                    </Typography>
+                  </Link>
+                  <div
+                    className="p-t-xs text-grey-body break-all description-text"
+                    data-testid="service-description">
+                    {service.description ? (
+                      <RichTextEditorPreviewerV1
+                        className="max-two-lines"
+                        enableSeeMoreVariant={false}
+                        markdown={service.description}
+                      />
+                    ) : (
+                      <span className="text-grey-muted">
+                        {t('label.no-description')}
+                      </span>
+                    )}
+                  </div>
+                  {getOptionalFields(service, serviceName)}
+                </Grid.Item>
+                <Grid.Item className="layout-column" span={24}>
+                  <div className="m-b-xss" data-testid="service-type">
+                    <span className="m-b-0">{`${t('label.type')}:`}</span>
+                    <span className="font-normal m-l-xss text-grey-body">
+                      {service.serviceType}
                     </span>
-                  )}
-                </div>
-                {getOptionalFields(service, serviceName)}
-              </Grid.Item>
-              <Grid.Item className="layout-column" span={24}>
-                <div className="m-b-xss" data-testid="service-type">
-                  <span className="m-b-0">{`${t('label.type')}:`}</span>
-                  <span className="font-normal m-l-xss text-grey-body">
-                    {service.serviceType}
-                  </span>
-                </div>
-              </Grid.Item>
-            </Grid>
+                  </div>
+                </Grid.Item>
+              </Grid>
 
-            <div className="d-flex flex-col justify-between flex-none">
-              <div className="d-flex justify-end" data-testid="service-icon">
-                {getServiceLogoElement(service, 'h-7')}
+              <div className="d-flex flex-col justify-between flex-none">
+                <div className="d-flex justify-end" data-testid="service-icon">
+                  {getServiceLogoElement(service, 'h-7')}
+                </div>
               </div>
             </div>
-          </div>
+          </Card.Content>
         </Card>
       </Grid.Item>
     );
@@ -555,12 +559,18 @@ const Services = ({ serviceName }: ServicesProps) => {
   };
 
   return (
-    <Row
-      className="justify-center"
+    <Grid
+      className="layout-row layout-grid justify-center"
       data-testid="services-container"
-      gutter={[16, 16]}>
-      <Col span={24}>
-        <Space className="w-full justify-between m-b-lg" data-testid="header">
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal w-full justify-between m-b-lg"
+          data-testid="header"
+          gap={2}
+          itemClassName="layout-space-item">
           <PageHeader
             data={getServicePageHeader()}
             learningPageId={LEARNING_PAGE_IDS.SERVICES}
@@ -569,6 +579,8 @@ const Services = ({ serviceName }: ServicesProps) => {
             <ButtonSkeleton size="default" />
           ) : (
             <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
               placement="left"
               title={
                 addServicePermission
@@ -576,25 +588,27 @@ const Services = ({ serviceName }: ServicesProps) => {
                       entity: t('label.service'),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
-              }>
+              }
+              triggerClassName="tw:inline-flex">
               {addServicePermission && (
                 <LimitWrapper resource="dataAssets">
-                  <Button
+                  <CoreButton
                     className="m-b-xs"
+                    color="primary"
                     data-testid="add-service-button"
-                    type="primary"
-                    onClick={handleAddServiceClick}>
+                    size="sm"
+                    onPress={handleAddServiceClick}>
                     {t('label.add-new-entity', {
                       entity: t('label.service'),
                     })}
-                  </Button>
+                  </CoreButton>
                 </LimitWrapper>
               )}
             </Tooltip>
           )}
-        </Space>
-      </Col>
-      <Col span={24}>
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
           customPaginationProps={customPaginationTableProps}
@@ -617,8 +631,8 @@ const Services = ({ serviceName }: ServicesProps) => {
             onChange: handleTableChange,
           }}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

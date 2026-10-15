@@ -627,6 +627,59 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     LOG.info("Successfully updated children in OpenSearch for indices: {}", indexNames);
   }
 
+  /**
+   * Same request shape as {@link #buildUpdateChildrenRequest}: an async, sliced, rate-limited
+   * update-by-query, because a target referenced by many documents fans out widely. Each path is a
+   * nested field in every index that maps it, so it is matched with a nested query only.
+   */
+  @Override
+  public void updateChildrenByNestedField(
+      List<String> indexNames,
+      List<String> docIds,
+      List<String> nestedPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update nested children.");
+      return;
+    }
+    Map<String, JsonData> params =
+        convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
+    List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
+    List<Query> matches = new ArrayList<>();
+    if (!docIds.isEmpty()) {
+      matches.add(Query.of(q -> q.ids(i -> i.values(docIds))));
+    }
+    for (String path : nestedPaths) {
+      Query terms =
+          Query.of(
+              q -> q.terms(t -> t.field(path + "." + field).terms(tv -> tv.value(fieldValues))));
+      matches.add(Query.of(q -> q.nested(n -> n.path(path).ignoreUnmapped(true).query(terms))));
+    }
+    client.updateByQuery(
+        u ->
+            u.index(indexNames)
+                .query(q -> q.bool(b -> b.should(matches).minimumShouldMatch("1")))
+                .conflicts(Conflicts.Proceed)
+                .waitForCompletion(false)
+                .slices(sl -> sl.calculation(SlicesCalculation.Auto))
+                .requestsPerSecond(SearchPropagationLimits.REQUESTS_PER_SECOND)
+                .script(
+                    s ->
+                        s.inline(
+                            inline ->
+                                inline
+                                    .lang(
+                                        l ->
+                                            l.builtin(
+                                                os.org.opensearch.client.opensearch._types
+                                                    .BuiltinScriptLanguage.Painless))
+                                    .source(updates.getKey())
+                                    .params(params))));
+  }
+
   private Query anyOfFieldQuery(String field, List<String> values) {
     List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
     Query termsOnField =

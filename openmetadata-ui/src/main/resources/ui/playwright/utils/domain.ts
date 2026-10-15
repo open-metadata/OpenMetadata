@@ -39,14 +39,12 @@ import { TagClass } from '../support/tag/TagClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  clickOutside,
   closeFirstPopupAlert,
   fillDescriptionBox,
   getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
-  readElementInListWithScroll,
   redirectToHomePage,
   selectOptionWithRetry,
   uuid,
@@ -55,6 +53,7 @@ import {
   addOwner,
   escapeESReservedCharacters,
   openClassificationTagPicker,
+  searchCertification,
   visitEntityPageByFqn,
   waitForAllLoadersToDisappear,
 } from './entity';
@@ -102,8 +101,10 @@ export const addTierWidget = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  const tierRadioButton = page.getByTestId(`radio-btn-${tier}`);
-  await tierRadioButton.waitFor({ state: 'visible' });
+  const tierRow = page
+    .getByTestId('drop-down-menu')
+    .getByTestId(`Tier.${tier}`);
+  await tierRow.waitFor({ state: 'visible' });
 
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -111,17 +112,13 @@ export const addTierWidget = async (
       response.request().method() === 'PATCH'
   );
 
-  await tierRadioButton.click();
-
-  const updateButton = page.getByTestId('update-tier-card');
-  await updateButton.waitFor({ state: 'visible' });
-  await updateButton.click();
+  // Picking a tier saves it and closes the picker.
+  await tierRow.click();
 
   const response = await patchRequest;
   expect(response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText(tier);
 };
@@ -139,35 +136,23 @@ export const addCertificationWidget = async (
     isUpdate
   );
 
-  await page.locator('.certification-card-popover').waitFor({
-    state: 'visible',
-  });
-  await waitForAllLoadersToDisappear(page);
-
-  await readElementInListWithScroll(
-    page,
-    page.getByTestId(
-      `radio-btn-${certification.responseData.fullyQualifiedName}`
-    ),
-    page.locator('[data-testid="certification-cards"] .ant-radio-group')
-  );
-
-  await page
-    .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
-    .click();
+  const certificationMenu = page.getByTestId('drop-down-menu');
+  await certificationMenu.waitFor({ state: 'visible' });
+  await searchCertification(page, certification.responseData.name);
 
   const patchRequest = page.waitForResponse(
     (response) =>
       response.url().includes(`/api/v1/${endpoint}`) &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('update-certification').click();
+  // Picking a row commits it and closes the menu.
+  await certificationMenu
+    .getByTestId(certification.responseData.fullyQualifiedName)
+    .click();
 
   const patchResponse = await patchRequest;
   expect(patchResponse.status()).toBe(200);
-
-  await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
+  await certificationMenu.waitFor({ state: 'hidden' });
 
   await expect(page.getByTestId('certification-label')).toContainText(
     certification.responseData.displayName
@@ -181,35 +166,23 @@ export const assignCertificationForWidget = async (
 ) => {
   await page.getByTestId('edit-certification').click();
 
-  await page.locator('.certification-card-popover').waitFor({
-    state: 'visible',
-  });
-  await waitForAllLoadersToDisappear(page);
-
-  await readElementInListWithScroll(
-    page,
-    page.getByTestId(
-      `radio-btn-${certification.responseData.fullyQualifiedName}`
-    ),
-    page.locator('[data-testid="certification-cards"] .ant-radio-group')
-  );
-
-  await page
-    .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
-    .click();
+  const certificationMenu = page.getByTestId('drop-down-menu');
+  await certificationMenu.waitFor({ state: 'visible' });
+  await searchCertification(page, certification.responseData.name);
 
   const patchRequest = page.waitForResponse(
     (response) =>
       response.url().includes(`/api/v1/${endpoint}`) &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('update-certification').click();
+  // Picking a row commits it and closes the menu.
+  await certificationMenu
+    .getByTestId(certification.responseData.fullyQualifiedName)
+    .click();
 
   const patchResponse = await patchRequest;
   expect(patchResponse.status()).toBe(200);
-
-  await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
+  await certificationMenu.waitFor({ state: 'hidden' });
 
   await expect(page.getByTestId('certification-label')).toContainText(
     certification.responseData.displayName
@@ -225,13 +198,15 @@ export const removeTierFromWidget = async (page: Page, endpoint: string) => {
       response.url().includes(`/api/v1/${endpoint}`) &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('clear-tier').click();
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('clear-filter-btn')
+    .click();
 
   const response = await patchRequest;
   expect(response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
 
   await expect(page.getByTestId('add-tier')).toBeVisible();
 };
@@ -241,23 +216,18 @@ export const removeCertificationFromWidget = async (
   endpoint: string
 ) => {
   await page.getByTestId('edit-certification').click();
-  await page.locator('.certification-card-popover').waitFor({
-    state: 'visible',
-  });
-  await waitForAllLoadersToDisappear(page);
-
+  const certificationMenu = page.getByTestId('drop-down-menu');
+  await certificationMenu.waitFor({ state: 'visible' });
   const patchRequest = page.waitForResponse(
     (response) =>
       response.url().includes(`/api/v1/${endpoint}`) &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('clear-certification').click();
+  await certificationMenu.getByTestId('clear-filter-btn').click();
 
   const response = await patchRequest;
   expect(response.status()).toBe(200);
-
-  await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
+  await certificationMenu.waitFor({ state: 'hidden' });
 
   await expect(page.getByTestId('add-certification')).toBeVisible();
 };
@@ -431,10 +401,27 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
           }
           hasSearched = true;
 
-          await Promise.all([
-            searchBox.fill(domain.name),
-            page.waitForResponse('/api/v1/search/query?q=*&index=domain*'),
-          ]);
+          // The term lives in the URL (`q`), so after a reload the box already
+          // holds it and the page has searched for it on mount; re-filling the
+          // same text sends nothing and a wait for "the" search would hang the
+          // poll. Only type, and wait, when the box does not hold the term —
+          // and wait for that term's query, not whichever domain query lands.
+          if ((await searchBox.inputValue()) !== domain.name) {
+            const typedSearch = page.waitForResponse(
+              (response) => {
+                const url = new URL(response.url());
+
+                return (
+                  url.pathname.endsWith('/api/v1/search/query') &&
+                  url.searchParams.get('index') === 'domain' &&
+                  (url.searchParams.get('q') ?? '').includes(domain.name)
+                );
+              },
+              { timeout: 15_000 }
+            );
+            await searchBox.fill(domain.name);
+            await typedSearch;
+          }
 
           await waitForSearchDebounce(page);
 
@@ -928,7 +915,7 @@ export const addAssetsToDomain = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
 
     await expect(
       page.locator(
@@ -988,7 +975,7 @@ export const addServicesToDomain = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1049,7 +1036,7 @@ export const addAssetsToDataProduct = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1128,7 +1115,7 @@ export const removeAssetsFromDataProduct = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   }
 
   // Clear the filter before delete-all so the request URL matches the
@@ -2062,7 +2049,7 @@ export const addInputPortToDataProduct = async (
   await page
     .locator(`[data-testid="table-data-card_${fqn}"]`)
     .getByTestId('asset-checkbox')
-    .check();
+    .click();
 
   const addRes = page.waitForResponse(
     (res) =>
@@ -2109,7 +2096,7 @@ export const addOutputPortToDataProduct = async (
   await page
     .locator(`[data-testid="table-data-card_${fqn}"]`)
     .getByTestId('asset-checkbox')
-    .check();
+    .click();
 
   const addRes = page.waitForResponse(
     (res) =>

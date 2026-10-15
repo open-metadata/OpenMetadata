@@ -594,6 +594,12 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.aggregate(request, subjectContext);
+  }
+
+  @Override
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return aggregationManager.genericAggregation(query, index, aggregationMetadata);
@@ -754,6 +760,19 @@ public class OpenSearchClient implements SearchClient {
       Pair<String, Map<String, Object>> updates)
       throws IOException {
     entityManager.updateChildren(indexNames, field, values, updates);
+  }
+
+  @Override
+  public void updateChildrenByNestedField(
+      List<String> indexNames,
+      List<String> docIds,
+      List<String> nestedPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildrenByNestedField(
+        indexNames, docIds, nestedPaths, field, values, updates);
   }
 
   @Override

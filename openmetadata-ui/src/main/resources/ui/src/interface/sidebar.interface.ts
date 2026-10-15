@@ -31,3 +31,10 @@ export interface LeftSidebarItem {
    */
   onClick?: () => void;
 }
+
+export interface NavigationTreeNode {
+  key: string;
+  title: string;
+  icon?: SvgComponent;
+  children?: NavigationTreeNode[];
+}

@@ -12,13 +12,19 @@
  */
 
 import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Grid,
+  ProgressBar,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   chartColor,
   hexToRgba,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Progress, Tooltip } from 'antd';
+
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -121,22 +127,28 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                   </Typography>
                   {daysLeft <= 0 || isTargetMet ? (
                     <Tooltip
+                      arrow
+                      excludeTriggerFromTabOrder
                       placement="bottom"
                       title={getKpiResultFeedback(
                         daysLeft,
                         Boolean(isTargetMet)
                       )}
-                      trigger="hover">
+                      triggerClassName="tw:inline-flex">
                       <InfoCircleOutlined style={{ fontSize: '14px' }} />
                     </Tooltip>
                   ) : null}
                 </Box>
-                <Progress
-                  percent={Number(currentProgress)}
-                  showInfo={false}
-                  size="small"
-                  strokeColor={seriesColor}
-                />
+                <div>
+                  <ProgressBar
+                    className="tw:h-1.5"
+                    color={seriesColor}
+                    value={Math.min(
+                      100,
+                      Math.max(0, Number(currentProgress) || 0)
+                    )}
+                  />
+                </div>
                 <div className="d-flex justify-space-between">
                   <div className="flex-1">
                     <Typography className="text-xs">

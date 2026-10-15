@@ -14,11 +14,15 @@
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Bell01,
+  GridView,
   Key01,
   PermissionDebugger as AccessControlIcon,
+  Persona as PersonaIcon,
   Policy as GovernanceTabIcon,
+  Settings01,
   Settings02,
   ShieldTick,
+  SingleSignOn,
   Sliders02,
   User01,
   Users01,
@@ -35,12 +39,16 @@ import AccessTokenPanel from './components/AccessTokenPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
+import ApplicationsPanel from './tabs/applications/ApplicationsPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
 import GovernancePanel from './tabs/governance/GovernancePanel';
 import MembersPanel from './tabs/members/MembersPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
+import PersonasPanel from './tabs/personas/PersonasPanel';
 import PlatformSettingsPanel from './tabs/platform-settings/PlatformSettingsPanel';
+import PreferencesPanel from './tabs/preferences/PreferencesPanel';
+import SsoPanel from './tabs/sso/SsoPanel';
 
 // Single source of truth lives in Profile.constants (hook-safe layer); re-exported
 // here so existing imports of `ProfileNavId` from this module keep working.
@@ -52,7 +60,6 @@ export type ProfileNavGroup =
   | 'administration'
   | 'features'
   | 'workspace'
-  | 'application'
   | 'credentials';
 
 /** Translation key for each group's sidebar header + breadcrumb root. */
@@ -61,7 +68,6 @@ export const PROFILE_NAV_GROUP_LABEL: Record<ProfileNavGroup, string> = {
   administration: 'label.administration',
   features: 'label.feature-plural',
   workspace: 'label.workspace',
-  application: 'label.application',
   credentials: 'label.credential-plural',
 };
 
@@ -71,7 +77,6 @@ export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
   'administration',
   'features',
   'workspace',
-  'application',
   'credentials',
 ];
 
@@ -94,6 +99,8 @@ export interface ProfileHeaderOverride {
   titleInput?: React.ReactNode;
   /** Node rendered inline right after the title text (e.g. a rename/edit icon button). */
   titleSuffix?: React.ReactNode;
+  /** Extra row rendered under the description (e.g. installed / developer details). */
+  meta?: React.ReactNode;
 }
 
 /**
@@ -163,6 +170,14 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     ),
   },
   {
+    id: 'preferences',
+    group: 'account',
+    label: 'label.preference-plural',
+    description: 'message.preferences-page-description',
+    icon: Settings01,
+    render: () => <PreferencesPanel />,
+  },
+  {
     id: 'access-token',
     group: 'credentials',
     label: 'label.access-token',
@@ -206,12 +221,36 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
       <PlatformSettingsPanel onHeaderChange={onHeaderChange} />
     ),
   },
+  {
+    id: 'sso',
+    group: 'administration',
+    label: 'label.single-sign-on',
+    description: 'message.sso-configuration-directly-from-the-ui',
+    icon: SingleSignOn,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <SsoPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
   // The "My Connections" tab is contributed by the Query Runner plugin through
   // the `profile.tabs` extension point (see ProfilePage), so the app-mode
   // profile works standalone in OSS when the plugin is absent.
 ];
 
 export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'personas',
+    group: 'workspace',
+    label: 'label.persona-plural',
+    description: 'message.page-sub-header-for-persona',
+    icon: PersonaIcon as FC<{ className?: string }>,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <PersonasPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
   {
     id: 'members',
     group: 'workspace',
@@ -239,10 +278,38 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
   },
 ];
 
-export const APPLICATION_NAV_ITEMS: ProfileNavItem[] = [
+export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'governance',
+    group: 'features',
+    label: 'label.governance',
+    description: 'message.governance-settings-description',
+    icon: GovernanceTabIcon as FC<{ className?: string }>,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <GovernancePanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'applications',
+    group: 'features',
+    label: 'label.application-plural',
+    description: 'message.application-settings-description',
+    icon: GridView,
+    isVisible: (permissions) =>
+      userPermissions.hasViewPermissions(
+        ResourceEntity.APPLICATION,
+        permissions
+      ),
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <ApplicationsPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
   {
     id: 'notification',
-    group: 'application',
+    group: 'features',
     label: 'label.notification',
     description: 'message.alerts-description',
     icon: Bell01 as FC<{ className?: string }>,
@@ -258,25 +325,7 @@ export const APPLICATION_NAV_ITEMS: ProfileNavItem[] = [
   },
 ];
 
-export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
-  {
-    id: 'governance',
-    group: 'features',
-    label: 'label.governance',
-    description: 'message.governance-settings-description',
-    icon: GovernanceTabIcon as FC<{ className?: string }>,
-    isVisible: (_permissions, isAdmin) => isAdmin,
-    selfContainedLayout: true,
-    render: ({ onHeaderChange }) => (
-      <GovernancePanel onHeaderChange={onHeaderChange} />
-    ),
-  },
-];
-
 export const getProfileNavItem = (id: ProfileNavId): ProfileNavItem =>
-  [
-    ...PROFILE_NAV_ITEMS,
-    ...WORKSPACE_NAV_ITEMS,
-    ...APPLICATION_NAV_ITEMS,
-    ...FEATURES_NAV_ITEMS,
-  ].find((item) => item.id === id) ?? PROFILE_NAV_ITEMS[0];
+  [...PROFILE_NAV_ITEMS, ...WORKSPACE_NAV_ITEMS, ...FEATURES_NAV_ITEMS].find(
+    (item) => item.id === id
+  ) ?? PROFILE_NAV_ITEMS[0];

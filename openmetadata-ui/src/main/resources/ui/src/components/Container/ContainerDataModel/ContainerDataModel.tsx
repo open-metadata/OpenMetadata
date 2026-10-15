@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import {
   cloneDeep,
   groupBy,
@@ -198,7 +197,11 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
           <div
             className="d-inline-flex items-start gap-1 hover-icon-group flex-column"
             style={{ maxWidth: '80%' }}>
-            <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
+            <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
+              title={getEntityName(record)}
+              triggerClassName="tw:inline-flex">
               <Typography className="text-link-color">
                 {getEntityName(record)}
               </Typography>
@@ -225,13 +228,10 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         ) => {
           return (
             <Tooltip
-              destroyTooltipOnHide
-              overlayInnerStyle={{
-                maxWidth: '420px',
-                overflowWrap: 'break-word',
-                textAlign: 'center',
-              }}
-              title={toLower(dataTypeDisplay)}>
+              arrow
+              excludeTriggerFromTabOrder
+              title={toLower(dataTypeDisplay)}
+              triggerClassName="tw:block tw:min-w-0">
               <Typography ellipsis className="cursor-pointer tw:text-primary">
                 {dataTypeDisplay ?? record.dataType}
               </Typography>

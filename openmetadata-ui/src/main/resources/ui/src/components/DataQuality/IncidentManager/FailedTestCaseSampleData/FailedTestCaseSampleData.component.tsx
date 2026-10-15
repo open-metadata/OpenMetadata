@@ -11,20 +11,24 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from '@openmetadata/ui-core-components';
-import { Button, Space } from 'antd';
+import {
+  Box,
+  Button,
+  Table,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   ManageMenu,
   ManageMenuItem,
 } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ClientErrors } from '../../../../enums/Axios.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -125,7 +129,7 @@ const FailedTestCaseSampleData = ({
           description={t('message.delete-entity-type-action-description', {
             entityType: t('label.sample-data'),
           })}
-          icon={IconDelete}
+          icon={Trash01}
           id="delete-button"
           name={t('label.delete')}
         />
@@ -235,7 +239,18 @@ const FailedTestCaseSampleData = ({
     return () => {
       cancelled = true;
     };
-  }, [testCaseData?.id, hasViewSampleDataPermission, isTestCaseFailed]);
+    // `testCaseResult.timestamp` is the run-identity signal: it changes on
+    // every run completion, so a re-run that stays `Failed` with the same id
+    // triggers a refetch instead of showing the previous run's rows. It is a
+    // primitive (required on every TestCaseResult), so unrelated `testCaseData`
+    // object replacements (e.g. owner/tag edits carrying the same result
+    // reference) do not spuriously refetch.
+  }, [
+    testCaseData?.id,
+    hasViewSampleDataPermission,
+    isTestCaseFailed,
+    testCaseData?.testCaseResult?.timestamp,
+  ]);
 
   if (!hasViewSampleDataPermission) {
     return <></>;
@@ -251,7 +266,12 @@ const FailedTestCaseSampleData = ({
 
   return (
     <div className="w-full">
-      <Space className="m-b-md justify-between w-full">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal m-b-md justify-between w-full"
+        gap={2}
+        itemClassName="layout-space-item">
         {/* not-prose: Typography wraps a heading in .prose, whose h2 style
             (24px, margins) would otherwise outrank the size classes. */}
         <Typography
@@ -261,17 +281,18 @@ const FailedTestCaseSampleData = ({
           weight="bold">
           {t('label.sample-data')}
         </Typography>
-        <div className="d-flex gap-4">
+        <Box gap={4}>
           {testCaseData?.inspectionQuery && !isVersionPage && (
-            <Link
-              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
+            <Button
+              color="primary"
+              data-testid="explore-with-query"
+              href={observabilityRouterClassBase.getTestCaseDetailPagePath(
                 testCaseData?.fullyQualifiedName ?? '',
                 TestCasePageTabs.SQL_QUERY
-              )}>
-              <Button data-testid="explore-with-query" type="primary">
-                {t('label.explore-with-query')}
-              </Button>
-            </Link>
+              )}
+              size="md">
+              {t('label.explore-with-query')}
+            </Button>
           )}
           {hasEditPermission && (
             <ManageMenu
@@ -284,8 +305,8 @@ const FailedTestCaseSampleData = ({
               onOpenChange={setShowActions}
             />
           )}
-        </div>
-      </Space>
+        </Box>
+      </Box>
       <div className="tw:overflow-x-auto tw:border tw:border-border-secondary tw:rounded-[10px]">
         <Table
           aria-label={t('label.sample-data')}

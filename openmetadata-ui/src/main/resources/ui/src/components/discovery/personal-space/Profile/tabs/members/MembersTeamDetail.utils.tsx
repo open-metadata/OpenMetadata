@@ -29,6 +29,8 @@ import type { TeamTab } from './MembersTeamDetail.types';
 import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
 import { profileHash, ProfileHashTarget } from './profileHash.utils';
 
+const CUSTOM_PROPERTIES = 'custom-properties' as const;
+
 export const TEAM_FIELDS = [
   TabSpecificField.USERS,
   TabSpecificField.DEFAULT_ROLES,
@@ -40,6 +42,9 @@ export const TEAM_FIELDS = [
   TabSpecificField.OWNS,
   TabSpecificField.DOMAINS,
   TabSpecificField.OWNERS,
+  // Resolved recursively on read (excludes the team itself); needed to scope the
+  // users search to the whole subtree, mirroring the legacy UserTab search.
+  TabSpecificField.DESCENDANT_TEAMS,
 ].join(',');
 
 export const TEAM_USER_FIELDS = [
@@ -60,11 +65,11 @@ export const isTeamDropTarget = (target: {
 export const getAvailableTabs = (teamType?: TeamType): TeamTab[] => {
   switch (teamType) {
     case TeamType.Organization:
-      return ['teams', 'roles', 'policies'];
+      return ['teams', 'roles', 'policies', CUSTOM_PROPERTIES];
     case TeamType.Group:
-      return ['users', 'assets', 'roles', 'policies'];
+      return ['users', 'assets', 'roles', 'policies', CUSTOM_PROPERTIES];
     default:
-      return ['teams', 'users', 'roles', 'policies'];
+      return ['teams', 'users', 'roles', 'policies', CUSTOM_PROPERTIES];
   }
 };
 
@@ -76,6 +81,11 @@ export const getTabLabel = (
   assetCount: number
 ): string => {
   switch (tab) {
+    // No count: custom properties are fetched by the table itself, so the tab
+    // has no number to show at render time (the other tabs read theirs off the
+    // already-loaded team).
+    case CUSTOM_PROPERTIES:
+      return t('label.custom-property-plural');
     case 'teams':
       return `${t('label.team-plural')} (${childTeamsCount})`;
     case 'users':
@@ -133,11 +143,15 @@ export const getChildTeamColumns = (
     dataIndex: 'name',
     key: 'name',
     width: '30%',
+    ellipsis: true,
     render: (_: unknown, record: Team) => (
       <Button
+        className="tw:max-w-full tw:truncate tw:block tw:text-left"
         color="link-color"
         data-testid={`team-link-${record.name}`}
         size="sm"
+        tooltip={getEntityName(record)}
+        tooltipPlacement="top"
         onPress={() =>
           onNavigate({
             type: 'team-detail',
@@ -262,10 +276,15 @@ export const getEntityRefColumns = (
     title: t('label.name'),
     dataIndex: 'name',
     key: 'name',
+    width: '30%',
+    ellipsis: true,
     render: (_: unknown, record: EntityReference) => (
       <Button
+        className="tw:max-w-full tw:truncate tw:block tw:text-left"
         color="link-color"
         size="sm"
+        tooltip={getEntityName(record)}
+        tooltipPlacement="top"
         onPress={() => goTo(nameHashOf(record))}>
         {getEntityName(record)}
       </Button>

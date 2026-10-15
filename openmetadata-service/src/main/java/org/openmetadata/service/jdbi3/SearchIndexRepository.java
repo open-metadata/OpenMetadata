@@ -485,7 +485,12 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
           if (nullOrEmpty(addedField.getDescription())) {
             addedField.setDescription(deleted.getDescription());
           }
-          if (nullOrEmpty(addedField.getTags()) && nullOrEmpty(deleted.getTags())) {
+          // Carry the tags forward only when the re-added field has none of its own and the
+          // deleted one actually had some. A field is re-added rather than updated whenever its
+          // dataType changes (see EntityUtil.searchIndexFieldMatch), and the
+          // deleteTagsByTarget below would otherwise drop user-applied tags from a field that
+          // still exists under the same FQN.
+          if (nullOrEmpty(addedField.getTags()) && !nullOrEmpty(deleted.getTags())) {
             addedField.setTags(deleted.getTags());
           }
         }

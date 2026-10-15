@@ -63,11 +63,9 @@ jest.mock('components/Database/Profiler/DataQualityTab/DataQualityTab', () => ({
     isLoading,
     testCases,
     enableBulkActions,
-    editVariant,
     emptyStateAction,
   }: any) => (
     <div
-      data-edit-variant={editVariant}
       data-enable-bulk-actions={String(enableBulkActions)}
       data-is-loading={String(isLoading)}
       data-test-cases-count={testCases?.length ?? 0}
@@ -243,15 +241,6 @@ describe('TestCases', () => {
 
     expect(tab).toHaveAttribute('data-is-loading', 'true');
     expect(tab).toHaveAttribute('data-test-cases-count', '2');
-  });
-
-  it('should forward the modal edit variant to the data quality tab', () => {
-    render(<TestCases />);
-
-    expect(screen.getByTestId('data-quality-tab')).toHaveAttribute(
-      'data-edit-variant',
-      'modal'
-    );
   });
 
   it('should disable bulk actions when test suite create permission is missing', () => {

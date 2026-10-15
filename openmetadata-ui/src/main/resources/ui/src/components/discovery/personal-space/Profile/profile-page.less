@@ -16,43 +16,6 @@
   width: 264px;
 }
 
-// OSS Chip renders `<a class="chip-tag-link"><span class="chip-tag-link chip-name">`.
-// The shared `chip-tag-link` class lands on both nodes; scope the pill style
-// to the anchor only and reset the inner span. These are 3rd-party class
-// names so tw cannot replace them.
-.ai-profile-page__edit-card {
-  .chip-container {
-    margin-top: 0 !important;
-    gap: 8px;
-    row-gap: 8px !important;
-  }
-
-  .chip-container a.chip-tag-link {
-    display: inline-flex !important;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    border: 1px solid #e9eaeb;
-    border-radius: 6px;
-    background: #fff;
-    color: #344054 !important;
-    font-size: 14px;
-    line-height: 20px;
-  }
-
-  span.chip-name {
-    border: none;
-    padding: 0;
-    color: #344054 !important;
-    font-weight: 500;
-  }
-
-  .no-data-chip-placeholder {
-    color: #667085;
-    margin: 0;
-  }
-}
-
 // Scope OSS UserPermissions container padding override to ProfilePage only.
 .ai-profile-page__user-permissions .user-permissions-container {
   padding: 0;
@@ -122,39 +85,6 @@
   }
 }
 
-/* The Persona edit card uses antd Select (multiple) chips + OSS view-mode chips
-   that hard-code antd's light theme / `#fff`. Re-point them at semantic vars
-   ONLY under `.dark-mode`, leaving light mode on the original styling. */
-.dark-mode .ai-profile-page__edit-card {
-  // Read-only view-mode chips (override the hardcoded light values above).
-  .chip-container a.chip-tag-link {
-    background: var(--color-bg-secondary);
-    color: var(--color-text-secondary) !important;
-    border-color: var(--color-border-secondary);
-  }
-
-  span.chip-name {
-    color: var(--color-text-secondary) !important;
-  }
-
-  .no-data-chip-placeholder {
-    color: var(--color-text-tertiary);
-  }
-
-  // Edit-mode antd multiple-select chips (white by default in antd). Scope to
-  // `.ant-select-multiple` so single selects (Token Expiration, Default Persona)
-  // — whose selection-item is plain value text — are untouched.
-  .ant-select-multiple .ant-select-selection-item {
-    background: var(--color-bg-secondary) !important;
-    color: var(--color-text-primary) !important;
-    border-color: var(--color-border-secondary) !important;
-  }
-
-  .ant-select-multiple .ant-select-selection-item-remove {
-    color: var(--color-text-tertiary) !important;
-  }
-}
-
 /* The OSS global antd-select dark theme (openmetadata-ui styles/components/
    select.less) darkens the dropdown menu surface + text but leaves antd's
    light hover (`-option-active`) and selected (`-option-selected`) option
@@ -174,8 +104,7 @@
 
 // The owned-assets card already provides its border; drop the nested
 // EntitySummaryPanel card borders so the right column isn't double-bordered.
-// The panel nests two antd cards: the outer `.summary-panel-container` and an
-// inner `.content-area.ant-card-bordered` — strip both.
+// The panel nests two cards: `.summary-panel-container` and `.content-area`.
 .ai-mydata-assets {
   .summary-panel-container,
   .summary-panel-container .content-area {

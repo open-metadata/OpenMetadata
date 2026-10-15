@@ -12,6 +12,7 @@
  */
 
 import { expect, Page } from '@playwright/test';
+import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/base';
 import {
   chooseSelectOption,
@@ -20,16 +21,22 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
-import { clickAndWaitFor } from '../../utils/waitHelpers';
+import {
+  clickAndWaitFor,
+  waitForResponseWithStatus,
+} from '../../utils/waitHelpers';
 import { enableAiAppMode } from '../Utils/appMode';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const SETTINGS_PUT = '**/api/v1/system/settings';
 
+type PatchOp = { op: string; path: string; value: unknown };
+
 type SettingState = {
   value?: Record<string, unknown>;
   puts: Record<string, unknown>[];
+  patches: PatchOp[][];
 };
 
 /**
@@ -52,10 +59,29 @@ const stubSettingRoundTrip = async (
     initial?: Record<string, unknown>;
   } = {}
 ): Promise<SettingState> => {
-  const state: SettingState = { value: initial, puts: [] };
+  const state: SettingState = { value: initial, puts: [], patches: [] };
 
   await page.route(getUrl, async (route) => {
-    if (route.request().method() !== 'GET' || state.value === undefined) {
+    const method = route.request().method();
+    // `appConfiguration` is saved with an RFC 6902 PATCH on this same typed
+    // endpoint, so capture it here and apply it to the value the GET serves.
+    if (method === 'PATCH') {
+      const ops = route.request().postDataJSON() as PatchOp[];
+      state.patches.push(ops);
+      state.value = ops.reduce(
+        (value, { path, value: opValue }) => ({
+          ...value,
+          [path.replace(/^\//, '')]: opValue,
+        }),
+        state.value ?? {}
+      );
+      await route.fulfill({
+        json: { config_type: configType, config_value: state.value },
+      });
+
+      return;
+    }
+    if (method !== 'GET' || state.value === undefined) {
       await route.fallback();
 
       return;
@@ -119,10 +145,65 @@ const fillField = async (page: Page, testId: string, value: string) => {
 const saveSettings = (page: Page) =>
   clickAndWaitFor(page, page.getByTestId('save-button'), SETTINGS_PUT);
 
+// The app-mode and table & schema cards write one key of `appConfiguration`
+// with a JSON Patch on the typed endpoint, not the generic settings PUT.
+const saveAppConfiguration = async (page: Page) => {
+  const saved = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.url().endsWith('/api/v1/system/settings/appConfiguration') &&
+      response.request().method() === 'PATCH',
+    200
+  );
+  await page.getByTestId('save-button').click();
+  await saved;
+};
+
 test.describe(
   'Profile Platform Settings',
   { tag: ['@Platform', '@Features'] },
   () => {
+    test('glossary: propagation preference survives a reload', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(page, 'glossarySettings', {
+        initial: { enableTagPropagation: true },
+      });
+
+      await test.step('Open the glossary preference', async () => {
+        await openPlatformSettings(page);
+        await openCard(page, 'glossary');
+        await expect(page.getByTestId('glossary-settings')).toBeVisible();
+      });
+
+      await test.step('Disable propagation and reload', async () => {
+        const toggle = page.getByRole('switch', {
+          name: /Propagate glossary tags/,
+        });
+        await expect(toggle).toBeChecked();
+        const saved = waitForResponseWithStatus(
+          page,
+          (response) =>
+            response.url().endsWith('/api/v1/system/settings') &&
+            response.request().method() === 'PUT',
+          200
+        );
+        await toggle.press('Space');
+        await saved;
+        await expect(toggle).not.toBeChecked();
+        expect(settings.puts).toEqual([
+          {
+            config_type: 'glossarySettings',
+            config_value: { enableTagPropagation: false },
+          },
+        ]);
+
+        await page.reload();
+        await expect(page.getByTestId('glossary-settings')).toBeVisible();
+        await expect(toggle).not.toBeChecked();
+      });
+    });
+
     test('landing lists every legacy Preferences page and each one opens', async ({
       page,
     }) => {
@@ -146,6 +227,8 @@ test.describe(
         ['learning-resources', 'learning-resources-settings'],
         ['search', 'search-settings'],
         ['app-mode', 'default-app-mode-page'],
+        ['table-schema', 'table-schema-settings'],
+        ['glossary', 'glossary-settings'],
       ];
 
       for (const [cardId, contentTestId] of pages) {
@@ -405,12 +488,11 @@ test.describe(
       await expect(save).toBeDisabled();
 
       await page.getByTestId('app-mode-option-classic').click();
-      await saveSettings(page);
+      await saveAppConfiguration(page);
 
-      expect(settings.puts[0]).toMatchObject({
-        config_type: 'appConfiguration',
-        config_value: { defaultAppMode: 'classic' },
-      });
+      expect(settings.patches[0]).toEqual([
+        { op: 'add', path: '/defaultAppMode', value: 'classic' },
+      ]);
       await expect(page.getByTestId('default-app-mode-value')).toHaveText(
         'Classic'
       );
@@ -646,12 +728,18 @@ test.describe(
           page.getByTestId('resource-type-select'),
           page.getByRole('option', { name: 'Video', exact: true })
         );
+        // chooseSelectOption, not fill-then-click: the form panel scrolls, and
+        // the scroll Playwright makes before clicking an option closes an open
+        // react-aria popover, leaving the click waiting on a detached option.
         for (const [testId, option] of [
           ['categories-select', 'Discovery'],
           ['contexts-select', 'Glossary'],
         ]) {
-          await page.getByTestId(testId).locator('input').fill(option);
-          await page.getByRole('option', { name: option, exact: true }).click();
+          await chooseSelectOption(
+            page.getByTestId(testId),
+            page.getByRole('option', { name: option, exact: true })
+          );
+          await expect(page.getByTestId(testId)).toContainText(option);
         }
         await fillField(
           page,
@@ -865,6 +953,61 @@ test.describe(
         .getByText('Search', { exact: true })
         .click();
       await expect(page.getByTestId('search-settings')).toBeVisible();
+    });
+
+    test('table & schema: the default column order saves and table pages open in it', async ({
+      page,
+    }) => {
+      // Creates a table and reloads into it, behind the settings round trip.
+      test.slow();
+      // appConfiguration is tenant-wide: stub it, and start from a stored app
+      // mode so the save can be checked for keeping it.
+      const settings = await stubSettingRoundTrip(page, 'appConfiguration', {
+        initial: { defaultAppMode: 'ai' },
+      });
+      await openPlatformSettings(page);
+      // The API context reads the session token, so it needs the app loaded.
+      const table = new TableClass();
+      const { apiContext, afterAction } = await getApiContext(page);
+      await table.create(apiContext);
+
+      try {
+        await openCard(page, 'table-schema');
+        await expect(page.getByTestId('default-column-order-value')).toHaveText(
+          'Alphabetical (A → Z)'
+        );
+
+        await header(page).getByTestId('edit-button').click();
+        await expect(page.getByTestId('save-button')).toBeDisabled();
+        await page.getByTestId('column-order-option-sourceOrder').click();
+        await saveAppConfiguration(page);
+
+        expect(settings.patches[0]).toEqual([
+          { op: 'add', path: '/defaultColumnOrder', value: 'sourceOrder' },
+        ]);
+        // The patch carries only its own key, so the stored app mode survives.
+        expect(settings.value).toEqual({
+          defaultAppMode: 'ai',
+          defaultColumnOrder: 'sourceOrder',
+        });
+        await expect(page.getByTestId('default-column-order-value')).toHaveText(
+          'Original Order'
+        );
+
+        // A fresh load reads the stored default at login.
+        const fqn = table.entityResponseData.fullyQualifiedName ?? '';
+        const columnsInSourceOrder = page.waitForRequest(
+          (request) =>
+            request.url().includes('/columns') &&
+            new URL(request.url()).searchParams.get('sortBy') ===
+              'ordinalPosition'
+        );
+        await page.goto(`/table/${encodeURIComponent(fqn)}`);
+        await columnsInSourceOrder;
+      } finally {
+        await table.delete(apiContext);
+        await afterAction();
+      }
     });
   }
 );

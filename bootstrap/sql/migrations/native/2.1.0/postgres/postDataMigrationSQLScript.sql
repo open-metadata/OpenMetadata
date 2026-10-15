@@ -273,6 +273,29 @@ WHERE name IN (
   )
   AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "dimensionFailurePolicy"}]'::jsonb);
 
+-- `minRowsPerDimension` keeps small dimension groups out of the ANY_DIMENSION roll-up under a
+-- PERCENTAGE threshold. Only the row-countable definitions declare it: a percentage of a statistic
+-- is not distorted by group size. These are the definition names, which differ from the seed file
+-- names for columnValueLengthsToBeBetween. Guarded on the parameter being absent, like the above.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'minRowsPerDimension',
+        'displayName', 'Minimum Rows per Dimension',
+        'description', 'Under the `ANY_DIMENSION` policy and a `PERCENTAGE` threshold, a dimension with fewer rows than this is still evaluated and reported, but does not fail the test (defaults to 0: every dimension counts).',
+        'dataType', 'INT',
+        'required', false
+    )::jsonb
+)
+WHERE name IN (
+    'columnValueLengthsToBeBetween', 'columnValuesToBeBetween', 'columnValuesToBeInSet',
+    'columnValuesToBeNotInSet', 'columnValuesToBeNotNull', 'columnValuesToBeUnique',
+    'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
+  )
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "minRowsPerDimension"}]'::jsonb);
+
 -- NUMERIC is a distinct member of the column dataType enum and is what BigQuery, Postgres,
 -- Snowflake and DB2 numeric columns are ingested as, but the numeric system test definitions were
 -- only ever seeded with NUMBER/DECIMAL. The "Add test case" dropdown filters on the column's exact
@@ -416,6 +439,30 @@ WHERE extension IN ('database.databaseProfilerConfig',
                     'databaseSchema.databaseSchemaProfilerConfig')
   AND json::jsonb #> '{sampleDataStorageConfig}' IS NOT NULL;
 
+-- Microsoft Fabric service principals now choose a client secret or a certificate under
+-- authType. Services saved before keep their client secret as the client secret option.
+UPDATE dbservice_entity
+SET json = jsonb_set(
+    json #- '{connection,config,clientSecret}',
+    '{connection,config,authType}',
+    jsonb_build_object('clientSecret', json #> '{connection,config,clientSecret}'),
+    true
+)
+WHERE serviceType = 'MicrosoftFabric'
+  AND jsonb_exists(json -> 'connection' -> 'config', 'clientSecret');
+
+-- Version history goes through the same connection converter on read, so its snapshots move too.
+UPDATE entity_extension
+SET json = jsonb_set(
+    json #- '{connection,config,clientSecret}',
+    '{connection,config,authType}',
+    jsonb_build_object('clientSecret', json #> '{connection,config,clientSecret}'),
+    true
+)
+WHERE extension LIKE 'databaseService.version.%'
+  AND json ->> 'serviceType' = 'MicrosoftFabric'
+  AND jsonb_exists(json -> 'connection' -> 'config', 'clientSecret');
+
 -- Context memories move from their own Draft/Active/Archived `status` onto `entityStatus`, the
 -- lifecycle stage every entity type shares: Active becomes Approved, and a memory with no status
 -- was documented as Active, so it becomes Approved too. Version history is rewritten as well:
@@ -445,3 +492,126 @@ SET json = (json::jsonb - 'status') || jsonb_build_object(
   END)
 WHERE jsonSchema = 'contextMemory'
   AND json::jsonb -> 'status' IS NOT NULL;
+
+-- Landing-page widgets: re-point the six panels whose widget was replaced, and drop the five
+-- whose widget was retired.
+--
+-- The seed loader (EntityRepository.initializeEntity) only inserts rows it cannot find -- it
+-- returns early on an existing fullyQualifiedName and never updates or deletes. So the new seed
+-- files reach a fresh install and nothing else: on an upgrade the four added panels appear, the
+-- rewritten ones keep the name and description of the widget they replaced, and the retired ones
+-- linger. KnowledgePanel.ActivityFeed renders the Team Activity card now, so without this the
+-- picker advertises it as "Activity Feed" and describes a feed that is no longer there.
+--
+-- Values mirror json/data/document/docs/*.json exactly, so an upgraded install ends up byte-equal
+-- to a fresh one. gridSizes is set on its own path rather than by replacing `data` wholesale, so
+-- the statement means the same thing as its MySQL counterpart. Re-runnable: every statement is an
+-- absolute write or a delete that matches nothing on a second pass.
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'displayName', 'Team Activity',
+      'description', 'Recent activity across the assets and domains the user owns, showing who changed what and when.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'ActivityFeed' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'description', 'A filtered list of high-impact assets. Ships with a certified Tier-1 rule and can be pointed at any saved filter from the persona editor.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'CuratedAssets' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'description', 'Data products across the platform with their owning domain, for quicker access to high-value products.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'DataProducts' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'description', 'Domain-by-domain overview of owner, description coverage, and failing tests, so a gap is visible without opening each one.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'Domains' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'displayName', 'KPIs',
+      'description', 'Progress against each active KPI: target, current pace, and whether it is on track to land by its end date.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'KPI' AND entityType = 'KnowledgePanel';
+
+-- Collate seeded this same fullyQualifiedName for its own Data Quality widget, which the topic
+-- card replaced. An install that came up through that build keeps the old row -- the loader skips
+-- the OSS seed -- and with it the old description and a single "small" grid size.
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'displayName', 'Data Quality',
+      'description', 'Overview of data quality test results (passing, failing, and aborted) with a link through to the failing tests.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'DataQuality' AND entityType = 'KnowledgePanel';
+
+-- The Context Center card moved into OSS from Collate, which seeded this fullyQualifiedName as
+-- "Knowledge Center" with a description of a widget that no longer exists. OSS installs get the
+-- row from the seed file; this brings an upgraded Collate row in line with it.
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'displayName', 'Context Center',
+      'description', 'The most recently updated Context Center pages, articles and quick links, with how many changed this week.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'KnowledgeCenter' AND entityType = 'KnowledgePanel';
+
+-- Retired: their seed files are gone and no component resolves their key, so the renderer would
+-- answer with a render-nothing component and leave an empty cell. The UI already filters them out
+-- of both the grid and the picker; this stops the rows accumulating.
+DELETE FROM doc_store
+WHERE entityType = 'KnowledgePanel'
+  AND name IN ('DataAssets', 'Following', 'MyData', 'MyTask', 'TotalAssets');
+
+-- transitive-lineage-closure stores every ancestor/descendant pair, which grows quadratically with
+-- lineage depth, so it now ships disabled. Turn off rows that pre-release builds seeded as enabled.
+UPDATE rdf_inference_rule
+SET json = jsonb_set(json, '{enabled}', 'false'::jsonb),
+    dirty = TRUE,
+    dirtyVersion = dirtyVersion + 1
+WHERE name = 'transitive-lineage-closure'
+  AND systemRule = TRUE
+  AND json ->> 'enabled' = 'true';
+
+-- Table Diff gained the optional parallelQueries parameter. Seeding only covers fresh installs
+-- (initializeEntity returns early when the entity exists), so without this backfill an upgraded
+-- deployment would never offer it in the test case form. A no-op once the parameter is present.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_array(jsonb_build_object(
+        'name', 'parallelQueries',
+        'displayName', 'Parallel queries per database',
+        'description', 'How many queries the comparison may run at once against each database (defaults to 1). Both databases are always queried at the same time. A higher value compares large tables faster, but adds load to both databases and holds more rows in memory.',
+        'dataType', 'NUMBER',
+        'required', false
+    ))
+)
+WHERE name = 'tableDiff'
+  AND jsonb_typeof(json->'parameterDefinition') = 'array'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "parallelQueries"}]'::jsonb);

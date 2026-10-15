@@ -19,6 +19,7 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -52,14 +53,17 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LandingPageSettings;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
@@ -708,7 +712,7 @@ public final class UserUtil {
   }
 
   // The raw accessor, not getUserRoles(): the latter normalizes null to an empty set, which would
-  // make "no roles claim in the token" indistinguishable from "the provider revoked every role".
+  // make "nothing to sync from" indistinguishable from "the provider revoked every role".
   public static Set<String> getRolesFromAuthorizationToken(
       CatalogSecurityContext catalogSecurityContext) {
     return catalogSecurityContext.userRoles();
@@ -733,32 +737,37 @@ public final class UserUtil {
   }
 
   /**
-   * Syncs a user's roles to what the identity provider reported. {@code rolesFromToken} is
-   * authoritative when non-null, including when empty - that is the provider revoking every role. A
-   * null set means the provider said nothing (no roles claim, or the feature is off) and the user's
-   * OpenMetadata roles are left alone.
+   * Syncs a user's roles and admin status to what the identity provider reported. {@code
+   * rolesFromToken} is authoritative when non-null, including when empty - that is the provider
+   * revoking every role. A null set means there is nothing to sync from (the feature is off, or the
+   * token was minted by OpenMetadata) and the user is left alone.
    *
-   * <p>Admin is promotion-only. Demoting on a missing admin role would lock out anyone who is an
-   * admin through the {@code adminPrincipals} configuration rather than through the provider.
+   * <p>Admin follows the provider's {@code Admin} role, except for users named in {@code
+   * adminEmails} or {@code adminPrincipals}: the provider never granted them admin, so its silence
+   * must not demote them. ADR:2026-10-13-provider-token-is-authoritative-for-roles-and-admin
    */
   public static boolean reSyncUserRolesFromToken(
-      UriInfo uriInfo, User user, Set<String> rolesFromToken) {
+      UriInfo uriInfo,
+      User user,
+      Set<String> rolesFromToken,
+      AuthorizerConfiguration authorizerConfiguration) {
     if (rolesFromToken == null) {
       return false;
     }
     boolean syncUser = false;
     Set<String> mutableRolesFromToken = new HashSet<>(rolesFromToken);
+    boolean adminFromProvider = mutableRolesFromToken.remove(ADMIN_ROLE);
 
     User updatedUser = JsonUtils.deepCopy(user, User.class);
-    // Check if Admin User
-    if (mutableRolesFromToken.contains(ADMIN_ROLE)) {
-      if (Boolean.FALSE.equals(user.getIsAdmin())) {
-        syncUser = true;
-        updatedUser.setIsAdmin(true);
-      }
-
-      // Remove the Admin Role from the list
-      mutableRolesFromToken.remove(ADMIN_ROLE);
+    boolean isAdmin = Boolean.TRUE.equals(user.getIsAdmin());
+    if (adminFromProvider && !isAdmin) {
+      syncUser = true;
+      updatedUser.setIsAdmin(true);
+    } else if (!adminFromProvider
+        && isAdmin
+        && !isConfiguredAdmin(authorizerConfiguration, user.getEmail(), user.getName())) {
+      syncUser = true;
+      updatedUser.setIsAdmin(false);
     }
 
     Set<String> rolesFromUser = getRoleListFromUser(user);
@@ -881,5 +890,24 @@ public final class UserUtil {
         throw new BadRequestException("Header image must be a valid URL: " + e.getMessage());
       }
     }
+  }
+
+  /** The email of every admin user. */
+  public static Set<String> getAdminEmails() {
+    Set<String> emails = new HashSet<>();
+    UserRepository users = (UserRepository) Entity.getEntityRepository(USER);
+    ListFilter admins = new ListFilter(Include.ALL);
+    admins.addQueryParam("isAdmin", "true");
+    String after = null;
+    try {
+      do {
+        ResultList<User> page = users.listAfter(null, users.getFields("email"), admins, 50, after);
+        page.getData().stream().map(User::getEmail).forEach(emails::add);
+        after = page.getPaging().getAfter();
+      } while (after != null);
+    } catch (Exception ex) {
+      LOG.error("Failed in listing all Users , Reason", ex);
+    }
+    return emails;
   }
 }
