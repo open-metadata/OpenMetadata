@@ -10,176 +10,118 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
-import { Box, Button, SimpleModal } from '@openmetadata/ui-core-components';
-import { Form } from 'antd';
-import { useForm } from 'antd/es/form/Form';
-
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import {
-  DISPLAY_NAME_FIELD_RULES,
-  NAME_FIELD_RULES,
+  Box,
+  Button,
+  FormField,
+  FormItemLabel,
+  HookForm,
+  Input,
+  SimpleModal,
+} from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
+import { trim } from 'lodash';
+import { useState } from 'react';
+import { RegisterOptions, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
+import {
+  DISPLAY_NAME_FIELD_REGISTER_RULES,
+  NAME_FIELD_REGISTER_RULES,
 } from '../../../../constants/Form.constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
-import { Persona } from '../../../../generated/entity/teams/persona';
 import { EntityReference } from '../../../../generated/entity/type';
 import { Include } from '../../../../generated/type/include';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import {
-  FieldTypes,
-  FormItemLayout,
-} from '../../../../interface/FormUtils.interface';
-import { createPersona, updatePersona } from '../../../../rest/PersonaAPI';
+import { createPersona } from '../../../../rest/PersonaAPI';
 import { getUserById } from '../../../../rest/userAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { generateFormFields, getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { DrawerPopupContainerProvider } from '../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
+import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
+import { UserSelectableList } from '../../../common/UserSelectableList/UserSelectableList.component';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
 import { UserTagSize } from '../../../common/UserTag/UserTag.interface';
 import { AddPersonaFormProps } from './AddEditPersona.interface';
 
+interface PersonaFormValues {
+  name: string;
+  displayName: string;
+  users: EntityReference[];
+}
+
+type TextFieldName = 'name' | 'displayName';
+
 export const AddEditPersonaForm = ({
   onCancel,
   onSave,
-  persona,
 }: AddPersonaFormProps) => {
-  const [form] = useForm();
+  const { t } = useTranslation();
+  // Validate while typing, as the antd form did.
+  const form = useForm<PersonaFormValues>({
+    mode: 'onChange',
+    defaultValues: { name: '', displayName: '', users: [] },
+  });
+  const [description, setDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const { currentUser, setCurrentUser } = useApplicationStore();
-  const { t } = useTranslation();
+  const usersList = form.watch('users');
 
-  const usersList =
-    Form.useWatch<EntityReference[]>('users', form) ?? persona?.users ?? [];
-  const isEditMode = !isEmpty(persona);
-
-  const fetchCurrentUser = useCallback(async () => {
+  const fetchCurrentUser = async () => {
+    if (!currentUser) {
+      return;
+    }
     try {
-      if (currentUser) {
-        const user = await getUserById(currentUser.id, {
-          fields: [TabSpecificField.PERSONAS],
-          include: Include.All,
-        });
-
-        setCurrentUser({ ...currentUser, ...user });
-      }
+      const user = await getUserById(currentUser.id, {
+        fields: [TabSpecificField.PERSONAS],
+        include: Include.All,
+      });
+      setCurrentUser({ ...currentUser, ...user });
     } catch {
       return;
     }
-  }, [currentUser, setCurrentUser]);
+  };
 
-  const handleSubmit = useCallback(
-    async (data: Persona) => {
-      try {
-        setIsSaving(true);
-        const { users } = data;
+  const handleSubmit = async (data: PersonaFormValues) => {
+    try {
+      setIsSaving(true);
+      await createPersona({
+        name: trim(data.name),
+        displayName: trim(data.displayName) || undefined,
+        description,
+        users: data.users.map((user) => user.id),
+      });
+      await fetchCurrentUser();
+      onSave();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-        const usersList = users?.map((u) => u.id) ?? [];
-        const domains = data.domains
-          ?.map((d) => d.fullyQualifiedName)
-          .filter(Boolean) as string[];
-        if (persona && isEditMode) {
-          const jsonPatch = compare(persona, data);
-
-          await updatePersona(persona?.id, jsonPatch);
-        } else {
-          await createPersona({ ...data, users: usersList, domains });
-        }
-        await fetchCurrentUser();
-        onSave();
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [isEditMode, persona]
+  const renderTextField = (
+    name: TextFieldName,
+    label: string,
+    rules: RegisterOptions<PersonaFormValues, TextFieldName>
+  ) => (
+    <FormField control={form.control} name={name} rules={rules}>
+      {({ field, fieldState }) => (
+        <Input
+          autoComplete="off"
+          hint={fieldState.error?.message}
+          inputDataTestId={name}
+          isInvalid={fieldState.invalid}
+          isRequired={Boolean(rules.required)}
+          label={label}
+          placeholder={label}
+          value={field.value}
+          onBlur={field.onBlur}
+          onChange={field.onChange}
+        />
+      )}
+    </FormField>
   );
-
-  const fields = useMemo(
-    () => [
-      {
-        name: 'name',
-        required: true,
-        label: t('label.name'),
-        id: 'root/name',
-        type: FieldTypes.TEXT,
-        props: {
-          'data-testid': 'name',
-          autoComplete: 'off',
-        },
-        placeholder: t('label.name'),
-        rules: NAME_FIELD_RULES,
-      },
-      {
-        name: 'displayName',
-        required: false,
-        label: t('label.display-name'),
-        id: 'root/displayName',
-        type: FieldTypes.TEXT,
-        props: {
-          'data-testid': 'displayName',
-          autoComplete: 'off',
-        },
-        placeholder: t('label.display-name'),
-        rules: DISPLAY_NAME_FIELD_RULES,
-      },
-      {
-        name: 'description',
-        required: false,
-        label: t('label.description'),
-        id: 'root/description',
-        type: FieldTypes.DESCRIPTION,
-        props: {
-          'data-testid': 'description',
-          initialValue: '',
-          height: 'auto',
-        },
-      },
-    ],
-    []
-  );
-
-  const usersField = useMemo(
-    () => ({
-      name: 'users',
-      required: false,
-      label: t('label.user-plural'),
-      id: 'root/users',
-      formItemProps: {
-        valuePropName: 'selectedUsers',
-        trigger: 'onUpdate',
-        initialValue: [],
-      },
-      formItemLayout: FormItemLayout.HORIZONTAL,
-      type: FieldTypes.USER_MULTI_SELECT,
-      props: {
-        'data-testid': 'user',
-        hasPermission: true,
-        children: (
-          <Button
-            aria-label={t('label.add-entity', {
-              entity: t('label.user-plural'),
-            })}
-            color="primary"
-            data-testid="add-users"
-            iconLeading={
-              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-            }
-            size="xs"
-          />
-        ),
-      },
-    }),
-    []
-  );
-
-  const handleSave = useCallback(() => form?.submit(), [form]);
 
   return (
     <SimpleModal
@@ -188,42 +130,71 @@ export const AddEditPersonaForm = ({
       data-testid="add-edit-persona-modal"
       isDismissable={false}
       isOkLoading={isSaving}
-      okText={isEditMode ? t('label.update') : t('label.create')}
-      title={isEmpty(persona) ? 'Add Persona' : 'Edit Persona'}
+      okText={t('label.create')}
+      title={t('label.add-entity', { entity: t('label.persona') })}
       width={750}
       onCancel={onCancel}
-      onOk={handleSave}>
+      onOk={form.handleSubmit(handleSubmit)}>
       <DrawerPopupContainerProvider>
-        <Form
+        <HookForm
+          className="tw:flex tw:flex-col tw:gap-4"
           form={form}
-          initialValues={persona}
-          layout="vertical"
-          validateMessages={VALIDATION_MESSAGES}
-          onFinish={handleSubmit}>
-          {generateFormFields(fields)}
-          <div>
-            {getField(usersField)}
-            {Boolean(usersList.length) && (
-              <Box
-                inline
-                align="center"
-                className="layout-space layout-space-horizontal m--t-md"
-                data-testid="users-container"
-                gap={2}
-                itemClassName="layout-space-item"
-                wrap="wrap">
-                {usersList.map((d) => (
-                  <UserTag
-                    id={d.name ?? d.id}
-                    key={d.id}
-                    name={getEntityName(d)}
-                    size={UserTagSize.small}
-                  />
-                ))}
+          onSubmit={form.handleSubmit(handleSubmit)}>
+          {renderTextField('name', t('label.name'), NAME_FIELD_REGISTER_RULES)}
+          {renderTextField(
+            'displayName',
+            t('label.display-name'),
+            DISPLAY_NAME_FIELD_REGISTER_RULES
+          )}
+          <Box direction="col" gap={1}>
+            <FormItemLabel label={t('label.description')} />
+            <RichTextEditor
+              data-testid="description"
+              initialValue=""
+              onTextChange={setDescription}
+            />
+          </Box>
+          <FormField control={form.control} name="users">
+            {({ field }) => (
+              <Box direction="col" gap={1}>
+                <Box align="center" gap={2}>
+                  <FormItemLabel label={t('label.user-plural')} />
+                  <UserSelectableList
+                    hasPermission
+                    multiSelect
+                    selectedUsers={field.value}
+                    onUpdate={async (users) => field.onChange(users ?? [])}>
+                    <Button
+                      aria-label={t('label.add-entity', {
+                        entity: t('label.user-plural'),
+                      })}
+                      color="primary"
+                      data-testid="add-users"
+                      iconLeading={Plus}
+                      size="xs"
+                    />
+                  </UserSelectableList>
+                </Box>
+                {usersList.length > 0 && (
+                  <Box
+                    align="center"
+                    data-testid="users-container"
+                    gap={2}
+                    wrap="wrap">
+                    {usersList.map((user) => (
+                      <UserTag
+                        id={user.name ?? user.id}
+                        key={user.id}
+                        name={getEntityName(user)}
+                        size={UserTagSize.small}
+                      />
+                    ))}
+                  </Box>
+                )}
               </Box>
             )}
-          </div>
-        </Form>
+          </FormField>
+        </HookForm>
       </DrawerPopupContainerProvider>
     </SimpleModal>
   );

@@ -19,6 +19,7 @@ import { getAllDomainsWithAssetsCount } from '../rest/domainAPI';
 import { searchQuery } from '../rest/searchAPI';
 import {
   OverviewFilter,
+  OVERVIEW_PAGE_SIZE,
   UNOWNED_QUERY_FILTER,
   useDomainOverview,
 } from './useDomainOverview';
@@ -122,8 +123,9 @@ describe('useDomainOverview', () => {
 
     expect(mockSearchQuery).toHaveBeenCalledWith(
       expect.objectContaining({
-        pageSize: 10,
+        pageSize: OVERVIEW_PAGE_SIZE,
         queryFilter: UNOWNED_QUERY_FILTER,
+        sortField: 'name.keyword',
       })
     );
   });

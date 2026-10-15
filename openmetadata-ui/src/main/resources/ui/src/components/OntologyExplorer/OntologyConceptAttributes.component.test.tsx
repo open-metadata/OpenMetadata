@@ -228,7 +228,7 @@ describe('OntologyConceptAttributes', () => {
       within(screen.getByTestId('attribute-name-input')).getByRole('textbox'),
       { target: { value: 'subscriptionId' } }
     );
-    fireEvent.click(screen.getByTestId('attribute-identifier-checkbox'));
+    fireEvent.click(screen.getByTestId('attribute-identifier-toggle'));
     fireEvent.change(
       within(screen.getByTestId('attribute-unit-input')).getByRole('textbox'),
       { target: { value: 'customer-id' } }

@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.review.MemoryConflictReviewTasks;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.EntityLifecycle;
@@ -170,6 +171,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   protected void postCreate(ContextMemory memory) {
     super.postCreate(memory);
     ontologyQueue().enqueue(memory, memory.getUpdatedBy());
+    MemoryConflictReviewTasks.afterWrite(null, memory);
   }
 
   @Override
@@ -180,6 +182,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     OntologyMemoryDerivationQueue queue = ontologyQueue();
     memories.forEach(memory -> queue.enqueue(memory, memory.getUpdatedBy()));
+    memories.forEach(memory -> MemoryConflictReviewTasks.afterWrite(null, memory));
   }
 
   @Override
@@ -190,6 +193,19 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         && getDerivedEntities(updated).isEmpty()) {
       ontologyQueue().enqueue(updated, updated.getUpdatedBy());
     }
+    MemoryConflictReviewTasks.afterWrite(previous, updated);
+  }
+
+  @Override
+  protected void postDelete(ContextMemory memory, boolean hardDelete) {
+    super.postDelete(memory, hardDelete);
+    MemoryConflictReviewTasks.afterDelete(memory, hardDelete);
+  }
+
+  @Override
+  protected void postRestore(ContextMemory memory) {
+    super.postRestore(memory);
+    MemoryConflictReviewTasks.afterWrite(null, memory);
   }
 
   /** Whether the memory row exists, soft-deleted or not; provenance may point at either. */
@@ -637,13 +653,26 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
               Include.NON_DELETED);
       boolean admin = SubjectContext.getSubjectContext(userName).isAdmin();
       if (ContextMemoryVisibility.isVisibleToUser(target, userName, admin)) {
-        return target.getEntityReference();
+        return titledReference(target);
       }
     } catch (EntityNotFoundException e) {
       // Report the same error for missing and unreadable memories.
     }
     throw new BadRequestException(
         String.format("%s must reference a readable, non-deleted context memory", field));
+  }
+
+  /**
+   * Memory names are generated (an extracted memory is named after its source plus a UUID), so a
+   * stored reference to a memory reads as its title unless the memory has a display name.
+   */
+  private static EntityReference titledReference(ContextMemory memory) {
+    EntityReference reference = memory.getEntityReference();
+    String title = memory.getTitle();
+    boolean untitled = nullOrEmpty(title) || title.isBlank();
+    return nullOrEmpty(memory.getDisplayName()) && !untitled
+        ? reference.withDisplayName(title)
+        : reference;
   }
 
   /** A new memory follows its anchor's single domain for policy and search access. */

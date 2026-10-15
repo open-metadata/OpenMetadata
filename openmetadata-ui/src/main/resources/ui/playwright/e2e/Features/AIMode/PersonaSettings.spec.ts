@@ -941,7 +941,9 @@ test.describe(
         addCuratedAssetsWidget(page));
 
       await test.step('configure it in the Create Widget modal', async () => {
-        await widget.getByText('Create').click();
+        await widget
+          .getByRole('button', { name: 'Create', exact: true })
+          .click();
 
         await expect(
           page.getByTestId('curated-assets-modal-container')

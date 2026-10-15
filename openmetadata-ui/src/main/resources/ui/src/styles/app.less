@@ -54,14 +54,6 @@ p {
 
 // Global css
 
-.global-search-select-menu {
-  width: 200px !important;
-}
-
-.appbar-search .rc-virtual-list-holder {
-  max-height: max-content;
-}
-
 .global-border {
   border: @global-border;
 }
@@ -1075,12 +1067,6 @@ a[href].link-text-grey,
   padding: 0;
   background: @user-profile-background;
   border: 0px;
-
-  .ant-collapse-content {
-    .ant-collapse-content-box {
-      padding: 0;
-    }
-  }
 }
 
 .data-asset-icon > svg {
@@ -1110,23 +1096,6 @@ a[href].link-text-grey,
         color: @primary-color;
       }
     }
-  }
-}
-
-.error-boundary-result {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  height: 100%;
-
-  // antd Result hardcodes rgba(0,0,0,…) text, unreadable on the dark surface.
-  .ant-result-title {
-    color: var(--om-color-text-primary);
-  }
-
-  .ant-result-subtitle {
-    color: var(--om-color-text-tertiary);
   }
 }
 
@@ -1215,37 +1184,7 @@ a[href].link-text-grey,
 }
 
 // antd Alert paints static light tints per type (and antd heading-colour
-// text); in dark they read as white boxes with unreadable copy. Use the
-// theme-aware utility scale instead. Light keeps antd's values.
-.dark-mode .ant-alert {
-  &.ant-alert-info {
-    background-color: var(--tw-color-utility-blue-50);
-    border-color: var(--tw-color-utility-blue-200);
-  }
-
-  &.ant-alert-success {
-    background-color: var(--tw-color-utility-success-50);
-    border-color: var(--tw-color-utility-success-200);
-  }
-
-  &.ant-alert-warning {
-    background-color: var(--tw-color-utility-warning-50);
-    border-color: var(--tw-color-utility-warning-200);
-  }
-
-  &.ant-alert-error {
-    background-color: var(--tw-color-utility-error-50);
-    border-color: var(--tw-color-utility-error-200);
-  }
-
-  .ant-alert-message {
-    color: var(--om-color-text-primary);
-  }
-
-  .ant-alert-description {
-    color: var(--om-color-text-secondary);
-  }
-}
+// text);
 
 // antd DatePicker/RangePicker compile static light values: 25%-black
 // suffix/separator/clear icons and out-of-month cells, #bfbfbf placeholder,

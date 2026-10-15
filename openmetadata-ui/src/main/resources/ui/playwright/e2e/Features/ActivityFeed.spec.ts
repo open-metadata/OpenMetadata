@@ -289,20 +289,26 @@ test.describe('Mention notifications in Notification Box', () => {
 
       await expect(mentionsList).toBeVisible();
 
-      const firstNotificationItem = mentionsList
-        .locator('li.ant-list-item.notification-dropdown-list-btn')
-        .first();
+      const mentionNotificationItem = mentionsList
+        .getByRole('listitem')
+        .filter({
+          has: adminPage.getByTestId(
+            'notification-link-' +
+              (entity.entity.displayName || entity.entity.name)
+          ),
+        });
 
-      const firstNotificationText = await firstNotificationItem.textContent();
+      const mentionNotificationText =
+        await mentionNotificationItem.textContent();
 
-      expect(firstNotificationText?.toLowerCase()).toContain(
+      expect(mentionNotificationText?.toLowerCase()).toContain(
         user1.responseData.name.toLowerCase()
       );
-      expect(firstNotificationText?.toLowerCase()).not.toContain(
+      expect(mentionNotificationText?.toLowerCase()).not.toContain(
         adminUser.responseData.name.toLowerCase()
       );
 
-      const mentionNotificationLink = firstNotificationItem.locator(
+      const mentionNotificationLink = mentionNotificationItem.locator(
         '[data-testid^="notification-link-"]'
       );
 
@@ -825,26 +831,30 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   test('All badge, header and rendered list agree on the count', async ({
     adminPage,
   }) => {
-    const feedList = await openActivityFeedTab(adminPage);
-    await waitForBothFeedKinds(feedList);
+    // Each retry reopens the entity page.
+    test.slow();
 
     // The "All" badge must equal the number of rendered items (conversations +
     // activity events) — not the old activity-only / double-counted value.
-    // Polled rather than compared once because the consumer can deliver this
-    // table's own "Created" event mid-test, growing both numbers a beat apart.
-    await expect
-      .poll(
-        async () => {
-          const rendered = await feedList.count();
-          const allBadge = (
-            await adminPage.getByTestId('left-panel-all-count').innerText()
-          ).trim();
+    // The badge is counted on page load and the list fetched when the tab
+    // opens, so the table's own "Created" event, which the consumer delivers
+    // at an arbitrary moment, can land between the two and leave them one
+    // apart for good. Reopening the page refetches both together.
+    let attempt = 0;
+    let feedList = await openActivityFeedTab(adminPage);
+    await expect(async () => {
+      if (attempt++ > 0) {
+        feedList = await openActivityFeedTab(adminPage);
+      }
+      await waitForBothFeedKinds(feedList);
 
-          return Number(allBadge) === rendered;
-        },
-        { timeout: 15_000, intervals: [1_000] }
-      )
-      .toBe(true);
+      const rendered = await feedList.count();
+      const allBadge = (
+        await adminPage.getByTestId('left-panel-all-count').innerText()
+      ).trim();
+
+      expect(Number(allBadge)).toBe(rendered);
+    }).toPass({ timeout: 90_000, intervals: [1_000, 2_000] });
 
     // With no tasks, the entity tab header total equals the same count.
     const renderedCount = await feedList.count();

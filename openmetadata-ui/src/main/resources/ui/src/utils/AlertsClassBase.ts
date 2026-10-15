@@ -51,6 +51,7 @@ export interface AddAlertFormWidgetProps {
   formRef?: unknown;
   /** The current form values, passed by every caller. */
   values?: ModifiedCreateEventSubscription;
+  onValuesChange?: (changes: Partial<ModifiedCreateEventSubscription>) => void;
   alertDetails?: ModifiedEventSubscription;
   templates?: NotificationTemplate[];
   loading?: boolean;
