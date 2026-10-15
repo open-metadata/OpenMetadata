@@ -22,6 +22,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.DataQualityDimensionResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
@@ -141,7 +142,7 @@ public class DataQualityDimensionRepository extends EntityRepository<DataQuality
     // Deferred to the post-commit drain for the same reason as the reclassification path: this
     // runs inside the delete transaction, and the cleanup re-reads test definitions and rebuilds
     // search documents on its own connection. Submitting here would race the commit.
-    searchRepository.queueFanOut(
+    SearchRepository.runAfterCommit(
         () ->
             AsyncService.getInstance()
                 .executeDatabaseTask(
@@ -159,9 +160,7 @@ public class DataQualityDimensionRepository extends EntityRepository<DataQuality
                       }
                     }),
         "cleanupDeletedDataQualityDimension",
-        entity.getId() != null ? entity.getId().toString() : null,
-        dimensionName,
-        DATA_QUALITY_DIMENSION);
+        dimensionName);
   }
 
   private static boolean isInheritedRow(String relationshipJson) {

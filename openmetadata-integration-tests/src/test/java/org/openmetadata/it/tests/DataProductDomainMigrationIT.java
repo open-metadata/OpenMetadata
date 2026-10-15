@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -917,6 +918,7 @@ public class DataProductDomainMigrationIT {
   private void verifyAssetsInDomainAssetsEndpoint(
       OpenMetadataClient client, Domain domain, List<Table> expectedTables, boolean shouldExist)
       throws Exception {
+    QueuedSearchWrites.await();
     // Use Awaitility to poll for the expected state since search index updates are async
     Awaitility.await()
         .atMost(30, TimeUnit.SECONDS)

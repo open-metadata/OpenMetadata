@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.GovernanceWorkflowActions;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -662,6 +663,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     String expectedTermFqn = newName + "." + term.getName();
     String expectedSubTermFqn = expectedTermFqn + "." + subTerm.getName();
 
+    QueuedSearchWrites.await();
     Awaitility.await("term ES doc reflects glossary rename")
         .pollInterval(Duration.ofMillis(500))
         .atMost(Duration.ofSeconds(60))

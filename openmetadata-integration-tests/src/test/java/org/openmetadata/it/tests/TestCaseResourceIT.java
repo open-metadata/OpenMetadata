@@ -5782,6 +5782,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     String testCaseId = testCase.getId().toString();
     String domainFqn = shared.DOMAIN.getFullyQualifiedName();
+    QueuedSearchWrites.await();
     Awaitility.await(
             "Test case search index should contain inherited domain from table after domain update")
         .atMost(Duration.ofSeconds(30))
