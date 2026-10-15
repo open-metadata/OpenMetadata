@@ -809,7 +809,6 @@
                   "type": "integer",
                   "default": 50,
                   "minimum": 1,
-                  "maximum": 1000,
                   "title": "Sample Data Count"
                 },
                 "classificationLanguage": {
@@ -1323,7 +1322,6 @@
                   "type": "integer",
                   "default": 50,
                   "minimum": 1,
-                  "maximum": 1000,
                   "title": "Sample Data Rows Count"
                 },
                 "classificationLanguage": {
@@ -1782,7 +1780,6 @@
                   "type": "integer",
                   "default": 50,
                   "minimum": 1,
-                  "maximum": 1000,
                   "title": "Sample Data Rows Count"
                 },
                 "classificationLanguage": {
