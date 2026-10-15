@@ -293,6 +293,25 @@ def test_classes_no_lane_runs_are_read_from_the_code_and_the_pom() -> None:
     assert by_name["TableResourceIT"] not in REPO.never_run
 
 
+def test_an_abstract_unit_test_runs_through_the_classes_that_extend_it() -> None:
+    # Surefire runs SessionStoreContractTest's tests only inside RedisSessionStoreTest and writes
+    # no report under its name, so selecting it by name failed a step whose tests all passed.
+    session = f"{SERVICE}/security/session/UserSession.java"
+    contract = "openmetadata-service/src/test/java/org/openmetadata/service/security/session/SessionStoreContractTest.java"
+
+    _, uses_it = plan_for(session)
+    _, changes_it = plan_for(contract)
+
+    for plan in (uses_it, changes_it):
+        units = plan.unit_tests["openmetadata-service"]
+        assert "SessionStoreContractTest" not in units
+        assert "RedisSessionStoreTest" in units
+    assert "SessionServiceTest" in uses_it.unit_tests["openmetadata-service"]
+    assert changes_it.unit_tests["openmetadata-service"]["RedisSessionStoreTest"] == {
+        "extends SessionStoreContractTest, which changed"
+    }
+
+
 def test_a_change_runs_the_tests_that_name_it_and_its_callers_tests() -> None:
     # The review case: TestCaseDeleteResilienceIT guards TableRepository's delete cleanup
     # from outside the databases area, and the old map missed it.

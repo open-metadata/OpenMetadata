@@ -279,8 +279,8 @@ const applyUserApprovalConfig = (
         }>;
       }
     | undefined;
-  // Settings the builder does not edit, such as the task's transitions or domain-owner
-  // approvers, keep their saved values.
+  // Start from the step's stored config so settings this builder does not edit (partial
+  // decisions, transition metadata, task status, domain-owner approvers) survive a save.
   config.config = { ...nodeData.config };
   config.config.assignees = {
     ...assigneesFromNode,

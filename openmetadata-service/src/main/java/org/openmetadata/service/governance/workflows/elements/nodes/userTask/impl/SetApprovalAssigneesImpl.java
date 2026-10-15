@@ -35,6 +35,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -179,13 +180,16 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // global `updatedBy`. Both are checked because each variable is authoritative for its own
       // workflow family — reading only one silently leaves the other's requester on the list. For
       // non-workflow-managed tasks only, keep the requester when no one else is available so the
-      // task stays actionable; workflow-managed tasks rely on the admin fallback below instead.
+      // task stays actionable; workflow-managed tasks rely on the empty-assignee strategy below
+      // instead. A change request is never given back to its requester.
       Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
       List<String> preRemovalAssignees = new ArrayList<>(assigneeList);
       boolean removedRequester = assigneeList.removeAll(requesterEntityLinks);
+      boolean reviewsChangeRequest = ChangeRequestRun.from(varHandler).isPresent();
       if (removedRequester
           && assigneeList.isEmpty()
           && !workflowManagedTask
+          && !reviewsChangeRequest
           && !"wait".equals(assigneesConfig.get("emptyAssigneeStrategy"))) {
         assigneeList.addAll(preRemovalAssignees);
       }
@@ -193,10 +197,12 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
       // assignee was the requester and was stripped above), apply the node's configured
       // fallback. ASSIGN_ADMINS routes to all platform admins, excluding the requester so
-      // self-approval can never happen. NONE keeps the default behavior.
+      // self-approval can never happen. NONE leaves the list empty, so the approval node approves
+      // automatically.
       String emptyAssigneeStrategy =
           String.valueOf(assigneesConfig.getOrDefault("emptyAssigneeStrategy", "none"));
-      if (assigneeList.isEmpty() && "assignAdmins".equals(emptyAssigneeStrategy)) {
+      boolean assignAdmins = "assignAdmins".equals(emptyAssigneeStrategy);
+      if (assigneeList.isEmpty() && assignAdmins) {
         List<String> admins = resolveAdminAssignees();
         admins.removeAll(requesterEntityLinks);
         assigneeList.addAll(admins);

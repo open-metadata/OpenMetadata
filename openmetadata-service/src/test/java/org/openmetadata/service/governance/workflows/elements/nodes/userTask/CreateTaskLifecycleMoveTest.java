@@ -40,7 +40,8 @@ class CreateTaskLifecycleMoveTest {
                 TaskEntityType.RequestApproval,
                 stageChangedDomain(),
                 Map.of("proposedChanges", Map.of("entityStatus", Map.of())),
-                IN_REVIEW_TO_APPROVED));
+                IN_REVIEW_TO_APPROVED,
+                null));
 
     assertFalse(payload.containsKey("proposedChanges"));
     assertEquals(
@@ -52,7 +53,7 @@ class CreateTaskLifecycleMoveTest {
     final Map<String, Object> payload =
         JsonUtils.getMap(
             CreateTask.approvalPayload(
-                TaskEntityType.RequestApproval, stageChangedDomain(), null, null));
+                TaskEntityType.RequestApproval, stageChangedDomain(), null, null, null));
 
     assertEquals(
         List.of("entityStatus"),
