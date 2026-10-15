@@ -510,7 +510,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public EntityInterface getParentEntity(MlModel entity, String fields) {
+  public EntityInterface<?> getParentEntity(MlModel entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -518,7 +518,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     MlModel mlModel = (MlModel) entity;
     EntityUtil.mergeTags(allTags, mlModel.getTags());

@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { CursorType } from '../../../../enums/pagination.enum';
@@ -214,7 +220,7 @@ describe('FilesTable', () => {
     const deleteToggle = screen.getByTestId('show-deleted');
 
     expect(deleteToggle).toBeInTheDocument();
-    expect(deleteToggle).not.toBeChecked();
+    expect(within(deleteToggle).getByRole('switch')).not.toBeChecked();
   });
 
   it('should handle show deleted toggle correctly', async () => {
@@ -245,7 +251,7 @@ describe('FilesTable', () => {
 
     const deleteToggle = screen.getByTestId('show-deleted');
 
-    expect(deleteToggle).toBeChecked();
+    expect(within(deleteToggle).getByRole('switch')).toBeChecked();
   });
 
   it('should display pagination information correctly', () => {

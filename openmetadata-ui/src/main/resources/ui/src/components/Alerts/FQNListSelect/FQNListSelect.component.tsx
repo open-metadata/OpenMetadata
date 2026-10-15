@@ -11,112 +11,138 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { SelectProps, Tag } from 'antd';
-import { isEmpty } from 'lodash';
-import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, { useEffect, useState } from 'react';
+import {
+  Autocomplete,
+  Box,
+  SelectItemType,
+} from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
+import { debounce, uniqBy } from 'lodash';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
-import { searchQuery } from '../../../rest/searchAPI';
-import { getTermQuery } from '../../../utils/SearchPureUtils';
-import { AsyncSelect } from '../../common/AsyncSelect/AsyncSelect';
-import { AsyncSelectListProps } from '../../common/AsyncSelect/AsyncSelectList.interface';
-interface FQNListSelectProps
-  extends SelectProps,
-    Pick<AsyncSelectListProps, 'api'> {
+import { NameSearch } from '../../../utils/Alerts/AlertSourceSearch';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { resolveWildcardFqns } from './FQNListSelect.utils';
+
+export { resolveWildcardFqns } from './FQNListSelect.utils';
+
+interface FQNListSelectProps {
+  api: NameSearch;
+  value?: string[];
+  onChange?: (value: string[]) => void;
   searchIndex: SearchIndex | SearchIndex[];
   containerEntities?: string[];
+  placeholder?: string;
+  'data-testid'?: string;
+  isDisabled?: boolean;
+  hint?: string;
+  className?: string;
 }
 
-// Resolves which of the saved FQNs refer to a container (ancestor) entity type for the current
-// source. The match rule is identical to authoring time (entityType in containerEntities), so the
-// saved-alert view can re-apply the display-only ".*" subtree hint that is not persisted.
-export const resolveWildcardFqns = async (
-  fqns: string[],
-  searchIndex: SearchIndex | SearchIndex[],
-  containerEntities: string[] = []
-): Promise<string[]> => {
-  let wildcardFqns: string[] = [];
-  if (!isEmpty(fqns) && !isEmpty(containerEntities)) {
-    try {
-      const response = await searchQuery({
-        query: '*',
-        pageNumber: 1,
-        pageSize: fqns.length,
-        searchIndex,
-        queryFilter: getTermQuery({ fullyQualifiedName: fqns }, 'should', 1),
-      });
+const EMPTY_VALUES: string[] = [];
 
-      wildcardFqns = response.hits.hits
-        .filter(
-          (hit) =>
-            !!hit._source.entityType &&
-            containerEntities.includes(hit._source.entityType)
-        )
-        .map((hit) => hit._source.fullyQualifiedName ?? '')
-        .filter(Boolean);
-    } catch {
-      wildcardFqns = [];
-    }
-  }
-
-  return wildcardFqns;
-};
-
-// Alerts-only wrapper around the shared AsyncSelect. It keeps the shared component untouched and
-// scopes the ".*" tag decoration to the Entity-FQN filter, so other consumers of AsyncSelect are
-// unaffected.
 const FQNListSelect = ({
-  value,
+  api,
+  value = EMPTY_VALUES,
+  onChange,
   searchIndex,
-  containerEntities = [],
-  ...rest
+  containerEntities = EMPTY_VALUES,
+  placeholder,
+  'data-testid': testId,
+  isDisabled = false,
+  hint,
+  className,
 }: FQNListSelectProps) => {
-  const [wildcardFqns, setWildcardFqns] = useState<Set<string>>(new Set());
-
+  const [wildcards, setWildcards] = useState<string[]>([]);
+  const [items, setItems] = useState<SelectItemType[]>([]);
+  const [loading, setLoading] = useState(false);
+  const requestId = useRef(0);
   useEffect(() => {
-    const fqns = (value as string[] | undefined) ?? [];
-    if (isEmpty(fqns) || isEmpty(containerEntities)) {
-      setWildcardFqns(new Set());
-
-      return;
-    }
-
-    let isActive = true;
-    resolveWildcardFqns(fqns, searchIndex, containerEntities).then((list) => {
-      if (isActive) {
-        setWildcardFqns(new Set(list));
+    let active = true;
+    void resolveWildcardFqns(value, searchIndex, containerEntities).then(
+      (found) => {
+        if (active) {
+          setWildcards(found);
+        }
       }
-    });
+    );
 
     return () => {
-      isActive = false;
+      active = false;
     };
   }, [value, searchIndex, containerEntities]);
+  const search = useMemo(
+    () =>
+      debounce(async (text: string) => {
+        const id = ++requestId.current;
+        setLoading(true);
+        try {
+          const options = await api(text);
+          if (id === requestId.current) {
+            setItems(
+              uniqBy(
+                options.map((option) => ({
+                  id: option.value,
+                  label: option.label,
+                })),
+                'id'
+              )
+            );
+          }
+        } catch (error) {
+          if (id === requestId.current) {
+            showErrorToast(error as AxiosError);
+          }
+        } finally {
+          if (id === requestId.current) {
+            setLoading(false);
+          }
+        }
+      }, 400),
+    [api]
+  );
+  useEffect(() => {
+    void search('');
 
-  const tagRender = (tagProps: CustomTagProps) => {
-    const { value: tagValue, closable, onClose } = tagProps;
-    const fqn = tagValue as string;
-    const label = wildcardFqns.has(fqn) ? `${fqn}.*` : fqn;
-
-    const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
+    return () => {
+      search.cancel();
+      requestId.current++;
     };
+  }, [search]);
+  const selectedItems = value.map((id) => ({
+    id,
+    label: wildcards.includes(id) ? id + '.*' : id,
+  }));
 
-    return (
-      <Tag
-        closable={closable}
-        data-testid={`fqn-tag-${fqn}`}
-        title={label}
-        onClose={onClose}
-        onMouseDown={onPreventMouseDown}>
-        <Typography className="break-all">{label}</Typography>
-      </Tag>
-    );
-  };
-
-  return <AsyncSelect {...rest} tagRender={tagRender} value={value} />;
+  return (
+    <Box className={className} direction="col" gap={2}>
+      <Autocomplete
+        aria-busy={loading}
+        aria-label={placeholder}
+        data-testid={testId}
+        filterOption={() => true}
+        hint={hint}
+        icon={null}
+        isDisabled={isDisabled}
+        isInvalid={Boolean(hint)}
+        items={items}
+        placeholder={placeholder}
+        selectedItems={selectedItems}
+        onItemCleared={(key) =>
+          onChange?.(value.filter((id) => id !== String(key)))
+        }
+        onItemInserted={(key) =>
+          onChange?.([...new Set([...value, String(key)])])
+        }
+        onSearchChange={search}>
+        {(item) => (
+          <Autocomplete.Item id={item.id} textValue={item.label}>
+            {item.label}
+          </Autocomplete.Item>
+        )}
+      </Autocomplete>
+    </Box>
+  );
 };
 
 export default FQNListSelect;

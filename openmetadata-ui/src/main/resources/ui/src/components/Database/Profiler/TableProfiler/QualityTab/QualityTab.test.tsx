@@ -46,7 +46,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
   MockTabs.List = MockTabList;
   MockTabs.Item = MockTabItem;
 
-  return { Tabs: MockTabs };
+  return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Tabs: MockTabs,
+  };
 });
 
 import { render, screen } from '@testing-library/react';
@@ -347,8 +350,10 @@ describe('QualityTab', () => {
     );
 
     const filterControls = screen.getByTestId('quality-tab-filter-controls');
-    const filterSpace = filterControls.querySelector('.ant-space-align-center');
-    const filterItems = filterControls.querySelectorAll('.ant-form-item');
+    const filterSpace = filterControls.querySelector('.layout-space');
+    const filterItems = filterControls.querySelectorAll(
+      '[data-testid=classic-quality-type-filter], [data-testid=classic-quality-status-filter]'
+    );
 
     expect(filterControls).toHaveClass('tw:ml-auto', 'tw:shrink-0');
     expect(filterSpace).toBeInTheDocument();
@@ -356,7 +361,7 @@ describe('QualityTab', () => {
     expect(filterItems).toHaveLength(2);
 
     filterItems.forEach((item) => {
-      expect(item).toHaveClass('tw:m-0', 'tw:w-44');
+      expect(item).toHaveClass('tw:w-44');
     });
   });
 

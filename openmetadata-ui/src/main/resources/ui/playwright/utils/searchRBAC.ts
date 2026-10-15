@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -53,7 +54,7 @@ export const exploreShouldShowEntity = async (
     });
 
   if (shouldSee) {
-    await expect(resultCard.first()).toBeVisible();
+    await expect(resultCard.filter({ visible: true })).not.toHaveCount(0);
   } else {
     // RBAC enforcement against newly-assigned user roles lags the patch
     // call by several seconds — the search-index user doc needs to update
@@ -113,6 +114,13 @@ export const enableDisableSearchRBAC = async (
   }
   const initialSetting = await settingResponse.json();
 
+  // Callers re-assert this per test, so skip the write and the poll on a no-op.
+  if (
+    initialSetting.config_value?.globalSettings?.enableAccessControl === enable
+  ) {
+    return;
+  }
+
   const updatedSetting = {
     ...initialSetting,
     config_value: {
@@ -150,7 +158,7 @@ export const enableDisableSearchRBAC = async (
       },
       {
         message: `Search RBAC setting did not become ${String(enable)}`,
-        timeout: 30_000,
+        timeout: ACTION_TIMEOUT,
       }
     )
     .toBe(enable);

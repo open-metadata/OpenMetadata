@@ -13,12 +13,13 @@
 import {
   Box,
   Button,
+  Divider,
   PageHeader,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Divider, Space } from 'antd';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
@@ -623,7 +624,7 @@ const TagPage = () => {
           />
         ),
         key: EntityTabs.OVERVIEW,
-        children: <GenericTab type={PageType.Tag} variant="flat" />,
+        children: <GenericTab type={PageType.Tag} />,
       },
       {
         label: (
@@ -795,7 +796,7 @@ const TagPage = () => {
 
     const disabledBadge = tagItem.disabled ? (
       <>
-        <Divider className="m-x-xs h-6" type="vertical" />
+        <Divider className="m-x-xs h-6 tw:self-center" orientation="vertical" />
         <StatusBadge
           dataTestId="disabled"
           label={t('label.disabled')}
@@ -809,10 +810,15 @@ const TagPage = () => {
     }
 
     return (
-      <Space>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={2}
+        itemClassName="layout-space-item">
         {statusBadge}
         {disabledBadge}
-      </Space>
+      </Box>
     );
   }, [tagItem]);
 

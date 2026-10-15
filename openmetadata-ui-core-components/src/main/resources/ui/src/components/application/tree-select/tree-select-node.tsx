@@ -35,8 +35,9 @@ export interface TreeSelectTreeItemContentProps<T> {
   onNodeClick: () => void;
 }
 
-// Tighter than the Tree default; every row shares it or they misalign.
-const ROW_GAP = 'tw:gap-2';
+// Tighter than the Tree default; every row shares it or they misalign. The
+// inset keeps row content in line with the Select all checkbox.
+const ROW_CLASS = 'tw:gap-2 tw:pl-1';
 
 export const TreeSelectEmptyItemContent = ({
   message,
@@ -45,7 +46,10 @@ export const TreeSelectEmptyItemContent = ({
   message: string;
   parentId: string;
 }) => (
-  <Tree.ItemContent className={ROW_GAP} indentPerLevel={28} maxIndentLevel={2}>
+  <Tree.ItemContent
+    className={ROW_CLASS}
+    indentPerLevel={28}
+    maxIndentLevel={2}>
     {() => (
       <div
         className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:py-0.5 tw:text-xs tw:text-tertiary"
@@ -81,7 +85,7 @@ export const TreeSelectLoadMoreItemContent = ({
 
   return (
     <Tree.ItemContent
-      className={ROW_GAP}
+      className={ROW_CLASS}
       hasChildItems={false}
       indentPerLevel={28}
       maxIndentLevel={maxIndentLevel}
@@ -127,14 +131,16 @@ export const TreeSelectTreeItemContent = <T,>({
   onNodeClick,
 }: TreeSelectTreeItemContentProps<T>) => {
   const isSelectable = node.allowSelection !== false;
-  const isRowDisabled = disabled || node.disabled || !isSelectable;
+  // A glossary row cannot be picked but is a live container, not a dead one.
+  const isRowBlocked = Boolean(disabled || node.disabled);
+  const isRowDisabled = isRowBlocked || !isSelectable;
   // One choice at a time reads as a radio: a single-select tree otherwise shows
   // no control at all, leaving the rows looking inert.
   const isSingleChoice = !multiple || Boolean(node.isParentMutuallyExclusive);
 
   return (
     <Tree.ItemContent
-      className={cx('tw:text-sm tw:font-normal tw:text-primary', ROW_GAP)}
+      className={cx('tw:text-sm tw:font-normal tw:text-primary', ROW_CLASS)}
       hasChildItems={hasChildItems}
       indentPerLevel={28}
       maxIndentLevel={maxIndentLevel}
@@ -143,7 +149,12 @@ export const TreeSelectTreeItemContent = <T,>({
         <div
           className={cx(
             'tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
-            isRowDisabled ? 'tw:cursor-not-allowed' : 'tw:cursor-pointer'
+            // not-allowed is for a blocked row, not one with nothing to pick.
+            isRowBlocked
+              ? 'tw:cursor-not-allowed'
+              : isSelectable
+              ? 'tw:cursor-pointer'
+              : 'tw:cursor-default'
           )}
           data-selected={isSelected}
           data-testid={`tree-node-${node.id}`}

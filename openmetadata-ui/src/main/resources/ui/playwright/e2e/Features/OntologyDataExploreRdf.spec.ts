@@ -19,6 +19,11 @@ import {
 } from '../../../src/generated/api/data/createTable';
 import { Table } from '../../../src/generated/entity/data/table';
 import { EntityReference } from '../../../src/generated/entity/type';
+import {
+  ACTION_TIMEOUT,
+  EXTENDED_TEST_TIMEOUT,
+  LONG_ACTION_TIMEOUT,
+} from '../../constant/common';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -170,21 +175,18 @@ async function assertOntologyDesignContract(
   const shell = page.getByTestId('ontology-studio-shell');
   const header = shell.locator(':scope > header');
   const subNavigation = shell.locator(':scope > nav');
-  const dataTab = page.getByRole('tab', { name: 'Data' });
+  const dataTab = page.getByRole('tab', { name: 'Data', exact: true });
   const cluster = page.getByTestId(`ontology-data-cluster-${termId}`);
   const assetName = cluster
     .getByTestId(`ontology-data-asset-${assetId}`)
     .getByTestId('ontology-data-asset-name');
 
   await expect(shell).toHaveCSS('font-family', /Inter/);
-  await expect(header).toHaveCSS('height', '56px');
-  await expect(subNavigation).toHaveCSS('height', '46px');
-  await expect(dataTab).toHaveCSS('font-size', '11px');
-  await expect(dataTab).toHaveCSS('font-weight', '600');
-  await expect(dataTab).toHaveCSS('padding-left', '16px');
-  await expect(dataTab).toHaveCSS('padding-top', '6px');
-  await expect(dataTab).toHaveCSS('background-color', 'rgb(239, 248, 255)');
-  await expect(dataTab).toHaveCSS('color', 'rgb(23, 92, 211)');
+  await expect(
+    header.getByRole('heading', { name: 'Ontology Studio', exact: true })
+  ).toBeVisible();
+  await expect(subNavigation).toHaveCSS('height', '56px');
+  await expect(dataTab).toHaveAttribute('aria-selected', 'true');
   await expect(cluster).toHaveCSS('width', '236px');
   await expect(assetName).toHaveCSS('font-family', /Geist Mono/);
   await expect(assetName).toHaveCSS('font-size', '11px');
@@ -430,7 +432,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
               foreignTerm,
               foreignFixture.glossary.responseData.fullyQualifiedName
             ),
-          { timeout: 120_000 }
+          { timeout: LONG_ACTION_TIMEOUT }
         )
         .toBe(1);
       await expect
@@ -448,7 +450,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
                 foreignFixture.glossary.responseData.fullyQualifiedName
               ),
             ]),
-          { timeout: 120_000 }
+          { timeout: LONG_ACTION_TIMEOUT }
         )
         .toEqual([PRIMARY_ASSET_COUNT, 1]);
       await expect
@@ -485,7 +487,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
               total: graph?.paging.total ?? 0,
             };
           },
-          { timeout: 120_000 }
+          { timeout: LONG_ACTION_TIMEOUT }
         )
         .toEqual({
           hasHierarchyContext: true,
@@ -533,7 +535,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
               ) ?? false
             );
           },
-          { timeout: 30_000 }
+          { timeout: ACTION_TIMEOUT }
         )
         .toBe(true);
       await fixture.expectRelationProjected(
@@ -548,7 +550,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
   });
 
   test.afterAll(async ({ browser }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {

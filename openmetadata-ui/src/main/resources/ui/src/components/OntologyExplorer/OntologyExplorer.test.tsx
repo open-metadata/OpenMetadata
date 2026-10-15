@@ -249,10 +249,13 @@ describe('OntologyExplorer Studio data controls', () => {
 
     render(<OntologyExplorer showHealth scope="global" />);
 
-    const connectButton = screen.getByTestId(`ontology-connect-${isolatedId}`);
+    fireEvent.click(screen.getByTestId('ontology-health-review'));
+    const isolatedRow = screen.getByTestId(
+      `ontology-isolated-term-${isolatedId}`
+    );
 
-    expect(connectButton).toHaveTextContent('Customer Account');
-    expect(connectButton).not.toHaveTextContent(isolatedId);
+    expect(isolatedRow).toHaveTextContent('Customer Account');
+    expect(isolatedRow).not.toHaveTextContent(isolatedId);
     expect(screen.getByTestId('ontology-isolated-count')).toHaveTextContent(
       '1'
     );
@@ -269,11 +272,7 @@ describe('OntologyExplorer Studio data controls', () => {
       'tw:right-3.5',
       'tw:top-3.5'
     );
-    expect(modelTab).toHaveClass(
-      'tw:text-[11px]!',
-      'tw:font-semibold!',
-      'tw:bg-brand-primary!'
-    );
+    expect(modelTab).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByTestId('ontology-graph-search')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: 'label.data' }));
@@ -300,9 +299,9 @@ describe('OntologyExplorer Studio data controls', () => {
       'tw:text-[11px]',
       'tw:font-medium'
     );
-    expect(screen.getByRole('tab', { name: 'label.data' })).toHaveClass(
-      'tw:bg-brand-primary!',
-      'tw:text-brand-secondary!'
+    expect(screen.getByRole('tab', { name: 'label.data' })).toHaveAttribute(
+      'aria-selected',
+      'true'
     );
     expect(
       screen.queryByTestId('ontology-graph-search')
@@ -312,7 +311,7 @@ describe('OntologyExplorer Studio data controls', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('resolves palette tokens before painting custom SVG relationships', () => {
+  it('preserves palette tokens so custom SVG relationships follow theme changes', () => {
     const state = createExplorerState({
       explorationMode: 'data',
       graphDataToShow: {
@@ -339,7 +338,7 @@ describe('OntologyExplorer Studio data controls', () => {
 
     expect(screen.getByTestId('ontology-data-semantic-edge')).toHaveAttribute(
       'stroke',
-      '#7a5af8'
+      'var(--tw-color-utility-purple-500)'
     );
   });
 

@@ -21,6 +21,8 @@ export interface MentionSuggestionsItem {
   avatarEle?: HTMLDivElement;
   breadcrumbs: Array<{ name: string }>;
   displayName?: string;
+  /** A placeholder row quill-mention shows but never lets you pick. */
+  disabled?: boolean;
 }
 
 export interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
@@ -31,4 +33,9 @@ export interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   onChangeHandler?: (value: string) => void;
   onSave?: () => void;
   focused?: boolean;
+  /**
+   * Shown as the only row when a mention search finds nothing. Without it the
+   * list closes, which reads as "mentions are broken" rather than "no match".
+   */
+  emptyMentionText?: string;
 }

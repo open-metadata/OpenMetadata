@@ -10,12 +10,17 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -27,14 +32,18 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.util.ApiAssertions;
 import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.EntityValidation;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.it.util.UpdateType;
+import org.openmetadata.schema.CreationAudited;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
+import org.openmetadata.schema.api.governance.EntityLifecycleStages;
+import org.openmetadata.schema.api.governance.EntityTypeLifecycle;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -49,6 +58,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -63,6 +73,7 @@ import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.UserService;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.EntityStatusAdapter;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.TestUtils;
 
@@ -88,7 +99,7 @@ import org.openmetadata.service.util.TestUtils;
  */
 @Slf4j
 @ExtendWith(TestNamespaceExtension.class)
-public abstract class BaseEntityIT<T extends EntityInterface, K> {
+public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
 
   // ===================================================================
   // ABSTRACT METHODS - Must be implemented by subclasses
@@ -175,9 +186,15 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected boolean supportsCustomExtension = true;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsPatch = true;
+  // Whether the entity type has a lifecycle stage (its schema declares entityStatus). Opt out for
+  // types without one; entityStatus_supportMatchesServer fails when this disagrees with the server.
+  protected boolean supportsEntityStatus = true;
+  protected boolean supportsUpsert = true; // Override if the collection has no PUT createOrUpdate
   protected boolean supportsEmptyDescription = true;
   protected boolean supportsNameLengthValidation = true;
   protected boolean supportsBulkAPI = false; // Override in subclasses that support bulk API
+  // Set true in subclasses whose entity schema declares createdAt/createdBy (see issue #23002).
+  protected boolean supportsCreationAudit = false;
   protected boolean supportsSearchIndex = true; // Override in subclasses that don't support search
   // Set true in subclasses whose list endpoint accepts `?sortBy=updatedAt&sortOrder=desc` and
   // routes to EntityRepository.listFromSearchWithOffset. Used by the follower-regression test
@@ -676,6 +693,71 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Version should NOT change when there's no actual change
     assertEquals(
         originalVersion, updated.getVersion(), 0.001, "Version should not change for no-op update");
+  }
+
+  // ===================================================================
+  // CREATION AUDIT TESTS (createdAt / createdBy — issue #23002)
+  // ===================================================================
+
+  /** Test: a newly created entity is stamped with createdAt/createdBy matching updatedAt/updatedBy. */
+  @Test
+  void post_entityCreationAuditIsStamped_200(TestNamespace ns) {
+    if (!supportsCreationAudit) return;
+
+    T created = createEntity(createMinimalRequest(ns));
+    CreationAudited audit = creationAudit(created);
+
+    assertNotNull(audit.getCreatedAt(), "createdAt should be set on create");
+    assertNotNull(audit.getCreatedBy(), "createdBy should be set on create");
+    assertEquals(
+        created.getUpdatedAt(), audit.getCreatedAt(), "createdAt should equal updatedAt on create");
+    assertEquals(
+        created.getUpdatedBy(), audit.getCreatedBy(), "createdBy should equal updatedBy on create");
+
+    CreationAudited fetched = creationAudit(getEntity(created.getId().toString()));
+    assertEquals(audit.getCreatedAt(), fetched.getCreatedAt(), "createdAt should round-trip");
+    assertEquals(audit.getCreatedBy(), fetched.getCreatedBy(), "createdBy should round-trip");
+  }
+
+  private CreationAudited creationAudit(T entity) {
+    if (entity instanceof CreationAudited audited) {
+      return audited;
+    }
+    throw new AssertionError(
+        entity.getClass().getSimpleName()
+            + " sets supportsCreationAudit but does not implement CreationAudited");
+  }
+
+  /**
+   * Test: creation audit is immutable. A PATCH that changes the entity — and deliberately tries to
+   * rewrite createdAt/createdBy — must leave both untouched while updatedAt moves forward.
+   */
+  @Test
+  void patch_entityCreationAuditIsImmutable_200(TestNamespace ns) {
+    if (!supportsCreationAudit || !supportsPatch) return;
+
+    T created = createEntity(createMinimalRequest(ns));
+    CreationAudited audit = creationAudit(created);
+    Long originalCreatedAt = audit.getCreatedAt();
+    String originalCreatedBy = audit.getCreatedBy();
+    assertNotNull(originalCreatedAt, "createdAt should be set on create");
+
+    created.setDescription("Creation audit immutability check");
+    audit.setCreatedAt(1L);
+    audit.setCreatedBy("someone-else");
+
+    T updated = patchEntity(created.getId().toString(), created);
+    CreationAudited updatedAudit = creationAudit(updated);
+
+    assertEquals(originalCreatedAt, updatedAudit.getCreatedAt(), "PATCH must not change createdAt");
+    assertEquals(originalCreatedBy, updatedAudit.getCreatedBy(), "PATCH must not change createdBy");
+    assertTrue(
+        updated.getUpdatedAt() >= originalCreatedAt,
+        "updatedAt should move forward while createdAt stays put");
+
+    CreationAudited fetched = creationAudit(getEntity(created.getId().toString()));
+    assertEquals(originalCreatedAt, fetched.getCreatedAt(), "createdAt should survive a re-read");
+    assertEquals(originalCreatedBy, fetched.getCreatedBy(), "createdBy should survive a re-read");
   }
 
   // ===================================================================
@@ -2903,102 +2985,207 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
   }
 
+  // ===================================================================
+  // LIFECYCLE STAGE (entityStatus) TESTS
+  // ===================================================================
+
+  /** Stage a minimal entity of this type starts in when its create request carries none. */
+  protected Enum<?> expectedInitialEntityStatus() {
+    return EntityStatus.UNPROCESSED;
+  }
+
   /**
-   * Test: Entity Status functionality
-   * Verifies that entityStatus field works correctly for entities that support it
+   * Stages the lifecycle tests move an entity through, in order. Entity types that restrict which
+   * stage may follow which override this with a path their rules allow.
    */
+  protected List<? extends Enum<?>> entityStatusPath() {
+    return List.of(
+        EntityStatus.DRAFT,
+        EntityStatus.IN_REVIEW,
+        EntityStatus.APPROVED,
+        EntityStatus.REJECTED,
+        EntityStatus.ARCHIVED,
+        EntityStatus.DEPRECATED);
+  }
+
   @Test
-  void test_entityStatus(TestNamespace ns) {
-    // Only test if entity has entityStatus field (check if getEntityStatus method exists)
-    if ("glossaryTerm".equals(getEntityType())) {
-      log.info(
-          "Skipping entityStatus test for GlossaryTerm - has different entityStatus implementation");
-      return;
+  void entityStatus_supportMatchesServer() {
+    assertEquals(
+        Entity.getEntityRepository(getEntityType()).isSupportsEntityStatus(),
+        supportsEntityStatus,
+        "supportsEntityStatus must match whether the "
+            + getEntityType()
+            + " schema declares entityStatus");
+    assertEquals(
+        supportsEntityStatus,
+        entityTypeLifecycle().isPresent(),
+        "GET /v1/metadata/types/lifecycleStages must list exactly the entity types with a stage");
+  }
+
+  @Test
+  void entityStatus_newEntityStartsInItsInitialStage(TestNamespace ns) {
+    Assumptions.assumeTrue(supportsEntityStatus, getEntityType() + " has no lifecycle stage");
+
+    T entity = createEntity(createMinimalRequest(ns));
+
+    assertEquals(expectedInitialEntityStatus(), entity.getEntityStatus());
+  }
+
+  @Test
+  void entityStatus_patchMovesThroughEveryStage(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        supportsEntityStatus && supportsPatch, getEntityType() + " stage cannot be patched");
+    Assumptions.assumeTrue(
+        stageWorkflows().isEmpty(), getEntityType() + " stage is owned by an active workflow");
+    T created = createEntity(createMinimalRequest(ns));
+
+    T entity = getEntity(created.getId().toString());
+    for (Enum<?> stage : entityStatusPath()) {
+      entity = moveToEntityStatus(entity, stage);
     }
 
-    K createRequest = createMinimalRequest(ns);
-    T entity = createEntity(createRequest);
+    T fetched = getEntity(created.getId().toString());
+    assertEquals(entityStatusPath().getLast(), fetched.getEntityStatus());
+    assertTrue(
+        fetched.getVersion() > created.getVersion(), "Changing the stage must add a new version");
+  }
 
-    try {
-      // Check if entity supports entityStatus
-      org.openmetadata.schema.type.EntityStatus currentStatus = entity.getEntityStatus();
+  @Test
+  void entityStatus_putWithoutStageKeepsTheStage(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        supportsEntityStatus && supportsPatch && supportsUpsert,
+        getEntityType() + " stage cannot be patched and upserted");
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    T current = getEntity(created.getId().toString());
+    Enum<?> stage =
+        stageWorkflows().isEmpty()
+            ? moveToEntityStatus(current, entityStatusPath().getLast()).getEntityStatus()
+            : current.getEntityStatus();
 
-      // If entityStatus is null, the entity doesn't support this field - skip the test
-      if (currentStatus == null) {
-        log.info(
-            "Entity {} does not support entityStatus field - skipping test",
-            entity.getClass().getSimpleName());
-        return;
-      }
+    upsertEntity(collectionPathOf(created), request);
 
-      // Default status should be UNPROCESSED
-      assertEquals(
-          org.openmetadata.schema.type.EntityStatus.UNPROCESSED,
-          currentStatus,
-          "Default entity status should be UNPROCESSED");
+    assertEquals(
+        stage,
+        getEntity(created.getId().toString()).getEntityStatus(),
+        "A PUT whose request carries no stage must keep the stage the entity is in");
+  }
 
-      // Test updating entityStatus via PATCH
-      if (supportsPatch) {
-        // Update to DRAFT
-        entity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DRAFT);
-        T updatedEntity = patchEntity(entity.getId().toString(), entity);
-        assertEquals(
-            org.openmetadata.schema.type.EntityStatus.DRAFT,
-            updatedEntity.getEntityStatus(),
-            "Entity status should be updated to DRAFT");
+  @Test
+  void entityStatus_bulkUpsertWithoutStageKeepsTheStage(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        supportsEntityStatus && supportsPatch && supportsBulkAPI,
+        getEntityType() + " stage cannot be patched and bulk upserted");
+    Assumptions.assumeTrue(
+        stageWorkflows().isEmpty(), getEntityType() + " stage is owned by an active workflow");
+    K request = createMinimalRequest(ns);
+    T created = createEntity(request);
+    Enum<?> stage =
+        moveToEntityStatus(getEntity(created.getId().toString()), entityStatusPath().getLast())
+            .getEntityStatus();
 
-        // Update to IN_REVIEW
-        updatedEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
-        T reviewEntity = patchEntity(updatedEntity.getId().toString(), updatedEntity);
-        assertEquals(
-            org.openmetadata.schema.type.EntityStatus.IN_REVIEW,
-            reviewEntity.getEntityStatus(),
-            "Entity status should be updated to IN_REVIEW");
+    BulkOperationResult result = executeBulkCreate(List.of(request));
 
-        // Update to APPROVED
-        reviewEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.APPROVED);
-        T approvedEntity = patchEntity(reviewEntity.getId().toString(), reviewEntity);
-        assertEquals(
-            org.openmetadata.schema.type.EntityStatus.APPROVED,
-            approvedEntity.getEntityStatus(),
-            "Entity status should be updated to APPROVED");
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(
+        stage,
+        getEntity(created.getId().toString()).getEntityStatus(),
+        "A bulk upsert whose request carries no stage must keep the stage the entity is in");
+  }
 
-        // Update to DEPRECATED
-        approvedEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
-        T deprecatedEntity = patchEntity(approvedEntity.getId().toString(), approvedEntity);
-        assertEquals(
-            org.openmetadata.schema.type.EntityStatus.DEPRECATED,
-            deprecatedEntity.getEntityStatus(),
-            "Entity status should be updated to DEPRECATED");
+  @Test
+  void entityStatus_directChangeRejectedWhileWorkflowOwnsStage(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        supportsEntityStatus && supportsPatch, getEntityType() + " stage cannot be patched");
+    Assumptions.assumeFalse(
+        stageWorkflows().isEmpty(), "no active workflow owns the " + getEntityType() + " stage");
+    T created = createEntity(createMinimalRequest(ns));
+    T entity = getEntity(created.getId().toString());
+    Enum<?> stage = entity.getEntityStatus();
 
-        // Update to REJECTED
-        deprecatedEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.REJECTED);
-        T rejectedEntity = patchEntity(deprecatedEntity.getId().toString(), deprecatedEntity);
-        assertEquals(
-            org.openmetadata.schema.type.EntityStatus.REJECTED,
-            rejectedEntity.getEntityStatus(),
-            "Entity status should be updated to REJECTED");
+    EntityStatusAdapter.forEntityType(entity.getClass())
+        .write(
+            entity,
+            stage.toString().equals(EntityStatus.DEPRECATED.value())
+                ? EntityStatus.ARCHIVED.value()
+                : EntityStatus.DEPRECATED.value());
 
-        // Verify entity can be retrieved with correct status
-        T fetchedEntity = getEntity(rejectedEntity.getId().toString());
-        assertEquals(
-            org.openmetadata.schema.type.EntityStatus.REJECTED,
-            fetchedEntity.getEntityStatus(),
-            "Fetched entity should maintain the REJECTED status");
+    ApiAssertions.assertForbidden(
+        () -> patchEntity(created.getId().toString(), entity),
+        "Only the workflow that owns the stage may change it");
+    assertEquals(stage, getEntity(created.getId().toString()).getEntityStatus());
+  }
 
-        // Verify version increments with status changes (if entity supports versioning)
-        assertTrue(
-            fetchedEntity.getVersion() > entity.getVersion(),
-            "Version should increment when entityStatus is updated");
-      }
+  @Test
+  void entityStatus_moveOutsideTheTypesLifecycleIsRejected(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        supportsEntityStatus && supportsPatch, getEntityType() + " stage cannot be patched");
+    EntityTypeLifecycle lifecycle = entityTypeLifecycle().orElseThrow();
+    T created = createEntity(createMinimalRequest(ns));
+    String stage = created.getEntityStatus().toString();
+    assertTrue(
+        lifecycle.getStages().contains(stage),
+        "A new " + getEntityType() + " starts in a stage of its lifecycle");
+    Optional<String> outside = stageNotReachableFrom(lifecycle, stage);
+    Assumptions.assumeTrue(
+        outside.isPresent(), getEntityType() + " can move from " + stage + " to any stage");
+    T entity = getEntity(created.getId().toString());
+    EntityStatusAdapter.forEntityType(entity.getClass()).write(entity, outside.get());
 
-    } catch (NoSuchMethodError | UnsupportedOperationException e) {
-      log.info(
-          "Entity "
-              + entity.getClass().getSimpleName()
-              + " does not support entityStatus: "
-              + e.getMessage());
+    ApiAssertions.assertBadRequest(
+        () -> patchEntity(created.getId().toString(), entity),
+        "The " + getEntityType() + " lifecycle has no move from " + stage + " to " + outside.get());
+    assertEquals(stage, getEntity(created.getId().toString()).getEntityStatus().toString());
+  }
+
+  private static Optional<String> stageNotReachableFrom(
+      EntityTypeLifecycle lifecycle, String stage) {
+    List<String> reachable =
+        lifecycle.getTransitions().stream()
+            .filter(move -> move.getFrom().equals(stage))
+            .flatMap(move -> move.getTo().stream())
+            .toList();
+    return lifecycle.getStages().stream()
+        .filter(candidate -> !candidate.equals(stage) && !reachable.contains(candidate))
+        .findFirst();
+  }
+
+  private T moveToEntityStatus(T entity, Enum<?> stage) {
+    T moved = entity;
+    if (entity.getEntityStatus() != stage) {
+      EntityStatusAdapter.forEntityType(entity.getClass()).write(entity, stage.toString());
+      moved = patchEntity(entity.getId().toString(), entity);
+      assertEquals(stage, moved.getEntityStatus(), "PATCH must move the entity to " + stage);
     }
+    return moved;
+  }
+
+  // An entity's href names its collection, which is also where a PUT upserts it.
+  private static String collectionPathOf(EntityInterface<?> entity) {
+    String entityPath = entity.getHref().getPath();
+    String collectionPath = entityPath.substring(0, entityPath.lastIndexOf('/'));
+    return collectionPath.substring(collectionPath.indexOf("/v1/"));
+  }
+
+  private static void upsertEntity(String collectionPath, Object request) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PUT, collectionPath, request);
+  }
+
+  /** Active workflows that own this entity type's stage, as the server reports them. */
+  private List<String> stageWorkflows() {
+    return entityTypeLifecycle().map(EntityTypeLifecycle::getStageWorkflows).orElse(List.of());
+  }
+
+  private Optional<EntityTypeLifecycle> entityTypeLifecycle() {
+    String body =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/metadata/types/lifecycleStages", null);
+    return JsonUtils.readValue(body, EntityLifecycleStages.class).getEntityTypes().stream()
+        .filter(lifecycle -> getEntityType().equals(lifecycle.getEntityType()))
+        .findFirst();
   }
 
   /**
@@ -3207,6 +3394,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // SEARCH INDEX TESTS
   // ===================================================================
+
+  /** Allows entity-specific lifecycle prerequisites for ordinary search fixtures. */
+  protected K createSearchRequest(TestNamespace ns) {
+    return createMinimalRequest(ns);
+  }
 
   /**
    * Test: Entity with null description shows INCOMPLETE in search
@@ -5163,22 +5355,19 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
-   * Test: A bot whose policy does NOT deny {@code EditOwners} (the ingestion bot - {@code
-   * IngestionBotPolicy}/{@code DefaultBotPolicy} carry only a {@code DisplayName-Deny}) CAN reassign
-   * owners through a single-entity PUT even when an owner already exists.
+   * Test: A bot single-entity PUT carrying owners must not replace the owners a user assigned.
    *
-   * <p>Regression guard for the over-broad guard that reverted owners on <em>any</em> bot PUT once
-   * an owner was set, which silently broke ingestion ownership re-sync. {@code
-   * EntityRepository#updateOwners} now keys on the same policy-aware {@code updatingBotDeniedOperation
-   * (EDIT_OWNERS)} check as {@code updateDisplayName}, so a policy-allowed bot updates owners while a
-   * denied bot (or {@code overrideMetadata=false} with a field-deny) still preserves them.
+   * <p>No shipped bot policy denies {@code EditOwners}, so a policy-keyed guard never fired and
+   * owners sent by ingestion ({@code ownerConfig}, {@code includeOwners}) replaced user-assigned
+   * ones on every re-sync. A bot PUT now only fills owners on an entity that has none; a PATCH or
+   * a bulk run with {@code overrideMetadata=true} still reassigns them.
    */
   @Test
-  void test_singleEntityPut_bot_updatesOwnersWhenPolicyAllows(TestNamespace ns) {
+  void test_singleEntityPut_bot_preservesUserOwners(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsOwners) return;
     if (!hasField("setOwners", List.class)) return;
 
-    K request = createRequest(ns.prefix("put_ownallow_"), ns);
+    K request = createRequest(ns.prefix("put_ownkeep_"), ns);
     T created = createEntity(request);
     String fqn = created.getFullyQualifiedName();
 
@@ -5200,9 +5389,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertNotNull(result.getOwners(), "owners present after bot update: " + fqn);
     assertFalse(result.getOwners().isEmpty(), "owners not cleared: " + fqn);
     assertEquals(
-        shared.USER2.getId(),
+        shared.USER1.getId(),
         result.getOwners().get(0).getId(),
-        "Bot allowed EditOwners (ingestion bot, no Owner-Deny) must update owners via PUT: " + fqn);
+        "A bot PUT must not replace user-assigned owners: " + fqn);
   }
 
   /**
@@ -5248,6 +5437,180 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
           entity.getTags().stream()
               .anyMatch(t -> t.getTagFQN().equals(shared.PERSONAL_DATA_TAG_LABEL.getTagFQN())),
           "Bot-added PersonalData tag must be merged in: " + fqn);
+    }
+  }
+
+  // ===================================================================
+  // A BOT NEVER DELETES USER-CURATED METADATA
+  //
+  // Regression guard for the 2.0.x Override Metadata data loss: once override moved from the
+  // connector to the server (#28155), a re-ingestion whose source had no value - the field
+  // omitted, sent empty, or a tag set from other classifications - deleted user-curated metadata
+  // on every run. The tests above only replace one non-empty value with another.
+  // ===================================================================
+
+  private static final String CURATED_DESCRIPTION = "User-curated description";
+  private static final String CURATED_DISPLAY_NAME = "User Curated Display Name";
+  private static final String TIER1 = "Tier.Tier1";
+
+  private record CuratedFields(boolean displayName, boolean tags, boolean owners) {}
+
+  /**
+   * Request 0 omits the curated fields and request 1 sends them empty; both send one tag from a
+   * classification the user did not curate. Override off, then on twice - override also disables
+   * the sourceHash skip, which made the loss repeat on every scheduled run.
+   */
+  @Test
+  void test_bulkUpdate_bot_neverDeletesUserCuratedMetadata(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    List<K> requests = createBulkRequests(ns, "bulk_nodel_", 2);
+    CuratedFields curated = curatedFieldsOf(requests.getFirst());
+    BulkOperationResult created = executeBulkCreate(requests);
+    assertEquals(2, created.getNumberOfRowsPassed());
+    List<String> fqns =
+        created.getSuccessRequest().stream().map(r -> (String) r.getRequest()).toList();
+    fqns.forEach(fqn -> curateAsUser(fqn, curated));
+
+    sendNoSourceValues(requests.getFirst(), null, curated);
+    sendNoSourceValues(requests.getLast(), "", curated);
+    for (boolean overrideMetadata : new boolean[] {false, true, true}) {
+      assertEquals(2, executeBulkAsBot(requests, overrideMetadata).getNumberOfRowsPassed());
+      fqns.forEach(
+          fqn ->
+              assertKeepsCuratedMetadata(
+                  fqn, curated, "bulk PUT overrideMetadata=" + overrideMetadata));
+    }
+  }
+
+  @Test
+  void test_singleEntityPut_bot_neverDeletesUserCuratedMetadata(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    K request = createRequest(ns.prefix("put_nodel_"), ns);
+    CuratedFields curated = curatedFieldsOf(request);
+    String fqn = createEntity(request).getFullyQualifiedName();
+    curateAsUser(fqn, curated);
+
+    sendNoSourceValues(request, "", curated);
+    HttpResponse<String> response = putAs(request, BulkApi.botToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Bot single-entity PUT: " + response.statusCode() + " " + response.body());
+    assertKeepsCuratedMetadata(fqn, curated, "single-entity PUT");
+  }
+
+  /**
+   * Pre-2.0 ingestion clients left running against an upgraded server PATCH a source's empty
+   * comment over the curated description.
+   */
+  @Test
+  void test_ingestionBotPatch_cannotBlankUserDescription(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsPatch) return;
+
+    K request = createRequest(ns.prefix("patch_nodel_"), ns);
+    CuratedFields descriptionOnly = new CuratedFields(false, false, false);
+    T entity = createEntity(request);
+    curateAsUser(entity.getFullyQualifiedName(), descriptionOnly);
+
+    patchAsIngestionBot(
+        entity.getId(), "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"\"}]");
+    patchAsIngestionBot(entity.getId(), "[{\"op\":\"remove\",\"path\":\"/description\"}]");
+    assertKeepsCuratedMetadata(
+        entity.getFullyQualifiedName(), descriptionOnly, "ingestion-bot PATCH");
+  }
+
+  private CuratedFields curatedFieldsOf(K request) {
+    return new CuratedFields(
+        requestHas(request, "setDisplayName", String.class),
+        supportsTags && requestHas(request, "setTags", List.class),
+        supportsOwners && requestHas(request, "setOwners", List.class));
+  }
+
+  private boolean requestHas(K request, String setter, Class<?> paramType) {
+    try {
+      request.getClass().getMethod(setter, paramType);
+      return true;
+    } catch (NoSuchMethodException e) {
+      return false;
+    }
+  }
+
+  private void curateAsUser(String fqn, CuratedFields curated) {
+    SharedEntities shared = SharedEntities.get();
+    T entity = getEntityByNameWithFields(fqn, "tags,owners");
+    entity.setDescription(CURATED_DESCRIPTION);
+    if (curated.displayName()) {
+      entity.setDisplayName(CURATED_DISPLAY_NAME);
+    }
+    if (curated.tags()) {
+      TagLabel tier1 =
+          new TagLabel()
+              .withTagFQN(TIER1)
+              .withSource(TagLabel.TagSource.CLASSIFICATION)
+              .withLabelType(TagLabel.LabelType.MANUAL);
+      entity.setTags(List.of(tier1, shared.GLOSSARY1_TERM1_LABEL));
+    }
+    if (curated.owners()) {
+      entity.setOwners(List.of(shared.USER1_REF));
+    }
+    patchEntity(entity.getId().toString(), entity);
+  }
+
+  /** {@code emptyValue} null omits the curated fields from the request; "" sends them empty. */
+  private void sendNoSourceValues(K request, String emptyValue, CuratedFields curated) {
+    setDescription(request, emptyValue);
+    if (curated.displayName()) {
+      invoke(request, "setDisplayName", String.class, emptyValue);
+    }
+    if (curated.tags()) {
+      invoke(request, "setTags", List.class, List.of(SharedEntities.get().PII_SENSITIVE_TAG_LABEL));
+    }
+    if (curated.owners()) {
+      invoke(request, "setOwners", List.class, emptyValue == null ? null : List.of());
+    }
+  }
+
+  private void assertKeepsCuratedMetadata(String fqn, CuratedFields curated, String writePath) {
+    SharedEntities shared = SharedEntities.get();
+    T entity = getEntityByNameWithFields(fqn, "tags,owners");
+    String message = writePath + " deleted user-curated metadata on " + fqn;
+    assertEquals(CURATED_DESCRIPTION, entity.getDescription(), message);
+    if (curated.displayName()) {
+      assertEquals(CURATED_DISPLAY_NAME, entity.getDisplayName(), message);
+    }
+    if (curated.tags()) {
+      List<String> tagFqns =
+          Optional.ofNullable(entity.getTags()).orElse(List.of()).stream()
+              .map(TagLabel::getTagFQN)
+              .toList();
+      assertTrue(
+          tagFqns.containsAll(List.of(TIER1, shared.GLOSSARY1_TERM1_LABEL.getTagFQN())),
+          message + ": tags " + tagFqns);
+    }
+    if (curated.owners()) {
+      List<UUID> ownerIds =
+          Optional.ofNullable(entity.getOwners()).orElse(List.of()).stream()
+              .map(EntityReference::getId)
+              .toList();
+      assertEquals(List.of(shared.USER1.getId()), ownerIds, message + ": owners");
+    }
+  }
+
+  private void patchAsIngestionBot(UUID id, String jsonPatch) {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + getResourcePath() + id))
+            .header("Authorization", "Bearer " + BulkApi.botToken())
+            .header("Content-Type", "application/json-patch+json")
+            .method("PATCH", HttpRequest.BodyPublishers.ofString(jsonPatch))
+            .build();
+    try {
+      HttpResponse<String> response =
+          HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+      assertEquals(200, response.statusCode(), "ingestion-bot PATCH: " + response.body());
+    } catch (IOException | InterruptedException e) {
+      throw new IllegalStateException("ingestion-bot PATCH failed: " + e.getMessage(), e);
     }
   }
 
@@ -5674,7 +6037,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void checkCreatedEntity(TestNamespace ns) throws Exception {
     Assumptions.assumeTrue(supportsSearchIndex);
 
-    K createRequest = createMinimalRequest(ns);
+    K createRequest = createSearchRequest(ns);
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index (async indexing may take time)
@@ -5702,7 +6065,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(supportsSoftDelete);
 
-    K createRequest = createMinimalRequest(ns);
+    K createRequest = createSearchRequest(ns);
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index before delete
@@ -5738,7 +6101,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void checkIndexCreated(TestNamespace ns) throws Exception {
     Assumptions.assumeTrue(supportsSearchIndex);
 
-    K createRequest = createMinimalRequest(ns);
+    K createRequest = createSearchRequest(ns);
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index
@@ -5766,7 +6129,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(supportsPatch);
 
-    K createRequest = createMinimalRequest(ns);
+    K createRequest = createSearchRequest(ns);
     T entity = createEntity(createRequest);
 
     // First wait for entity to appear in search index
@@ -6141,7 +6504,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     return null; // Override in subclasses that support import/export
   }
 
-  protected String getCsvImportContainerName(TestNamespace ns, EntityInterface entity) {
+  protected String getCsvImportContainerName(TestNamespace ns, EntityInterface<?> entity) {
     return getImportExportContainerName(ns);
   }
 
@@ -6149,12 +6512,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     return getEntityService().importCsv(containerName, csvData, dryRun);
   }
 
-  protected EntityInterface createCsvImportRegressionEntity(TestNamespace ns) {
+  protected EntityInterface<?> createCsvImportRegressionEntity(TestNamespace ns) {
     return createEntity(createRequest(ns.prefix("csvNullChangeDescription"), ns));
   }
 
   @SuppressWarnings("unchecked")
-  protected EntityInterface patchCsvImportRegressionEntity(EntityInterface entity) {
+  protected EntityInterface<?> patchCsvImportRegressionEntity(EntityInterface<?> entity) {
     return patchEntity(entity.getId().toString(), (T) entity);
   }
 
@@ -6162,12 +6525,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     return getEntityType();
   }
 
-  protected EntityInterface getCsvImportRegressionEntityByName(String fqn) {
+  protected EntityInterface<?> getCsvImportRegressionEntityByName(String fqn) {
     return getEntityByName(fqn);
   }
 
   @SuppressWarnings("unchecked")
-  protected String generateCsvImportRegressionData(TestNamespace ns, EntityInterface entity) {
+  protected String generateCsvImportRegressionData(TestNamespace ns, EntityInterface<?> entity) {
     T csvUpdate = prepareCsvImportRegressionUpdate(ns, (T) entity);
     return generateValidCsvData(ns, List.of(csvUpdate));
   }
@@ -6406,13 +6769,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   @SuppressWarnings("unchecked")
-  private void persistEntityWithoutChangeDescription(String entityType, EntityInterface entity) {
+  private void persistEntityWithoutChangeDescription(String entityType, EntityInterface<?> entity) {
     // These integration tests run in-process with the OpenMetadata server, so this can seed
     // persisted state that is not reachable through public APIs. invalidateCacheForEntity
     // drops the cross-thread Guava L1 entry and bumps the write epoch, which is what the
     // CSV import request (handled on a different Jetty thread) actually reads through.
-    EntityRepository<EntityInterface> repository =
-        (EntityRepository<EntityInterface>) Entity.getEntityRepository(entityType);
+    EntityRepository<EntityInterface<?>> repository =
+        (EntityRepository<EntityInterface<?>>) Entity.getEntityRepository(entityType);
     repository.getDao().update(entity);
     EntityRepository.invalidateCacheForEntity(
         entityType, entity.getId(), entity.getFullyQualifiedName());
@@ -6586,9 +6949,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
 
-    EntityInterface entity = createCsvImportRegressionEntity(ns);
+    EntityInterface<?> entity = createCsvImportRegressionEntity(ns);
     entity.setDescription("Versioned for CSV import regression");
-    EntityInterface versioned = patchCsvImportRegressionEntity(entity);
+    EntityInterface<?> versioned = patchCsvImportRegressionEntity(entity);
     Double versionBeforeImport = versioned.getVersion();
     String fqn = versioned.getFullyQualifiedName();
     String entityType = getCsvImportRegressionEntityType();
@@ -6614,7 +6977,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         "Import should succeed: " + importResult.getImportResultsCsv());
     assertEquals(0, importResult.getNumberOfRowsFailed());
 
-    EntityInterface updated = getCsvImportRegressionEntityByName(fqn);
+    EntityInterface<?> updated = getCsvImportRegressionEntityByName(fqn);
     assertTrue(
         updated.getVersion() > versionBeforeImport, "CSV import should create a new version");
     assertNotNull(updated.getChangeDescription(), "CSV import should record a changeDescription");

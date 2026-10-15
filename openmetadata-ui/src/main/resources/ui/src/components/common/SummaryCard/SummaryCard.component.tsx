@@ -10,13 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Progress, Skeleton, Space } from 'antd';
+import {
+  Box,
+  ProgressBarCircle,
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { isNumber, round } from 'lodash';
 import { useMemo } from 'react';
 import { formatNumberWithComma } from '../../../utils/NumberUtils';
-import { progressBarFormatter } from '../../../utils/ProgressBar/ProgressBar.utils';
 import './summary-card.style.less';
 import { SummaryCardProps } from './SummaryCard.interface';
 
@@ -34,7 +38,8 @@ export const SummaryCard = ({
 }: SummaryCardProps) => {
   const percent = useMemo(() => {
     if (isNumber(value)) {
-      return round((value / total) * 100, 1);
+      // Empty summaries have no completed work; dividing by zero would produce an invalid progress value.
+      return round((total > 0 ? value / total : 0) * 100, 1);
     }
 
     return 0;
@@ -45,19 +50,32 @@ export const SummaryCard = ({
       <div
         className={classNames('summary-card', className)}
         data-testid="skeleton-loading">
-        <Skeleton active loading />
+        <SkeletonParagraph />
       </div>
     );
   }
 
   return (
-    <Space
-      className={classNames('summary-card', cardBackgroundClass, className)}
-      data-testid="summary-card-container">
+    <Box
+      inline
+      align="center"
+      className={`layout-space layout-space-horizontal ${classNames(
+        'summary-card',
+        cardBackgroundClass,
+        className
+      )}`}
+      data-testid="summary-card-container"
+      gap={2}
+      itemClassName="layout-space-item">
       <div
         className={classNames({ 'inverse-label': inverseLabel })}
         data-testid="summary-card-label">
-        <Space align="center" size={8}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           {titleIcon}
           <Typography
             as="p"
@@ -65,7 +83,7 @@ export const SummaryCard = ({
             data-testid="summary-card-title">
             {title}
           </Typography>
-        </Space>
+        </Box>
         <Typography
           as="p"
           className="summary-card-description"
@@ -75,15 +93,25 @@ export const SummaryCard = ({
       </div>
 
       {showProgressBar && (
-        <Progress
-          className={type}
-          data-testid="progress-bar"
-          format={progressBarFormatter}
-          percent={percent}
-          type="circle"
-          width={65}
-        />
+        <div className={type} data-testid="progress-bar">
+          <ProgressBarCircle
+            color={
+              (
+                {
+                  success: 'success',
+                  failed: 'error',
+                  aborted: 'warning',
+                  assigned: 'purple',
+                } as const
+              )[type as 'success' | 'failed' | 'aborted' | 'assigned'] ??
+              'brand'
+            }
+            size="xxs"
+            value={Math.min(100, Math.max(0, percent))}
+            valueFormatter={() => `${percent}%`}
+          />
+        </div>
       )}
-    </Space>
+    </Box>
   );
 };

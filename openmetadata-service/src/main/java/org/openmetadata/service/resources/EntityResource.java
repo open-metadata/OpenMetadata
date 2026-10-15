@@ -125,7 +125,7 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 @LatencyPhase
-public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
+public abstract class EntityResource<T extends EntityInterface<?>, K extends EntityRepository<T>> {
   private static final String INCLUDE_PERMISSIONS_PARAM = "includePermissions";
   protected final Class<T> entityClass;
   protected final String entityType;
@@ -440,7 +440,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   @SuppressWarnings("unchecked")
   private T reuseAuthorizedEntity(
       UriInfo uriInfo, ResourceContextInterface resourceContext, Fields fields) {
-    EntityInterface resolved = resourceContext == null ? null : resourceContext.getResolvedEntity();
+    EntityInterface<?> resolved =
+        resourceContext == null ? null : resourceContext.getResolvedEntity();
     boolean coversProjection =
         resolved != null && resourceContext.getLoadedFields().containsAll(fields.getFieldList());
     T result = null;
@@ -1284,8 +1285,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     if (result.getStatus() != ApiStatus.ABORTED
         && result.getNumberOfRowsProcessed() > 1
         && !dryRun) {
-      EntityRepository<EntityInterface> versioningRepo =
-          (EntityRepository<EntityInterface>)
+      EntityRepository<EntityInterface<?>> versioningRepo =
+          (EntityRepository<EntityInterface<?>>)
               Entity.getEntityRepository(effectiveVersioningEntityType);
 
       if (versioningRepo.supportsBulkImportVersioning()) {
@@ -1296,7 +1297,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected void processChangeEventForBulkImport(
-      EntityRepository<EntityInterface> versioningRepo,
+      EntityRepository<EntityInterface<?>> versioningRepo,
       UriInfo uriInfo,
       SecurityContext securityContext,
       String name,
@@ -1377,7 +1378,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new OperationContext(entityType, VIEW_BASIC),
         getResourceContextByName(fqn, include));
     ChildFieldResolver.ChildContainerSpec spec = ChildFieldResolver.specFor(entityType);
-    EntityInterface parent =
+    EntityInterface<?> parent =
         repository.getByName(
             null, fqn, repository.getFields(spec.requiredFields()), include, false);
     return new ChildFieldPageReader(repository, spec)

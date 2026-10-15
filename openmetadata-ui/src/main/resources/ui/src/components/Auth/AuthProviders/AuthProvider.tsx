@@ -59,6 +59,8 @@ import {
 } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
+  AppModeHint,
+  AppModeSession,
   clearAppMode,
   isAppModeHintFresh,
   readAppModeHint,
@@ -88,7 +90,10 @@ import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordin
 import {
   decideReauth,
   hasReplacedToken,
+  hasSignedOutSince,
   markReauthAttempt,
+  markSignedOut,
+  SIGNED_OUT_AT_KEY,
   waitForSiblingToken,
 } from '../../../utils/Auth/AuthCoordinator/ReauthGuard';
 import { isReauthRequiredError } from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
@@ -156,6 +161,66 @@ const isSilentReauthRecoverable = (payload: RefreshFailedPayload): boolean =>
   payload.source === 'renewer' && isReauthRequiredError(payload.error);
 
 /**
+ * Decide whether the boot resolver should adopt a fresh cross-tab
+ * `omAppModeHint` (returning early) instead of falling through to the
+ * persona-doc fetch. The hint is a single shared `localStorage` key with
+ * no per-tab identity, and `refreshHint` writes it from THIS tab's own
+ * `currentMode` on a fixed interval + on every `visibilitychange`/`focus`.
+ *
+ * A `'boot'` session whose mode MATCHES the hint almost certainly means the
+ * hint is a self-refresh from this tab's own heartbeat — adopting it would
+ * skip the persona-doc fetch the `'boot'` re-resolve is documented to
+ * perform, so an admin's persona-`appMode` downgrade (AI → Classic) would
+ * never reach an alive AI tab on reload. Only adopt a hint that represents
+ * a *different* mode than the existing boot session (genuine cross-tab
+ * inheritance — e.g. cmd+click opened a tab whose sibling is in a different
+ * mode), or when there's no existing session at all (a truly fresh tab).
+ */
+const shouldAdoptHint = (
+  hint: AppModeHint | null,
+  existingSession: AppModeSession | null
+): boolean =>
+  isAppModeHintFresh(hint) &&
+  hint?.mode !== undefined &&
+  hint.mode !== existingSession?.mode;
+
+/**
+ * Checks if we should skip the full persona/preference resolution chain
+ * because we already have a sticky session or a fresh cross-tab hint.
+ */
+const shouldSkipResolution = (
+  existingSession: AppModeSession | null,
+  hint: AppModeHint | null
+): boolean => {
+  if (existingSession?.mode && existingSession.source !== 'boot') {
+    return true;
+  }
+  if (shouldAdoptHint(hint, existingSession) && hint?.mode) {
+    writeAppMode(hint.mode, null, { source: 'boot' });
+
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Fetches the persona document and resolves the forced app mode.
+ * Extracted to reduce cyclomatic complexity of the boot resolver.
+ */
+const resolvePersonaMode = async (
+  defaultPersona: User['defaultPersona']
+): Promise<string | null> => {
+  const personaFqn = personaDocFqn(defaultPersona ?? null);
+  if (!personaFqn) {
+    return null;
+  }
+  const personaDoc = await getDocumentByFQN(personaFqn).catch(() => undefined);
+
+  return resolvePersonaAppMode(personaDoc, defaultPersona?.id);
+};
+
+/**
  * Boot-time app-mode plumbing, run once `currentUser` is known (both the
  * returning-session path and the fresh-login path need it). Fetches the
  * user's own preferences bag and the tenant-wide app-mode default in
@@ -183,68 +248,30 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
     getAppConfiguration().catch(() => null),
   ]);
   hydrateBackendSyncedPreferences(user, prefsRes);
-
   const appDefault = translateWireMode(appConfig?.defaultAppMode ?? null);
   setAppDefaultMode(appDefault);
+  useApplicationStore.getState().setAppPreferences({
+    defaultColumnOrder: appConfig?.defaultColumnOrder ?? undefined,
+  });
 
-  // Skip the boot-time write when this tab already has a stickier
-  // signal:
-  //
-  //   1. A session tuple this tab already owns from a manual toggle or a
-  //      prior resolve (`source !== 'boot'`) — the user's active in-tab
-  //      choice wins over persona / preference. A `'boot'` tuple from an
-  //      earlier auth cycle is NOT sticky and should be re-resolved, so
-  //      don't skip on that.
-  //   2. A fresh cross-tab `omAppModeHint` — the mechanism by which a
-  //      sibling tab's active mode carries into a newly-opened tab
-  //      (cmd+click). We still need to seed THIS tab's store from that
-  //      hint (module init deliberately never reads the hint, so the
-  //      store is at `DEFAULT_APP_MODE` here), but we must not run the
-  //      persona/preference chain — the sibling's active choice wins.
+  // Hydrate tenant-wide time format after authentication
+  useApplicationStore
+    .getState()
+    .setTimeFormat(appConfig?.defaultTimeFormat === '24h' ? '24h' : '12h');
+
   const existingSession = readAppModeSession();
-  if (existingSession?.mode && existingSession.source !== 'boot') {
-    return;
-  }
   const hint = readAppModeHint();
-  if (isAppModeHintFresh(hint) && hint?.mode) {
-    // Adopt the sibling tab's mode so this new tab renders the right
-    // shell. `source: 'boot'` keeps the tuple re-resolvable on the next
-    // reload and skips re-writing the hint (no self-leak).
-    writeAppMode(hint.mode, null, { source: 'boot' });
 
+  if (shouldSkipResolution(existingSession, hint)) {
     return;
   }
 
-  // `appMode` off the wire is the preference's WIRE token ("classic" /
-  // "ai" / legacy "ai"), not the runtime mode string — translate
-  // before feeding it into the resolver. See `translatePreferenceMode` in
-  // `useAppMode.ts` (#31906 follow-up: the switcher's remember checkbox
-  // writes the wire token, so the boot read must undo that translation).
   const userPref = translatePreferenceMode(
     derivePreferencesFromList(prefsRes.preferences).appMode ?? null
   );
 
-  // Persona precedence: only fetched here (not in the Promise.all above)
-  // so a returning tab that short-circuits on its session tuple / hint
-  // pays no persona-doc round-trip. Best-effort — a failed fetch or a
-  // persona with no forced `appMode` yields `null` and the chain falls
-  // through to userPref / tenant default.
-  const personaFqn = personaDocFqn(user.defaultPersona ?? null);
-  const personaDoc = personaFqn
-    ? await getDocumentByFQN(personaFqn).catch(() => undefined)
-    : undefined;
-  const personaMode = resolvePersonaAppMode(
-    personaDoc,
-    user.defaultPersona?.id
-  );
+  const personaMode = await resolvePersonaMode(user.defaultPersona);
 
-  // Final boot write — persona is now known, so this is the authoritative
-  // mode (the old async `useResolvedAppMode` refinement is gone). Marked
-  // `source: 'boot'` so it stays re-resolvable on the next reload (a later
-  // persona-doc edit takes effect) while a manual toggle's `'manual'`
-  // tuple remains sticky. The `writeHint` inside `writeAppMode` is skipped
-  // for `'boot'` writes so this doesn't leak to sibling tabs as an
-  // authoritative hint.
   writeAppMode(
     resolveEffectiveAppMode(userPref, personaMode, appDefault),
     personaMode,
@@ -345,67 +372,114 @@ export const AuthProvider = ({
   // would sign the user straight back in.
   const isSigningOutRef = useRef(false);
 
-  // Handler to perform logout within application
-  const onLogoutHandler = useCallback(async () => {
+  // Set while this tab is acting on a refresh failure. Requests still in
+  // flight fail their own refreshes meanwhile; the first failure decides for
+  // all of them, so a second redirect (or a sign-out racing the redirect)
+  // never starts.
+  const isHandlingRefreshFailureRef = useRef(false);
+
+  // Signs this tab out. `endIdpSession` is false when another tab already
+  // signed out: that tab ended the identity provider session and recorded the
+  // sign-out, so this one only clears its own state.
+  const signOut = useCallback(async (endIdpSession: boolean) => {
     isSigningOutRef.current = true;
+    if (endIdpSession) {
+      // Before anything else: some providers' logout navigates this page
+      // away, and the other tabs must still see the sign-out.
+      markSignedOut();
+    }
     // Same reason for an armed proactive-renewal timer firing after logout.
     authCoordinator.pause();
     try {
       // Let SSO complete the logout process. Swallow failures so local
       // cleanup always runs — a rejected OIDC end-session call must not
       // leave the user half-logged-out with a stale persona session key.
-      await authenticatorRef.current?.invokeLogout();
-    } catch {
-      // SSO logout failed; proceed with local cleanup anyway
+      if (endIdpSession) {
+        try {
+          await authenticatorRef.current?.invokeLogout();
+        } catch {
+          // SSO logout failed; proceed with local cleanup anyway
+        }
+      }
+
+      clearPersonaSession();
+
+      setIsAuthenticated(false);
+
+      // reset the user details on logout
+      setCurrentUser({} as User);
+
+      // remove analytics session on logout
+      removeSession();
+
+      // Clear tokens properly during logout
+      await clearOidcToken();
+
+      // Drop every in-memory client-side cache keyed by the current principal so the next user
+      // that signs in within this SPA session cannot see the previous user's cached responses.
+      // The app navigates to /signin without a hard reload, so global Zustand / module-level
+      // caches would otherwise survive across users.
+      //
+      // Three caches need clearing:
+      //   * useExploreCache — SWR cache for Explore search results (Zustand store)
+      //   * clearEtagCache() — ETag interceptor's response cache; without it, a freshly-
+      //     authenticated user could pick up another principal's cached body via 304.
+      //   * queryClient.clear() — React Query cache. Entries are keyed without the principal
+      //     in the key (auth comes from the Authorization header), so without an explicit
+      //     clear the next user would see the previous user's bodies until staleTime + gcTime.
+      useExploreCache.getState().clearCache();
+      clearEtagCache();
+      queryClient.clear();
+
+      // Drop the tab-scoped app-mode session so the next user boots into
+      // their own persona/preference-resolved mode rather than inheriting
+      // this user's transient mode.
+      clearAppMode();
+
+      // Reset the debounced backend-sync bookkeeping so a pending PATCH
+      // from user A cannot be flushed with user B's value/id when the SPA
+      // logs out + back in within the 300ms window.
+      resetBackendSyncState();
+
+      setApplicationLoading(false);
+
+      // Upon logout, redirect to the login page
+      navigate(ROUTES.SIGNIN);
+    } finally {
+      // From here the stored token is gone, which stops any silent
+      // re-authentication on its own. The `finally` guarantees the flag is
+      // cleared even if a cleanup step above throws — otherwise a parked
+      // `handleRefreshFailed` recovery would never see the logout finish and
+      // the SPA would be left half-logged-out with the flag stuck armed.
+      isSigningOutRef.current = false;
+      // A recovery that stood down for this logout returned without
+      // navigating, so nothing reset this. Logout lands on /signin without a
+      // reload; left set, it would swallow every refresh failure after the
+      // next sign-in in this tab.
+      isHandlingRefreshFailureRef.current = false;
     }
-
-    clearPersonaSession();
-
-    setIsAuthenticated(false);
-
-    // reset the user details on logout
-    setCurrentUser({} as User);
-
-    // remove analytics session on logout
-    removeSession();
-
-    // Clear tokens properly during logout
-    await clearOidcToken();
-
-    // Drop every in-memory client-side cache keyed by the current principal so the next user
-    // that signs in within this SPA session cannot see the previous user's cached responses.
-    // The app navigates to /signin without a hard reload, so global Zustand / module-level
-    // caches would otherwise survive across users.
-    //
-    // Three caches need clearing:
-    //   * useExploreCache — SWR cache for Explore search results (Zustand store)
-    //   * clearEtagCache() — ETag interceptor's response cache; without it, a freshly-
-    //     authenticated user could pick up another principal's cached body via 304.
-    //   * queryClient.clear() — React Query cache. Entries are keyed without the principal
-    //     in the key (auth comes from the Authorization header), so without an explicit
-    //     clear the next user would see the previous user's bodies until staleTime + gcTime.
-    useExploreCache.getState().clearCache();
-    clearEtagCache();
-    queryClient.clear();
-
-    // Drop the tab-scoped app-mode session so the next user boots into
-    // their own persona/preference-resolved mode rather than inheriting
-    // this user's transient mode.
-    clearAppMode();
-
-    // Reset the debounced backend-sync bookkeeping so a pending PATCH
-    // from user A cannot be flushed with user B's value/id when the SPA
-    // logs out + back in within the 300ms window.
-    resetBackendSyncState();
-
-    setApplicationLoading(false);
-
-    // Upon logout, redirect to the login page
-    navigate(ROUTES.SIGNIN);
-    // From here the stored token is gone, which stops any silent
-    // re-authentication on its own.
-    isSigningOutRef.current = false;
   }, []);
+
+  // Handler to perform logout within application
+  const onLogoutHandler = useCallback(() => signOut(true), [signOut]);
+
+  // Signing out in one tab signs every tab out. Without this the others kept
+  // showing a signed-in app until their next request failed.
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.key === SIGNED_OUT_AT_KEY &&
+        event.newValue &&
+        !isSigningOutRef.current &&
+        useApplicationStore.getState().isAuthenticated
+      ) {
+        signOut(false);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [signOut]);
 
   /**
    * Stores redirect URL for successful login
@@ -484,12 +558,6 @@ export const AuthProvider = ({
     }
   };
 
-  // Set while this tab is acting on a refresh failure. Requests still in
-  // flight fail their own refreshes meanwhile; the first failure decides for
-  // all of them, so a second redirect (or a sign-out racing the redirect)
-  // never starts.
-  const isHandlingRefreshFailureRef = useRef(false);
-
   const signOutAfterRefreshFailure = (showSessionExpired: boolean) => {
     isHandlingRefreshFailureRef.current = false;
     // A cold-load refresh that failed with ReauthRequiredError leaves
@@ -516,13 +584,59 @@ export const AuthProvider = ({
   };
 
   const waitForSiblingReauth = async (staleToken: string) => {
+    const waitStartedAt = Date.now();
     setApplicationLoading(true);
     if (await waitForSiblingToken(staleToken)) {
+      // The sibling stored a fresh token, but a Sign-out click during the
+      // poll (a window of seconds-to-minutes) started a `/logout` that is
+      // still in flight. Reloading now would abort that logout and re-
+      // establish the session from the sibling's token, silently undoing
+      // the user's explicit Sign out. Let the logout finish instead.
+      if (isSigningOutRef.current) {
+        return;
+      }
+      // A sign-out, here or in another tab, finished while this tab waited
+      // (the wait can last minutes). The sibling's token belongs to a session
+      // the user already ended: sign out rather than reload into it.
+      if (hasSignedOutSince(waitStartedAt)) {
+        signOutAfterRefreshFailure(false);
+
+        return;
+      }
       window.location.reload();
 
       return;
     }
     signOutAfterRefreshFailure(true);
+  };
+
+  // Recover a refresh failure once a stored token is known to still exist.
+  // Extracted from `handleRefreshFailed` to keep that entry under the
+  // `sonarjs/cyclomatic-complexity` limit. Nothing here awaits before the
+  // `reauth` redirect, so the sign-out check after `await getOidcToken()` in
+  // `handleRefreshFailed` still holds; only the sibling wait needs its own.
+  const recoverRefreshFailure = async (
+    storedToken: string,
+    payload: RefreshFailedPayload,
+    invokeSilentReauth: () => Promise<void>
+  ) => {
+    const staleToken = payload.staleToken ?? storedToken;
+    if (hasReplacedToken(storedToken, staleToken)) {
+      // A sibling tab re-established the session while this (possibly
+      // throttled) tab's failure was in flight. Signing out now would end
+      // that fresh session for every tab.
+      window.location.reload();
+
+      return;
+    }
+    const decision = decideReauth();
+    if (decision === 'wait-for-sibling') {
+      await waitForSiblingReauth(staleToken);
+    } else if (decision === 'reauth' && isSilentReauthRecoverable(payload)) {
+      await startSilentReauth(invokeSilentReauth);
+    } else {
+      signOutAfterRefreshFailure(true);
+    }
   };
 
   // A failed silent renewal does not mean the identity provider session is
@@ -547,29 +661,23 @@ export const AuthProvider = ({
     isHandlingRefreshFailureRef.current = true;
     handleStoreProtectedRedirectPath();
     const storedToken = await getOidcToken().catch(() => '');
+    // A Sign-out click during the `await getOidcToken()` above started a
+    // `/logout`. The entry guard only saw the flag before the await, so
+    // re-check here: proceeding would fire a terminal navigation that
+    // aborts the in-flight logout. Reset the handling flag so a future
+    // failure (after the logout finishes) is not left parked.
+    if (isSigningOutRef.current) {
+      isHandlingRefreshFailureRef.current = false;
+
+      return;
+    }
     if (!storedToken) {
       // Signed out elsewhere (e.g. in another tab): nothing to re-establish.
       signOutAfterRefreshFailure(false);
 
       return;
     }
-    const staleToken = payload.staleToken ?? storedToken;
-    if (hasReplacedToken(storedToken, staleToken)) {
-      // A sibling tab re-established the session while this (possibly
-      // throttled) tab's failure was in flight. Signing out now would end
-      // that fresh session for every tab.
-      window.location.reload();
-
-      return;
-    }
-    const decision = decideReauth();
-    if (decision === 'wait-for-sibling') {
-      await waitForSiblingReauth(staleToken);
-    } else if (decision === 'reauth' && isSilentReauthRecoverable(payload)) {
-      await startSilentReauth(invokeSilentReauth);
-    } else {
-      signOutAfterRefreshFailure(true);
-    }
+    await recoverRefreshFailure(storedToken, payload, invokeSilentReauth);
   };
 
   const getLoggedInUserDetails = async () => {

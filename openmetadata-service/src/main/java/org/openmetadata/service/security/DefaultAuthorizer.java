@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
@@ -35,11 +36,15 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
+  private static final DefaultAuthorizer DIRECT_READ_AUTHORIZER = new DefaultAuthorizer();
 
   @Override
   public void init(OpenMetadataApplicationConfig config) {
-    LOG.info("Initializing DefaultAuthorizer with config {}", config.getAuthorizerConfiguration());
-    logDeprecationWarnings(config.getAuthorizerConfiguration());
+    AuthorizerConfiguration current = SecurityConfigurationManager.getCurrentAuthzConfig();
+    AuthorizerConfiguration inEffect =
+        current == null ? config.getAuthorizerConfiguration() : current;
+    LOG.info("Initializing DefaultAuthorizer with config {}", inEffect);
+    logDeprecationWarnings(inEffect);
   }
 
   private void logDeprecationWarnings(AuthorizerConfiguration config) {
@@ -125,17 +130,27 @@ public class DefaultAuthorizer implements Authorizer {
       ResourceContextInterface resourceContext) {
     Timer.Sample authSample = RequestLatencyContext.startAuthOperation();
     try {
-      SubjectContext subjectContext = getSubjectContext(securityContext);
-      if (subjectContext.isAdmin()) {
-        return;
-      }
-      if (isReviewer(resourceContext, subjectContext)) {
-        return;
-      }
-
-      PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
+      authorizeSubject(getSubjectContext(securityContext), operationContext, resourceContext);
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);
+    }
+  }
+
+  /** Authorize a resolved user on read paths that do not carry the JAX-RS security context. */
+  public static void authorizeUser(
+      String userName,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    DIRECT_READ_AUTHORIZER.authorizeSubject(
+        subjectContextForUserName(userName), operationContext, resourceContext);
+  }
+
+  private void authorizeSubject(
+      SubjectContext subjectContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    if (!subjectContext.isAdmin() && !isReviewer(resourceContext, subjectContext)) {
+      PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
     }
   }
 

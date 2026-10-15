@@ -10,14 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Divider,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   FailedTests,
   MinusCircle,
   SuccessfulTests,
 } from '@openmetadata/ui-core-components/icons';
-import { Col, Divider, Tooltip } from 'antd';
 import { isEmpty, lowerCase } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -184,7 +188,14 @@ const ContractSLA: React.FC<{
   const renderOutcomeIcon = (key: string): ReactNode => {
     const outcomeOf = SLA_CHECK_OUTCOME[key];
     if (!slaValidation || !outcomeOf) {
-      return <Icon className="sla-icon" component={DefaultIcon} />;
+      return (
+        <DefaultIcon
+          className="sla-icon"
+          fill="currentColor"
+          height="1em"
+          width="1em"
+        />
+      );
     }
     const met = outcomeOf(slaValidation);
     if (met === true) {
@@ -227,16 +238,19 @@ const ContractSLA: React.FC<{
 
   const inheritedIcon = contract.sla?.inherited ? (
     <Tooltip
+      arrow
+      excludeTriggerFromTabOrder
       title={t('label.inherited-entity', {
         entity: t('label.service-level-agreement'),
-      })}>
+      })}
+      triggerClassName="tw:inline-flex">
       <InheritIcon className="inherit-icon cursor-pointer" width={14} />
     </Tooltip>
   ) : null;
 
   return (
-    <Col
-      className="contract-card-items"
+    <Grid.Item
+      className="layout-column contract-card-items"
       data-testid="contract-sla-card"
       span={24}>
       <div className="contract-card-header-container">
@@ -246,7 +260,7 @@ const ContractSLA: React.FC<{
           </Typography>
           {inheritedIcon}
         </div>
-        <Divider className="contract-dash-separator" />
+        <Divider dashed className="contract-dash-separator" />
       </div>
 
       <div className="sla-item-container">
@@ -301,7 +315,7 @@ const ContractSLA: React.FC<{
           )}
         </Box>
       )}
-    </Col>
+    </Grid.Item>
   );
 };
 

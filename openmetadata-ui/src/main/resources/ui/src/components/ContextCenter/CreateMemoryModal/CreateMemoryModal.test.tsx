@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import {
   Control,
@@ -21,7 +27,10 @@ import {
   useFormContext,
 } from 'react-hook-form';
 import { MemoryRouter } from 'react-router-dom';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import {
+  ContextMemory,
+  ContextMemoryStatus,
+} from '../../../generated/entity/context/contextMemory';
 import {
   getMemoryOntologyProposalStatus,
   proposeTermFromMemory,
@@ -395,7 +404,7 @@ describe('CreateMemoryModal', () => {
     const memory = {
       id: 'memory-id',
       name: 'churn-risk-score',
-      status: 'Active',
+      entityStatus: 'Approved',
       shareConfig: { visibility: 'Entity' },
       derivedEntities: [
         {
@@ -435,6 +444,7 @@ describe('CreateMemoryModal', () => {
     const memory = {
       id: 'memory-id',
       name: 'inactive-customer',
+      entityStatus: ContextMemoryStatus.Approved,
       owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
       shareConfig: { visibility: 'Shared' },
       derivedEntities: [],
@@ -529,7 +539,7 @@ describe('CreateMemoryModal', () => {
     const memory = {
       id: 'memory-id',
       name: 'metrics.md-f02e2a5c',
-      status: 'Active',
+      entityStatus: 'Approved',
       shareConfig: { visibility: 'Entity' },
       derivedEntities: [],
     } as ContextMemory;
@@ -553,6 +563,50 @@ describe('CreateMemoryModal', () => {
     expect(
       await screen.findByRole('button', { name: 'label.propose-term' })
     ).toBeInTheDocument();
+  });
+
+  it.each([
+    ContextMemoryStatus.Draft,
+    ContextMemoryStatus.Archived,
+    ContextMemoryStatus.Deprecated,
+    ContextMemoryStatus.Rejected,
+    ContextMemoryStatus.Superseded,
+    ContextMemoryStatus.Invalidated,
+  ])('hides proposal action for status %s', async (status) => {
+    const memory = {
+      id: 'memory-id',
+      name: 'retired-memory',
+      entityStatus: status,
+      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
+      shareConfig: { visibility: 'Entity' },
+      derivedEntities: [],
+    } as ContextMemory;
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      enabled: true,
+      proposals: [],
+      queued: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          isAdminUser
+          viewOnly
+          currentUserName="admin"
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(getMemoryOntologyProposalStatus).toHaveBeenCalledWith('memory-id')
+    );
+    await act(async () => Promise.resolve());
+
+    expect(
+      screen.queryByRole('button', { name: 'label.propose-term' })
+    ).not.toBeInTheDocument();
   });
 
   it('keeps proposal action unavailable while derivation is queued', async () => {
@@ -687,5 +741,92 @@ describe('CreateMemoryModal', () => {
     expect(
       screen.queryByRole('button', { name: 'label.propose-term' })
     ).not.toBeInTheDocument();
+  });
+
+  it.each<[ContextMemoryStatus, string]>([
+    [ContextMemoryStatus.Deprecated, 'label.deprecated'],
+    [ContextMemoryStatus.Superseded, 'label.superseded'],
+  ])(
+    'shows why a %s memory was replaced and links to its successor',
+    (status, label) => {
+      render(
+        <MemoryRouter>
+          <CreateMemoryModal
+            {...defaultProps}
+            viewOnly
+            memoryToEdit={{
+              id: 'old-memory',
+              name: 'old-memory',
+              entityStatus: status,
+              statusReason: 'The replacement has the corrected definition.',
+              supersededBy: {
+                id: 'new-memory',
+                type: 'contextMemory',
+                name: 'new-memory',
+              },
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(
+        screen.getByText('The replacement has the corrected definition.')
+      ).toBeInTheDocument();
+      expect(screen.getByText('new-memory')).toHaveAttribute(
+        'href',
+        '/context-center/memories?memory=new-memory'
+      );
+    }
+  );
+
+  it('keeps the other Context Center parameters when opening the successor', () => {
+    render(
+      <MemoryRouter
+        initialEntries={['/context-center/memories?memory=old-memory&tab=all']}>
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          memoryToEdit={{
+            id: 'old-memory',
+            name: 'old-memory',
+            entityStatus: ContextMemoryStatus.Deprecated,
+            supersededBy: {
+              id: 'new-memory',
+              type: 'contextMemory',
+              name: 'new-memory',
+            },
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('new-memory')).toHaveAttribute(
+      'href',
+      '/context-center/memories?memory=new-memory&tab=all'
+    );
+  });
+
+  it('does not offer successor navigation while the memory is being edited', () => {
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          canEdit
+          memoryToEdit={{
+            id: 'old-memory',
+            name: 'old-memory',
+            entityStatus: ContextMemoryStatus.Deprecated,
+            supersededBy: {
+              id: 'new-memory',
+              type: 'contextMemory',
+              name: 'new-memory',
+            },
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('new-memory')).not.toHaveAttribute('href');
   });
 });

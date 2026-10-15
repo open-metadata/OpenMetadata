@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { AvatarGroup } from '@openmetadata/ui-core-components';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import {
   IncidentGroupBy,
   IncidentTrendDirection,
@@ -22,6 +23,28 @@ import {
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { IncidentTrendSparklineProps } from './IncidentGroups.types';
 import IncidentGroupsTable from './IncidentGroupsTable';
+
+// The global mock drops the interpolated values; the related badge is a count,
+// so this one keeps it to assert what the badge was handed.
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string, options?: { count?: number }) =>
+      options?.count === undefined ? key : `${key}:${options.count}`,
+    i18n: { language: 'en-US', dir: jest.fn().mockReturnValue('ltr') },
+  }),
+}));
+
+// The real avatar group still renders; wrapping it records the labels the +N
+// popover is handed, which jsdom cannot hover open.
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+
+  return {
+    ...actual,
+    AvatarGroup: jest.fn((props) => <actual.AvatarGroup {...props} />),
+  };
+});
 
 jest.mock('./IncidentTrendSparkline', () => ({
   __esModule: true,
@@ -36,18 +59,26 @@ jest.mock('./IncidentTrendSparkline', () => ({
     ),
 }));
 
-// The shared avatar fetches a profile picture and reads permissions; the rows
-// only care that it is handed the assignee's name.
-jest.mock('../../../common/ProfilePicture/ProfilePicture', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ name }: { name: string }) => (
-      <span>{`avatar:${name}`}</span>
-    )),
-}));
+const mockOnSortChange = jest.fn();
+const mockOnGroupPreview = jest.fn();
+const mockOnGroupOpen = jest.fn();
+const mockOnGroupSelect = jest.fn();
+const mockOnPageSelect = jest.fn();
 
-const mockOnSortTypeChange = jest.fn();
+// Same press sequence react-aria listens for on rows and buttons.
+const press = (element: HTMLElement) => {
+  fireEvent.pointerDown(element, {
+    button: 0,
+    pointerId: 1,
+    pointerType: 'mouse',
+  });
+  fireEvent.pointerUp(element, {
+    button: 0,
+    pointerId: 1,
+    pointerType: 'mouse',
+  });
+  fireEvent.click(element);
+};
 
 const fixtureGroup: TestCaseIncidentGroup = {
   groupBy: IncidentGroupBy.Table,
@@ -63,24 +94,62 @@ const fixtureGroup: TestCaseIncidentGroup = {
     { status: TestCaseResolutionStatusTypes.ACK, count: 1 },
     { status: TestCaseResolutionStatusTypes.New, count: 1 },
   ],
-  assignees: ['tomas.montiel', 'mohit', 'paul.jones'],
+  assignees: ['tomas.montiel', 'mohit', 'paul.jones', 'data-eng', 'wei'],
   assigneeCount: 5,
+  assigneeReferences: [
+    { id: 'u1', type: 'user', name: 'tomas.montiel', displayName: 'Tomas' },
+    { id: 'u2', type: 'user', name: 'mohit' },
+    { id: 'u3', type: 'user', name: 'paul.jones' },
+    { id: 't1', type: 'team', name: 'data-eng' },
+    { id: 'u4', type: 'user', name: 'wei' },
+  ],
   firstSeen: 1755000000000,
   lastSeen: 1781000000000,
   trend: [1, 0, 0, 2, 0, 1, 3, 4],
   trendDirection: IncidentTrendDirection.Rising,
+  tableCount: 1,
+  tables: [{ id: 't1', type: 'table', name: 'dim_address' }],
+  testDefinitionCount: 3,
+  testDefinitions: [
+    {
+      id: 'd1',
+      type: 'testDefinition',
+      name: 'rowCount',
+      displayName: 'Row count',
+    },
+    {
+      id: 'd2',
+      type: 'testDefinition',
+      name: 'uniqueness',
+      displayName: 'Uniqueness',
+    },
+    {
+      id: 'd3',
+      type: 'testDefinition',
+      name: 'nullCheck',
+      displayName: 'Null check',
+    },
+  ],
 };
 
 const renderTable = (
   groups: TestCaseIncidentGroup[] = [fixtureGroup],
-  groupBy = IncidentGroupBy.Table
+  groupBy = IncidentGroupBy.Table,
+  selectedKeys: ReadonlySet<string> = new Set(),
+  isSelectable = true
 ) =>
   render(
     <IncidentGroupsTable
       groupBy={groupBy}
       groups={groups}
-      sortType="desc"
-      onSortTypeChange={mockOnSortTypeChange}
+      isSelectable={isSelectable}
+      selectedKeys={selectedKeys}
+      sort={{ field: 'incidentCount', type: 'desc' }}
+      onGroupOpen={mockOnGroupOpen}
+      onGroupPreview={mockOnGroupPreview}
+      onGroupSelect={mockOnGroupSelect}
+      onPageSelect={mockOnPageSelect}
+      onSortChange={mockOnSortChange}
     />
   );
 
@@ -92,10 +161,10 @@ describe('IncidentGroupsTable', () => {
 
     expect(screen.getByTestId('group-name')).toHaveTextContent('Dim Address');
     expect(screen.getByTestId('group-sub-line')).toHaveTextContent(
-      'sample_data · ecommerce_db · shopify'
+      'Row count · Uniqueness · Null check'
     );
-    expect(screen.getByTestId('group-dimension')).toHaveTextContent(
-      'label.table'
+    expect(screen.getByTestId('group-related')).toHaveTextContent(
+      'label.type-count:3'
     );
     expect(screen.getByTestId('group-incident-count')).toHaveTextContent('5');
     expect(screen.getByTestId('group-severity')).toHaveTextContent(
@@ -115,22 +184,61 @@ describe('IncidentGroupsTable', () => {
     );
   });
 
-  it('should draw three avatars and count the rest from assigneeCount', () => {
+  it('should stack three assignees and fold the rest into +N', () => {
+    renderTable();
+
+    expect(screen.getAllByTestId('avatar-group-item')).toHaveLength(3);
+    expect(screen.getByTestId('Tomas')).toBeInTheDocument();
+    expect(screen.getByTestId('avatar-group-overflow')).toHaveTextContent('+2');
+  });
+
+  it('should head the folded assignees with translated team and user labels', () => {
+    renderTable();
+
+    expect(AvatarGroup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        overflowTeamsLabel: 'label.team-plural',
+        overflowUsersLabel: 'label.user-plural',
+      }),
+      expect.anything()
+    );
+  });
+
+  it('should show the full FQNs of the name and the sub-line on hover', () => {
+    renderTable(
+      [
+        {
+          ...fixtureGroup,
+          groupBy: IncidentGroupBy.TestDefinition,
+          tables: [
+            {
+              id: 't1',
+              type: 'table',
+              name: 'orders',
+              fullyQualifiedName: 'svc.db.shop.orders',
+            },
+          ],
+        },
+      ],
+      IncidentGroupBy.TestDefinition
+    );
+
+    expect(screen.getByTestId('group-name')).toHaveAttribute(
+      'title',
+      fixtureGroup.fullyQualifiedName
+    );
+    expect(screen.getByTestId('group-sub-line')).toHaveAttribute(
+      'title',
+      'svc.db.shop.orders'
+    );
+  });
+
+  it('should show severity as a read-only badge, not a control', () => {
     renderTable();
 
     expect(
-      screen.getByTestId('group-assignee-tomas.montiel')
-    ).toHaveTextContent('avatar:tomas.montiel');
-    expect(screen.getByTestId('group-assignee-mohit')).toHaveTextContent(
-      'avatar:mohit'
-    );
-    expect(screen.getByTestId('group-assignee-paul.jones')).toHaveTextContent(
-      'avatar:paul.jones'
-    );
-    // 5 assignees, 3 in the (server-capped) array.
-    expect(screen.getByTestId('group-assignee-overflow')).toHaveTextContent(
-      '+2'
-    );
+      within(screen.getByTestId('group-severity')).queryByRole('button')
+    ).not.toBeInTheDocument();
   });
 
   it('should fall back for every field the group does not carry', () => {
@@ -146,6 +254,7 @@ describe('IncidentGroupsTable', () => {
       'columnValuesToBeUnique'
     );
     expect(screen.queryByTestId('group-sub-line')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('group-related')).not.toBeInTheDocument();
     expect(screen.getByTestId('group-severity')).toHaveTextContent(
       'label.no-entity'
     );
@@ -177,13 +286,188 @@ describe('IncidentGroupsTable', () => {
     ).toBeInTheDocument();
   });
 
-  it('should hand the flipped ordering back as a sortType', () => {
+  it('should flip the ordering of the column it is sorted by', () => {
     renderTable();
 
     fireEvent.click(
       screen.getByRole('columnheader', { name: /label.incident-plural/ })
     );
 
-    expect(mockOnSortTypeChange).toHaveBeenCalledWith('asc');
+    expect(mockOnSortChange).toHaveBeenCalledWith({
+      field: 'incidentCount',
+      type: 'asc',
+    });
+  });
+
+  it.each([
+    ['label.severity', 'severity'],
+    ['label.last-seen', 'lastSeen'],
+  ])(
+    'should open the %s column on its useful end, worst or latest first',
+    (header, field) => {
+      renderTable();
+
+      fireEvent.click(
+        screen.getByRole('columnheader', { name: new RegExp(header) })
+      );
+
+      expect(mockOnSortChange).toHaveBeenCalledWith({ field, type: 'desc' });
+    }
+  );
+
+  it('should leave the other columns unsortable', () => {
+    renderTable();
+
+    fireEvent.click(screen.getByRole('columnheader', { name: 'label.status' }));
+
+    expect(mockOnSortChange).not.toHaveBeenCalled();
+  });
+
+  it('should head the related column after what it counts', () => {
+    renderTable([fixtureGroup], IncidentGroupBy.TestDefinition);
+
+    expect(
+      screen.getByRole('columnheader', { name: 'label.table-plural' })
+    ).toBeInTheDocument();
+  });
+
+  it('should head the related column with the check type for a table', () => {
+    renderTable();
+
+    expect(
+      screen.getByRole('columnheader', { name: 'label.check-type' })
+    ).toBeInTheDocument();
+  });
+
+  it('should count the tables of a test definition group', () => {
+    renderTable(
+      [
+        {
+          ...fixtureGroup,
+          groupBy: IncidentGroupBy.TestDefinition,
+          tableCount: 3,
+        },
+      ],
+      IncidentGroupBy.TestDefinition
+    );
+
+    expect(screen.getByTestId('group-related')).toHaveTextContent(
+      'label.table-count:3'
+    );
+    // The array is capped server-side, so the sub-line lists what it holds
+    // while the pill counts from the field.
+    expect(screen.getByTestId('group-sub-line')).toHaveTextContent(
+      'dim_address'
+    );
+  });
+
+  it('should read a single table in the singular', () => {
+    renderTable(
+      [{ ...fixtureGroup, groupBy: IncidentGroupBy.TestDefinition }],
+      IncidentGroupBy.TestDefinition
+    );
+
+    expect(screen.getByTestId('group-related')).toHaveTextContent(
+      'label.table-count:1'
+    );
+  });
+
+  it('should name the only test definition of a group instead of counting it', () => {
+    renderTable(
+      [
+        {
+          ...fixtureGroup,
+          groupBy: IncidentGroupBy.Owner,
+          testDefinitionCount: 1,
+          testDefinitions: [fixtureGroup.testDefinitions?.[0]].filter(
+            Boolean
+          ) as TestCaseIncidentGroup['testDefinitions'],
+        },
+      ],
+      IncidentGroupBy.Owner
+    );
+
+    expect(screen.getByTestId('group-related')).toHaveTextContent('Row count');
+    expect(screen.getByTestId('group-sub-line')).toHaveTextContent(
+      'dim_address'
+    );
+  });
+
+  it('should count a single test definition it cannot name', () => {
+    renderTable([
+      { ...fixtureGroup, testDefinitionCount: 1, testDefinitions: [] },
+    ]);
+
+    expect(screen.getByTestId('group-related')).toHaveTextContent(
+      'label.type-count:1'
+    );
+  });
+
+  it('should preview a group when its row is pressed', () => {
+    renderTable();
+
+    press(screen.getByTestId('group-name'));
+
+    expect(mockOnGroupPreview).toHaveBeenCalledWith(fixtureGroup);
+    expect(mockOnGroupOpen).not.toHaveBeenCalled();
+  });
+
+  it('should open the drill-down from the row chevron, not the preview', () => {
+    renderTable();
+
+    const open = screen.getByTestId(`group-open-${fixtureGroup.id}`);
+
+    expect(open).toHaveAccessibleName('label.view-entity');
+
+    press(open);
+
+    expect(mockOnGroupOpen).toHaveBeenCalledWith(fixtureGroup);
+    expect(mockOnGroupPreview).not.toHaveBeenCalled();
+  });
+
+  it('should still preview a row pressed while other groups are selected', () => {
+    renderTable([fixtureGroup], IncidentGroupBy.Table, new Set(['other']));
+
+    press(screen.getByTestId('group-name'));
+
+    expect(mockOnGroupPreview).toHaveBeenCalledWith(fixtureGroup);
+    expect(mockOnGroupSelect).not.toHaveBeenCalled();
+  });
+
+  it('should select a group from its checkbox, without previewing it', () => {
+    renderTable();
+
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-entity' })
+    );
+
+    expect(mockOnGroupSelect).toHaveBeenCalledWith(fixtureGroup, true);
+    expect(mockOnGroupPreview).not.toHaveBeenCalled();
+  });
+
+  it('should offer no checkboxes to a user who cannot change incidents', () => {
+    renderTable([fixtureGroup], IncidentGroupBy.Table, new Set(), false);
+
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.getByTestId('group-severity')).toBeInTheDocument();
+  });
+
+  it('should show a partly selected page and select all of it', () => {
+    const second = { ...fixtureGroup, id: 'second', name: 'second' };
+    renderTable(
+      [fixtureGroup, second],
+      IncidentGroupBy.Table,
+      new Set([fixtureGroup.id as string])
+    );
+
+    const pageCheckbox = within(
+      screen.getByTestId('group-select-page')
+    ).getByRole('checkbox', { name: 'label.select-all' });
+
+    expect(pageCheckbox).toBePartiallyChecked();
+
+    fireEvent.click(pageCheckbox);
+
+    expect(mockOnPageSelect).toHaveBeenCalledWith(true);
   });
 });

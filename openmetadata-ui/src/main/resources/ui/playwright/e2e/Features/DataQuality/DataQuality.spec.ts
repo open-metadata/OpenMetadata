@@ -31,7 +31,6 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
-  waitForAntdPopupToSettle,
   waitForToastToDisappear,
 } from '../../../utils/common';
 import {
@@ -270,9 +269,11 @@ test.describe(
           .click();
         await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
 
-        await expect(page.getByTestId('form-heading')).toHaveText(
-          `Edit ${NEW_TABLE_TEST_CASE.name}`
-        );
+        await expect(
+          page
+            .getByRole('dialog')
+            .getByText(`Edit ${NEW_TABLE_TEST_CASE.name}`, { exact: true })
+        ).toBeVisible();
 
         await page.locator('#testCaseFormV1_params_columnName').clear();
         await page.fill('#testCaseFormV1_params_columnName', 'new_column_name');
@@ -410,7 +411,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: NEW_COLUMN_TEST_CASE.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -721,7 +721,9 @@ test.describe(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
-        await page.click('[data-testid="test-cases"]');
+        await page
+          .getByRole('tab', { name: 'Test Cases', exact: true })
+          .click();
         await getTestCase;
         const searchTestCaseResponse = page.waitForResponse(
           `/api/v1/dataQuality/testCases/search/list?*q=*${testCaseName}*`
@@ -737,7 +739,11 @@ test.describe(
 
         await page.click(`[data-testid="edit-${testCaseName}"]`);
 
-        await expect(page.getByTestId('form-heading')).toBeVisible();
+        await expect(
+          page
+            .getByRole('dialog')
+            .filter({ has: page.getByTestId('test-case-form-v1') })
+        ).toBeVisible();
 
         await expect(page.locator('[id="root\\/displayName"]')).toHaveValue(
           'Table test case display name'
@@ -795,7 +801,7 @@ test.describe(
           const banner = await verifyTestCaseLastRunBanner(page, 'not-run-yet');
 
           await expect(banners).toHaveCount(1);
-          await expect(banner).toContainText('Last Run Not run yet');
+          await expect(banner).toContainText('Last run Not run yet');
           await expect(banner).toContainText(
             'This test has not run yet. Add it to a pipeline to start collecting results.'
           );
@@ -844,7 +850,7 @@ test.describe(
 
             await expect(banners).toHaveCount(1);
             await expect(banner).toContainText(
-              `Last Run ${runResult.testCaseStatus}`
+              `Last run ${runResult.testCaseStatus}`
             );
             await expect(banner).toContainText(runResult.result);
 
@@ -891,9 +897,9 @@ test.describe(
         await failedRunTable.addTestCaseResult(apiContext, testCaseFqn, {
           result: failureResult,
           testCaseStatus: 'Failed',
-          testResultValue: [
-            { name: 'minValue', predictedValue: '1', value: '0' },
-          ],
+          // Named as ingestion names it, not after a parameter, so the banner
+          // must read the expectation from the test's bounds.
+          testResultValue: [{ name: 'rowCount', value: '0' }],
           timestamp: failedTimestamp,
         });
         await waitForIncidentToBeIndexed(
@@ -923,7 +929,7 @@ test.describe(
         ).toBeVisible();
         await expect(
           banner.getByTestId('test-case-last-run-prefix')
-        ).toHaveText('Last Run');
+        ).toHaveText('Last run');
         await expect(
           banner.getByTestId('test-case-last-run-status')
         ).toHaveText('Failed');
@@ -934,10 +940,13 @@ test.describe(
           banner.getByTestId('test-case-result-expected')
         ).toContainText('Result / Expected');
         await expect(banner.getByTestId('test-case-result-value')).toHaveText(
-          '0 / 1'
+          '0 / 1 – 100'
         );
         await expect(banner.getByTestId('test-case-last-run-time')).toHaveText(
-          customFormatDateTime(failedTimestamp, 'MMM d, yyyy, h:mm a')
+          customFormatDateTime(
+            failedTimestamp,
+            "MMM dd, yyyy, hh:mm a '(UTC'ZZ')'"
+          )
         );
         await expect(banner.getByTestId('test-case-next-run')).toContainText(
           'Next · in '
@@ -953,19 +962,21 @@ test.describe(
         await expect(incident.getByTestId('test-case-incident-id')).toHaveText(
           /^INC-\d+$/
         );
+        // What the test checks, and on which table, not the task's name. The
+        // generated table name clamps the title, whose "more" toggle sits in
+        // the same element.
         await expect(
           incident.getByTestId('test-case-incident-description')
-        ).toContainText('Request TestCase Failure Resolution for');
-        await expect(
-          incident.getByTestId('test-case-incident-description')
-        ).toContainText(testCase.name);
+        ).toContainText(
+          `Row count vs. allowed range 1–100 on ${failedRunTable.entity.name}`
+        );
         await expect(
           incident.getByTestId('test-case-incident-status')
         ).toHaveText('New');
 
         const viewIncidentButton = incident.getByTestId('view-incident-button');
 
-        await expect(viewIncidentButton).toHaveText('View Incident');
+        await expect(viewIncidentButton).toHaveText('View incident');
         await viewIncidentButton.click();
         await expect(page).toHaveURL(/\/issues$/);
         await expect(page.getByTestId('issue-tab-container')).toBeVisible();
@@ -1096,13 +1107,13 @@ test.describe(
 
         // get all the filters
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="testPlatforms"]');
+        await page.getByTestId('advanced-filter-option-testPlatforms').click();
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="lastRunRange"]');
+        await page.getByTestId('advanced-filter-option-lastRunRange').click();
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="serviceName"]');
+        await page.getByTestId('advanced-filter-option-serviceName').click();
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="tier"]');
+        await page.getByTestId('advanced-filter-option-tier').click();
 
         // Test case search filter
         const searchTestCaseResponse = page.waitForResponse(
@@ -1162,29 +1173,30 @@ test.describe(
         const serviceResponse = page.waitForResponse(
           '/api/v1/search/query?q=*index=databaseService*'
         );
-        await page.fill('#serviceName', filterTable1.service.name);
+        await page
+          .getByTestId('service-select-filter')
+          .getByRole('combobox')
+          .fill(filterTable1.service.name);
         await serviceResponse;
 
         const testCaseByServiceName = page.waitForResponse(
           `/api/v1/dataQuality/testCases/search/list?*serviceName=${filterTable1.service.name}*`
         );
         await page
-          .locator('.ant-select-dropdown')
-          .filter({
-            hasNot: page.locator('.ant-select-dropdown-hidden'),
-            has: page.locator(`[data-testid="${filterTable1.service.name}"]`),
-          })
+          .getByRole('listbox')
+          .getByRole('option', { name: filterTable1.service.name, exact: true })
           .click();
         await testCaseByServiceName;
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page);
 
         // remove service filter
-        await page.click('[data-testid="advanced-filter"]');
         const getTestCase = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="serviceName"]');
+        await page
+          .getByRole('button', { name: 'Clear Service', exact: true })
+          .click();
         await getTestCase;
 
         // Test case filter by Tags
@@ -1193,69 +1205,80 @@ test.describe(
         );
         await page
           .getByTestId('tags-select-filter')
-          .locator('div')
-          .filter({ hasText: 'Tags' })
-          .click();
-        await page.fill('#tags', 'PII.None');
+          .getByRole('combobox')
+          .fill('PII.None');
         await tagResponse;
 
         const getTestCaseByTag = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*tags=PII.None*'
         );
         await page
-          .locator('.ant-select-dropdown')
-          .filter({
-            hasNot: page.locator('.ant-select-dropdown-hidden'),
-            has: page.locator(`[data-testid="PII.None"]`),
-          })
+          .getByRole('listbox')
+          .getByRole('option', { name: 'PII.None', exact: true })
           .click();
         await getTestCaseByTag;
+        await page.keyboard.press('Escape');
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
 
         // remove tags filter
-        await page.click('[data-testid="advanced-filter"]');
         const getTestCaseWithoutTag = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="tags"]');
+        await page
+          .getByRole('button', { name: 'Clear Tags', exact: true })
+          .click();
         await getTestCaseWithoutTag;
 
         // Test case filter by Tier
 
-        await page.click('#tier');
-        await page.fill('#tier', 'Tier2');
-        await page.waitForLoadState('domcontentloaded');
+        await page
+          .getByTestId('tier-select-filter')
+          .getByRole('combobox')
+          .fill('Tier2');
         const getTestCaseByTier = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*tier=Tier.Tier2*'
         );
-        await page.getByTestId('Tier.Tier2').getByText('Tier.Tier2').click();
+        await page
+          .getByRole('listbox')
+          .getByRole('option')
+          .filter({ has: page.getByText('Tier.Tier2', { exact: true }) })
+          .click();
         await getTestCaseByTier;
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
 
         // remove tier filter
-        await page.click('[data-testid="advanced-filter"]');
         const getTestCaseWithoutTier = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="tier"]');
+        await page
+          .getByRole('button', { name: 'Clear Tier', exact: true })
+          .click();
         await getTestCaseWithoutTier;
 
         // Test case filter by table name
         const tableSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=table*`
         );
-        await page.fill('#tableFqn', filterTable1.entity.name);
+        await page
+          .getByTestId('table-select-filter')
+          .getByRole('combobox')
+          .fill(filterTable1.entity.name);
         await tableSearchResponse;
         const getTestCaseByTable = page.waitForResponse(
           `/api/v1/dataQuality/testCases/search/list?*entityLink=*${filterTable1.entity.name}*`
         );
 
         await page
-          .getByTestId(
-            filterTable1.entityResponseData?.['fullyQualifiedName'] || ''
-          )
+          .getByRole('listbox')
+          .getByRole('option')
+          .filter({
+            has: page.getByText(
+              filterTable1.entityResponseData.fullyQualifiedName!,
+              { exact: true }
+            ),
+          })
           .click();
         await getTestCaseByTable;
         await verifyFilterTestCase(page);
@@ -1266,7 +1289,10 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*testCaseType=column*`
         );
         await page.getByTestId('test-case-type-select-filter').click();
-        await page.getByTitle('Column', { exact: true }).click();
+        await page
+          .getByRole('listbox')
+          .getByRole('option', { name: 'Column', exact: true })
+          .click();
         await testCaseTypeByColumn;
 
         await expect(
@@ -1279,12 +1305,8 @@ test.describe(
         );
         await page.getByTestId('test-case-type-select-filter').click();
         await page
-          .locator('.ant-select-dropdown')
-          .filter({
-            hasNot: page.locator('.ant-select-dropdown-hidden'),
-            has: page.locator(`[title="Table"]`),
-            hasText: 'Table',
-          })
+          .getByRole('listbox')
+          .getByRole('option', { name: 'Table', exact: true })
           .click();
         await testCaseTypeByTable;
         await verifyFilterTestCase(page);
@@ -1294,7 +1316,10 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*testCaseType=all*`
         );
         await page.getByTestId('test-case-type-select-filter').click();
-        await page.getByTitle('All').nth(1).click();
+        await page
+          .getByRole('listbox')
+          .getByRole('option', { name: 'All', exact: true })
+          .click();
         await testCaseTypeByAll;
 
         // Test case filter by status
@@ -1309,8 +1334,8 @@ test.describe(
         const statusFilter = page.getByTestId('status-select-filter');
         await statusFilter.getByRole('combobox').click();
         await page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('Success', { exact: true })
+          .getByRole('listbox')
+          .getByRole('option', { name: 'Success', exact: true })
           .click();
         await testCaseStatusBySuccess;
 
@@ -1331,10 +1356,11 @@ test.describe(
         );
         await statusFilter.getByRole('combobox').click();
         await page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('Failed', { exact: true })
+          .getByRole('listbox')
+          .getByRole('option', { name: 'Failed', exact: true })
           .click();
         await testCaseStatusesBySuccessAndFailed;
+        await page.keyboard.press('Escape');
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
 
@@ -1343,8 +1369,12 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*testPlatforms=dbt*`
         );
         await page.getByTestId('platform-select-filter').click();
-        await page.getByTitle('DBT').click();
+        await page
+          .getByRole('listbox')
+          .getByRole('option', { name: 'dbt', exact: true })
+          .click();
         await testCasePlatformByDBT;
+        await page.keyboard.press('Escape');
 
         await expect(
           page.locator('[data-testid="empty-placeholder"]')
@@ -1354,15 +1384,17 @@ test.describe(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
         await page
-          .getByTestId('platform-select-filter')
-          .locator('.ant-select-clear')
+          .getByRole('button', { name: 'Clear Platform', exact: true })
           .click();
         await getTestCaseWithoutPlatform;
         const testCasePlatformByOpenMetadata = page.waitForResponse(
           `/api/v1/dataQuality/testCases/search/list?*testPlatforms=OpenMetadata*`
         );
         await page.getByTestId('platform-select-filter').click();
-        await page.getByTitle('OpenMetadata').click();
+        await page
+          .getByRole('listbox')
+          .getByRole('option', { name: 'OpenMetadata', exact: true })
+          .click();
         await testCasePlatformByOpenMetadata;
         await clickOutside(page);
         await verifyFilterTestCase(page);
@@ -1373,7 +1405,7 @@ test.describe(
         expect(page.url()).toBe(url);
 
         await page.getByTestId('advanced-filter').click();
-        await page.click('[value="testPlatforms"]');
+        await page.getByTestId('advanced-filter-option-testPlatforms').click();
 
         await expect(
           page.getByTestId('platform-select-filter')
@@ -1381,7 +1413,9 @@ test.describe(
 
         await page.reload({ waitUntil: 'domcontentloaded' });
 
-        await expect(page.locator('[value="tier"]')).not.toBeVisible();
+        await expect(
+          page.getByTestId('advanced-filter-option-tier')
+        ).not.toBeVisible();
 
         // Apply domain globally
         await page.getByTestId('domain-dropdown').click();
@@ -1573,11 +1607,8 @@ test.describe(
 
           await expect(pageSizeDropdown).toBeVisible();
 
-          // Ant Dropdown opens on hover, so a re-render that shifts the footer out
-          // from under the pointer leaves the menu closed for good.
-          await pageSizeDropdown.hover();
+          await pageSizeDropdown.click();
           await expect(pageSizeMenu).toBeVisible();
-          await waitForAntdPopupToSettle(page);
 
           await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });
@@ -1706,36 +1737,39 @@ test.describe(
         await Promise.all([detailsResponse, resultsResponse]);
         await waitForAllLoadersToDisappear(page);
 
-        const point = page
-          .locator('[data-testid^="test-summary-point-"]')
-          .first();
+        const plot = page
+          .getByTestId('graph-container')
+          .getByRole('group', { name: 'Test Case Results' });
         const tooltip = page.getByTestId('test-summary-tooltip');
 
-        await expect(point).toBeVisible();
-        await point.scrollIntoViewIfNeeded();
-        const pointBox = await point.boundingBox();
+        await expect(plot).toBeVisible();
+        await plot.scrollIntoViewIfNeeded();
+        const plotBox = await plot.boundingBox();
 
-        if (!pointBox) {
+        if (!plotBox) {
           throw new Error(
-            'Expected the test result point to have a bounding box'
+            'Expected the test result chart to have a bounding box'
           );
         }
 
-        // A nearby chart position must not inherit the dot's tooltip activation.
+        // A chart position with no run under it must not open a tooltip.
         await page.mouse.move(
-          pointBox.x + pointBox.width + 3,
-          pointBox.y + pointBox.height / 2
+          plotBox.x + plotBox.width / 2,
+          plotBox.y + plotBox.height * 0.1
         );
         await expect(tooltip).toBeHidden();
 
-        await point.hover();
+        // Runs are SVG paths with no node per dot, so the keyboard opens the
+        // newest run's tooltip. Focus alone may not count as :focus-visible,
+        // so End is what starts the navigation.
+        await plot.focus();
+        await page.keyboard.press('End');
         await expect(tooltip).toBeVisible();
 
         const incidentLink = tooltip.locator('a.tooltip-incident-link');
 
         await expect(incidentLink).toBeVisible();
-        // Recharts used to move the tooltip during this browser-level pointer
-        // transition, preventing Playwright (and users) from reaching the link.
+        // The tooltip must stay put while the pointer travels onto the link.
         await incidentLink.hover();
         await expect(incidentLink).toBeVisible();
         await expect

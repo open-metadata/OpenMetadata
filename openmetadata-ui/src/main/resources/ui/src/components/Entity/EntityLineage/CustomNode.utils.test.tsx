@@ -23,11 +23,9 @@ import {
   getExpandHandle,
 } from './CustomNode.utils';
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Skeleton: {
-    Button: jest.fn().mockImplementation(() => <p data-testid="loader" />),
-  },
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Skeleton: jest.fn().mockImplementation(() => <p data-testid="loader" />),
 }));
 
 // Add mock before describe blocks

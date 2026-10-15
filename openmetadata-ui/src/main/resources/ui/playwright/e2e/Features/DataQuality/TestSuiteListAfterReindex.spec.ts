@@ -37,6 +37,7 @@
  */
 
 import test, { expect } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage } from '../../../utils/common';
 
@@ -98,7 +99,7 @@ test('Basic test suite stays listed on the table-suites page after a full reinde
         {
           message:
             'pre-reindex: basic suite with a test case must appear in the table-suites list',
-          timeout: 30_000,
+          timeout: ACTION_TIMEOUT,
         }
       )
       .toBe(true);
@@ -137,7 +138,7 @@ test('Basic test suite stays listed on the table-suites page after a full reinde
         {
           message:
             'post-reindex: basic suite must still appear in the table-suites list',
-          timeout: 30_000,
+          timeout: ACTION_TIMEOUT,
         }
       )
       .toBe(true);

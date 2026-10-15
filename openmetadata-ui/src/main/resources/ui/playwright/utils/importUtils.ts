@@ -19,6 +19,7 @@ import {
   MAX_COLUMN_NAVIGATION_RETRIES,
   RDG_ACTIVE_CELL_SELECTOR,
 } from '../constant/bulkImportExport';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../constant/customProperty';
 import {
   CUSTOM_PROPERTIES_TYPES,
@@ -334,7 +335,7 @@ const clickMarkdownEditorSave = async (page: Page) => {
 
 export const waitForImportGridLoadMaskToDisappear = async (
   page: Page,
-  timeout = 30000
+  timeout = ACTION_TIMEOUT
 ) => {
   await expect(page.locator(IMPORT_GRID_LOAD_MASK_SELECTOR)).toHaveCount(0, {
     timeout,
@@ -483,9 +484,9 @@ const selectOwnersOnTab = async (
     await page.getByTestId(searchBarTestId).clear();
     await page.getByTestId(searchBarTestId).fill(owner);
     await searchOwner;
-    await expect(
-      page.locator('[data-testid="select-owner-tabs"] [data-testid="loader"]')
-    ).toHaveCount(0);
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="select-owner-tabs"]')
+    );
 
     // Scope to the open tab's panel, as addOwnerWithoutValidation does: the
     // picker keeps a visited tab's panel mounted, so after the Users pass the
@@ -646,35 +647,17 @@ const openActiveCellPopover = async (
   await expect(targetLocator).toBeVisible();
 };
 
-const openRadioCardEditor = async (
-  page: Page,
-  radioTestId: string,
-  responseUrlPattern: string
-) => {
-  await openActiveCellPopover(
-    page,
-    page.getByTestId(radioTestId),
-    responseUrlPattern
-  );
-};
-
-const clickRadioCardUpdate = async (page: Page, updateButtonTestId: string) => {
-  const updateButton = page.getByTestId(updateButtonTestId);
-
-  await updateButton.click();
-  await updateButton.waitFor({ state: 'detached' });
-};
-
 export const fillTierDetails = async (
   page: Page,
   tier: string,
   _isBulkEdit?: boolean
 ) => {
-  const radioTestId = `radio-btn-${tier}`;
-  await openRadioCardEditor(page, radioTestId, '/api/v1/tags?parent=Tier*');
+  const option = page.getByTestId('drop-down-menu').getByTestId(`Tier.${tier}`);
+  await openActiveCellPopover(page, option, '/api/v1/tags?parent=Tier*');
 
-  await page.getByTestId(radioTestId).click();
-  await clickRadioCardUpdate(page, 'update-tier-card');
+  // Picking a row commits it and closes the editor.
+  await option.click();
+  await option.waitFor({ state: 'detached' });
 };
 
 export const fillCertificationDetails = async (
@@ -682,15 +665,16 @@ export const fillCertificationDetails = async (
   certification: string,
   _isBulkEdit?: boolean
 ) => {
-  const radioTestId = `radio-btn-${certification}`;
-  await openRadioCardEditor(
+  const option = page.getByTestId('drop-down-menu').getByTestId(certification);
+  await openActiveCellPopover(
     page,
-    radioTestId,
-    '/api/v1/tags?parent=Certification*'
+    option,
+    '/api/v1/search/query?*index=tag&*'
   );
 
-  await page.getByTestId(radioTestId).click();
-  await clickRadioCardUpdate(page, 'update-certification');
+  // Picking a row commits it and closes the editor.
+  await option.click();
+  await option.waitFor({ state: 'detached' });
 };
 
 export const fillStoredProcedureCode = async (page: Page) => {
@@ -807,7 +791,7 @@ export const fillExtensionDetails = async (
   });
 
   // Verify header text
-  await expect(customPropertyEditor.getByTestId('header')).toContainText(
+  await expect(customPropertyEditor.getByTestId('dialog-title')).toContainText(
     'Edit CustomProperty'
   );
 
@@ -1050,11 +1034,9 @@ export const uploadCSVAndWaitForGrid = async (
       .getByTestId('csv-workflow-stepper')
       .waitFor({ state: 'visible' });
   }
-  await expect(
-    page.getByText('Drag & Drop or Browse CSV file here')
-  ).toBeVisible();
+  await expect(page.getByTestId('upload-file-widget')).toBeVisible();
 
-  const uploadWidget = page.getByTestId('upload-file-widget');
+  const uploadWidget = page.getByTestId('upload-file-input');
   await uploadWidget.waitFor({ state: 'attached' });
   let actualFilePath = filePath;
   let tempFilePath: string | undefined;
@@ -1576,8 +1558,9 @@ export const fillRecursiveColumnDetails = async (
 };
 
 export const firstTimeGridAddRowAction = async (page: Page) => {
-  const firstRow = page.locator('.rdg-row').first();
+  const firstRow = page.getByTestId('rdg-row-0');
   if ((await firstRow.count()) > 0) {
+    // eslint-disable-next-line om-playwright/no-positional-locator -- react-data-grid virtualises columns, so the name column is not always rendered; the leftmost rendered cell is what the focus assertions below are about
     const firstCell = firstRow.locator('.rdg-cell').first();
     const hasFirstRowContent = await firstRow
       .locator('.rdg-cell')
@@ -1617,11 +1600,19 @@ export const addGridRowAndSelectFirstCell = async (page: Page) => {
   await page.click('[data-testid="add-row-btn"]');
   await expect(rows).toHaveCount(rowCount + 1);
 
-  const lastRowFirstCell = rows.last().locator('.rdg-cell').first();
+  // The grid assigns a new row the id of the pre-add row count, so the row
+  // just created can be named instead of taken as "the last one" -- which
+  // drifts the moment the grid is sorted or another row is appended.
+  const lastRowFirstCell = page
+    .getByTestId(`rdg-row-${rowCount}`)
+    .locator('.rdg-cell')
+    .first();
 
   await scrollIntoViewCenter(lastRowFirstCell);
   await lastRowFirstCell.click();
-  await expect(page.locator(RDG_ACTIVE_CELL_SELECTOR).first()).toBeVisible();
+  await expect(
+    page.locator(RDG_ACTIVE_CELL_SELECTOR).filter({ visible: true })
+  ).not.toHaveCount(0);
   await selectActiveRowCellByColumn(page, 'name');
 };
 
@@ -1731,7 +1722,8 @@ export const performColumnSelectAndDeleteOperation = async (page: Page) => {
     name: 'Display Name',
   });
 
-  const firstRow = page.locator('.rdg-row').first();
+  const firstRow = page.getByTestId('rdg-row-0');
+  // eslint-disable-next-line om-playwright/no-positional-locator -- see firstTimeGridAddRowAction: column virtualisation means a column class may not be rendered
   const firstCell = firstRow.locator('.rdg-cell').nth(1);
 
   await displayNameHeader.click();

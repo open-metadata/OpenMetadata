@@ -11,216 +11,59 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import type { TooltipProps } from 'recharts';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
+import { DataContractProcessedResultCharts } from './ContractExecutionChart.interface';
 import ContractExecutionChartTooltip from './ContractExecutionChartTooltip.component';
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTimeLong: jest.fn((timestamp) => `Formatted: ${timestamp}`),
 }));
 
-describe('ContractExecutionChartTooltip', () => {
-  const mockData = {
-    id: 'test-id-123',
-    dataContractFQN: 'test.contract.fqn',
+const datum = {
+  name: '1234567890000_0',
+  displayTimestamp: 1234567890000,
+  value: 1,
+  status: ContractExecutionStatus.PartialSuccess,
+  failed: 0,
+  success: 0,
+  aborted: 0,
+  running: 0,
+  data: {
+    id: 'run-1',
     timestamp: 1234567890000,
-    contractExecutionStatus: ContractExecutionStatus.Success,
-  };
+    contractExecutionStatus: ContractExecutionStatus.PartialSuccess,
+  },
+} as DataContractProcessedResultCharts;
 
-  const baseProps: TooltipProps<string | number, string> = {
-    active: true,
-    payload: [
-      {
-        color: '#00FF00',
-        dataKey: 'success',
-        value: 1,
-        payload: {
-          name: '1234567890000_0',
-          displayTimestamp: 1234567890000,
-          value: 1,
-          status: ContractExecutionStatus.Success,
-          failed: 0,
-          success: 1,
-          aborted: 0,
-          data: mockData,
-        },
-      },
-    ],
-    label: '1234567890000_0',
-  };
-
-  it('should render tooltip when active and has data', () => {
-    render(<ContractExecutionChartTooltip {...baseProps} />);
+describe('ContractExecutionChartTooltip', () => {
+  it('shows the run time, the status name and a swatch in the bar colour', () => {
+    const { container } = render(
+      <ContractExecutionChartTooltip
+        color="#a0a000"
+        datum={datum}
+        label="Contract Execution Status"
+        statusLabel="Partial Success"
+      />
+    );
 
     expect(screen.getByText('Formatted: 1234567890000')).toBeInTheDocument();
+    expect(screen.getByText('Contract Execution Status')).toBeInTheDocument();
+    expect(screen.getByText('Partial Success')).toBeInTheDocument();
+    expect(container.querySelector('rect')).toHaveAttribute('fill', '#a0a000');
+  });
+
+  it('keeps the label as given (no start-casing)', () => {
+    render(
+      <ContractExecutionChartTooltip
+        color="#00a000"
+        datum={datum}
+        label="label.contract-execution-status"
+        statusLabel="Success"
+      />
+    );
+
     expect(
       screen.getByText('label.contract-execution-status')
-    ).toBeInTheDocument();
-    expect(screen.getByText('Success')).toBeInTheDocument();
-  });
-
-  it('should not render when not active', () => {
-    const props = {
-      ...baseProps,
-      active: false,
-    };
-
-    const { container } = render(<ContractExecutionChartTooltip {...props} />);
-
-    expect(container.firstChild).toBeNull();
-  });
-
-  it('should not render when payload is empty', () => {
-    const props = {
-      ...baseProps,
-      payload: [],
-    };
-
-    const { container } = render(<ContractExecutionChartTooltip {...props} />);
-
-    expect(container.firstChild).toBeNull();
-  });
-
-  it('should not render when data is null', () => {
-    const props: TooltipProps<string | number, string> = {
-      ...baseProps,
-      payload: [
-        {
-          color: '#00FF00',
-          dataKey: 'success',
-          value: 1,
-          payload: {
-            name: '1234567890000_0',
-            displayTimestamp: 1234567890000,
-            value: 1,
-            status: ContractExecutionStatus.Success,
-            failed: 0,
-            success: 1,
-            aborted: 0,
-            data: null,
-          },
-        },
-      ],
-    };
-
-    const { container } = render(<ContractExecutionChartTooltip {...props} />);
-
-    expect(container.firstChild).toBeNull();
-  });
-
-  it('should handle Failed status', () => {
-    const failedData = {
-      ...mockData,
-      contractExecutionStatus: ContractExecutionStatus.Failed,
-    };
-
-    const props: TooltipProps<string | number, string> = {
-      ...baseProps,
-      payload: [
-        {
-          color: '#FF0000',
-          dataKey: 'failed',
-          value: 1,
-          payload: {
-            name: '1234567890000_0',
-            displayTimestamp: 1234567890000,
-            value: 1,
-            status: ContractExecutionStatus.Failed,
-            failed: 1,
-            success: 0,
-            aborted: 0,
-            data: failedData,
-          },
-        },
-      ],
-    };
-
-    render(<ContractExecutionChartTooltip {...props} />);
-
-    expect(screen.getByText('Failed')).toBeInTheDocument();
-  });
-
-  it('should handle Aborted status', () => {
-    const abortedData = {
-      ...mockData,
-      contractExecutionStatus: ContractExecutionStatus.Aborted,
-    };
-
-    const props: TooltipProps<string | number, string> = {
-      ...baseProps,
-      payload: [
-        {
-          color: '#FFFF00',
-          dataKey: 'aborted',
-          value: 1,
-          payload: {
-            name: '1234567890000_0',
-            displayTimestamp: 1234567890000,
-            value: 1,
-            status: ContractExecutionStatus.Aborted,
-            failed: 0,
-            success: 0,
-            aborted: 1,
-            data: abortedData,
-          },
-        },
-      ],
-    };
-
-    render(<ContractExecutionChartTooltip {...props} />);
-
-    expect(screen.getByText('Aborted')).toBeInTheDocument();
-  });
-
-  it('should fallback to extracting timestamp from name if displayTimestamp is not available', () => {
-    const props: TooltipProps<string | number, string> = {
-      ...baseProps,
-      payload: [
-        {
-          color: '#00FF00',
-          dataKey: 'success',
-          value: 1,
-          payload: {
-            name: '9876543210000_5',
-            displayTimestamp: undefined,
-            value: 1,
-            status: ContractExecutionStatus.Success,
-            failed: 0,
-            success: 1,
-            aborted: 0,
-            data: mockData,
-          },
-        },
-      ],
-    };
-
-    render(<ContractExecutionChartTooltip {...props} />);
-
-    expect(screen.getByText('Formatted: 9876543210000')).toBeInTheDocument();
-  });
-
-  it('should handle undefined payload gracefully', () => {
-    const props = {
-      active: true,
-      payload: undefined,
-    } as unknown as TooltipProps<string | number, string>;
-
-    const { container } = render(<ContractExecutionChartTooltip {...props} />);
-
-    expect(container.firstChild).toBeNull();
-  });
-
-  it('should display the test-summary-tooltip-container', () => {
-    render(<ContractExecutionChartTooltip {...baseProps} />);
-
-    expect(
-      screen.getByTestId('test-summary-tooltip-container')
     ).toBeInTheDocument();
   });
 });

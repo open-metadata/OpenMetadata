@@ -15,7 +15,9 @@ import { PageLayout } from '@openmetadata/ui-core-components';
 import React, { PropsWithChildren, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
+import { useSettingsHash } from '../../../hooks/useSettingsHash';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { isFullscreenPersonaHash } from '../../discovery/personal-space/Profile/tabs/personas/Personas.utils';
 import { useAppModeBanners, useAppModeOverlays } from './appModeExtensions';
 import './AssistantLayout/assistant-layout.less';
 import Sidebar from './Sidebar/Sidebar';
@@ -31,6 +33,15 @@ const PersonalSpaceModal = withSuspenseFallback(
   )
 );
 
+const PersonaFullscreenPortal = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../discovery/personal-space/PersonaFullscreenPortal/PersonaFullscreenPortal'
+      )
+  )
+);
+
 /**
  * Outer chrome for app mode — sidebar, banners, routed content, and overlays.
  * Mounted exactly once by `AppModeRoutes` so individual modules only own their
@@ -41,6 +52,13 @@ export const AppShell = ({ children }: PropsWithChildren) => {
   const overlays = useAppModeOverlays();
   const { pathname, search, hash } = useLocation();
   const analytics = useAnalytics();
+  const { state: settingsHash } = useSettingsHash();
+  // Hidden, not unmounted: the routed page keeps its state for when the
+  // persona fullscreen view closes and the personal-space modal reopens on it.
+  const isPersonaFullscreen = isFullscreenPersonaHash(
+    settingsHash.tab,
+    settingsHash.subPath
+  );
 
   // App-mode routes render outside `AppContainer`, so the shell owns the page
   // tracking that authenticated OpenMetadata routes normally receive there.
@@ -52,7 +70,11 @@ export const AppShell = ({ children }: PropsWithChildren) => {
 
   return (
     <>
-      <PageLayout className="assistant-layout tw:p-0!" data-testid="app-shell">
+      <PageLayout
+        className={`assistant-layout tw:p-0!${
+          isPersonaFullscreen ? ' tw:hidden!' : ''
+        }`}
+        data-testid="app-shell">
         <PageLayout.LeftPanel
           bordered={false}
           className="tw:p-0!"
@@ -76,6 +98,7 @@ export const AppShell = ({ children }: PropsWithChildren) => {
         <Overlay key={key} />
       ))}
       <PersonalSpaceModal />
+      <PersonaFullscreenPortal />
     </>
   );
 };

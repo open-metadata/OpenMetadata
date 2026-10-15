@@ -262,7 +262,12 @@ test.describe(
 
         const inspector = page.getByTestId('ontology-authoring-inspector');
         await expect(inspector).toBeVisible();
-        await expect(inspector).toHaveCSS('width', '300px');
+        const viewportWidth = page.viewportSize()?.width ?? 0;
+        // The inspector is an overlay drawer sized w-[max(420px,40vw)].
+        await expect(inspector).toHaveCSS(
+          'width',
+          `${Math.max(420, viewportWidth * 0.4)}px`
+        );
         await expect(inspector).toContainText(source.responseData.displayName);
         await expect(page.locator('.ontology-slideout-open')).toHaveCount(0);
         await releaseOntologyEditLease(page, fixture.glossary.responseData.id);

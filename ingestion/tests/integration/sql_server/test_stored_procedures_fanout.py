@@ -49,9 +49,16 @@ def mssql_engine(mssql_container, db_name):
 
 
 def _cleanup_definition(engine, db_name, schema_name):
-    query = MSSQL_GET_STORED_PROCEDURES.format(database_name=db_name, schema_name=schema_name)
+    query = text(MSSQL_GET_STORED_PROCEDURES)
     with engine.connect() as conn:
-        rows = [row for row in conn.execute(text(query)).all() if row.name == "cleanup"]
+        rows = [
+            row
+            for row in conn.execute(
+                query,
+                {"database_name": db_name, "schema_name": schema_name},
+            ).all()
+            if row.name == "cleanup"
+        ]
     assert len(rows) == 1
     return rows[0].definition
 

@@ -11,123 +11,164 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Input, Row, Select, Switch } from 'antd';
+import {
+  Box,
+  Button,
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HookForm,
+} from '@openmetadata/ui-core-components';
 import { FocusEvent } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { VALIDATION_MESSAGES } from '../../../../constants/constants';
-import { TRANSPORTATION_STRATEGY_OPTIONS } from '../../../../constants/EmailConfig.constants';
+import {
+  EMAIL_CONFIG_FORM_FIELDS,
+  TRANSPORTATION_STRATEGY_OPTIONS,
+} from '../../../../constants/EmailConfig.constants';
 import { SMTPSettings } from '../../../../generated/email/smtpSettings';
+import {
+  EmailFormValues,
+  toEmailFormValues,
+  toSmtpSettings,
+} from '../../../discovery/personal-space/Profile/tabs/platform-settings/EmailSettingsForm';
 
 interface EmailConfigFormProps {
   isLoading: boolean;
   emailConfigValues?: SMTPSettings;
+  /** Fields the deployment configuration owns: shown, but not editable. */
+  managedFields?: (keyof SMTPSettings)[];
   onSubmit: (configValues: SMTPSettings) => void;
   onCancel: () => void;
-  onFocus: (event: FocusEvent<HTMLFormElement>) => void;
+  onFocus: (event: FocusEvent<HTMLElement>) => void;
 }
-
-const { Item } = Form;
 
 function EmailConfigForm({
   emailConfigValues,
   isLoading,
+  managedFields = [],
   onCancel,
   onFocus,
   onSubmit,
 }: EmailConfigFormProps) {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const form = useForm<EmailFormValues>({
+    defaultValues: toEmailFormValues(emailConfigValues),
+  });
+
+  const isManaged = (field: keyof SMTPSettings) =>
+    managedFields.includes(field);
+  const isEveryFieldManaged = EMAIL_CONFIG_FORM_FIELDS.every(isManaged);
+
+  const textField = (
+    name: keyof EmailFormValues & keyof SMTPSettings,
+    label: string,
+    testId: string,
+    type: FieldTypes = FieldTypes.TEXT,
+    required = false
+  ): FieldProp => ({
+    name,
+    label,
+    type,
+    required,
+    id: `root/${name}`,
+    props: { inputDataTestId: testId, isDisabled: isManaged(name) },
+    rules: required
+      ? {
+          required: t('message.field-text-is-required', { fieldText: label }),
+        }
+      : undefined,
+  });
+
+  const fields: FieldProp[] = [
+    textField('username', t('label.username'), 'username-input'),
+    textField(
+      'password',
+      t('label.password'),
+      'password-input',
+      FieldTypes.PASSWORD
+    ),
+    textField(
+      'senderMail',
+      t('label.sender-email'),
+      'sender-email-input',
+      FieldTypes.TEXT,
+      true
+    ),
+    textField(
+      'serverEndpoint',
+      t('label.server-endpoint'),
+      'server-endpoint-input',
+      FieldTypes.TEXT,
+      true
+    ),
+    textField(
+      'serverPort',
+      t('label.server-port'),
+      'server-port-input',
+      FieldTypes.NUMBER,
+      true
+    ),
+    textField(
+      'emailingEntity',
+      t('label.emailing-entity'),
+      'emailing-entity-input'
+    ),
+    {
+      name: 'enableSmtpServer',
+      label: t('label.enable-smtp-server'),
+      type: FieldTypes.SWITCH,
+      id: 'root/enableSmtpServer',
+      props: {
+        'data-testid': 'smtp-server-input',
+        isDisabled: isManaged('enableSmtpServer'),
+      },
+    },
+    textField('supportUrl', t('label.support-url'), 'support-url-input'),
+    {
+      name: 'transportationStrategy',
+      label: t('label.transportation-strategy'),
+      type: FieldTypes.SELECT,
+      id: 'root/transportationStrategy',
+      props: {
+        'data-testid': 'transportation-strategy-input',
+        isDisabled: isManaged('transportationStrategy'),
+        items: TRANSPORTATION_STRATEGY_OPTIONS.map(({ value, label }) => ({
+          id: value,
+          label,
+        })),
+      },
+    },
+  ];
 
   return (
-    <Form
-      data-testid="email-config-form"
-      form={form}
-      id="email-config-form"
-      initialValues={emailConfigValues}
-      layout="vertical"
-      name="email-configuration"
-      validateMessages={VALIDATION_MESSAGES}
-      onFinish={onSubmit}
-      onFocus={onFocus}>
-      <Item label={t('label.username')} name="username">
-        <Input data-testid="username-input" id="root/username" />
-      </Item>
-      <Item label={t('label.password')} name="password">
-        <Input
-          data-testid="password-input"
-          id="root/password"
-          type="password"
-        />
-      </Item>
-      <Item
-        label={t('label.sender-email')}
-        name="senderMail"
-        rules={[{ required: true }]}>
-        <Input
-          data-testid="sender-email-input"
-          id="root/senderMail"
-          type="email"
-        />
-      </Item>
-      <Item
-        label={t('label.server-endpoint')}
-        name="serverEndpoint"
-        rules={[{ required: true }]}>
-        <Input data-testid="server-endpoint-input" id="root/serverEndpoint" />
-      </Item>
-      <Item
-        label={t('label.server-port')}
-        name="serverPort"
-        rules={[{ required: true }]}>
-        <Input
-          data-testid="server-port-input"
-          id="root/serverPort"
-          type="number"
-        />
-      </Item>
-      <Item label={t('label.emailing-entity')} name="emailingEntity">
-        <Input data-testid="emailing-entity-input" id="root/emailingEntity" />
-      </Item>
-      <Item name="enableSmtpServer">
-        <Row>
-          <Col span={8}>{t('label.enable-smtp-server')}</Col>
-          <Col span={16}>
-            <Switch
-              data-testid="smtp-server-input"
-              defaultChecked={emailConfigValues?.enableSmtpServer}
-              id="root/enableSmtpServer"
-              onChange={(value) =>
-                form.setFieldsValue({ enableSmtpServer: value })
-              }
-            />
-          </Col>
-        </Row>
-      </Item>
-      <Item label={t('label.support-url')} name="supportUrl">
-        <Input data-testid="support-url-input" id="root/supportUrl" />
-      </Item>
-      <Item
-        label={t('label.transportation-strategy')}
-        name="transportationStrategy">
-        <Select
-          data-testid="transportation-strategy-input"
-          id="root/transportationStrategy"
-          options={TRANSPORTATION_STRATEGY_OPTIONS}
-        />
-      </Item>
-      <Row justify="end">
-        <Col>
-          <Button type="link" onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>
-        </Col>
-        <Col>
-          <Button htmlType="submit" loading={isLoading} type="primary">
-            {t('label.save')}
-          </Button>
-        </Col>
-      </Row>
-    </Form>
+    // Reports the focused field to the doc panel; focus events bubble.
+    <div role="presentation" onFocus={onFocus}>
+      <HookForm
+        className="tw:flex tw:flex-col tw:gap-4"
+        data-testid="email-config-form"
+        form={form}
+        id="email-config-form"
+        onSubmit={form.handleSubmit((values) =>
+          onSubmit(toSmtpSettings(values))
+        )}>
+        <FormFields fields={fields} />
+        <Box className="layout-row" justify="end" wrap="wrap">
+          <Box className="layout-column tw:block">
+            <Button color="link-color" onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+          </Box>
+          {!isEveryFieldManaged && (
+            <Box className="layout-column tw:block">
+              <Button color="primary" isLoading={isLoading} type="submit">
+                {t('label.save')}
+              </Button>
+            </Box>
+          )}
+        </Box>
+      </HookForm>
+    </div>
   );
 }
 

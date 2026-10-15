@@ -12,12 +12,12 @@
  */
 
 import { ArrowUpOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { PROVIDER_OPTIONS } from '../../../utils/SSOUtils';
+import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
 import './provider-selector.less';
 import { ProviderSelectorProps } from './ProviderSelector.interface';
 
@@ -47,8 +47,8 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
           {t('label.choose-provider')}
         </Typography>
         <Button
-          disabled={!selectedProvider}
-          type="primary"
+          color="primary"
+          isDisabled={!selectedProvider}
           onClick={handleConfigureClick}>
           {t('label.configure')}
           <ArrowUpOutlined className="configure-arrow" height={12} width={12} />
@@ -72,19 +72,10 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
             }}>
             <div className="provider-icon">
               <div className="provider-icon-inner">
-                {typeof provider.icon === 'string' ? (
-                  <img
-                    alt={provider.label}
-                    height="24"
-                    src={provider.icon}
-                    width="24"
-                  />
-                ) : (
-                  provider.icon
-                )}
+                <SsoProviderIcon alt={provider.label} icon={provider.icon} />
               </div>
             </div>
-            <span className="provider-name">{provider.label}</span>
+            <Typography className="provider-name">{provider.label}</Typography>
           </div>
         ))}
       </div>

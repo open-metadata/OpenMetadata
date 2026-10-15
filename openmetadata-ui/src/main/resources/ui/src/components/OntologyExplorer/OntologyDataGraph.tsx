@@ -26,14 +26,10 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
-import { resolveCssColor } from '../../utils/common/cssColor.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import OntologyControlButtons from './OntologyControlButtons';
-import {
-  DATA_MODE_MAX_RENDER_COUNT,
-  EDGE_STROKE_COLOR_FALLBACK,
-} from './OntologyExplorer.constants';
+import { DATA_MODE_MAX_RENDER_COUNT } from './OntologyExplorer.constants';
 import {
   OntologyEdge,
   OntologyGraphData,
@@ -58,7 +54,6 @@ import {
   formatRelationLabel,
   getEffectiveRelationColor,
 } from './utils/graphStyles';
-import { getRelationshipHexColor } from './utils/relationshipTypeUtils';
 
 interface OntologyDataGraphProps {
   data: OntologyGraphData;
@@ -101,8 +96,6 @@ const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 2;
 const ZOOM_BUTTON_FACTOR = 1.2;
 const WHEEL_ZOOM_STEP = 0.12;
-const TOOLBAR_CARD_CLASS =
-  'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
 
 function clampZoom(value: number): number {
   return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
@@ -401,15 +394,13 @@ const OntologyDataGraph = ({
         const relationshipType = relationshipTypeByName.get(
           layout.edge.relationType
         );
-        const effectiveColor =
+        // DOM/SVG resolves theme variables after a theme switch; a stored palette
+        // hex would discard the built-in relation's active foreground.
+        const color =
           getEffectiveRelationColor(
             layout.edge.relationType,
             relationshipType
-          ) ?? 'var(--color-border-brand)';
-        const color =
-          effectiveColor.startsWith('var(') && relationshipType
-            ? getRelationshipHexColor(relationshipType)
-            : resolveCssColor(effectiveColor, EDGE_STROKE_COLOR_FALLBACK);
+          ) ?? 'var(--tw-color-border-brand)';
 
         return {
           ...layout,
@@ -988,11 +979,9 @@ const OntologyDataGraph = ({
       </div>
 
       <Card
-        className={classNames(
-          'tw:absolute tw:right-4 tw:bottom-4 tw:flex tw:items-center tw:gap-1 tw:p-1',
-          TOOLBAR_CARD_CLASS
-        )}
-        data-testid="ontology-data-graph-controls">
+        className="tw:absolute tw:bottom-4 tw:left-4 tw:z-6 tw:flex tw:items-center"
+        data-testid="ontology-data-graph-controls"
+        variant="elevated">
         <OntologyControlButtons
           isLoading={isLoadingMoreTerms}
           onFitToScreen={fitToScreen}

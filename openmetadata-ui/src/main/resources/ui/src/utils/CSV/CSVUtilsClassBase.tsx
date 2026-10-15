@@ -12,6 +12,12 @@
  */
 
 import {
+  Box,
+  ButtonUtility,
+  Divider,
+  TextArea,
+} from '@openmetadata/ui-core-components';
+import {
   ArrowUpRight,
   Bold01,
   BookOpen02,
@@ -1704,7 +1710,7 @@ const InlineCustomPropertiesEditor = ({
               ) : (
                 customProperties.map((customProperty) => {
                   const propertyLabel =
-                    customProperty.displayName ??
+                    customProperty.displayName ||
                     startCase(customProperty.name);
 
                   return (
@@ -1913,7 +1919,7 @@ const InlineDescriptionEditor = ({
     onComplete(draft);
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       event.preventDefault();
       onCancel();
@@ -1929,73 +1935,70 @@ const InlineDescriptionEditor = ({
 
   return (
     <KeyDownStopPropagationWrapper keys={['Enter', 'Escape', 'Tab']}>
-      <div
-        className="bulk-edit-description-editor"
+      <Box
+        className="bulk-edit-description-editor tw:z-10 tw:gap-2.5 tw:px-3.5 tw:pt-2.5 tw:pb-3"
         data-testid="bulk-edit-description-editor"
+        direction="col"
         role="presentation"
         onBlur={handleBlur}>
-        <div className="bulk-edit-description-editor-toolbar">
-          <button
-            aria-label={t('label.bold')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyInlineFormat('**')}
-            onMouseDown={handleToolbarMouseDown}>
-            <Bold01 size={16} />
-          </button>
-          <button
-            aria-label={t('label.italic')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyInlineFormat('_')}
-            onMouseDown={handleToolbarMouseDown}>
-            <Italic01 size={16} />
-          </button>
-          <button
-            aria-label={t('label.bulleted-list')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyLineFormat(() => '- ')}
-            onMouseDown={handleToolbarMouseDown}>
-            <List size={16} />
-          </button>
-          <button
-            aria-label={t('label.numbered-list')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyLineFormat((index) => `${index + 1}. `)}
-            onMouseDown={handleToolbarMouseDown}>
-            <span className="bulk-edit-description-editor-numbered-icon">
-              1.
-            </span>
-          </button>
-          <button
-            aria-label={t('label.code')}
-            className="bulk-edit-description-editor-button"
-            type="button"
-            onClick={() => applyInlineFormat('`')}
-            onMouseDown={handleToolbarMouseDown}>
-            <Code01 size={16} />
-          </button>
-          <span className="bulk-edit-description-editor-separator" />
-          <button
-            aria-label={t('label.clear-formatting')}
-            className="bulk-edit-description-editor-button"
-            type="button"
+        <Box
+          align="center"
+          className="bulk-edit-description-editor-toolbar tw:pb-2"
+          gap={1}>
+          {[
+            {
+              label: 'label.bold',
+              icon: Bold01,
+              onClick: () => applyInlineFormat('**'),
+            },
+            {
+              label: 'label.italic',
+              icon: Italic01,
+              onClick: () => applyInlineFormat('_'),
+            },
+            {
+              label: 'label.bulleted-list',
+              icon: List,
+              onClick: () => applyLineFormat(() => '- '),
+            },
+            {
+              label: 'label.numbered-list',
+              icon: <span className="tw:text-xs tw:font-semibold">1.</span>,
+              onClick: () => applyLineFormat((index) => `${index + 1}. `),
+            },
+            {
+              label: 'label.code',
+              icon: Code01,
+              onClick: () => applyInlineFormat('`'),
+            },
+          ].map(({ label, icon, onClick }) => (
+            <ButtonUtility
+              color="tertiary"
+              icon={icon}
+              key={label}
+              tooltip={t(label)}
+              onClick={onClick}
+              onMouseDown={handleToolbarMouseDown}
+            />
+          ))}
+          <Divider className="tw:mx-2 tw:h-5" orientation="vertical" />
+          <ButtonUtility
+            color="tertiary"
+            icon={Type01}
+            tooltip={t('label.clear-formatting')}
             onClick={clearFormatting}
-            onMouseDown={handleToolbarMouseDown}>
-            <Type01 size={16} />
-          </button>
-        </div>
-        <textarea
+            onMouseDown={handleToolbarMouseDown}
+          />
+        </Box>
+        <TextArea
           aria-label={t('label.description')}
-          className="bulk-edit-description-editor-textarea"
-          ref={textareaRef}
+          textAreaClassName="bulk-edit-description-editor-textarea"
+          textAreaRef={textareaRef}
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={setDraft}
           onKeyDown={handleKeyDown}
         />
-      </div>
+      </Box>
     </KeyDownStopPropagationWrapper>
   );
 };
@@ -2087,6 +2090,20 @@ const getCsvOwnerEditor: CSVEditorFactory = ({
   };
 };
 
+// The modal's focus scope restores focus to the cell node rdg replaced while
+// editing, which leaves focus on <body> and breaks arrow-key navigation.
+// Focus the cell right away, so the next key press is not lost, and again once
+// the scope's own restore has run.
+const focusActiveGridCell = () => {
+  const focusCell = () =>
+    document
+      .querySelector<HTMLElement>('.rdg-cell[aria-selected="true"]')
+      ?.focus();
+
+  focusCell();
+  requestAnimationFrame(() => requestAnimationFrame(focusCell));
+};
+
 const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
   if (options.usePlainTextEditor) {
     return ({
@@ -2126,6 +2143,11 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
     const value = row[column.key];
     const handleSave = async (description: string) => {
       onRowChange({ ...row, [column.key]: description }, true);
+      focusActiveGridCell();
+    };
+    const handleCancel = () => {
+      onClose(false);
+      focusActiveGridCell();
     };
 
     return (
@@ -2136,7 +2158,7 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
           header="Edit Description"
           placeholder="Description"
           value={value}
-          onCancel={() => onClose(false)}
+          onCancel={handleCancel}
           onSave={handleSave}
         />
       </>
@@ -2395,10 +2417,12 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
 
     // The popover takes focus on open, so its keydowns bubble (via the portal)
     // to the rdg EditCell, which closes the editor on Enter / navigates on Tab.
+    // The trigger fills the cell, so the popover opens below the cell.
     return (
-      <KeyDownStopPropagationWrapper>
+      <KeyDownStopPropagationWrapper className="tw:h-full">
         <TierCard
           open
+          className="tw:flex tw:size-full"
           currentTier={value}
           updateTier={handleChange}
           onClose={() => onClose(false)}>
@@ -2429,15 +2453,20 @@ const getCsvCertificationEditor: CSVEditorFactory =
       );
     };
 
+    // The search box takes focus on open; keep its keydowns from the rdg EditCell.
+    // The trigger fills the cell, so the popover opens below the cell.
     return (
-      <Certification
-        permission
-        currentCertificate={value}
-        popoverProps={{ open: true }}
-        onCertificationUpdate={handleChange}
-        onClose={() => onClose(false)}>
-        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-      </Certification>
+      <KeyDownStopPropagationWrapper className="tw:h-full">
+        <Certification
+          permission
+          className="tw:flex tw:size-full"
+          currentCertificate={value}
+          popoverProps={{ open: true }}
+          onCertificationUpdate={handleChange}
+          onClose={() => onClose(false)}>
+          <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        </Certification>
+      </KeyDownStopPropagationWrapper>
     );
   };
 

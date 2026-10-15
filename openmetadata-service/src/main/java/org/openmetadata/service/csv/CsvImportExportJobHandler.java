@@ -34,6 +34,7 @@ import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jobs.BackgroundJobException;
 import org.openmetadata.service.jobs.JobHandler;
 import org.openmetadata.service.search.SearchRepository;
@@ -67,6 +68,8 @@ public class CsvImportExportJobHandler implements JobHandler {
         runLineageExport(job, args.getLineageExport());
       } else if (args.getAuditExport() != null) {
         runAuditExport(job, args.getAuditExport());
+      } else if (args.getTestCaseExport() != null) {
+        runTestCaseExport(job, args);
       } else {
         runExport(job, args);
       }
@@ -105,7 +108,7 @@ public class CsvImportExportJobHandler implements JobHandler {
           }
         };
 
-    EntityRepository<EntityInterface> repository = getRepository(args.getEntityType());
+    EntityRepository<EntityInterface<?>> repository = getRepository(args.getEntityType());
     CsvImportResult result =
         nullOrEmpty(args.getVersioningEntityType())
             ? repository.importFromCsv(
@@ -130,30 +133,48 @@ public class CsvImportExportJobHandler implements JobHandler {
   }
 
   private void runExport(BackgroundJob job, CsvAsyncJobArgs args) throws IOException {
-    String jobId = String.valueOf(job.getId());
-    EntityRepository<EntityInterface> repository = getRepository(args.getEntityType());
-    CsvExportProgressCallback progressCallback =
-        new CsvExportProgressCallback() {
-          @Override
-          public void onProgress(int exported, int total, String message) {
-            jobManager.updateProgress(jobId, exported, total, message);
-            sendExportMessage(
-                job.getCreatedBy(),
-                new CSVExportMessage(jobId, "IN_PROGRESS", null, null, exported, total, message));
-          }
-
-          @Override
-          public void checkpoint() {
-            jobManager.checkpoint(jobId);
-          }
-        };
-
+    EntityRepository<EntityInterface<?>> repository = getRepository(args.getEntityType());
     String csvData =
         repository.exportToCsv(
             args.getTargetFqn(),
             job.getCreatedBy(),
             Boolean.TRUE.equals(args.getRecursive()),
-            progressCallback);
+            exportProgressCallback(job));
+    completeEntityExport(job, csvData);
+  }
+
+  private void runTestCaseExport(BackgroundJob job, CsvAsyncJobArgs args) throws IOException {
+    TestCaseRepository repository =
+        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    String csvData =
+        repository.exportToCsv(
+            args.getTargetFqn(),
+            job.getCreatedBy(),
+            args.getTestCaseExport(),
+            exportProgressCallback(job));
+    completeEntityExport(job, csvData);
+  }
+
+  private CsvExportProgressCallback exportProgressCallback(BackgroundJob job) {
+    String jobId = String.valueOf(job.getId());
+    return new CsvExportProgressCallback() {
+      @Override
+      public void onProgress(int exported, int total, String message) {
+        jobManager.updateProgress(jobId, exported, total, message);
+        sendExportMessage(
+            job.getCreatedBy(),
+            new CSVExportMessage(jobId, "IN_PROGRESS", null, null, exported, total, message));
+      }
+
+      @Override
+      public void checkpoint() {
+        jobManager.checkpoint(jobId);
+      }
+    };
+  }
+
+  private void completeEntityExport(BackgroundJob job, String csvData) {
+    String jobId = String.valueOf(job.getId());
     CsvAsyncJob finishedJob = jobManager.getJob(jobId);
     int progress = finishedJob.getProgress() == null ? 0 : finishedJob.getProgress();
     int total = finishedJob.getTotal() == null ? progress : finishedJob.getTotal();
@@ -351,7 +372,8 @@ public class CsvImportExportJobHandler implements JobHandler {
         || Boolean.TRUE.equals(args.getDryRun())) {
       return;
     }
-    EntityRepository<EntityInterface> versioningRepo = getRepository(effectiveVersioningEntityType);
+    EntityRepository<EntityInterface<?>> versioningRepo =
+        getRepository(effectiveVersioningEntityType);
     if (!versioningRepo.supportsBulkImportVersioning()) {
       return;
     }
@@ -389,8 +411,8 @@ public class CsvImportExportJobHandler implements JobHandler {
   }
 
   @SuppressWarnings("unchecked")
-  private EntityRepository<EntityInterface> getRepository(String entityType) {
-    return (EntityRepository<EntityInterface>) Entity.getEntityRepository(entityType);
+  private EntityRepository<EntityInterface<?>> getRepository(String entityType) {
+    return (EntityRepository<EntityInterface<?>>) Entity.getEntityRepository(entityType);
   }
 
   private String getStartedMessage(CsvAsyncJobArgs args) {

@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
 import { TEST_SUITE_PIPELINE_LIMIT } from '../../../../constants/Ingestions.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -53,12 +54,12 @@ export const useRunTestCase = (testCase: TestCase) => {
   const queryClient = useQueryClient();
   const [isTriggering, setIsTriggering] = useState(false);
   const testSuiteFqn = testCase.testSuite?.fullyQualifiedName;
+  // A version is history: nothing on its page runs the test case.
+  const { version } = useParams<{ version?: string }>();
+  const isVersionPage = !isUndefined(version);
 
-  const {
-    data: pipelines = [],
-    isLoading,
-    refetch,
-  } = useQuery({
+  // Only a failed first load counts: a failed poll keeps the pipelines it had.
+  const { data, isLoading, isLoadingError, refetch } = useQuery({
     queryKey: [RUN_PIPELINES_QUERY_KEY, testSuiteFqn],
     queryFn: async () =>
       (
@@ -69,7 +70,7 @@ export const useRunTestCase = (testCase: TestCase) => {
           testSuite: testSuiteFqn,
         })
       ).data,
-    enabled: Boolean(testSuiteFqn),
+    enabled: Boolean(testSuiteFqn) && !isVersionPage,
     refetchInterval: (query) => {
       const pipeline = getRunnablePipeline(query.state.data ?? []);
 
@@ -79,6 +80,8 @@ export const useRunTestCase = (testCase: TestCase) => {
     },
   });
 
+  // A disabled query still returns what the test case page cached under its key.
+  const pipelines = isVersionPage ? [] : data ?? [];
   const pipeline = getRunnablePipeline(pipelines);
   const { permissions: resourcePermissions } = usePermissionProvider();
   const { permissions: pipelinePermissions, isLoading: isPermissionLoading } =
@@ -130,8 +133,8 @@ export const useRunTestCase = (testCase: TestCase) => {
   return {
     activeRunState,
     // Known only once pipelines and permission have loaded, so a control never flashes in and then vanishes.
-    canRun: !isLoading && !isPermissionLoading && canTrigger,
-    disabledReasonKey: getRunDisabledReasonKey(pipelines),
+    canRun: !isVersionPage && !isLoading && !isPermissionLoading && canTrigger,
+    disabledReasonKey: getRunDisabledReasonKey(pipelines, isLoadingError),
     isTriggering,
     run,
     runInProgress,

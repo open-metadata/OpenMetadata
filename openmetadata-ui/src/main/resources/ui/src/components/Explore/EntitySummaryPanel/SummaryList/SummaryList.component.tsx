@@ -11,8 +11,16 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Collapse, List, Row, Skeleton } from 'antd';
+import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Box,
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import { isEmpty, isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
@@ -30,55 +38,70 @@ export default function SummaryList({
 
   if (loading) {
     return (
-      <Row align="middle" data-testid="summary-list-loader">
-        <Skeleton active paragraph={{ rows: 1 }} />
-      </Row>
+      <Box
+        align="center"
+        className="layout-row"
+        data-testid="summary-list-loader"
+        wrap="wrap">
+        <SkeletonParagraph rows={1} />
+      </Box>
     );
   }
 
   return (
-    <List
-      data-testid="summary-list"
-      dataSource={formattedEntityData}
-      locale={{
-        emptyText: (
+    <ul className="tw:m-0 tw:list-none tw:p-0" data-testid="summary-list">
+      {formattedEntityData.length ? (
+        formattedEntityData.map((item) => (
+          <li key={item.name}>
+            {isEmpty(item.children) || isUndefined(item.children) ? (
+              <SummaryListItems
+                entityDetails={item}
+                isColumnsData={entityType === SummaryEntityType.COLUMN}
+                key={`${item.name}-summary-list-item`}
+              />
+            ) : (
+              <Accordion
+                allowsMultipleExpanded
+                className="summary-list-collapse w-full"
+                key={`${item.name}-collapse`}>
+                <AccordionItem
+                  data-testid={`${item.name}-collapse`}
+                  id={String(`${item.name}-collapse-panel`)}
+                  key={`${item.name}-collapse-panel`}>
+                  <Box align="center" gap={2}>
+                    <AccordionHeader
+                      aria-label={t('label.entity-detail-plural', {
+                        entity: item.name,
+                      })}
+                      className="tw:w-auto"
+                    />
+                    <Box className="tw:min-w-0 tw:flex-1">
+                      <SummaryListItems
+                        entityDetails={item}
+                        isColumnsData={entityType === SummaryEntityType.COLUMN}
+                      />
+                    </Box>
+                  </Box>
+                  <AccordionPanel>
+                    <SummaryList
+                      entityType={entityType}
+                      formattedEntityData={item.children}
+                    />
+                  </AccordionPanel>
+                </AccordionItem>
+              </Accordion>
+            )}
+          </li>
+        ))
+      ) : (
+        <li>
           <div>
             <Typography className="no-data-chip-placeholder">
               {emptyPlaceholderText ?? t('message.no-data-available')}
             </Typography>
           </div>
-        ),
-      }}
-      renderItem={(item) =>
-        isEmpty(item.children) || isUndefined(item.children) ? (
-          <SummaryListItems
-            entityDetails={item}
-            isColumnsData={entityType === SummaryEntityType.COLUMN}
-            key={`${item.name}-summary-list-item`}
-          />
-        ) : (
-          <Collapse
-            ghost
-            className="summary-list-collapse w-full"
-            collapsible="icon"
-            key={`${item.name}-collapse`}>
-            <Collapse.Panel
-              data-testid={`${item.name}-collapse`}
-              header={
-                <SummaryListItems
-                  entityDetails={item}
-                  isColumnsData={entityType === SummaryEntityType.COLUMN}
-                />
-              }
-              key={`${item.name}-collapse-panel`}>
-              <SummaryList
-                entityType={entityType}
-                formattedEntityData={item.children}
-              />
-            </Collapse.Panel>
-          </Collapse>
-        )
-      }
-    />
+        </li>
+      )}
+    </ul>
   );
 }

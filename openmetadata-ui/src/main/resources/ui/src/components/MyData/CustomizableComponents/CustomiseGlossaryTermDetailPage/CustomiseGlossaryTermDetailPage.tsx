@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
-import { compare } from 'fast-json-patch';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { kebabCase } from 'lodash';
 import { lazy, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +21,7 @@ import { Page } from '../../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import '../../../../pages/MyDataPage/my-data.less';
+import { isSameDetailsPageLayout } from '../../../../utils/CustomizePage/GridLayoutDragUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { NavigationBlocker } from '../../../common/NavigationBlocker/NavigationBlocker';
@@ -82,9 +84,7 @@ function CustomizeGlossaryTermDetailPage({
     const editedPage = (currentPage ??
       ({ pageType: currentPageType } as Page)) as Page;
 
-    const jsonPatch = compare(originalPage, editedPage);
-
-    return jsonPatch.length === 0;
+    return isSameDetailsPageLayout(originalPage, editedPage);
   }, [currentPage, currentPageType, getPage]);
 
   if (!currentPageType) {
@@ -98,21 +98,23 @@ function CustomizeGlossaryTermDetailPage({
         pageTitle={t('label.customize-entity', {
           entity: t('label.' + kebabCase(currentPageType)),
         })}>
-        <Row className="customize-details-page" gutter={[0, 20]}>
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid customize-details-page"
+          style={getLayoutGutter(0, 20)}>
+          <Grid.Item className="layout-column" span={24}>
             <CustomizablePageHeader
               disableSave={disableSave}
               personaName={getEntityName(personaDetails)}
               onReset={handleReset}
               onSave={handleSave}
             />
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <GlossaryHeaderWidget isGlossary={isGlossary} />
-          </Col>
+          </Grid.Item>
           {/* It will render cols inside the row */}
           <CustomizeTabWidget />
-        </Row>
+        </Grid>
       </PageLayoutV1>
     </NavigationBlocker>
   );

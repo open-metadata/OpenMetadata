@@ -10,10 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AssetsOfEntity } from '../../enums/Assets.enum';
@@ -29,6 +32,8 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { AssetSelectionModal } from '../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import {
   InspectorAddButton,
+  InspectorList,
+  InspectorRow,
   InspectorSectionHeading,
 } from './OntologyInspectorSection';
 import { isValidUUID } from './utils/graphBuilders';
@@ -152,56 +157,64 @@ export const OntologyConceptDataAssets = ({
         count={total}
         label={t('label.data-asset-plural')}
       />
-      <div className="tw:flex tw:flex-col tw:gap-[7px]">
-        {assets.map((asset) => {
-          const assetName = getAssetName(asset);
+      {assets.length > 0 ? (
+        <InspectorList>
+          {assets.map((asset) => {
+            const assetName = getAssetName(asset);
 
-          return (
-            <div
-              className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-2.5 tw:py-2"
-              data-testid={`authoring-asset-${asset.id}`}
-              key={asset.id}>
-              <img
-                alt={asset.type}
-                className="tw:size-3.5 tw:shrink-0 tw:object-contain"
-                height={14}
-                src={serviceUtilClassBase.getServiceTypeLogo({
-                  entityType: asset.type,
-                })}
-                width={14}
-              />
-              <div className="tw:min-w-0 tw:flex-1">
-                <div className="tw:truncate tw:font-mono tw:text-xs tw:leading-normal tw:font-medium tw:text-primary">
-                  {assetName}
-                </div>
-                <div className="tw:truncate tw:font-body tw:text-[10px] tw:leading-normal tw:font-normal tw:text-quaternary">
-                  {asset.type}
-                </div>
-              </div>
-              {isEditMode ? (
-                <ButtonUtility
-                  data-testid={`authoring-remove-asset-${asset.id}`}
-                  icon={XClose}
-                  isDisabled={removingAssetId !== undefined}
-                  size="xs"
-                  tooltip={t('label.remove-entity', { entity: assetName })}
-                  onClick={() => handleRemove(asset)}
+            return (
+              <InspectorRow
+                key={asset.id}
+                testId={`authoring-asset-${asset.id}`}>
+                <img
+                  alt={asset.type}
+                  className="tw:size-5 tw:shrink-0 tw:object-contain"
+                  height={20}
+                  src={serviceUtilClassBase.getServiceTypeLogo({
+                    entityType: asset.type,
+                  })}
+                  width={20}
                 />
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+                <div className="tw:min-w-0 tw:flex-1">
+                  <Typography
+                    ellipsis
+                    as="p"
+                    className="tw:m-0 tw:text-primary"
+                    size="text-sm"
+                    weight="medium">
+                    {assetName}
+                  </Typography>
+                  <Typography
+                    as="p"
+                    className="tw:m-0"
+                    color="secondary"
+                    size="text-xs">
+                    {asset.type}
+                  </Typography>
+                </div>
+                {isEditMode ? (
+                  <ButtonUtility
+                    color="secondary"
+                    data-testid={`authoring-remove-asset-${asset.id}`}
+                    icon={XClose}
+                    isDisabled={removingAssetId !== undefined}
+                    size="xs"
+                    tooltip={t('label.remove-entity', { entity: assetName })}
+                    onClick={() => handleRemove(asset)}
+                  />
+                ) : null}
+              </InspectorRow>
+            );
+          })}
+        </InspectorList>
+      ) : null}
       {remainingCount > 0 ? (
         <Button
-          noTextPadding
-          className={classNames(
-            'tw:mt-2 tw:w-full tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-2.5 tw:py-2',
-            'tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-brand-tertiary'
-          )}
-          color="tertiary"
+          className="tw:mt-2 tw:w-full"
+          color="link-color"
           data-testid="authoring-more-assets"
           isDisabled={isLoadingMore}
+          size="sm"
           onClick={handleLoadMore}>
           {isLoadingMore ? (
             t('label.loading')

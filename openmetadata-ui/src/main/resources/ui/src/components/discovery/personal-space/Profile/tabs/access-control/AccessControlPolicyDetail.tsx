@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   EmptyPlaceholder,
   Input,
   Table,
@@ -23,6 +24,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Copy01,
   Edit01 as Edit,
   Trash01 as Delete,
 } from '@openmetadata/ui-core-components/icons';
@@ -50,6 +52,7 @@ import {
 import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { useAuth } from '../../../../../../hooks/authHooks';
+import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
   getPolicyByName,
   getRoleByName,
@@ -73,6 +76,8 @@ import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import CopyLinkButton from '../../../../../CopyLinkButton/CopyLinkButton.component';
+import { profileHash } from '../members/profileHash.utils';
 import { INITIAL_RULE } from './AccessControl.constants';
 import type { AccessControlView } from './AccessControl.types';
 import AccessControlRuleForm from './AccessControlRuleForm';
@@ -256,98 +261,102 @@ const RuleCard: FC<RuleCardProps> = ({
       : 'tw:text-error-primary';
 
   return (
-    <Box
-      className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
-      data-testid={`rule-${rule.name}`}
-      direction="col"
-      gap={2}>
-      <Box align="center" direction="row" justify="between">
-        <Typography
-          className="tw:text-primary"
-          size="text-sm"
-          weight="semibold">
-          {rule.name}
-        </Typography>
-        <Box direction="row" gap={1}>
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`edit-rule-${rule.name}`}
-            icon={Edit}
-            isDisabled={!canEditAll || isLoadingOnSave || isActionsDisabled}
-            size="xs"
-            tooltip={getPermissionTooltipTitle(
-              canEditAll,
-              t('label.edit'),
-              t(NO_PERMISSION_FOR_ACTION)
-            )}
-            tooltipPlacement="left"
-            onPress={() => onEdit(rule)}
-          />
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`delete-rule-${rule.name}`}
-            icon={Delete}
-            isDisabled={!canEditAll || isLoadingOnSave || isActionsDisabled}
-            size="xs"
-            tooltip={getPermissionTooltipTitle(
-              canEditAll,
-              t('label.delete'),
-              t(NO_PERMISSION_FOR_ACTION)
-            )}
-            tooltipPlacement="left"
-            onPress={() => onDelete(rule.name ?? '')}
-          />
+    <Card data-testid={`rule-${rule.name}`} variant="muted">
+      <Card.Content className="tw:flex tw:flex-col tw:gap-2">
+        <Box align="center" direction="row" justify="between">
+          <Typography
+            className="tw:text-primary"
+            size="text-sm"
+            weight="semibold">
+            {rule.name}
+          </Typography>
+          <Box direction="row" gap={1}>
+            <ButtonUtility
+              color="tertiary"
+              data-testid={`edit-rule-${rule.name}`}
+              icon={Edit}
+              isDisabled={!canEditAll || isLoadingOnSave || isActionsDisabled}
+              size="xs"
+              tooltip={getPermissionTooltipTitle(
+                canEditAll,
+                t('label.edit'),
+                t(NO_PERMISSION_FOR_ACTION)
+              )}
+              tooltipPlacement="left"
+              onPress={() => onEdit(rule)}
+            />
+            <ButtonUtility
+              color="tertiary"
+              data-testid={`delete-rule-${rule.name}`}
+              icon={Delete}
+              isDisabled={!canEditAll || isLoadingOnSave || isActionsDisabled}
+              size="xs"
+              tooltip={getPermissionTooltipTitle(
+                canEditAll,
+                t('label.delete'),
+                t(NO_PERMISSION_FOR_ACTION)
+              )}
+              tooltipPlacement="left"
+              onPress={() => onDelete(rule.name ?? '')}
+            />
+          </Box>
         </Box>
-      </Box>
-      <Box direction="col" gap={1}>
-        <Box direction="row" gap={2}>
-          <Typography className="tw:text-secondary tw:shrink-0" size="text-sm">
-            {`${t('label.resource-plural')}:`}
-          </Typography>
-          <Typography className="tw:text-primary" size="text-sm">
-            {formatList(rule.resources)}
-          </Typography>
-        </Box>
-        <Box direction="row" gap={2}>
-          <Typography className="tw:text-secondary tw:shrink-0" size="text-sm">
-            {`${t('label.operation-plural')}:`}
-          </Typography>
-          <Typography className="tw:text-primary" size="text-sm">
-            {formatList(rule.operations)}
-          </Typography>
-        </Box>
-        <Box direction="row" gap={2}>
-          <Typography className="tw:text-secondary tw:shrink-0" size="text-sm">
-            {`${t('label.effect')}:`}
-          </Typography>
-          <Typography className={effectClass} size="text-sm" weight="medium">
-            {rule.effect}
-          </Typography>
-        </Box>
-        {rule.description && (
+        <Box direction="col" gap={1}>
           <Box direction="row" gap={2}>
             <Typography
               className="tw:text-secondary tw:shrink-0"
               size="text-sm">
-              {`${t('label.description')}:`}
+              {`${t('label.resource-plural')}:`}
             </Typography>
-            <RichTextEditorPreviewerV1 markdown={rule.description} />
+            <Typography className="tw:text-primary" size="text-sm">
+              {formatList(rule.resources)}
+            </Typography>
           </Box>
-        )}
-        {rule.condition && (
           <Box direction="row" gap={2}>
             <Typography
               className="tw:text-secondary tw:shrink-0"
               size="text-sm">
-              {`${t('label.condition')}:`}
+              {`${t('label.operation-plural')}:`}
             </Typography>
-            <code className="tw:text-xs tw:bg-secondary tw:px-1 tw:rounded">
-              {rule.condition}
-            </code>
+            <Typography className="tw:text-primary" size="text-sm">
+              {formatList(rule.operations)}
+            </Typography>
           </Box>
-        )}
-      </Box>
-    </Box>
+          <Box direction="row" gap={2}>
+            <Typography
+              className="tw:text-secondary tw:shrink-0"
+              size="text-sm">
+              {`${t('label.effect')}:`}
+            </Typography>
+            <Typography className={effectClass} size="text-sm" weight="medium">
+              {rule.effect}
+            </Typography>
+          </Box>
+          {rule.description && (
+            <Box direction="row" gap={2}>
+              <Typography
+                className="tw:text-secondary tw:shrink-0"
+                size="text-sm">
+                {`${t('label.description')}:`}
+              </Typography>
+              <RichTextEditorPreviewerV1 markdown={rule.description} />
+            </Box>
+          )}
+          {rule.condition && (
+            <Box direction="row" gap={2}>
+              <Typography
+                className="tw:text-secondary tw:shrink-0"
+                size="text-sm">
+                {`${t('label.condition')}:`}
+              </Typography>
+              <code className="tw:text-xs tw:bg-secondary tw:px-1 tw:rounded">
+                {rule.condition}
+              </code>
+            </Box>
+          )}
+        </Box>
+      </Card.Content>
+    </Card>
   );
 };
 
@@ -772,6 +781,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   } = usePolicyDetail(fqn);
 
   const [activeTab, setActiveTab] = useState<PolicyTab>('rules');
+  const { goTo } = useSettingsHash();
 
   useEffect(() => {
     if (policy) {
@@ -841,22 +851,30 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       />
     ) : undefined;
 
-    const renameButtonNode: React.ReactNode = isRenameOpen ? undefined : (
-      <ButtonUtility
-        color="tertiary"
-        data-testid="rename-policy-btn"
-        icon={Edit}
-        isDisabled={!canEditAll}
-        size="xs"
-        tooltip={String(
-          canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
-        )}
-        tooltipPlacement="right"
-        onPress={() => {
-          setRenameValue(policy.displayName || policy.name || '');
-          setIsRenameOpen(true);
-        }}
-      />
+    const titleSuffixNode: React.ReactNode = isRenameOpen ? undefined : (
+      <Box align="center" direction="row" gap={1}>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="rename-policy-btn"
+          icon={Edit}
+          isDisabled={!canEditAll}
+          size="xs"
+          tooltip={String(
+            canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
+          )}
+          tooltipPlacement="right"
+          onPress={() => {
+            setRenameValue(policy.displayName || policy.name || '');
+            setIsRenameOpen(true);
+          }}
+        />
+        <CopyLinkButton
+          testId="copy-link-btn"
+          tooltip={String(t('label.copy'))}
+          url={window.location.href}>
+          <Copy01 className="tw:size-3" />
+        </CopyLinkButton>
+      </Box>
     );
 
     const deleteButtonNode: React.ReactNode = isRenameOpen ? undefined : (
@@ -874,7 +892,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       />
     );
 
-    onSetHeaderTitleSuffix?.(renameButtonNode);
+    onSetHeaderTitleSuffix?.(titleSuffixNode);
     onSetHeaderActions?.(deleteButtonNode);
     onSetHeaderTitleInput?.(titleInputNode);
   }, [
@@ -941,7 +959,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
             <Button
               color="primary"
               data-testid="add-rule"
-              size="sm"
+              size="xs"
               onPress={handleStartAdd}>
               {t('label.add-entity', { entity: t('label.rule') })}
             </Button>
@@ -949,38 +967,40 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         )}
 
         {(isAddingRule || editingRule) && (
-          <Box
-            className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
-            direction="col"
-            gap={4}>
-            <Typography
-              className="tw:text-primary"
-              size="text-sm"
-              weight="semibold">
-              {editingRule
-                ? t('label.edit-entity', { entity: t('label.rule') })
-                : t('label.add-entity', { entity: t('label.rule') })}
-            </Typography>
-            <AccessControlRuleForm
-              form={ruleForm}
-              key={editingRule?.name ?? 'new-rule'}
-              takenNames={(policy?.rules ?? [])
-                .filter((r) => r.name !== editingRule?.name)
-                .map((r) => r.name ?? '')}
-            />
-            <Box direction="row" gap={3} justify="end">
-              <Button color="tertiary" size="sm" onPress={handleCancelRuleForm}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                isLoading={isLoadingOnSave}
-                size="sm"
-                onPress={() => ruleForm.handleSubmit(handleSaveRule)()}>
-                {t('label.save')}
-              </Button>
-            </Box>
-          </Box>
+          <Card variant="muted">
+            <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+              <Typography
+                className="tw:text-primary"
+                size="text-sm"
+                weight="semibold">
+                {editingRule
+                  ? t('label.edit-entity', { entity: t('label.rule') })
+                  : t('label.add-entity', { entity: t('label.rule') })}
+              </Typography>
+              <AccessControlRuleForm
+                form={ruleForm}
+                key={editingRule?.name ?? 'new-rule'}
+                takenNames={(policy?.rules ?? [])
+                  .filter((r) => r.name !== editingRule?.name)
+                  .map((r) => r.name ?? '')}
+              />
+              <Box direction="row" gap={3} justify="end">
+                <Button
+                  color="tertiary"
+                  size="sm"
+                  onPress={handleCancelRuleForm}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  isLoading={isLoadingOnSave}
+                  size="sm"
+                  onPress={() => ruleForm.handleSubmit(handleSaveRule)()}>
+                  {t('label.save')}
+                </Button>
+              </Box>
+            </Card.Content>
+          </Card>
         )}
 
         {policy?.rules?.length ? (
@@ -1068,10 +1088,21 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         kind="team"
         label={t('label.team-plural')}
         t={t}
+        onNavigateToDetail={(item) =>
+          goTo(profileHash.team(item.fullyQualifiedName ?? item.name ?? ''))
+        }
         onRemove={handleEntityRemove}
       />
     ),
-    [detailColumns, handleEntityRemove, isAdminUser, isLoadingOnSave, policy, t]
+    [
+      detailColumns,
+      goTo,
+      handleEntityRemove,
+      isAdminUser,
+      isLoadingOnSave,
+      policy,
+      t,
+    ]
   );
 
   if (isLoading) {

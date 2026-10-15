@@ -23,6 +23,12 @@
       overflow: visible;
     }
 
+    // Classic paints this grey behind its cards. With the table as the only card, the grey would
+    // show as a strip under it.
+    .resizable-panels-layout {
+      background-color: transparent;
+    }
+
     [data-testid='description-container'] {
       display: none;
     }
@@ -38,12 +44,6 @@
       // Same reason as the wrapper above: OSS pins this to the viewport height and scrolls it.
       height: auto;
       overflow-y: visible;
-      .ant-card-body,
-      .ant-card {
-        padding: 0;
-        border: none;
-        overflow: hidden;
-      }
     }
   }
   .schema-description {
@@ -54,6 +54,19 @@
     .glossary-terms-header,
     .glossary-terms-content {
       padding: 0;
+    }
+  }
+  // Built for the summary panel's padded cards; here it sits flush with the sections around it.
+  // Its title keeps the 12px below it that the glossary-terms and tags titles have (this section
+  // spaces it with padding, theirs with margin); the gap after it comes from the tab's own stack.
+  .data-products-section {
+    .data-products-header,
+    .data-products-content {
+      padding-left: 0;
+      padding-right: 0;
+    }
+    .data-products-content {
+      padding-bottom: 0;
     }
   }
   .tags-section {

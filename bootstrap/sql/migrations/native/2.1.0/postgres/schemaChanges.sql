@@ -176,6 +176,10 @@ CREATE TABLE IF NOT EXISTS rdf_inference_rule (
 CREATE INDEX IF NOT EXISTS rdf_inference_rule_dirty_index
   ON rdf_inference_rule (dirty, deleted);
 
+-- A materialization run clears a rule's dirty flag only if dirtyVersion still holds the value the
+-- run read, so rule edits and graph writes that land during the run stay pending.
+ALTER TABLE rdf_inference_rule ADD COLUMN IF NOT EXISTS dirtyVersion BIGINT NOT NULL DEFAULT 0;
+
 ALTER TABLE entity_relationship
   ADD COLUMN IF NOT EXISTS relationshipId VARCHAR(36),
   ADD COLUMN IF NOT EXISTS relationshipTypeId VARCHAR(36);
@@ -372,11 +376,29 @@ BEGIN
 END $$;
 
 -- Announcement type: stored generated column so the list API can filter by type. Rows written
--- before the field existed have no type key and read back as the Information default.
+-- before the field existed have no type key and read back as the Notice default.
 ALTER TABLE announcement_entity
   ADD COLUMN IF NOT EXISTS type character varying(32)
-  GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Information')) STORED;
+  GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Notice')) STORED;
 CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);
+
+-- Single source of truth for entityReference / entityReferenceList custom-property values, one row
+-- per referenced entity. columnKey is '' for entity-level values, else the column's FQN hash. A hard
+-- delete removes the rows pointing at the deleted entity through the targetId index.
+CREATE TABLE IF NOT EXISTS custom_property_reference (
+    id VARCHAR(36) NOT NULL,
+    columnKey VARCHAR(512) NOT NULL DEFAULT '',
+    propertyName VARCHAR(256) NOT NULL,
+    targetId VARCHAR(36) NOT NULL,
+    holderType VARCHAR(256) NOT NULL,
+    targetType VARCHAR(256) NOT NULL,
+    position INT NOT NULL,
+    json JSONB NOT NULL,
+    PRIMARY KEY (id, columnKey, propertyName, targetId)
+);
+CREATE INDEX IF NOT EXISTS custom_property_reference_target ON custom_property_reference (targetId);
+CREATE INDEX IF NOT EXISTS custom_property_reference_property
+  ON custom_property_reference (holderType, propertyName);
 
 -- Allow Data Consumer to run agent SPARQL queries by default (#34231). Seed data never updates a policy
 -- that already exists, so existing installs get the rule here. The rule is only added while an allow
@@ -397,3 +419,196 @@ SET json = jsonb_set(
 WHERE json->>'name' = 'DataConsumerPolicy'
   AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'))
   AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('ViewAll')));
+
+-- Name the MCP knowledge-graph tools in the description of the DataConsumerPolicy-ExecuteSparqlQuery-Rule that the statement
+-- above adds (#34270). That INSERT must stay exactly as it was first shipped, because the runner
+-- tracks statements by a hash of their text: an edited INSERT would run again where 2.1.0 is already
+-- recorded, and its only guard is "the rule does not exist", so it would add back a rule an
+-- administrator deleted on purpose. This is a separate, appended statement that changes only the
+-- description, and only where it still reads exactly as the old shipped text: a deleted rule, a
+-- customised description and a fresh install (seeded with the new text) are left alone.
+UPDATE policy_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{rules}',
+    (
+        SELECT jsonb_agg(
+            CASE
+                WHEN existing.rule->>'name' = 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'
+                     AND existing.rule->>'description' = 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.'
+                THEN jsonb_set(existing.rule, '{description}', to_jsonb('Allow authenticated users and bots to run read-only SPARQL queries through the agent SPARQL endpoint and the MCP knowledge-graph tools (sparql_query, entity_neighborhood, find_by_tag, and ontology_describe with a resource). Results are not filtered by asset or domain policies, so remove this rule if viewing is restricted through custom policies.'::text))
+                ELSE existing.rule
+            END
+            ORDER BY existing.position
+        )
+        FROM jsonb_array_elements(json->'rules') WITH ORDINALITY AS existing(rule, position)
+    )
+)
+WHERE json->>'name' = 'DataConsumerPolicy'
+  AND EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(json->'rules') AS current_rule(rule)
+        WHERE current_rule.rule->>'name' = 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'
+          AND current_rule.rule->>'description' = 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.'
+      );
+
+-- Allow Data Consumer to create context memories by default (ai-platform#1580). Seed data never
+-- updates a policy that already exists, so existing installs get the rule here. A memory is knowledge
+-- about an asset, the same kind of contribution as its description, so the rule is only added while an
+-- allow rule of the policy still lists EditDescription: an install that took that away keeps its Data
+-- Consumers read-only. ADR:2026-10-09-data-consumers-create-context-memories
+UPDATE policy_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{rules}',
+    (json->'rules') || jsonb_build_object(
+        'name', 'DataConsumerPolicy-CreateContextMemory-Rule',
+        'description', 'Allow authenticated users to create context memories, including the ones the AI agent saves from their conversations. The creator owns a new memory and can edit or delete it. An Entity memory is shown to everyone who can view its asset, or to everyone when it has no asset, so remove this rule if only admins should create memories.',
+        'resources', jsonb_build_array('contextMemory'),
+        'operations', jsonb_build_array('Create'),
+        'effect', 'allow'
+    )
+)
+WHERE json->>'name' = 'DataConsumerPolicy'
+  AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-CreateContextMemory-Rule'))
+  AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('EditDescription')));
+
+-- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
+-- the result polls, the credentials) that can reach different servers, so its state lives here
+-- rather than in one server's memory. pending_state holds the candidate configuration with its
+-- secrets, Fernet-encrypted, and is cleared when the test completes; rows expire minutes later.
+CREATE TABLE IF NOT EXISTS sso_test_login_session (
+    test_session_id VARCHAR(64) NOT NULL PRIMARY KEY,
+    admin_principal VARCHAR(256) NOT NULL,
+    protocol VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    pending_state TEXT,
+    result TEXT,
+    credentials_submitted_at BIGINT,
+    expires_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_admin
+    ON sso_test_login_session (admin_principal, credentials_submitted_at);
+CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_expires
+    ON sso_test_login_session (expires_at);
+
+-- Settings that exist both in openmetadata.yaml/environment and in this table (security, email,
+-- base URL, SCIM, MCP, app configuration) remember the deployment values they were last
+-- reconciled with. Comparing against that snapshot is how a server start tells a value changed in
+-- the deployment from a value changed in the UI (#31786). NULL until the server first reconciles.
+ALTER TABLE openmetadata_settings ADD COLUMN IF NOT EXISTS deployment_snapshot JSONB;
+
+-- #33980 shipped this column while the type enum still read Information/Warning/Issue. The enum
+-- has since been renamed so the stored value matches what the UI shows (Notice/Critical). A
+-- version is reprocessed statement-by-statement against SERVER_MIGRATION_SQL_LOGS, and the
+-- ADD COLUMN above is both unchanged (so it never re-runs) and IF NOT EXISTS (so it would be a
+-- no-op if it did). Any database that already applied 2.1.0 therefore still holds the old names,
+-- and must be rewritten here.
+UPDATE announcement_entity
+SET json = jsonb_set(json, '{type}', '"Notice"')
+WHERE json ->> 'type' = 'Information';
+
+UPDATE announcement_entity
+SET json = jsonb_set(json, '{type}', '"Critical"')
+WHERE json ->> 'type' = 'Issue';
+
+-- Rows predating #33980 carry no type key at all and read back through the column's COALESCE
+-- default, so the default has to move with the enum or `?type=Notice` never matches them.
+-- Postgres cannot redefine a generated expression in place, so the column is dropped and rebuilt;
+-- that takes idx_announcement_type with it, hence the re-create.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'announcement_entity'
+      AND column_name = 'type'
+      AND generation_expression LIKE '%Information%'
+  ) THEN
+    ALTER TABLE announcement_entity DROP COLUMN type;
+    ALTER TABLE announcement_entity
+      ADD COLUMN type character varying(32)
+      GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Notice')) STORED;
+    CREATE INDEX idx_announcement_type ON announcement_entity (type);
+  END IF;
+END $$;
+
+-- Direct-child container listings (issue #22530). See the MySQL companion for the measured
+-- numbers; PostgreSQL picks the same losing plan for the same reason -- the listing's
+-- `ORDER BY name, id LIMIT n` makes idx_storage_container_entity_deleted_name_id look free,
+-- and idx_storage_container_entity_fqnhash_pattern (which can serve the prefix LIKE as a
+-- range) is never chosen. On the same 50k-container fixture the children page read 19,995
+-- shared buffers to return one row, and the count query fell back to a Seq Scan.
+--
+-- parentFqnHash materialises the fqnHash prefix above the last segment, turning the listing
+-- into an index equality. Derived by stripping the final '.'-separated segment rather than a
+-- fixed 33-character suffix, so it holds regardless of hash width. STORED because PostgreSQL
+-- has no VIRTUAL generated columns; strpos/reverse/left are immutable, as generation requires.
+ALTER TABLE storage_container_entity
+  ADD COLUMN IF NOT EXISTS parentFqnHash VARCHAR(768)
+  GENERATED ALWAYS AS (
+    CASE
+      WHEN strpos(fqnHash, '.') = 0 THEN ''
+      ELSE left(fqnHash, length(fqnHash) - strpos(reverse(fqnHash), '.'))
+    END
+  ) STORED;
+
+-- (parentFqnHash, deleted) answers the filter; (name, id) supplies the listing's sort order,
+-- so the common non-deleted page needs neither a sort nor a heap fetch per candidate.
+-- Column order deviates from the table_entity/stored_procedure_entity precedent in 1.10.0,
+-- which leads with `deleted`: the container listing's `include` is tri-state, and on
+-- include=ALL there is no `deleted` predicate at all, which would strand a deleted-leading
+-- index. Leading with parentFqnHash keeps the equality usable in all three include modes.
+--
+-- Built CONCURRENTLY so the index build takes no write lock, matching the 1.11.0
+-- idx_tag_usage_* and 1.13.0 *_fqnhash_pattern pattern. Each statement runs outside an
+-- implicit transaction, which the native migration runner supports.
+--
+-- This removes the smaller half of the blocking window: on a 580k-row / 674MB
+-- storage_container_entity the index build is ~1.8s under SHARE UPDATE EXCLUSIVE, while the
+-- ADD COLUMN above holds ACCESS EXCLUSIVE for ~10.5s to rewrite the table. 1.11.0 accepted
+-- that same trade-off when it added generated columns to tag_usage. An expression index over
+-- the same CASE would avoid the rewrite entirely (identical 110MB index, same build time),
+-- but every listing query would have to repeat the expression byte-for-byte -- including the
+-- root-listing SQL that is currently dialect-neutral -- so it is not worth the divergence
+-- unless the rewrite proves unacceptable in practice.
+--
+-- OPERATOR NOTE: an interrupted CONCURRENTLY build leaves an INVALID index behind, and the
+-- runner keys statements by SQL-text hash so it will not self-heal on retry. Detection and
+-- recovery are the same as the runbook in 1.13.0/postgres/schemaChanges.sql: DROP INDEX the
+-- invalid entry, then re-run the migration.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_storage_container_entity_parent_children
+  ON storage_container_entity (parentFqnHash, deleted, name, id);
+
+-- Announcement status is derived from startTime/endTime on every read and the ?status= filter
+-- compares the window directly. Nothing rewrote the stored value when the window opened or
+-- closed, so it only went stale: drop the column, its index and the stored value.
+DROP INDEX IF EXISTS idx_announcement_status;
+ALTER TABLE announcement_entity DROP COLUMN IF EXISTS status;
+UPDATE announcement_entity
+SET json = json - 'status'
+WHERE json ->> 'status' IS NOT NULL;
+
+-- Reasoning results record the serving dataset they read. Every promotion assigns a new generation,
+-- even when it reuses a physical dataset name, so a result computed before it never passes for
+-- current. Servers assign one on startup to a pointer row created before this column existed.
+ALTER TABLE rdf_active_dataset ADD COLUMN IF NOT EXISTS generation VARCHAR(36);
+
+-- Highest live-write queue ID handed out, kept because processed rows are deleted. Writes to the
+-- serving graph made outside the queue take an ID too, so a reasoning result records how far the
+-- projection had got and is current only while no write has been given a higher ID since.
+ALTER TABLE rdf_projection_health
+  ADD COLUMN IF NOT EXISTS enqueuedWatermark BIGINT NOT NULL DEFAULT 0;
+
+-- A search that pins a memory anchor looks up the edges from the pinned ids into context memories
+-- (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). The existing fromId/relation index
+-- does not cover toEntity, so a pinned domain or team reads all its HAS edges before filtering.
+-- This partial index holds memory edges only. MySQL serves the lookup from idx_entity_rel_cascade.
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_memory_anchor
+    ON entity_relationship (fromId, relation)
+    WHERE toEntity = 'contextMemory';
+
+-- aboutEntity task lists match `aboutfqnhash LIKE 'hash.%'`, which a plain btree can't serve under a
+-- non-C collation (seq scan); text_pattern_ops as for the 1.13.0 *_fqnhash_pattern indexes.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_about_fqn_hash_pattern
+  ON task_entity (aboutfqnhash text_pattern_ops);
