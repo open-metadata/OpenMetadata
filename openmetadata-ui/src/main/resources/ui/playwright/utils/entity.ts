@@ -1542,9 +1542,15 @@ const expectFollowButtonState = async (page: Page, expectedText: string) => {
   }
 };
 
-const LANDING_PAGE_SCROLL_CONTAINER =
-  '.page-layout-v1-center.page-layout-v1-vertical-scroll';
-const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.Following';
+// The landing page scrolls inside the core PageLayout's content region now;
+// PageLayoutV1's `.page-layout-v1-*` scroll container only wraps the welcome
+// screen. The nudge below resolves the scroller from this root at call time.
+const LANDING_PAGE_SCROLL_CONTAINER = '[data-testid="home-landing-page"]';
+// The standalone Following widget was folded into "Yours and followed", which
+// renders the owned and the followed assets as two columns of one card.
+const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.YoursAndFollowed';
+const FOLLOWING_WIDGET_BODY_SKELETON = 'topic-body-skeleton-yoursAndFollowed';
+const FOLLOWED_ASSET_LIST = 'followed-assets';
 
 const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   const followingWidgetPanel = page.getByTestId(FOLLOWING_WIDGET_KEY);
@@ -1563,9 +1569,10 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
         }
 
         await page.evaluate((scrollContainerSelector) => {
-          document
-            .querySelector(scrollContainerSelector)
-            ?.scrollBy({ top: 700, behavior: 'instant' });
+          const root = document.querySelector(scrollContainerSelector);
+          const scroller =
+            root?.querySelector('[class*="overflow-y-auto"]') ?? root;
+          scroller?.scrollBy({ top: 700, behavior: 'instant' });
         }, LANDING_PAGE_SCROLL_CONTAINER);
 
         return followingWidgetPanel.isVisible().catch(() => false);
@@ -1580,19 +1587,23 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   return followingWidgetPanel;
 };
 
+// Returns the followed-assets column, not the whole card: the owned column can
+// hold the same asset (following something you own is normal), and a card-wide
+// locator would then resolve to two nodes and fail strict mode on click.
 const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await redirectToHomePage(page, false);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
   const followingWidgetPanel = await revealFollowingWidget(page);
 
-  const followingWidget = followingWidgetPanel.getByTestId('following-widget');
-  await expect(followingWidget).toBeVisible({ timeout: 60_000 });
-  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(
-    () => undefined
-  );
+  // The list itself is absent when nothing is followed, so gate on the card's
+  // own loading state instead — otherwise the unfollow case would wait out a
+  // list that is correctly missing.
+  await expect(
+    followingWidgetPanel.getByTestId(FOLLOWING_WIDGET_BODY_SKELETON)
+  ).toBeHidden({ timeout: 60_000 });
 
-  return followingWidget;
+  return followingWidgetPanel.getByTestId(FOLLOWED_ASSET_LIST);
 };
 
 export const validateFollowedEntityToWidget = async (
@@ -1606,14 +1617,14 @@ export const validateFollowedEntityToWidget = async (
     return followingWidget;
   }
 
+  const followedEntity = followingWidget.getByTestId(
+    `${FOLLOWED_ASSET_LIST}-${entity}`
+  );
+
   if (isFollowing) {
-    await followingWidget.isVisible();
-    await followingWidget.getByTestId(`following-${entity}`).isVisible();
+    await expect(followedEntity).toBeVisible();
   } else {
-    await followingWidget.isVisible();
-    await expect(
-      followingWidget.getByTestId(`following-${entity}`)
-    ).not.toBeVisible();
+    await expect(followedEntity).not.toBeVisible();
   }
 
   return followingWidget;
@@ -1714,7 +1725,9 @@ export const createAnnouncement = async (
   );
 
   await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
-  await page.reload();
+  // `load` waits on every asset and long-lived request, and on a loaded runner
+  // can outlast the 60s navigation timeout; the loaders are the real signal.
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId(announcementContainerTestId)).toBeVisible();
@@ -1793,7 +1806,8 @@ export const replyAnnouncement = async (page: Page) => {
     page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
   ).toHaveText('Reply message edited');
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const deleteAnnouncement = async (page: Page) => {
@@ -1833,7 +1847,8 @@ export const deleteAnnouncement = async (page: Page) => {
   await deleteConfirm.getByTestId('save-button').click();
   await deleteAnnouncementResponse;
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
@@ -2438,37 +2453,6 @@ export const hardDeleteEntity = async (
     /(deleted successfully!|Delete operation initiated)/,
     BIG_ENTITY_DELETE_TIMEOUT
   );
-};
-
-export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
-  await clickOutside(page);
-  const quickFilterResponse = page.waitForResponse(
-    `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
-  );
-
-  await page
-    .locator(`[data-testid="data-asset-service-${serviceType}"]`)
-    .click();
-
-  await quickFilterResponse;
-
-  // Click on filter dropdown
-  await page.getByTestId('search-dropdown-Service Type').click();
-  // assert on dropdown item visibility
-  await page.getByRole('menuitemcheckbox', { name: serviceType }).waitFor();
-  // assert on selection state
-  await expect(page.getByTestId(serviceType)).toHaveAttribute(
-    'aria-checked',
-    'true'
-  );
-
-  await expect(
-    page
-      .getByTestId('explore-tree')
-      .getByRole('row')
-      .filter({ hasText: serviceType })
-      .first()
-  ).toHaveAttribute('aria-selected', 'true');
 };
 
 export const escapeESReservedCharacters = (text?: string) => {

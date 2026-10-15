@@ -559,9 +559,9 @@ jest.mock('../../../common/DeleteWidget/DeleteEntityModal', () =>
 jest.mock(
   '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
   () =>
-    jest.fn().mockImplementation(({ open, variant, onClose, onUpdate }) =>
+    jest.fn().mockImplementation(({ open, onClose, onUpdate }) =>
       open ? (
-        <div data-testid="test-case-form-v1" data-variant={variant}>
+        <div data-testid="test-case-form-v1">
           <p>EditTestCaseModal</p>
           <button onClick={onClose}>cancel</button>
           <button onClick={onUpdate}>submit</button>
@@ -1103,7 +1103,7 @@ describe('DataQualityTab test', () => {
     expect(editButton).not.toBeDisabled();
   });
 
-  it('Should render TestCaseFormDrawer in drawer variant by default when editing', async () => {
+  it('Should render TestCaseFormDrawer when editing', async () => {
     const firstRowData = MOCK_TEST_CASE[0];
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
@@ -1127,33 +1127,6 @@ describe('DataQualityTab test', () => {
     const testCaseFormDrawer = await screen.findByTestId('test-case-form-v1');
 
     expect(testCaseFormDrawer).toBeInTheDocument();
-    expect(testCaseFormDrawer).toHaveAttribute('data-variant', 'drawer');
-  });
-
-  it('Should forward editVariant="modal" as TestCaseFormDrawer variant', async () => {
-    const firstRowData = MOCK_TEST_CASE[0];
-    await act(async () => {
-      render(<DataQualityTab {...mockProps} editVariant="modal" />);
-    });
-    const tableRows = await screen.findAllByRole('row');
-    const firstRow = tableRows[1];
-    const actionDropdown = await findByTestId(
-      firstRow,
-      `action-dropdown-${firstRowData.name}`
-    );
-
-    await act(async () => {
-      fireEvent.click(actionDropdown);
-    });
-
-    const editButton = await screen.findByTestId(`edit-${firstRowData.name}`);
-    await act(async () => {
-      fireEvent.click(editButton);
-    });
-
-    const testCaseFormDrawer = await screen.findByTestId('test-case-form-v1');
-
-    expect(testCaseFormDrawer).toHaveAttribute('data-variant', 'modal');
   });
 
   it('Delete functionality - menu item is accessible', async () => {

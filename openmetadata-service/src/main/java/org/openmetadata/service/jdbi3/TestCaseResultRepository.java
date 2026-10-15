@@ -68,7 +68,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   private final TestCaseRepository testCaseRepository;
   private final TestCaseDimensionResultRepository dimensionResultRepository;
   public static String INCLUDE_SEARCH_FIELDS =
-      "id,testCaseFQN,timestamp,testCaseStatus,result,sampleData,testResultValue,passedRows,failedRows,passedRowsPercentage,failedRowsPercentage,incidentId,maxBound,minBound,duration,errorDetails";
+      "id,testCaseFQN,timestamp,testCaseStatus,result,sampleData,testResultValue,passedRows,failedRows,passedRowsPercentage,failedRowsPercentage,incidentId,maxBound,minBound,duration,errorDetails,evaluationScope";
 
   public enum OperationType {
     CREATE,
@@ -450,6 +450,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
       dimResult.setTestCaseResultId(testCaseResult.getId());
       // Ensure timestamp matches the parent result
       dimResult.setTimestamp(testCaseResult.getTimestamp());
+      // A dimension is a group of the rows the run read, so it was measured on the same scope.
+      dimResult.setEvaluationScope(testCaseResult.getEvaluationScope());
 
       // Store each dimensional result
       dimensionResultRepository.storeDimensionResult(testCaseFQN, dimResult);

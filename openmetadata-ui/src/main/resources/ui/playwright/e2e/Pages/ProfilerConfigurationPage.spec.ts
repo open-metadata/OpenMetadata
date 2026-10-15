@@ -56,18 +56,33 @@ base.beforeAll(async ({ browser }) => {
 
 const removeAllMetricConfigRows = async (page: Page) => {
   await page.getByTestId('add-fields').waitFor();
-  try {
-    await page
-      .locator('[data-testid^="remove-filter-"]')
-      .first()
-      .waitFor({ timeout: 1000 });
-    const rows = page.locator('[data-testid^="remove-filter-"]');
-    while ((await rows.count()) > 0) {
-      await rows.first().click();
-    }
-  } catch {
-    // No existing rows to clean up
+  while (await page.getByTestId('remove-filter-0').isVisible()) {
+    await page.getByTestId('remove-filter-0').click();
   }
+};
+
+const selectDataType = async (page: Page, index: number, value: string) => {
+  const input = page
+    .getByTestId(`profiler-data-type-${index}`)
+    .getByRole('combobox');
+  await input.fill(value);
+  await page.getByRole('option', { name: value, exact: true }).click();
+};
+const selectMetrics = async (page: Page, index: number, labels: string[]) => {
+  await page
+    .getByTestId(`profiler-metrics-${index}`)
+    .getByRole('textbox')
+    .click();
+  if (labels.some((label) => label !== 'All')) {
+    await page
+      .getByRole('treegrid')
+      .getByRole('button', { name: 'Expand All', exact: true })
+      .click();
+  }
+  for (const label of labels) {
+    await page.getByRole('treegrid').getByText(label, { exact: true }).click();
+  }
+  await clickOutside(page);
 };
 
 test.describe('Profiler Configuration Page', () => {
@@ -95,11 +110,11 @@ test.describe('Profiler Configuration Page', () => {
       await adminPage.click('[data-testid="add-fields"]');
       await adminPage.click('[data-testid="save-button"]');
       await adminPage
-        .locator('#metricConfiguration_0_dataType_help')
+        .getByText(/^Data Type is required\.?$/)
         .waitFor({ state: 'visible' });
 
       await expect(
-        adminPage.locator('#metricConfiguration_0_dataType_help')
+        adminPage.getByText(/^Data Type is required\.?$/)
       ).toHaveText(/Data Type is required/);
 
       await adminPage.click('[data-testid="cancel-button"]');
@@ -122,52 +137,37 @@ test.describe('Profiler Configuration Page', () => {
       await removeAllMetricConfigRows(adminPage);
 
       await adminPage.click('[data-testid="add-fields"]');
-      await adminPage.click('#metricConfiguration_0_dataType');
-      await adminPage.fill('#metricConfiguration_0_dataType', 'AGG_STATE');
-      await adminPage.click(`[title="AGG_STATE"]`);
-      await adminPage.click('#metricConfiguration_0_metrics');
-      await adminPage.fill('#metricConfiguration_0_metrics', 'All');
-      await adminPage.getByRole('tree').getByText('All').click();
-      await clickOutside(adminPage);
-
-      await adminPage.click('[data-testid="add-fields"]');
-      await adminPage.click('#metricConfiguration_1_dataType');
-
-      await expect(
-        adminPage.locator(`[title="AGG_STATE"]:has(:visible)`)
-      ).toHaveClass(/ant-select-item-option-disabled/);
-
-      await adminPage.fill(
-        '#metricConfiguration_1_dataType',
-        'AGGREGATEFUNCTION'
-      );
-      await adminPage.click(`[title="AGGREGATEFUNCTION"]:has(:visible)`);
-
-      await adminPage.click('#metricConfiguration_1_metrics');
-      await adminPage.fill('#metricConfiguration_1_metrics', 'column');
-      await adminPage.click(`[title="Column Count"]:has(:visible)`);
-      await adminPage.click(`[title="Column Names"]:has(:visible)`);
-      await clickOutside(adminPage);
-
-      await adminPage.click('[data-testid="add-fields"]');
-      await adminPage.click('#metricConfiguration_2_dataType');
-
-      await expect(
-        adminPage.locator(`[title="AGG_STATE"]:has(:visible)`)
-      ).toHaveClass(/ant-select-item-option-disabled/);
-      await expect(
-        adminPage.locator(`[title="AGGREGATEFUNCTION"]:has(:visible)`)
-      ).toHaveClass(/ant-select-item-option-disabled/);
-
-      await adminPage.click(`[title="ARRAY"]:has(:visible)`);
-      await adminPage.click('#metricConfiguration_2_metrics');
-      await adminPage.fill('#metricConfiguration_2_metrics', 'All');
-      await adminPage.getByRole('tree').getByText('All').click();
-      await clickOutside(adminPage);
-
-      // The visible track covers the hidden switch input, so click its label.
+      await selectDataType(adminPage, 0, 'AGG_STATE');
+      await selectMetrics(adminPage, 0, ['All']);
+      await adminPage.getByTestId('add-fields').click();
       await adminPage
-        .locator('label:has(#metricConfiguration_2_disabled)')
+        .getByTestId('profiler-data-type-1')
+        .getByRole('combobox')
+        .click();
+      await expect(
+        adminPage.getByRole('option', { name: 'AGG_STATE', exact: true })
+      ).toHaveAttribute('aria-disabled', 'true');
+      await selectDataType(adminPage, 1, 'AGGREGATEFUNCTION');
+      await selectMetrics(adminPage, 1, ['Column Count', 'Column Names']);
+      await adminPage.getByTestId('add-fields').click();
+      await adminPage
+        .getByTestId('profiler-data-type-2')
+        .getByRole('combobox')
+        .click();
+      await expect(
+        adminPage.getByRole('option', { name: 'AGG_STATE', exact: true })
+      ).toHaveAttribute('aria-disabled', 'true');
+      await expect(
+        adminPage.getByRole('option', {
+          name: 'AGGREGATEFUNCTION',
+          exact: true,
+        })
+      ).toHaveAttribute('aria-disabled', 'true');
+      await selectDataType(adminPage, 2, 'ARRAY');
+      await selectMetrics(adminPage, 2, ['All']);
+      await adminPage
+        .getByTestId('profiler-disabled-2')
+        .getByTestId('disabled-switch')
         .click();
 
       const settingRes = adminPage.waitForResponse('/api/v1/system/settings');

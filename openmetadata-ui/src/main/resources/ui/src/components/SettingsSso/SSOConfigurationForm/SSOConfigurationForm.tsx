@@ -18,7 +18,7 @@ import {
   X,
 } from '@openmetadata/ui-core-components/icons';
 import Form from '@rjsf/core';
-import { RegistryFieldsType } from '@rjsf/utils';
+import { RegistryFieldsType, WidgetProps } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Upload } from 'antd';
 import classNames from 'classnames';
@@ -32,11 +32,12 @@ import {
   createFormKeyDownHandler,
   getProviderDisplayName,
   getProviderIcon,
+  ProviderIcon,
 } from '../../../utils/SSOUtils';
 import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import LdapRoleMappingWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
-import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
+import CoreSelectWidget from '../../common/FormBuilderV1/widgets/CoreSelectWidget';
 import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -45,6 +46,7 @@ import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
 import { SSOFieldTemplate } from '../SSOFieldTemplate/SSOFieldTemplate';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
+import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
 import SsoTestLoginModal from '../SsoTestLogin/SsoTestLoginModal';
 import { useSsoConfiguration } from '../useSsoConfiguration';
 import './sso-configuration-form.less';
@@ -103,8 +105,20 @@ const MetadataUploadStatusCard = ({
   );
 };
 
+// SSOFieldTemplate draws the label, description and errors around the widget,
+// so the select renders only its control.
+const SsoSelectWidget = (props: WidgetProps) => (
+  <CoreSelectWidget
+    {...props}
+    hideLabel
+    options={{ ...props.options, help: undefined }}
+    rawErrors={undefined}
+    schema={{ ...props.schema, description: undefined }}
+  />
+);
+
 const widgets = {
-  SelectWidget: SelectWidget,
+  SelectWidget: SsoSelectWidget,
   LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
 
@@ -447,11 +461,10 @@ const SSOConfigurationFormRJSF = ({
         <div className="flex align-items-center gap-2 flex items-center">
           <div className="provider-icon-container">
             {getProviderIcon(currentProvider) && (
-              <img
+              <SsoProviderIcon
                 alt={getProviderDisplayName(currentProvider)}
-                height={22}
-                src={getProviderIcon(currentProvider) as string}
-                width={22}
+                icon={getProviderIcon(currentProvider) as ProviderIcon}
+                size={22}
               />
             )}
           </div>

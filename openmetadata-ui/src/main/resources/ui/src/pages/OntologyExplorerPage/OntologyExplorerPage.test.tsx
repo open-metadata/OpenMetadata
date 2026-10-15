@@ -197,19 +197,19 @@ describe('OntologyExplorerPage', () => {
   it('renders the dedicated Studio shell and graph by default', () => {
     render(<OntologyExplorerPage />);
 
-    expect(screen.getByTestId('heading')).toHaveTextContent(
-      'label.ontology-studio'
-    );
+    expect(
+      screen.getByRole('heading', { name: 'label.ontology-studio' })
+    ).toBeInTheDocument();
     expect(screen.getByTestId('page-layout-v1')).toBeInTheDocument();
     expect(screen.getByTestId('ontology-studio-shell').className).not.toContain(
       'tw:fixed'
     );
     expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'true'
     );
     expect(screen.getByTestId('submode-tab-graph')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'true'
     );
     expect(
@@ -512,7 +512,7 @@ describe('OntologyExplorerPage', () => {
     render(<OntologyExplorerPage />);
 
     expect(screen.getByTestId('mode-tab-review')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'true'
     );
     expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();

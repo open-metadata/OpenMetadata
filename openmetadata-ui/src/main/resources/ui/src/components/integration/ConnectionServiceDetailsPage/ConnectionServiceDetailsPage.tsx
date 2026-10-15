@@ -76,6 +76,7 @@ import {
   PluginEntityDetailsContext,
   SlotContribution,
   TabContribution,
+  TestConnectionActionContribution,
 } from '../../../utils/ExtensionPointTypes';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -744,6 +745,21 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       EXTENSION_POINTS.SERVICE_DETAILS_FOOTER
     );
 
+  const testConnectionActions =
+    extensionRegistry.getContributions<TestConnectionActionContribution>(
+      EXTENSION_POINTS.SERVICE_DETAILS_TEST_CONNECTION_ACTIONS
+    );
+
+  const renderTestConnectionAction = (failure: string, onClose: () => void) =>
+    testConnectionActions.map(({ key, component: Action }) => (
+      <Action
+        key={key}
+        {...extensionContext}
+        failure={failure}
+        onClose={onClose}
+      />
+    ));
+
   // Contributed tabs (e.g. Collate's summary/insights/agents, ordered 10/20/30) sort ahead of the
   // OSS built-ins by design — `order` is the only coupling between this page and what a plugin adds,
   // so either side can change independently. A contribution with no `order` sorts after every built
@@ -925,21 +941,20 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                       onAction={handleExportClick}
                     />
                   )}
-                  {canDelete && !isServiceDeleted && (
-                    <Dropdown.Item
-                      id="delete"
-                      label={t('label.delete')}
-                      onAction={() => setIsDeleting(true)}
-                    />
-                  )}
                   {/* A soft delete is meant to be reversible, but without this the page offers
-                        no way back — matching classic, where restore replaces delete once the
-                        service is deleted. */}
+                        no way back. */}
                   {canEditAll && isServiceDeleted && (
                     <Dropdown.Item
                       id="restore"
                       label={t('label.restore')}
                       onAction={handleRestoreService}
+                    />
+                  )}
+                  {canDelete && (
+                    <Dropdown.Item
+                      id="delete"
+                      label={t('label.delete')}
+                      onAction={() => setIsDeleting(true)}
                     />
                   )}
                 </Dropdown.Menu>
@@ -1133,6 +1148,11 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                         connectionType={serviceDetails?.serviceType ?? ''}
                         getData={() => connectionDetails}
                         isTestingDisabled={isTestingDisabled}
+                        renderFailureAction={
+                          testConnectionActions.length > 0
+                            ? renderTestConnectionAction
+                            : undefined
+                        }
                         serviceCategory={serviceCategory as ServiceCategory}
                         serviceName={serviceDetails?.name}
                         shouldValidateForm={false}
