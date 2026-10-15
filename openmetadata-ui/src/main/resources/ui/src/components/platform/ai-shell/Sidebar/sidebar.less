@@ -109,19 +109,22 @@
 
 // Dark-only overrides that match the design recording exactly. Light leaves both
 // unset, falling back to the frozen light values (gray-blue-100 pill, brand-800 fg).
-//  - selected surface -> interactive-selected (brand-500 @16%), a blue-tinted pill;
-//    a solid gray-blue-900 was invisible against the gray-blue-950 panel.
-//  - selected label/icon -> brand-300 (#84caff); the utility-brand-800 scale lands
-//    on brand-200 in dark, one step too pale versus the recording.
+//  - selected surface -> brand-600 (#1570ef) @20%, a blue-tinted pill (devrel
+//    dark palette); a solid gray-blue-900 was invisible against the panel.
+//  - selected label/icon -> brand-400 (#53b1fd); the utility-brand-800 scale lands
+//    on brand-200 in dark, one step too pale.
 //  - rest nav/list icons -> gray-600; quaternary (gray-400) is a step too bright.
-//  - hover fill -> gray-700; nav-item hover reads a step up from the gray-800 nav
-//    backing, matching the PageShell (PR #33581) hover token.
+//  - hover fill -> white @6% (secondary_hover), per the devrel dark palette.
 //  - border/divider -> gray-700; the PageShell nav/card edges sit on gray-700.
 .dark-mode {
-  --ask-selected-surface: var(--color-bg-brand-primary);
-  --ask-selected-fg: var(--color-brand-300);
+  --ask-selected-surface: color-mix(
+    in srgb,
+    var(--tw-color-brand-600) 20%,
+    transparent
+  );
+  --ask-selected-fg: var(--tw-color-brand-400);
   --ask-rest-icon: var(--color-gray-600);
-  --ask-hover: var(--om-color-gray-700);
+  --ask-hover: var(--tw-background-color-secondary_hover);
   --ask-border: var(--om-color-gray-700);
 }
 
@@ -1344,6 +1347,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     flex: 1;
+    // Flex items default to min-width: auto, which stops the ellipsis and lets
+    // long names push the panel into horizontal scroll.
+    min-width: 0;
   }
 
   // Trailing count pill — Figma 3405:13544.

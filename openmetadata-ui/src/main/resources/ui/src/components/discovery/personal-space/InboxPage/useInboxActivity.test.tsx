@@ -93,6 +93,7 @@ describe('fetchInboxActivity', () => {
 
     expect(mockGetActivityEvents).toHaveBeenCalledWith({
       days: 1,
+      startTs: 100,
       limit: 200,
     });
     // The limit is 100, not ACTIVITY_LIMIT: /conversations rejects anything
@@ -217,6 +218,30 @@ describe('fetchInboxActivity', () => {
     );
 
     expect(activities.map(({ id }) => id)).toEqual(['old']);
+  });
+
+  it('forwards the absolute startTs so the default 30-day preset fetches its gap', async () => {
+    // The default preset's shape: ~31 days wide, so `days` clamps to 30.
+    const startTs = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const endTs = startTs + 31 * 24 * 60 * 60 * 1000;
+
+    await fetchInboxActivity(ActivityFilter.All, 'u1', startTs, endTs);
+
+    // days is clamped to the 30-day cap, but startTs reaches back past it.
+    expect(mockGetActivityEvents).toHaveBeenCalledWith({
+      days: 30,
+      startTs,
+      limit: 200,
+    });
+  });
+
+  it('falls back to days and sends no startTs when the window is unset', async () => {
+    await fetchInboxActivity(ActivityFilter.MyAssets, 'u1');
+
+    expect(mockGetMyActivityFeed).toHaveBeenCalledWith({
+      days: 30,
+      limit: 200,
+    });
   });
 
   it.each([

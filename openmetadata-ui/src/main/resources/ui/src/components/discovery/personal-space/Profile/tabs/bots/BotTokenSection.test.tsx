@@ -47,6 +47,19 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 
 // Native mocks avoid react-aria provider requirements and make onPress => onClick.
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Card: ({
+    children,
+    className,
+    'data-testid': testId,
+  }: {
+    children?: React.ReactNode;
+    className?: string;
+    'data-testid'?: string;
+  }) => (
+    <div className={className} data-testid={testId}>
+      {children}
+    </div>
+  ),
   Box: ({
     children,
     ...props

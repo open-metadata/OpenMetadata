@@ -20,7 +20,6 @@ import { EntityType } from '../../../../../../enums/entity.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/rule';
 import { PipelineType } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useLogsModal } from '../../../../../../hooks/useLogsModal';
-import { getLoadingStatus } from '../../../../../../utils/EntityDisplayPureUtils';
 import { PipelineActionsProps } from './PipelineActions.interface';
 import PipelineActionsDropdown from './PipelineActionsDropdown';
 
@@ -41,7 +40,7 @@ function PipelineActions({
 }: Readonly<PipelineActionsProps>) {
   const { t } = useTranslation();
   const { openLogs, logsModal } = useLogsModal();
-  const [currPauseId, setCurrPauseId] = useState({ id: '', state: '' });
+  const [isToggling, setIsToggling] = useState(false);
 
   const pipelineId = pipeline.id ?? '';
 
@@ -73,10 +72,10 @@ function PipelineActions({
   const onPauseUnpauseClick = useCallback(
     async (id: string) => {
       try {
-        setCurrPauseId({ id, state: 'waiting' });
+        setIsToggling(true);
         await handleEnableDisableIngestion?.(id);
       } finally {
-        setCurrPauseId({ id: '', state: '' });
+        setIsToggling(false);
       }
     },
     [handleEnableDisableIngestion]
@@ -106,20 +105,18 @@ function PipelineActions({
       <Tooltip
         title={pipeline.deployed ? label : t('message.pipeline-not-deployed')}>
         <Button
+          showTextWhileLoading
           color="secondary"
           data-testid={pipeline.enabled ? 'pause-button' : 'resume-button'}
-          iconLeading={getLoadingStatus(
-            currPauseId,
-            pipeline.id,
-            <StatusIcon height={12} width={12} />
-          )}
+          iconLeading={<StatusIcon height={12} width={12} />}
           isDisabled={isDisabled || !pipeline.deployed}
+          isLoading={isToggling}
           onPress={() => onPauseUnpauseClick(pipelineId)}>
           {label}
         </Button>
       </Tooltip>
     );
-  }, [editStatusPermission, isDisabled, pipeline, currPauseId, pipelineId]);
+  }, [editStatusPermission, isDisabled, pipeline, isToggling, pipelineId]);
 
   return (
     <Box

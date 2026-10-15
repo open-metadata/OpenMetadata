@@ -237,6 +237,9 @@ public final class TaskWorkflowLifecycleResolver {
       case DataQualityReview -> "DataQualityReviewTaskWorkflow";
       case RecognizerFeedbackApproval -> "RecognizerFeedbackReviewWorkflow";
       case CustomTask -> "CustomTaskWorkflow";
+        // The server opens it and applies its decision synchronously; no workflow drives it
+        // (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
+      case MemoryConflictReview -> null;
       default -> "CustomTaskWorkflow";
     };
   }
@@ -285,7 +288,10 @@ public final class TaskWorkflowLifecycleResolver {
       case GlossaryApproval, RequestApproval -> TaskCategory.Approval;
       case DataAccessRequest -> TaskCategory.DataAccess;
       case IncidentResolution, TestCaseResolution -> TaskCategory.Incident;
-      case DataQualityReview, PipelineReview, RecognizerFeedbackApproval -> TaskCategory.Review;
+      case DataQualityReview,
+          PipelineReview,
+          RecognizerFeedbackApproval,
+          MemoryConflictReview -> TaskCategory.Review;
       case CustomTask -> TaskCategory.Custom;
     };
   }

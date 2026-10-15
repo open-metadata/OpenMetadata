@@ -20,6 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -36,9 +38,16 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.vocabulary.OWL;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 class EntityNeighborhoodToolTest {
@@ -48,6 +57,20 @@ class EntityNeighborhoodToolTest {
   private static final String ONTOLOGY_GRAPH = BASE_URI + "graph/ontology";
   private static final Authorizer AUTHORIZER = mock(Authorizer.class);
   private static final CatalogSecurityContext SECURITY_CONTEXT = mock(CatalogSecurityContext.class);
+  private static final Map<String, Object> NEIGHBORHOOD_PARAMS =
+      Map.of("entityId", "11111111-1111-1111-1111-111111111111", "entityType", "table");
+
+  private MockedStatic<DefaultAuthorizer> subjects;
+
+  @BeforeEach
+  void callersAreAdministrators() {
+    subjects = RdfToolAuthorization.resolvingCallersAs(true);
+  }
+
+  @AfterEach
+  void releaseTheCallerResolution() {
+    subjects.close();
+  }
 
   @Test
   void rejectsMissingEntityId() {
@@ -249,6 +272,106 @@ class EntityNeighborhoodToolTest {
       result.close();
       source.close();
     }
+  }
+
+  @Test
+  void aNonAdministratorIsToldToRetryWhileTheProjectionRebuildsAndNothingIsRead() {
+    RdfToolAuthorization.resolveCallersAs(subjects, false);
+    final RdfRepository repository = enabledRepository();
+
+    assertThrows(
+        RdfRetryLaterException.class,
+        () ->
+            projectionTool(repository, RdfProjectionState.REBUILDING)
+                .execute(AUTHORIZER, SECURITY_CONTEXT, NEIGHBORHOOD_PARAMS));
+
+    verify(repository, never()).executeSparqlQuery(anyString(), anyString());
+  }
+
+  @Test
+  void aNonAdministratorIsNotToldToRetryWhenTheProjectionIsDegraded() {
+    RdfToolAuthorization.resolveCallersAs(subjects, false);
+    final RdfRepository repository = enabledRepository();
+
+    assertThrows(
+        RdfProjectionDegradedException.class,
+        () ->
+            projectionTool(repository, RdfProjectionState.DEGRADED)
+                .execute(AUTHORIZER, SECURITY_CONTEXT, NEIGHBORHOOD_PARAMS));
+
+    verify(repository, never()).executeSparqlQuery(anyString(), anyString());
+  }
+
+  @Test
+  void aNonAdministratorIsAnsweredOnceTheProjectionIsReady() throws IOException {
+    RdfToolAuthorization.resolveCallersAs(subjects, false);
+
+    final EntityNeighborhoodTool.Neighborhood result =
+        projectionTool(answeringRepository(), RdfProjectionState.READY)
+            .execute(AUTHORIZER, SECURITY_CONTEXT, NEIGHBORHOOD_PARAMS);
+
+    assertEquals(0, result.edges().size());
+  }
+
+  @Test
+  void anAdministratorIsAnsweredWhateverTheProjectionState() throws IOException {
+    final EntityNeighborhoodTool.Neighborhood result =
+        projectionTool(answeringRepository(), RdfProjectionState.DEGRADED)
+            .execute(AUTHORIZER, SECURITY_CONTEXT, NEIGHBORHOOD_PARAMS);
+
+    assertEquals(0, result.edges().size());
+  }
+
+  private static RdfRepository answeringRepository() {
+    final RdfRepository repository = enabledRepository();
+    when(repository.executeSparqlQuery(anyString(), org.mockito.ArgumentMatchers.eq("text/turtle")))
+        .thenReturn("");
+    when(repository.executeSparqlQuery(
+            anyString(), org.mockito.ArgumentMatchers.eq("application/sparql-results+json")))
+        .thenReturn("{\"results\":{\"bindings\":[]}}");
+    return repository;
+  }
+
+  private static EntityNeighborhoodTool projectionTool(
+      final RdfRepository repository, final RdfProjectionState state) {
+    return new EntityNeighborhoodTool(() -> repository, () -> state);
+  }
+
+  @Test
+  void deniedCallerNeverReachesTheGraph() {
+    final Authorizer authorizer = RdfToolAuthorization.denyingAuthorizer();
+    final RdfRepository repository = enabledRepository();
+
+    assertThrows(
+        AuthorizationException.class,
+        () ->
+            tool(repository)
+                .execute(
+                    authorizer,
+                    SECURITY_CONTEXT,
+                    Map.of("entityId", UUID.randomUUID().toString(), "entityType", "table")));
+
+    RdfToolAuthorization.assertSparqlGrantRequested(authorizer, SECURITY_CONTEXT);
+    verify(repository, never()).executeSparqlQuery(anyString(), anyString());
+  }
+
+  @Test
+  void bothGraphReadsRunInsideTheSharedAdmissionGuard() throws Exception {
+    final CatalogSecurityContext caller = RdfToolAuthorization.caller("neighborhood-user");
+    final RdfRepository repository = enabledRepository();
+
+    try (var saturation = RdfToolAuthorization.saturateGuardFor("neighborhood-user")) {
+      assertThrows(
+          SparqlQueryExecutionGuard.QueryCapacityException.class,
+          () ->
+              tool(repository)
+                  .execute(
+                      AUTHORIZER,
+                      caller,
+                      Map.of("entityId", UUID.randomUUID().toString(), "entityType", "table")));
+    }
+
+    verify(repository, never()).executeSparqlQuery(anyString(), anyString());
   }
 
   private static EntityNeighborhoodTool tool(RdfRepository repository) {

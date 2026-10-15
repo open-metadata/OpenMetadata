@@ -999,7 +999,7 @@
   margin: var(--om-space-6);
 }
 .ql-toolbar.ql-snow {
-  border-color: var(--om-legacy-color-dde3ea);
+  border-color: var(--tw-border-color-secondary);
   border-top-left-radius: var(--om-radius-md);
   border-top-right-radius: var(--om-radius-md);
   display: flex;
@@ -1009,7 +1009,7 @@
   width: 100%;
 }
 .ql-container.ql-snow {
-  border-color: var(--om-legacy-color-dde3ea);
+  border-color: var(--tw-border-color-secondary);
   border-bottom-left-radius: var(--om-radius-md);
   border-bottom-right-radius: var(--om-radius-md);
   width: 100%;
@@ -1138,4 +1138,12 @@ button.ql-emoji {
     display: flex;
     margin-right: 0 !important;
   }
+}
+
+// Quill 2 draws each list item's marker on its own `.ql-ui` span. The Quill 1
+// rules above still draw one on the item as well, doubling it ("1•" in a
+// bullet list, an overprinted "1." in a numbered one). Last in the file, so it
+// outranks the per-indent counters above.
+.ql-editor ol li[data-list]::before {
+  content: none;
 }

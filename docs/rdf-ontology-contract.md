@@ -79,6 +79,44 @@ tags. Match by name with `om:fromColumnFqn` and `om:toColumnFqn`. Stores indexed
 2.1 hold FQN literals in `om:fromColumn` and `om:toColumn` until the lineage edge is
 written again or the store is rebuilt.
 
+### Traversal and paging
+
+All columns downstream of one column, with the asset that owns each, one page at a time:
+
+```sparql
+PREFIX om: <https://open-metadata.org/ontology/>
+SELECT DISTINCT ?column ?asset WHERE {
+  ?start om:fullyQualifiedName "svc.db.schema.table.col" .
+  ?start (^om:fromColumn/om:toColumn)+ ?c .
+  ?c om:fullyQualifiedName ?column .
+  ?c (^om:hasChildColumn)*/^om:hasColumn ?asset
+} ORDER BY ?column ?asset LIMIT 250 OFFSET 0
+```
+
+Upstream swaps the path for `^om:toColumn/om:fromColumn`. Narrow the result with patterns on `?asset`,
+for example `?asset a om:Table`, `?asset om:belongsToService/om:fullyQualifiedName "svc"`,
+`?asset om:hasOwner/rdfs:label "growth"` or `?asset om:hasTier/om:tagFQN "Tier.Tier1"`. Page by
+raising `OFFSET` by `LIMIT` until a page returns fewer rows than `LIMIT`. A cycle terminates, and a
+column in a cycle reaches itself.
+
+- **Join direction.** Walk up from the bound column as above. The forward form
+  `?asset om:hasColumn/om:hasChildColumn* ?c` makes the query engine enumerate every node as a
+  zero-length start; it took about 6.6 s per page on the test graph against about 50 ms.
+- **Silent drops.** A mapping whose column is not a projected `om:Column` (for example because its
+  table is not in the graph) has no `om:fullyQualifiedName` to join and produces no row.
+- **Page size.** The MCP `sparql_query` tool caps its body at 80% of the server's `maxResponseChars` setting (80,000 bytes by default;
+  an administrator can lower it). A row of a column and an
+  asset IRI is about 205 bytes with realistic names, so 400 rows overflow the default and the tool publishes 250.
+  When a page comes back `truncated`, lower `LIMIT` and repeat the same `OFFSET`.
+- **Freshness.** Live lineage writes and `RdfIndexApp` both project column mappings. A rebuild refreshes older stores that still hold literal lineage endpoints.
+
+Measured on a graph of 5,006 mappings (a six-hop chain, a fan-out of one column into 450, a rename hop,
+a multi-source mapping, a cycle, a dashboard data model hop and a nested column): the 2,705 columns
+downstream of the source column take 330 ms in memory, and 11 pages of 250 rows take 49 to 230 ms each
+(about 51 KB per page) through the MCP `sparql_query` tool against Fuseki.
+
+`om:hasChildColumn` is stored for nested table columns; traversing to their owning asset needs no inference.
+
 ## Domain membership
 
 An asset's `domains` are projected as `om:belongsToDomain`, the predicate already used
@@ -185,6 +223,11 @@ dataset. Query extensions using the fixed key/value vocabulary above. The rebuil
 uses the configured dataset strategy and durable live-write recovery process.
 
 ## Regression coverage
+
+`RdfColumnLineageTraversalTest` builds a graph of about 5,000 column mappings through the two
+production writers and checks the queries above against an oracle that walks the edge list in Java.
+`RdfMcpKnowledgeGraphIT` pages the same shape through MCP as a non-administrator against Fuseki, and
+projects one real lineage edge with a real reindex to show the synthetic shape matches real output.
 
 `RdfOntologyContractTest` projects populated fields from every entity JSON Schema,
 structured fixtures, every built-in relationship enum value, detailed lineage,

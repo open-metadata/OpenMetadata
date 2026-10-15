@@ -31,6 +31,7 @@ import { AuthProvider } from '../../../../../../generated/settings/settings';
 import type { SecurityConfiguration } from '../../../../../../rest/securityConfigAPI';
 import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import type { SecurityManagedPaths } from '../../../../../SettingsSso/SSOConfigurationForm/SSOConfigurationForm.interface';
 import { PROVIDER_FILE_MAP } from '../../../../../SettingsSso/SSODocPanel/SSODocPanel.constants';
 import SsoTestLoginModal from '../../../../../SettingsSso/SsoTestLogin/SsoTestLoginModal';
 import { useSsoConfiguration } from '../../../../../SettingsSso/useSsoConfiguration';
@@ -49,6 +50,9 @@ export interface SsoConfigureFormProps {
   /** Provider for a new configuration. */
   selectedProvider?: string;
   showHint: boolean;
+  managedPaths?: SecurityManagedPaths;
+  /** The deployment owns every field, so the form only displays the configuration. */
+  isReadOnly?: boolean;
   /** Leaves a new setup (cancel/discard) — back to the provider grid. */
   onChangeProvider: () => void;
 }
@@ -164,6 +168,70 @@ const SsoSaveAlerts = ({
   );
 };
 
+interface SsoConfigureFooterProps {
+  canTestLogin: boolean;
+  isReadOnly: boolean;
+  isSaveGated: boolean;
+  isSaving: boolean;
+  isTestingLogin: boolean;
+  onCancel: () => void;
+  onSave: () => void;
+  onTestLogin: () => void;
+}
+
+/** Sticky footer actions; a configuration the deployment owns offers only Cancel. */
+const SsoConfigureFooter = ({
+  canTestLogin,
+  isReadOnly,
+  isSaveGated,
+  isSaving,
+  isTestingLogin,
+  onCancel,
+  onSave,
+  onTestLogin,
+}: SsoConfigureFooterProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box
+      className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-8 tw:py-4"
+      data-testid="sso-configure-footer"
+      direction="row"
+      gap={3}
+      justify="end">
+      <Button
+        color="tertiary"
+        data-testid="cancel-sso-configuration"
+        isDisabled={isSaving}
+        onPress={onCancel}>
+        {t('label.cancel')}
+      </Button>
+      {!isReadOnly && (
+        <>
+          {canTestLogin && (
+            <Button
+              color="secondary"
+              data-testid="test-login-sso-configuration"
+              isDisabled={isSaving || isTestingLogin}
+              isLoading={isTestingLogin}
+              onPress={onTestLogin}>
+              {t('label.test-login')}
+            </Button>
+          )}
+          <Button
+            color="primary"
+            data-testid="save-sso-configuration"
+            isDisabled={isSaveGated}
+            isLoading={isSaving}
+            onPress={onSave}>
+            {t('label.save')}
+          </Button>
+        </>
+      )}
+    </Box>
+  );
+};
+
 const renderFieldDoc = (markdown: string) => (
   <div className="form-hint-doc">
     <RichTextEditorPreviewerV1
@@ -182,6 +250,8 @@ const SsoConfigureForm = ({
   securityConfig,
   selectedProvider,
   showHint,
+  managedPaths,
+  isReadOnly = false,
   onChangeProvider,
 }: SsoConfigureFormProps) => {
   const { t } = useTranslation();
@@ -209,6 +279,7 @@ const SsoConfigureForm = ({
     uiSchema,
     customValidate,
     canTestLogin,
+    canUploadSamlMetadata,
     isSaveGatedOnTestLogin,
     testLoginGateMessage,
     handleClearFieldError,
@@ -223,6 +294,8 @@ const SsoConfigureForm = ({
     handleSaveAndExit,
   } = useSsoConfiguration({
     forceEditMode: true,
+    isReadOnly,
+    managedPaths,
     securityConfig,
     selectedProvider,
     onChangeProvider,
@@ -312,12 +385,15 @@ const SsoConfigureForm = ({
         className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-6"
         data-testid={FORM_BODY_TEST_ID}>
         <Box className="tw:w-full tw:max-w-[50%]" direction="col" gap={5}>
-          {currentProvider === AuthProvider.Saml && renderSamlUpload()}
+          {currentProvider === AuthProvider.Saml &&
+            canUploadSamlMetadata &&
+            renderSamlUpload()}
 
           <FieldDocProvider enabled={showHint}>
             <FormBuilderV1
               hideFooter
               customValidate={customValidate}
+              disabled={isReadOnly}
               fieldDocs={fieldDocs}
               formContext={formContext}
               formData={internalData}
@@ -357,38 +433,16 @@ const SsoConfigureForm = ({
         </Box>
       </div>
 
-      <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-8 tw:py-4"
-        data-testid="sso-configure-footer"
-        direction="row"
-        gap={3}
-        justify="end">
-        <Button
-          color="tertiary"
-          data-testid="cancel-sso-configuration"
-          isDisabled={isLoading}
-          onPress={handleCancelClick}>
-          {t('label.cancel')}
-        </Button>
-        {canTestLogin && (
-          <Button
-            color="secondary"
-            data-testid="test-login-sso-configuration"
-            isDisabled={isLoading || isTestingLogin}
-            isLoading={isTestingLogin}
-            onPress={handleTestLogin}>
-            {t('label.test-login')}
-          </Button>
-        )}
-        <Button
-          color="primary"
-          data-testid="save-sso-configuration"
-          isDisabled={isSaveGatedOnTestLogin}
-          isLoading={isLoading}
-          onPress={handleSave}>
-          {t('label.save')}
-        </Button>
-      </Box>
+      <SsoConfigureFooter
+        canTestLogin={canTestLogin}
+        isReadOnly={isReadOnly}
+        isSaveGated={isSaveGatedOnTestLogin}
+        isSaving={isLoading}
+        isTestingLogin={isTestingLogin}
+        onCancel={handleCancelClick}
+        onSave={handleSave}
+        onTestLogin={handleTestLogin}
+      />
 
       <SsoTestLoginModal
         configurationCheck={testLoginConfigurationCheck}

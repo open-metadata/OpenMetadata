@@ -20,6 +20,7 @@ import {
   setTagDisabled,
 } from '../../utils/certification';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { searchCertification } from '../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -53,6 +54,8 @@ test.describe.serial('Certification Dropdown', () => {
       await table.visitEntityPage(page);
       await openCertificationDropdown(page);
 
+      await searchCertification(page, tag.responseData.name);
+
       await expect(
         page.getByTestId(tag.responseData.fullyQualifiedName)
       ).toBeVisible();
@@ -81,9 +84,13 @@ test.describe.serial('Certification Dropdown', () => {
       await table.visitEntityPage(page);
       await openCertificationDropdown(page);
 
+      await searchCertification(page, disabledTag.responseData.name);
+
       await expect(
         page.getByTestId(disabledTag.responseData.fullyQualifiedName)
       ).not.toBeVisible();
+
+      await searchCertification(page, enabledTag.responseData.name);
 
       await expect(
         page.getByTestId(enabledTag.responseData.fullyQualifiedName)
@@ -111,6 +118,8 @@ test.describe.serial('Certification Dropdown', () => {
       await table.visitEntityPage(page);
       await openCertificationDropdown(page);
 
+      await searchCertification(page, tag.responseData.name);
+
       await expect(
         page.getByTestId(tag.responseData.fullyQualifiedName)
       ).not.toBeVisible();
@@ -122,6 +131,8 @@ test.describe.serial('Certification Dropdown', () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
       await openCertificationDropdown(page);
+
+      await searchCertification(page, tag.responseData.name);
 
       await expect(
         page.getByTestId(tag.responseData.fullyQualifiedName)
@@ -154,13 +165,19 @@ test.describe.serial('Certification Dropdown', () => {
       await table.visitEntityPage(page);
       await openCertificationDropdown(page);
 
+      await searchCertification(page, disabledTag1.responseData.name);
+
       await expect(
         page.getByTestId(disabledTag1.responseData.fullyQualifiedName)
       ).not.toBeVisible();
 
+      await searchCertification(page, disabledTag2.responseData.name);
+
       await expect(
         page.getByTestId(disabledTag2.responseData.fullyQualifiedName)
       ).not.toBeVisible();
+
+      await searchCertification(page, enabledTag.responseData.name);
 
       await expect(
         page.getByTestId(enabledTag.responseData.fullyQualifiedName)

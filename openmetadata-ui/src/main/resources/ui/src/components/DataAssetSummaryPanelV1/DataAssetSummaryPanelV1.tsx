@@ -395,9 +395,10 @@ export const DataAssetSummaryPanelV1 = ({
     };
   }, [isColumnEntity, entityType, dataAsset.id, dataAsset.fullyQualifiedName]);
 
+  // An empty id disables the fetch: the tour's entity has no server-side change history.
   const { changeSummary } = useChangeSummary(
     changeSummaryEntityType,
-    changeSummaryEntityId,
+    isTourPage ? '' : changeSummaryEntityId,
     changeSummaryParams
   );
 
@@ -994,6 +995,7 @@ export const DataAssetSummaryPanelV1 = ({
     statusCounts,
     entityPermissions,
     changeSummary,
+    t,
   ]);
 
   useEffect(() => {

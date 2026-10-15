@@ -13,9 +13,8 @@
 import { Typography } from '@openmetadata/ui-core-components';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
-import { DE_ACTIVE_COLOR, PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { useEditableSection } from '../../../hooks/useEditableSection';
@@ -246,7 +245,6 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
         newLook
         data-testid="edit-data-products"
         disabled={false}
-        icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
         size="small"
         title={t('label.edit-entity', {
           entity: t('label.data-product-plural'),

@@ -103,7 +103,9 @@ export const CustomPropertiesRightPanel = ({
     { property, width, size = defaultSize }: LaidOutCustomProperty,
     isBordered: boolean
   ) => {
-    const spanClass = { 'tw:col-span-2': width === 'full' };
+    // A preview row always spans the whole widget so the list stays one
+    // column; a full-width card honours the half/full width set on it.
+    const spanClass = { 'tw:col-span-2': size === 'small' || width === 'full' };
 
     if (size === 'small') {
       return (
