@@ -974,7 +974,7 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Suggestions/**",
         "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/EntityRouter*.tsx",
-        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/withSuggestions.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/withSuggestions*.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/entity/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/queries/mlModelQuery.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/queries/entityDetailQueryKeys.test.ts",
