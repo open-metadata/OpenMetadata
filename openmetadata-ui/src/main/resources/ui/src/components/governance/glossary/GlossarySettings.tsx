@@ -30,10 +30,10 @@ import {
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import PageHeader from '../../PageHeader/PageHeader.component';
 import SettingsSection, {
   ReadOnlyRow,
 } from '../../discovery/personal-space/Profile/components/SettingsSection';
+import PageHeader from '../../PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 
 const QUERY_KEY = ['settings', SettingType.GlossarySettings];

@@ -21,10 +21,10 @@ import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TIME_FORMAT_OPTIONS } from '../../../components/discovery/personal-space/Profile/tabs/platform-settings/PlatformSettings.constants';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
-import { TIME_FORMAT_OPTIONS } from '../../../components/discovery/personal-space/Profile/tabs/platform-settings/PlatformSettings.constants';
 import { DefaultTimeFormat } from '../../../generated/api/configuration/appConfiguration';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {

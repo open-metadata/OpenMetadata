@@ -31,12 +31,12 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import { TIME_FORMAT_OPTIONS } from './PlatformSettings.constants';
 import type { PlatformSettingsFormProps } from './PlatformSettings.types';
 import SettingsFormLayout, {
   SettingsFormSection,
   SettingsSkeleton,
 } from './SettingsFormLayout';
-import { TIME_FORMAT_OPTIONS } from './PlatformSettings.constants';
 import { useSettingsFetch } from './useSettingsFetch';
 
 interface TimeFormatFormValues {

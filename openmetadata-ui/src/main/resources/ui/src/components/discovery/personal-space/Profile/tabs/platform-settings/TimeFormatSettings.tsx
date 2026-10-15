@@ -14,10 +14,10 @@ import { useTranslation } from 'react-i18next';
 import { DefaultTimeFormat } from '../../../../../../generated/api/configuration/appConfiguration';
 import { getAppConfiguration } from '../../../../../../rest/settingConfigAPI';
 import SettingsSection, { ReadOnlyRow } from '../../components/SettingsSection';
+import { TIME_FORMAT_OPTIONS } from './PlatformSettings.constants';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
 import SettingValue from './SettingValue';
-import { TIME_FORMAT_OPTIONS } from './PlatformSettings.constants';
 import { useEditHeaderAction } from './useEditHeaderAction';
 import { useSettingsFetch } from './useSettingsFetch';
 
