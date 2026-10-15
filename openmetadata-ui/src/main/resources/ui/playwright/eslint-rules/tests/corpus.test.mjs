@@ -68,7 +68,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // customize-navigation switches to their tree rows removes four more, and
     // the Data Marketplace announcements carousel spec dropped its `.first()`
     // item lookup.
-    'om-playwright/no-positional-locator': 559,
+    'om-playwright/no-positional-locator': 552,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
