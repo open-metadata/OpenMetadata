@@ -84430,6 +84430,14 @@
                     "endColumn": 92,
                     "lineCount": 1
                 }
+            },
+            {
+                "code": "reportArgumentType",
+                "range": {
+                    "startColumn": 31,
+                    "endColumn": 42,
+                    "lineCount": 1
+                }
             }
         ],
         "./src/metadata/sampler/sqlalchemy/azuresql/sampler.py": [
