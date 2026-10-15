@@ -373,6 +373,8 @@ public class SearchRepository {
   /** Search writes made for API requests, applied after the request returns. */
   @Getter private final LiveSearchWrites liveWrites = new LiveSearchWrites(this);
 
+  private volatile SearchRepairJob repairJob;
+
   /**
    * Staged index names being populated by an in-flight reindex on any server, keyed by the
    * canonical index name the alias normally points at (e.g. {@code openmetadata_table_search_index}).
@@ -2715,6 +2717,21 @@ public class SearchRepository {
         .filter(alias -> includeCapability.test(EntityIndexCapabilityRegistry.get(alias)))
         .map(alias -> hasClusterAlias ? clusterAlias + INDEX_NAME_SEPARATOR + alias : alias)
         .toList();
+  }
+
+  /** The scheduled repair of what live writes missed; one per server. */
+  public SearchRepairJob getRepairJob() {
+    SearchRepairJob job = repairJob;
+    if (job == null) {
+      synchronized (this) {
+        job = repairJob;
+        if (job == null) {
+          job = new SearchRepairJob(Entity.getCollectionDAO(), this);
+          repairJob = job;
+        }
+      }
+    }
+    return job;
   }
 
   /**
