@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchIndex } from '../../enums/search.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -74,20 +74,27 @@ describe('GlobalSearchBar', () => {
     ['label.table', SearchIndex.TABLE],
     ['label.database-schema', SearchIndex.DATABASE_SCHEMA],
     ['label.topic', SearchIndex.TOPIC],
-  ])('searches the %s index once it is selected', (label, searchIndex) => {
-    renderBar();
+  ])(
+    'searches the %s index once it is selected',
+    async (label, searchIndex) => {
+      renderBar();
 
-    fireEvent.mouseDown(screen.getByRole('combobox'));
-    fireEvent.click(screen.getByTestId(`global-search-select-option-${label}`));
+      fireEvent.click(
+        within(screen.getByTestId('global-search-selector')).getByRole('button')
+      );
+      fireEvent.click(
+        await screen.findByTestId(`global-search-select-option-${label}`)
+      );
 
-    expect(screen.getByTestId('global-search-selector')).toHaveTextContent(
-      label
-    );
+      expect(
+        within(screen.getByTestId('global-search-selector')).getByRole('button')
+      ).toHaveTextContent(label);
 
-    typeSearch('dim');
+      typeSearch('dim');
 
-    expect(screen.getByTestId('suggestions-index')).toHaveTextContent(
-      searchIndex
-    );
-  });
+      expect(screen.getByTestId('suggestions-index')).toHaveTextContent(
+        searchIndex
+      );
+    }
+  );
 });

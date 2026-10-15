@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { getSampleDataByTableId } from '../../../rest/tableAPI';
@@ -152,12 +152,10 @@ describe('Test SampleDataTable Component', () => {
     const rowLimitSelect = screen.getByTestId('row-limit-select');
 
     await act(async () => {
-      fireEvent.mouseDown(
-        rowLimitSelect.querySelector('.ant-select-selector') as Element
-      );
+      fireEvent.click(within(rowLimitSelect).getByRole('button'));
     });
     await act(async () => {
-      fireEvent.click(screen.getByTestId('row-limit-option-10'));
+      fireEvent.click(await screen.findByTestId('row-limit-option-10'));
     });
 
     expect(rowLimitSelect).toHaveTextContent('10');

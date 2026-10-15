@@ -51,9 +51,9 @@ test.describe('SAML Metadata XML Upload', () => {
     await selectSSOProvider(page, 'saml');
 
     await test.step('Upload Okta SAML metadata XML', async () => {
-      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
+      await expect(page.getByTestId('file-uploader')).toBeVisible();
 
-      await page.getByTestId('file-uploader').setInputFiles(OKTA_SAML_XML);
+      await page.getByTestId('file-upload-input').setInputFiles(OKTA_SAML_XML);
 
       await expect(page.getByTestId('change-metadata-xml-btn')).toBeVisible();
       await expect(

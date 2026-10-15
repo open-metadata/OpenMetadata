@@ -19,15 +19,25 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { SOURCE_URL_PLACEHOLDERS } from '../../constants/Learning.constants';
 import { ResourceType } from '../../generated/entity/learning/learningResource';
 import { LearningResource } from '../../rest/learningResourceAPI';
 import { LearningResourceForm } from './LearningResourceForm.component';
 
-const openSelect = (formItemTestId: string) => {
-  fireEvent.mouseDown(
-    within(screen.getByTestId(formItemTestId)).getByRole('combobox')
+const getTextbox = (testId: string) =>
+  within(screen.getByTestId(testId)).getByRole('textbox');
+
+const pickOption = async (
+  user: ReturnType<typeof userEvent.setup>,
+  testId: string,
+  option: string
+) => {
+  const field = screen.getByTestId(testId);
+  await user.click(
+    within(field).queryByRole('button') ?? within(field).getByRole('combobox')
   );
+  await user.click(await screen.findByRole('option', { name: option }));
 };
 
 const mockCreateLearningResource = jest.fn();
@@ -110,7 +120,7 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} resource={mockResource} />);
     });
 
-    const nameInput = document.querySelector('#name') as HTMLInputElement;
+    const nameInput = getTextbox('name-input');
 
     expect(nameInput).toHaveValue('TestResource');
   });
@@ -140,13 +150,15 @@ describe('LearningResourceForm', () => {
       fireEvent.click(submitBtn);
     });
 
-    const nameFormItem = screen
-      .getByTestId('name-input')
-      .closest('.ant-form-item') as HTMLElement;
+    const nameInput = within(screen.getByTestId('name-input')).getByRole(
+      'textbox'
+    );
 
-    expect(
-      await within(nameFormItem).findByText('label.field-required')
-    ).toBeInTheDocument();
+    await waitFor(() => expect(nameInput).toBeInvalid());
+
+    expect(screen.getAllByText('label.field-required').length).toBeGreaterThan(
+      0
+    );
     expect(mockCreateLearningResource).not.toHaveBeenCalled();
   });
 
@@ -179,7 +191,7 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} resource={mockResource} />);
     });
 
-    const nameInput = document.querySelector('#name') as HTMLInputElement;
+    const nameInput = getTextbox('name-input');
 
     expect(nameInput).toBeDisabled();
   });
@@ -189,7 +201,7 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} />);
     });
 
-    const nameInput = document.querySelector('#name') as HTMLInputElement;
+    const nameInput = getTextbox('name-input');
 
     expect(nameInput).not.toBeDisabled();
   });
@@ -217,33 +229,32 @@ describe('LearningResourceForm', () => {
   });
 
   it('should offer Video, Storylane, Link and PDF resource types', async () => {
-    await act(async () => {
-      render(<LearningResourceForm {...mockProps} />);
-    });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<LearningResourceForm {...mockProps} />);
 
-    await act(async () => {
-      openSelect('resource-type-form-item');
-    });
+    await user.click(
+      within(screen.getByTestId('resource-type-select')).getByRole('button')
+    );
 
-    expect(screen.getByText('label.video')).toBeInTheDocument();
-    expect(screen.getByText('label.storylane')).toBeInTheDocument();
-    expect(screen.getByText('label.link')).toBeInTheDocument();
-    expect(screen.getByText('label.pdf')).toBeInTheDocument();
+    for (const type of [
+      'label.video',
+      'label.storylane',
+      'label.link',
+      'label.pdf',
+    ]) {
+      expect(
+        await screen.findByRole('option', { name: type })
+      ).toBeInTheDocument();
+    }
   });
 
   it('should suggest a PDF URL once the PDF type is selected', async () => {
-    await act(async () => {
-      render(<LearningResourceForm {...mockProps} />);
-    });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<LearningResourceForm {...mockProps} />);
 
-    await act(async () => {
-      openSelect('resource-type-form-item');
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.pdf'));
-    });
+    await pickOption(user, 'resource-type-select', 'label.pdf');
 
-    expect(screen.getByTestId('source-url-input')).toHaveAttribute(
+    expect(getTextbox('source-url-input')).toHaveAttribute(
       'placeholder',
       SOURCE_URL_PLACEHOLDERS[ResourceType.PDF]
     );
@@ -251,37 +262,23 @@ describe('LearningResourceForm', () => {
 
   it('should create a Link resource pointing at the entered URL', async () => {
     const guideUrl = 'https://sharepoint.example.com/sites/data/guide';
-    await act(async () => {
-      render(<LearningResourceForm {...mockProps} />);
-    });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<LearningResourceForm {...mockProps} />);
 
-    fireEvent.change(screen.getByTestId('name-input'), {
+    fireEvent.change(getTextbox('name-input'), {
       target: { value: 'DataSeekerGuide' },
     });
-    fireEvent.change(screen.getByTestId('description-input'), {
+    fireEvent.change(getTextbox('description-input'), {
       target: { value: 'Internal guidance for Data Seekers' },
     });
-    fireEvent.change(screen.getByTestId('source-url-input'), {
+    fireEvent.change(getTextbox('source-url-input'), {
       target: { value: guideUrl },
     });
-    await act(async () => {
-      openSelect('resource-type-form-item');
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.link'));
-    });
-    await act(async () => {
-      openSelect('categories-form-item');
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByTitle('Discovery'));
-    });
-    await act(async () => {
-      openSelect('contexts-form-item');
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByTitle('Domain'));
-    });
+    await pickOption(user, 'resource-type-select', 'label.link');
+    await pickOption(user, 'categories-select', 'Discovery');
+    await user.keyboard('{Escape}');
+    await pickOption(user, 'contexts-select', 'Domain');
+    await user.keyboard('{Escape}');
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('save-resource'));

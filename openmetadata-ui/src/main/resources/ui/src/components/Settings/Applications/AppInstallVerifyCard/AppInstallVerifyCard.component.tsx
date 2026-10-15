@@ -16,13 +16,17 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Avatar,
   Box,
   Button,
   Card,
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Avatar, Collapse } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -59,8 +63,9 @@ const AppInstallVerifyCard = ({
           label={<CheckCircleTwoTone twoToneColor={LIGHT_GREEN_COLOR} />}
         />
         <Avatar
-          className="app-marketplace-avatar flex-center bg-white border"
-          icon={
+          className="tw:size-25 app-marketplace-avatar flex-center bg-white border"
+          contrastBorder={false}
+          placeholder={
             <BrandImage
               isMonoGram
               className="vertical-middle"
@@ -69,7 +74,7 @@ const AppInstallVerifyCard = ({
               width={56}
             />
           }
-          size={100}
+          size="2xl"
         />
       </Box>
       <Typography as="h5" className="m-t-md" size="text-md" weight="semibold">
@@ -116,14 +121,14 @@ const AppInstallVerifyCard = ({
             </div>
           </Box>
 
-          <Collapse ghost className="w-full m-t-md" expandIconPosition="end">
-            <Collapse.Panel
-              header={` ${t('label.all-entity', {
+          <Accordion allowsMultipleExpanded className="w-full m-t-md">
+            <AccordionItem id="1" key="1">
+              <AccordionHeader>{` ${t('label.all-entity', {
                 entity: t('label.metadata'),
-              })}`}
-              key="1"
-            />
-          </Collapse>
+              })}`}</AccordionHeader>
+              <AccordionPanel>{null}</AccordionPanel>
+            </AccordionItem>
+          </Accordion>
 
           <Divider className="tw:my-6" />
           <div className="d-flex justify-end gap-2">

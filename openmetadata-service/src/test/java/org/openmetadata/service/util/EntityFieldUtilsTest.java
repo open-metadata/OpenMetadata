@@ -276,6 +276,35 @@ class EntityFieldUtilsTest {
   }
 
   @Test
+  void appendGlossaryTermsKeepsCommasInsideJsonArrayFqns() {
+    TestEntity entity = entity();
+
+    try (MockedStatic<TagLabelUtil> mockedTagLabelUtil = mockStatic(TagLabelUtil.class)) {
+      stubTagLabelUtilities(mockedTagLabelUtil);
+      mockedTagLabelUtil
+          .when(() -> TagLabelUtil.getGlossaryTerm("Data Procedures.GDPR, Personal"))
+          .thenReturn(glossaryTerm("Data Procedures.GDPR, Personal"));
+      mockedTagLabelUtil
+          .when(() -> TagLabelUtil.getGlossaryTerm("Business.Critical"))
+          .thenReturn(glossaryTerm("Business.Critical"));
+
+      EntityFieldUtils.appendGlossaryTerms(
+          entity, "[\"Data Procedures.GDPR, Personal\",\"Business.Critical\"]");
+
+      assertEquals(
+          List.of("Data Procedures.GDPR, Personal", "Business.Critical"),
+          entity.getTags().stream().map(TagLabel::getTagFQN).toList());
+    }
+  }
+
+  @Test
+  void parseFqnListReadsJsonArraysAndLegacyCommaLists() {
+    assertEquals(List.of("A.b, c", "D.e"), EntityFieldUtils.parseFqnList("[\"A.b, c\",\"D.e\"]"));
+    assertEquals(List.of("A.b", " D.e"), EntityFieldUtils.parseFqnList("A.b, D.e"));
+    assertEquals(List.of("[PII].x"), EntityFieldUtils.parseFqnList("[PII].x"));
+  }
+
+  @Test
   void appendGlossaryTermsReplacesConflictingTerms() {
     TestEntity entity = entity();
     entity.setTags(

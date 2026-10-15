@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { User } from '../../generated/entity/teams/user';
@@ -161,8 +167,12 @@ describe('OnlineUsersPage', () => {
 
     await waitFor(() => expect(mockGetOnlineUsers).toHaveBeenCalled());
 
-    fireEvent.mouseDown(screen.getByRole('combobox'));
-    fireEvent.click(await screen.findByTitle('label.last-hour'));
+    fireEvent.click(
+      within(screen.getByTestId('time-window-select')).getByRole('button')
+    );
+    fireEvent.click(
+      await screen.findByRole('option', { name: 'label.last-hour' })
+    );
 
     await waitFor(() =>
       expect(mockGetOnlineUsers).toHaveBeenLastCalledWith(

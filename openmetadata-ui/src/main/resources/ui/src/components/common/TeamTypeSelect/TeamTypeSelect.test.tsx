@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { TeamType } from '../../../generated/entity/teams/team';
 import TeamTypeSelect from './TeamTypeSelect.component';
 
@@ -26,12 +26,9 @@ const mockProps = {
 };
 
 jest.mock('../../../utils/TeamUtils', () => ({
-  getTeamOptionsFromType: jest.fn().mockReturnValue([
-    { label: 'BusinessUnit', value: 'BusinessUnit' },
-    { label: 'Division', value: 'Division' },
-    { label: 'Department', value: 'Department' },
-    { label: 'Group', value: 'Group' },
-  ]),
+  getTeamOptionsFromType: jest
+    .fn()
+    .mockReturnValue(['BusinessUnit', 'Division', 'Department', 'Group']),
 }));
 
 describe('TeamTypeSelect', () => {
@@ -54,5 +51,32 @@ describe('TeamTypeSelect', () => {
     fireEvent.click(getByTestId('save-btn'));
 
     expect(updateTeamType).toHaveBeenCalled();
+  });
+
+  it('should save the team type picked from the list', async () => {
+    render(<TeamTypeSelect {...mockProps} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /team-type/ }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('option', { name: 'Division' }));
+    });
+    fireEvent.click(screen.getByTestId('save-btn'));
+
+    expect(updateTeamType).toHaveBeenCalledWith(TeamType.Division);
+  });
+
+  it('should not offer Group when the group option is hidden', async () => {
+    render(<TeamTypeSelect {...mockProps} showGroupOption={false} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /team-type/ }));
+    });
+
+    expect(screen.queryByRole('option', { name: 'Group' })).toBeNull();
+    expect(
+      screen.getByRole('option', { name: 'Division' })
+    ).toBeInTheDocument();
   });
 });

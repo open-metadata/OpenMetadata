@@ -2838,7 +2838,7 @@ describe('SSOConfigurationForm', () => {
     };
 
     const upload = (file: File) =>
-      fireEvent.change(screen.getByTestId('file-uploader'), {
+      fireEvent.change(screen.getByTestId('file-upload-input'), {
         target: { files: [file] },
       });
 
@@ -2856,7 +2856,7 @@ describe('SSOConfigurationForm', () => {
     it('should invite the admin to upload IdP metadata for a SAML provider', async () => {
       renderComponent({ selectedProvider: AuthProvider.Saml });
 
-      const dropZone = await screen.findByTestId('file-upload-drop-zone');
+      const dropZone = await screen.findByTestId('file-uploader');
 
       expect(dropZone).toHaveTextContent(
         'label.or-drag-and-drop-an-xml-file-here'
@@ -2870,7 +2870,7 @@ describe('SSOConfigurationForm', () => {
       const { container } = renderComponent({
         selectedProvider: AuthProvider.Saml,
       });
-      await screen.findByTestId('file-upload-drop-zone');
+      await screen.findByTestId('file-uploader');
 
       upload(xmlFile(VALID_METADATA, 'idp-metadata.xml'));
 
