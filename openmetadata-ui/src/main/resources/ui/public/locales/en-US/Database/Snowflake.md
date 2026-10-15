@@ -176,7 +176,7 @@ $$section
 
 Number of tables whose DML history is read from `QUERY_HISTORY` with a single query when the profiler computes system metrics (inserts, updates and deletes). For example, profiling 1,000 tables with the default of `50` issues 20 scans instead of 1,000.
 
-Higher values issue fewer scans but hold the history of more tables in memory at once. Lower it if the profiler runs out of memory on an account with a very high volume of DML.
+Higher values reduce scans while the batch history fits the shared cache budget for the ingestion process. If a batch exceeds the budget, its tables are scanned individually without dropping metrics or writing history to disk. The ingestion environment variable `OM_SNOWFLAKE_SYSTEM_METRICS_CACHE_MAX_BYTES` controls this budget (default 33,554,432 bytes, or 32 MiB; `0` disables batch caching). The budget covers cached batch history; an individual table's history and final metrics can still require additional memory.
 $$
 
 $$section

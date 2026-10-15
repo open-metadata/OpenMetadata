@@ -13,7 +13,7 @@ Snowflake models
 """
 
 import urllib
-from collections.abc import Iterator
+from collections.abc import Generator
 from datetime import datetime
 from typing import Any
 
@@ -169,7 +169,7 @@ class SnowflakeQueryLogEntry(BaseModel):
         session: Session,
         table_names: list[str],
         service_connection_config: SnowflakeConnection,
-    ) -> Iterator["SnowflakeQueryLogEntry"]:
+    ) -> Generator["SnowflakeQueryLogEntry", None, None]:
         """Yield the DML of any of `table_names` one row at a time. A busy account logs
         millions of DML per day with arbitrarily long QUERY_TEXT, so the rows are never
         materialized together: the connector downloads result chunks as they are consumed."""
@@ -251,7 +251,7 @@ class SnowflakeDynamicTableRefreshEntry(BaseModel):
         session: Session,
         table_names: list[str],
         service_connection_config: SnowflakeConnection,
-    ) -> Iterator["SnowflakeDynamicTableRefreshEntry"]:
+    ) -> Generator["SnowflakeDynamicTableRefreshEntry", None, None]:
         """Yield the refreshes of any of the dynamic tables named in `table_names`."""
         rows = session.execute(
             text(

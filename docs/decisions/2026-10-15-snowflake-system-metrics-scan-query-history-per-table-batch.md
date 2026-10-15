@@ -1,7 +1,7 @@
 # Snowflake system metrics scan QUERY_HISTORY once per batch of tables
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-15 (release completed batches)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-15 (release completed batches) · v3 2026-10-15 (byte budget and per-table fallback)
 - **Deciders:** TeddyCr
 - **Guard:** `ingestion/tests/unit/metadata/ingestion/source/database/snowflake/profiler/test_batched_system_metrics.py`, `TestFetchTableBatches` in `ingestion/tests/unit/observability/profiler/test_entity_fetcher.py`
 - **Related:** open-metadata/openmetadata-collate#3029
@@ -46,3 +46,26 @@ The fetcher discards each registration after handing over its tables, including 
 is closed early. The window advertises only active batches, so a later standalone profile cannot
 reuse the previous workflow's cached history. Discarding a batch preserves any newer registration
 for the same table. The two-batch retention limit still protects callers that register directly.
+
+## Amendment v3 — Shared history budget and per-table fallback
+The two-batch retention limit bounds table count but not the number of history records. Both
+`QUERY_HISTORY` and `DYNAMIC_TABLE_REFRESH_HISTORY` now share one byte budget per ingestion
+process, including any batch being built. `OM_SNOWFLAKE_SYSTEM_METRICS_CACHE_MAX_BYTES` configures it; the default is **32 MiB
+(33,554,432 bytes)** and zero disables batch caching. This is a conservative starting cap for an
+optional cache, not a measured guarantee for every container; operators can lower it for smaller
+containers. No history is written to disk.
+
+Each cached index first reserves **1 KiB** for its dictionary and accounting metadata. Each retained
+record then reserves space before insertion, accounting for Python objects, values and container
+overhead. Shared values and spare container capacity are deliberately overcounted. This is
+accounting for cached history, not a cap on process RSS, driver result buffers, or a table's
+final metrics. History builds share one lock so reservations across both views cannot race.
+
+When space runs short, older cached indexes are evicted first. If the current batch still exceeds
+the budget, its stream is closed and its partial index is discarded. A bounded marker makes all
+remaining tables of that batch use individual-table scans without retrying the oversized batch.
+Each table still reuses its own history for inserts, updates and deletes. No records are truncated.
+
+This sacrifices scan reduction for oversized histories: a batch can cost one interrupted scan plus
+one scan per table. Individual-table histories remain unconstrained by this shared cache budget,
+so one extremely busy table can still require substantial memory.

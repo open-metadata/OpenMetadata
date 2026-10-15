@@ -17,6 +17,7 @@ from datetime import datetime
 from unittest.mock import Mock
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy.engine.result import IteratorResult, SimpleResultMetaData
 
 from metadata.generated.schema.entity.data.table import (
@@ -37,6 +38,8 @@ from metadata.ingestion.source.database.snowflake.queries import (
     build_batched_dynamic_table_refresh_history_query,
     build_batched_query_log_query,
 )
+from metadata.ingestion.source.database.snowflake.settings import SnowflakeSettings
+from metadata.profiler.metrics.system.snowflake import system as snowflake_system
 from metadata.profiler.metrics.system.snowflake.system import (
     DYNAMIC_TABLE_REFRESH_INDEX,
     QUERY_HISTORY_INDEX,
@@ -86,14 +89,16 @@ class FakeSnowflakeSession:
         self.dynamic_refreshes = list(dynamic_refreshes)
         self.existing_tables = {name.upper() for name in existing_tables}
         self.statements: list[str] = []
+        self.history_results = []
+        self.history_rows_read: list[int] = []
 
     def execute(self, statement):
         sql = str(statement)
         self.statements.append(sql)
         if "DYNAMIC_TABLE_REFRESH_HISTORY" in sql:
-            return IteratorResult(SimpleResultMetaData(DYNAMIC_REFRESH_COLUMNS), iter(self.dynamic_refreshes))
+            return self._history_result(DYNAMIC_REFRESH_COLUMNS, self.dynamic_refreshes)
         if "QUERY_HISTORY" in sql:
-            return IteratorResult(SimpleResultMetaData(QUERY_HISTORY_COLUMNS), iter(self.query_history))
+            return self._history_result(QUERY_HISTORY_COLUMNS, self.query_history)
         if sql.startswith("SHOW TABLES"):
             rows = [
                 (START, name.split(".")[-1], *name.split(".")[:2])
@@ -102,6 +107,19 @@ class FakeSnowflakeSession:
             ]
             return IteratorResult(SimpleResultMetaData(SHOW_TABLES_COLUMNS), iter(rows))
         raise AssertionError(f"Unexpected statement: {sql}")
+
+    def _history_result(self, columns, rows):
+        position = len(self.history_rows_read)
+        self.history_rows_read.append(0)
+
+        def stream():
+            for row in rows:
+                self.history_rows_read[position] += 1
+                yield row
+
+        result = IteratorResult(SimpleResultMetaData(columns), stream())
+        self.history_results.append(result)
+        return result
 
     def scans(self, view: str) -> list[str]:
         return [sql for sql in self.statements if f"{view}" in sql and not sql.startswith("SHOW")]
@@ -433,3 +451,162 @@ def test_a_standalone_profile_after_a_released_batch_reads_fresh_history():
 
     assert [p.rowsAffected for p in profiles] == [9]
     assert len(next_session.query_history_scans) == 1
+
+
+def test_oversized_dml_batch_falls_back_once_per_table_without_losing_metrics(monkeypatch):
+    budget = snowflake_system.HISTORY_MEMORY_BUDGET
+    monkeypatch.setattr(budget, "max_bytes", 4096)
+    session = FakeSnowflakeSession(
+        query_history=[
+            *[dml(str(i), "INSERT INTO PROD.FINANCE.ORDERS VALUES (1)", "INSERT", inserted=1) for i in range(20)],
+            dml("update", "UPDATE PROD.FINANCE.ORDERS SET X = 1", "UPDATE", updated=7),
+            dml("delete", "DELETE FROM PROD.FINANCE.ORDERS", "DELETE", deleted=3),
+            dml("merge", "MERGE INTO PROD.FINANCE.CUSTOMERS USING RAW ON 1 = 1", "MERGE", inserted=4, updated=2),
+            dml("customer-delete", "DELETE FROM PROD.FINANCE.CUSTOMERS", "DELETE", deleted=6),
+        ]
+    )
+    batch = TABLE_BATCH_WINDOW.register([table_fqn("orders"), table_fqn("customers")])
+
+    orders = make_computer(session, "orders").get_system_metrics()
+    customers = make_computer(session, "customers").get_system_metrics()
+
+    assert rows_affected(orders, DmlOperationType.INSERT) == [1] * 20
+    assert rows_affected(orders, DmlOperationType.UPDATE) == [7]
+    assert rows_affected(orders, DmlOperationType.DELETE) == [3]
+    assert rows_affected(customers, DmlOperationType.INSERT) == [4]
+    assert rows_affected(customers, DmlOperationType.UPDATE) == [2]
+    assert rows_affected(customers, DmlOperationType.DELETE) == [6]
+    assert len(session.query_history_scans) == 3
+    assert 0 < session.history_rows_read[0] < len(session.query_history)
+    assert all(result.closed for result in session.history_results)
+    assert QUERY_HISTORY_INDEX._indexes[batch.batch_id] is None
+    assert budget.used_bytes == 0
+
+
+def test_oversized_dynamic_batch_falls_back_without_losing_refreshes(monkeypatch):
+    budget = snowflake_system.HISTORY_MEMORY_BUDGET
+    monkeypatch.setattr(budget, "max_bytes", 4096)
+    session = FakeSnowflakeSession(
+        dynamic_refreshes=[
+            *[(DATABASE, SCHEMA, "DYN_A", START, 2, 0) for _ in range(20)],
+            (DATABASE, SCHEMA, "DYN_B", START, 0, 4),
+            (DATABASE, "OTHER", "DYN_B", START, 0, 99),
+        ]
+    )
+    TABLE_BATCH_WINDOW.register([table_fqn("dyn_a"), table_fqn("dyn_b")])
+
+    dyn_a = make_computer(session, "dyn_a", TableType.Dynamic).get_system_metrics()
+    dyn_b = make_computer(session, "dyn_b", TableType.Dynamic).get_system_metrics()
+
+    assert rows_affected(dyn_a, DmlOperationType.INSERT) == [2] * 20
+    assert rows_affected(dyn_b, DmlOperationType.DELETE) == [4]
+    assert len(session.scans("DYNAMIC_TABLE_REFRESH_HISTORY")) == 3
+    assert session.history_rows_read[0] < len(session.dynamic_refreshes)
+    assert all(result.closed for result in session.history_results)
+    assert budget.used_bytes == 0
+
+
+def test_history_views_share_one_budget_and_evict_old_history(monkeypatch):
+    budget = snowflake_system.HISTORY_MEMORY_BUDGET
+    session = FakeSnowflakeSession(
+        dynamic_refreshes=[(DATABASE, SCHEMA, "DYN_A", START, 1, 0) for _ in range(5)],
+        query_history=[dml("1", "INSERT INTO PROD.FINANCE.ORDERS VALUES (1)", "INSERT", inserted=8)],
+    )
+    TABLE_BATCH_WINDOW.register([table_fqn("dyn_a"), table_fqn("orders")])
+    make_computer(session, "dyn_a", TableType.Dynamic).get_system_metrics()
+    assert budget.used_bytes > 0
+    monkeypatch.setattr(budget, "max_bytes", budget.used_bytes + 1)
+
+    profiles = make_computer(session, "orders").get_system_metrics()
+
+    assert rows_affected(profiles, DmlOperationType.INSERT) == [8]
+    assert DYNAMIC_TABLE_REFRESH_INDEX._indexes == {}
+    assert len(QUERY_HISTORY_INDEX._indexes) == 1
+    assert 0 < budget.used_bytes <= budget.max_bytes
+    QUERY_HISTORY_INDEX.clear()
+    assert budget.used_bytes == 0
+
+
+def test_history_budget_is_reclaimed_when_old_batches_are_evicted():
+    budget = snowflake_system.HISTORY_MEMORY_BUDGET
+    session = FakeSnowflakeSession(
+        query_history=[dml(str(i), f"INSERT INTO PROD.FINANCE.T{i} VALUES (1)", "INSERT", inserted=1) for i in range(3)]
+    )
+    sizes = []
+    for i in range(3):
+        TABLE_BATCH_WINDOW.register([table_fqn(f"t{i}")])
+        make_computer(session, f"t{i}").get_inserts()
+        sizes.append(budget.used_bytes)
+
+    assert sizes[0] > 0
+    assert sizes[1] > sizes[0]
+    assert sizes[2] == sizes[1]
+    QUERY_HISTORY_INDEX.clear()
+    assert budget.used_bytes == 0
+
+
+def test_failed_history_build_releases_its_reservation_and_closes_the_stream():
+    budget = snowflake_system.HISTORY_MEMORY_BUDGET
+    good = dml("1", "INSERT INTO PROD.FINANCE.ORDERS VALUES (1)", "INSERT", inserted=1)
+    bad = dml("2", "INSERT INTO PROD.FINANCE.ORDERS VALUES (1)", None, inserted=1)
+    session = FakeSnowflakeSession(query_history=[good, bad])
+    batch = TABLE_BATCH_WINDOW.register([table_fqn("orders")])
+
+    with pytest.raises(ValidationError):
+        make_computer(session, "orders").get_inserts()
+
+    assert budget.used_bytes == 0
+    assert batch.batch_id not in QUERY_HISTORY_INDEX._indexes
+    assert session.history_results[0].closed
+    session.query_history = [good]
+    assert [p.rowsAffected for p in make_computer(session, "orders").get_inserts()] == [1]
+
+
+def test_zero_history_budget_uses_per_table_scans(monkeypatch):
+    budget = snowflake_system.HISTORY_MEMORY_BUDGET
+    monkeypatch.setattr(budget, "max_bytes", 0)
+    session = FakeSnowflakeSession(
+        query_history=[
+            dml("1", "INSERT INTO PROD.FINANCE.ORDERS VALUES (1)", "INSERT", inserted=3),
+        ]
+    )
+    TABLE_BATCH_WINDOW.register([table_fqn("orders"), table_fqn("customers")])
+
+    orders = make_computer(session, "orders").get_system_metrics()
+    customers = make_computer(session, "customers").get_system_metrics()
+
+    assert rows_affected(orders, DmlOperationType.INSERT) == [3]
+    assert customers == []
+    assert len(session.query_history_scans) == 2
+    assert budget.used_bytes == 0
+
+
+def test_fallback_markers_remain_bounded(monkeypatch):
+    monkeypatch.setattr(snowflake_system.HISTORY_MEMORY_BUDGET, "max_bytes", 0)
+    session = FakeSnowflakeSession()
+    for i in range(5):
+        TABLE_BATCH_WINDOW.register([table_fqn(f"t{i}")])
+        make_computer(session, f"t{i}").get_inserts()
+
+    assert len(QUERY_HISTORY_INDEX._indexes) == 2
+    assert all(index is None for index in QUERY_HISTORY_INDEX._indexes.values())
+
+
+@pytest.mark.parametrize("limit", [0, 4096, 32 * 1024**2])
+def test_history_budget_setting_accepts_environment_override(monkeypatch, limit):
+    monkeypatch.setenv("OM_SNOWFLAKE_SYSTEM_METRICS_CACHE_MAX_BYTES", str(limit))
+
+    assert SnowflakeSettings().system_metrics_cache_max_bytes == limit
+
+
+def test_history_budget_setting_has_a_32_mib_default(monkeypatch):
+    monkeypatch.delenv("OM_SNOWFLAKE_SYSTEM_METRICS_CACHE_MAX_BYTES", raising=False)
+
+    assert SnowflakeSettings().system_metrics_cache_max_bytes == 32 * 1024**2
+
+
+def test_history_budget_setting_rejects_a_negative_limit(monkeypatch):
+    monkeypatch.setenv("OM_SNOWFLAKE_SYSTEM_METRICS_CACHE_MAX_BYTES", "-1")
+
+    with pytest.raises(ValidationError):
+        SnowflakeSettings()
