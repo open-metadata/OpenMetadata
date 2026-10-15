@@ -1,6 +1,7 @@
 # Reliable database-to-search and RDF projection
 
-Status: accepted direction; implementation in progress. Baseline code examined at `9d5f2d3f77c`.
+Status: accepted direction; implemented for 2.2 by the stacked PRs #35570–#35577, merged in
+order. Baseline code examined at `9d5f2d3f77c`.
 Implementation steps and measured verification are tracked in the
 [implementation plan](2026-10-06-database-projection-implementation.md). The end-to-end durability
 and performance guarantees below remain release gates, not claims about the current implementation.
@@ -1182,17 +1183,17 @@ moves installs still on a shipped cron (search Sunday 00:30, RDF Saturday 00:00)
 keeping a schedule an operator chose. A full reindex is for upgrades and emergencies; a search
 reindex writes through its own connection pool so it does not queue behind API writes. Live writes
 keep both projections current, and a repair pass per projection catches what they missed. Both
-passes share [`ScheduledRepairJob`](../../openmetadata-service/src/main/java/org/openmetadata/service/jobs/ScheduledRepairJob.java):
+passes share `ScheduledRepairJob`:
 one server runs each pass under a lock row, the window and last sweep live in
 `projection_repair_state`, and a type whose table has no `updatedAt` column is set aside instead
 of failing every pass.
 
 Search:
 
-- **Single runner.** [`SearchRepairJob`](../../openmetadata-service/src/main/java/org/openmetadata/service/search/SearchRepairJob.java)
+- **Single runner.** `SearchRepairJob`
   runs every 15 minutes on every server, but a pass needs the `SEARCH_REPAIR_LOCK` row in
   `search_reindex_lock`, so one server runs it at a time. A pass is skipped while a reindex runs.
-- **Changed rows.** [`ChangedDocumentsRepair`](../../openmetadata-service/src/main/java/org/openmetadata/service/search/ChangedDocumentsRepair.java)
+- **Changed rows.** `ChangedDocumentsRepair`
   pages each type's rows changed since the last pass by `(updatedAt, id)`, reads their documents'
   `sourceReadAt`, and rebuilds the documents that are missing or older than the row. A changed
   parent also rebuilds children read before the change, which closes the cross-server ordering
@@ -1204,13 +1205,13 @@ Search:
   three attempts, failures, timeout) records its target indexes and query; the retry worker
   rewrites the matching documents not rewritten since. A cascade that reaches the 5,000-document
   cap records the rest the same way.
-- **Index check.** [`SearchIndexCheck`](../../openmetadata-service/src/main/java/org/openmetadata/service/search/SearchIndexCheck.java)
+- **Index check.** `SearchIndexCheck`
   confirms that every type's index exists and carries its short alias, reading the aliases of the
   named serving indexes only, so a search role limited to OpenMetadata's indexes can run it. A
   missing one, or one the cluster auto-created on a write, is confirmed again after a minute, then
   the templates are recreated and a forced rebuild runs for those types only.
 
-RDF ([`RdfRepairJob`](../../openmetadata-service/src/main/java/org/openmetadata/service/rdf/repair/RdfRepairJob.java),
+RDF (`RdfRepairJob`,
 lock `RDF_REPAIR_LOCK` in `rdf_reindex_lock`):
 
 - **Projection check.** A full RdfIndexApp rebuild starts when the projection was never built (no

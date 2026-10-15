@@ -86,6 +86,34 @@ class StagedIndexRoutesTest {
   }
 
   @Test
+  void aRegistrationTheDatabaseMissedIsSharedOnTheOwnersNextRefresh() {
+    final StagedIndexRoutes reindexingServer = server("a");
+    final StagedIndexRoutes otherServer = server("b");
+    routeTable.failNextUpsert = true;
+    reindexingServer.register(TABLES, TABLES_REBUILT);
+    otherServer.refresh();
+    assertEquals(Optional.empty(), otherServer.stagedIndexFor(TABLES));
+
+    reindexingServer.refresh();
+    otherServer.refresh();
+
+    assertEquals(Optional.of(TABLES_REBUILT), otherServer.stagedIndexFor(TABLES));
+  }
+
+  @Test
+  void aRouteRemovedFromTheTableBehindItsOwnersBackIsRestored() {
+    final StagedIndexRoutes reindexingServer = server("a");
+    final StagedIndexRoutes otherServer = server("b");
+    reindexingServer.register(TABLES, TABLES_REBUILT);
+    routeTable.delete(TABLES, TABLES_REBUILT);
+
+    reindexingServer.refresh();
+    otherServer.refresh();
+
+    assertEquals(Optional.of(TABLES_REBUILT), otherServer.stagedIndexFor(TABLES));
+  }
+
+  @Test
   void everyServersStagedIndexesAreFannedOutTo() {
     final StagedIndexRoutes reindexingServer = server("a");
     final StagedIndexRoutes otherServer = server("b");
@@ -116,6 +144,7 @@ class StagedIndexRoutesTest {
     private record Row(String stagedIndex, String ownerId, long leaseExpiresAt) {}
 
     private final Map<String, Row> rows = new ConcurrentHashMap<>();
+    private boolean failNextUpsert;
 
     @Override
     public void upsert(
@@ -123,6 +152,10 @@ class StagedIndexRoutesTest {
         final String stagedIndex,
         final String ownerId,
         final long leaseExpiresAt) {
+      if (failNextUpsert) {
+        failNextUpsert = false;
+        throw new IllegalStateException("the database did not answer");
+      }
       rows.put(canonicalIndex, new Row(stagedIndex, ownerId, leaseExpiresAt));
     }
 
