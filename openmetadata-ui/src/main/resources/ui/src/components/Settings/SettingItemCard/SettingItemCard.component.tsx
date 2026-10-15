@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Box,
-  Card,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 
 import classNames from 'classnames';
 import { useCallback } from 'react';
