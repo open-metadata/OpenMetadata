@@ -315,17 +315,21 @@ test.describe('Platform Lineage page (/lineage)', () => {
     await dismissLineageMapOnboarding(page);
 
     await page.getByTestId('lineage-config').click();
-    await page.getByTestId('field-upstream').waitFor({ state: 'visible' });
-    await page.getByTestId('field-upstream').fill('2');
-    await page.getByTestId('field-downstream').fill('2');
+    const upstreamField = page.getByTestId('field-upstream');
+    await upstreamField.waitFor({ state: 'visible' });
+    // The global lineage settings are shared with other specs, so the depth
+    // may already be 2; an unchanged depth fetches nothing.
+    const depth = (await upstreamField.inputValue()) === '2' ? '3' : '2';
+    await upstreamField.fill(depth);
+    await page.getByTestId('field-downstream').fill(depth);
 
     const refetch = page.waitForResponse((response) => {
       const url = new URL(response.url());
 
       return (
         url.pathname.endsWith('/api/v1/lineage/scene') &&
-        url.searchParams.get('upstreamDepth') === '2' &&
-        url.searchParams.get('downstreamDepth') === '2'
+        url.searchParams.get('upstreamDepth') === depth &&
+        url.searchParams.get('downstreamDepth') === depth
       );
     });
 

@@ -581,7 +581,8 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         const table3Column = page.getByTestId(`column-${table3Col}`);
         const table2Column = page.getByTestId(`column-${table2Col}`);
-        await table3Column.click();
+        // The minimap can sit over table3 after fit, so fire the click in place.
+        await table3Column.dispatchEvent('click');
 
         await expect(table3Column).toHaveClass(
           /custom-node-header-column-tracing/
