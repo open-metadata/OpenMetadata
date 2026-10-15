@@ -812,14 +812,30 @@ class TestFetchTableBatches:
         ]
         fetcher.metadata.list_all_entities.side_effect = [iter([PROD_DB]), iter(tables)]
 
-        list(fetcher.fetch())
+        batches = [
+            TABLE_BATCH_WINDOW.batch_for(record.right.entity.fullyQualifiedName.root) for record in fetcher.fetch()
+        ]
 
-        assert len(TABLE_BATCH_WINDOW.batch_for("my_service.prod.finance.t0").table_fqns) == (
-            DEFAULT_SYSTEM_METRICS_BATCH_SIZE
-        )
-        assert TABLE_BATCH_WINDOW.batch_for(
-            f"my_service.prod.finance.t{DEFAULT_SYSTEM_METRICS_BATCH_SIZE}"
-        ).table_fqns == (f"my_service.prod.finance.t{DEFAULT_SYSTEM_METRICS_BATCH_SIZE}",)
+        assert len(batches[0].table_fqns) == DEFAULT_SYSTEM_METRICS_BATCH_SIZE
+        assert batches[-1].table_fqns == (f"my_service.prod.finance.t{DEFAULT_SYSTEM_METRICS_BATCH_SIZE}",)
+
+    @pytest.mark.parametrize("close_early", [False, True])
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
+    def test_finished_fetcher_does_not_leave_a_batch_for_a_later_run(self, mock_factory, close_early):
+        mock_factory.create.return_value = MagicMock(spec=ProfilerSourceInterface)
+        fetcher = self._snowflake_fetcher(batch_size=2)
+        fetcher.metadata.list_all_entities.side_effect = [iter([PROD_DB]), iter([ORDERS_TABLE])]
+        records = fetcher.fetch()
+        next(records)
+        table_fqn = ORDERS_TABLE.fullyQualifiedName.root
+        assert TABLE_BATCH_WINDOW.batch_for(table_fqn) is not None
+
+        if close_early:
+            records.close()
+        else:
+            list(records)
+
+        assert TABLE_BATCH_WINDOW.batch_for(table_fqn) is None
 
     @staticmethod
     def _listing(tables, listed, error=None):
@@ -849,12 +865,12 @@ class TestFetchTableBatches:
             "my_service.prod.finance.customers",
         )
 
-        rest = [record.right.entity for record in records]
-
-        assert rest == [CUSTOMERS_TABLE, EMPLOYEES_TABLE]
+        assert next(records).right.entity == CUSTOMERS_TABLE
+        assert next(records).right.entity == EMPLOYEES_TABLE
         assert TABLE_BATCH_WINDOW.batch_for("my_service.prod.hr.employees").table_fqns == (
             "my_service.prod.hr.employees",
         )
+        assert list(records) == []
 
     @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
     def test_tables_listed_before_a_paging_failure_are_still_handed_over(self, mock_factory):

@@ -181,8 +181,11 @@ class SnowflakeQueryLogEntry(BaseModel):
                 )
             )
         )
-        for row in rows:
-            yield SnowflakeQueryLogEntry.model_validate(ExtendedDict(row._asdict()).lower_case_keys())
+        try:
+            for row in rows:
+                yield SnowflakeQueryLogEntry.model_validate(ExtendedDict(row._asdict()).lower_case_keys())
+        finally:
+            rows.close()
 
 
 class SnowflakeQueryResult(QueryResult):
@@ -258,5 +261,8 @@ class SnowflakeDynamicTableRefreshEntry(BaseModel):
                 )
             )
         )
-        for row in rows:
-            yield SnowflakeDynamicTableRefreshEntry.model_validate(ExtendedDict(row._asdict()).lower_case_keys())
+        try:
+            for row in rows:
+                yield SnowflakeDynamicTableRefreshEntry.model_validate(ExtendedDict(row._asdict()).lower_case_keys())
+        finally:
+            rows.close()

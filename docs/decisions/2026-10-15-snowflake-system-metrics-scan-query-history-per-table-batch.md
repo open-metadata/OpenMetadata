@@ -1,7 +1,7 @@
 # Snowflake system metrics scan QUERY_HISTORY once per batch of tables
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-15 (release completed batches)
 - **Deciders:** TeddyCr
 - **Guard:** `ingestion/tests/unit/metadata/ingestion/source/database/snowflake/profiler/test_batched_system_metrics.py`, `TestFetchTableBatches` in `ingestion/tests/unit/observability/profiler/test_entity_fetcher.py`
 - **Related:** open-metadata/openmetadata-collate#3029
@@ -40,3 +40,9 @@ option, since a busy account logs millions of DML per day with arbitrarily long 
   database, schema and name.
 - Another connector can opt in by adding `systemMetricsBatchSize` to its connection and reading
   `TABLE_BATCH_WINDOW` from its system metrics computer.
+
+## Amendment v2 — Batch registration lifetime
+The fetcher discards each registration after handing over its tables, including when the fetcher
+is closed early. The window advertises only active batches, so a later standalone profile cannot
+reuse the previous workflow's cached history. Discarding a batch preserves any newer registration
+for the same table. The two-batch retention limit still protects callers that register directly.

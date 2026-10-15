@@ -349,19 +349,22 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 )
 
                 for batch in self._batched(self._get_table_entities(database)):
-                    TABLE_BATCH_WINDOW.register(
+                    registered_batch = TABLE_BATCH_WINDOW.register(
                         [table.fullyQualifiedName.root for table in batch if table.fullyQualifiedName]
                     )
-                    for table in batch:
-                        observed += 1
-                        self.progress.track_asset(Table.__name__)
-                        yield Either(
-                            left=None,
-                            right=ProfilerSourceAndEntity(
-                                profiler_source=profiler_source,
-                                entity=table,
-                            ),
-                        )
+                    try:
+                        for table in batch:
+                            observed += 1
+                            self.progress.track_asset(Table.__name__)
+                            yield Either(
+                                left=None,
+                                right=ProfilerSourceAndEntity(
+                                    profiler_source=profiler_source,
+                                    entity=table,
+                                ),
+                            )
+                    finally:
+                        TABLE_BATCH_WINDOW.discard(registered_batch)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

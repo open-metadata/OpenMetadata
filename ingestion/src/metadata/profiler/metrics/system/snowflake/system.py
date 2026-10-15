@@ -387,7 +387,7 @@ def _batch_table_keys(batch: TableBatch) -> frozenset[TableKey]:
     for table_fqn in batch.table_fqns:
         parts = fqn.split(table_fqn)
         if len(parts) == 4:
-            keys.add(_table_key(*parts[1:]))
+            keys.add(_table_key(*(fqn.unquote_name(part) for part in parts[1:])))
     return frozenset(keys)
 
 

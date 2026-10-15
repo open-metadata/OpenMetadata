@@ -129,6 +129,14 @@ class TableBatchWindow:
                         del self._batch_by_fqn[table_fqn]
             return batch
 
+    def discard(self, batch: TableBatch) -> None:
+        """Stop advertising a batch once its tables have left the fetcher."""
+        with self._lock:
+            self._batches.pop(batch.batch_id, None)
+            for table_fqn in batch.table_fqns:
+                if self._batch_by_fqn.get(table_fqn) == batch.batch_id:
+                    del self._batch_by_fqn[table_fqn]
+
     def batch_for(self, table_fqn: str) -> TableBatch | None:
         with self._lock:
             batch_id = self._batch_by_fqn.get(table_fqn)

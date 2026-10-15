@@ -29,6 +29,10 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
+from metadata.ingestion.source.database.snowflake.models import (
+    SnowflakeDynamicTableRefreshEntry,
+    SnowflakeQueryLogEntry,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     build_batched_dynamic_table_refresh_history_query,
     build_batched_query_log_query,
@@ -44,6 +48,7 @@ from metadata.profiler.metrics.system.system import (
     TABLE_BATCH_WINDOW,
     TableBatchWindow,
 )
+from metadata.utils import fqn
 
 SERVICE = "snowflake_svc"
 DATABASE = "PROD"
@@ -114,19 +119,19 @@ def dml(query_id, query_text, query_type, inserted=0, updated=0, deleted=0, cont
     return (query_id, query_text, query_type, START, *context, inserted, updated, deleted)
 
 
-def table_fqn(name, schema=SCHEMA):
-    return f"{SERVICE}.{DATABASE.lower()}.{schema.lower()}.{name}"
+def table_fqn(name, schema=SCHEMA, database=DATABASE):
+    return ".".join(fqn.quote_name(part) for part in (SERVICE, database.lower(), schema.lower(), name))
 
 
-def make_computer(session, name, table_type=TableType.Regular, schema=SCHEMA):
+def make_computer(session, name, table_type=TableType.Regular, schema=SCHEMA, database=DATABASE):
     runner = Mock()
     runner.table_name = name
     runner.schema_name = schema
-    runner.session.get_bind.return_value.url.database = DATABASE
+    runner.session.get_bind.return_value.url.database = database
     entity = Table(
         id=uuid.uuid4(),
         name=name,
-        fullyQualifiedName=table_fqn(name, schema),
+        fullyQualifiedName=table_fqn(name, schema, database),
         columns=[Column(name="id", dataType=DataType.INT)],
         tableType=table_type,
     )
@@ -349,3 +354,82 @@ def test_the_resolver_caches_tables_that_exist_and_those_that_do_not():
     assert [resolver.table_exists("PROD", "FINANCE", "ORDERS") for _ in range(3)] == [True] * 3
     assert [resolver.table_exists("PROD", "FINANCE", "MISSING") for _ in range(3)] == [False] * 3
     assert len(session.show_tables_calls) == 2
+
+
+@pytest.mark.parametrize(
+    ("database", "schema", "names"),
+    [
+        ("PROD.WEST", SCHEMA, ["orders", "customers"]),
+        (DATABASE, "FINANCE.WEST", ["orders", "customers"]),
+        (DATABASE, SCHEMA, ["orders.west", "customers.west"]),
+    ],
+)
+def test_quoted_fqn_components_share_the_batch_scan(database, schema, names):
+    session = FakeSnowflakeSession(
+        query_history=[
+            dml(str(i), f'INSERT INTO "{database}"."{schema}"."{name}" VALUES (1)', "INSERT", inserted=i + 1)
+            for i, name in enumerate(names)
+        ]
+    )
+    TABLE_BATCH_WINDOW.register([table_fqn(name, schema, database) for name in names])
+
+    profiles = [make_computer(session, name, schema=schema, database=database).get_inserts() for name in names]
+
+    assert [[p.rowsAffected for p in result] for result in profiles] == [[1], [2]]
+    assert len(session.query_history_scans) == 1
+
+
+@pytest.mark.parametrize("dynamic", [False, True])
+def test_history_stream_closes_the_cursor_when_consumption_stops(dynamic):
+    if dynamic:
+        model = SnowflakeDynamicTableRefreshEntry
+        result = IteratorResult(
+            SimpleResultMetaData(DYNAMIC_REFRESH_COLUMNS), iter([(DATABASE, SCHEMA, "DYN_A", START, 1, 0)] * 2)
+        )
+    else:
+        model = SnowflakeQueryLogEntry
+        result = IteratorResult(
+            SimpleResultMetaData(QUERY_HISTORY_COLUMNS),
+            iter([dml("1", "INSERT INTO ORDERS VALUES (1)", "INSERT", inserted=1)] * 2),
+        )
+    session = Mock()
+    session.execute.return_value = result
+    stream = model.stream_for_tables(
+        session, ["orders"], SnowflakeConnection.model_construct(accountUsageSchema="SNOWFLAKE.ACCOUNT_USAGE")
+    )
+
+    next(stream)
+    stream.close()
+
+    assert result.closed
+
+
+def test_discarding_an_old_batch_preserves_a_new_registration_for_the_same_table():
+    window = TableBatchWindow()
+    old = window.register([table_fqn("orders")])
+    current = window.register([table_fqn("orders")])
+
+    window.discard(old)
+
+    assert window.batch_for(table_fqn("orders")) == current
+
+
+def test_a_standalone_profile_after_a_released_batch_reads_fresh_history():
+    first_session = FakeSnowflakeSession(
+        query_history=[
+            dml("1", "INSERT INTO PROD.FINANCE.ORDERS VALUES (1)", "INSERT", inserted=1),
+        ]
+    )
+    batch = TABLE_BATCH_WINDOW.register([table_fqn("orders")])
+    assert [p.rowsAffected for p in make_computer(first_session, "orders").get_inserts()] == [1]
+    TABLE_BATCH_WINDOW.discard(batch)
+    next_session = FakeSnowflakeSession(
+        query_history=[
+            dml("2", "INSERT INTO PROD.FINANCE.ORDERS VALUES (1)", "INSERT", inserted=9),
+        ]
+    )
+
+    profiles = make_computer(next_session, "orders").get_inserts()
+
+    assert [p.rowsAffected for p in profiles] == [9]
+    assert len(next_session.query_history_scans) == 1
