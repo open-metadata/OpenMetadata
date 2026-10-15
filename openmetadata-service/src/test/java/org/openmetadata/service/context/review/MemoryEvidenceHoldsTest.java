@@ -140,32 +140,38 @@ class MemoryEvidenceHoldsTest {
   }
 
   @Test
-  void aMemoryThatCannotBeWrittenNeitherRefusesTheDeleteNorStopsTheOthers() {
+  void aRetryAfterAPartialFailureHoldsWhatTheFirstAttemptMissed() {
+    UUID first = memories.add(ContextMemoryStatus.APPROVED, query);
+    UUID second = memories.add(ContextMemoryStatus.APPROVED, query);
+    memories.failNextWrite(second, new IllegalStateException("the database went away"));
+
+    assertThrows(IllegalStateException.class, () -> holds.holdMemoriesSupportedBy(query));
+    assertEquals(ContextMemoryStatus.DRAFT, memories.current(first).getEntityStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, memories.current(second).getEntityStatus());
+
+    holds.holdMemoriesSupportedBy(query);
+
+    assertEquals(ContextMemoryStatus.DRAFT, memories.current(second).getEntityStatus());
+    assertEquals(List.of(first, second), memories.writes, "the held memory is not written again");
+  }
+
+  /**
+   * A principal a memory was shared with and that was deleted since stays in {@code sharedWith}, and
+   * every PATCH of that memory then fails looking it up, before anything is written. Deleting the
+   * Query must still succeed, and the other memories citing it are still held.
+   */
+  @Test
+  void aMemorySharedWithADeletedPrincipalNeitherBlocksTheDeleteNorStopsTheOthers() {
     UUID unwritable = memories.add(ContextMemoryStatus.APPROVED, query);
     UUID other = memories.add(ContextMemoryStatus.APPROVED, query);
-    memories.failNextWrite(unwritable, new IllegalStateException("the database went away"));
+    memories.failNextWrite(
+        unwritable, EntityNotFoundException.byMessage("user instance for " + UUID.randomUUID()));
 
     assertDoesNotThrow(() -> holds.holdMemoriesSupportedBy(query));
 
     assertEquals(ContextMemoryStatus.APPROVED, memories.current(unwritable).getEntityStatus());
     assertEquals(ContextMemoryStatus.DRAFT, memories.current(other).getEntityStatus());
     assertEquals(List.of(other), memories.writes);
-  }
-
-  /**
-   * A principal a memory was shared with and that was deleted since stays in {@code sharedWith}, and
-   * every PATCH of that memory then fails looking it up. Deleting the Query must still succeed.
-   */
-  @Test
-  void aMemorySharedWithADeletedPrincipalDoesNotBlockDeletingItsQuery() {
-    UUID memory = memories.add(ContextMemoryStatus.APPROVED, query);
-    memories.failNextWrite(
-        memory, EntityNotFoundException.byMessage("user instance for " + UUID.randomUUID()));
-
-    assertDoesNotThrow(() -> holds.holdMemoriesSupportedBy(query));
-
-    assertEquals(ContextMemoryStatus.APPROVED, memories.current(memory).getEntityStatus());
-    assertTrue(memories.writes.isEmpty());
   }
 
   @Test

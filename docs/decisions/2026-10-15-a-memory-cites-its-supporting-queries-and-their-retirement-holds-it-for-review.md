@@ -34,17 +34,20 @@ read the Query.
    search document stops listing a Query that no longer exists. The hold records no disputes, so
    it opens no conflict review task: Draft is the human review queue.
 3. **Ordering.** The hold runs in `QueryRepository.preDelete`, before the row removal. Every delete
-   path reaches it: a direct delete, and a cascade from the service. Edits that keep racing a hold
-   refuse the delete, which a retry resolves; a hold left behind by a refused delete is a false
-   alarm that a reviewer clears. A memory that cannot be written at all is logged by id and left
-   unheld, and the delete goes ahead. One shared with a principal deleted since is the known case:
-   every PATCH of it fails. Deleting a Query, or recursively deleting its service, must not depend
-   on the state of unrelated memory data.
+   path reaches it: a direct delete, and a cascade from the service. A memory whose write is
+   refused because something it references no longer exists (`EntityNotFoundException`) is logged
+   by id and left unheld, and the delete goes ahead. One shared with a principal deleted since is
+   the known case: every PATCH of it fails that check, before anything is written. Deleting a
+   Query, or recursively deleting its service, must not depend on the state of unrelated memory
+   data. Any other failure refuses the delete: the hold runs inside the delete's transaction, so
+   swallowing a failure partway through a write would commit it with the delete. A hold left
+   behind by a refused delete is a false alarm that a reviewer clears.
 4. **Concurrency and idempotency.** For each memory, the hold:
    - reads the memory again and checks that it still cites the Query;
    - writes as `governance-bot` with a guarded PATCH: an `updatedAt` test plus the ETag;
    - on a concurrent edit, reads and decides again, at most three times, then refuses the delete;
-   - on any other failure, logs a warning naming the memory and the Query, and moves on.
+   - when a referenced entity is gone, logs a warning naming the memory and the Query, and moves
+     on.
 
    A memory that is already Draft is skipped. So a repeated delete, or a retry after a partial
    failure, writes only what is still missing.
