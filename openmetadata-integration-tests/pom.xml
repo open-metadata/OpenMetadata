@@ -24,8 +24,9 @@
     <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryDerivationIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
-    <!-- Tests that need the RDF store. The rdf lane runs them against a Fuseki the bootstrap
-         builds from docker/rdf-store; every other run leaves RDF off and they skip. -->
+    <!-- Tests that need the RDF store. The rdf lane runs them against the published
+         openmetadata/fuseki image pinned in FusekiTestImage (override with -DrdfContainerImage);
+         every other run leaves RDF off and they skip. -->
     <integrationTests.rdfTests>Rdf*IT,LodResourceIT,AgentSparqlResourceIT</integrationTests.rdfTests>
     <integrationTests.enableRdf>false</integrationTests.enableRdf>
     <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
@@ -1497,10 +1498,11 @@
       </build>
     </profile>
     <!-- RDF integration tests profile.
-         No rdfContainerImage is set on purpose: TestSuiteBootstrap then builds the
-         supported image from docker/rdf-store (Fuseki 6.2.0 + unionDefaultGraph +
-         write extension). The previous secoresearch/fuseki:5.5.0 pin ran a bare
-         server with no update service, so every SPARQL update failed with 405. -->
+         No rdfContainerImage is set on purpose: TestSuiteBootstrap then runs the pinned
+         published openmetadata/fuseki image configured as OpenMetadata deploys it (three
+         datasets, union default graph, server deadlines, write extension). The previous
+         secoresearch/fuseki:5.5.0 pin ran a bare server with no update service, so every
+         SPARQL update failed with 405. -->
     <profile>
       <id>postgres-rdf-tests</id>
       <build>
