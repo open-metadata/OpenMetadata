@@ -174,7 +174,7 @@ const SuggestionsProvider = ({
 
         if (status === SuggestionAction.Accept) {
           publish('updateDetails', suggestion);
-          refreshEntityDetails();
+          void refreshEntityDetails();
         }
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -243,7 +243,7 @@ const SuggestionsProvider = ({
           userSuggestionsToRemove.forEach((suggestion) => {
             publish('updateDetails', suggestion);
           });
-          refreshEntityDetails();
+          void refreshEntityDetails();
         }
         setActiveUser(undefined);
       } catch (err) {

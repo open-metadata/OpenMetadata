@@ -35,6 +35,7 @@ import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { expect, test } from '../fixtures/pages';
 
@@ -150,7 +151,14 @@ test.describe(
   'Entity description suggestions',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    for (const { entityType, build } of TARGETS) {
+    // PR/merge-queue CI runs one representative entity; nightly and local runs
+    // cover every entity. Metric exercises the router-level provider and the
+    // React Query refresh, which is the path most entity pages take.
+    for (const { entityType, build } of pickEntityMatrix(
+      __filename,
+      TARGETS,
+      TARGETS.filter(({ entityType }) => entityType === 'metric')
+    )) {
       test(`accepting a description suggestion on ${entityType} updates the page without a reload`, async ({
         page,
       }) => {
