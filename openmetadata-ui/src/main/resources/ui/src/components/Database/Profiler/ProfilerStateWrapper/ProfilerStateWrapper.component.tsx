@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from '@openmetadata/ui-core-components';
+import { Box, Card, Skeleton } from '@openmetadata/ui-core-components';
 import ProfilerLatestValue from '../ProfilerLatestValue/ProfilerLatestValue';
 import { ProfilerStateWrapperProps } from './ProfilerStateWrapper.interface';
 
@@ -26,25 +26,28 @@ const ProfilerStateWrapper = ({
   }
 
   return (
-    <div>
+    <Box direction="col" gap={3}>
       {title && (
         <p
-          className="tw:m-0 tw:mb-3 tw:text-md tw:font-semibold tw:text-primary"
+          className="tw:m-0 tw:text-md tw:font-semibold tw:text-primary"
           data-testid={`${title}-title`}>
           {title}
         </p>
       )}
-      <div
-        className="tw:rounded-[10px] tw:border tw:border-border-secondary tw:bg-surface tw:p-4 tw:shadow-none"
+      {/* overflow-visible: chart tooltips near the edge must not be clipped. */}
+      <Card
+        className="tw:overflow-visible"
         data-testid={dataTestId ?? 'profiler-details-card-container'}>
-        <div className="tw:flex tw:flex-col tw:gap-4">
-          {profilerLatestValueProps && (
-            <ProfilerLatestValue {...profilerLatestValueProps} />
-          )}
-          <div className="tw:grow">{children}</div>
-        </div>
-      </div>
-    </div>
+        <Card.Content>
+          <Box direction="col" gap={4}>
+            {profilerLatestValueProps && (
+              <ProfilerLatestValue {...profilerLatestValueProps} />
+            )}
+            <div className="tw:grow">{children}</div>
+          </Box>
+        </Card.Content>
+      </Card>
+    </Box>
   );
 };
 
