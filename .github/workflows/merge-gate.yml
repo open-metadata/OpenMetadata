@@ -5,9 +5,10 @@ name: Merge Gate
 # mirrors the run. Runs the default branch's code only — never the code under test —
 # and treats the run's artifacts as data.
 #
-# vars.MERGE_GATE_MODE: shadow (default) posts `merge-gate (shadow)`, required by
-# nothing; enforce posts `merge-gate`; strict posts `merge-gate` with no forgiveness
-# and no re-runs, which is the kill switch.
+# vars.MERGE_GATE_MODE: unset (default) runs no job, so merging this changes nothing;
+# shadow posts `merge-gate (shadow)`, required by nothing; enforce posts `merge-gate`;
+# strict posts `merge-gate` with no forgiveness and no re-runs, which is the kill
+# switch. A dispatch decides one run in the mode it names, whatever the variable says.
 
 on:
   workflow_run:
@@ -43,7 +44,10 @@ concurrency:
 jobs:
   decide:
     name: decide
-    if: ${{ github.event_name != 'schedule' && (github.event_name == 'workflow_dispatch' || contains(fromJSON('["merge_group","pull_request"]'), github.event.workflow_run.event)) }}
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' &&
+        contains(fromJSON('["shadow","enforce","strict"]'), vars.MERGE_GATE_MODE) &&
+        contains(fromJSON('["merge_group","pull_request"]'), github.event.workflow_run.event)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # deployment: false — the job reads the ci-ai key for the triage call without
@@ -229,7 +233,7 @@ jobs:
 
   sweep:
     name: sweep
-    if: ${{ github.event_name == 'schedule' }}
+    if: ${{ github.event_name == 'schedule' && contains(fromJSON('["shadow","enforce","strict"]'), vars.MERGE_GATE_MODE) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # deployment: false — the job reads the ci-ai key for the triage call without

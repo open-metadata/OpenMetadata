@@ -19,9 +19,7 @@
 name: Integration Tests - PostgreSQL + Elasticsearch + Redis
 
 on:
-  # Not a required check, so the queue never waited for it: it now runs after each
-  # backend merge (push) and nightly (nightly.yml dispatches it) instead of on
-  # every queue entry.
+  merge_group:
   workflow_dispatch:
   push:
     branches:

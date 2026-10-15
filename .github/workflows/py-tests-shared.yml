@@ -52,6 +52,14 @@ on:
         required: false
         type: boolean
         default: false
+      concurrency_group_suffix:
+        description: >-
+          Appended to the spaCy job's concurrency group. ci.yml's shadow run passes one:
+          GitHub keeps a single pending job per group and cancels the one before, so a
+          third caller would cancel py-tests' or py-tests-postgres' job for the same PR.
+        required: false
+        type: string
+        default: ""
 
 env:
   # matrix can't use 'env'. When updating it, update it for both jobs.
@@ -188,7 +196,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     concurrency:
-      group: spacy-model-${{ github.event.pull_request.number || github.ref }}
+      group: spacy-model-${{ github.event.pull_request.number || github.ref }}${{ inputs.concurrency_group_suffix }}
       cancel-in-progress: false
     steps:
       - name: Restore spaCy model wheel

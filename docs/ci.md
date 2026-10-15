@@ -12,6 +12,16 @@ ADR:2026-10-13-queue-conflicts-are-requeued-or-resolved-by-ci.
 post `merge-gate (shadow)`, which no ruleset requires. The live queue is unchanged until
 the cutover below.
 
+Merging this changes nothing for the existing workflows or for anyone's PR. With the
+repository variables unset, every `ci.yml` run stops after `plan` (both sampling shares
+default to 0), the gate starts no job (`MERGE_GATE_MODE` unset), and the conflict
+resolver starts none either (`CI_CONFLICT_MODE` defaults to `off`). The shadow starts
+when an admin sets `MERGE_GATE_MODE=shadow` and `CI_SHADOW_PR_PERCENT` /
+`CI_SHADOW_MQ_PERCENT` (start low, say 10, and ramp while watching runner queue time);
+`CI_CONFLICT_MODE=dry-run` is a separate step. Once queue entries are sampled, the
+shadow run's failed jobs also appear in the dequeue report and the daily report's
+failing-check counts, beside the required checks that decided.
+
 ## Stages
 
 | Stage | What runs | Gate |
@@ -45,12 +55,12 @@ the shadow period measures them.
 
 ## The merge gate
 
-`merge-gate.yml` runs on every finished CI run (`workflow_run`), every 10 minutes, and
-by hand. It runs main's code only, and decides only finished runs of `ci.yml` whose jobs
-ran: one that could not start fails, and one awaiting approval or cancelled before any job
-began gets no verdict. Several jobs that need a re-run go together through the run's failed
-jobs, since GitHub refuses a targeted re-run once another has started. The sweep catches a
-missed delivery: a run that finished 15 to 60 minutes ago whose head has no gate status,
+Once `MERGE_GATE_MODE` is set, `merge-gate.yml` runs on every finished CI run
+(`workflow_run`) and every 10 minutes; by hand, always. It runs main's code only, and
+decides only finished runs of `ci.yml` whose jobs ran: one that could not start fails, and
+one awaiting approval or cancelled before any job began gets no verdict. Several jobs that
+need a re-run go together through the run's failed jobs, since GitHub refuses a targeted
+re-run once another has started. The sweep catches a missed delivery: a run that finished 15 to 60 minutes ago whose head has no gate status,
 or only a pending one (a re-run leaves it pending until the new attempt is decided; an
 entry the gate holds is decided again on each sweep, without a second alert). Queue runs
 go first and oldest first, from their own listing; at most 50 verdicts per sweep, not
@@ -190,10 +200,10 @@ person re-queues it.
 
 | Repository variable | Values | Default |
 |---|---|---|
-| `MERGE_GATE_MODE` | `shadow` · `enforce` · `strict` (kill switch: no forgiveness, no re-runs) | `shadow` |
-| `CI_SHADOW_PR_PERCENT` / `CI_SHADOW_MQ_PERCENT` | share of PRs whose shadow `ci.yml` runs | 100 / 25 |
+| `MERGE_GATE_MODE` | `shadow` · `enforce` · `strict` (kill switch: no forgiveness, no re-runs) | unset: the gate runs no job (a dispatch still decides one run) |
+| `CI_SHADOW_PR_PERCENT` / `CI_SHADOW_MQ_PERCENT` | share of PRs whose shadow `ci.yml` runs (ignored once `MERGE_GATE_MODE` is not `shadow`: every run is tested) | 0 / 0 (shadow off) |
 | `MERGE_GATE_REGISTRY` | `off` · `dry-run` · `on`: ledger records on the `ci/merge-gate` data branch and `flaky-test`/`broken-main` issues | `dry-run` |
-| `CI_CONFLICT_MODE` | `off` · `dry-run` · `on` | `dry-run` |
+| `CI_CONFLICT_MODE` | `off` (no job starts) · `dry-run` (comments a proposed resolution) · `on` | `off` |
 | `CI_AI_MODE` | `off` · `shadow` · `on`: the advisory roles (explain, `/ci-fix`, conflicts) | unset (off) |
 | `CI_AI_TRIAGE_MODE` | `off` · `shadow` (answers reported only) · `on` (a blip earns a re-run) | unset (off) |
 | `CI_AI_TRIAGE_MODEL` / `CI_AI_TRIAGE_EFFORT` / `CI_AI_DAILY_TRIAGE_MAX` | the triage model, its effort, and calls per day | `claude-opus-5-5` / `low` / 100 |
@@ -273,6 +283,7 @@ same head: a small sample, to be re-measured over the full window.
    | `ui-checkstyle.yml`, `openmetadata-service-unit-tests.yml` | keep only `workflow_call` | `ci.yml` calls them |
    | `playwright-postgresql-e2e.yml` | drop `pull_request` and `merge_group` | its schedule is the nightly full suite and main health |
    | `py-tests.yml`, `py-tests-postgres.yml` | keep only `workflow_dispatch` | `nightly.yml` dispatches them |
+   | `integration-tests-postgres-elasticsearch-redis.yml` | drop `merge_group` | not a required check, so the queue never waited for it; pushes to main and `nightly.yml` keep running it |
    | `maven-sonar-build.yml` | delete | runs with `sonar.skip=true` today |
 
    Never `gh workflow disable` these: disabling is per workflow file across every

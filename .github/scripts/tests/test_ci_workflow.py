@@ -68,6 +68,27 @@ def test_called_workflows_get_the_permissions_their_jobs_declare(jobs):
                 )
 
 
+def concurrency_groups(workflow):
+    blocks = [workflow.get("concurrency")] + [job.get("concurrency") for job in workflow["jobs"].values()]
+    return [block["group"] if isinstance(block, dict) else block for block in blocks if block]
+
+
+def test_a_called_workflow_never_shares_a_concurrency_group_with_its_own_runs(jobs):
+    # GitHub keeps one pending job per concurrency group and cancels the one before it,
+    # so a shadow call sharing a group with the same workflow's own run for the PR can
+    # cancel a required check.
+    for name, job in jobs.items():
+        uses = str(job.get("uses", ""))
+        if not uses.startswith("./.github/workflows/"):
+            continue
+        called = yaml.safe_load((WORKFLOW.parent / uses.rsplit("/", 1)[-1]).read_text())
+        groups = concurrency_groups(called)
+        if groups:
+            assert (job.get("with") or {}).get("concurrency_group_suffix"), f"{name} calls {uses} without a suffix"
+        for group in groups:
+            assert "inputs.concurrency_group_suffix" in group, f"{uses}: group {group!r} ignores the caller's suffix"
+
+
 def needs_of(job):
     needs = job.get("needs") or []
     return needs if isinstance(needs, list) else [needs]

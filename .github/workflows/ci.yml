@@ -121,7 +121,8 @@ jobs:
               - '.github/**'
 
       # Shadow runs are sampled per PR so the shared runner pool is not doubled
-      # outright; vars.CI_SHADOW_PR_PERCENT / CI_SHADOW_MQ_PERCENT ramp them to 100.
+      # outright. Both shares start at 0, so merging this workflow tests nothing
+      # until vars.CI_SHADOW_PR_PERCENT / CI_SHADOW_MQ_PERCENT turn the shadow on.
       - name: Decide tier and shadow sampling
         id: sample
         env:
@@ -129,8 +130,8 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           QUEUE_REF: ${{ github.event.merge_group.head_ref }}
           DRAFT: ${{ github.event.pull_request.draft }}
-          PR_PERCENT: ${{ vars.CI_SHADOW_PR_PERCENT || '100' }}
-          MQ_PERCENT: ${{ vars.CI_SHADOW_MQ_PERCENT || '25' }}
+          PR_PERCENT: ${{ vars.CI_SHADOW_PR_PERCENT || '0' }}
+          MQ_PERCENT: ${{ vars.CI_SHADOW_MQ_PERCENT || '0' }}
           GATE_MODE: ${{ vars.MERGE_GATE_MODE || 'shadow' }}
         run: |
           python3 - <<'PY'
@@ -399,6 +400,7 @@ jobs:
       # 3.11 and 3.12 run nightly; the queue tests the version CI ships on.
       python-versions: '["3.10"]'
       verify_failures: ${{ needs.plan.outputs.tier == 'mq' }}
+      concurrency_group_suffix: -ci
 
   # ------------------------------------------------------------------ S2: queue suites
   it:

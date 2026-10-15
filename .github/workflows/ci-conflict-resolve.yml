@@ -17,9 +17,9 @@ name: Queue Conflicts
 # main's caches. The push starts the PR's own CI, which builds and tests the merge
 # commit, and auto-merge re-enters the queue only once those checks pass.
 #
-# vars.CI_CONFLICT_MODE: off | dry-run (default: comment a patch, push nothing) | on.
-# Labels added with the default token trigger no workflow (ADR 2026-10-13), hence
-# the schedule instead of the label. One PR on demand:
+# vars.CI_CONFLICT_MODE: off (default: no job starts) | dry-run (comment a patch,
+# push nothing) | on. Labels added with the default token trigger no workflow (ADR
+# 2026-10-13), hence the schedule instead of the label. One PR on demand:
 # `gh workflow run ci-conflict-resolve.yml -f pr=<number>`.
 
 on:
@@ -40,12 +40,12 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  MODE: ${{ vars.CI_CONFLICT_MODE || 'dry-run' }}
+  MODE: ${{ vars.CI_CONFLICT_MODE || 'off' }}
 
 jobs:
   requeue:
     name: requeue
-    if: ${{ (github.event_name == 'schedule' || github.event_name == 'push') && vars.CI_CONFLICT_MODE != 'off' }}
+    if: ${{ (github.event_name == 'schedule' || github.event_name == 'push') && contains(fromJSON('["dry-run","on"]'), vars.CI_CONFLICT_MODE) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # For the gate App's key only, which lives in this main-only environment.
@@ -74,7 +74,7 @@ jobs:
 
   scan:
     name: scan
-    if: ${{ github.event_name == 'schedule' && vars.CI_CONFLICT_MODE != 'off' }}
+    if: ${{ github.event_name == 'schedule' && contains(fromJSON('["dry-run","on"]'), vars.CI_CONFLICT_MODE) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -103,7 +103,7 @@ jobs:
 
   resolve:
     name: resolve
-    if: ${{ vars.CI_CONFLICT_MODE != 'off' && github.event_name == 'workflow_dispatch' }}
+    if: ${{ contains(fromJSON('["dry-run","on"]'), vars.CI_CONFLICT_MODE) && github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: ci-ai

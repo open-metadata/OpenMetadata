@@ -17,7 +17,7 @@ conflicts with (ADR 2026-10-13):
 Labels added with the default token trigger no workflow, so this runs on a
 schedule and on pushes to main rather than on the label.
 
-Mode (CI_CONFLICT_MODE): off | dry-run (default) | on.
+Mode (CI_CONFLICT_MODE): off (default) | dry-run | on.
 
 Exits 0 after acting, 1 when GitHub could not be read.
 """
@@ -146,7 +146,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--owner", default="open-metadata")
     parser.add_argument("--repo", default="OpenMetadata")
-    parser.add_argument("--mode", default=os.environ.get("CI_CONFLICT_MODE") or "dry-run", choices=("off", "dry-run", "on"))
+    parser.add_argument("--mode", default=os.environ.get("CI_CONFLICT_MODE") or "off", choices=("off", "dry-run", "on"))
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("requeue")
     candidates = commands.add_parser("candidates")

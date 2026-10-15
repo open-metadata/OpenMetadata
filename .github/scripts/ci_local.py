@@ -118,7 +118,9 @@ def gate_event(event: str) -> dict:
 EVERY_AREA = FILTERS
 STATIC = ("static-java", "static-python", "static-ui", "static-json", "static-ci")
 QUEUE_SUITES = ("build-java", "unit-java", "unit-ui", "python", "it", "playwright")
+PR = {"CI_SHADOW_PR_PERCENT": "100"}
 MQ = {"CI_SHADOW_MQ_PERCENT": "100"}
+GATE = {"MERGE_GATE_MODE": "shadow"}
 
 SCENARIOS = (
     Scenario(
@@ -126,6 +128,7 @@ SCENARIOS = (
         "A Java-only PR: its static checks, then the Java unit tests; no queue-tier job.",
         "pull_request", pr_event(),
         areas=("java", "backend", "e2e"),
+        variables=PR,
         success=("plan", "static-java", "static-ui", "static-json", "unit-java", "ci-summary"),
     ),
     Scenario(
@@ -133,6 +136,7 @@ SCENARIOS = (
         "A formatting failure starts no suite, and the PR run cancels itself.",
         "pull_request", pr_event(),
         areas=("java", "backend", "ui", "python", "e2e"),
+        variables=PR,
         fail=("static-java",),
         success=("plan", "static-python", "static-ui", "static-json", "fail-fast"),
         failure=("static-java", "ci-summary"),
@@ -142,6 +146,7 @@ SCENARIOS = (
         "A draft runs the static checks only.",
         "pull_request", pr_event(draft=True),
         areas=("java", "backend", "ui", "python", "e2e"),
+        variables=PR,
         success=("plan", "static-java", "static-python", "static-ui", "static-json", "ci-summary"),
     ),
     Scenario(
@@ -149,16 +154,16 @@ SCENARIOS = (
         "One failing Jest shard fails the run and nothing else.",
         "pull_request", pr_event(),
         areas=("ui", "e2e"),
+        variables=PR,
         fail=("unit-ui:2",),
         success=("plan", "static-ui", "static-json", "unit-java"),
         failure=("unit-ui", "ci-summary"),
     ),
     Scenario(
-        "pr-outside-sample",
-        "A PR outside the shadow sample runs nothing and marks itself for the gate.",
+        "pr-shadow-not-turned-on",
+        "With the sampling variables unset a PR runs nothing, and marks itself for the gate.",
         "pull_request", pr_event(),
         areas=EVERY_AREA,
-        variables={"CI_SHADOW_PR_PERCENT": "0"},
         success=("plan", "ci-summary"),
         steps={"plan/Not sampled": "success"},
     ),
@@ -202,11 +207,10 @@ SCENARIOS = (
         failure=("build-java", "ci-summary"),
     ),
     Scenario(
-        "mq-outside-sample",
-        "A queue entry outside the shadow sample runs nothing.",
+        "mq-shadow-not-turned-on",
+        "With the sampling variables unset a queue entry runs nothing.",
         "merge_group", queue_event(),
         areas=EVERY_AREA,
-        variables={"CI_SHADOW_MQ_PERCENT": "0"},
         success=("plan", "ci-summary"),
         steps={"plan/Not sampled": "success"},
     ),
@@ -238,6 +242,7 @@ SCENARIOS = (
         "A finished queue run is decided and recorded.",
         "workflow_run", gate_event("merge_group"),
         workflow="merge-gate.yml",
+        variables=GATE,
         success=("decide", "record"),
     ),
     Scenario(
@@ -245,6 +250,7 @@ SCENARIOS = (
         "A finished PR run is decided; only queue entries are recorded.",
         "workflow_run", gate_event("pull_request"),
         workflow="merge-gate.yml",
+        variables=GATE,
         success=("decide",),
     ),
     Scenario(
@@ -252,6 +258,7 @@ SCENARIOS = (
         "A manually dispatched CI run gets no verdict.",
         "workflow_run", gate_event("workflow_dispatch"),
         workflow="merge-gate.yml",
+        variables=GATE,
         success=(),
     ),
     Scenario(
@@ -259,6 +266,7 @@ SCENARIOS = (
         "Nothing is recorded from a decision that failed.",
         "workflow_run", gate_event("merge_group"),
         workflow="merge-gate.yml",
+        variables=GATE,
         fail=("decide",),
         success=(),
         failure=("decide",),
@@ -268,7 +276,22 @@ SCENARIOS = (
         "The schedule only sweeps.",
         "schedule", {"schedule": "*/10 * * * *"},
         workflow="merge-gate.yml",
+        variables=GATE,
         success=("sweep",),
+    ),
+    Scenario(
+        "gate-not-turned-on",
+        "With MERGE_GATE_MODE unset, a finished queue run starts no gate job.",
+        "workflow_run", gate_event("merge_group"),
+        workflow="merge-gate.yml",
+        success=(),
+    ),
+    Scenario(
+        "gate-sweep-not-turned-on",
+        "With MERGE_GATE_MODE unset, the schedule starts no sweep.",
+        "schedule", {"schedule": "*/10 * * * *"},
+        workflow="merge-gate.yml",
+        success=(),
     ),
 )
 
