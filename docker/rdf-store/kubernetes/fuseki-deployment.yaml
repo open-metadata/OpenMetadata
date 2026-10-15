@@ -25,7 +25,8 @@ spec:
       # Development default only. Production sizing: >= 2 datasets x live size x 2.5.
       # Two datasets because blue/green rebuilds keep an a/b alternate alongside the
       # serving one; x2.5 because TDB2 compaction builds a full replacement copy
-      # before deleting the old generation.
+      # before deleting the old generation. Reasoning, when enabled, adds its own quota
+      # under /fuseki/reasoning (see the image README).
       storage: 10Gi
   # Development default only. TDB2 commits are fsync/IOPS-bound (journal write per
   # transaction) — production must use an SSD-backed class with provisioned IOPS
@@ -49,36 +50,46 @@ spec:
       labels:
         app: openmetadata-fuseki
     spec:
-      # The image runs as the non-root 'fuseki' user (uid/gid 1000); fsGroup makes
-      # the PVC writable. Volumes created by the older root-running image need a
-      # one-time `chown -R 1000:1000 /fuseki-data`.
+      # The image runs as uid 1000 (group 0 writable for OpenShift); fsGroup makes the
+      # PVC writable. Data written by the retired in-repo image lives under /fuseki-data
+      # and must be moved into /fuseki/databases first (docs/rdf-production-setup.md).
       securityContext:
         fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
       containers:
         - name: fuseki
-          image: openmetadata/fuseki-rdf:latest
-          imagePullPolicy: Always
+          # The published image of record, pinned to its immutable <version>-<commit> tag.
+          image: openmetadata/fuseki:6.2.0-600514c
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3030
               name: fuseki
           env:
-            - name: FUSEKI_ADMIN_PASSWORD
+            # OpenMetadata connects as admin (RDF_REMOTE_USERNAME=admin).
+            - name: ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: fuseki-secrets
                   key: admin-password
-            - name: FUSEKI_OPENMETADATA_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: fuseki-secrets
-                  key: openmetadata-password
-            - name: JVM_ARGS
-              # Equal min/max heap keeps the page-cache budget predictable; GC logs
-              # rotate on the data volume for post-incident diagnosis.
-              value: "-Xms4g -Xmx4g -Xlog:gc*:file=/fuseki-data/gc.log:time,uptime:filecount=3,filesize=10m"
+            # The serving dataset and its two blue/green rebuild targets.
+            - name: FUSEKI_DATASETS
+              value: "openmetadata,openmetadata_a,openmetadata_b"
+            # OpenMetadata writes every entity into a named graph.
+            - name: FUSEKI_UNION_DEFAULT_GRAPH
+              value: "true"
+            # Below OpenMetadata's 60 s client deadline, so Fuseki stops abandoned work.
+            - name: FUSEKI_QUERY_TIMEOUT_MS
+              value: "50000"
+            - name: FUSEKI_UPDATE_TIMEOUT_MS
+              value: "50000"
+            - name: OPENMETADATA_EXTENSION_ENABLED
+              value: "true"
+            # Equal min/max heap keeps the page-cache budget predictable.
+            - name: FUSEKI_HEAP
+              value: "4g"
           volumeMounts:
             - name: fuseki-data
-              mountPath: /fuseki-data
+              mountPath: /fuseki
           resources:
             # TDB2 memory-maps indexes outside the JVM heap. Keep the heap modest
             # and reserve container memory for the OS page cache: memory limit
@@ -88,9 +99,10 @@ spec:
             # CPU request equals the limit deliberately: with a low request the
             # scheduler over-packs the node and CFS throttling stretches request
             # latency during bulk indexing — and every millisecond of a write
-            # request happens inside TDB2's single writer lock.
+            # request happens inside TDB2's single writer lock. Memory request
+            # equals the limit (Guaranteed QoS), which reasoning requires.
             requests:
-              memory: "4Gi"
+              memory: "8Gi"
               cpu: "2000m"
             limits:
               memory: "8Gi"
@@ -119,4 +131,3 @@ metadata:
 type: Opaque
 stringData:
   admin-password: "your-secure-admin-password"
-  openmetadata-password: "your-secure-service-password"

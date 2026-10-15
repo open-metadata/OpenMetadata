@@ -30,9 +30,10 @@ volumes:
   ingestion-volume-dags:
   ingestion-volume-tmp:
   es-data:
-  # See docker-compose-fuseki.yml — renamed from `fuseki-data` to avoid
-  # silently mounting stale state under the new Fuseki layout.
-  fuseki-tdb2-data:
+  # TDB2 datasets, configuration and shiro.ini of the published image live under /fuseki. Not the
+  # older `fuseki-tdb2-data` volume: it holds the retired in-repo image's /fuseki-data layout, and
+  # mounting it here would start an empty store. docs/rdf-production-setup.md has the migration.
+  fuseki-store:
 services:
   postgresql:
     build:
@@ -606,29 +607,27 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:z  # Need 600 permissions to run DockerOperator
 
   fuseki:
-    # See docker-compose-fuseki.yml for the rationale behind building from the
-    # in-repo Dockerfile instead of using `stain/jena-fuseki:*` (unmaintained,
-    # capped at 5.1.0, missing 2025 admin-side CVE fixes).
-    build:
-      context: ../rdf-store
-      dockerfile: Dockerfile
-    image: openmetadata-fuseki:6.2.0
+    # The published OpenMetadata Fuseki image (built in open-metadata/jena), pinned to its
+    # immutable <version>-<commit> tag. See docs/rdf-fuseki-image-release.md.
+    image: openmetadata/fuseki:6.2.0-600514c
     container_name: openmetadata-fuseki
     hostname: fuseki
     ports:
       - "3030:3030"
     environment:
-      # Local-dev default — production deployments MUST override via
-      # FUSEKI_ADMIN_PASSWORD / FUSEKI_OPENMETADATA_PASSWORD env vars.
-      - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
-      - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
-      - JVM_ARGS=-Xmx4g -Xms2g
+      # The image's environment contract, set as OpenMetadata needs it: the serving dataset and
+      # its two blue/green rebuild targets, the union default graph (OpenMetadata writes every
+      # entity into a named graph), server-side deadlines below the 60 s client deadline, and the
+      # bounded Graph Store extension. docs/rdf-production-setup.md explains each one.
+      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_DATASETS=openmetadata,openmetadata_a,openmetadata_b
+      - FUSEKI_UNION_DEFAULT_GRAPH=true
+      - FUSEKI_QUERY_TIMEOUT_MS=50000
+      - FUSEKI_UPDATE_TIMEOUT_MS=50000
+      - OPENMETADATA_EXTENSION_ENABLED=true
+      - FUSEKI_HEAP=${FUSEKI_HEAP:-2g}
     volumes:
-      # See docker-compose-fuseki.yml for why the volume was renamed from
-      # `fuseki-data` to `fuseki-tdb2-data` (the data layout differs from the
-      # previous stain/jena-fuseki image and reusing the old name silently
-      # mounts stale state at a path Fuseki no longer reads).
-      - fuseki-tdb2-data:/fuseki-data
+      - fuseki-store:/fuseki
     deploy:
       resources:
         limits:

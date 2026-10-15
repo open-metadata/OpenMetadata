@@ -19,8 +19,7 @@ import, storage, query, and result serialization:
 - **Triple terms**, including `rdf:reifies` statements and nested blank nodes, and **directional
   language-tagged literals** such as `"قطة"@ar--rtl`.
 - **Storage.** Entities reach Fuseki as RDF Thrift and land in TDB2 named graphs; both carry triple
-  terms and preserve the `rdf:dirLangString` datatype. Fuseki's Lucene text index (`text:query`)
-  indexes directional literals like any other string.
+  terms and preserve the `rdf:dirLangString` datatype.
 - **SPARQL 1.2.** `VERSION "1.2"` declarations, `TRIPLE()`/`LANGDIR()` expressions, and `<<( s p o )>>`
   patterns all execute. Both the administrator (`/v1/rdf/sparql`) and agent query paths return them;
   the agent path keeps its existing SELECT-only and graph-access restrictions.
@@ -244,25 +243,30 @@ owner to request it. `RDF_ASK_COLLATE_ENABLED` is still read as a deprecated ali
 
 ### Docker Compose Configuration
 
-The Fuseki container (`docker/development/docker-compose-fuseki.yml`):
+The Fuseki container (`docker/development/docker-compose-fuseki.yml`) runs the published image;
+[rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) explains each setting:
 
 ```yaml
 services:
   fuseki:
-    build:
-      context: ../rdf-store
-      dockerfile: Dockerfile
-    image: openmetadata-fuseki:6.2.0
+    image: openmetadata/fuseki:6.2.0-600514c
     container_name: openmetadata-fuseki
     ports:
       - "3030:3030"
     environment:
-      - FUSEKI_ADMIN_PASSWORD=admin
-      - FUSEKI_OPENMETADATA_PASSWORD=openmetadata-secret
-      - JVM_ARGS=-Xmx1500m -Xms256m
+      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_DATASETS=openmetadata,openmetadata_a,openmetadata_b
+      - FUSEKI_UNION_DEFAULT_GRAPH=true
+      - FUSEKI_QUERY_TIMEOUT_MS=50000
+      - FUSEKI_UPDATE_TIMEOUT_MS=50000
+      - OPENMETADATA_EXTENSION_ENABLED=true
+      - FUSEKI_HEAP=${FUSEKI_HEAP:-1500m}
     volumes:
-      - fuseki-tdb2-data:/fuseki-data
+      - fuseki-store:/fuseki
 ```
+
+The Fuseki web UI and every dataset endpoint ask for the admin credentials; only `/$/ping` is
+anonymous.
 
 ## API Endpoints
 
@@ -437,8 +441,8 @@ To clear all RDF data and start fresh:
 # Stop Fuseki
 docker compose -f docker/development/docker-compose-fuseki.yml down
 
-# Remove volume
-docker volume rm openmetadata_fuseki-data
+# Remove volume (Compose prefixes it with the project name)
+docker volume rm development_fuseki-store
 
 # Restart Fuseki
 docker compose -f docker/development/docker-compose-fuseki.yml up -d
