@@ -87,7 +87,8 @@ public interface EntityManagementClient {
    * @param docId the document ID to update
    * @param scriptTxt the script text for the update operation
    */
-  void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt)
+  void softDeleteOrRestoreEntity(
+      String indexName, String docId, String scriptTxt, Map<String, Object> params)
       throws IOException;
 
   /**
@@ -110,6 +111,15 @@ public interface EntityManagementClient {
    * @param scriptTxt the script text for the update
    */
   void updateEntity(String indexName, String docId, Map<String, Object> doc, String scriptTxt);
+
+  default void updateEntity(
+      String indexName,
+      String docId,
+      Map<String, Object> doc,
+      String scriptTxt,
+      String entityType) {
+    updateEntity(indexName, docId, doc, scriptTxt);
+  }
 
   /**
    * Updates child entities matching field and value with a script.

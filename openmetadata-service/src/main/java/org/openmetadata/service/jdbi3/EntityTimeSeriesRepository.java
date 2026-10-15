@@ -40,6 +40,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SearchVersionGuard;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
@@ -48,6 +49,8 @@ import org.openmetadata.service.util.RestUtil;
 @Repository
 @Slf4j
 public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
+  private static final Set<String> SEARCH_ONLY_FIELDS =
+      Set.of(SearchVersionGuard.SOURCE_READ_AT, Entity.FIELD_DELETED);
   protected final String collectionPath;
   protected final EntityTimeSeriesDAO timeSeriesDao;
   protected final SearchRepository searchRepository;
@@ -872,17 +875,18 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   /**
    * Deserializes a search hit source into the time-series entity type. Strict by default so any
-   * genuine schema drift fails loudly. Targeted scrub of the legacy {@code deleted} field — the
-   * one known-pollution field stamped onto time-series docs by the soft-delete script before
-   * the Phase 1 fix — keeps that specific case from breaking reads, without the blanket
-   * unknown-field tolerance that {@link JsonUtils#readOrConvertValueLenient} would impose.
-   * Once a recreate-style reindex has cleaned the index, the scrub is a no-op.
+   * genuine schema drift fails loudly. Targeted scrub of the fields search keeps on the document
+   * for itself, without the blanket unknown-field tolerance that {@link
+   * JsonUtils#readOrConvertValueLenient} would impose: {@code sourceReadAt}, when the stored
+   * content was read, which orders search writes; and the legacy {@code deleted} field the
+   * soft-delete script stamped onto time-series docs before the Phase 1 fix.
    */
   @SuppressWarnings("unchecked")
   private T readTimeSeriesSource(Object source) {
-    if (source instanceof Map<?, ?> mapSource && mapSource.containsKey(Entity.FIELD_DELETED)) {
+    if (source instanceof Map<?, ?> mapSource
+        && SEARCH_ONLY_FIELDS.stream().anyMatch(mapSource::containsKey)) {
       Map<String, Object> scrubbed = new HashMap<>((Map<String, Object>) mapSource);
-      scrubbed.remove(Entity.FIELD_DELETED);
+      SEARCH_ONLY_FIELDS.forEach(scrubbed::remove);
       return JsonUtils.readOrConvertValue(scrubbed, entityClass);
     }
     return JsonUtils.readOrConvertValue(source, entityClass);

@@ -21,26 +21,21 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.lineage.EsLineageData;
-import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -48,10 +43,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.TestCaseRepository;
-import org.openmetadata.service.jdbi3.TestSuiteRepository;
+import org.openmetadata.service.search.SearchDocumentContextLoader;
 import org.openmetadata.service.search.indexes.DocBuildContext;
-import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -77,89 +70,14 @@ public class ReindexingUtil {
       Map<String, Object> contextData,
       String entityType,
       List<? extends EntityInterface<?>> entities) {
-    Map<UUID, List<EsLineageData>> prefetchedLineage = null;
-    Map<UUID, Optional<Style>> prefetchedServiceStyles = null;
-    Map<UUID, Long> prefetchedRelationshipRevisions = null;
-    try {
-      prefetchedLineage = SearchIndex.prefetchLineageIfSupported(entityType, entities);
-      prefetchedServiceStyles = SearchIndex.prefetchServiceStylesIfSupported(entityType, entities);
-      if (Entity.TEST_CASE.equals(entityType) || Entity.TEST_SUITE.equals(entityType)) {
-        List<UUID> revisionedEntityIds =
-            entities.stream()
-                .filter(
-                    entity ->
-                        Entity.TEST_CASE.equals(entityType)
-                            || entity instanceof TestSuite testSuite
-                                && Boolean.FALSE.equals(testSuite.getBasic()))
-                .map(EntityInterface<?>::getId)
-                .filter(Objects::nonNull)
-                .toList();
-        @SuppressWarnings("unchecked")
-        Map<UUID, Long> suppliedRevisions =
-            (Map<UUID, Long>)
-                contextData.getOrDefault(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, Map.of());
-        List<UUID> missingRevisionIds =
-            revisionedEntityIds.stream().filter(id -> !suppliedRevisions.containsKey(id)).toList();
-        Map<UUID, Long> storedRevisions =
-            missingRevisionIds.isEmpty()
-                ? Map.of()
-                : Entity.TEST_CASE.equals(entityType)
-                    ? TestCaseRepository.getTestSuiteRelationshipRevisions(missingRevisionIds)
-                    : TestSuiteRepository.getTestsRelationshipRevisions(missingRevisionIds);
-        prefetchedRelationshipRevisions = new HashMap<>(revisionedEntityIds.size());
-        for (UUID entityId : revisionedEntityIds) {
-          prefetchedRelationshipRevisions.put(
-              entityId,
-              suppliedRevisions.getOrDefault(entityId, storedRevisions.getOrDefault(entityId, 0L)));
-        }
-      }
-    } catch (Exception | LinkageError t) {
-      // Best-effort: if the prefetch (or SearchIndex class init) blows up — e.g. in a unit
-      // test that hasn't bootstrapped Entity.searchRepository — the sinks fall through to the
-      // per-entity DB lookup path, which is the original pre-PR behaviour. LinkageError covers
-      // NoClassDefFoundError (not an Exception); fatal errors like OutOfMemoryError /
-      // StackOverflowError still propagate.
-      LOG.warn(
-          "Skipping doc-build context prefetch for type '{}'; doc-build will fall back to per-entity DB lookups",
-          entityType,
-          t);
-    }
-    if (prefetchedLineage != null
-        || prefetchedServiceStyles != null
-        || prefetchedRelationshipRevisions != null) {
-      int contextSize =
-          Math.max(
-              Math.max(
-                  prefetchedLineage != null ? prefetchedLineage.size() : 0,
-                  prefetchedServiceStyles != null ? prefetchedServiceStyles.size() : 0),
-              prefetchedRelationshipRevisions != null ? prefetchedRelationshipRevisions.size() : 0);
-      Map<UUID, DocBuildContext> docBuildContexts = new HashMap<>(contextSize);
-      for (EntityInterface<?> entity : entities) {
-        UUID entityId = entity.getId();
-        if (entityId == null) {
-          continue;
-        }
-        List<EsLineageData> lineage =
-            prefetchedLineage != null ? prefetchedLineage.get(entityId) : null;
-        boolean hasStyle =
-            prefetchedServiceStyles != null && prefetchedServiceStyles.containsKey(entityId);
-        Long relationshipRevision =
-            prefetchedRelationshipRevisions != null
-                ? prefetchedRelationshipRevisions.get(entityId)
-                : null;
-        // No prefetched data: an entry would equal empty(), the sink's fallback on a miss.
-        if (lineage == null && !hasStyle && relationshipRevision == null) {
-          continue;
-        }
-        DocBuildContext.ServiceStylePrefetch serviceStylePrefetch =
-            hasStyle
-                ? DocBuildContext.ServiceStylePrefetch.prefetched(
-                    prefetchedServiceStyles.get(entityId))
-                : DocBuildContext.ServiceStylePrefetch.notPrefetched();
-        docBuildContexts.put(
-            entityId, DocBuildContext.of(lineage, serviceStylePrefetch, relationshipRevision));
-      }
-      contextData.put(BulkSink.DOC_BUILD_CONTEXT_KEY, docBuildContexts);
+    @SuppressWarnings("unchecked")
+    Map<UUID, Long> revisions =
+        (Map<UUID, Long>)
+            contextData.getOrDefault(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, Map.of());
+    Map<UUID, DocBuildContext> contexts =
+        SearchDocumentContextLoader.forCatalog().load(entityType, entities, revisions);
+    if (!contexts.isEmpty()) {
+      contextData.put(BulkSink.DOC_BUILD_CONTEXT_KEY, contexts);
     }
   }
 
@@ -355,30 +273,7 @@ public class ReindexingUtil {
       // full Entity registry). Behaves the same as the pre-selective-fields code path.
       return List.of("*");
     }
-    List<String> allFields;
-    try {
-      allFields = new ArrayList<>(repo.getSearchIndexFactory().getReindexFieldsFor(entityType));
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to look up reindex fields for {}: {}; falling back to all-fields wildcard",
-          entityType,
-          e.getMessage());
-      return List.of("*");
-    }
-    try {
-      return new ArrayList<>(Entity.getOnlySupportedFields(entityType, allFields).getFieldList());
-    } catch (Exception e) {
-      // Filtering failed (typically because the EntityRepository isn't registered yet —
-      // happens during boot or in tests). Fall back to the unfiltered required set rather than
-      // "*": this keeps the per-entity intent intact and lets PaginatedEntitiesSource surface
-      // any drift loudly instead of silently sending every field.
-      LOG.warn(
-          "Could not filter reindex fields for {} against EntityRepository.allowedFields ({}); "
-              + "returning unfiltered required set",
-          entityType,
-          e.getMessage());
-      return allFields;
-    }
+    return repo.getProjectionFields().forEntityType(entityType);
   }
 
   public static String escapeDoubleQuotes(String str) {

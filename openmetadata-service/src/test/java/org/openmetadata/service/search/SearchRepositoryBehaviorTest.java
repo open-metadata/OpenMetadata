@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
@@ -33,8 +34,6 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.net.URI;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -86,7 +85,6 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
@@ -600,27 +598,34 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void createEntityIndexBuildsAndWritesSearchDocument() throws IOException {
+  void createEntityIndexWritesTheDocumentGuardedByWhenItWasRead() {
     UUID entityId = UUID.randomUUID();
     EntityInterface<?> entity = mockEntity(Entity.TABLE, entityId, "orders");
     when(searchIndexFactory.buildIndex(Entity.TABLE, entity))
         .thenReturn(new MapBackedSearchIndex(entity, Map.of("name", "orders")));
 
-    repository.createEntityIndex(entity);
+    SearchVersionGuard.readAt(1_234L, () -> repository.createEntityIndex(entity)).run();
 
-    ArgumentCaptor<String> docCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<Map<String, Object>> document = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<String> script = ArgumentCaptor.forClass(String.class);
     verify(searchClient)
-        .createEntity(
-            eq("cluster_table_search_index"), eq(entityId.toString()), docCaptor.capture());
-    assertTrue(docCaptor.getValue().contains("\"name\":\"orders\""));
+        .updateEntity(
+            eq("cluster_table_search_index"),
+            eq(entityId.toString()),
+            document.capture(),
+            script.capture(),
+            eq(Entity.TABLE));
+    assertEquals("orders", document.getValue().get("name"));
+    assertEquals(1_234L, document.getValue().get(SearchVersionGuard.SOURCE_READ_AT));
+    assertEquals(SearchVersionGuard.guard(SearchClient.DEFAULT_UPDATE_SCRIPT), script.getValue());
   }
 
   @Test
-  void createEntityIndexSkipsUnsupportedTypes() throws IOException {
+  void createEntityIndexSkipsUnsupportedTypes() {
     repository.createEntityIndex(mockEntity("unsupported", UUID.randomUUID(), "skip-me"));
 
     verify(searchClient, never())
-        .createEntity(any(String.class), any(String.class), any(String.class));
+        .updateEntity(anyString(), anyString(), any(), anyString(), anyString());
   }
 
   @Test
@@ -773,36 +778,41 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void createTimeSeriesEntityWritesGenericTimeSeriesDocuments() throws IOException {
+  void createTimeSeriesEntityWritesARecordReadAtItsQueueTime() {
     EntityTimeSeriesInterface entity =
         mockTimeSeriesEntity(Entity.TABLE, UUID.randomUUID(), "orders_ts");
     when(searchIndexFactory.buildIndex(Entity.TABLE, entity))
         .thenReturn(new MapBackedSearchIndex(entity, Map.of("timestamp", 42)));
 
-    repository.createTimeSeriesEntity(entity);
-
-    verify(searchClient)
-        .createTimeSeriesEntity(
-            "cluster_table_search_index",
-            entity.getId().toString(),
-            JsonUtils.pojoToJson(Map.of("timestamp", 42)));
-  }
-
-  @Test
-  void updateTimeSeriesEntityUsesDefaultUpdateScript() {
-    EntityTimeSeriesInterface entity =
-        mockTimeSeriesEntity(Entity.TABLE, UUID.randomUUID(), "orders_ts");
-    when(searchIndexFactory.buildIndex(Entity.TABLE, entity))
-        .thenReturn(new MapBackedSearchIndex(entity, Map.of("timestamp", 42)));
-
-    repository.updateTimeSeriesEntity(entity);
+    SearchVersionGuard.readAt(1_700_000_000_000L, () -> repository.createTimeSeriesEntity(entity))
+        .run();
 
     verify(searchClient)
         .updateEntity(
             "cluster_table_search_index",
             entity.getId().toString(),
-            Map.of("timestamp", 42),
-            SearchClient.DEFAULT_UPDATE_SCRIPT);
+            Map.of("timestamp", 42, SearchVersionGuard.SOURCE_READ_AT, 1_700_000_000_000L),
+            SearchVersionGuard.guardReadTime(SearchClient.DEFAULT_UPDATE_SCRIPT),
+            Entity.TABLE);
+  }
+
+  @Test
+  void updateTimeSeriesEntityIsGuardedByWhenTheRecordWasRead() {
+    EntityTimeSeriesInterface entity =
+        mockTimeSeriesEntity(Entity.TABLE, UUID.randomUUID(), "orders_ts");
+    when(searchIndexFactory.buildIndex(Entity.TABLE, entity))
+        .thenReturn(new MapBackedSearchIndex(entity, Map.of("timestamp", 42)));
+
+    SearchVersionGuard.readAt(1_700_000_000_000L, () -> repository.updateTimeSeriesEntity(entity))
+        .run();
+
+    verify(searchClient)
+        .updateEntity(
+            "cluster_table_search_index",
+            entity.getId().toString(),
+            Map.of("timestamp", 42, SearchVersionGuard.SOURCE_READ_AT, 1_700_000_000_000L),
+            SearchVersionGuard.guardReadTime(SearchClient.DEFAULT_UPDATE_SCRIPT),
+            Entity.TABLE);
   }
 
   @Test
@@ -843,7 +853,8 @@ class SearchRepositoryBehaviorTest {
             eq("cluster_table_search_index"),
             eq(entityReference.getId().toString()),
             any(Map.class),
-            any(String.class));
+            any(String.class),
+            eq(Entity.TAG));
     verify(spyRepository)
         .propagateInheritedFieldsToChildren(
             eq(Entity.TAG),
@@ -892,7 +903,8 @@ class SearchRepositoryBehaviorTest {
             eq("cluster_test_case_search_index"),
             eq(testCaseId.toString()),
             document.capture(),
-            script.capture());
+            script.capture(),
+            eq(Entity.TEST_CASE));
     assertEquals(17L, document.getValue().get("testSuitesRevision"));
     assertEquals("testCase", document.getValue().get("name"));
     assertTrue(script.getValue().contains("params.testSuitesRevision >="));
@@ -931,7 +943,8 @@ class SearchRepositoryBehaviorTest {
             eq("cluster_test_suite_search_index"),
             eq(testSuiteId.toString()),
             document.capture(),
-            script.capture());
+            script.capture(),
+            eq(Entity.TEST_SUITE));
     assertEquals(21L, document.getValue().get("testsRevision"));
     assertEquals("logicalSuite", document.getValue().get("name"));
     assertTrue(script.getValue().contains("params.testsRevision >="));
@@ -1461,11 +1474,16 @@ class SearchRepositoryBehaviorTest {
     spyRepository.softDeleteOrRestoreEntityIndex(entity, true);
 
     verify(searchClient).deleteEntity("cluster_table_search_index", entity.getId().toString());
+    final org.openmetadata.service.search.scripts.SoftDeleteScript entityScript =
+        org.openmetadata.service.search.scripts.SoftDeleteScript.forEntity(true, entity);
+    final String entityScriptId = entity.getId().toString();
+    // The read time is taken when the write is prepared, so only its presence is fixed.
     verify(searchClient)
         .softDeleteOrRestoreEntity(
-            "cluster_table_search_index",
-            entity.getId().toString(),
-            new org.openmetadata.service.search.scripts.SoftDeleteScript(true).painless());
+            eq("cluster_table_search_index"),
+            eq(entityScriptId),
+            eq(entityScript.painless()),
+            argThat(params -> params.keySet().equals(entityScript.params().keySet())));
     final UUID entityId = entity.getId();
     final String entityFqn = entity.getFullyQualifiedName();
     QueryRepository queryRepository = (QueryRepository) Entity.getEntityRepository(Entity.QUERY);
@@ -1583,7 +1601,9 @@ class SearchRepositoryBehaviorTest {
       repo.deleteEntityIndex(table);
     }
 
-    verify(searchClient).createEntity(eq("cluster_table_search_index"), eq(tableId), anyString());
+    verify(searchClient)
+        .updateEntity(
+            eq("cluster_table_search_index"), eq(tableId), any(), anyString(), eq(Entity.TABLE));
     verify(searchClient, never()).createEntities(eq("cluster_column_search_index"), anyList());
     verify(searchClient, never())
         .deleteEntityByFields(eq(List.of("cluster_column_search_index")), anyList());
@@ -2303,70 +2323,6 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void getScriptWithParamsBuildsFollowerDescriptionAndReducedQueryDomainUpdates() {
-    EntityInterface<?> queryEntity = mockEntity(Entity.QUERY, UUID.randomUUID(), "daily_query");
-    EntityReference queryDomain =
-        new EntityReference()
-            .withId(UUID.randomUUID())
-            .withType(Entity.DOMAIN)
-            .withName("analytics")
-            .withDisplayName("Analytics")
-            .withFullyQualifiedName("analytics")
-            .withDescription("Analytics domain")
-            .withDeleted(false)
-            .withInherited(true)
-            .withHref(URI.create("http://localhost/api/v1/domains/analytics"));
-    when(queryEntity.getUpdatedAt()).thenReturn(1234L);
-    when(queryEntity.getDescription()).thenReturn("Updated query description");
-    when(queryEntity.getDomains()).thenReturn(List.of(queryDomain));
-
-    Map<String, Object> params = new HashMap<>();
-    ChangeDescription changeDescription =
-        changeDescription(
-            List.of(
-                new FieldChange()
-                    .withName(Entity.FIELD_FOLLOWERS)
-                    .withNewValue(
-                        List.of(
-                            new EntityReference().withId(UUID.randomUUID()),
-                            new EntityReference().withId(UUID.randomUUID()))),
-                new FieldChange().withName(Entity.FIELD_DESCRIPTION).withNewValue("ignored")),
-            List.of(
-                new FieldChange()
-                    .withName(Entity.FIELD_USAGE_SUMMARY)
-                    .withNewValue(new UsageDetails()),
-                new FieldChange()
-                    .withName("queryUsedIn")
-                    .withNewValue(List.of(Map.of("name", "dashboard")))),
-            List.of());
-
-    String script = repository.getScriptWithParams(queryEntity, params, changeDescription);
-
-    assertTrue(script.contains("ctx._source.updatedAt=params.updatedAt;"));
-    assertTrue(script.contains("ctx._source.followers.addAll(params.followers);"));
-    assertTrue(script.contains("ctx._source.description = params.description;"));
-    assertTrue(script.contains("ctx._source.usageSummary = params.usageSummary;"));
-    assertTrue(script.contains("ctx._source.queryUsedIn = params.queryUsedIn;"));
-    assertTrue(script.contains("ctx._source.domains = params.domains;"));
-    assertEquals(1234L, params.get("updatedAt"));
-    assertEquals("Updated query description", params.get(Entity.FIELD_DESCRIPTION));
-    assertNotNull(params.get(Entity.FIELD_FOLLOWERS));
-    assertNotNull(params.get(Entity.FIELD_USAGE_SUMMARY));
-    assertEquals(List.of(Map.of("name", "dashboard")), params.get("queryUsedIn"));
-    assertEquals(
-        List.of(
-            Map.of(
-                "id", queryDomain.getId().toString(),
-                "type", Entity.DOMAIN,
-                "name", "analytics",
-                "displayName", "Analytics",
-                "fullyQualifiedName", "analytics",
-                "description", "Analytics domain",
-                "deleted", false)),
-        params.get(Entity.FIELD_DOMAINS));
-  }
-
-  @Test
   void requiresPropagationRecognizesGlossaryTagCertificationPageAndRelationshipChanges()
       throws Exception {
     EntityInterface<?> glossaryTerm =
@@ -2970,9 +2926,16 @@ class SearchRepositoryBehaviorTest {
 
     repository.softDeleteOrRestoreEntityIndex(service, true);
 
+    final org.openmetadata.service.search.scripts.SoftDeleteScript serviceScript =
+        org.openmetadata.service.search.scripts.SoftDeleteScript.forEntity(true, service);
+    final String serviceScriptId = service.getId().toString();
+    // The read time is taken when the write is prepared, so only its presence is fixed.
     verify(searchClient)
         .softDeleteOrRestoreEntity(
-            "cluster_database_service_search_index", service.getId().toString(), scriptTxt);
+            eq("cluster_database_service_search_index"),
+            eq(serviceScriptId),
+            eq(serviceScript.painless()),
+            argThat(params -> params.keySet().equals(serviceScript.params().keySet())));
     verify(searchClient)
         .softDeleteOrRestoreChildren(
             List.of("cluster_database"),
@@ -3048,60 +3011,6 @@ class SearchRepositoryBehaviorTest {
 
     verify(searchClient, never())
         .softDeleteOrRestoreChildren(any(List.class), any(String.class), any(List.class));
-  }
-
-  @Test
-  void getScriptWithParamsBuildsExtensionAndDescriptionUpdates() {
-    EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
-    when(entity.getUpdatedAt()).thenReturn(99L);
-    when(entity.getDescription()).thenReturn("new description");
-    when(entity.getExtension()).thenReturn(Map.of("reviewer", "alice"));
-
-    Map<String, Object> params = new HashMap<>();
-    ChangeDescription changeDescription =
-        changeDescription(
-            List.of(
-                new FieldChange().withName("extension").withNewValue(Map.of("reviewer", "alice"))),
-            List.of(new FieldChange().withName(Entity.FIELD_DESCRIPTION).withNewValue("ignored")),
-            List.of());
-
-    String script = repository.getScriptWithParams(entity, params, changeDescription);
-
-    assertTrue(script.contains("ctx._source.updatedAt=params.updatedAt;"));
-    assertTrue(
-        script.contains("ctx._source.customPropertiesTyped = params.customPropertiesTyped;"));
-    assertTrue(script.contains("ctx._source.extension = params.extension;"));
-    assertTrue(script.contains("ctx._source.description = params.description;"));
-    assertEquals(99L, params.get("updatedAt"));
-    assertEquals("new description", params.get(Entity.FIELD_DESCRIPTION));
-    assertEquals(Map.of("reviewer", "alice"), params.get("extension"));
-    assertNotNull(params.get("customPropertiesTyped"));
-  }
-
-  @Test
-  void getScriptWithParamsRemovesFollowersAndDescriptions() {
-    EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
-    EntityReference removedFollower = new EntityReference().withId(UUID.randomUUID());
-    Map<String, Object> params = new HashMap<>();
-    ChangeDescription changeDescription =
-        changeDescription(
-            List.of(),
-            List.of(),
-            List.of(
-                new FieldChange()
-                    .withName(Entity.FIELD_FOLLOWERS)
-                    .withOldValue(List.of(removedFollower)),
-                new FieldChange()
-                    .withName(Entity.FIELD_DESCRIPTION)
-                    .withOldValue("old description")));
-
-    String script = repository.getScriptWithParams(entity, params, changeDescription);
-
-    assertTrue(
-        script.contains(
-            "ctx._source.followers.removeAll(Collections.singleton(params.followers));"));
-    assertTrue(script.contains("ctx._source.description = null;"));
-    assertEquals(removedFollower.getId().toString(), params.get(Entity.FIELD_FOLLOWERS));
   }
 
   @Test

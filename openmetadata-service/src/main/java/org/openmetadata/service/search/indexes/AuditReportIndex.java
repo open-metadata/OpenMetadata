@@ -16,7 +16,7 @@ import java.util.Map;
 import org.openmetadata.schema.entity.ai.AuditReport;
 import org.openmetadata.service.Entity;
 
-public class AuditReportIndex implements TaggableIndex {
+public class AuditReportIndex implements TaggableIndex, LineageIndex {
   final AuditReport report;
 
   public AuditReportIndex(AuditReport report) {

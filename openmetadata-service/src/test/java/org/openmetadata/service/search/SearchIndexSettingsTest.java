@@ -60,6 +60,25 @@ class SearchIndexSettingsTest {
   }
 
   @Test
+  void declares_the_read_time_that_guarded_writes_stamp() {
+    String content = "{\"mappings\":{\"properties\":{\"name\":{\"type\":\"keyword\"}}}}";
+
+    String result = SearchIndexSettings.forIndexCreation(content, limitsWith(15, 5000, 2000));
+
+    assertEquals("long", properties(result).get("sourceReadAt").get("type").asText());
+    assertEquals("keyword", properties(result).get("name").get("type").asText());
+  }
+
+  @Test
+  void keeps_a_read_time_the_mapping_already_declares() {
+    String content = "{\"mappings\":{\"properties\":{\"sourceReadAt\":{\"type\":\"date\"}}}}";
+
+    String result = SearchIndexSettings.forIndexCreation(content, limitsWith(15, 5000, 2000));
+
+    assertEquals("date", properties(result).get("sourceReadAt").get("type").asText());
+  }
+
+  @Test
   void does_not_override_existing_limit() {
     String content =
         "{\"settings\":{\"index\":{\"mapping\":{\"depth\":{\"limit\":7}}}},\"mappings\":{}}";

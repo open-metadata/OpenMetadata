@@ -26,6 +26,8 @@ public class PipelineIndex implements DataAssetIndex {
   public Set<String> getRequiredReindexFields() {
     Set<String> fields = new java.util.HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
     fields.add("tasks");
+    // Status writes are partial updates; a rebuild that does not load it erases it.
+    fields.add("pipelineStatus");
     return java.util.Collections.unmodifiableSet(fields);
   }
 

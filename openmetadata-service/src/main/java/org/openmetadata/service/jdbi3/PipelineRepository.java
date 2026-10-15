@@ -524,10 +524,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
    */
   private void indexPipelineExecutionInES(Pipeline pipeline, PipelineStatus pipelineStatus)
       throws IOException {
-    PipelineExecutionIndex pipelineExecutionIndex =
-        new PipelineExecutionIndex(pipeline, pipelineStatus);
-
-    Map<String, Object> doc = pipelineExecutionIndex.buildSearchIndexDoc();
+    Map<String, Object> doc =
+        searchRepository.getDocumentBuilder().buildPipelineExecution(pipeline, pipelineStatus);
     String docId = PipelineExecutionIndex.getDocumentId(pipeline, pipelineStatus);
     String docJson = JsonUtils.pojoToJson(doc);
     String indexName =

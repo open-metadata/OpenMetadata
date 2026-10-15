@@ -4,7 +4,7 @@ import java.util.Map;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.service.Entity;
 
-public class FolderIndex implements TaggableIndex {
+public class FolderIndex implements TaggableIndex, LineageIndex {
   final Folder folder;
 
   public FolderIndex(Folder folder) {

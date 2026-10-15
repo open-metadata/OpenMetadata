@@ -86,7 +86,6 @@ import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
-import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -1078,9 +1077,9 @@ public class SearchResource {
 
                       String indexName =
                           indexMapping.getIndexName(searchRepository.getClusterAlias());
-                      SearchIndex searchIndex =
-                          searchRepository.getSearchIndexFactory().buildIndex(entityType, entity);
-                      String doc = JsonUtils.pojoToJson(searchIndex.buildSearchIndexDoc());
+                      String doc =
+                          JsonUtils.pojoToJson(
+                              searchRepository.getDocumentBuilder().build(entityType, entity));
 
                       long docSizeBytes = doc.getBytes().length;
                       long maxContentLength = 100L * 1024 * 1024;
@@ -1098,11 +1097,11 @@ public class SearchResource {
                                 ref,
                                 "id,name,fullyQualifiedName,displayName,description,owners,tags,deleted",
                                 Include.NON_DELETED);
-                        SearchIndex reducedSearchIndex =
-                            searchRepository
-                                .getSearchIndexFactory()
-                                .buildIndex(entityType, reducedEntity);
-                        doc = JsonUtils.pojoToJson(reducedSearchIndex.buildSearchIndexDoc());
+                        doc =
+                            JsonUtils.pojoToJson(
+                                searchRepository
+                                    .getDocumentBuilder()
+                                    .build(entityType, reducedEntity));
 
                         long reducedSize = doc.getBytes().length;
                         if (reducedSize > maxContentLength) {

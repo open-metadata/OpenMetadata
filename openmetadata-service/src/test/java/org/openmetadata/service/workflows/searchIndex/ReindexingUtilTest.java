@@ -37,6 +37,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexFactory;
+import org.openmetadata.service.search.SearchProjectionFields;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -61,6 +62,11 @@ class ReindexingUtilTest {
     searchIndexFactory = mock(SearchIndexFactory.class);
     when(searchRepository.getSearchClient()).thenReturn(mock(SearchClient.class));
     when(searchRepository.getSearchIndexFactory()).thenReturn(searchIndexFactory);
+    // The real projection, over whichever factory a test stubs, as SearchRepository wires it.
+    when(searchRepository.getProjectionFields())
+        .thenReturn(
+            new SearchProjectionFields(
+                () -> searchRepository.getSearchIndexFactory(), Entity::getOnlySupportedFields));
     Entity.setSearchRepository(searchRepository);
   }
 

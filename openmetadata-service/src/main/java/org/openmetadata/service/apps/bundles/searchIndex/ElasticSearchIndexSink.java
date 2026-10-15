@@ -31,11 +31,15 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchDocumentBuilder;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 
 @Slf4j
 public class ElasticSearchIndexSink implements BulkSink, Closeable {
+  private final SearchDocumentBuilder documentBuilder =
+      new SearchDocumentBuilder(Entity::buildSearchIndex);
+
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
@@ -264,8 +268,7 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
   private BulkOperation getEntityInterfaceOperation(String entityType, EntityInterface<?> entity) {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
     String indexName = indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
-    String jsonDoc =
-        JsonUtils.pojoToJson(Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc());
+    String jsonDoc = JsonUtils.pojoToJson(documentBuilder.build(entityType, entity));
 
     return BulkOperation.of(
         op ->
@@ -280,8 +283,7 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
       String entityType, EntityTimeSeriesInterface entity) {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
     String indexName = indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
-    String jsonDoc =
-        JsonUtils.pojoToJson(Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc());
+    String jsonDoc = JsonUtils.pojoToJson(documentBuilder.build(entityType, entity));
 
     return BulkOperation.of(
         op ->

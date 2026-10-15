@@ -16,7 +16,7 @@ import java.util.Map;
 import org.openmetadata.schema.entity.ai.AIFrameworkControl;
 import org.openmetadata.service.Entity;
 
-public class AiFrameworkControlIndex implements TaggableIndex {
+public class AiFrameworkControlIndex implements TaggableIndex, LineageIndex {
   final AIFrameworkControl control;
 
   public AiFrameworkControlIndex(AIFrameworkControl control) {

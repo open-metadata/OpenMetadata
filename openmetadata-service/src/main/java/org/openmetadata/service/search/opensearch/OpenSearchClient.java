@@ -678,9 +678,10 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt)
+  public void softDeleteOrRestoreEntity(
+      String indexName, String docId, String scriptTxt, Map<String, Object> params)
       throws IOException {
-    entityManager.softDeleteOrRestoreEntity(indexName, docId, scriptTxt);
+    entityManager.softDeleteOrRestoreEntity(indexName, docId, scriptTxt, params);
   }
 
   @Override
@@ -694,6 +695,16 @@ public class OpenSearchClient implements SearchClient {
   public void updateEntity(
       String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
     entityManager.updateEntity(indexName, docId, doc, scriptTxt);
+  }
+
+  @Override
+  public void updateEntity(
+      String indexName,
+      String docId,
+      Map<String, Object> doc,
+      String scriptTxt,
+      String entityType) {
+    entityManager.updateEntity(indexName, docId, doc, scriptTxt, entityType);
   }
 
   @Override
