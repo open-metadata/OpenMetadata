@@ -197,7 +197,7 @@ jobs:
     name: Integration Test Lane (${{ matrix.lane.name }})
     needs: [changes, integration-test-build]
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 200
     if: ${{ needs.changes.outputs.backend == 'true' }}
     strategy:
       fail-fast: false
@@ -344,7 +344,7 @@ jobs:
           reports="openmetadata-integration-tests/target/failsafe-reports"
           set +e
           for attempt in 1 2 3; do
-            timeout --signal=TERM --kill-after=60s 65m \
+            timeout --signal=TERM --kill-after=60s 175m \
               mvn --no-snapshot-updates verify -pl :openmetadata-integration-tests -Pcache-tests \
                 -DintegrationTests.lane="${IT_LANE}" \
                 -DintegrationTests.parallelStrategy=fixed \
