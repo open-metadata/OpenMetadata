@@ -17,13 +17,11 @@ import {
   Input,
   PaginationCardDefault,
 } from '@openmetadata/ui-core-components';
-import { Search } from '@openmetadata/ui-core-components/icons';
+import { Globe01, Plus, Search } from '@openmetadata/ui-core-components/icons';
 import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { VIEW_MODE_PAGE } from '../../../constants/platform/personaAppLayout.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { PageViewMode } from '../../../generated/type/personaPreferences';
 import { usePersonaViewMode } from '../../../hooks/platform/usePersonaViewMode';
 import { useDelete } from '../../common/atoms/actions/useDelete';
@@ -32,9 +30,11 @@ import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters'
 import { useDomainTableColumns } from '../../common/atoms/domain/ui/useDomainTableColumns';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
 import { hasActiveSearchOrFilter } from '../../common/atoms/shared/utils/hasActiveSearchOrFilter';
+import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import EntityCardView from '../../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../../common/EntityListingTable/EntityListingTable.component';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ViewToggle from '../../common/ViewToggle/ViewToggle';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
@@ -129,26 +129,43 @@ const SubDomainsTable = ({
     if (!subdomainListing.loading && isEmpty(subdomainListing.entities)) {
       if (isSearchOrFilterActive()) {
         return (
-          <ErrorPlaceHolder
-            className="border-none"
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
+          <div className="tw:relative tw:min-h-70">
+            {subdomainListing.urlState.searchQuery?.trim() ? (
+              <NoSearchResultsPlaceholder />
+            ) : (
+              <NoFilteredResultsPlaceholder
+                onClearFilters={subdomainListing.handleClearAll}
+              />
+            )}
+          </div>
         );
       }
 
       return (
-        <ErrorPlaceHolder
-          buttonId="subdomain-add-button"
-          buttonTitle={t('label.add-entity', { entity: t('label.sub-domain') })}
-          className="border-none"
-          heading={t('message.no-data-message', {
-            entity: t('label.sub-domain-lowercase-plural'),
-          })}
-          icon={<FolderEmptyIcon />}
-          permission={permissions.Create}
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-          onClick={onAddSubDomain}
-        />
+        <div className="tw:relative tw:min-h-70">
+          <CreatePlaceholder
+            actions={[
+              {
+                color: 'primary',
+                iconLeading: Plus,
+                id: 'subdomain-add-button',
+                key: 'add-sub-domain',
+                label: t('label.add-entity', {
+                  entity: t('label.sub-domain'),
+                }),
+                onPress: onAddSubDomain,
+              },
+            ]}
+            description={t('message.no-data-message', {
+              entity: t('label.sub-domain-lowercase-plural'),
+            })}
+            icon={<Globe01 className="tw:text-fg-brand-primary" />}
+            permission={permissions.Create}
+            title={t('label.no-entity', {
+              entity: t('label.sub-domain-plural'),
+            })}
+          />
+        </div>
       );
     }
 

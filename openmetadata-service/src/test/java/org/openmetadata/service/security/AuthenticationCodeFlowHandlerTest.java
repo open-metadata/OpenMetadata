@@ -1667,8 +1667,10 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
-  void syncRolesFromProvider_leavesRolesAloneWhenTheTokenHasNoRolesClaim() throws Exception {
-    User user = userWithRoles("alice", "DataSteward");
+  void syncRolesFromProvider_revokesEverythingWhenTheIdTokenHasNoRolesClaim() throws Exception {
+    // Entra ID's shape once the Admin and DataSteward app roles are both unassigned: the id_token
+    // carries no roles claim at all.
+    User user = userWithRoles("alice", "DataSteward").withIsAdmin(true);
     UserRepository userRepository = mock(UserRepository.class);
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
@@ -1677,10 +1679,31 @@ class AuthenticationCodeFlowHandlerTest {
       invokeSyncRolesFromProvider(
           handlerWithRolesFromProvider(true), user, claims("email", "alice@om.test"));
 
-      verifyNoInteractions(userRepository);
+      verify(userRepository).patch(eq(null), eq(user.getId()), eq("alice"), any());
     }
 
-    assertEquals(List.of("DataSteward"), roleNames(user));
+    assertEquals(List.of(), roleNames(user));
+    assertFalse(user.getIsAdmin());
+  }
+
+  @Test
+  void syncRolesFromProvider_keepsAdminForAnAdminTheConfigurationNames() throws Exception {
+    User user = userWithRoles("alice", "DataSteward").withEmail("alice@om.test").withIsAdmin(true);
+    UserRepository userRepository = mock(UserRepository.class);
+    AuthenticationCodeFlowHandler handler =
+        handlerWithAuthorizer(
+            new AuthorizerConfiguration()
+                .withUseRolesFromProvider(true)
+                .withAdminEmails(Set.of("alice@om.test")));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository);
+
+      invokeSyncRolesFromProvider(handler, user, claims("roles", List.of()));
+    }
+
+    assertEquals(List.of(), roleNames(user));
+    assertTrue(user.getIsAdmin());
   }
 
   @Test
@@ -1730,14 +1753,33 @@ class AuthenticationCodeFlowHandlerTest {
     assertTrue(user.getIsAdmin());
   }
 
+  @Test
+  void syncRolesFromProvider_demotesAnAdminWhenTheProviderDropsTheAdminRole() throws Exception {
+    User user = userWithRoles("alice", "DataSteward").withIsAdmin(true);
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository, "DataSteward");
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("roles", List.of("DataSteward")));
+    }
+
+    assertEquals(List.of("DataSteward"), roleNames(user));
+    assertFalse(user.getIsAdmin());
+  }
+
   private AuthenticationCodeFlowHandler handlerWithRolesFromProvider(boolean useRolesFromProvider)
       throws Exception {
+    return handlerWithAuthorizer(
+        new AuthorizerConfiguration().withUseRolesFromProvider(useRolesFromProvider));
+  }
+
+  private AuthenticationCodeFlowHandler handlerWithAuthorizer(
+      AuthorizerConfiguration authorizerConfiguration) throws Exception {
     AuthenticationCodeFlowHandler handler =
         createHandlerWithMockedInternals(sessionService, oidcClient);
-    setField(
-        handler,
-        "authorizerConfiguration",
-        new AuthorizerConfiguration().withUseRolesFromProvider(useRolesFromProvider));
+    setField(handler, "authorizerConfiguration", authorizerConfiguration);
     return handler;
   }
 

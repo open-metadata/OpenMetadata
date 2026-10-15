@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const FilterLines: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,10 +29,14 @@ export const FilterLines: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M6 12h12M3 6h18M9 18h6" stroke="currentColor" strokeWidth={1.3} />
+    <path
+      d="M5 10h10M2.5 5h15m-10 10h5"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
   </svg>
 );
 FilterLines.displayName = 'FilterLines';

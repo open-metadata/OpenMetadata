@@ -17,7 +17,6 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Affix } from 'antd';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -107,7 +106,7 @@ const WhatsNewAlert = () => {
   return (
     <>
       {showWhatsNew.alert && isHomePage && (
-        <Affix className="whats-new-alert-affix">
+        <Box className="tw:fixed tw:right-8 tw:bottom-8 tw:z-2000">
           <Card
             className="whats-new-alert-card"
             data-testid="whats-new-alert-card">
@@ -181,7 +180,7 @@ const WhatsNewAlert = () => {
               </Box>
             </Box>
           </Card>
-        </Affix>
+        </Box>
       )}
     </>
   );

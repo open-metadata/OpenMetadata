@@ -148,6 +148,45 @@ test(
       );
       await page.getByTestId('add-test-case-btn').click();
       await modalListResponse;
+      const submit = page
+        .getByRole('dialog', ADD_TEST_CASES_DIALOG)
+        .getByTestId('submit');
+      await expect(submit).toBeInViewport();
+      const cancel = page
+        .getByRole('dialog', ADD_TEST_CASES_DIALOG)
+        .getByTestId('cancel');
+      await expect
+        .poll(async () => {
+          const cancelBounds = await cancel.boundingBox();
+          const submitBounds = await submit.boundingBox();
+
+          return cancelBounds && submitBounds
+            ? Math.abs(
+                cancelBounds.y +
+                  cancelBounds.height / 2 -
+                  (submitBounds.y + submitBounds.height / 2)
+              )
+            : Number.POSITIVE_INFINITY;
+        })
+        .toBeLessThan(1);
+      expect(
+        await submit.evaluate((button) => {
+          for (
+            let parent = button.parentElement;
+            parent;
+            parent = parent.parentElement
+          ) {
+            if (
+              /auto|scroll/.test(getComputedStyle(parent).overflowY) &&
+              parent.scrollHeight > parent.clientHeight
+            ) {
+              return true;
+            }
+          }
+
+          return false;
+        })
+      ).toBe(false);
       await page
         .getByRole('dialog', ADD_TEST_CASES_DIALOG)
         .locator(

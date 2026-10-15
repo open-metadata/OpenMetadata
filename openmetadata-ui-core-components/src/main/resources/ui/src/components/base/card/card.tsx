@@ -43,6 +43,11 @@ export const cardStyles = sortCx({
     },
     outlined: { root: 'tw:border-2 tw:border-primary tw:bg-surface' },
     ghost: { root: 'tw:bg-transparent' },
+    // Matches the Explore search card: a solid border, white in light mode and
+    // one step below the surrounding surface in dark mode (bg-primary_alt).
+    muted: {
+      root: 'tw:border-1 tw:border-secondary tw:bg-primary_alt',
+    },
   },
   colors: {
     default: { root: '' },
@@ -70,6 +75,9 @@ export const cardStyles = sortCx({
     outlined: { root: 'tw:hover:bg-secondary tw:hover:border-primary' },
     ghost: {
       root: 'tw:hover:bg-secondary tw:hover:border-1 tw:hover:border-inset tw:hover:border-secondary',
+    },
+    muted: {
+      root: 'tw:hover:shadow-lg tw:motion-safe:hover:-translate-y-0.5',
     },
   },
   selected: { root: 'tw:border-2 tw:border-brand' },
