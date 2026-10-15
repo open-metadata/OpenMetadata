@@ -376,9 +376,6 @@ function resolvePrimaryParent(
     })[0];
 }
 
-// The tree never indents past this, however deep the hierarchy.
-const MAX_TREE_DEPTH = 16;
-
 type UnplacedTreeRow = Omit<OntologyTreeRow, 'depth'>;
 
 const compareByLabel = (left: UnplacedTreeRow, right: UnplacedTreeRow) =>
@@ -415,7 +412,7 @@ function orderAsTree(
       return;
     }
     visited.add(row.node.id);
-    ordered.push({ ...row, depth: Math.min(MAX_TREE_DEPTH, depth) });
+    ordered.push({ ...row, depth });
     childrenOf
       .get(row.node.id)
       ?.sort(compareByLabel)

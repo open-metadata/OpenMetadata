@@ -319,6 +319,35 @@ describe('OntologyStudio utils', () => {
     ]);
   });
 
+  it('keeps the real depth so a hierarchy deeper than the indent cap nests correctly', () => {
+    const ids = Array.from({ length: 20 }, (_, index) => `t${index}`);
+    const [group] = buildOntologyTreeGroups(
+      {
+        nodes: ids.map((id) => ({
+          id,
+          label: id,
+          type: 'glossaryTerm',
+          glossaryId: 'g1',
+        })),
+        edges: ids.slice(1).map((id, index) => parentOf(ids[index], id)),
+      },
+      { ...FILTERS, glossaryIds: ['g1'] },
+      GLOSSARIES,
+      RELATION_TYPES
+    );
+    let item = nestTreeRows(group.rows)[0];
+    const chain = [item.node.id];
+    while (item.children.length > 0) {
+      expect(item.children).toHaveLength(1);
+
+      item = item.children[0];
+      chain.push(item.node.id);
+    }
+
+    expect(group.rows[19].depth).toBe(19);
+    expect(chain).toEqual(ids);
+  });
+
   it('lists only metrics that measure a scoped term', () => {
     const metrics = buildOntologyTreeMetrics(
       {

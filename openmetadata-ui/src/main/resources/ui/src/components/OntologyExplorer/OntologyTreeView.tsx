@@ -39,6 +39,8 @@ interface OntologyTreeViewProps {
   readonly onSelect: (node: OntologyNode) => void;
 }
 
+// The tree never indents past this level, however deep the hierarchy.
+const MAX_INDENT_LEVEL = 16;
 const TREE_CLASS = 'tw:gap-0 tw:divide-y tw:divide-secondary';
 const ROW_CLASS = 'tw:rounded-none tw:pl-3 tw:hover:bg-primary_hover';
 const ROW_CONTENT_CLASS = 'tw:py-3 tw:pr-4 tw:hover:bg-transparent';
@@ -128,7 +130,10 @@ const ConceptTreeItem = ({ item }: { readonly item: OntologyTreeItem }) => {
       data-testid={`ontology-tree-term-${item.node.id}`}
       id={item.node.id}
       textValue={item.node.label}>
-      <Tree.ItemContent className={ROW_CONTENT_CLASS} indentPerLevel={42}>
+      <Tree.ItemContent
+        className={ROW_CONTENT_CLASS}
+        indentPerLevel={42}
+        maxIndentLevel={MAX_INDENT_LEVEL}>
         <Dot className="tw:shrink-0 tw:text-utility-brand-400" size="sm" />
         <TreeRowText
           meta={
