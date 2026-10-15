@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, Locator, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { fillCodeEditor } from '../../../utils/codeEditor';
@@ -18,6 +18,7 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  scrollIntoViewAndSettle,
   selectOptionWithRetry,
   uuid,
 } from '../../../utils/common';
@@ -78,6 +79,26 @@ const expectRunDetails = async (
   await expect(card.getByTestId('run-details-evaluated')).toHaveText(
     `${EVALUATED_ROWS} row(s)`
   );
+};
+
+// The options live in a react-aria popover that closes on any scroll of a
+// container around its trigger. Opening focuses the trigger, and when the
+// trigger sits partly below the drawer form's visible edge the form scrolls to
+// reveal it, which closes the popover again. Centre the trigger before opening,
+// and reopen until the assertions hold on one open popover.
+const expectListboxOptions = async (
+  trigger: Locator,
+  assertions: (listbox: Locator) => Promise<void>
+) => {
+  const listbox = trigger.page().getByRole('listbox');
+
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await scrollIntoViewAndSettle(trigger);
+      await trigger.click();
+    }
+    await assertions(listbox);
+  }).toPass({ timeout: 15000 });
 };
 
 /**
@@ -144,22 +165,24 @@ test.describe(
       const operator = page.locator('#testCaseFormV1_params_operator');
 
       await test.step('Operator options are sentences', async () => {
-        await operator.click();
+        await expectListboxOptions(operator, async (listbox) => {
+          for (const label of [
+            'at most',
+            'fewer than',
+            'at least',
+            'more than',
+            'exactly',
+            'anything other than',
+          ]) {
+            await expect(
+              listbox.getByRole('option', { name: label, exact: true })
+            ).toBeVisible({ timeout: 2000 });
+          }
+          await expect(listbox).not.toContainText(/[<>]|==|!=/, {
+            timeout: 2000,
+          });
+        });
         const listbox = page.getByRole('listbox');
-
-        for (const label of [
-          'at most',
-          'fewer than',
-          'at least',
-          'more than',
-          'exactly',
-          'anything other than',
-        ]) {
-          await expect(
-            listbox.getByRole('option', { name: label, exact: true })
-          ).toBeVisible();
-        }
-        await expect(listbox).not.toContainText(/[<>]|==|!=/);
 
         await selectOptionWithRetry(
           operator,
@@ -173,13 +196,15 @@ test.describe(
 
       await test.step('Threshold unit options are sentences', async () => {
         const unit = page.locator('#testCaseFormV1_params_thresholdUnit');
-        await unit.click();
+        await expectListboxOptions(unit, async (listbox) => {
+          await expect(
+            listbox.getByRole('option', { name: 'rows', exact: true })
+          ).toBeVisible({ timeout: 2000 });
+          await expect(listbox).not.toContainText(/ABSOLUTE|PERCENTAGE/, {
+            timeout: 2000,
+          });
+        });
         const listbox = page.getByRole('listbox');
-
-        await expect(
-          listbox.getByRole('option', { name: 'rows', exact: true })
-        ).toBeVisible();
-        await expect(listbox).not.toContainText(/ABSOLUTE|PERCENTAGE/);
 
         await selectOptionWithRetry(
           unit,

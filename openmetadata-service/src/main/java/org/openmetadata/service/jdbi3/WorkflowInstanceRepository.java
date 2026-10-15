@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
@@ -18,6 +19,10 @@ import org.openmetadata.service.jdbi3.WorkflowDocStoreDAOs.WorkflowInstanceTimeS
 import org.openmetadata.service.resources.governance.WorkflowInstanceResource;
 
 public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<WorkflowInstance> {
+  // Statuses set by whoever ended the run from outside it; the process-end listener keeps them.
+  private static final Set<WorkflowInstance.WorkflowStatus> ENDED_FROM_OUTSIDE =
+      Set.of(WorkflowInstance.WorkflowStatus.SUPERSEDED, WorkflowInstance.WorkflowStatus.CANCELLED);
+
   private final WorkflowInstanceTimeSeriesDAO instanceDao;
 
   public WorkflowInstanceRepository() {
@@ -106,7 +111,7 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
   }
 
   private static boolean isStopRequestMissed(WorkflowInstance beforeEnd) {
-    return beforeEnd.getStatus() != WorkflowInstance.WorkflowStatus.SUPERSEDED
+    return !ENDED_FROM_OUTSIDE.contains(beforeEnd.getStatus())
         && stopRequestOf(beforeEnd).isEmpty();
   }
 
@@ -118,13 +123,13 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
   record EndState(WorkflowInstance.WorkflowStatus status, String exception) {}
 
   /**
-   * Preserves a terminal SUPERSEDED status set upstream by the supersede path, and the FAILURE an
-   * administrator's stop request stands for: the process-end execution listener also lands here and
-   * would otherwise recompute the status to FINISHED.
+   * Preserves a terminal SUPERSEDED or CANCELLED status set by the path that ended the run, and the
+   * FAILURE an administrator's stop request stands for: the process-end execution listener also
+   * lands here and would otherwise recompute the status to FINISHED.
    */
   private EndState endStateOf(WorkflowInstance workflowInstance, Map<String, Object> variables) {
-    EndState endState = new EndState(WorkflowInstance.WorkflowStatus.SUPERSEDED, null);
-    if (workflowInstance.getStatus() != WorkflowInstance.WorkflowStatus.SUPERSEDED) {
+    EndState endState = new EndState(workflowInstance.getStatus(), null);
+    if (!ENDED_FROM_OUTSIDE.contains(workflowInstance.getStatus())) {
       endState =
           stopRequestOf(workflowInstance)
               .map(WorkflowInstanceRepository::stoppedEndState)
@@ -133,12 +138,13 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
     return endState;
   }
 
-  /** The stop request the end of an instance stands for; a SUPERSEDED instance keeps its status. */
+  /**
+   * The stop request the end of an instance stands for; an instance ended from outside its run
+   * keeps its status.
+   */
   private static Optional<StopRequest> appliedStopRequestOf(WorkflowInstance workflowInstance) {
     return stopRequestOf(workflowInstance)
-        .filter(
-            stopRequest ->
-                workflowInstance.getStatus() != WorkflowInstance.WorkflowStatus.SUPERSEDED);
+        .filter(stopRequest -> !ENDED_FROM_OUTSIDE.contains(workflowInstance.getStatus()));
   }
 
   private static EndState stoppedEndState(StopRequest stopRequest) {
@@ -238,6 +244,33 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
   public void markInstanceAsSuperseded(UUID workflowInstanceId, String reason) {
     WorkflowInstance workflowInstance =
         JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
+    markEnded(
+        workflowInstanceId, workflowInstance, WorkflowInstance.WorkflowStatus.SUPERSEDED, reason);
+  }
+
+  /**
+   * Records {@code status} and {@code reason} on a run that is ended from outside it (superseded or
+   * cancelled). Returns false, changing nothing, when the run has already ended or does not exist.
+   */
+  public boolean endRunningInstance(
+      UUID workflowInstanceId, WorkflowInstance.WorkflowStatus status, String reason) {
+    String json = timeSeriesDao.getById(workflowInstanceId);
+    WorkflowInstance workflowInstance =
+        json == null ? null : JsonUtils.readValue(json, WorkflowInstance.class);
+    boolean running =
+        workflowInstance != null
+            && workflowInstance.getStatus() == WorkflowInstance.WorkflowStatus.RUNNING;
+    if (running) {
+      markEnded(workflowInstanceId, workflowInstance, status, reason);
+    }
+    return running;
+  }
+
+  private void markEnded(
+      UUID workflowInstanceId,
+      WorkflowInstance workflowInstance,
+      WorkflowInstance.WorkflowStatus status,
+      String reason) {
 
     Map<String, Object> variables = workflowInstance.getVariables();
     if (variables == null) {
@@ -247,7 +280,7 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
 
     WorkflowInstance updatedInstance =
         workflowInstance
-            .withStatus(WorkflowInstance.WorkflowStatus.SUPERSEDED)
+            .withStatus(status)
             .withVariables(variables)
             .withEndedAt(System.currentTimeMillis());
 

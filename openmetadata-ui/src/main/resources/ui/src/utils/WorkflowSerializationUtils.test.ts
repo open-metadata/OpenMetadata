@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  deserializeEventBasedFilters,
   parseFqnList,
   reconcileDataAssetFilters,
   serializeFqnList,
@@ -52,6 +53,29 @@ describe('reconcileDataAssetFilters', () => {
     expect(reconcileDataAssetFilters([filter(1, 'table')], undefined)).toEqual(
       []
     );
+  });
+});
+
+describe('deserializeEventBasedFilters', () => {
+  const logic = '{"==":[{"var":"name"},"x"]}';
+
+  it('reads the per-entity-type filter map', () => {
+    expect(
+      deserializeEventBasedFilters({ glossary: logic }, ['glossary'])
+    ).toBe(logic);
+  });
+
+  it('reads a filter map saved as a JSON string', () => {
+    expect(
+      deserializeEventBasedFilters(JSON.stringify({ glossary: logic }), [
+        'glossary',
+      ])
+    ).toBe(logic);
+  });
+
+  it('reads nothing from a string that is not a filter map', () => {
+    expect(deserializeEventBasedFilters('not json', ['glossary'])).toBe('');
+    expect(deserializeEventBasedFilters(undefined, ['glossary'])).toBe('');
   });
 });
 

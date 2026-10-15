@@ -518,6 +518,92 @@ def isolated_parse_query_cache():
     _cache.clear()
 
 
+def test_it_turns_sql_alchemy_response_to_snowflake_dynamic_table_refresh_entries() -> None:
+    """Regression test for the SQLAlchemy 2.x Row parsing bug.
+
+    ``SnowflakeDynamicTableRefreshEntry.get_for_table`` built the dict for each
+    row with ``ExtendedDict(r)`` which, under SQLAlchemy 2.x, iterates a ``Row``
+    as positional *values* rather than key/value pairs and raises ``ValueError``.
+    It must use ``ExtendedDict(r._asdict())``-the same fix already applied to the
+    sibling ``SnowflakeQueryLogEntry.get_for_table``.
+
+    The columns below match ``SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY``,
+    which returns ``TABLE_NAME``, ``START_TIME``, ``ROWS_INSERTED`` and
+    ``ROWS_DELETED`` (there is no ``ROWS_UPDATED`` column, so the optional
+    ``rows_updated`` field resolves to ``None``).
+    """
+    start_time = datetime.now()
+
+    session = create_autospec(Session, instance=True)
+
+    row_metadata = SimpleResultMetaData(
+        [
+            "TABLE_NAME",
+            "START_TIME",
+            "ROWS_INSERTED",
+            "ROWS_DELETED",
+        ]
+    )
+    result = IteratorResult(
+        row_metadata,
+        iter(
+            [
+                (
+                    "test_dynamic_table",
+                    start_time,
+                    100,
+                    0,
+                ),
+                (
+                    "test_dynamic_table",
+                    start_time + timedelta(hours=1),
+                    0,
+                    15,
+                ),
+                (
+                    "other_dynamic_table",
+                    start_time + timedelta(hours=2),
+                    50,
+                    5,
+                ),
+            ]
+        ),
+    )
+    session.execute.return_value = result
+
+    snowflake_connection = SnowflakeConnection.model_construct(accountUsageSchema="SNOWFLAKE.ACCOUNT_USAGE")
+
+    entries = SnowflakeDynamicTableRefreshEntry.get_for_table(
+        session=session,
+        tablename="test_dynamic_table",
+        service_connection_config=snowflake_connection,
+    )
+
+    assert entries == [
+        SnowflakeDynamicTableRefreshEntry(
+            table_name="test_dynamic_table",
+            start_time=start_time,
+            rows_inserted=100,
+            rows_updated=None,
+            rows_deleted=0,
+        ),
+        SnowflakeDynamicTableRefreshEntry(
+            table_name="test_dynamic_table",
+            start_time=start_time + timedelta(hours=1),
+            rows_inserted=0,
+            rows_updated=None,
+            rows_deleted=15,
+        ),
+        SnowflakeDynamicTableRefreshEntry(
+            table_name="other_dynamic_table",
+            start_time=start_time + timedelta(hours=2),
+            rows_inserted=50,
+            rows_updated=None,
+            rows_deleted=5,
+        ),
+    ]
+
+
 @pytest.mark.parametrize(
     "query, expected_identifier",
     [
