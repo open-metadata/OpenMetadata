@@ -458,14 +458,71 @@ describe('CSV utils ClassBase', () => {
       expect(editor).toBeDefined();
     });
 
-    it('should return editor for entityType* column', () => {
+    it('should commit the picked entity type and close the cell', async () => {
       const editor = csvUtils.getEditor(
         'entityType*',
         EntityType.TABLE,
         multipleOwner
       );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
 
-      expect(editor).toBeDefined();
+      if (!editor) {
+        throw new Error('Expected entityType* editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { 'entityType*': EntityType.DATABASE },
+            column: { key: 'entityType*' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      fireEvent.click(
+        await screen.findByRole('option', { name: 'label.database-schema' })
+      );
+
+      expect(onRowChange).toHaveBeenCalledWith(
+        { 'entityType*': EntityType.DATABASE_SCHEMA },
+        true
+      );
+      expect(screen.queryByTestId('inline-save-btn')).not.toBeInTheDocument();
+    });
+
+    it('should end the enum edit when the list closes without a new pick', async () => {
+      const editor = csvUtils.getEditor(
+        'entityType*',
+        EntityType.TABLE,
+        multipleOwner
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected entityType* editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { 'entityType*': EntityType.DATABASE },
+            column: { key: 'entityType*' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      fireEvent.click(
+        await screen.findByRole('option', { name: 'label.database' })
+      );
+
+      expect(onRowChange).not.toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalledWith(false);
     });
 
     it('should commit the picked metric enum value and close the cell', async () => {

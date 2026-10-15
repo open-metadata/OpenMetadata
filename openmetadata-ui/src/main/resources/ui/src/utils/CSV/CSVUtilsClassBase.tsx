@@ -2028,19 +2028,23 @@ type CSVEditorFactory = (ctx: CSVEditorContext) => CSVCellEditor;
 
 // Grid enum cells open their list straight away, like the inline editors
 // beside them; the popover keeps the grid's custom-editor class so the
-// grid's key handling leaves typing inside the list alone.
+// grid's key handling leaves typing inside the list alone. Closing the list
+// ends the edit: re-picking the current value fires no selection change, so
+// without this the cell would stay in edit mode.
 const renderGridEnumSelect = ({
   ariaLabel,
   options = [],
   testId,
   value,
   onChange,
+  onDismiss,
 }: {
   ariaLabel: string;
   options?: Array<{ label: string; value: string }>;
   testId: string;
   value: string;
   onChange: (value: string) => void;
+  onDismiss: () => void;
 }) => (
   <Select
     // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the editor when the inline cell opens
@@ -2053,6 +2057,7 @@ const renderGridEnumSelect = ({
     popoverClassName="react-grid-select-dropdown"
     selectedKey={value || null}
     size="sm"
+    onOpenChange={(isOpen) => !isOpen && onDismiss()}
     // A cleared selection reports null; keep the cell empty rather than "null".
     onSelectionChange={(key) => onChange(key === null ? '' : String(key))}>
     {(item) => <Select.Item id={item.id} label={item.label} />}
@@ -2410,6 +2415,7 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
             testId: `${column.key}-select`,
             value,
             onChange: handleChange,
+            onDismiss: () => onClose(false),
           })}
         </KeyDownStopPropagationWrapper>
       );
@@ -2661,9 +2667,8 @@ const getCsvEntityTypeEditor: CSVEditorFactory =
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const value = row[column.key];
-    const handleChange = (typeValue: string) => {
-      onRowChange({ ...row, [column.key]: typeValue });
-    };
+    const handleChange = (typeValue: string) =>
+      onRowChange({ ...row, [column.key]: typeValue }, true);
     const translatedEntityTypeOptions = () =>
       ENTITY_TYPE_OPTIONS.map((opt) => ({
         ...opt,
@@ -2672,17 +2677,14 @@ const getCsvEntityTypeEditor: CSVEditorFactory =
 
     return (
       <KeyDownStopPropagationWrapper>
-        <InlineEdit
-          onCancel={() => onClose(false)}
-          onSave={() => onClose(true)}>
-          {renderGridEnumSelect({
-            ariaLabel: startCase(column.key),
-            options: translatedEntityTypeOptions(),
-            testId: 'entity-type-select',
-            value: String(value ?? ''),
-            onChange: handleChange,
-          })}
-        </InlineEdit>
+        {renderGridEnumSelect({
+          ariaLabel: startCase(column.key),
+          options: translatedEntityTypeOptions(),
+          testId: 'entity-type-select',
+          value: String(value ?? ''),
+          onChange: handleChange,
+          onDismiss: () => onClose(false),
+        })}
       </KeyDownStopPropagationWrapper>
     );
   };
@@ -2809,6 +2811,7 @@ const getCsvEnumEditor: CSVEditorFactory =
           testId: `${column.key}-select`,
           value: String(value ?? ''),
           onChange: handleChange,
+          onDismiss: () => onClose(false),
         })}
       </KeyDownStopPropagationWrapper>
     );
