@@ -84,6 +84,39 @@ class SearchDocumentUpdatesTest {
   }
 
   @Test
+  void aRelationshipReplacementIsOrderedByItsRevisionAlone() {
+    TestCase testCase =
+        new TestCase()
+            .withId(UUID.randomUUID())
+            .withName("testCase")
+            .withVersion(1.0)
+            .withUpdatedAt(30L);
+    SearchDocumentUpdate replacement = SearchDocumentUpdates.relationshipFieldsAt(testCase, 6L);
+
+    SearchDocumentUpdate guarded = SearchVersionGuard.apply(replacement, testCase, 40L);
+
+    assertEquals(replacement, guarded);
+    assertFalse(guarded.parameters().containsKey(SearchVersionGuard.SOURCE_READ_AT));
+  }
+
+  @Test
+  void theRestOfAFencedEntitysDocumentIsStillOrderedByReadTime() {
+    TestCase testCase =
+        new TestCase()
+            .withId(UUID.randomUUID())
+            .withName("testCase")
+            .withVersion(1.0)
+            .withUpdatedAt(30L);
+    SearchDocumentUpdate preserving =
+        SearchDocumentUpdates.buildRelationshipDocumentUpdate(testCase, Map.of("name", "testCase"));
+
+    SearchDocumentUpdate guarded = SearchVersionGuard.apply(preserving, testCase, 40L);
+
+    assertEquals(40L, guarded.parameters().get(SearchVersionGuard.SOURCE_READ_AT));
+    assertTrue(guarded.script().contains("omStale"));
+  }
+
+  @Test
   void buildRelationshipDocumentUpdatePreservesTestCaseRevisionOwnedFields() {
     TestCase testCase =
         new TestCase().withId(UUID.randomUUID()).withName("testCase").withVersion(1.0);

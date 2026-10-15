@@ -102,9 +102,15 @@ public final class SearchVersionGuard {
     return apply(update, entity, readTime());
   }
 
-  /** Guards {@code update} with the time its content was read, and stamps the entity's state. */
+  /**
+   * Guards {@code update} with the time its content was read, and stamps the entity's state. A
+   * relationship replacement is left to its revision fence and changes nothing else.
+   */
   public static SearchDocumentUpdate apply(
       final SearchDocumentUpdate update, final EntityInterface<?> entity, final long readAt) {
+    if (SearchDocumentUpdates.isRelationshipReplacement(update)) {
+      return update;
+    }
     return new SearchDocumentUpdate(
         guard(update.script()),
         withEntityState(update.parameters(), entity, readAt),
