@@ -76,6 +76,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobArgs;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.lineage.LineageHydrator;
 import org.openmetadata.service.lineage.LineageSceneResolver;
@@ -1069,6 +1071,21 @@ public class LineageResource {
       @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
           @PathParam("toId")
           UUID toId) {
+    CollectionDAO.EntityRelationshipObject record = dao.getLineageEdgeRecord(fromId, toId);
+    if (record == null) {
+      throw new EntityNotFoundException(
+          "Lineage edge not found between " + fromId + " and " + " " + toId);
+    }
+    authorizeLineageReference(
+        securityContext,
+        Entity.getEntityReferenceById(
+            record.getFromEntity(), UUID.fromString(record.getFromId()), Include.NON_DELETED),
+        MetadataOperation.VIEW_BASIC);
+    authorizeLineageReference(
+        securityContext,
+        Entity.getEntityReferenceById(
+            record.getToEntity(), UUID.fromString(record.getToId()), Include.NON_DELETED),
+        MetadataOperation.VIEW_BASIC);
     return dao.getLineageEdge(fromId, toId);
   }
 
@@ -1106,6 +1123,14 @@ public class LineageResource {
       @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
           @PathParam("toFQN")
           String toFQN) {
+    authorizeLineageReference(
+        securityContext,
+        getLineageReferenceByName(fromEntity, fromFQN, Include.NON_DELETED),
+        MetadataOperation.VIEW_BASIC);
+    authorizeLineageReference(
+        securityContext,
+        getLineageReferenceByName(toEntity, toFQN, Include.NON_DELETED),
+        MetadataOperation.VIEW_BASIC);
     return dao.getLineageEdgeByFQN(fromEntity, fromFQN, toEntity, toFQN);
   }
 
