@@ -22,6 +22,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestDefinitionDAO.SortField;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
@@ -265,7 +266,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     // updater's @Transaction and the worker re-reads the relationships on its own connection, so
     // submitting here would race the commit: a worker that won would rebuild the documents from
     // the pre-repoint rows, and nothing would re-trigger it.
-    searchRepository.queueFanOut(
+    SearchRepository.runAfterCommit(
         () ->
             AsyncService.getInstance()
                 .executeDatabaseTask(
@@ -273,9 +274,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
                     "dq-dimension-reclassify:" + testDefinitionId,
                     () -> reindexTestCasesOf(testDefinitionId)),
         "reindexTestCasesForDimension",
-        testDefinitionId.toString(),
-        null,
-        Entity.TEST_DEFINITION);
+        null);
   }
 
   /** Rebuilds the search documents of a test definition's test cases, one page at a time. */

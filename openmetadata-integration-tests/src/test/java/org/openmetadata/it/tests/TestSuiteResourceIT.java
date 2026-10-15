@@ -797,6 +797,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     TestSuite fetched = client.testSuites().get(logicalSuite.getId().toString(), "summary");
     assertSummaryCounts(fetched, 3, 1);
 
+    QueuedSearchWrites.await();
     Awaitility.await("search list summary includes unexecuted tests")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))
@@ -807,6 +808,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     TestSuite afterDelete = client.testSuites().get(logicalSuite.getId().toString(), "summary");
     assertSummaryCounts(afterDelete, 2, 1);
 
+    QueuedSearchWrites.await();
     Awaitility.await("search list summary excludes soft-deleted tests")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))
@@ -817,6 +819,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
             new CreateTestSuite()
                 .withName(ns.prefix("logical_suite_without_tests"))
                 .withDescription("Empty logical suite"));
+    QueuedSearchWrites.await();
     Awaitility.await("search list returns a zero summary for an empty suite")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))
@@ -1451,7 +1454,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     return result.getData().stream()
         .filter(suite -> suite.getId().equals(testSuite.getId()))
         .findFirst()
-        .orElseThrow();
+        .orElseThrow(() -> new AssertionError("test suite not in the search list yet"));
   }
 
   private void assertSummaryCounts(TestSuite testSuite, int total, int success) {
