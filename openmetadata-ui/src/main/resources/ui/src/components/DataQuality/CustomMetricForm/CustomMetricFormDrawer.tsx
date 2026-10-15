@@ -198,7 +198,7 @@ const CustomMetricFormDrawer = ({
             />
           </div>
           <div
-            className="tw:w-3/5 tw:shrink-0 tw:overflow-y-auto tw:border-l tw:border-secondary tw:bg-secondary tw:p-6"
+            className="tw:w-2/5 tw:shrink-0 tw:overflow-y-auto tw:border-l tw:border-secondary tw:bg-secondary tw:p-6"
             data-testid="custom-metric-profile-preview">
             {profilePreview}
           </div>

@@ -126,7 +126,9 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     return isProfilingEnabled ? (
       t('message.profiler-is-enabled-but-no-data-available')
     ) : (
-      <Tooltip title={t('label.documentation')}>
+      // tw:w-auto overrides the trigger's w-max so the sentence wraps in
+      // narrow containers such as the custom metric drawer preview.
+      <Tooltip title={t('label.documentation')} triggerClassName="tw:w-auto">
         <span>
           <Transi18next
             i18nKey="message.no-profiler-card-message-with-link"
@@ -226,14 +228,16 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
 
   return (
     <div
-      className="tw:mb-lg tw:flex tw:flex-col tw:gap-8"
+      className="tw:@container tw:mb-lg tw:flex tw:flex-col tw:gap-8"
       data-testid="profiler-tab-container">
       {selectedColumn && (
         <div className="tw:grid tw:grid-cols-24 tw:gap-5">
-          <div className="tw:col-span-14">
+          {/* Stack the cards when the profile is rendered in a narrow column
+              (e.g. the custom metric drawer preview) instead of the page. */}
+          <div className="tw:col-span-24 tw:@4xl:col-span-14">
             <ColumnSummary column={selectedColumn} />
           </div>
-          <div className="tw:col-span-10">
+          <div className="tw:col-span-24 tw:@4xl:col-span-10">
             <div className="tw:h-full tw:rounded-[10px] tw:border tw:border-border-secondary tw:shadow-none">
               <div className="tw:p-4">
                 <p className="tw:m-0 tw:text-md tw:font-medium tw:text-primary">

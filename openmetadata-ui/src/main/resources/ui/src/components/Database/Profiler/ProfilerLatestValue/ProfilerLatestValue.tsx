@@ -44,7 +44,7 @@ const ProfilerLatestValue = ({
     <Card
       className="tw:flex tw:items-center tw:px-7.5 tw:py-4"
       data-testid="data-summary-container">
-      <div className="tw:flex tw:grow tw:gap-20">
+      <div className="tw:flex tw:grow tw:flex-wrap tw:gap-x-20 tw:gap-y-4">
         {information.map((info, index) => (
           <div key={info.title}>
             <p
