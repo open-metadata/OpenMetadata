@@ -53,6 +53,10 @@ const AnnouncementsRail = withSuspenseFallback(
   lazy(() => import('./AnnouncementsRail'))
 );
 
+const CriticalAnnouncements = withSuspenseFallback(
+  lazy(() => import('./CriticalAnnouncements'))
+);
+
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: ReactNode }
 >;
@@ -184,6 +188,7 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
         scroll="page">
         <PageLayout.Content className={contentClassName(Boolean(footerSlot))}>
           <div className="tw:flex tw:flex-col tw:gap-10 tw:px-4 tw:pt-8">
+            <CriticalAnnouncements />
             <AnnouncementsRail />
 
             {NeedsYouNowSection && (

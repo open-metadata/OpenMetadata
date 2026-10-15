@@ -24,8 +24,8 @@ import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { queryClient } from '../../../queryClient';
 import {
   AnnouncementEntity,
-  getActiveAnnouncements,
   listAnnouncements,
+  ListAnnouncementsParams,
 } from '../../../rest/announcementsAPI';
 import { ALL_ANNOUNCEMENTS_PAGE_SIZE } from './AllAnnouncementsDialog';
 import AnnouncementsRail from './AnnouncementsRail';
@@ -50,7 +50,6 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 }));
 
 jest.mock('../../../rest/announcementsAPI', () => ({
-  getActiveAnnouncements: jest.fn(),
   listAnnouncements: jest.fn(),
 }));
 
@@ -173,11 +172,17 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-const mockGetActiveAnnouncements =
-  getActiveAnnouncements as jest.MockedFunction<typeof getActiveAnnouncements>;
-const mockListAnnouncements = listAnnouncements as jest.MockedFunction<
+const mockListAnnouncementsApi = listAnnouncements as jest.MockedFunction<
   typeof listAnnouncements
 >;
+// One endpoint serves both reads, so route by intent: the rail's live list
+// asks for `active`; the dialog and the admin probe list everything.
+const mockGetActiveAnnouncements = jest.fn();
+const mockListAnnouncements = jest.fn();
+const routeListAnnouncements = (params?: ListAnnouncementsParams) =>
+  params?.active
+    ? mockGetActiveAnnouncements(params)
+    : mockListAnnouncements(params);
 
 const USER_ID = 'user-1';
 const ANNOUNCEMENT_ID = 'announcement-1';
@@ -264,6 +269,7 @@ const renderWithQueryClient = (children: React.ReactNode) =>
 describe('AnnouncementsRail cache integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListAnnouncementsApi.mockImplementation(routeListAnnouncements);
     queryClient.clear();
     window.sessionStorage.clear();
     window.localStorage.clear();
@@ -272,6 +278,18 @@ describe('AnnouncementsRail cache integration', () => {
       data: [makeAnnouncement(ANNOUNCEMENT_ID)],
     } as never);
     mockListAnnouncements.mockResolvedValue({ data: [] } as never);
+  });
+
+  it('lists only asset announcements, leaving system ones to the critical banner', async () => {
+    renderWithQueryClient(<AnnouncementsRail />);
+
+    await waitFor(() => {
+      expect(mockGetActiveAnnouncements).toHaveBeenCalledWith({
+        active: true,
+        limit: 100,
+        system: false,
+      });
+    });
   });
 
   it('deduplicates concurrent active-announcement requests', async () => {
@@ -370,6 +388,7 @@ describe('AnnouncementsRail cache integration', () => {
 describe('AnnouncementsRail rail', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListAnnouncementsApi.mockImplementation(routeListAnnouncements);
     queryClient.clear();
     window.sessionStorage.clear();
     window.localStorage.clear();
@@ -499,6 +518,7 @@ describe('AnnouncementsRail rail', () => {
 describe('AnnouncementsRail type badge', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListAnnouncementsApi.mockImplementation(routeListAnnouncements);
     queryClient.clear();
     window.sessionStorage.clear();
     window.localStorage.clear();
@@ -559,6 +579,7 @@ describe('AnnouncementsRail type badge', () => {
 describe('AnnouncementsRail all-announcements dialog', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListAnnouncementsApi.mockImplementation(routeListAnnouncements);
     queryClient.clear();
     window.sessionStorage.clear();
     window.localStorage.clear();
@@ -696,6 +717,7 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     expect(mockListAnnouncements).toHaveBeenLastCalledWith({
       after: undefined,
       limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
+      system: false,
     });
     // The badge counts the whole list, not just the page on screen.
     expect(screen.getByTestId('all-announcements-count')).toHaveTextContent(
@@ -709,6 +731,7 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     expect(mockListAnnouncements).toHaveBeenLastCalledWith({
       after: 'cursor-2',
       limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
+      system: false,
     });
     expect(
       screen.queryByTestId('all-announcements-load-more')
@@ -721,6 +744,7 @@ describe('AnnouncementsRail persisted dismissals', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListAnnouncementsApi.mockImplementation(routeListAnnouncements);
     queryClient.clear();
     window.localStorage.clear();
     mockCurrentUser = { id: USER_ID };
@@ -777,6 +801,7 @@ describe('AnnouncementsRail persisted dismissals', () => {
 describe('AnnouncementsRail entry point with nothing live', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListAnnouncementsApi.mockImplementation(routeListAnnouncements);
     queryClient.clear();
     window.localStorage.clear();
     mockGetActiveAnnouncements.mockResolvedValue({ data: [] } as never);
@@ -803,7 +828,10 @@ describe('AnnouncementsRail entry point with nothing live', () => {
     renderWithQueryClient(<AnnouncementsRail />);
 
     await waitFor(() => {
-      expect(mockListAnnouncements).toHaveBeenCalledWith({ limit: 1 });
+      expect(mockListAnnouncements).toHaveBeenCalledWith({
+        limit: 1,
+        system: false,
+      });
     });
 
     expect(

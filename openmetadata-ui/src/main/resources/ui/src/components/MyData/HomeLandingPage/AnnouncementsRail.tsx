@@ -34,7 +34,6 @@ import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   AnnouncementEntity,
-  getActiveAnnouncements,
   listAnnouncements,
 } from '../../../rest/announcementsAPI';
 import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
@@ -63,8 +62,14 @@ const PAGER_BUTTON_CLASSES = 'tw:rounded-full';
 // left at either end, which would otherwise keep a pager button enabled forever.
 const RAIL_SCROLL_EPSILON = 1;
 
+// Asset announcements only: system ones reach users through the critical
+// banner above the rail, never here.
 const fetchActiveAnnouncements = async (): Promise<AnnouncementEntity[]> => {
-  const response = await getActiveAnnouncements();
+  const response = await listAnnouncements({
+    active: true,
+    limit: 100,
+    system: false,
+  });
 
   return response.data ?? [];
 };
@@ -84,7 +89,7 @@ const HAS_ANY_ANNOUNCEMENT_QUERY_KEY = [
 ] as const;
 
 const fetchHasAnyAnnouncement = async (): Promise<boolean> => {
-  const response = await listAnnouncements({ limit: 1 });
+  const response = await listAnnouncements({ limit: 1, system: false });
 
   return (response.data ?? []).length > 0;
 };
