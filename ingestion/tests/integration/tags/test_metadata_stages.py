@@ -84,7 +84,7 @@ def test_amundsen_table_tags_persist_through_workflow(metadata, request, monkeyp
             Table,
             {table_fqn: [f"{classification}.{name}" for name in names]},
             expected_failures=4 if case == "denied" else 0,
-            expected_source_failures=1 if case == "invalid" else 0,
+            expected_source_warnings=1 if case == "invalid" else None,
         )
         table = metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["tags"])
         assert table.description.root == "Native table description"
@@ -175,7 +175,7 @@ def test_atlas_adds_confirmed_tags_without_removing_glossary_labels(metadata, re
                     ]
                 },
                 expected_failures=3 if case == "denied" else 0,
-                expected_source_failures=1 if case == "invalid" else 0,
+                expected_source_warnings=1 if case == "invalid" else None,
             )
             table = metadata.get_by_name(entity=Table, fqn=table.fullyQualifiedName.root, fields=["tags"])
             assert table.description.root == "Native Atlas description"

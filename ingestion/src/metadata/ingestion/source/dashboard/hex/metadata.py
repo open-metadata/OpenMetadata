@@ -15,6 +15,7 @@ Hex source module with direct warehouse query support for lineage
 import traceback
 from collections.abc import Iterable
 
+from metadata.domain.tags import TagAssignment
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -191,23 +192,22 @@ class HexSource(DashboardServiceSource):
 
         return list(set(tags_list)) if tags_list else []  # Remove duplicates
 
-    def _get_dashboard_tags(self, dashboard_details):
-        """Get tag labels for dashboard"""
-        if self.source_config.includeTags:
-            tags = self._extract_tags_from_project(dashboard_details)
-
-            if tags:
-                return self.get_tag_labels(
-                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.id),
-                    tags=tags,
-                    classification_name=HEX_TAG_CATEGORY,
-                )
-
-        return None
-
     def yield_dashboard(self, dashboard_details: Project) -> Iterable[Either[CreateDashboardRequest]]:
         """Method to Get Dashboard Entity"""
         try:
+            tag_labels = None
+            if self.source_config.includeTags:
+                tag_values = self._extract_tags_from_project(dashboard_details)
+                if tag_values:
+                    tag_entity_fqn = fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.id)
+                    try:
+                        for tag_name in tag_values:
+                            assignment = TagAssignment(HEX_TAG_CATEGORY, tag_name, tag_entity_fqn)
+                            if error := self.tags_registry.attach(assignment):
+                                yield Either(left=error, right=None)
+                        tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
+                    finally:
+                        self.tags_registry.clear_scope(tag_entity_fqn)
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.title,
@@ -225,7 +225,7 @@ class HexSource(DashboardServiceSource):
                 ],
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(self.client.get_project_url(dashboard_details)),
-                tags=self._get_dashboard_tags(dashboard_details),
+                tags=tag_labels,
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)

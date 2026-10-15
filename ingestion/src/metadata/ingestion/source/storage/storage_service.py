@@ -13,7 +13,6 @@ Base class for ingesting Object Storage services
 """
 
 import json
-import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from contextlib import closing
@@ -21,12 +20,11 @@ from typing import Annotated, Any, cast
 
 from pydantic import Field
 
-from metadata.domain.tags import TagCanonicalizer, TagDefinition, TagRegistry
+from metadata.domain.tags import TagRegistry
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Column as TableColumn
 from metadata.generated.schema.entity.data.table import ColumnName
-from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.generated.schema.entity.services.storageService import (
     StorageConnection,
     StorageService,
@@ -183,15 +181,6 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         if cached is not None:
             return cached
         return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
-
-    @property
-    def tag_canonicalizer(self) -> TagCanonicalizer:
-        """Per-source canonicalizer for tag and classification names."""
-        instance_dict = vars(self)
-        cached = instance_dict.get("tag_canonicalizer")
-        if cached is not None:
-            return cached
-        return instance_dict.setdefault("tag_canonicalizer", TagCanonicalizer(metadata=self.metadata))
 
     @retry_with_docker_host()
     def __init__(
@@ -360,41 +349,6 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         finally:
             if not completed and container_details.container_fqn:
                 self.tags_registry.clear_scope(container_details.container_fqn)
-
-    def register_tag(
-        self, *, entity_fqn: str, definition: TagDefinition
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """Resolve and attach a definition, yielding individual registration failures."""
-        if not definition.tag_name or not definition.tag_name.strip():
-            return
-        if not (
-            fqn.is_valid_entity_name(definition.classification_name) and fqn.is_valid_entity_name(definition.tag_name)
-        ):
-            logger.warning(
-                "%s: Skipped invalid tag %r in classification %r",
-                entity_fqn,
-                definition.tag_name,
-                definition.classification_name,
-            )
-            return
-        try:
-            tag = self.tag_canonicalizer.resolve(
-                classification_name=definition.classification_name,
-                tag_name=definition.tag_name,
-                classification_description=definition.classification_description,
-                tag_description=definition.tag_description,
-            )
-            self.tags_registry.define(tag)
-            self.tags_registry.attach(entity_fqn=entity_fqn, tag=tag)
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name="Tags and Classifications",
-                    error=f"Failed to register tag [{definition.tag_name}] due to [{exc}]",
-                    stackTrace=traceback.format_exc(),
-                ),
-                right=None,
-            )
 
     def get_tag_by_fqn(self, entity_fqn: str | None) -> list[TagLabel] | None:
         """Return the labels attached to the current container."""

@@ -343,8 +343,8 @@ class AmundsenSource(Source):
                         tag_description="Amundsen Table Tag",
                         classification_description="Tags associated with amundsen entities",
                     )
-                    self.tags_registry.define(tag)
-                    self.tags_registry.attach(entity_fqn=table_fqn, tag=tag)
+                    if error := self.tags_registry.register(tag, entity_fqn=table_fqn):
+                        yield Either(left=error, right=None)
                 except Exception as exc:
                     yield Either(
                         right=None,

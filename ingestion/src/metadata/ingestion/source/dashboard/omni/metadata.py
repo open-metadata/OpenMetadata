@@ -19,6 +19,7 @@ from collections.abc import Iterable
 from cachetools import LRUCache
 from pydantic import BaseModel
 
+from metadata.domain.tags import TagAssignment
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -366,6 +367,19 @@ class OmniSource(DashboardServiceSource):
             return
         document = dashboard_details.document
         try:
+            tag_labels = None
+            if self.source_config.includeTags:
+                tag_values = document.label_names
+                if tag_values:
+                    tag_entity_fqn = fqn._build(vars(self.context.get())["dashboard_service"], document.identifier)
+                    try:
+                        for tag_name in tag_values:
+                            assignment = TagAssignment(OMNI_TAG_CATEGORY, tag_name, tag_entity_fqn)
+                            if error := self.tags_registry.attach(assignment):
+                                yield Either(left=error, right=None)
+                        tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
+                    finally:
+                        self.tags_registry.clear_scope(tag_entity_fqn)
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(document.identifier),
                 displayName=document.name,
@@ -384,11 +398,7 @@ class OmniSource(DashboardServiceSource):
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(document.url) if document.url else None,
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
-                tags=self.get_tag_labels(
-                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], document.identifier),
-                    tags=document.label_names,
-                    classification_name=OMNI_TAG_CATEGORY,
-                ),
+                tags=tag_labels,
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)

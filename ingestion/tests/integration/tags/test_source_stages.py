@@ -16,7 +16,7 @@ from uuid import UUID
 
 import pytest
 
-from metadata.domain.tags import TagDefinition
+from metadata.domain.tags import TagAssignment, TagDefinition
 from metadata.generated.schema.entity.classification.classification import Classification
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import DatabaseServiceMetadataPipeline
@@ -60,7 +60,7 @@ def _warning_messages(status):
 def test_closing_tag_stage_releases_publication_and_preserves_pending(source, monkeypatch, node_name, hook):
     monkeypatch.setattr(source, hook, lambda _: [])
     for name in ("First", "Second"):
-        source.tags_registry.define(TagDefinition("Class", name, "", ""))
+        assert source.tags_registry.register(TagDefinition("Class", name, "", "")) is None
 
     retained = {}
 
@@ -99,13 +99,18 @@ def test_shared_registration_resolves_system_tags(source):
         classification={"id": str(UUID(int=1)), "type": "classification", "name": "PII"},
     )
     source.metadata.es_search_from_fqn.side_effect = [[classification], [system_tag]]
-    tag = source.define_tag(
-        classification_name="pii",
-        tag_name="sensitive",
-        classification_description="Source classification",
-        tag_description="Source tag",
+    assert (
+        source.tags_registry.register(
+            TagDefinition(
+                classification_name="pii",
+                tag_name="sensitive",
+                classification_description="Source classification",
+                tag_description="Source tag",
+            ),
+            entity_fqn="svc.db.schema.table",
+        )
+        is None
     )
-    source.attach_tag(entity_fqn="svc.db.schema.table", tag=tag)
     records = list(source.tags_registry.drain())
     assert records[0].classification_request.name.root == "PII"
     assert records[0].tag_request.name.root == "Sensitive"
@@ -115,10 +120,15 @@ def test_shared_registration_resolves_system_tags(source):
 
 def test_custom_case_and_multiple_values_remain_distinct(source):
     for name in ("Mixed", "MIXED"):
-        tag = source.define_tag(
-            classification_name="Custom", tag_name=name, classification_description="", tag_description=""
+        assert (
+            source.tags_registry.register(
+                TagDefinition(
+                    classification_name="Custom", tag_name=name, classification_description="", tag_description=""
+                ),
+                entity_fqn="svc.db.schema.table",
+            )
+            is None
         )
-        source.attach_tag(entity_fqn="svc.db.schema.table", tag=tag)
     assert [label.tagFQN.root for label in source.get_tag_by_fqn("svc.db.schema.table")] == [
         "Custom.Mixed",
         "Custom.MIXED",
@@ -135,7 +145,10 @@ def test_early_schema_attachments_have_independent_lifetimes(source):
     tag = TagDefinition("Class", "Value", "", "")
     source.context.get().upsert("database", "db")
     for schema in ("a", "b", "filtered"):
-        source.attach_tag(entity_fqn=f"svc.db.{schema}", tag=tag)
+        assert (
+            source.tags_registry.attach(TagAssignment(tag.classification_name, tag.tag_name, f"svc.db.{schema}"))
+            is None
+        )
     source.context.get().upsert("database_schema", "a")
     assert source.get_tag_by_fqn("svc.db.a")
     list(source._run_node_post_process(source.topology.table))
@@ -154,7 +167,7 @@ def test_schema_cleanup_handles_quoted_fqn_components(source):
     source.context.get().upsert("database_schema", "my.schema")
     tag = TagDefinition("Class", "Value", "", "")
     entity = '"my.service"."my.database"."my.schema"."my.table"'
-    source.attach_tag(entity_fqn=entity, tag=tag)
+    assert source.tags_registry.attach(TagAssignment(tag.classification_name, tag.tag_name, entity)) is None
     assert [label.tagFQN.root for label in source.get_tag_by_fqn(entity)] == ["Class.Value"]
     list(source.clear_schema_tag_scope())
     assert source.get_tag_by_fqn(entity) is None
@@ -162,7 +175,7 @@ def test_schema_cleanup_handles_quoted_fqn_components(source):
 
 @pytest.mark.parametrize("entity", ["svc", "other.db.schema.table", "svc_extra.db.schema.table"])
 def test_database_cleanup_preserves_entities_outside_database(source, entity):
-    source.attach_tag(entity_fqn=entity, tag=TagDefinition("Class", "Value", "", ""))
+    assert source.tags_registry.attach(TagAssignment("Class", "Value", entity)) is None
     list(source.clear_database_tag_scope())
     assert [label.tagFQN.root for label in source.get_tag_by_fqn(entity)] == ["Class.Value"]
 
@@ -179,10 +192,15 @@ def test_default_stages_emit_registered_definitions_and_preserve_labels(source, 
     }[level]
     source.context.get().upsert("database", "db")
     source.context.get().upsert("database_schema", "schema")
-    tag = source.define_tag(
-        classification_name="Class", tag_name="Value", classification_description="", tag_description=""
+    assert (
+        source.tags_registry.register(
+            TagDefinition(
+                classification_name="Class", tag_name="Value", classification_description="", tag_description=""
+            ),
+            entity_fqn=entity_fqn,
+        )
+        is None
     )
-    source.attach_tag(entity_fqn=entity_fqn, tag=tag)
     records = list(source._process_stage(node.stages[0], item))
     assert len(records) == 1
     assert records[0].right.tag_request.name.root == "Value"
@@ -211,11 +229,13 @@ def test_default_stages_emit_registered_definitions_and_preserve_labels(source, 
     ],
 )
 def test_unnameable_tag_is_skipped_with_a_warning(source, status, classification_name, tag_name):
-    tag = source.define_tag(
-        classification_name=classification_name,
-        tag_name=tag_name,
-        classification_description="",
-        tag_description="",
+    tag = source.tags_registry.register(
+        TagDefinition(
+            classification_name=classification_name,
+            tag_name=tag_name,
+            classification_description="",
+            tag_description="",
+        ),
         entity_fqn="svc.db.schema.table",
     )
     assert tag is None
@@ -231,13 +251,14 @@ def test_unnameable_tag_is_skipped_with_a_warning(source, status, classification
     ("tag_name", "tag_fqn"), [("tier.gold", 'Class."tier.gold"'), ("COL_A,COL_B", "Class.COL_A,COL_B")]
 )
 def test_nameable_tag_with_punctuation_is_defined(source, status, tag_name, tag_fqn):
-    tag = source.define_tag(
-        classification_name="Class",
-        tag_name=tag_name,
-        classification_description="",
-        tag_description="",
-        entity_fqn="svc.db.schema.table",
+    assert (
+        source.tags_registry.register(
+            TagDefinition(
+                classification_name="Class", tag_name=tag_name, classification_description="", tag_description=""
+            ),
+            entity_fqn="svc.db.schema.table",
+        )
+        is None
     )
-    source.attach_tag(entity_fqn="svc.db.schema.table", tag=tag)
     assert [label.tagFQN.root for label in source.get_tag_by_fqn("svc.db.schema.table")] == [tag_fqn]
     assert status.warnings == []

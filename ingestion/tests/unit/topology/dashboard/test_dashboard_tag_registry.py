@@ -132,3 +132,44 @@ def test_grafana_only_attaches_existing_native_tags(catalog_source):
     assert labels(record.right) == ["GrafanaTags.Existing"]
     assert catalog == {"GrafanaTags.Existing"}
     assert source.tags_registry.stats()["pending"] == 0
+
+
+@pytest.mark.parametrize("interrupt", [False, True])
+def test_failed_assignment_reports_error_and_cleans_up_without_discarding_other_labels(
+    catalog_source, monkeypatch, interrupt
+):
+    from contextlib import closing
+
+    from tenacity import wait_none
+
+    from metadata.domain.tags import TagCanonicalizer
+
+    monkeypatch.setattr(TagCanonicalizer._es_search.retry, "wait", wait_none())
+    redash, catalog = catalog_source
+    source = object.__new__(GrafanaSource)
+    vars(source).update(vars(redash))
+    catalog.update({"GrafanaTags.Present", "GrafanaTags.Unavailable"})
+
+    def search(**kwargs):
+        if kwargs["fqn_search_string"] == "GrafanaTags.Unavailable":
+            raise ConnectionError("Search unavailable")
+        return []
+
+    source.metadata.es_search_from_fqn.side_effect = search
+    details = SimpleNamespace(
+        dashboard=SimpleNamespace(
+            uid="my_dashboard", title="My dashboard", description=None, tags=["Present", "Unavailable"]
+        ),
+        meta=SimpleNamespace(url="/d/my_dashboard", createdBy=None),
+    )
+    with closing(source.yield_dashboard(details)) as records:
+        error = next(records)
+        assert error.right is None
+        assert "GrafanaTags.Unavailable" in error.left.error
+        assert "Search unavailable" in error.left.error
+        if not interrupt:
+            [record] = list(records)
+            assert record.left is None
+            assert labels(record.right) == ["GrafanaTags.Present"]
+    assert source.tags_registry.stats()["live_entities"] == 0
+    assert source.tags_registry.stats()["pending"] == 0

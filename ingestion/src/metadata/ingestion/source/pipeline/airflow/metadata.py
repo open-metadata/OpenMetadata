@@ -258,15 +258,16 @@ class AirflowSource(PipelineServiceSource):
         if dag is None:
             return
         for tag_name in dag.tags or []:
-            yield from self.register_tag(
-                entity_fqn=self.get_pipeline_fqn(pipeline_details),
-                definition=TagDefinition(
+            if error := self.tags_registry.register(
+                TagDefinition(
                     classification_name=AIRFLOW_TAG_CATEGORY,
                     tag_name=tag_name,
                     tag_description="Airflow Tag",
                     classification_description="Tags associated with airflow entities.",
                 ),
-            )
+                entity_fqn=self.get_pipeline_fqn(pipeline_details),
+            ):
+                yield Either(left=error, right=None)
 
     def get_pipeline_status(self, dag_id: str) -> list[DagRun]:
         """

@@ -56,7 +56,6 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
@@ -252,55 +251,14 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """Publish native tag definitions, yielding individual registration failures."""
         if not self.source_config.includeTags:
             return
-        for tag in tags:
-            if not tag or not tag.strip():
-                continue
-            try:
-                if not (fqn.is_valid_entity_name(classification_name) and fqn.is_valid_entity_name(tag)):
-                    logger.warning("Skipping invalid tag %r in classification %r", tag, classification_name)
-                    continue
-                self.tags_registry.define(
-                    TagDefinition(classification_name, tag, classification_description, tag_description)
-                )
-            except Exception as exc:
-                yield Either(
-                    right=None,
-                    left=StackTraceError(
-                        name=tag,
-                        error=f"Error registering tag [{tag}]: [{exc}]",
-                        stackTrace=traceback.format_exc(),
-                    ),
-                )
+        for tag_name in tags:
+            definition = TagDefinition(classification_name, tag_name, classification_description, tag_description)
+            if error := self.tags_registry.register(definition):
+                yield Either(left=error, right=None)
         if registry := vars(self).get("tags_registry"):
             with closing(registry.drain()) as definitions:
                 for definition in definitions:
                     yield Either(right=definition, left=None)
-
-    def get_tag_labels(
-        self, *, entity_fqn: str, tags: Iterable[str] | None, classification_name: str
-    ) -> list[TagLabel] | None:
-        """Copy existing native labels and release the asset's attachments."""
-        if not self.source_config.includeTags or not tags:
-            return None
-        try:
-            for tag in tags:
-                if not tag or not tag.strip():
-                    continue
-                try:
-                    if not (fqn.is_valid_entity_name(classification_name) and fqn.is_valid_entity_name(tag)):
-                        continue
-                    self.tags_registry.attach(
-                        entity_fqn=entity_fqn,
-                        tag=TagDefinition(classification_name, tag, "", ""),
-                    )
-                except Exception as exc:
-                    logger.warning("Unable to attach tag %r to %s: %s", tag, entity_fqn, exc)
-            if registry := vars(self).get("tags_registry"):
-                return registry.labels_for(entity_fqn) or None
-            return None
-        finally:
-            if registry := vars(self).get("tags_registry"):
-                registry.clear_scope(entity_fqn)
 
     def _declare_progress_groups(self, label: str, total: int | None) -> None:
         """Declare the grouping axis (e.g. workspaces) as a global counter.

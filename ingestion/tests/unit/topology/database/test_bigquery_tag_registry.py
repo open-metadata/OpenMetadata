@@ -297,3 +297,23 @@ def test_schema_scope_cleanup_does_not_drop_later_attachments(source):
         assert source.get_tag_labels("my_table") is None
     assert len(emitted) == 1
     assert source.tags_registry.stats()["live_entities"] == 0
+
+
+@pytest.mark.parametrize(
+    "tag_type, classification_description, tag_description",
+    [
+        ("Dataset", "BigQuery Dataset Classification", "Bigquery Dataset Label"),
+        ("Table", "BigQuery Table Classification", "Bigquery Table Label"),
+        ("Policy", "BigQuery Policy Classification", "Bigquery Policy Tag"),
+    ],
+)
+def test_native_mapper_preserves_classification_and_description_values(
+    tag_type, classification_description, tag_description
+):
+    from metadata.ingestion.source.database.bigquery.tags import map_bigquery_tag
+
+    definition = map_bigquery_tag("NativeClass", "NativeTag", tag_type)
+    assert definition.classification_name == "NativeClass"
+    assert definition.tag_name == "NativeTag"
+    assert definition.classification_description == classification_description
+    assert definition.tag_description == tag_description

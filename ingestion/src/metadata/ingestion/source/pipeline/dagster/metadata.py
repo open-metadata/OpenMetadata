@@ -154,15 +154,16 @@ class DagsterSource(PipelineServiceSource):
             )
 
     def yield_tag(self, pipeline_details: DagsterPipeline) -> Iterable[Either[OMetaTagAndClassification]]:
-        yield from self.register_tag(
-            entity_fqn=self.get_pipeline_fqn(pipeline_details),
-            definition=TagDefinition(
+        if error := self.tags_registry.register(
+            TagDefinition(
                 classification_name=DAGSTER_TAG_CATEGORY,
                 tag_name=self.context.get().repository_name,  # pyright: ignore[reportAttributeAccessIssue]
                 tag_description="Dagster Tag",
                 classification_description="Tags associated with dagster entities",
             ),
-        )
+            entity_fqn=self.get_pipeline_fqn(pipeline_details),
+        ):
+            yield Either(left=error, right=None)
 
     def _get_task_status(self, run: RunStepStats, task_name: str) -> Iterable[Either[OMetaPipelineStatus]]:
         """Prepare the OMetaPipelineStatus"""

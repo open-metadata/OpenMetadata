@@ -1217,7 +1217,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             for tag_name, tag_value in catalog_tags:
                 if not tag_name:
                     continue
-                yield from self.register_tag(
+                if error := self.tags_registry.register(
+                    map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                     entity_fqn=cast(
                         "str",
                         fqn.build(
@@ -1228,8 +1229,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                             skip_es_search=True,
                         ),
                     ),
-                    definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
-                )
+                ):
+                    yield Either(left=error, right=None)
 
         except Exception as exc:
             yield Either(
@@ -1249,7 +1250,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             for tag_name, tag_value in schema_tags:
                 if not tag_name:
                     continue
-                yield from self.register_tag(
+                if error := self.tags_registry.register(
+                    map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                     entity_fqn=cast(
                         "str",
                         fqn.build(
@@ -1261,8 +1263,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                             skip_es_search=True,
                         ),
                     ),
-                    definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
-                )
+                ):
+                    yield Either(left=error, right=None)
 
         except Exception as exc:
             yield Either(
@@ -1290,7 +1292,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             for tag_name, tag_value in table_tags:
                 if not tag_name:
                     continue
-                yield from self.register_tag(
+                if error := self.tags_registry.register(
+                    map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                     entity_fqn=cast(
                         "str",
                         fqn.build(
@@ -1303,8 +1306,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                             skip_es_search=True,
                         ),
                     ),
-                    definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
-                )
+                ):
+                    yield Either(left=error, right=None)
 
             column_tags = self.column_tags.get(
                 (
@@ -1318,7 +1321,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 for tag_name, tag_value in tags or []:
                     if not tag_name:
                         continue
-                    yield from self.register_tag(
+                    if error := self.tags_registry.register(
+                        map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                         entity_fqn=cast(
                             "str",
                             fqn.build(
@@ -1331,8 +1335,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                                 column_name=column_name,
                             ),
                         ),
-                        definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
-                    )
+                    ):
+                        yield Either(left=error, right=None)
 
         except Exception as exc:
             yield Either(

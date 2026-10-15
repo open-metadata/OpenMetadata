@@ -49,6 +49,7 @@ from looker_sdk.sdk.api40.models import (
 )
 from pydantic import ValidationError
 
+from metadata.domain.tags import TagAssignment
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -649,18 +650,27 @@ class LookerSource(DashboardServiceSource):
 
                 datamodel_view_name = f"{first_model_name}_{view.name}_view"
 
+                tag_labels = None
+                if self.source_config.includeTags:
+                    tag_values = view.tags or []
+                    if tag_values:
+                        tag_entity_fqn = fqn._build(
+                            vars(self.context.get())["dashboard_service"], "model", datamodel_view_name
+                        )
+                        try:
+                            for tag_name in tag_values:
+                                assignment = TagAssignment(LOOKER_TAG_CATEGORY, tag_name, tag_entity_fqn)
+                                if error := self.tags_registry.attach(assignment):
+                                    yield Either(left=error, right=None)
+                            tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
+                        finally:
+                            self.tags_registry.clear_scope(tag_entity_fqn)
                 data_model_request = CreateDashboardDataModelRequest(
                     name=EntityName(datamodel_view_name),
                     displayName=view.name,
                     description=(Markdown(view.description) if view.description else None),
                     service=self.context.get().dashboard_service,
-                    tags=self.get_tag_labels(
-                        entity_fqn=fqn._build(
-                            vars(self.context.get())["dashboard_service"], "model", datamodel_view_name
-                        ),
-                        tags=view.tags or [],
-                        classification_name=LOOKER_TAG_CATEGORY,
-                    ),
+                    tags=tag_labels,
                     dataModelType=DataModelType.LookMlView.value,
                     serviceType=DashboardServiceType.Looker.value,
                     columns=get_columns_from_model(view),
@@ -746,16 +756,27 @@ class LookerSource(DashboardServiceSource):
             else:
                 if model.tags and self.source_config.includeTags:
                     yield from self.yield_data_model_tags(model.tags or [])
+                tag_labels = None
+                if self.source_config.includeTags:
+                    tag_values = model.tags or []
+                    if tag_values:
+                        tag_entity_fqn = fqn._build(
+                            vars(self.context.get())["dashboard_service"], "model", datamodel_name
+                        )
+                        try:
+                            for tag_name in tag_values:
+                                assignment = TagAssignment(LOOKER_TAG_CATEGORY, tag_name, tag_entity_fqn)
+                                if error := self.tags_registry.attach(assignment):
+                                    yield Either(left=error, right=None)
+                            tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
+                        finally:
+                            self.tags_registry.clear_scope(tag_entity_fqn)
                 explore_datamodel = CreateDashboardDataModelRequest(
                     name=EntityName(datamodel_name),
                     displayName=model.name,
                     description=(Markdown(model.description) if model.description else None),
                     service=self.context.get().dashboard_service,
-                    tags=self.get_tag_labels(
-                        entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], "model", datamodel_name),
-                        tags=model.tags or [],
-                        classification_name=LOOKER_TAG_CATEGORY,
-                    ),
+                    tags=tag_labels,
                     dataModelType=DataModelType.LookMlExplore.value,
                     serviceType=DashboardServiceType.Looker.value,
                     columns=get_columns_from_model(model),
@@ -964,18 +985,27 @@ class LookerSource(DashboardServiceSource):
                     for name in related_metric_names(service, candidate, self._metric_candidates)
                     if name in emitted
                 ]
+                tag_labels = None
+                if self.source_config.includeTags:
+                    tag_values = candidate.tags
+                    if tag_values:
+                        tag_entity_fqn = fqn.quote_name(
+                            looker_metric_name(service, candidate.project, candidate.view, candidate.name)
+                        )
+                        try:
+                            for tag_name in tag_values:
+                                assignment = TagAssignment(LOOKER_TAG_CATEGORY, tag_name, tag_entity_fqn)
+                                if error := self.tags_registry.attach(assignment):
+                                    yield Either(left=error, right=None)
+                            tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
+                        finally:
+                            self.tags_registry.clear_scope(tag_entity_fqn)
                 metric_request = build_metric_request(
                     service,
                     candidate,
                     assets=self._metric_assets(candidate),
                     related_metrics=related,
-                    tag_labels=self.get_tag_labels(
-                        entity_fqn=fqn.quote_name(
-                            looker_metric_name(service, candidate.project, candidate.view, candidate.name)
-                        ),
-                        tags=candidate.tags,
-                        classification_name=LOOKER_TAG_CATEGORY,
-                    ),
+                    tag_labels=tag_labels,
                 )
                 yield Either(right=metric_request)  # pyright: ignore[reportCallIssue]
 
@@ -1090,18 +1120,27 @@ class LookerSource(DashboardServiceSource):
                 if view.tags and self.source_config.includeTags:
                     yield from self.yield_data_model_tags(view.tags or [])
                 datamodel_view_name = build_datamodel_name(explore.model_name, view.name) + "_view"
+                tag_labels = None
+                if self.source_config.includeTags:
+                    tag_values = view.tags or []
+                    if tag_values:
+                        tag_entity_fqn = fqn._build(
+                            vars(self.context.get())["dashboard_service"], "model", datamodel_view_name
+                        )
+                        try:
+                            for tag_name in tag_values:
+                                assignment = TagAssignment(LOOKER_TAG_CATEGORY, tag_name, tag_entity_fqn)
+                                if error := self.tags_registry.attach(assignment):
+                                    yield Either(left=error, right=None)
+                            tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
+                        finally:
+                            self.tags_registry.clear_scope(tag_entity_fqn)
                 data_model_request = CreateDashboardDataModelRequest(
                     name=EntityName(datamodel_view_name),
                     displayName=view.name,
                     description=(Markdown(view.description) if view.description else None),
                     service=self.context.get().dashboard_service,
-                    tags=self.get_tag_labels(
-                        entity_fqn=fqn._build(
-                            vars(self.context.get())["dashboard_service"], "model", datamodel_view_name
-                        ),
-                        tags=view.tags or [],
-                        classification_name=LOOKER_TAG_CATEGORY,
-                    ),
+                    tags=tag_labels,
                     dataModelType=DataModelType.LookMlView.value,
                     serviceType=DashboardServiceType.Looker.value,
                     columns=get_columns_from_model(view),

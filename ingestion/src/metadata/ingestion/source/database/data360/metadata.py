@@ -183,19 +183,16 @@ class Data360Source(DatabaseServiceSource):
             status = dataspace.get(ResponseConstant.STATUS)
             if not status:
                 return
-            yield from self.register_tag(
-                entity_fqn=self._build_fqn(
-                    Database,
-                    service_name=self._service_name,
-                    database_name=database_name,
-                ),
-                definition=TagDefinition(
+            if error := self.tags_registry.register(
+                TagDefinition(
                     classification_name=Constant.TAG_CLASSIFICATION_NAME,
                     tag_name=status,
                     tag_description=ResponseConstant.STATUS,
                     classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
                 ),
-            )
+                entity_fqn=self._build_fqn(Database, service_name=self._service_name, database_name=database_name),
+            ):
+                yield Either(left=error, right=None)
         except Exception as exc:
             yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
@@ -412,8 +409,14 @@ class Data360Source(DatabaseServiceSource):
                 combine_ci_fields(table)
             else:
                 category = table.get(ResponseConstant.CATEGORY)
-                if category:
-                    yield from self.register_tag(
+                if category and (
+                    error := self.tags_registry.register(
+                        TagDefinition(
+                            classification_name=Constant.TAG_CLASSIFICATION_NAME,
+                            tag_name=category,
+                            tag_description=ResponseConstant.CATEGORY,
+                            classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
+                        ),
                         entity_fqn=self._build_fqn(
                             Table,
                             service_name=self._service_name,
@@ -422,24 +425,29 @@ class Data360Source(DatabaseServiceSource):
                             table_name=table_name,
                             skip_es_search=True,
                         ),
-                        definition=TagDefinition(
+                    )
+                ):
+                    yield Either(left=error, right=None)
+                for tag_name in (Constant.MEASURE, Constant.DIMENSION):
+                    if error := self.tags_registry.register(
+                        TagDefinition(
                             classification_name=Constant.TAG_CLASSIFICATION_NAME,
-                            tag_name=category,
+                            tag_name=tag_name,
+                            tag_description=ResponseConstant.CATEGORY,
+                            classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
+                        )
+                    ):
+                        yield Either(left=error, right=None)
+            for column in table.get(ResponseConstant.FIELDS, []):
+                field_type = column.get(Constant.FIELD_TYPE)
+                if field_type and (
+                    error := self.tags_registry.register(
+                        TagDefinition(
+                            classification_name=Constant.TAG_CLASSIFICATION_NAME,
+                            tag_name=field_type,
                             tag_description=ResponseConstant.CATEGORY,
                             classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
                         ),
-                    )
-                for tag_name in (Constant.MEASURE, Constant.DIMENSION):
-                    self.define_tag(
-                        classification_name=Constant.TAG_CLASSIFICATION_NAME,
-                        tag_name=tag_name,
-                        tag_description=ResponseConstant.CATEGORY,
-                        classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
-                    )
-            for column in table.get(ResponseConstant.FIELDS, []):
-                field_type = column.get(Constant.FIELD_TYPE)
-                if field_type:
-                    yield from self.register_tag(
                         entity_fqn=self._build_fqn(
                             Column,
                             service_name=self._service_name,
@@ -448,13 +456,9 @@ class Data360Source(DatabaseServiceSource):
                             table_name=table_name,
                             column_name=column[ResponseConstant.NAME],
                         ),
-                        definition=TagDefinition(
-                            classification_name=Constant.TAG_CLASSIFICATION_NAME,
-                            tag_name=field_type,
-                            tag_description=ResponseConstant.CATEGORY,
-                            classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
-                        ),
                     )
+                ):
+                    yield Either(left=error, right=None)
         except Exception as exc:
             yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
