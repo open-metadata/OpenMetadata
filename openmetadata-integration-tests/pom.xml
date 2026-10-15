@@ -21,6 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
+    <integrationTests.rerunFailingTestsCount>0</integrationTests.rerunFailingTestsCount>
     <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
@@ -294,6 +295,10 @@
         <version>${maven.failsafe.version}</version>
         <configuration>
           <failIfNoTests>true</failIfNoTests>
+          <!-- CI re-runs a failed test once after the lane (ADR:2026-10-15-merge-queue-its-retry-a-failed-test-once).
+               Teardown now runs in a shutdown hook, so give the forked JVM time to finish it. -->
+          <rerunFailingTestsCount>${integrationTests.rerunFailingTestsCount}</rerunFailingTestsCount>
+          <forkedProcessExitTimeoutInSeconds>180</forkedProcessExitTimeoutInSeconds>
         </configuration>
       </plugin>
       <plugin>
