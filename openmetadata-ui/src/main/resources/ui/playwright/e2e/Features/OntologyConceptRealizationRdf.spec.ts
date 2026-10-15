@@ -397,6 +397,9 @@ test.describe(
       await expect(
         page.getByTestId('ontology-authoring-inspector')
       ).toBeVisible();
+      // An empty section is offered from "Add more details" rather than shown.
+      await expect(page.getByTestId('ontology-realizations')).toHaveCount(0);
+      await page.getByTestId('add-realization').click();
 
       const realizations = page.getByTestId('ontology-realizations');
       await expect(realizations).toBeVisible();

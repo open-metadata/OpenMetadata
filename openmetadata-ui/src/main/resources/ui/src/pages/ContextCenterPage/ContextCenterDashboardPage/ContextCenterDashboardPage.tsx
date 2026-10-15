@@ -423,7 +423,7 @@ const ContextCenterDashboardPage: FC = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:bg-canvas tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full ${contextCenterClassBase.getPageContainerClassName()}`}
       data-testid="context-center-dashboard-page">
       <DocumentTitle title={t('label.context-center')} />
       <PageLayout

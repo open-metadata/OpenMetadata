@@ -128,7 +128,7 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
               <Typography ellipsis as="p" size="text-sm" weight="medium">
                 {item.name}
               </Typography>
-              <Typography as="p" className="tw:text-gray-500" size="text-xs">
+              <Typography as="p" className="tw:text-quaternary" size="text-xs">
                 {getReadableFileSize(item.size)}
               </Typography>
             </div>
