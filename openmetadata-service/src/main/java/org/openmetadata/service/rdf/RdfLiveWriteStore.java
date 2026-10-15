@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
+import java.util.OptionalLong;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -405,6 +406,15 @@ public final class RdfLiveWriteStore {
   private boolean isStalled(final QueueHead head) {
     return head != null
         && (head.failed() || clock.millis() - head.createdAt() >= MAX_HEALTHY_LAG_MILLIS);
+  }
+
+  /** When the oldest write still queued was queued; empty when the queue is drained. */
+  public OptionalLong oldestPendingWriteAt() {
+    return jdbi.withHandle(
+        handle -> {
+          final QueueHead head = queueHead(handle);
+          return head == null ? OptionalLong.empty() : OptionalLong.of(head.createdAt());
+        });
   }
 
   public long pendingWrites() {

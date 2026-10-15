@@ -8,7 +8,7 @@ public class OntologyLoader {
 
   private static final String ONTOLOGY_PATH = "/rdf/ontology/";
   private static final String SHAPES_PATH = "/rdf/shapes/";
-  private static final String ONTOLOGY_GRAPH = "https://open-metadata.org/graph/ontology";
+  public static final String ONTOLOGY_GRAPH = "https://open-metadata.org/graph/ontology";
   private static final String SHAPES_GRAPH = "https://open-metadata.org/graph/shapes";
 
   private final RdfRepository rdfRepository;

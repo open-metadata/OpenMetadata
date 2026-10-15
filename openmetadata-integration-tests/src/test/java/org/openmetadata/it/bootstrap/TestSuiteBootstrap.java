@@ -46,6 +46,7 @@ import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.core5.http.HttpHost;
+import org.awaitility.Awaitility;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
@@ -56,6 +57,8 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.entity.app.AppExtension;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -77,6 +80,7 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.rdf.repair.RdfRepairJob;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
@@ -112,6 +116,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static final String CONFIG_PATH =
       ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
 
+  private static final String RDF_INDEX_APP = "RdfIndexApp";
   private static final String ELASTIC_USER = "elastic";
   private static final String ELASTIC_PASSWORD = "password";
   private static final String ELASTIC_SCHEME = "http";
@@ -244,6 +249,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
       SharedEntities.initialize(SdkClients.adminClient());
       excludeGlossaryStatusFixturesFromApproval();
+      if (rdfEnabled) {
+        buildRdfProjection();
+      }
       startStallWatchdog();
 
     } catch (Exception e) {
@@ -278,6 +286,36 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   /** Leaves a wedged lane a thread dump and the database's lock picture to be diagnosed from. */
+  /**
+   * Builds the RDF projection before any test runs. On a fresh install the scheduled RDF repair
+   * starts that build a few minutes after startup; here it would land in the middle of the tests
+   * and clear the graph under them.
+   */
+  private static void buildRdfProjection() {
+    RdfRepairJob.startFullRebuild();
+    Awaitility.await("the RDF projection is built")
+        .atMost(Duration.ofMinutes(5))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(TestSuiteBootstrap::isRdfProjectionBuilt);
+    LOG.info("RDF projection built");
+  }
+
+  private static boolean isRdfProjectionBuilt() {
+    final List<String> latest =
+        Entity.getCollectionDAO()
+            .appExtensionTimeSeriesDao()
+            .listAppExtensionByName(
+                RDF_INDEX_APP, 1, 0, AppExtension.ExtensionType.STATUS.toString());
+    final AppRunRecord.Status status =
+        latest.isEmpty()
+            ? null
+            : JsonUtils.readValue(latest.getFirst(), AppRunRecord.class).getStatus();
+    if (status == AppRunRecord.Status.FAILED) {
+      throw new IllegalStateException("The RDF projection build failed: " + latest.getFirst());
+    }
+    return status == AppRunRecord.Status.SUCCESS || status == AppRunRecord.Status.COMPLETED;
+  }
+
   private static void startStallWatchdog() {
     STALL_WATCHDOG =
         ServerStallWatchdog.forEmbeddedServer(

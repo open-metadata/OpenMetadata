@@ -156,6 +156,7 @@ import org.openmetadata.service.ontology.OntologyBulkJobManager;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationJobHandler;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.rdf.repair.RdfRepairJob;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.ai.AuditPackGenerator;
 import org.openmetadata.service.resources.audit.AuditLogResource;
@@ -492,6 +493,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // One server at a time repairs what live writes missed and rebuilds indexes that went missing.
     environment.lifecycle().manage(Entity.getSearchRepository().getRepairJob());
+
+    // Likewise for the RDF projection, which has no routine rebuild either.
+    if (RdfUpdater.isEnabled()) {
+      environment.lifecycle().manage(new RdfRepairJob(Entity.getCollectionDAO()));
+    }
 
     // A reindex on any server routes this server's live writes to the indexes it is building.
     environment.lifecycle().manage(Entity.getSearchRepository().getStagedIndexRoutes());

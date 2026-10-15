@@ -11,8 +11,7 @@
     "blueGreenRebuild": false
   },
   "appSchedule": {
-    "scheduleTimeline": "Custom",
-    "cronExpression": "0 0 * * 6"
+    "scheduleTimeline": "None"
   },
   "supportsInterrupt": true
 }

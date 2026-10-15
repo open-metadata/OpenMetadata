@@ -62,7 +62,7 @@ public interface SearchReindexDAOs {
   @CreateSqlObject
   ProjectionRepairStateDAO projectionRepairStateDAO();
 
-  /** Where each scheduled repair left off; one row per repair. */
+  /** Where each scheduled repair, of search or RDF, left off; one row per repair. */
   interface ProjectionRepairStateDAO {
     record RepairState(long changedSince, long sweptAt) {}
 

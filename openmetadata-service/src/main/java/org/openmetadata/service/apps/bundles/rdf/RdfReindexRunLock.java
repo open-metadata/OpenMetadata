@@ -47,6 +47,12 @@ public final class RdfReindexRunLock {
     return new RdfReindexRunLock(locks, LOCK_KEY, runId, serverId);
   }
 
+  /** Whether an RDF reindex holds the lock now, on any server. */
+  public static boolean isHeld(final RdfReindexLockDAO locks) {
+    final RdfReindexLockRecord holder = locks.findByKey(LOCK_KEY);
+    return holder != null && !holder.isExpired();
+  }
+
   /** Takes the lock, or throws {@link HeldByAnotherRun} naming the run that holds it. */
   public void acquire() {
     final long now = System.currentTimeMillis();

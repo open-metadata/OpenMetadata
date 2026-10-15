@@ -138,8 +138,8 @@ CREATE TABLE IF NOT EXISTS search_index_write_route (
 -- to an hour, so an overloaded or flapping cluster is retried for about a day before dead-lettering.
 ALTER TABLE search_index_retry_queue ADD COLUMN IF NOT EXISTS nextAttemptAt BIGINT NOT NULL DEFAULT 0;
 
--- Scheduled search repair: the window of changed rows it has checked, and when it last swept
--- for what remains of rows that are gone. One row per repair; any server may run the next pass.
+-- Scheduled search and RDF repairs: the window of changed rows each has checked, and when it last
+-- swept for what remains of rows that are gone. One row per repair; any server may run the next pass.
 CREATE TABLE IF NOT EXISTS projection_repair_state (
     name VARCHAR(64) NOT NULL,
     changedSince BIGINT NOT NULL,
