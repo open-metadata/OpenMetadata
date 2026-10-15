@@ -583,6 +583,11 @@ WHERE name = 'KnowledgeCenter' AND entityType = 'KnowledgePanel';
 -- Retired: their seed files are gone and no component resolves their key, so the renderer would
 -- answer with a render-nothing component and leave an empty cell. The UI already filters them out
 -- of both the grid and the picker; this stops the rows accumulating.
+--
+-- MyTask and TotalAssets are the exception: their keys now hold the My Tasks and Total Data Assets
+-- topic cards and their seed files are back. Deleting the old rows is still right, because the
+-- loader re-inserts any seeded row it cannot find on the next boot, so they come back with the
+-- topic cards' name and description rather than the retired widgets'.
 DELETE FROM doc_store
 WHERE entityType = 'KnowledgePanel'
   AND name IN ('DataAssets', 'Following', 'MyData', 'MyTask', 'TotalAssets');

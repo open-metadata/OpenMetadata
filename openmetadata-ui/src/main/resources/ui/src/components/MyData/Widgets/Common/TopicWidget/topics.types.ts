@@ -22,6 +22,9 @@ import { FC } from 'react';
 export enum TopicKey {
   PLATFORM_HEALTH = 'platformHealth',
   DATA_ESTATE = 'dataEstate',
+  TOTAL_DATA_ASSETS = 'totalDataAssets',
+  MY_TASKS = 'myTasks',
+  PIPELINE_STATUS = 'pipelineStatus',
   TEAM_ACTIVITY = 'teamActivity',
   YOURS_AND_FOLLOWED = 'yoursAndFollowed',
   CONTEXT_CENTER = 'contextCenter',

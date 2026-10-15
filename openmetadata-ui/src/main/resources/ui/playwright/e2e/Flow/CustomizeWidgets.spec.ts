@@ -233,9 +233,9 @@ test.beforeEach(async ({ page }) => {
 
 // The landing page's widgets are topic cards now. Five of the nine suites that
 // used to live here -- My Data, Data Assets, Total Data Assets, Following
-// Assets and My Tasks -- covered widgets `getExcludedWidgetFqns` keeps out of
-// both the grid and the Add Widgets picker, so there is nothing left for them
-// to drive. What a card still offers is a title, a footer link out, and
+// Assets and My Tasks -- covered widgets `getExcludedWidgetFqns` kept out of
+// both the grid and the Add Widgets picker. Total Data Assets and My Tasks are
+// back as topic cards and have suites below again. What a card still offers is a title, a footer link out, and
 // removal/re-adding from the persona editor; that is what the four below check.
 test('Activity Feed Widget', async ({ browser, page, persona, testUser }) => {
   test.slow(true);
@@ -513,6 +513,69 @@ test('Context Center Widget', async ({ page, persona }) => {
 
   // The card is Context Center; the key is the Knowledge Center one it kept.
   const widgetKey = 'KnowledgePanel.KnowledgeCenter';
+
+  await waitForAllLoadersToDisappear(page);
+  await waitForLandingPageWidget(page, widgetKey);
+
+  await test.step('Test widget customization', async () => {
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});
+
+// Total Data Assets, My Tasks and Pipeline Status are topic cards on keys the
+// retired widgets left behind (`TotalAssets`, `MyTask`) or a new one
+// (`PipelineStatus`). All three sit in the default layout, so what has to
+// work is taking each out of the persona layout and putting it back.
+test('Total Data Assets Widget', async ({ page, persona }) => {
+  test.slow(true);
+
+  const widgetKey = 'KnowledgePanel.TotalAssets';
+
+  await waitForAllLoadersToDisappear(page);
+  await waitForLandingPageWidget(page, widgetKey);
+
+  // Every lane seeds data assets, and without Data Insights the card falls
+  // back to a live count, so it is never empty here and its footer shows.
+  await test.step('Test widget title and navigation', async () => {
+    await verifyWidgetTitleAndNavigation(
+      page,
+      widgetKey,
+      'Total Data Assets',
+      '/explore'
+    );
+  });
+
+  await test.step('Test widget customization', async () => {
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});
+
+test('My Tasks Widget', async ({ page, persona }) => {
+  test.slow(true);
+
+  const widgetKey = 'KnowledgePanel.MyTask';
+
+  await waitForAllLoadersToDisappear(page);
+  await waitForLandingPageWidget(page, widgetKey);
+
+  await test.step('Test widget customization', async () => {
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});
+
+test('Pipeline Status Widget', async ({ page, persona }) => {
+  test.slow(true);
+
+  const widgetKey = 'KnowledgePanel.PipelineStatus';
 
   await waitForAllLoadersToDisappear(page);
   await waitForLandingPageWidget(page, widgetKey);

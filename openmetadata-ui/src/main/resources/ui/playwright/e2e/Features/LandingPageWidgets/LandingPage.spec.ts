@@ -23,13 +23,16 @@ import {
  *
  * Duplicated from `src/constants/CustomizeMyDataPage.constants.ts` on purpose:
  * the point of the check is that the page a user without a customised persona
- * lands on holds all ten cards. Deriving the list from the source would make
+ * lands on holds all thirteen cards. Deriving the list from the source would make
  * the test agree with whatever the source says, including when a widget
  * silently stops mounting.
  */
 const DEFAULT_LAYOUT_WIDGETS = [
   'KnowledgePanel.PlatformHealth',
   'KnowledgePanel.DataEstate',
+  'KnowledgePanel.TotalAssets',
+  'KnowledgePanel.MyTask',
+  'KnowledgePanel.PipelineStatus',
   'KnowledgePanel.ActivityFeed',
   'KnowledgePanel.YoursAndFollowed',
   'KnowledgePanel.KnowledgeCenter',

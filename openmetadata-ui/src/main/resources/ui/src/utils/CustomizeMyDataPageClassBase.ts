@@ -58,6 +58,7 @@ const WIDGET_HEIGHT_KEY_MAP: Record<string, string> = {
   DataEstate: 'dataEstate',
   YoursAndFollowed: 'yoursAndFollowed',
   DataQuality: 'dataQuality',
+  PipelineStatus: 'pipelineStatus',
 };
 
 class CustomizeMyDataPageClassBase {
@@ -128,14 +129,17 @@ class CustomizeMyDataPageClassBase {
    * stops *new* installs from getting them — seeds are inserted once at
    * startup, so an upgraded instance still has the `Document` rows. This is
    * what keeps them out of the picker there.
+   *
+   * `MY_TASK` and `TOTAL_DATA_ASSETS` are not here: their keys were reused for
+   * the My tasks and Total data assets topic cards. The match is by prefix,
+   * so listing them would exclude the cards that replaced them
+   * (ADR:2026-10-15-landing-topic-cards-reuse-retired-widget-keys).
    */
   public getExcludedWidgetFqns(): string[] {
     return [
       LandingPageWidgetKeys.MY_DATA,
       LandingPageWidgetKeys.FOLLOWING,
-      LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
       LandingPageWidgetKeys.DATA_ASSETS,
-      LandingPageWidgetKeys.MY_TASK,
     ];
   }
 
@@ -149,6 +153,15 @@ class CustomizeMyDataPageClassBase {
    */
   public getPlatformHealthInsight(): ComponentType<PlatformHealthInsightProps> | null {
     return null;
+  }
+
+  /**
+   * Where the Pipeline Status card's footer link goes. OSS has no pipeline
+   * overview page, so it returns nothing and the card opens Explore on the
+   * pipelines tab; a distribution with such a page points the link there.
+   */
+  public getPipelineStatusActionPath(): string | undefined {
+    return undefined;
   }
 
   /**
