@@ -216,7 +216,7 @@ function PipelineActionsDropdown({
       {
         label: t('label.edit'),
         hidden: !editPermission,
-        icon: <Edit01 className="tw:size-4" />,
+        icon: <Edit01 size={18} />,
         onClick: () => {
           handleUpdate(ingestion);
           setIsOpen(false);
@@ -239,7 +239,7 @@ function PipelineActionsDropdown({
       {
         label: t('label.delete'),
         hidden: !deletePermission,
-        icon: <Trash01 className="tw:size-4" />,
+        icon: <Trash01 size={18} />,
         onClick: () => {
           handleConfirmDelete(id, name, displayName);
           setIsOpen(false);
@@ -272,7 +272,7 @@ function PipelineActionsDropdown({
           data-testid="more-actions"
           icon={MoreIcon}
           isDisabled={moreActionButtonProps?.disabled}
-          size="md"
+          size="lg"
         />
         <Dropdown.Popover className="tw:w-30">
           <Dropdown.Menu

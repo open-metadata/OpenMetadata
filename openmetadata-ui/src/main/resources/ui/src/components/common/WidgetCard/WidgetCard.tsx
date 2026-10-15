@@ -120,7 +120,7 @@ const WidgetCard = ({
                   <ButtonUtility
                     aria-label={t('label.info')}
                     icon={Info}
-                    size="xs"
+                    size="sm"
                   />
                 </Tooltip>
               )}

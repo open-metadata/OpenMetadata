@@ -453,7 +453,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
                 <ButtonUtility
                   data-testid={`remove-parameter-${index}`}
                   icon={Trash01}
-                  size="md"
+                  size="lg"
                   tooltip={t('label.remove')}
                   onClick={() => remove(index)}
                 />

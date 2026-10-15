@@ -114,6 +114,8 @@ export const TriggerButton = ({
           // filters (4px padding), so a full toolbar of them fits on one row
           // beside same-sized toolbar controls.
           !bordered && 'tw:p-1',
+          !bordered &&
+            'tw:*:data-[icon=trailing]:size-4 tw:*:data-[icon=trailing]:p-[0.5px]',
           hasSelection && selectedTriggerClassName(bordered),
           className
         )}
@@ -238,14 +240,10 @@ const ChipsField = ({
           <Typography className="tw:truncate">{chip.label}</Typography>
           <button
             aria-label={t('label.remove-filter')}
-            className="tw:flex tw:cursor-pointer tw:rounded-xs tw:p-0.5 tw:text-placeholder tw:outline-brand tw:hover:text-secondary tw:focus-visible:outline-2"
+            className="tw:flex tw:cursor-pointer tw:rounded-xs tw:p-0.5 tw:text-utility-gray-500 tw:outline-brand tw:hover:text-utility-gray-600 tw:focus-visible:outline-2"
             type="button"
             onClick={() => onRemove(chip.value)}>
-            <XClose
-              aria-hidden="true"
-              className="tw:size-3"
-              strokeWidth={2.5}
-            />
+            <XClose aria-hidden="true" size={16} />
           </button>
         </span>
       ))}

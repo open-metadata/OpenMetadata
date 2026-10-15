@@ -466,7 +466,7 @@ const QueryTemplatesList = ({
               <ButtonUtility
                 data-testid={`sparql-template-edit-${queryTemplate.id}`}
                 icon={Edit01}
-                size="md"
+                size="lg"
                 tooltip={`${t('label.edit')} ${queryTemplate.name}`}
                 onClick={() => onLoadTemplate(queryTemplate)}
               />
@@ -474,7 +474,7 @@ const QueryTemplatesList = ({
                 color="tertiary-destructive"
                 data-testid={`sparql-template-delete-${queryTemplate.id}`}
                 icon={Trash01}
-                size="md"
+                size="lg"
                 tooltip={`${t('label.delete')} ${queryTemplate.name}`}
                 onClick={() => onDeleteTemplate(queryTemplate.id)}
               />

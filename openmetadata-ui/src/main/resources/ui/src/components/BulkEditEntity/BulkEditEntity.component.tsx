@@ -398,7 +398,7 @@ const BulkEditEntity = ({
               data-testid="bulk-edit-remove-row"
               type="button"
               onClick={() => handleRemoveRow(row.id ?? '')}>
-              <Trash01 className="tw:size-4 tw:p-[0.5px]" />
+              <Trash01 size={18} />
               {t('label.remove')}
             </button>
           )}
@@ -437,7 +437,7 @@ const BulkEditEntity = ({
                   <span className="bulk-edit-name-value">
                     {baseRenderCell?.(props)}
                   </span>
-                  <Lock01 className="bulk-edit-name-lock tw:size-4.5 tw:p-[0.25px]" />
+                  <Lock01 className="bulk-edit-name-lock" size={14} />
                 </div>
               )
           : column.renderCell,

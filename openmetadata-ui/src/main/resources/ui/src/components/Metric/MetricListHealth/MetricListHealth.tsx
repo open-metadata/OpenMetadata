@@ -82,7 +82,7 @@ const MetricListHealth: FC<MetricListHealthProps> = ({ metricId }) => {
           <ButtonUtility
             data-testid={`retry-metric-health-${metricId}`}
             icon={RefreshCw01}
-            size="md"
+            size="sm"
             tooltip={t('label.try-again')}
             onClick={() => refetch()}
           />

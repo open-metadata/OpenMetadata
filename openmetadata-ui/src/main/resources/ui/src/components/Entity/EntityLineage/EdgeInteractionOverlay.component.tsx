@@ -73,7 +73,7 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
           className="tw:bg-primary"
           data-testid="add-pipeline"
           icon={Edit01}
-          size="sm"
+          size="lg"
           onClick={() => onPipelineClick?.()}
         />
       </div>
@@ -94,7 +94,7 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
           className="tw:bg-primary"
           data-testid="delete-button"
           icon={IconTimesCircle}
-          size="sm"
+          size="lg"
           onClick={() => onEdgeRemove?.()}
         />
       </div>

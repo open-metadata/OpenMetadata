@@ -210,7 +210,7 @@ const ReplyRow = ({
                 <ButtonUtility
                   data-testid="edit-message"
                   icon={Edit01}
-                  size="md"
+                  size="lg"
                   tooltip={t('label.edit')}
                   onClick={() => setIsEditing(true)}
                 />
@@ -219,7 +219,7 @@ const ReplyRow = ({
                 <ButtonUtility
                   data-testid="delete-message"
                   icon={Trash01}
-                  size="md"
+                  size="lg"
                   tooltip={t('label.delete')}
                   onClick={() => setShowDeleteDialog(true)}
                 />

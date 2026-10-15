@@ -498,14 +498,14 @@ const AuthGuidance = ({
   <div className="focused-doc-auth-grid">
     <div className="focused-doc-auth-card focused-doc-auth-card-password">
       <div className="focused-doc-auth-title-row">
-        <Lock01 className="tw:size-5" />
+        <Lock01 size={16} />
         <span>{passwordLabel}</span>
       </div>
       <p>{passwordDescription}</p>
     </div>
     <div className="focused-doc-auth-card focused-doc-auth-card-keypair">
       <div className="focused-doc-auth-title-row">
-        <Key01 className="tw:size-5" />
+        <Key01 size={16} />
         <span>{keyPairLabel}</span>
       </div>
       <p>{keyPairDescription}</p>
@@ -904,13 +904,13 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
               href={connectorDocsUrl}
               rel="noreferrer"
               target="_blank">
-              <BookOpen01 className="tw:size-5" />
+              <BookOpen01 size={16} />
               <span>
                 {t('message.view-service-openmetadata-docs', {
                   serviceName,
                 })}
               </span>
-              <ArrowUpRight className="tw:size-4.5 tw:p-[0.25px]" />
+              <ArrowUpRight size={15} />
             </a>
             <span className="tw:text-xs tw:text-tertiary">
               {t('message.openmetadata-docs-description')}

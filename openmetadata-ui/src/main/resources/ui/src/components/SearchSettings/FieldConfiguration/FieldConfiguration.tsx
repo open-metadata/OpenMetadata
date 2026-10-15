@@ -156,7 +156,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             <ButtonUtility
               data-testid="delete-search-field"
               icon={Trash01}
-              size="md"
+              size="lg"
               tooltip={t('label.delete')}
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();

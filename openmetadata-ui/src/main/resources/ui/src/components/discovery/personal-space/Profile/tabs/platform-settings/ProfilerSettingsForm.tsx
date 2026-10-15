@@ -225,7 +225,7 @@ const ProfilerSettingsForm = ({
                   className="tw:mt-7"
                   data-testid={`remove-filter-${index}`}
                   icon={XClose}
-                  size="md"
+                  size="lg"
                   tooltip={t('label.remove')}
                   onPress={() => remove(index)}
                 />

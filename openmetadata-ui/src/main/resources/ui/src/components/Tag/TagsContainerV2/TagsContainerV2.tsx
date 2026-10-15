@@ -390,7 +390,7 @@ const TagsContainerV2 = ({
           className="hover-cell-icon"
           data-testid="edit-button"
           icon={Edit01}
-          size={newLook ? 'sm' : 'md'}
+          size="sm"
           tooltip={t('label.edit-entity', {
             entity:
               tagType === TagSource.Classification
@@ -400,7 +400,7 @@ const TagsContainerV2 = ({
           onClick={handleAddClick}
         />
       ) : null,
-    [permission, tags, tagType, handleAddClick, newLook]
+    [permission, tags, tagType, handleAddClick]
   );
 
   const horizontalLayout = useMemo(() => {

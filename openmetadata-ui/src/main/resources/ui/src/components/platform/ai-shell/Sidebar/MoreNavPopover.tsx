@@ -132,7 +132,7 @@ const MoreNavPopover: React.FC<MoreNavPopoverProps> = ({ items, variant }) => {
             'ask-rail__item--active': hasActiveItem || open,
           })}
           data-testid="ask-rail-item-more">
-          <DotsHorizontal className="tw:size-5" />
+          <DotsHorizontal height={20} width={20} />
         </TooltipTrigger>
       </Tooltip>
       <Popover

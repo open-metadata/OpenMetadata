@@ -106,7 +106,7 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
                 className="hover-cell-icon"
                 data-testid="edit-displayName-button"
                 icon={Edit01}
-                size="sm"
+                size="lg"
                 onClick={() => setIsDisplayNameEditing(true)}
               />
             </Tooltip>

@@ -223,7 +223,7 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
               }
               data-testid={preset.testIds.delRule}
               icon={XClose}
-              size="md"
+              size="lg"
               tooltip={t('label.remove')}
               onClick={() => actions.removeRule(path)}
             />

@@ -215,7 +215,7 @@ const QueryCardExtraOption = ({
         <ButtonUtility
           data-testid="query-btn"
           icon={IconDropdown}
-          size="md"
+          size="lg"
           tooltip={t('label.manage-entity', {
             entity: t('label.query'),
           })}

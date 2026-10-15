@@ -335,7 +335,7 @@ const BotListV1 = ({
               data-testid={`bot-delete-${record.name}`}
               icon={Trash01}
               isDisabled={isDisabled}
-              size="md"
+              size="lg"
               tooltip={title}
               tooltipPlacement="top right"
               onClick={() => setSelectedUser(record)}

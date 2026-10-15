@@ -301,7 +301,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             color="success"
             size="lg"
             type="color">
-            <UploadCloud01 className="tw:size-4.5 tw:p-[0.25px]" />{' '}
+            <UploadCloud01 size={14} />{' '}
             <Typography className="tw:text-utility-success-700" weight="medium">
               {t('label.saved')}
             </Typography>
@@ -318,7 +318,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             color="gray"
             size="lg"
             type="color">
-            <UploadCloud01 className="tw:size-4.5 tw:p-[0.25px]" />{' '}
+            <UploadCloud01 size={14} />{' '}
             <Typography weight="medium">{t('label.unsaved')}</Typography>
           </Badge>
         </div>
@@ -590,7 +590,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   <Box align="center" gap={2}>
                     <Trash01
                       aria-hidden="true"
-                      className="tw:size-5 tw:shrink-0 tw:text-fg-error-primary"
+                      className="tw:shrink-0 tw:text-fg-error-primary"
+                      size={18}
                     />
                     <Typography
                       ellipsis

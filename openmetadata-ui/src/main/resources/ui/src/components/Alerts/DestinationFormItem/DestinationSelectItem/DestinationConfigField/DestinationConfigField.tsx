@@ -281,7 +281,7 @@ function KeyValueList({
             <ButtonUtility
               data-testid={`remove-${testIdPrefix}-button-${fieldName}-${index}`}
               icon={Trash01}
-              size="md"
+              size="lg"
               tooltip={t('label.remove')}
               onClick={() => remove(index)}
             />

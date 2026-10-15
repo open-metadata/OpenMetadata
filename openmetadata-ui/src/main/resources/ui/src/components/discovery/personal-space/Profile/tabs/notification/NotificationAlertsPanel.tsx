@@ -374,7 +374,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
           <ButtonUtility
             data-testid={`alert-edit-${getEntityName(alert)}`}
             icon={Edit}
-            size="md"
+            size="lg"
             tooltip={t('label.edit')}
             onPress={() =>
               onNavigate({
@@ -388,7 +388,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
           <ButtonUtility
             data-testid={`alert-delete-${getEntityName(alert)}`}
             icon={Delete}
-            size="md"
+            size="lg"
             tooltip={t('label.delete')}
             onPress={() => setSelectedAlert(alert)}
           />

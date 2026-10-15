@@ -214,7 +214,7 @@ const AccessTokenDetails = ({
             data-testid="reveal-token"
             icon={reveal ? Eye : EyeOff}
             isDisabled={!canReveal}
-            size="md"
+            size="lg"
             tooltip={t('label.show')}
             onClick={() => setReveal(!reveal)}
           />

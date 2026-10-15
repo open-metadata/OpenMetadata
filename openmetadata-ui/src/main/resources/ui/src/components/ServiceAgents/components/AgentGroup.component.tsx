@@ -164,7 +164,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
             data-testid="agent-group-refresh"
             icon={isRefreshing ? <Loader size="x-small" /> : ReloadIcon}
             isDisabled={isRefreshing}
-            size="md"
+            size="lg"
             tooltip={t('label.refresh-entity', {
               entity: t('label.agent-plural'),
             })}

@@ -273,7 +273,7 @@ const RuleCard: FC<RuleCardProps> = ({
               data-testid={`edit-rule-${rule.name}`}
               icon={Edit}
               isDisabled={!canEditAll || isLoadingOnSave || isActionsDisabled}
-              size="md"
+              size="lg"
               tooltip={getPermissionTooltipTitle(
                 canEditAll,
                 t('label.edit'),
@@ -286,7 +286,7 @@ const RuleCard: FC<RuleCardProps> = ({
               data-testid={`delete-rule-${rule.name}`}
               icon={Delete}
               isDisabled={!canEditAll || isLoadingOnSave || isActionsDisabled}
-              size="md"
+              size="lg"
               tooltip={getPermissionTooltipTitle(
                 canEditAll,
                 t('label.delete'),
@@ -405,7 +405,7 @@ const renderRoleOrTeamCell = (
         data-testid={`remove-${getEntityName(item)}`}
         icon={Delete}
         isDisabled={isLoadingOnSave}
-        size="md"
+        size="lg"
         tooltip={t('label.remove')}
         tooltipPlacement="left"
         onPress={() => onRemove(item, kind)}

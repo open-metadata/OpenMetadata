@@ -358,7 +358,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
         onClose={onClose}>
         <Box align="center" className="tw:flex-1 tw:gap-3 tw:mr-8">
           <span className="tw:grid tw:size-9.5 tw:shrink-0 tw:place-items-center tw:rounded-xl tw:bg-tertiary tw:text-fg-secondary">
-            <Icon height={18} width={18} />
+            <Icon height={20} width={20} />
           </span>
           <div className="tw:flex-1 tw:min-w-0">
             {/* The ellipsis tooltip already surfaces the full name on hover, so a

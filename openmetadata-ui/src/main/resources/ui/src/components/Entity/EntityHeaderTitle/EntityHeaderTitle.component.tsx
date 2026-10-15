@@ -131,7 +131,10 @@ const EntityHeaderTitle = ({
         {deleted && (
           <div className="text-xs tw:flex-[0_0_100px]">
             <span className="deleted-badge-button" data-testid="deleted-badge">
-              <ExclamationCircleFilled className="tw:mr-1 tw:shrink-0 tw:size-4 tw:p-[0.5px]" />
+              <ExclamationCircleFilled
+                className="tw:mr-1 tw:shrink-0"
+                size={12}
+              />
               {t('label.deleted')}
             </span>
           </div>
@@ -249,7 +252,7 @@ const EntityHeaderTitle = ({
           </Tooltip>
           {/* Outside the ellipsis so a long name can't truncate the icon away. */}
           {openEntityInNewPage && (
-            <LinkExternal01 className="tw:text-fg-quaternary tw:size-4.5 tw:p-[0.25px]" />
+            <LinkExternal01 className="tw:text-fg-quaternary" size={14} />
           )}
 
           <ButtonUtility

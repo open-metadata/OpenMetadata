@@ -1388,7 +1388,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 <ButtonUtility
                   data-testid="add-classification"
                   icon={Plus}
-                  size="md"
+                  size="lg"
                   tooltip={t('label.add-entity', {
                     entity: t('label.glossary-term'),
                   })}
@@ -1399,7 +1399,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               <ButtonUtility
                 data-testid="edit-button"
                 icon={Edit01}
-                size="md"
+                size="lg"
                 tooltip={t('label.edit-entity', {
                   entity: t('label.glossary-term'),
                 })}

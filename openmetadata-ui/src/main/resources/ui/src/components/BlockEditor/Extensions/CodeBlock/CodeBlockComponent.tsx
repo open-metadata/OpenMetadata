@@ -38,7 +38,7 @@ const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
             aria-label={t('label.copy')}
             data-testid="code-block-copy-icon"
             icon={Copy01}
-            size="md"
+            size="lg"
             onClick={handleCopy}
           />
         </Tooltip>

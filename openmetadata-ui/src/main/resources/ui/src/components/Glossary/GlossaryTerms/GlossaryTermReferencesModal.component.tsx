@@ -174,7 +174,7 @@ const GlossaryTermReferencesModal = ({
                     className="tw:mt-1"
                     data-testid="delete-ref-btn"
                     icon={Delete}
-                    size="md"
+                    size="lg"
                     tooltip={t('label.delete')}
                     onClick={() => remove(index)}
                   />

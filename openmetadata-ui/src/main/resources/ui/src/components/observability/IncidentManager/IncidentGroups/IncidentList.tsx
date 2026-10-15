@@ -175,7 +175,7 @@ const IncidentList = ({
         className="tw:relative tw:min-h-60 tw:w-full"
         data-testid="incident-list-empty">
         <EmptyPlaceholder
-          icon={<ShieldTick className="tw:text-utility-brand-600" />}
+          icon={<ShieldTick className="tw:text-fg-brand-primary" />}
           title={t('message.no-active-incidents')}
           variant="blank"
         />

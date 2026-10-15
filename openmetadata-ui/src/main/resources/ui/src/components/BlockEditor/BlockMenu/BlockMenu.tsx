@@ -172,7 +172,7 @@ export const BlockMenu = (props: BlockMenuProps) => {
         data-testid="delete-btn"
         onClick={handleDelete}>
         <div className="action-icon-container">
-          <Trash01 className="tw:size-5" />
+          <Trash01 size={18} />
         </div>
         <div className="action-name">{t('label.delete')}</div>
       </button>

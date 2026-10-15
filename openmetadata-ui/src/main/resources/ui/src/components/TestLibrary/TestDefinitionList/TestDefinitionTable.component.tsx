@@ -206,7 +206,7 @@ const TestDefinitionTable = ({
           data-testid={`edit-test-definition-${record.name}`}
           icon={Edit01}
           isDisabled={!hasEditPermission || isRefetching}
-          size="md"
+          size="lg"
           tooltip={editTooltip}
           onClick={() => onEdit(record)}
         />
@@ -215,7 +215,7 @@ const TestDefinitionTable = ({
           data-testid={`delete-test-definition-${record.name}`}
           icon={Trash01}
           isDisabled={isSystemProvider || !hasDeletePermission || isRefetching}
-          size="md"
+          size="lg"
           tooltip={deleteTooltip}
           onClick={() => onDelete(record)}
         />
@@ -313,7 +313,7 @@ const TestDefinitionTable = ({
                       hasActiveFilters ? (
                         <FilterOffIcon className="tw:text-fg-quaternary" />
                       ) : (
-                        <FileShield02 className="tw:text-utility-brand-600" />
+                        <FileShield02 className="tw:text-fg-brand-primary" />
                       )
                     }
                     title={t(

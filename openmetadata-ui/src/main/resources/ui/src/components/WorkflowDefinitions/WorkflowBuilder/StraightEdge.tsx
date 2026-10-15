@@ -248,7 +248,7 @@ export const StraightEdge = (props: EdgeProps) => {
               className="tw:rounded-full tw:bg-surface tw:shadow-sm"
               color="tertiary-destructive"
               icon={XClose}
-              size="md"
+              size="lg"
               tooltip={t('label.delete')}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();

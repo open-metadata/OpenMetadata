@@ -111,11 +111,14 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
       )}
       data-testid={`announcement-card-${announcement.id}`}>
       {/* Type icon + badge on the left, lifecycle on the right — the same
-        header the drawer card and the banner use. 16px beside 12px label text,
-        as on the banner. */}
+        header the drawer card and the banner use. An 18px frame beside the
+        label badge. */}
       <div className="tw:flex tw:items-center tw:gap-2">
         <TypeIcon
-          className={classNames('tw:shrink-0 tw:size-4', surface.icon)}
+          className={classNames(
+            'tw:size-4.5 tw:shrink-0 tw:p-[0.25px]',
+            surface.icon
+          )}
         />
         <Badge
           className="tw:bg-primary!"
@@ -146,7 +149,7 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
             <ButtonUtility
               className={classNames('tw:z-10', surface.icon)}
               icon={XClose}
-              size="md"
+              size="lg"
               tooltip={t('label.close')}
               onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
@@ -204,7 +207,7 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
             <Dot className="tw:text-placeholder_subtle" size="xs" />
             <span
               aria-hidden
-              className="tw:flex tw:size-3.5 tw:shrink-0 tw:items-center tw:text-tertiary tw:[&_svg]:size-full">
+              className="tw:flex tw:size-4.5 tw:shrink-0 tw:items-center tw:text-tertiary tw:[&_svg]:size-full">
               {entityIcon}
             </span>
             <Typography

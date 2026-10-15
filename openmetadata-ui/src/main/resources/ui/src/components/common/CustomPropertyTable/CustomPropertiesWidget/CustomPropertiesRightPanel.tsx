@@ -190,7 +190,7 @@ export const CustomPropertiesRightPanel = ({
               data-testid="custom-properties-widget-view-all"
               href={viewAllPath}
               icon={ArrowUpRight}
-              size="md"
+              size="sm"
               tooltip={t('label.view-all')}
             />
           )}
@@ -198,7 +198,7 @@ export const CustomPropertiesRightPanel = ({
             <ButtonUtility
               data-testid="custom-properties-widget-search-button"
               icon={Search}
-              size="md"
+              size="sm"
               tooltip={searchLabel}
               onClick={() => setIsSearchOpen(true)}
             />

@@ -180,7 +180,7 @@ const PersonaUsersTab = ({
             data-testid={`remove-user-${getEntityName(user)}`}
             icon={Trash01}
             isDisabled={!canEdit}
-            size="md"
+            size="lg"
             tooltip={
               canEdit
                 ? t('label.remove-entity', { entity: t('label.user') })

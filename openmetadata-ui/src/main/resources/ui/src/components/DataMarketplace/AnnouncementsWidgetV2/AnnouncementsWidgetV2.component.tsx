@@ -137,7 +137,7 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
       data-testid="announcements-widget-v2">
       <div className="tw:flex tw:items-center tw:justify-between tw:mb-2 tw:px-3">
         <div className="tw:flex tw:items-center tw:gap-2">
-          <Announcement02 className="tw:size-5 tw:text-utility-brand-600" />
+          <Announcement02 className="tw:size-5 tw:text-fg-brand-primary" />
           <Typography
             as="span"
             className="tw:text-text-primary"
@@ -173,9 +173,10 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
             onClick={() => setShowAll((prev) => !prev)}>
             {showAll ? t('label.show-less') : t('label.view-all')}
             <ChevronDown
-              className={`tw:size-4 tw:transition-transform ${
+              className={`tw:transition-transform ${
                 showAll ? 'tw:rotate-180' : ''
               }`}
+              size={16}
             />
           </button>
         )}

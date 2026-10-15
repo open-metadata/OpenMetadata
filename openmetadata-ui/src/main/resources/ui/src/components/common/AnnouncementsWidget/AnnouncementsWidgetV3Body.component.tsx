@@ -98,7 +98,7 @@ const AnnouncementsWidgetV3Body = ({
           data-testid="announcement-prev-btn"
           icon={ChevronLeft}
           isDisabled={index === 0}
-          size="sm"
+          size="xs"
           tooltip={t('label.previous')}
           onClick={() => handleStep(-1)}
         />
@@ -119,7 +119,7 @@ const AnnouncementsWidgetV3Body = ({
           data-testid="announcement-next-btn"
           icon={ChevronRight}
           isDisabled={index === total - 1}
-          size="sm"
+          size="xs"
           tooltip={t('label.next')}
           onClick={() => handleStep(1)}
         />

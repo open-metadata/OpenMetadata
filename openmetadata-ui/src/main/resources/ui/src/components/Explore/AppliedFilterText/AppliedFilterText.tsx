@@ -63,14 +63,14 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
           <ButtonUtility
             data-testid="advance-search-filter-btn"
             icon={Edit01}
-            size="md"
+            size="sm"
             tooltip={t('label.edit')}
             onClick={onEdit}
           />
           <ButtonUtility
             data-testid="advance-search-clear-btn"
             icon={XCircle}
-            size="md"
+            size="sm"
             tooltip={t('label.clear')}
             onClick={onClear}
           />

@@ -312,7 +312,7 @@ export const PersonaAppLayoutPage = ({
                       <ButtonUtility
                         data-testid={`remove-view-mode-${page}`}
                         icon={Trash01}
-                        size="md"
+                        size="lg"
                         tooltip={t('label.remove-entity', {
                           entity: t(labelKey),
                         })}

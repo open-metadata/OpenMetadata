@@ -158,7 +158,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
         </div>
         <ButtonUtility
           icon={Copy01}
-          size="xs"
+          size="sm"
           tooltip={
             hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
           }

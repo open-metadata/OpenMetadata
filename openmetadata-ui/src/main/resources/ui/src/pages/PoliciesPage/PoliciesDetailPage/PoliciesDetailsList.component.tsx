@@ -81,7 +81,7 @@ const PoliciesDetailsList = ({
               data-testid={`remove-action-${getEntityName(record)}`}
               icon={IconRemove}
               isDisabled={!hasAccess}
-              size="md"
+              size="lg"
               tooltip={
                 hasAccess
                   ? t('label.remove')

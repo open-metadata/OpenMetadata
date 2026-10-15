@@ -202,7 +202,7 @@ export const getTagsTableColumn = ({
                 data-testid="edit-button"
                 icon={Edit01}
                 isDisabled={disableEditButton}
-                size="md"
+                size="lg"
                 onClick={() => handleEditTagClick?.(record)}
               />
             </UTTooltip>
@@ -219,7 +219,7 @@ export const getTagsTableColumn = ({
                   id: record.id ?? '',
                 })}
                 isDisabled={disableDeleteButton}
-                size="md"
+                size="lg"
                 onClick={() => handleActionDeleteTag?.(record)}
               />
             </UTTooltip>

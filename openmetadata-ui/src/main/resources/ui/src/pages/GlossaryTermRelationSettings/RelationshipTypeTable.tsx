@@ -244,7 +244,7 @@ const RelationshipTypeRow = ({
             data-testid={`edit-${relationshipType.name}-btn`}
             icon={Edit01}
             isDisabled={!isAdminUser || relationshipType.systemDefined}
-            size="md"
+            size="lg"
             tooltip={
               relationshipType.systemDefined
                 ? t('label.system-defined')
@@ -256,7 +256,7 @@ const RelationshipTypeRow = ({
             data-testid={`delete-${relationshipType.name}-btn`}
             icon={Trash01}
             isDisabled={!canDelete}
-            size="md"
+            size="lg"
             tooltip={getDeleteTooltip(usageCount, t)}
             onClick={() => onDelete(relationshipType)}
           />

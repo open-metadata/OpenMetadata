@@ -438,7 +438,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
             data-testid={`bot-delete-${bot.name}`}
             icon={Trash01}
             isDisabled={isDisabled}
-            size="md"
+            size="lg"
             tooltip={tooltipContent}
             onPress={() => setSelectedBot(bot)}
           />

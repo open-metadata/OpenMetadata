@@ -89,14 +89,14 @@ const FieldValueBoostTable = ({
             <ButtonUtility
               data-testid="edit-field-value-boost-btn"
               icon={Edit01}
-              size="md"
+              size="lg"
               tooltip={t('label.edit')}
               onPress={() => onEdit(boost)}
             />
             <ButtonUtility
               data-testid="delete-field-value-boost-btn"
               icon={Trash01}
-              size="md"
+              size="lg"
               tooltip={t('label.delete')}
               onPress={() => onDelete(boost.field)}
             />

@@ -196,7 +196,7 @@ const LeftSidebar = () => {
               }
               data-testid={item.dataTestId}
               icon={item.icon}
-              size="sm"
+              size="lg"
               // Hover has already opened the group before a pointer press reaches its trigger.
               onPress={() => setCollapsedMenuKey(item.key)}
             />

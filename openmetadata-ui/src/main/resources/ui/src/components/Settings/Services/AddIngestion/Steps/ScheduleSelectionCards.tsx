@@ -66,7 +66,7 @@ const ScheduleSelectionCards: FC<ScheduleSelectionCardsProps> = ({
 
               {isSelected ? (
                 <CheckCircle
-                  className="tw:size-5 tw:text-utility-brand-600"
+                  className="tw:size-5 tw:text-fg-brand-primary"
                   data-testid="selected-indicator"
                 />
               ) : (

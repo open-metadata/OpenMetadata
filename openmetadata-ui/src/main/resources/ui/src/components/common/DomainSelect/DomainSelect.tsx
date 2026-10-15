@@ -192,7 +192,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
       label: t('label.all-domain-plural'),
       isLeaf: false,
       lazyLoad: true,
-      icon: <DomainIcon className="tw:size-5" />,
+      icon: <DomainIcon height={16} width={16} />,
     }),
     [t]
   );

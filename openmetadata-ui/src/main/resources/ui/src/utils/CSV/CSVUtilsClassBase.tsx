@@ -925,7 +925,7 @@ const getBulkEditPickerConfig = (
         actionPath: ROUTES.USER_LIST,
         actionStyle: 'secondary',
         description: t('message.bulk-edit-owners-empty-description'),
-        emptyIcon: <Sliders02 className="tw:size-5" />,
+        emptyIcon: <Sliders02 size={20} />,
         emptyTitle: t('message.bulk-edit-no-owners-available'),
         placeholder: t('message.bulk-edit-owners-placeholder'),
         primaryActionLabel: t('message.bulk-edit-open-users-and-teams'),
@@ -938,7 +938,7 @@ const getBulkEditPickerConfig = (
         actionPath: ROUTES.USER_LIST,
         actionStyle: 'secondary',
         description: t('message.bulk-edit-reviewers-empty-description'),
-        emptyIcon: <Sliders02 className="tw:size-5" />,
+        emptyIcon: <Sliders02 size={20} />,
         emptyTitle: t('message.bulk-edit-no-reviewers-available'),
         placeholder: t('message.bulk-edit-reviewers-placeholder'),
         primaryActionLabel: t('message.bulk-edit-open-users'),
@@ -951,7 +951,7 @@ const getBulkEditPickerConfig = (
         actionPath: ROUTES.DOMAIN,
         actionStyle: 'secondary',
         description: t('message.bulk-edit-domains-empty-description'),
-        emptyIcon: <Globe02 className="tw:size-5" />,
+        emptyIcon: <Globe02 size={20} />,
         emptyTitle: t('message.bulk-edit-no-domains-available'),
         hint: t('message.bulk-edit-domains-empty-hint'),
         placeholder: t('message.bulk-edit-domains-placeholder'),
@@ -965,7 +965,7 @@ const getBulkEditPickerConfig = (
         actionPath: ROUTES.DATA_PRODUCT,
         actionStyle: 'secondary',
         description: t('message.bulk-edit-data-products-empty-description'),
-        emptyIcon: <Cube01 className="tw:size-5" />,
+        emptyIcon: <Cube01 size={20} />,
         emptyTitle: t('message.bulk-edit-no-data-products-available'),
         hint: t('message.bulk-edit-data-products-empty-hint'),
         placeholder: t('message.bulk-edit-data-products-placeholder'),
@@ -981,7 +981,7 @@ const getBulkEditPickerConfig = (
         actionPath: ROUTES.TAGS,
         actionStyle: 'primary',
         description: t('message.bulk-edit-tags-empty-description'),
-        emptyIcon: <Tag01 className="tw:size-5" />,
+        emptyIcon: <Tag01 size={20} />,
         emptyTitle: t('message.bulk-edit-no-tags-yet'),
         placeholder: t('message.bulk-edit-tags-placeholder'),
         primaryActionLabel: t('message.bulk-edit-create-a-tag'),
@@ -996,7 +996,7 @@ const getBulkEditPickerConfig = (
         actionPath: ROUTES.GLOSSARY,
         actionStyle: 'primary',
         description: t('message.bulk-edit-glossary-terms-empty-description'),
-        emptyIcon: <BookOpen02 className="tw:size-5" />,
+        emptyIcon: <BookOpen02 size={20} />,
         emptyTitle: t('message.bulk-edit-no-glossary-terms-yet'),
         placeholder: t('message.bulk-edit-glossary-terms-placeholder'),
         primaryActionLabel: t('message.bulk-edit-create-glossary-term'),
@@ -1013,7 +1013,7 @@ const getBulkEditPickerConfig = (
         actionPath: ROUTES.METRICS,
         actionStyle: 'secondary',
         description: t('message.bulk-edit-related-metrics-empty-description'),
-        emptyIcon: <Sliders02 className="tw:size-5" />,
+        emptyIcon: <Sliders02 size={20} />,
         emptyTitle: t('message.bulk-edit-no-related-metrics-available'),
         placeholder: t('message.bulk-edit-related-metrics-placeholder'),
         primaryActionLabel: t('message.bulk-edit-open-metrics'),
@@ -1176,7 +1176,7 @@ const InlineBulkEditReferencePickerEditor = ({
                 </span>
               )}
             </span>
-            {isSelected && <Check className="tw:size-5" />}
+            {isSelected && <Check size={20} />}
           </button>
         );
       })}
@@ -1195,9 +1195,9 @@ const InlineBulkEditReferencePickerEditor = ({
         type="button"
         onClick={() => openBulkEditPickerPath(config.actionPath)}>
         {config.actionStyle === 'primary' ? (
-          <Plus className="tw:size-4.5 tw:p-[0.25px]" />
+          <Plus size={18} />
         ) : (
-          <ArrowUpRight className="tw:size-4.5 tw:p-[0.25px]" />
+          <ArrowUpRight size={18} />
         )}
         <span>{config.primaryActionLabel}</span>
       </button>
@@ -1209,7 +1209,7 @@ const InlineBulkEditReferencePickerEditor = ({
             openBulkEditPickerPath(config.secondaryActionPath ?? '')
           }>
           <span>{config.secondaryActionLabel}</span>
-          <ArrowUpRight className="tw:size-4.5 tw:p-[0.25px]" />
+          <ArrowUpRight size={18} />
         </button>
       )}
       {config.hint && (
@@ -1230,7 +1230,7 @@ const InlineBulkEditReferencePickerEditor = ({
         onMouseDown={(event) => event.stopPropagation()}>
         <div className="bulk-edit-picker-body-card">
           <div className="bulk-edit-picker-search">
-            <Search className="tw:size-4.5 tw:p-[0.25px]" />
+            <Search size={14} />
             <input
               // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
               autoFocus
@@ -1667,7 +1667,7 @@ const InlineCustomPropertiesEditor = ({
         {hasNoCustomPropertyDefinitions ? (
           <div className="bulk-edit-custom-property-empty-card">
             <div className="bulk-edit-custom-property-empty-icon">
-              <Sliders02 className="tw:size-5" />
+              <Sliders02 size={20} />
             </div>
             <div className="bulk-edit-custom-property-empty-title">
               {t('label.no-custom-properties-defined')}
@@ -1681,7 +1681,7 @@ const InlineCustomPropertiesEditor = ({
               className="bulk-edit-custom-property-empty-action"
               type="button"
               onClick={handleOpenCustomPropertySettings}>
-              <ArrowUpRight className="tw:size-4.5 tw:p-[0.25px]" />
+              <ArrowUpRight size={18} />
               <span>
                 {t('label.add-a-entity', {
                   entity: t('label.custom-property').toLowerCase(),
@@ -1975,7 +1975,7 @@ const InlineDescriptionEditor = ({
             <ButtonUtility
               icon={icon}
               key={label}
-              size="md"
+              size="lg"
               tooltip={t(label)}
               onClick={onClick}
               onMouseDown={handleToolbarMouseDown}
@@ -1984,7 +1984,7 @@ const InlineDescriptionEditor = ({
           <Divider className="tw:mx-2 tw:h-5" orientation="vertical" />
           <ButtonUtility
             icon={Type01}
-            size="md"
+            size="lg"
             tooltip={t('label.clear-formatting')}
             onClick={clearFormatting}
             onMouseDown={handleToolbarMouseDown}
@@ -2380,7 +2380,7 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
             dropdownMatchSelectWidth={false}
             dropdownStyle={{ minWidth: 220 }}
             getPopupContainer={() => document.body}
-            menuItemSelectedIcon={<Check className="tw:size-5" />}
+            menuItemSelectedIcon={<Check size={16} />}
             optionFilterProp="label"
             options={
               entityBulkEditConfigClassBase.getEnumColumnOptions(entityType)[
@@ -2389,7 +2389,7 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
             }
             popupClassName="bulk-edit-enum-select-dropdown"
             size="small"
-            suffixIcon={<ChevronDown className="tw:size-5" />}
+            suffixIcon={<ChevronDown size={16} />}
             value={value || undefined}
             onChange={handleChange}
           />
@@ -2784,7 +2784,7 @@ const getCsvEnumEditor: CSVEditorFactory =
           dropdownMatchSelectWidth={false}
           dropdownStyle={{ minWidth: 240 }}
           getPopupContainer={() => document.body}
-          menuItemSelectedIcon={<Check className="tw:size-5" />}
+          menuItemSelectedIcon={<Check size={16} />}
           optionFilterProp="label"
           options={
             entityBulkEditConfigClassBase.getEnumColumnOptions(entityType)[
@@ -2793,7 +2793,7 @@ const getCsvEnumEditor: CSVEditorFactory =
           }
           popupClassName="bulk-edit-enum-select-dropdown"
           size="small"
-          suffixIcon={<ChevronDown className="tw:size-5" />}
+          suffixIcon={<ChevronDown size={16} />}
           value={value || undefined}
           onChange={handleChange}
         />

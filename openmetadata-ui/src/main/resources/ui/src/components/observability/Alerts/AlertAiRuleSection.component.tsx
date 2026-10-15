@@ -697,7 +697,7 @@ const AlertAiRuleSection = ({
                       color="tertiary-destructive"
                       data-testid={`remove-${field}-${ruleIndex}`}
                       icon={Trash01}
-                      size="md"
+                      size="lg"
                       tooltip={t('label.remove')}
                       onClick={() => removeRule(ruleIndex)}
                     />

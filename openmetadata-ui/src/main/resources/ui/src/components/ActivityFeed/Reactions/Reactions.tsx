@@ -122,7 +122,7 @@ const Reactions: FC<ReactionsProps> = ({
           className={classNames({ 'tw:rounded-full': isPill(variant) })}
           data-testid="add-reactions"
           icon={isPill(variant) ? FaceSmile : AddReactionIcon}
-          size="md"
+          size="lg"
           tooltip={t('label.add-entity', {
             entity: t('label.reaction-lowercase-plural'),
           })}

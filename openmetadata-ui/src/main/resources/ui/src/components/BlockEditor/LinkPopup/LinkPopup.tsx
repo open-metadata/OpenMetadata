@@ -37,7 +37,7 @@ const LinkPopup: FC<LinkPopupProps> = ({
         aria-label={t('label.edit-entity', { entity: linkLabel })}
         data-testid="link-popup-edit"
         icon={Edit01}
-        size="md"
+        size="lg"
         onClick={handleLinkToggle}
       />
       <ButtonUtility
@@ -46,14 +46,14 @@ const LinkPopup: FC<LinkPopupProps> = ({
         href={href}
         icon={ExternalLinkIcon}
         rel="noopener noreferrer"
-        size="md"
+        size="lg"
         target="_blank"
       />
       <ButtonUtility
         aria-label={t('label.remove-entity', { entity: linkLabel })}
         data-testid="link-popup-unlink"
         icon={UnlinkIcon}
-        size="md"
+        size="lg"
         onClick={handleUnlink}
       />
     </Box>

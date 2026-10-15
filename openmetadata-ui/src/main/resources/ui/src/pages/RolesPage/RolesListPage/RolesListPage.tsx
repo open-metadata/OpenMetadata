@@ -237,7 +237,7 @@ const RolesListPage = () => {
               data-testid={`delete-action-${getEntityName(record)}`}
               icon={Trash01}
               isDisabled={!deleteRolePermission}
-              size="md"
+              size="lg"
               tooltip={
                 deleteRolePermission
                   ? t('label.delete-entity', {

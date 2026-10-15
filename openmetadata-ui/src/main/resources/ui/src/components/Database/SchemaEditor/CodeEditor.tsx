@@ -98,7 +98,7 @@ const CodeEditor = ({
               <ButtonUtility
                 data-testid="query-copy-button"
                 icon={Copy01}
-                size="md"
+                size="lg"
                 tooltip={
                   hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
                 }

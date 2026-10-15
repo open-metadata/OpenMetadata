@@ -53,7 +53,7 @@ export const IncidentStatusPopoverHeader = ({
       justify="start">
       <ButtonUtility
         icon={ArrowLeft}
-        size="sm"
+        size="xs"
         tooltip={t('label.back')}
         onClick={onBack}
       />

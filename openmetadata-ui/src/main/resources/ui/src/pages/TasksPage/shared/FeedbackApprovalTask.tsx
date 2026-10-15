@@ -114,7 +114,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
             <Typography
               as="p"
               className="tw:flex tw:items-center tw:text-secondary tw:gap-2">
-              <CpuChip02 className="tw:shrink-0 tw:text-utility-gray-500 tw:size-5" />
+              <CpuChip02 className="tw:shrink-0 tw:text-gray-500" size={16} />
               {t('label.recognizer')}
             </Typography>
           </Grid.Item>
@@ -130,7 +130,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
         <Typography
           as="p"
           className="tw:flex tw:items-center tw:gap-2 tw:text-secondary tw:min-w-0">
-          <Flag04 className="tw:shrink-0 tw:text-utility-gray-500 tw:size-5" />
+          <Flag04 className="tw:shrink-0 tw:text-gray-500" size={16} />
           {t('label.feedback-type')}
         </Typography>
       </Grid.Item>
@@ -146,7 +146,10 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
             <Typography
               as="p"
               className="tw:flex tw:items-center tw:gap-2 tw:text-secondary tw:min-w-0">
-              <MessageTextSquare01 className="tw:shrink-0 tw:text-utility-gray-500 tw:size-5" />
+              <MessageTextSquare01
+                className="tw:shrink-0 tw:text-gray-500"
+                size={16}
+              />
               {t('label.comment-plural')}
             </Typography>
           </Grid.Item>
@@ -166,7 +169,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
             <Typography
               as="p"
               className="tw:flex tw:items-center tw:gap-2 tw:text-secondary tw:min-w-0">
-              <UsersRight className="tw:shrink-0 tw:text-utility-gray-500 tw:size-5" />
+              <UsersRight className="tw:shrink-0 tw:text-gray-500" size={16} />
               {t('label.submitted-by')}
             </Typography>
           </Grid.Item>
@@ -187,7 +190,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
             <Typography
               as="p"
               className="tw:flex tw:items-center tw:gap-2 tw:text-secondary tw:min-w-0">
-              <Clock className="tw:shrink-0 tw:text-utility-gray-500 tw:size-5" />
+              <Clock className="tw:shrink-0 tw:text-gray-500" size={16} />
               {t('label.submitted-on')}
             </Typography>
           </Grid.Item>
@@ -205,7 +208,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
             <Typography
               as="p"
               className="tw:flex tw:items-center tw:gap-2 tw:text-secondary tw:min-w-0">
-              <Database01 className="tw:shrink-0 tw:text-utility-gray-500 tw:size-5" />
+              <Database01 className="tw:shrink-0 tw:text-gray-500" size={16} />
               {t('label.entity-link')}
             </Typography>
           </Grid.Item>

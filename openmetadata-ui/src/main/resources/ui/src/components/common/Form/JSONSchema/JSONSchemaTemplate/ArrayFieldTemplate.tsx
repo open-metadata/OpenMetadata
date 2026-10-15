@@ -54,7 +54,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
             <ButtonUtility
               className="tw:ml-3"
               icon={Trash01}
-              size="md"
+              size="sm"
               tooltip={t('label.remove')}
               onClick={(event: MouseEvent<HTMLButtonElement>) => {
                 element.onDropIndexClick(element.index)(event);

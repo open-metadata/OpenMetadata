@@ -169,7 +169,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
             <ButtonUtility
               data-testid="remove-widget-button"
               icon={MinusCircle}
-              size="md"
+              size="lg"
               tooltip={t('label.remove-entity', {
                 entity: t('label.widget'),
               })}
@@ -180,7 +180,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
             <ButtonUtility
               data-testid="widget-settings-button"
               icon={Settings01}
-              size="md"
+              size="lg"
               tooltip={t('label.configure-entity', { entity: widgetName })}
               onClick={() => setIsSettingsOpen(true)}
             />

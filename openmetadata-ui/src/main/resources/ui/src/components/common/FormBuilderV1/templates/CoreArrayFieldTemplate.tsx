@@ -53,7 +53,7 @@ export const CoreArrayFieldTemplate: FunctionComponent<
             <ButtonUtility
               className="tw:ml-2"
               icon={Trash01}
-              size="md"
+              size="sm"
               tooltip={t('label.remove')}
               onClick={(event: React.MouseEvent<HTMLButtonElement>) =>
                 element.onDropIndexClick(element.index)(event)

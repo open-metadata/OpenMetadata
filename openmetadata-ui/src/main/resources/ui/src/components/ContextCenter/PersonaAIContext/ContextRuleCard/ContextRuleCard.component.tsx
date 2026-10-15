@@ -251,7 +251,7 @@ const RuleCardActions = ({
           <ButtonUtility
             data-testid="edit-context-rule"
             icon={Edit01}
-            size="md"
+            size="lg"
             tooltip={t('label.edit')}
             onClick={onEdit}
           />
@@ -259,7 +259,7 @@ const RuleCardActions = ({
             color="tertiary-destructive"
             data-testid="delete-context-rule"
             icon={Trash01}
-            size="md"
+            size="lg"
             tooltip={t('label.delete')}
             onClick={onDeleteClick}
           />

@@ -199,7 +199,7 @@ export const ExploreSearchInput = ({
                 data-testid="explore-nlp-toggle"
                 icon={isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue}
                 isDisabled={isDisabled}
-                size="xs"
+                size="lg"
                 tooltip={
                   isNLPActive
                     ? t('message.natural-language-search-active')

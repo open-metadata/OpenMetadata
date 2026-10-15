@@ -93,7 +93,7 @@ const MetricStatusPill: FC<MetricStatusPillProps> = ({
       data-testid={dataTestId}
       role="status">
       <Badge className="tw:gap-1" color={config.color} size="sm">
-        <Icon aria-hidden="true" className="tw:size-3 tw:shrink-0" />
+        <Icon aria-hidden="true" className="tw:shrink-0" size={16} />
         {label}
       </Badge>
     </span>

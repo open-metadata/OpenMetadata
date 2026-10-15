@@ -173,7 +173,7 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
               data-testid="send-button"
               icon={ArrowRight}
               isDisabled={!hasText}
-              size="md"
+              size="lg"
               tooltip={t('label.send')}
               onClick={handleSend}
             />

@@ -286,14 +286,14 @@ const QueryTitle = ({ activeQuery, rename }: QueryTitleProps) => {
           data-testid="ontology-query-rename-save"
           icon={Check}
           isDisabled={!rename.value.trim()}
-          size="xs"
+          size="sm"
           tooltip={t('label.save')}
           onClick={rename.onCommit}
         />
         <ButtonUtility
           color="tertiary"
           icon={XClose}
-          size="xs"
+          size="sm"
           tooltip={t('label.cancel')}
           onClick={rename.onCancel}
         />
@@ -316,7 +316,7 @@ const QueryTitle = ({ activeQuery, rename }: QueryTitleProps) => {
           color="tertiary"
           data-testid="ontology-query-rename"
           icon={Edit01}
-          size="xs"
+          size="sm"
           tooltip={t('label.rename')}
           onClick={rename.onStart}
         />
@@ -491,10 +491,7 @@ const QueryConsoleHeader = ({
           className="tw:shrink-0 tw:border-b tw:border-utility-blue-100 tw:bg-utility-blue-50 tw:px-5 tw:py-2 tw:text-utility-blue-700"
           data-testid="ontology-query-shared-hint"
           gap={2}>
-          <InfoCircle
-            aria-hidden="true"
-            className="tw:size-4 tw:shrink-0 tw:p-[0.5px]"
-          />
+          <InfoCircle aria-hidden="true" className="tw:size-4 tw:shrink-0" />
           <Typography size="text-xs">
             {t('message.editing-shared-query-hint')}
           </Typography>
@@ -916,7 +913,7 @@ const OntologyStudioQueryConsole = ({
             color="tertiary"
             data-testid={`ontology-query-template-edit-${queryTemplate.id}`}
             icon={Edit01}
-            size="xs"
+            size="sm"
             tooltip={`${t('label.edit')} ${queryTemplate.name}`}
             onClick={() => handleTemplateEdit(queryTemplate)}
           />
@@ -924,7 +921,7 @@ const OntologyStudioQueryConsole = ({
             color="tertiary-destructive"
             data-testid={`ontology-query-template-delete-${queryTemplate.id}`}
             icon={Trash01}
-            size="xs"
+            size="sm"
             tooltip={`${t('label.delete')} ${queryTemplate.name}`}
             onClick={() => void handleDeleteTemplate(queryTemplate.id)}
           />
@@ -945,7 +942,7 @@ const OntologyStudioQueryConsole = ({
           color="tertiary"
           data-testid={`ontology-query-saved-rename-${savedQuery.id}`}
           icon={Edit01}
-          size="xs"
+          size="sm"
           tooltip={`${t('label.rename')} ${savedQuery.name}`}
           onClick={() => startRename(savedQuery)}
         />
@@ -953,7 +950,7 @@ const OntologyStudioQueryConsole = ({
           color="tertiary-destructive"
           data-testid={`ontology-query-saved-delete-${savedQuery.id}`}
           icon={Trash01}
-          size="xs"
+          size="sm"
           tooltip={`${t('label.delete')} ${savedQuery.name}`}
           onClick={() => void handleDeleteSavedQuery(savedQuery.id)}
         />

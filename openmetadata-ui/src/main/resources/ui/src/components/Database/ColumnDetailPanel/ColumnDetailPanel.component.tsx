@@ -817,7 +817,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               {getEntityName(breadcrumb)}
             </Typography>
             {index < breadcrumbPath.length - 1 && (
-              <ChevronRight className="tw:text-utility-gray-400 tw:shrink-0 tw:size-5" />
+              <ChevronRight
+                className="tw:text-gray-400 tw:shrink-0"
+                height={16}
+                width={16}
+              />
             )}
           </div>
         </div>
@@ -1043,14 +1047,14 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         <ButtonUtility
           icon={ChevronUp}
           isDisabled={isPreviousDisabled}
-          size="md"
+          size="sm"
           tooltip={t('label.previous')}
           onClick={handlePreviousColumn}
         />
         <ButtonUtility
           icon={ChevronDown}
           isDisabled={isNextDisabled}
-          size="md"
+          size="sm"
           tooltip={t('label.next')}
           onClick={handleNextColumn}
         />

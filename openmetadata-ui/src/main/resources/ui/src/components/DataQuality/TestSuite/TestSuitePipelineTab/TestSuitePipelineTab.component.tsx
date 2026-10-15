@@ -377,7 +377,7 @@ const TestSuitePipelineTab = ({
                 : undefined
             }
             description={t('message.no-table-pipeline')}
-            icon={<Dataflow03 className="tw:text-utility-brand-600" />}
+            icon={<Dataflow03 className="tw:text-fg-brand-primary" />}
             title={t('message.no-pipelines-yet')}
             variant="blank"
           />

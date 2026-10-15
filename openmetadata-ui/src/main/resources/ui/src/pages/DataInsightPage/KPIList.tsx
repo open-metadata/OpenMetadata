@@ -164,7 +164,7 @@ const KPIList = () => {
                   data-testid={`edit-action-${getEntityName(record)}`}
                   icon={Edit01}
                   isDisabled={!isAdminUser}
-                  size="md"
+                  size="lg"
                   onClick={() => navigate(getKpiPath(record.name))}
                 />
               </Tooltip>
@@ -180,7 +180,7 @@ const KPIList = () => {
                   data-testid={`delete-action-${getEntityName(record)}`}
                   icon={Trash01}
                   isDisabled={!isAdminUser}
-                  size="md"
+                  size="lg"
                   onClick={() => setSelectedKpi(record)}
                 />
               </Tooltip>

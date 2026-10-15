@@ -308,7 +308,7 @@ const DataQualitySettingsPage = () => {
                 data-testid={`edit-${record.name}`}
                 icon={Edit01}
                 isDisabled={isSystem}
-                size="md"
+                size="lg"
                 tooltip={
                   disabledTitle ??
                   t('label.edit-entity', { entity: t('label.dimension') })
@@ -319,7 +319,7 @@ const DataQualitySettingsPage = () => {
                 data-testid={`delete-${record.name}`}
                 icon={Trash01}
                 isDisabled={isSystem}
-                size="md"
+                size="lg"
                 tooltip={
                   disabledTitle ??
                   t('label.delete-entity', { entity: t('label.dimension') })

@@ -55,7 +55,7 @@ const InlineEdit = ({
           data-testid="inline-cancel-btn"
           icon={XClose}
           isDisabled={isLoading}
-          size="md"
+          size="sm"
           tooltip={t('label.cancel')}
           onClick={onCancel}
           {...cancelButtonProps}
@@ -64,7 +64,7 @@ const InlineEdit = ({
           data-testid="inline-save-btn"
           icon={Check}
           isDisabled={isLoading}
-          size="md"
+          size="sm"
           tooltip={t('label.save')}
           onClick={onSave}
           {...saveButtonProps}

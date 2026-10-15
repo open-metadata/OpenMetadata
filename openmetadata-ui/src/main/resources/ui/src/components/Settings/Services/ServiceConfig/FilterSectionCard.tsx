@@ -57,7 +57,7 @@ function RulePreview({
   return (
     <div className="tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:p-3.5">
       <Box align="center" className="tw:mb-2.5" gap={2}>
-        <Eye className="tw:text-utility-brand-600 tw:size-4.5 tw:p-[0.25px]" />
+        <Eye className="tw:text-utility-brand-600" size={15} />
         <span className="tw:text-xs] tw:font-medium tw:text-primary">
           {t('label.preview')}
         </span>

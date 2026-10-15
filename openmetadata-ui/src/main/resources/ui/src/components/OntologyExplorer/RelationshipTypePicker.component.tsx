@@ -194,7 +194,7 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
         </span>
         <ArrowRight
           aria-hidden="true"
-          className="tw:size-4 tw:shrink-0 tw:text-utility-brand-600"
+          className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
         />
         <span className="tw:max-w-20 tw:truncate tw:font-body tw:text-xs tw:font-semibold tw:text-primary">
           {targetLabel}
@@ -205,7 +205,7 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
             className="tw:shrink-0"
             data-testid="relation-type-cancel"
             icon={XClose}
-            size="sm"
+            size="lg"
             tooltip={t('label.close')}
             onClick={onCancel}
           />

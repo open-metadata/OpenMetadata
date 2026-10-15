@@ -83,7 +83,7 @@ const SchemaEditor = ({
             className="query-editor-copy-button"
             data-testid="query-copy-button"
             icon={CopyIcon}
-            size="md"
+            size="lg"
             tooltip={
               hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
             }

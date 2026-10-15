@@ -393,7 +393,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   data-testid={`remove-mapping-btn-${mapping.id}`}
                   icon={Trash01}
                   isDisabled={disabled || readonly}
-                  size="md"
+                  size="lg"
                   tooltip={t('label.remove-entity', {
                     entity: t('label.mapping'),
                   })}

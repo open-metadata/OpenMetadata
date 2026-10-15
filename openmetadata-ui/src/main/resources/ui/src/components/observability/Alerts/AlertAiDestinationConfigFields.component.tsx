@@ -523,7 +523,7 @@ const KeyValueList = ({
             <ButtonUtility
               data-testid={`remove-${testIdPrefix}-button-${name}-${index}`}
               icon={Trash01}
-              size="md"
+              size="lg"
               tooltip={t('label.remove')}
               onClick={() => onChange(entries.filter((_, i) => i !== index))}
             />

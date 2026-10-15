@@ -260,7 +260,7 @@ const ForeignKeyRow = ({
         className="tw:absolute tw:top-2.5 tw:right-3"
         data-testid={`${index}-delete-constraint-button`}
         icon={Trash01}
-        size="md"
+        size="lg"
         tooltip={t('label.delete-entity', {
           entity: t('label.constraint'),
         })}

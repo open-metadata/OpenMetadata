@@ -579,7 +579,7 @@ const ColumnGridSelectionActions = ({
         <ButtonUtility
           data-testid="cancel-selection-button"
           icon={XClose}
-          size="md"
+          size="lg"
           tooltip={t('label.cancel')}
           onClick={onCancelSelection}
         />

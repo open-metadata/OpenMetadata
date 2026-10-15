@@ -107,7 +107,7 @@ const AnnouncementsWidgetV1 = ({
             data-testid="announcements-widget-v1-close"
             icon={XClose}
             isDisabled={disabled}
-            size="md"
+            size="lg"
             onClick={handleClose}
           />
         </Box>

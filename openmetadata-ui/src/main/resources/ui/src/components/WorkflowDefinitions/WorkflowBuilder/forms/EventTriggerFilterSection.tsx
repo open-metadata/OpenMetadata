@@ -87,7 +87,7 @@ export const EventTriggerFilterSection: React.FC<
               <ButtonUtility
                 icon={XClose}
                 isDisabled={controlsDisabled}
-                size="md"
+                size="sm"
                 tooltip={t('label.remove')}
                 onClick={handleClearFilter}
               />

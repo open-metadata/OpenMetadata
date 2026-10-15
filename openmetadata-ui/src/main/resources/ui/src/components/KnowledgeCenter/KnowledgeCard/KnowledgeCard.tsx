@@ -279,7 +279,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           <ButtonUtility
             data-testid="edit-quick-link-btn"
             icon={Edit01}
-            size="md"
+            size="lg"
             tooltip={t('label.edit')}
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
@@ -292,7 +292,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           <ButtonUtility
             data-testid="delete-quick-link-btn"
             icon={Trash01}
-            size="md"
+            size="lg"
             tooltip={t('label.delete')}
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();

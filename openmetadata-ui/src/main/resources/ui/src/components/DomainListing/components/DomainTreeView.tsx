@@ -1029,9 +1029,7 @@ const DomainTreeView = ({
               ? [
                   {
                     color: 'primary',
-                    iconLeading: (
-                      <Expand className="tw:size-4.5 tw:p-[0.25px]" />
-                    ),
+                    iconLeading: <Expand size={14} />,
                     key: 'add-domain',
                     label: t('label.add-entity', { entity: t('label.domain') }),
                     onPress: openAddDomainDrawer,
@@ -1042,7 +1040,7 @@ const DomainTreeView = ({
           description={t('message.no-data-message', {
             entity: t('label.domain-lowercase-plural'),
           })}
-          icon={<DomainIcon className="tw:text-utility-brand-600" />}
+          icon={<DomainIcon className="tw:text-fg-brand-primary" />}
           title={t('label.no-entity', { entity: t('label.domain-plural') })}
         />
       </div>

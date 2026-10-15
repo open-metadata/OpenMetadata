@@ -308,7 +308,7 @@ const NotificationListPage = () => {
                     href={getNotificationAlertsEditPath(fullyQualifiedName)}
                     icon={Edit01}
                     isDisabled={record.provider === ProviderType.System}
-                    size="md"
+                    size="lg"
                   />
                 </Tooltip>
               )}
@@ -318,7 +318,7 @@ const NotificationListPage = () => {
                     data-testid={`alert-delete-${record.name}`}
                     icon={Trash01}
                     isDisabled={record.provider === ProviderType.System}
-                    size="md"
+                    size="lg"
                     onClick={() => setSelectedAlert(record)}
                   />
                 </Tooltip>

@@ -124,7 +124,7 @@ const TermsRow: React.FC<TermsRowProps> = ({
         color="tertiary-destructive"
         data-testid={`remove-row-${rowId}`}
         icon={Trash01}
-        size="md"
+        size="lg"
         tooltip={t('label.remove')}
         onClick={() => onRemove(rowId)}
       />

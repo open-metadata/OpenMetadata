@@ -77,7 +77,7 @@ const QueryViewer = ({
                 <ButtonUtility
                   data-testid="query-entity-copy-button"
                   icon={Copy01}
-                  size="md"
+                  size="lg"
                   tooltip={t('message.copy-to-clipboard')}
                   tooltipPlacement="top end"
                   onClick={() => onCopyToClipBoard()}

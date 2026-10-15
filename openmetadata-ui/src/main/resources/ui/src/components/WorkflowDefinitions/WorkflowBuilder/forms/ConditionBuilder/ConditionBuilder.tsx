@@ -479,7 +479,7 @@ export const ConditionBuilder: React.FC<ConditionBuilderProps> = ({
                 data-testid={`${dataTestId}-add-row`}
                 icon={Plus}
                 isDisabled={isDisabled}
-                size="md"
+                size="lg"
                 tooltip={t('label.add')}
                 onClick={handleAddRow}
               />
@@ -489,7 +489,7 @@ export const ConditionBuilder: React.FC<ConditionBuilderProps> = ({
                   data-testid={`${dataTestId}-remove-row-${index}`}
                   icon={Trash01}
                   isDisabled={isDisabled}
-                  size="md"
+                  size="lg"
                   tooltip={t('label.remove')}
                   onClick={() => handleRemoveRow(row.id)}
                 />

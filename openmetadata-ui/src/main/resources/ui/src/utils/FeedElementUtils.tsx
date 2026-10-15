@@ -38,7 +38,7 @@ export const getFieldThreadElement = (
       className="hover-cell-icon"
       data-testid="field-thread"
       icon={IconComments}
-      size="md"
+      size="sm"
       tooltip={t('label.list-entity', {
         entity: t('label.conversation'),
       })}

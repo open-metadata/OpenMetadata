@@ -184,7 +184,7 @@ const SceneDrillButton = ({
       // Less paints the static light brand tint (@primary-1) in every state.
       className="lineage-scene-drill-button nodrag nopan tw:dark:bg-brand-primary!"
       icon={ZoomInIcon}
-      size="md"
+      size="lg"
       tooltip={drillLabel}
       onClick={(event: MouseEvent<HTMLButtonElement>) => {
         event.stopPropagation();

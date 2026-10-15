@@ -142,7 +142,7 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({
             color="tertiary-destructive"
             data-testid={`remove-${data.name}-${index}`}
             icon={Trash01}
-            size="md"
+            size="sm"
             tooltip={t('label.remove')}
             onClick={() => remove(index)}
           />

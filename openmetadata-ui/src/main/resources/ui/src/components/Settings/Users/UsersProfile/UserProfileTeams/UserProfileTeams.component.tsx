@@ -151,7 +151,7 @@ const UserProfileTeams = ({
                     <ButtonUtility
                       data-testid="teams-edit-close-btn"
                       icon={ClosePopoverIcon}
-                      size="md"
+                      size="sm"
                       tooltip={t('label.cancel')}
                       onClick={handleCloseEditTeam}
                     />
@@ -159,7 +159,7 @@ const UserProfileTeams = ({
                       data-testid="teams-edit-save-btn"
                       icon={SavePopoverIcon}
                       isDisabled={isLoading}
-                      size="md"
+                      size="sm"
                       tooltip={t('label.save')}
                       onClick={handleTeamsSave}
                     />

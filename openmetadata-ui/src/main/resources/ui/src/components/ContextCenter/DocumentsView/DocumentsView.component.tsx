@@ -129,7 +129,9 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                 <Box align="center" gap={2}>
                   <FolderIcon
                     aria-hidden="true"
-                    className="tw:size-5 tw:shrink-0 tw:text-quaternary"
+                    className="tw:shrink-0 tw:text-quaternary"
+                    height={18}
+                    width={18}
                   />
                   <div className="tw:max-w-40">
                     <Typography ellipsis size="text-sm">
@@ -140,7 +142,8 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                 {isCurrent && (
                   <Check
                     aria-hidden="true"
-                    className="tw:ml-2 tw:size-4 tw:shrink-0 tw:p-[0.5px] tw:text-utility-brand-600"
+                    className="tw:ml-2 tw:shrink-0 tw:text-utility-brand-600"
+                    size={18}
                   />
                 )}
               </Box>
@@ -298,7 +301,7 @@ const FileActions: FC<FileActionsProps> = ({
           <ButtonUtility
             data-testid="manage-button"
             icon={DotsVerticalIcon}
-            size="md"
+            size="lg"
             tooltip={t('label.manage-entity', { entity: t('label.document') })}
           />
           <Dropdown.Popover className="tw:w-46">
@@ -316,7 +319,10 @@ const FileActions: FC<FileActionsProps> = ({
                     {() => (
                       <Box align="center" justify="between">
                         <Box align="center" gap={2}>
-                          <Share07 className="tw:size-5 tw:shrink-0 tw:text-quaternary" />
+                          <Share07
+                            className="tw:shrink-0 tw:text-quaternary"
+                            size={18}
+                          />
                           <Typography
                             ellipsis
                             className="tw:grow tw:text-secondary">
@@ -325,7 +331,8 @@ const FileActions: FC<FileActionsProps> = ({
                         </Box>
                         <ChevronRight
                           aria-hidden="true"
-                          className="tw:size-4 tw:shrink-0 tw:p-[0.5px] tw:text-quaternary"
+                          className="tw:shrink-0 tw:text-quaternary"
+                          size={16}
                         />
                       </Box>
                     )}
@@ -378,7 +385,11 @@ const FileActions: FC<FileActionsProps> = ({
                     {() => (
                       <Box align="center" justify="between">
                         <Box align="center" gap={2}>
-                          <MoveFolderIcon className="tw:size-5 tw:shrink-0 tw:text-quaternary" />
+                          <MoveFolderIcon
+                            className="tw:shrink-0 tw:text-quaternary"
+                            height={18}
+                            width={18}
+                          />
                           <Typography
                             ellipsis
                             className="tw:grow tw:text-secondary">
@@ -387,7 +398,8 @@ const FileActions: FC<FileActionsProps> = ({
                         </Box>
                         <ChevronRight
                           aria-hidden="true"
-                          className="tw:size-4 tw:shrink-0 tw:p-[0.5px] tw:text-quaternary"
+                          className="tw:shrink-0 tw:text-quaternary"
+                          size={16}
                         />
                       </Box>
                     )}
@@ -413,7 +425,8 @@ const FileActions: FC<FileActionsProps> = ({
                   <Box align="center" gap={2}>
                     <Trash01
                       aria-hidden="true"
-                      className="tw:size-5 tw:shrink-0 tw:text-fg-error-primary"
+                      className="tw:shrink-0 tw:text-fg-error-primary"
+                      size={18}
                     />
                     <Typography
                       ellipsis
@@ -749,18 +762,18 @@ const FileRow: FC<FileRowProps> = ({
           }`}
           data-testid="preview-btn"
           icon={Eye}
-          size="md"
+          size="lg"
           tooltip={t('label.preview')}
           onClick={isPreviewSupported ? () => onOpenPreview?.(file) : undefined}
         />
         <ButtonUtility
           data-testid="download-btn"
           icon={DownloadIcon}
-          size="md"
+          size="lg"
           tooltip={t('label.download')}
           onClick={() => onDownload?.(file)}
         />
-        <CopyLinkButton size="md" url={rowUrl}>
+        <CopyLinkButton size="lg" url={rowUrl}>
           <Copy01 data-icon aria-hidden="true" />
         </CopyLinkButton>
         <FileActions
@@ -852,7 +865,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
             : []
         }
         description={t('message.context-center-folder-empty-subtitle')}
-        icon={<UploadIcon className="tw:text-utility-brand-600" />}
+        icon={<UploadIcon className="tw:text-fg-brand-primary" />}
         title={t('label.folder-name-is-empty', {
           folderName: selectedFolderName,
         })}

@@ -237,7 +237,7 @@ const CustomMetricGraphs = ({
                       <ButtonUtility
                         data-testid={`${key}-custom-metrics-menu`}
                         icon={DotsVertical}
-                        size="md"
+                        size="lg"
                         tooltip={t('label.more-action')}
                       />
                       <Dropdown.Popover className="tw:w-max">

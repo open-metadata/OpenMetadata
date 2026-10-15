@@ -208,7 +208,7 @@ const DynamicSampleConfig = ({
                     color="tertiary-destructive"
                     data-testid={`remove-threshold-${index}`}
                     icon={Trash01}
-                    size="md"
+                    size="lg"
                     tooltip={t('label.remove')}
                     onClick={() => onRemoveThreshold(index)}
                   />

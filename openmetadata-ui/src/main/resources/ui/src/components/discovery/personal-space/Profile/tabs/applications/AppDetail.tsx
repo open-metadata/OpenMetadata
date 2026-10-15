@@ -179,11 +179,11 @@ const AppDetailTabs: FC<{
   ) : null;
 
 const MetaItem: FC<{
-  icon: FC<{ className?: string }>;
+  icon: FC<{ size?: number }>;
   children: ReactNode;
 }> = ({ icon: Icon, children }) => (
   <Box align="center" className="tw:text-tertiary" direction="row" gap={1}>
-    <Icon className="tw:size-4" />
+    <Icon size={18} />
     <Typography size="text-xs">{children}</Typography>
   </Box>
 );

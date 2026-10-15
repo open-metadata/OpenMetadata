@@ -397,7 +397,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
             data-testid={`delete-action-${getEntityName(policy)}`}
             icon={Trash01}
             isDisabled={!deletePolicyPermission}
-            size="md"
+            size="lg"
             tooltip={
               deletePolicyPermission
                 ? t('label.delete-entity', { entity: t('label.policy') })

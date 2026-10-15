@@ -57,7 +57,7 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
       <ButtonUtility
         data-testid="manage-button"
         icon={DotsVerticalIcon}
-        size="md"
+        size="lg"
         tooltip={t('label.manage-entity', { entity: t('label.memory') })}
       />
       <Dropdown.Popover className="tw:w-36">
@@ -71,7 +71,8 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
             <Box align="center" gap={2}>
               <Trash01
                 aria-hidden="true"
-                className="tw:size-5 tw:shrink-0 tw:text-fg-error-primary"
+                className="tw:shrink-0 tw:text-fg-error-primary"
+                size={18}
               />
               <Typography
                 ellipsis
@@ -249,7 +250,7 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
         <ButtonUtility
           data-testid="edit-memory-btn"
           icon={Edit01}
-          size="md"
+          size="lg"
           tooltip={t('label.edit')}
           onClick={() => onEditMemory(memory)}
         />

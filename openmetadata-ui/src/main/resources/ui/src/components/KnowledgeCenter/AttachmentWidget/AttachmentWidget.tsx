@@ -136,7 +136,7 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
               <ButtonUtility
                 data-testid={`download-attachment-${item.id}`}
                 icon={Download01}
-                size="md"
+                size="lg"
                 tooltip={t('label.download')}
                 onClick={() => handleDownload(item)}
               />

@@ -113,7 +113,7 @@ function NotificationDiagnosticInfo({
                   </Typography>
                   <ButtonUtility
                     icon={InfoCircle}
-                    size="xs"
+                    size="sm"
                     tooltip={String(item.description)}
                   />
                 </Box>

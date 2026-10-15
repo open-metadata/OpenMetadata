@@ -75,14 +75,14 @@ function TeamTypeSelect({
         <ButtonUtility
           data-testid="cancel-btn"
           icon={XClose}
-          size="md"
+          size="sm"
           tooltip={t('label.cancel')}
           onClick={handleCancel}
         />
         <ButtonUtility
           data-testid="save-btn"
           icon={Check}
-          size="md"
+          size="sm"
           tooltip={t('label.save')}
           onClick={handleSubmit}
         />

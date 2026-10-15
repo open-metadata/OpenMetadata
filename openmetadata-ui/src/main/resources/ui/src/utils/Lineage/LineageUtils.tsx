@@ -42,12 +42,12 @@ export const LINEAGE_DEPENDENCY_OPTIONS = [
   {
     label: 'Direct',
     key: 'direct',
-    icon: <ArrowRight className="tw:shrink-0 tw:size-4.5 tw:p-[0.25px]" />,
+    icon: <ArrowRight className="tw:shrink-0" size={14} />,
   },
   {
     label: 'Indirect',
     key: 'indirect',
-    icon: <ArrowLeft className="tw:shrink-0 tw:size-4.5 tw:p-[0.25px]" />,
+    icon: <ArrowLeft className="tw:shrink-0" size={14} />,
   },
 ];
 

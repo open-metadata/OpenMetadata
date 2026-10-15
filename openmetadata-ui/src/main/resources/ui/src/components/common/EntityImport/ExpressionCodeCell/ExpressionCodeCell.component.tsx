@@ -128,14 +128,14 @@ const ExpressionCodeCell = ({
                   <ButtonUtility
                     data-testid="code-editor-save"
                     icon={Check}
-                    size="md"
+                    size="sm"
                     tooltip={t('label.save')}
                     onClick={() => onCommit(code, activeLanguage)}
                   />
                   <ButtonUtility
                     data-testid="code-editor-cancel"
                     icon={XClose}
-                    size="md"
+                    size="sm"
                     tooltip={t('label.cancel')}
                     onClick={onCancel}
                   />

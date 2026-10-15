@@ -148,7 +148,7 @@ const renderEntityCell = (
         data-testid={`remove-${getEntityName(item)}`}
         icon={Delete}
         isDisabled={!canEditAll || isLoadingOnSave}
-        size="md"
+        size="lg"
         tooltip={t('label.remove')}
         tooltipPlacement="left"
         onPress={() => onRemove(item)}

@@ -47,8 +47,9 @@ const FormItemLabel = ({
             title={helperText}
             triggerClassName="tw:inline-flex">
             <InfoCircle
-              className="tw:ml-2 tw:shrink-0 tw:text-quaternary tw:size-4.5 tw:p-[0.25px]"
+              className="tw:ml-2 tw:shrink-0 tw:text-quaternary"
               data-testid="helper-icon"
+              size={14}
             />
           </Tooltip>
         )}

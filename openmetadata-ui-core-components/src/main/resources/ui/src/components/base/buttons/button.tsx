@@ -134,7 +134,7 @@ export const styles = sortCx({
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
-        'tw:*:data-icon:text-fg-brand-secondary_alt tw:hover:*:data-icon:text-fg-brand-secondary_hover tw:dark:*:data-icon:text-link tw:dark:hover:*:data-icon:text-link-hover',
+        'tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-700 tw:dark:*:data-icon:text-link tw:dark:hover:*:data-icon:text-link-hover',
       ].join(' '),
     },
     'primary-destructive': {

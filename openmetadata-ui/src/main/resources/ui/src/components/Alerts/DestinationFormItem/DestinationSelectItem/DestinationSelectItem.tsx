@@ -443,7 +443,7 @@ function DestinationSelectItem({
         <ButtonUtility
           data-testid={`remove-destination-${id}`}
           icon={XClose}
-          size="md"
+          size="lg"
           tooltip={t('label.remove-entity', {
             entity: t('label.destination'),
           })}

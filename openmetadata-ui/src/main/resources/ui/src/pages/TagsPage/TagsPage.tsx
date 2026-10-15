@@ -809,7 +809,7 @@ const TagsPage = () => {
         features={[
           {
             key: 'create',
-            icon: <Grid01 className="tw:text-utility-brand-600" />,
+            icon: <Grid01 className="tw:text-fg-brand-primary" />,
             title: t('label.create-a-classification'),
             description: t('message.classification-create-description'),
           },

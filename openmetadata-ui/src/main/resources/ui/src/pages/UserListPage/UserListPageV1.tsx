@@ -339,7 +339,7 @@ const UserListPageV1 = () => {
                 data-testid={`restore-user-btn-${record.name}`}
                 icon={Restore}
                 isDisabled={!isAdminUser}
-                size="md"
+                size="lg"
                 tooltip={
                   isAdminUser
                     ? t('label.restore-entity', {
@@ -358,7 +358,7 @@ const UserListPageV1 = () => {
               data-testid={`delete-user-btn-${record.name}`}
               icon={Trash01}
               isDisabled={!isAdminUser}
-              size="md"
+              size="lg"
               tooltip={
                 isAdminUser
                   ? t('label.delete-entity', {

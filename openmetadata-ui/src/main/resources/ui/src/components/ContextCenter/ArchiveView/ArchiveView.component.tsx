@@ -104,7 +104,7 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
           <ButtonUtility
             data-testid="restore-btn"
             icon={RefreshIcon}
-            size="md"
+            size="lg"
             tooltip={t('label.restore')}
             onClick={() => onRestore(item)}
           />
@@ -113,7 +113,7 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
           <ButtonUtility
             data-testid="delete-btn"
             icon={Trash01}
-            size="md"
+            size="lg"
             tooltip={t('label.delete')}
             onClick={() => onDelete(item)}
           />

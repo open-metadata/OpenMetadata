@@ -89,7 +89,7 @@ export const useGlossaryTreeData = (
           allowSelection: rootIsValue,
           hasExclusiveChildren: glossary.mutuallyExclusive === true,
           lazyLoad: false,
-          icon: <GlossaryIcon className="tw:size-5" />,
+          icon: <GlossaryIcon size={16} />,
           data: glossaryRootValue(glossary),
         }));
 
@@ -174,7 +174,7 @@ export const useGlossaryTreeData = (
             data: glossaryRootValue(glossary),
             hasExclusiveChildren: isExclusive,
             lazyLoad: true,
-            icon: <GlossaryIcon className="tw:size-5" />,
+            icon: <GlossaryIcon size={16} />,
           };
         }
       );

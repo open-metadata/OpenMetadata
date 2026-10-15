@@ -66,7 +66,7 @@ function ObservabilityAlertAiActions({
           data-testid={`alert-edit-${record.name}`}
           icon={Edit01}
           isDisabled={record.provider === ProviderType.System}
-          size="md"
+          size="lg"
           tooltip={t('label.edit')}
           onClick={(event: MouseEvent<HTMLButtonElement>) => {
             event.preventDefault();
@@ -80,7 +80,7 @@ function ObservabilityAlertAiActions({
           data-testid={`alert-delete-${record.name}`}
           icon={Trash01}
           isDisabled={record.provider === ProviderType.System}
-          size="md"
+          size="lg"
           tooltip={t('label.delete')}
           onClick={() => onSelectAlert(record)}
         />

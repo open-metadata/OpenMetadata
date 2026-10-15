@@ -129,7 +129,7 @@ function FeedCardFooterNew({
                 aria-label={t('label.reply')}
                 data-testid="reply-button"
                 icon={<ThreadIcon data-icon data-testid="reply-count" />}
-                size="md"
+                size="lg"
                 onPress={handleRepliesPress}
               />
             )}

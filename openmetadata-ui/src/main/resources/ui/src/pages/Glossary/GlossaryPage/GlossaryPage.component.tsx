@@ -638,7 +638,7 @@ const GlossaryPage = () => {
           features={[
             {
               key: 'create-glossary',
-              icon: <BookOpen01 className="tw:text-utility-brand-600" />,
+              icon: <BookOpen01 className="tw:text-fg-brand-primary" />,
               title: t('label.create-a-glossary'),
               description: t('message.create-a-glossary-description'),
             },

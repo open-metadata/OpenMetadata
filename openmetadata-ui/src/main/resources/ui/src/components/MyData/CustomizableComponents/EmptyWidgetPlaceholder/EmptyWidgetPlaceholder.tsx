@@ -68,7 +68,7 @@ function EmptyWidgetPlaceholder({
               })}
               data-testid="remove-widget-button"
               icon={XClose}
-              size="md"
+              size="lg"
               onPress={handleCloseClick}
             />
           </Box>

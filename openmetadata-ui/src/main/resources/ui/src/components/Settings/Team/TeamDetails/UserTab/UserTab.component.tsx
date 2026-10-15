@@ -281,7 +281,7 @@ export const UserTab = ({
               data-testid="remove-user-btn"
               icon={IconRemove}
               isDisabled={!editUserPermission}
-              size="md"
+              size="lg"
               tooltip={
                 editUserPermission
                   ? t('label.remove')

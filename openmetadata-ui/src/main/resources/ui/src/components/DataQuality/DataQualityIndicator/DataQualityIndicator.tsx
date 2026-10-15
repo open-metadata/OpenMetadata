@@ -74,7 +74,7 @@ const ConditionList = ({ counts }: { counts: DataQualityIndicatorCounts }) => {
     {
       count: counts.unresolvedIncidents,
       icon: (
-        <DataQualityAlarm className="tw:text-fg-warning-primary tw:size-5" />
+        <DataQualityAlarm className="tw:text-fg-warning-primary" size={16} />
       ),
       i18nKey: 'message.dq-unresolved-incidents-count',
     },

@@ -267,7 +267,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
         dataTestId="metadata-agent-group"
         descKey="message.metadata-agents-description"
         emptyPlaceholder={emptyPlaceholder}
-        icon={<Code01 className="tw:size-5" />}
+        icon={<Code01 size={18} />}
         isLoading={isLoading}
         isRefreshing={isRefreshing}
         titleKey="label.metadata-agent-plural"

@@ -154,7 +154,7 @@ const TablePropertyEdit = ({
                       data-testid={`delete-row-${rowIndex}`}
                       icon={Trash01}
                       isDisabled={isSaving}
-                      size="md"
+                      size="lg"
                       tooltip={t('label.delete-row')}
                       onClick={() => removeRow(row.key)}
                     />

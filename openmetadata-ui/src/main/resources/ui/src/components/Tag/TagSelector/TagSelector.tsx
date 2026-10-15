@@ -50,7 +50,7 @@ const resultToOption = (result: RawTagResult): FilterSelectOption => {
       <Icon iconValue={style.iconURL} size={16} />
     </Suspense>
   ) : (
-    <Tag01 className="tw:size-5" />
+    <Tag01 height={16} width={16} />
   );
 
   return { value: result.value, label, textValue: label, icon };

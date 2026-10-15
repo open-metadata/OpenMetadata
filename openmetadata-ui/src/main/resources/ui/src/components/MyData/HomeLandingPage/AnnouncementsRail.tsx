@@ -283,7 +283,7 @@ const AnnouncementsRail: React.FC = () => {
                   data-testid="announcement-previous"
                   icon={ChevronLeft}
                   isDisabled={!canScroll.previous}
-                  size="md"
+                  size="xs"
                   tooltip={t('label.previous')}
                   onClick={goToPrevious}
                 />
@@ -291,7 +291,7 @@ const AnnouncementsRail: React.FC = () => {
                   data-testid="announcement-next"
                   icon={ChevronRight}
                   isDisabled={!canScroll.next}
-                  size="md"
+                  size="xs"
                   tooltip={t('label.next')}
                   onClick={goToNext}
                 />

@@ -77,7 +77,7 @@ export const CustomPropertyListItem = ({
         })}
         data-testid="edit-icon"
         icon={Edit01}
-        size="md"
+        size="sm"
         tooltip={t('label.edit-entity', { entity: propertyLabel })}
         onClick={() => setIsEditing(true)}
       />

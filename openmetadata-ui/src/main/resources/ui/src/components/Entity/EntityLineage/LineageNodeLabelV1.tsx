@@ -152,7 +152,7 @@ const EntityLabel = ({
         {showDeletedIcon && (
           <div className="flex-center p-xss custom-node-deleted-icon">
             <div className="d-flex text-danger" data-testid="node-deleted-icon">
-              <Trash01 className="tw:size-4 tw:p-[0.5px]" />
+              <Trash01 size={16} />
             </div>
           </div>
         )}
@@ -297,7 +297,7 @@ const EntityFooter = ({
           data-testid="lineage-filter-button"
           icon={FilterIcon}
           isDisabled={isEditMode}
-          size="md"
+          size="sm"
           tooltip={t('message.only-show-columns-with-lineage')}
           tooltipPlacement="right"
           onClick={handleOnlyShowColumnsWithLineage}

@@ -63,7 +63,7 @@ function ObservabilityAlertActions({
             )
       }
       icon={Edit01}
-      size="md"
+      size="lg"
       onClick={
         onEditAlert
           ? (event: MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => {
@@ -90,7 +90,7 @@ function ObservabilityAlertActions({
             data-testid={`alert-delete-${record.name}`}
             icon={Trash01}
             isDisabled={record.provider === ProviderType.System}
-            size="md"
+            size="lg"
             onPress={() => onSelectAlert(record)}
           />
         </Tooltip>

@@ -113,10 +113,7 @@ const OntologyTreeView = ({
                     ) : null}
                     {row.isIsolated ? (
                       <span className="tw:flex tw:items-center tw:gap-1 tw:font-body tw:text-xs tw:leading-4 tw:font-semibold tw:text-warning-primary tw:lowercase">
-                        <AlertTriangle
-                          aria-hidden="true"
-                          className="tw:size-3"
-                        />
+                        <AlertTriangle aria-hidden="true" size={18} />
                         {t('label.isolated')}
                       </span>
                     ) : (

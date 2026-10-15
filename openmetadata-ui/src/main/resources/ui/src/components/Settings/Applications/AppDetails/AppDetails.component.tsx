@@ -605,7 +605,7 @@ const AppDetails = () => {
         <div
           className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
           data-testid="runtime-disabled-badge">
-          <SlashCircle01 className="tw:flex tw:mr-1 tw:shrink-0 tw:size-4 tw:p-[0.5px]" />
+          <SlashCircle01 className="tw:flex tw:mr-1 tw:shrink-0" size={12} />
           {t('label.disabled')}
         </div>
       </Tooltip>
@@ -723,7 +723,7 @@ const AppDetails = () => {
                   className="layout-space layout-space-horizontal"
                   gap={2}
                   itemClassName="layout-space-item">
-                  <Clock className="tw:shrink-0 tw:size-4.5 tw:p-[0.25px]" />
+                  <Clock className="tw:shrink-0" size={14} />
                   <Typography className="text-xs" color="secondary">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
@@ -737,7 +737,7 @@ const AppDetails = () => {
                   className="layout-space layout-space-horizontal"
                   gap={2}
                   itemClassName="layout-space-item">
-                  <User01 className="tw:shrink-0 tw:size-4.5 tw:p-[0.25px]" />
+                  <User01 className="tw:shrink-0" size={14} />
                   <Typography className="text-xs" color="secondary">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,

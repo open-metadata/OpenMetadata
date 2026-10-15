@@ -146,7 +146,7 @@ const IntakeFormsTable: FC<IntakeFormsTableProps> = ({
                   <ButtonUtility
                     data-testid={`edit-${record.entityType}`}
                     icon={Edit01}
-                    size="md"
+                    size="lg"
                     tooltip={t('label.edit')}
                     onClick={() => onEdit(record)}
                   />
@@ -154,7 +154,7 @@ const IntakeFormsTable: FC<IntakeFormsTableProps> = ({
                     color="tertiary-destructive"
                     data-testid={`delete-${record.entityType}`}
                     icon={Trash01}
-                    size="md"
+                    size="lg"
                     tooltip={t('label.delete')}
                     onClick={() => onDelete(record)}
                   />

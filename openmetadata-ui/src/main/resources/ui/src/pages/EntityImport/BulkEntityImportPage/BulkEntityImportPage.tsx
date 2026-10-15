@@ -1508,7 +1508,7 @@ const BulkEntityImportPage = () => {
   }) => {
     const stageIcon =
       state === 'active' ? (
-        <RefreshCw01 className="csv-import-spin tw:size-5" />
+        <RefreshCw01 className="csv-import-spin" size={16} />
       ) : (
         <span className="csv-processing-stage-dot" />
       );
@@ -1518,7 +1518,7 @@ const BulkEntityImportPage = () => {
         className={`csv-processing-stage csv-processing-stage-${state}`}
         key={key}>
         <span className="csv-processing-stage-icon">
-          {state === 'done' ? <CheckCircle className="tw:size-5" /> : stageIcon}
+          {state === 'done' ? <CheckCircle size={16} /> : stageIcon}
         </span>
         <span>{label}</span>
       </div>
@@ -1559,7 +1559,7 @@ const BulkEntityImportPage = () => {
         <ButtonUtility
           className="tw:shrink-0"
           icon={XClose}
-          size="md"
+          size="lg"
           tooltip={t('label.remove')}
           onClick={() => setSelectedCsvFile(undefined)}
         />
@@ -1580,7 +1580,7 @@ const BulkEntityImportPage = () => {
             className="tw:text-tertiary tw:text-sm tw:leading-5"
             gap={2}
             justify="center">
-            <File06 className="tw:shrink-0 tw:size-4.5 tw:p-[0.25px]" />
+            <File06 className="tw:shrink-0" size={14} />
             <Box className="tw:min-w-0">
               <Typography
                 as="span"

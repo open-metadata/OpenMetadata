@@ -337,7 +337,7 @@ const AddGlossaryTermForm = ({
               className="tw:mt-6"
               data-testid={`remove-reference-${index}`}
               icon={Trash01}
-              size="md"
+              size="lg"
               tooltip={t('label.remove')}
               onClick={() => removeReference(index)}
             />

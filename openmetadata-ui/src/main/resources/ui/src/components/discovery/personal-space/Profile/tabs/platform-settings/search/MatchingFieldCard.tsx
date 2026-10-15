@@ -122,7 +122,7 @@ const MatchingFieldCard = ({
               <ButtonUtility
                 data-testid="delete-search-field"
                 icon={Trash01}
-                size="md"
+                size="lg"
                 tooltip={t('label.delete')}
                 onPress={onDelete}
               />

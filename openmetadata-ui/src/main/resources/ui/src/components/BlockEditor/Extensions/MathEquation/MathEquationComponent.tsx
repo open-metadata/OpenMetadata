@@ -68,13 +68,13 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
             <Box align="center" gap={2}>
               <ButtonUtility
                 icon={XClose}
-                size="md"
+                size="sm"
                 tooltip={t('label.cancel')}
                 onClick={() => setIsEditing(false)}
               />
               <ButtonUtility
                 icon={Check}
-                size="md"
+                size="sm"
                 tooltip={t('label.save')}
                 onClick={handleSaveEquation}
               />
@@ -88,7 +88,7 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
           <ButtonUtility
             className="edit-button"
             icon={Edit01}
-            size="md"
+            size="lg"
             tooltip={t('label.edit-entity', { entity: t('label.equation') })}
             onClick={() => setIsEditing(true)}
           />

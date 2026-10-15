@@ -101,7 +101,7 @@ const ExploreQueryFilterChips = ({
         className="tw:inline-flex tw:items-center tw:gap-1.5 tw:uppercase tw:tracking-wide tw:text-quaternary"
         size="text-xs"
         weight="semibold">
-        <FilterFunnel01 className="tw:size-4.5 tw:p-[0.25px]" />
+        <FilterFunnel01 height={14} width={14} />
         {t('label.query')}
       </Typography>
 

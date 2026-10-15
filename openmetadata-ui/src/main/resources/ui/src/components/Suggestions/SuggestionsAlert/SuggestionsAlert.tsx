@@ -86,7 +86,7 @@ const SuggestionsAlert = ({
             <ButtonUtility
               data-testid="reject-suggestion"
               icon={XClose}
-              size="md"
+              size="lg"
               tooltip={t('label.reject')}
               onClick={() =>
                 acceptRejectSuggestion(suggestion, SuggestionAction.Reject)
@@ -95,7 +95,7 @@ const SuggestionsAlert = ({
             <ButtonUtility
               data-testid="accept-suggestion"
               icon={Check}
-              size="md"
+              size="lg"
               tooltip={t('label.accept')}
               onClick={() =>
                 acceptRejectSuggestion(suggestion, SuggestionAction.Accept)

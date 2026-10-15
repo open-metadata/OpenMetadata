@@ -346,7 +346,7 @@ export const OntologyConceptAttributes: React.FC<
             data-testid={`remove-attribute-${attribute.name}`}
             icon={XClose}
             isDisabled={isSaving}
-            size="xs"
+            size="sm"
             tooltip={t('label.remove')}
             onClick={() => handleRemoveAttribute(attribute.id)}
           />

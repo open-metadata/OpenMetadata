@@ -282,7 +282,7 @@ const TabFilters = () => {
           <ButtonUtility
             data-testid="profiler-setting-btn"
             icon={Settings01}
-            size="md"
+            size="lg"
             tooltip={t('label.setting-plural')}
             onClick={onSettingButtonClick}
           />

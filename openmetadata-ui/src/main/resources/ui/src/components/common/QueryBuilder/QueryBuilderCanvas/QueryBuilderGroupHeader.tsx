@@ -100,7 +100,7 @@ const QueryBuilderGroupHeader: FC<QueryBuilderGroupHeaderProps> = ({
           color="tertiary-destructive"
           data-testid={preset.testIds.delGroup}
           icon={Trash01}
-          size="md"
+          size="lg"
           tooltip={t('label.remove')}
           onClick={() => actions.removeGroup(path)}
         />

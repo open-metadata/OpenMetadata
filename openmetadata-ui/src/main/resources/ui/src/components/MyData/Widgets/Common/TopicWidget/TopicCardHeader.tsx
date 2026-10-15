@@ -110,7 +110,8 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
       {content}
       <Chevron
         aria-hidden
-        className="tw:mt-2.5 tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
+        className="tw:mt-2.5 tw:shrink-0 tw:text-fg-quaternary"
+        size={16}
       />
     </button>
   );

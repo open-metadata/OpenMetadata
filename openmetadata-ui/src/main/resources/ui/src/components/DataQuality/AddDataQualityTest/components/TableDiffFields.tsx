@@ -202,7 +202,7 @@ const ColumnArrayField: React.FC<ColumnArrayFieldProps> = ({
             data-testid={`remove-${data.name}-${index}`}
             icon={Trash01}
             isDisabled={disabled}
-            size="md"
+            size="sm"
             tooltip={t('label.remove')}
             onClick={() => remove(index)}
           />

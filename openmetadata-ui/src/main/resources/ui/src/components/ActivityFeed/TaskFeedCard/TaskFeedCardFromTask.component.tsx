@@ -350,7 +350,7 @@ const TaskFeedCardFromTask = ({
         <Box align="center" gap={2} justify="center">
           <ButtonUtility
             icon={ReplyIcon}
-            size="md"
+            size="lg"
             tooltip={t('label.reply')}
             onClick={showReplies}
           />

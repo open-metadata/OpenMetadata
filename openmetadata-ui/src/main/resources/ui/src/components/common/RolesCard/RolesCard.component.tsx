@@ -135,14 +135,14 @@ const RolesCard = ({
                     className="tw:mr-1"
                     data-testid="cancel-roles"
                     icon={XClose}
-                    size="md"
+                    size="sm"
                     tooltip={t('label.cancel')}
                     onMouseDown={() => setIsRolesEdit(false)}
                   />
                   <ButtonUtility
                     data-testid="save-roles"
                     icon={Check}
-                    size="md"
+                    size="sm"
                     tooltip={t('label.save')}
                     onClick={handleRolesChange}
                   />

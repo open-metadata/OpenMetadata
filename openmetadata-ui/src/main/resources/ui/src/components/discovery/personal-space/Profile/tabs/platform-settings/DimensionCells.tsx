@@ -89,7 +89,7 @@ export const DimensionActionsCell = ({
         data-testid={`edit-${dimension.name}`}
         icon={Edit01}
         isDisabled={isSystem}
-        size="md"
+        size="lg"
         tooltip={isSystem ? lockedTooltip : t('label.edit-entity', { entity })}
         onPress={() => onEdit(dimension)}
       />
@@ -97,7 +97,7 @@ export const DimensionActionsCell = ({
         data-testid={`delete-${dimension.name}`}
         icon={Trash01}
         isDisabled={isSystem}
-        size="md"
+        size="lg"
         tooltip={
           isSystem ? lockedTooltip : t('label.delete-entity', { entity })
         }

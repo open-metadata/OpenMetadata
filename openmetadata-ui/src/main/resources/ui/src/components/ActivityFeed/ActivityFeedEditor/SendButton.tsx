@@ -38,7 +38,7 @@ export const SendButton: FC<SendButtonProp> = ({
       data-testid="send-button"
       icon={IconPaperPlanePrimary}
       isDisabled={editorValue.length === 0}
-      size="xs"
+      size="sm"
       onClick={onSaveHandler}
     />
   );

@@ -29,7 +29,7 @@ export const filledColors: Record<
     root: 'tw:bg-utility-gray-50 tw:text-utility-gray-700 tw:outline-utility-gray-200',
     addon: 'tw:text-utility-gray-500',
     addonButton:
-      'tw:hover:bg-utility-gray-100 tw:text-utility-gray-400 tw:hover:text-utility-gray-500',
+      'tw:hover:bg-utility-gray-100 tw:text-utility-gray-500 tw:hover:text-utility-gray-600',
   },
   brand: {
     root: 'tw:bg-utility-brand-50 tw:text-utility-brand-700 tw:outline-utility-brand-200',
@@ -131,7 +131,7 @@ const withPillTypes = {
         root: 'tw:bg-surface tw:text-secondary tw:outline-subtle',
         addon: 'tw:text-utility-gray-500',
         addonButton:
-          'tw:hover:bg-utility-gray-100 tw:text-utility-gray-400 tw:hover:text-utility-gray-500',
+          'tw:hover:bg-utility-gray-100 tw:text-utility-gray-500 tw:hover:text-utility-gray-600',
       },
     },
   },
@@ -659,7 +659,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
         type="button"
         onClick={onButtonClick}
         onKeyDown={onButtonKeyDown}>
-        <Icon className="tw:size-3 tw:stroke-[3px] tw:transition-inherit-all" />
+        <Icon className="tw:size-4 tw:p-[0.5px] tw:transition-inherit-all" />
       </button>
     </span>
   );

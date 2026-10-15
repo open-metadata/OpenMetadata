@@ -264,14 +264,14 @@ const QueryCard: FC<QueryCardProp> = ({
               itemClassName="layout-space-item">
               <ButtonUtility
                 data-testid="query-entity-expand-button"
-                size="md"
+                size="lg"
                 onClick={handleExpandClick}
                 {...getExpandButtonProps()}
               />
               <ButtonUtility
                 data-testid="query-entity-copy-button"
                 icon={Copy01}
-                size="md"
+                size="lg"
                 tooltip={t('message.copy-to-clipboard')}
                 onClick={onCopyToClipBoard}
               />

@@ -52,7 +52,7 @@ const TopicCardControls: React.FC<TopicCardControlsProps> = ({
         with the button beside them: an inline box is sized by line-height and
         seats its icon on the baseline, which rides above the centre the row's
         `items-center` aligns to. The padding and icon size then match
-        ButtonUtility's own (`p-1.5` around a 14px icon) so the two read as a
+        ButtonUtility's own (`p-1.5` around a 20px icon frame) so the two read as a
         pair and the drag target is not a 16px sliver. */}
       <Tooltip
         excludeTriggerFromTabOrder
@@ -62,13 +62,13 @@ const TopicCardControls: React.FC<TopicCardControlsProps> = ({
           aria-hidden
           className="drag-widget-icon tw:flex tw:cursor-grab tw:items-center tw:p-1.5 tw:text-fg-quaternary"
           data-testid={`drag-widget-${widgetKey}`}>
-          <DotsGrid className="tw:size-4.5 tw:p-[0.25px]" />
+          <DotsGrid size={14} />
         </span>
       </Tooltip>
       <ButtonUtility
         data-testid={`remove-widget-${widgetKey}`}
         icon={Trash01}
-        size="md"
+        size="lg"
         tooltip={t('label.remove')}
         onClick={() => handleRemoveWidget?.(widgetKey)}
       />

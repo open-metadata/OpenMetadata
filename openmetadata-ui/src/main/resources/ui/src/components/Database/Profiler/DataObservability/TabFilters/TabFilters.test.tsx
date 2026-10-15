@@ -604,12 +604,12 @@ describe('TabFilters', () => {
       );
     });
 
-    it('should render settings button with size="md"', () => {
+    it('should render settings button with size="lg"', () => {
       renderComponent();
 
       expect(screen.getByTestId('profiler-setting-btn')).toHaveAttribute(
         'data-size',
-        'md'
+        'lg'
       );
     });
 

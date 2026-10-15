@@ -68,19 +68,22 @@ const SummaryLine = ({
   let icon = (
     <CheckCircle
       aria-hidden="true"
-      className="tw:text-utility-success-700 tw:size-5"
+      className="tw:text-utility-success-700"
+      size={16}
     />
   );
   if (!isOk) {
     icon = isWarning ? (
       <AlertTriangle
         aria-hidden="true"
-        className="tw:text-utility-warning-600 tw:size-5"
+        className="tw:text-utility-warning-600"
+        size={16}
       />
     ) : (
       <XCircle
         aria-hidden="true"
-        className="tw:text-utility-error-600 tw:size-5"
+        className="tw:text-utility-error-600"
+        size={16}
       />
     );
   }

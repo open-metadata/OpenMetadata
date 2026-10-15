@@ -343,7 +343,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
               data-testid={`restore-user-btn-${record.name}`}
               icon={RefreshCcw01}
               isDisabled={!isAdminUser}
-              size="md"
+              size="lg"
               tooltip={
                 isAdminUser
                   ? t('label.restore-entity', {
@@ -363,7 +363,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
             data-testid={`delete-user-btn-${record.name}`}
             icon={Trash01}
             isDisabled={!isAdminUser}
-            size="md"
+            size="lg"
             tooltip={
               isAdminUser
                 ? t('label.delete-entity', {

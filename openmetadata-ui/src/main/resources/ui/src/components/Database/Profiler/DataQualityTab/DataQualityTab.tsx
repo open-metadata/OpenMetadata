@@ -769,7 +769,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             data-testid={`action-dropdown-${record.name}`}
             icon={DotsVertical}
             isDisabled={!hasAnyPermission}
-            size="md"
+            size="lg"
           />
           <Dropdown.Popover className="tw:w-max">
             <Dropdown.Menu items={menuItems}>
@@ -1171,7 +1171,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                         ? 'message.no-matching-test-cases-description'
                         : 'message.no-test-cases-yet-description'
                     )}
-                    icon={<File02 className="tw:text-utility-brand-600" />}
+                    icon={<File02 className="tw:text-fg-brand-primary" />}
                     title={t(
                       hasActiveFilters
                         ? 'message.no-matching-test-cases'

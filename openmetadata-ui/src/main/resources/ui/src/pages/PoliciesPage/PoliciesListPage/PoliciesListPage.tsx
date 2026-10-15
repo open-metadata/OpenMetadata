@@ -240,7 +240,7 @@ const PoliciesListPage = () => {
               data-testid={`delete-action-${getEntityName(record)}`}
               icon={Trash01}
               isDisabled={!deletePolicyPermission}
-              size="md"
+              size="lg"
               tooltip={
                 deletePolicyPermission
                   ? t('label.delete-entity', {

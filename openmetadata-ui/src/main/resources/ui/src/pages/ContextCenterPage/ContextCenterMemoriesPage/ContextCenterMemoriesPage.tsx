@@ -905,7 +905,7 @@ const ContextCenterMemoriesPage: FC = () => {
                 features={[
                   {
                     key: 'write',
-                    icon: <MemoryIcon className="tw:text-utility-brand-600" />,
+                    icon: <MemoryIcon className="tw:text-fg-brand-primary" />,
                     title: t('label.write-the-fact'),
                     description: t(
                       'message.context-center-memories-empty-feature-write'
@@ -953,13 +953,15 @@ const ContextCenterMemoriesPage: FC = () => {
                       onClick={() => handleFilterChange(filterKey)}>
                       <ChevronRight
                         className={classNames(
-                          'tw:absolute tw:top-3 tw:right-3 tw:size-4.5 tw:p-[0.25px] tw:text-utility-brand-600 tw:transition-opacity tw:duration-150',
+                          'tw:absolute tw:top-3 tw:right-3 tw:text-fg-brand-secondary tw:transition-opacity tw:duration-150',
                           {
                             'tw:opacity-100': isActive,
                             'tw:opacity-0 tw:group-hover:opacity-100':
                               !isActive,
                           }
                         )}
+                        size={14}
+                        strokeWidth={2}
                       />
                       <Box align="center" className="tw:mb-1" gap={2}>
                         {icon}
@@ -1145,7 +1147,10 @@ const ContextCenterMemoriesPage: FC = () => {
                               )}
                               <span className="tw:flex-1">{opt.label}</span>
                               {selectedAuthor?.id === opt.id && (
-                                <Check className="tw:size-4 tw:shrink-0 tw:p-[0.5px] tw:text-utility-brand-600" />
+                                <Check
+                                  className="tw:shrink-0 tw:text-utility-brand-600"
+                                  size={18}
+                                />
                               )}
                             </Box>
                           </Dropdown.Item>

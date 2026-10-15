@@ -332,7 +332,7 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
                     color="tertiary-destructive"
                     icon={Trash01}
                     isDisabled={isFormDisabled}
-                    size="md"
+                    size="lg"
                     tooltip={t('label.remove')}
                     onClick={() => removeScoringLevel(index)}
                   />

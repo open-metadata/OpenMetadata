@@ -280,7 +280,7 @@ const UserProfileRoles = ({
                     <ButtonUtility
                       data-testid="user-profile-edit-roles-cancel-button"
                       icon={ClosePopoverIcon}
-                      size="md"
+                      size="sm"
                       tooltip={t('label.cancel')}
                       onClick={handleCloseEditRole}
                     />
@@ -288,7 +288,7 @@ const UserProfileRoles = ({
                       data-testid="user-profile-edit-roles-save-button"
                       icon={SavePopoverIcon}
                       isDisabled={isLoading}
-                      size="md"
+                      size="sm"
                       tooltip={t('label.save')}
                       onClick={handleRolesSave}
                     />

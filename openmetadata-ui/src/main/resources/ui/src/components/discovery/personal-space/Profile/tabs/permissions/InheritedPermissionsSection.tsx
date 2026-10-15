@@ -50,7 +50,7 @@ const InheritedPermissionsSection: React.FC<
           variant="muted">
           <Card.Content className="tw:flex tw:gap-3">
             <Box className="tw:h-9 tw:w-9 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-md tw:bg-utility-purple-50 tw:text-utility-purple-600">
-              <ShieldTick className="tw:size-5" />
+              <ShieldTick height={18} width={18} />
             </Box>
             <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
               <Box align="center" className="tw:flex-wrap tw:gap-2">

@@ -136,7 +136,7 @@ export const getErrorPlaceHolder = (
           theme,
           pipelineType
         )}
-        icon={<Code01 className="tw:text-utility-brand-600" />}
+        icon={<Code01 className="tw:text-fg-brand-primary" />}
         title={t('message.no-agents-set-up-yet') as string}
         variant="blank"
       />

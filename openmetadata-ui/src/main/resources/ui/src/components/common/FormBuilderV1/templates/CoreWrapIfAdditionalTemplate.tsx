@@ -62,7 +62,7 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
           className="tw:shrink-0"
           icon={Trash01}
           isDisabled={disabled || readonly}
-          size="md"
+          size="sm"
           tooltip={t('label.remove')}
           onClick={onDropPropertyClick(label)}
         />

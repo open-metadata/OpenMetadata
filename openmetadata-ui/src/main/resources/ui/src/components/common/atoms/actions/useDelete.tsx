@@ -171,7 +171,7 @@ export const useDelete = <
           data-testid="delete-selected"
           icon={Trash01}
           isDisabled={selectedEntities.length === 0}
-          size="md"
+          size="lg"
           tooltip={t('label.delete')}
           onClick={openModal}
         />

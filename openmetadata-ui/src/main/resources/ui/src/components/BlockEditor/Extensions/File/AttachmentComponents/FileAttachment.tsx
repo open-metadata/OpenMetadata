@@ -138,7 +138,7 @@ const FileAttachment = ({
         <ButtonUtility
           data-testid="delete-icon"
           icon={Trash01}
-          size="md"
+          size="lg"
           tooltip={t('label.delete')}
           onClick={(e: React.MouseEvent) => {
             e.preventDefault();

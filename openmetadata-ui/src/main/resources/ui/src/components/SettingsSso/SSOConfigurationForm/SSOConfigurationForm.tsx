@@ -80,9 +80,9 @@ const MetadataUploadStatusCard = ({
             }
           )}>
           {isSuccess ? (
-            <Check className="tw:text-fg-white tw:shrink-0 tw:size-5" />
+            <Check className="tw:text-fg-white tw:shrink-0" size={16} />
           ) : (
-            <XClose className="tw:text-fg-white tw:shrink-0 tw:size-5" />
+            <XClose className="tw:text-fg-white tw:shrink-0" size={16} />
           )}
         </div>
         <Typography className="text-grey-body text-sm font-medium">

@@ -94,7 +94,7 @@ export const DataAssetFiltersSection: React.FC<
                   <ButtonUtility
                     icon={XClose}
                     isDisabled={isDisabled}
-                    size="md"
+                    size="sm"
                     tooltip={t('label.remove')}
                     onClick={() => onRemoveDataAssetFilter(dataAssetFilter.id)}
                   />

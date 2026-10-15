@@ -506,7 +506,7 @@ const ContextCenterDashboardPage: FC = () => {
                 features={[
                   {
                     key: 'add-knowledge',
-                    icon: <FileIcon className="tw:text-utility-brand-600" />,
+                    icon: <FileIcon className="tw:text-fg-brand-primary" />,
                     title: t('label.add-knowledge'),
                     description: t(
                       'message.context-center-dashboard-empty-feature-add-knowledge'

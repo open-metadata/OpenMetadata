@@ -219,7 +219,7 @@ const ActivityFeedActions = ({
               className="toolbar-button"
               data-testid="add-reply"
               icon={IconReply}
-              size="xs"
+              size="lg"
               tooltip={t('label.reply')}
               onClick={onReply}
             />
@@ -230,7 +230,7 @@ const ActivityFeedActions = ({
               className="toolbar-button"
               data-testid="toggle-resolved"
               icon={ResolveIcon}
-              size="xs"
+              size="lg"
               tooltip={
                 conversation?.resolved ? t('label.open') : t('label.resolve')
               }
@@ -243,7 +243,7 @@ const ActivityFeedActions = ({
               className="toolbar-button"
               data-testid="edit-message"
               icon={Edit01}
-              size="xs"
+              size="lg"
               tooltip={t('label.edit')}
               onClick={onEditPost}
             />
@@ -254,7 +254,7 @@ const ActivityFeedActions = ({
               className="toolbar-button"
               data-testid="delete-message"
               icon={Trash01}
-              size="xs"
+              size="lg"
               tooltip={t('label.delete')}
               onClick={() => setShowDeleteDialog(true)}
             />

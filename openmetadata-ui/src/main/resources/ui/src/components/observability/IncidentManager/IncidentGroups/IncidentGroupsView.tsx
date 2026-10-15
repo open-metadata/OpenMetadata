@@ -301,7 +301,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
           data-testid="incident-groups-empty">
           <EmptyPlaceholder
             description={t('message.no-active-incidents-description')}
-            icon={<ShieldTick className="tw:text-utility-brand-600" />}
+            icon={<ShieldTick className="tw:text-fg-brand-primary" />}
             title={t('message.no-active-incidents')}
             variant="blank"
           />

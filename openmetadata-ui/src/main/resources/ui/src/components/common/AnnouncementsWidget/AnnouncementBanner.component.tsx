@@ -258,7 +258,7 @@ const AnnouncementActions = ({
           className={actionClassName}
           data-testid="announcement-dismiss-btn"
           icon={XClose}
-          size="xs"
+          size="sm"
           tooltip={t('label.close')}
           onClick={stopAnd(onDismiss)}
         />

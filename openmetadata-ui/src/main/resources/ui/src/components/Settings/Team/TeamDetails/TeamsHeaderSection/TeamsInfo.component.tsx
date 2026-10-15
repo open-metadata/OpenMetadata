@@ -473,8 +473,9 @@ const TeamsInfo = ({
             title={t('message.team-distinct-user-description')}
             triggerClassName="tw:inline-flex">
             <InfoCircle
-              className="tw:mx-1 tw:shrink-0 tw:text-quaternary tw:size-4.5 tw:p-[0.25px]"
+              className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
               data-testid="helper-icon"
+              size={14}
             />
           </Tooltip>
         </Typography>

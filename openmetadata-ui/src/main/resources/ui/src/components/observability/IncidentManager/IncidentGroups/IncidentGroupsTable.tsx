@@ -298,7 +298,7 @@ const IncidentGroupsTable = ({
           <ButtonUtility
             data-testid={`group-open-${rowId}`}
             icon={ChevronRight}
-            size="md"
+            size="xs"
             tooltip={t('label.view-entity', { entity: groupName })}
             onClick={() => onGroupOpen(group)}
           />

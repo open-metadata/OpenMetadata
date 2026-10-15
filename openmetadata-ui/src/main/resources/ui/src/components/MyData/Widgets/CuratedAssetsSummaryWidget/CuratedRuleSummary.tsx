@@ -59,7 +59,9 @@ const CuratedRuleSummary: React.FC<CuratedRuleSummaryProps> = ({ clauses }) => {
       <div className="tw:mt-2 tw:flex tw:items-center tw:gap-1.5">
         <Lock01
           aria-hidden
-          className="tw:shrink-0 tw:text-text-tertiary tw:size-4 tw:p-[0.5px]"
+          className="tw:shrink-0 tw:text-text-tertiary"
+          height={12}
+          width={12}
         />
         <Typography className="tw:text-text-tertiary!" size="text-xs">
           {t('message.set-in-persona-settings')}

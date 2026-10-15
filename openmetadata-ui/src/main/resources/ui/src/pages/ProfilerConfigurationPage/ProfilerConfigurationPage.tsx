@@ -276,7 +276,7 @@ const ProfilerConfigurationPage = () => {
                                 <ButtonUtility
                                   data-testid={`remove-filter-${index}`}
                                   icon={XClose}
-                                  size="md"
+                                  size="lg"
                                   tooltip={t('label.remove-entity', {
                                     entity: t('label.field'),
                                   })}

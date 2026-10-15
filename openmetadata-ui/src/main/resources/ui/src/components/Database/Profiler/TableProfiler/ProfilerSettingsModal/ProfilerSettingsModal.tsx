@@ -506,7 +506,7 @@ const ProfilerSettingsModal = ({
               </Typography>
               <ButtonUtility
                 icon={Plus}
-                size="xs"
+                size="sm"
                 tooltip={t('label.add-entity', {
                   entity: t('label.column'),
                 })}
@@ -552,7 +552,7 @@ const ProfilerSettingsModal = ({
                       </Box>
                       <ButtonUtility
                         icon={Trash01}
-                        size="xs"
+                        size="sm"
                         tooltip={t('label.remove-entity', {
                           entity: t('label.column'),
                         })}
@@ -678,7 +678,7 @@ const ProfilerSettingsModal = ({
                 </Typography>
                 <ButtonUtility
                   icon={Plus}
-                  size="xs"
+                  size="sm"
                   tooltip={t('label.add-entity', {
                     entity: t('label.value'),
                   })}
@@ -709,7 +709,7 @@ const ProfilerSettingsModal = ({
                   </Box>
                   <ButtonUtility
                     icon={Trash01}
-                    size="xs"
+                    size="sm"
                     tooltip={t('label.remove-entity', {
                       entity: t('label.value'),
                     })}

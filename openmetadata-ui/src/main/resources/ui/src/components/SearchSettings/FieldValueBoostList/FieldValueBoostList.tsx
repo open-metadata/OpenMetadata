@@ -96,7 +96,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
             <ButtonUtility
               data-testid="edit-field-value-boost-btn"
               icon={Edit01}
-              size="md"
+              size="lg"
               tooltip={t('label.edit-entity', {
                 entity: t('label.field-value-boost'),
               })}
@@ -105,7 +105,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
             <ButtonUtility
               data-testid="delete-field-value-boost-btn"
               icon={Trash01}
-              size="md"
+              size="lg"
               tooltip={t('label.delete-entity', {
                 entity: t('label.field-value-boost'),
               })}

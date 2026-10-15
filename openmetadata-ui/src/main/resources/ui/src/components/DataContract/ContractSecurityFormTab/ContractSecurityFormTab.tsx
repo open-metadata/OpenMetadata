@@ -212,7 +212,7 @@ const ContractPolicyCard = ({
               <ButtonUtility
                 className="tw:mt-6.5"
                 icon={XClose}
-                size="md"
+                size="lg"
                 tooltip={t('label.remove')}
                 onClick={() => removeRowFilter(rowFilterIndex)}
               />
@@ -253,14 +253,14 @@ const ContractPolicyCard = ({
               <ButtonUtility
                 data-testid={`edit-policy-${policyIndex}`}
                 icon={Edit01}
-                size="md"
+                size="lg"
                 onClick={() => onEdit(policyIndex)}
               />
               <ButtonUtility
                 color="tertiary-destructive"
                 data-testid={`delete-policy-${policyIndex}`}
                 icon={Trash01}
-                size="md"
+                size="lg"
                 tooltip={t('label.delete')}
                 onClick={() => onDelete(policyIndex)}
               />

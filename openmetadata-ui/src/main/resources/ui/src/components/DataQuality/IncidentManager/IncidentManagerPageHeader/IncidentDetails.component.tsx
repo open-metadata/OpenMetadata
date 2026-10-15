@@ -60,11 +60,9 @@ const IncidentDetails = ({
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3">
         <AlertTriangle
           aria-hidden="true"
-          className={classNames(
-            'tw:size-5 tw:shrink-0',
-            config.statusClassName
-          )}
+          className={classNames('tw:shrink-0', config.statusClassName)}
           data-testid="test-case-incident-icon"
+          size={20}
         />
         <div
           className="tw:flex tw:min-w-0 tw:items-baseline tw:gap-2"

@@ -134,7 +134,7 @@ const FolderRowContent = ({
               className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100"
               data-testid={`delete-folder-btn-${folder.id}`}
               icon={Trash01}
-              size="md"
+              size="lg"
               tooltip={t('label.delete')}
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
@@ -610,9 +610,9 @@ const DocumentFolderView = (
           <div className="tw:flex tw:items-center tw:gap-3">
             <div className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-3')}>
               <FolderIcon
-                className="tw:text-fg-quaternary"
-                height={20}
-                width={20}
+                className="tw:text-quaternary tw:shrink-0"
+                height={14}
+                width={14}
               />
             </div>
             <div>

@@ -42,7 +42,7 @@ const WidgetMoreOptions = ({
         className={className}
         data-testid="more-options-button"
         icon={DotsVertical}
-        size="md"
+        size="lg"
       />
       <Dropdown.Popover className="tw:w-42" placement="bottom start">
         <Dropdown.Menu

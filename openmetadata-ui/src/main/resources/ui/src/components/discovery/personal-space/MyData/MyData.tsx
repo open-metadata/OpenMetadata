@@ -356,14 +356,14 @@ const MyDataPage: React.FC = () => {
                 value: assetStats.pipelines,
               },
             ]}
-            icon={<Star04 data-icon className="" />}
+            icon={<Star04 data-icon className="tw:stroke-[1.2px]" />}
             label={t('label.asset-owned-plural')}
             loading={isStatsLoading}
             testId="stat-card-assets-owned"
             value={assetStats.total}
           />
           <StatCard
-            icon={<HeartRounded data-icon className="" />}
+            icon={<HeartRounded data-icon className="tw:stroke-[1.2px]" />}
             label={t('label.data-health-score')}
             loading={isStatsLoading}
             subtitle={t('label.asset-require-attention-count', {
@@ -373,7 +373,7 @@ const MyDataPage: React.FC = () => {
             value={dataHealthScore}
           />
           <StatCard
-            icon={<AlertTriangle data-icon className="" />}
+            icon={<AlertTriangle data-icon className="tw:stroke-[1.2px]" />}
             label={t('label.open-incidents')}
             loading={isStatsLoading}
             subtitle={t('label.severity-incidents-open', {
@@ -383,7 +383,7 @@ const MyDataPage: React.FC = () => {
             value={openIncidentsCount}
           />
           <StatCard
-            icon={<CodeSquare02 data-icon className="" />}
+            icon={<CodeSquare02 data-icon className="tw:stroke-[1.2px]" />}
             label={t('label.queries')}
             loading={isStatsLoading}
             subtitle={mostViewedSubtitle}

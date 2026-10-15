@@ -96,7 +96,7 @@ const WorkflowsPage = () => {
     () => [
       {
         key: 'trigger',
-        icon: <ZapFast className="tw:text-utility-brand-600" />,
+        icon: <ZapFast className="tw:text-fg-brand-primary" />,
         title: t('label.pick-a-trigger'),
         description: t('message.pick-a-trigger-description'),
       },

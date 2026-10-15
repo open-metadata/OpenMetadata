@@ -196,7 +196,7 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
           <CreatePlaceholder
             data-testid="intake-forms-empty"
             description={t('message.no-intake-form-yet-description')}
-            icon={<Building01 className="tw:text-utility-brand-600" />}
+            icon={<Building01 className="tw:text-fg-brand-primary" />}
             title={t('message.no-intake-form-yet')}
           />
         </div>

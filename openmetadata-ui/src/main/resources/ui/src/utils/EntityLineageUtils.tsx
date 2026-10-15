@@ -37,9 +37,7 @@ export const getLoadingStatusValue = (
   if (loading) {
     return <Loader className="text-primary" size="small" />;
   } else if (status === 'success') {
-    return (
-      <Check className="tw:text-brand-secondary tw:shrink-0 tw:size-4.5 tw:p-[0.25px]" />
-    );
+    return <Check className="tw:text-brand-secondary tw:shrink-0" size={14} />;
   } else {
     return defaultState;
   }

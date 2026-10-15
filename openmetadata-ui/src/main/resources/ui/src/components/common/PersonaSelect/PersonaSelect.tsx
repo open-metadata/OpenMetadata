@@ -53,7 +53,7 @@ const withPersonaIcon = (
 ): TreeSelectNode<EntityReference>[] =>
   nodes.map((node) => ({
     ...node,
-    icon: <PersonaIcon className="tw:size-5" />,
+    icon: <PersonaIcon height={16} width={16} />,
   }));
 
 /**

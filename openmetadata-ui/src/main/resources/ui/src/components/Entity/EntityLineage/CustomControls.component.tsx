@@ -432,7 +432,7 @@ const CustomControls: FC<{
         data-testid="edit-lineage"
         icon={Edit01}
         isDisabled={isLayerBand}
-        size="md"
+        size="lg"
         tooltip={isLayerBand ? t('label.zoom-in') : editLabel}
         onClick={toggleEditMode}
       />
@@ -457,7 +457,7 @@ const CustomControls: FC<{
       <ButtonUtility
         data-testid="lineage-config"
         icon={SettingsOutlined}
-        size="md"
+        size="lg"
         onClick={handleSettingsClick}
       />
     );
@@ -586,7 +586,7 @@ const CustomControls: FC<{
             })}
             data-testid="filters-button"
             icon={FilterLinesIcon}
-            size="md"
+            size="lg"
             tooltip={t('label.filter-plural')}
             onClick={toggleFilterSelection}
           />
@@ -607,14 +607,14 @@ const CustomControls: FC<{
             data-testid="export-button"
             icon={DownloadIcon}
             isDisabled={isEditMode}
-            size="md"
+            size="lg"
             tooltip={exportButtonLabel}
             onClick={handleExportClick}
           />
           {settingsButton}
           <ButtonUtility
             icon={fullScreenIcon}
-            size="md"
+            size="lg"
             tooltip={fullScreenLabel}
             onClick={() =>
               updateURLParams({

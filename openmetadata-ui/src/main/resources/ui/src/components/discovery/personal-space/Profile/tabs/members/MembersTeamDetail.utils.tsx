@@ -252,7 +252,7 @@ export const getUserColumns = (
             <ButtonUtility
               data-testid={`remove-user-${record.name}`}
               icon={Trash01}
-              size="md"
+              size="lg"
               tooltip={t('label.remove')}
               tooltipPlacement="left"
               onClick={() => onRemoveUser(record)}
@@ -307,7 +307,7 @@ export const getEntityRefColumns = (
               data-testid={`remove-${getEntityName(record)}`}
               icon={Trash01}
               isDisabled={isSavingInline}
-              size="md"
+              size="lg"
               tooltip={t('label.remove')}
               tooltipPlacement="left"
               onClick={() => onRemove(record)}

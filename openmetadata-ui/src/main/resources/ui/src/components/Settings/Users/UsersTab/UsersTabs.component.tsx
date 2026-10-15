@@ -98,7 +98,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
             <ButtonUtility
               data-testid="remove-user-btn"
               icon={IconRemove}
-              size="md"
+              size="lg"
               tooltip={t('label.remove-entity', {
                 entity: t('label.user'),
               })}

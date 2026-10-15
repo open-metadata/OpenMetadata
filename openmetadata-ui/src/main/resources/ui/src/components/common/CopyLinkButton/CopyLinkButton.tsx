@@ -48,7 +48,7 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
       data-testid={testId}
       icon={Copy01}
       isDisabled={!fieldFqn}
-      size="md"
+      size="lg"
       tooltip={
         hasCopied
           ? t('message.link-copy-to-clipboard')

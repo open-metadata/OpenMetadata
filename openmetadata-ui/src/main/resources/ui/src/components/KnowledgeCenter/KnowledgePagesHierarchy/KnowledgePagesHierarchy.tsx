@@ -758,7 +758,7 @@ const KnowledgePagesHierarchy = forwardRef<
             className="tw:opacity-0 group-hover-opacity-100"
             data-testid={`${displayName}-delete-page-btn`}
             icon={Trash01}
-            size="md"
+            size="lg"
             tooltip={t('label.delete')}
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();

@@ -298,7 +298,7 @@ const AssetsFilterBar = ({
           <ButtonUtility
             data-testid="asset-filter-button"
             icon={FilterLines}
-            size="md"
+            size="lg"
             tooltip={t('label.filter-plural')}
           />
           <Dropdown.Popover className="tw:w-auto" placement="bottom start">

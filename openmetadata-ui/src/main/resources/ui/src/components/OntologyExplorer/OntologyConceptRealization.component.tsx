@@ -247,7 +247,7 @@ export const OntologyConceptRealization: React.FC<
             data-testid={`remove-realization-${realization.asset.name}`}
             icon={XClose}
             isDisabled={isSaving}
-            size="xs"
+            size="sm"
             tooltip={t('label.remove')}
             onClick={() => handleRemove(realization.asset.id)}
           />

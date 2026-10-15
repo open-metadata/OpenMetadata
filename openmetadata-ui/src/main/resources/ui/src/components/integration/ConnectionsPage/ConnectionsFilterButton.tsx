@@ -258,7 +258,8 @@ export const ConnectionsFilterButton: React.FC<ConnectionsFilterButtonProps> = (
                     {state.isSelected && (
                       <Check
                         aria-hidden="true"
-                        className="tw:size-4 tw:shrink-0 tw:p-[0.5px] tw:text-utility-brand-600"
+                        className="tw:shrink-0 tw:text-utility-brand-600"
+                        size={16}
                       />
                     )}
                   </div>

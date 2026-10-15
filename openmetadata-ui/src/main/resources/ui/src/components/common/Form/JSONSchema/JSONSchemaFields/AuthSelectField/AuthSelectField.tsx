@@ -320,7 +320,7 @@ const AuthSelectField = (props: FieldProps) => {
         <div
           className="tw:flex tw:items-center tw:gap-1.5"
           data-testid="auth-affirmation">
-          <InfoCircle className="tw:text-fg-quaternary tw:size-4.5 tw:p-[0.25px]" />
+          <InfoCircle className="tw:text-fg-quaternary" size={14} />
           <Typography as="span" className="tw:text-tertiary" size="text-xs">
             <Transi18next
               i18nKey="message.auth-single-credential-stored"

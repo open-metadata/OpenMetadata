@@ -401,7 +401,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
             data-testid={`delete-action-${getEntityName(role)}`}
             icon={Trash01}
             isDisabled={!deleteRolePermission}
-            size="md"
+            size="lg"
             tooltip={
               deleteRolePermission
                 ? t('label.delete-entity', { entity: t('label.role') })

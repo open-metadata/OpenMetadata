@@ -510,7 +510,7 @@ const ContextCenterArticlesPage = () => {
         features={[
           {
             key: 'create',
-            icon: <FileIcon className="tw:text-utility-brand-600" />,
+            icon: <FileIcon className="tw:text-fg-brand-primary" />,
             title: t('label.create-an-article'),
             description: t(
               'message.context-center-articles-empty-feature-create'

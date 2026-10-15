@@ -261,7 +261,7 @@ const MarketplaceDomainsWidget = ({
             }
             data-testid="marketplace-domains-empty-state"
             description={t('label.no-domains-yet-description')}
-            icon={<Globe01 className="tw:text-utility-brand-600" />}
+            icon={<Globe01 className="tw:text-fg-brand-primary" />}
             title={t('label.no-domains-yet')}
           />
         </div>

@@ -455,7 +455,7 @@ const EdgeInfoDrawer = ({
                   triggerClassName="tw:flex tw:items-center tw:gap-2">
                   <span className="tw:flex tw:items-center tw:gap-2">
                     <span className="tw:flex">
-                      <GitMerge className="tw:size-5" />
+                      <GitMerge height={16} width={16} />
                     </span>
                     <Typography
                       className="tw:block tw:text-[15px] tw:leading-[1.5715] tw:font-semibold tw:text-utility-gray-800"

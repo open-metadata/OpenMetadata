@@ -132,7 +132,7 @@ const WidgetHeader = ({
                 data-testid="edit-widget-button"
                 icon={Edit01}
                 isDisabled={disableEdit}
-                size="md"
+                size="lg"
                 onPress={onEditClick}
               />
             )}

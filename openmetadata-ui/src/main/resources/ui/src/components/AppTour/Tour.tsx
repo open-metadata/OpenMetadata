@@ -72,7 +72,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
               <ButtonUtility
                 data-testid="last-step-button"
                 icon={ArrowRight}
-                size="md"
+                size="lg"
                 tooltip={t('label.next')}
                 onClick={() => setShowTourEndModal(true)}
               />

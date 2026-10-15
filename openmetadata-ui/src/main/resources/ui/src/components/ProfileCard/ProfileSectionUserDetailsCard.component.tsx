@@ -256,7 +256,7 @@ const ProfileSectionUserDetailsCard = ({
             className="user-details-menu-icon"
             data-testid="user-profile-manage-btn"
             icon={MenuDots}
-            size="md"
+            size="lg"
             tooltip={t('label.manage-entity', {
               entity: t('label.profile'),
             })}
@@ -328,7 +328,7 @@ const ProfileSectionUserDetailsCard = ({
         <span
           className="user-profile-deleted-badge"
           data-testid="deleted-badge">
-          <Trash01 className="tw:mr-1 tw:size-4 tw:shrink-0 tw:p-[0.5px]" />
+          <Trash01 className="tw:mr-1 tw:shrink-0" size={16} />
 
           {t('label.deleted')}
         </span>

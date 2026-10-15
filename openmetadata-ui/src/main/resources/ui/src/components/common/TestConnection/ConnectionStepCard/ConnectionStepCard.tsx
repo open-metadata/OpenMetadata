@@ -226,7 +226,7 @@ const ConnectionStepCard = ({
                   <ButtonUtility
                     data-testid="query-entity-copy-button"
                     icon={Copy01}
-                    size="md"
+                    size="lg"
                     tooltip={t('message.copy-to-clipboard')}
                     onClick={() => onCopyToClipBoard()}
                   />

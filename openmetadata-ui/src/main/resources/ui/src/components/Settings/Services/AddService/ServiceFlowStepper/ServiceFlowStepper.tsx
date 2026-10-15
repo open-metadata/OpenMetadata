@@ -52,7 +52,7 @@ const StepNode = ({ state }: { state: StepState }) => {
   const nodeByState: Record<StepState, ReactElement> = {
     completed: (
       <span className={classNames(NODE_BASE, 'tw:bg-brand-solid')}>
-        <Check className="tw:text-primary_on-brand tw:size-4.5 tw:p-[0.25px]" />
+        <Check className="tw:text-primary_on-brand" size={14} />
       </span>
     ),
     current: (

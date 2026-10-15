@@ -162,7 +162,7 @@ const TableMenu = (props: TableMenuProps) => {
         <ButtonUtility
           data-testid="Add row after current row"
           icon={IconAddRowAfter}
-          size="md"
+          size="lg"
           tooltip="Add row after current row"
           onClick={() => editor.chain().focus().addRowAfter().run()}
         />
@@ -170,7 +170,7 @@ const TableMenu = (props: TableMenuProps) => {
         <ButtonUtility
           data-testid="Add column after current column"
           icon={IconAddColumnAfter}
-          size="md"
+          size="lg"
           tooltip="Add column after current column"
           onClick={() => editor.chain().focus().addColumnAfter().run()}
         />
@@ -178,7 +178,7 @@ const TableMenu = (props: TableMenuProps) => {
         <ButtonUtility
           data-testid="Delete current row"
           icon={IconDeleteRow}
-          size="md"
+          size="lg"
           tooltip="Delete current row"
           onClick={() => editor.chain().focus().deleteRow().run()}
         />
@@ -186,7 +186,7 @@ const TableMenu = (props: TableMenuProps) => {
         <ButtonUtility
           data-testid="Delete current col"
           icon={IconDeleteColumn}
-          size="md"
+          size="lg"
           tooltip="Delete current column"
           onClick={() => editor.chain().focus().deleteColumn().run()}
         />
@@ -194,7 +194,7 @@ const TableMenu = (props: TableMenuProps) => {
         <ButtonUtility
           data-testid="Delete table"
           icon={Trash01}
-          size="md"
+          size="lg"
           tooltip="Delete table"
           onClick={() => {
             editor.chain().focus().deleteTable().run();

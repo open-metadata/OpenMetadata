@@ -25,7 +25,7 @@ const DataAssetPickerFooter: FC = () => {
       gap={2}>
       <Box align="center" gap={1}>
         <Badge size="xs" type="color">
-          <CornerDownLeft className="tw:text-tertiary tw:size-4 tw:p-[0.5px]" />
+          <CornerDownLeft className="tw:text-tertiary" size={12} />
         </Badge>
         <Typography className="tw:text-tertiary" size="text-xs">
           {t('label.select-lowercase')}

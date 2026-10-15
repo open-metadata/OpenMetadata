@@ -84,7 +84,7 @@ const TaskCommentActions = ({
         <ButtonUtility
           data-testid="edit-task-comment"
           icon={Edit01}
-          size="md"
+          size="lg"
           tooltip={t('label.edit')}
           onClick={onEditRequest}
         />
@@ -93,7 +93,7 @@ const TaskCommentActions = ({
         <ButtonUtility
           data-testid="delete-task-comment"
           icon={DeleteIcon}
-          size="md"
+          size="lg"
           tooltip={t('label.delete')}
           onClick={onDeleteRequest}
         />

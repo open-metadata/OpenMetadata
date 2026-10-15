@@ -281,7 +281,7 @@ const PoliciesDetailPage = () => {
           <ButtonUtility
             data-testid={`manage-button-${rule.name}`}
             icon={DotsVertical}
-            size="md"
+            size="lg"
             tooltip={t('label.manage-entity', {
               entity: t('label.rule'),
             })}

@@ -790,7 +790,7 @@ const MetricListPage = () => {
         size="sm"
         onPress={() => toggleGroup(row.id)}>
         <span className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:bg-utility-purple-50 tw:text-utility-purple-700">
-          <Package aria-hidden="true" className="tw:size-5" />
+          <Package aria-hidden="true" size={20} />
         </span>
         <Box align="baseline" className="tw:min-w-0 tw:flex-1" gap={2}>
           <Typography
@@ -1124,7 +1124,7 @@ const MetricListPage = () => {
                     {
                       key: 'define',
                       icon: (
-                        <FileCheck03 className="tw:text-utility-brand-600" />
+                        <FileCheck03 className="tw:text-fg-brand-primary" />
                       ),
                       title: t('label.define-it'),
                       description: t('message.metric-define-it-description'),
