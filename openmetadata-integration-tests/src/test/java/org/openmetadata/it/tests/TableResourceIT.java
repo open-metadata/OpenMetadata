@@ -43,6 +43,7 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.EntityRulesUtil;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -7204,6 +7205,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     client.databases().update(fetchedDb.getId().toString(), fetchedDb);
 
     String tableId = table.getId().toString();
+    QueuedSearchWrites.await();
     Awaitility.await("Table search index should reflect inherited owner from database")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -7411,6 +7413,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     String tableId = table.getId().toString();
 
+    QueuedSearchWrites.await();
     Awaitility.await("Table search index should have inherited owner before removal")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -7437,6 +7440,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     fetchedDb.setOwners(List.of());
     client.databases().update(fetchedDb.getId().toString(), fetchedDb);
 
+    QueuedSearchWrites.await();
     Awaitility.await("Table search index should reflect owner removal from database")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))

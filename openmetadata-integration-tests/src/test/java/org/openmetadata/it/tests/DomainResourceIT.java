@@ -34,6 +34,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.VoteRequest;
@@ -2010,6 +2011,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             patch,
             RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
 
+    QueuedSearchWrites.await();
     Awaitility.await("after schema domain change A -> B")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))

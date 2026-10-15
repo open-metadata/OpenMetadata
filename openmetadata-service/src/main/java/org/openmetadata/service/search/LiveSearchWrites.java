@@ -68,7 +68,7 @@ public final class LiveSearchWrites implements AutoCloseable {
     this.repository = repository;
     this.clock = clock;
     this.lanes = new OrderedLaneExecutor(LiveSearchWrites::retryLater);
-    this.fanOuts = new OrderedLaneExecutor(LiveSearchWrites::retryLater);
+    this.fanOuts = OrderedLaneExecutor.forWaitingTasks(LiveSearchWrites::retryLater);
   }
 
   public void createEntityIndex(final EntityInterface<?> entity) {
