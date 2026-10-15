@@ -590,7 +590,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsCollateAgentLoading(true);
         // AutoPilot creates at most one automation per template, so the list is
         // bounded and served in a single unpaginated fetch.
-        const { data } = await getAiAutomationsByService(decodedServiceFQN);
+        const { data } = await getAiAutomationsByService(
+          decodedServiceFQN,
+          getEntityTypeFromServiceCategory(serviceCategory)
+        );
 
         setCollateAgentsList(data);
         handleCollateAgentPagingChange({ total: data.length });
@@ -600,7 +603,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsCollateAgentLoading(false);
       }
     },
-    [decodedServiceFQN, handleCollateAgentPagingChange, deleted]
+    [
+      decodedServiceFQN,
+      serviceCategory,
+      handleCollateAgentPagingChange,
+      deleted,
+    ]
   );
 
   const getAllIngestionWorkflows = useCallback(

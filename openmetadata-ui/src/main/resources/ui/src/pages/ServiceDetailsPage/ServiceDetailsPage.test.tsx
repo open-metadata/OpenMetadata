@@ -1713,7 +1713,10 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'database'
+        );
       });
     });
 
@@ -1728,7 +1731,10 @@ describe('ServiceDetailsPage', () => {
       // AutoPilot creates at most one automation per template, so the list is
       // requested in a single unpaginated call scoped to the service.
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'database'
+        );
       });
 
       expect(getAiAutomationsByService).toHaveBeenCalledTimes(1);
@@ -1759,7 +1765,10 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'database'
+        );
       });
     });
 
@@ -1788,7 +1797,10 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'database'
+        );
       });
     });
   });

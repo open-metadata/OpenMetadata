@@ -284,9 +284,7 @@ describe('Ingestion', () => {
       .spyOn(serviceUtilClassBase, 'getAgentsTabWidgets')
       .mockReturnValue({
         CollateAIAgentsWidget: () => null,
-      } as unknown as ReturnType<
-        typeof serviceUtilClassBase.getAgentsTabWidgets
-      >);
+      } as unknown as ReturnType<typeof serviceUtilClassBase.getAgentsTabWidgets>);
 
     try {
       render(
