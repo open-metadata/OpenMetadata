@@ -101,7 +101,6 @@ import org.openmetadata.service.config.source.SettingsChangeAnnouncer;
 import org.openmetadata.service.config.source.SettingsChangeWatcher;
 import org.openmetadata.service.config.source.SettingsSecrets;
 import org.openmetadata.service.config.source.SettingsWriteGuard;
-import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -114,6 +113,7 @@ import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO.SecuritySettings
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
+import org.openmetadata.service.monitoring.ServicesStatusJobHandler;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftState;
