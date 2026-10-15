@@ -387,8 +387,16 @@ export const setUserDefaultPersona = async (
 
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
-  // Click on the persona option by text within the dropdown
-  await page.click(`.ant-select-dropdown:visible [title="${personaName}"]`);
+  const personaSelect = page.getByTestId('default-persona-select-list');
+  const currentDefault = personaSelect.getByTestId(
+    'autocomplete-selected-item'
+  );
+  // Single select: an existing default is removed before picking another.
+  if ((await currentDefault.count()) > 0) {
+    await currentDefault.getByRole('button').click();
+  }
+  await personaSelect.getByRole('combobox').click();
+  await page.getByRole('option', { name: personaName }).click();
 
   await page
     .locator('[data-testid="user-profile-default-persona-edit-save"]')
@@ -575,7 +583,7 @@ export const selectAssetTypes = async (
   assetTypes: string[] | 'all'
 ) => {
   const field = page.getByTestId('asset-type-select');
-  const search = field.getByRole('textbox');
+  const search = field.getByRole('combobox');
   await field.click();
   const tree = page.getByTestId('asset-type-select-popover');
   await expect(tree.getByTestId('tree-node-all')).toBeVisible();

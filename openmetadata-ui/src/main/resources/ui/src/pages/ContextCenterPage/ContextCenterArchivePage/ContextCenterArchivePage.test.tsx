@@ -46,7 +46,7 @@ jest.mock('../../../rest/assetAPI', () => ({
 
 jest.mock('../../../utils/ContextCenterClassBase', () => ({
   __esModule: true,
-  default: { getContainerClassName: jest.fn().mockReturnValue('') },
+  default: { getPageContainerClassName: jest.fn().mockReturnValue('') },
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({

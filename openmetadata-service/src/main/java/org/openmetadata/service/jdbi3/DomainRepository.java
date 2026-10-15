@@ -65,6 +65,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.QueryFilterBuilder;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -559,6 +560,38 @@ public class DomainRepository extends EntityRepository<Domain> {
         reindexDetachedDataProducts(context);
       }
     }
+  }
+
+  // Evicts users' cached selections once the delete has committed (cleanup() drops their
+  // DEFAULTS_TO
+  // rows after deleteChildren), so a concurrent read can't re-cache a deleted domain.
+  @Override
+  protected DeleteLifecycle beginDeleteLifecycle(Domain domain, String deletedBy) {
+    // A sub-domain deleted through its parent's cascade is covered by the parent's lifecycle
+    List<String> usersToEvict =
+        domainHardDeleteSubtree.get() == null ? usersDefaultingToSubtree(domain) : List.of();
+    DeleteLifecycle parentLifecycle = super.beginDeleteLifecycle(domain, deletedBy);
+    if (usersToEvict.isEmpty()) {
+      return parentLifecycle;
+    }
+    return () -> {
+      try (parentLifecycle) {
+        usersToEvict.forEach(
+            user ->
+                UserRepository.evictNowAndAfterCommit(
+                    () -> SubjectCache.invalidateUserContext(user)));
+      }
+    };
+  }
+
+  private List<String> usersDefaultingToSubtree(Domain domain) {
+    String fqnHash = FullyQualifiedName.buildHash(domain.getFullyQualifiedName());
+    List<UUID> subtreeIds =
+        daoCollection.domainDAO().listSubtreeIds(fqnHash, fqnHash + Entity.SEPARATOR + "%").stream()
+            .map(UUID::fromString)
+            .toList();
+    return ((UserRepository) Entity.getEntityRepository(Entity.USER))
+        .listUsersDefaultingTo(subtreeIds);
   }
 
   @Override

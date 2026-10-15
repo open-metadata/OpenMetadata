@@ -233,7 +233,7 @@ const ContextCenterArchivePage: FC = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden tw:bg-canvas ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName()}`}
       data-testid="context-center-archive-page">
       <DocumentTitle title={t('label.archive')} />
       <PageLayout

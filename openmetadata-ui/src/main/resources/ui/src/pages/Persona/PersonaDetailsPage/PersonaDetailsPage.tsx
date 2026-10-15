@@ -19,7 +19,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { User03 } from '@openmetadata/ui-core-components/icons';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -30,6 +29,7 @@ import { ReactComponent as CheckCircleOutlined } from '../../../assets/svg/compl
 import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/ic-close-circle.svg';
 import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
+import { ManageMenuItem as ItemType } from '../../../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';

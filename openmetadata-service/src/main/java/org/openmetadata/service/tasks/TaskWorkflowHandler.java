@@ -49,9 +49,10 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.TaskStateConflictException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -409,8 +410,11 @@ public class TaskWorkflowHandler {
       addResolutionComment(task, taskRepository, newValue, user);
     }
 
-    // Only positive resolutions should mutate the target entity.
-    if (approved && task.getAbout() != null) {
+    // A memory conflict review decides on rejection too, and a refused decision must fail the
+    // resolution. Other types mutate the target entity only on positive resolutions.
+    if (MemoryConflictResolution.decides(task)) {
+      MemoryConflictResolution.decide(task, resolutionType, comment, user, resolvedPayload);
+    } else if (approved && task.getAbout() != null) {
       applyEntityChanges(task, approved, newValue, resolvedPayload, user);
     } else {
       LOG.info(
@@ -818,7 +822,7 @@ public class TaskWorkflowHandler {
     }
     try {
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(user, changeType, entityInterface);
+          ChangeEvents.createChangeEventForEntity(user, changeType, entityInterface);
       Object entityForEvent = changeEvent.getEntity();
       changeEvent = ChangeEventHandler.copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entityForEvent));
@@ -1070,7 +1074,7 @@ public class TaskWorkflowHandler {
           entity.getEntityReference().getType(),
           user,
           action.entityField(),
-          value == null ? null : String.valueOf(value),
+          value == null || value instanceof String ? (String) value : JsonUtils.pojoToJson(value),
           true,
           WorkflowEventConsumer.GOVERNANCE_BOT);
     } catch (Exception e) {
