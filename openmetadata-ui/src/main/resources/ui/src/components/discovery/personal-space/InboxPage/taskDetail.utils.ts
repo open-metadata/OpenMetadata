@@ -181,6 +181,11 @@ const TASK_TYPE_BADGE: Record<
     color: 'indigo',
     icon: 'approval',
   },
+  [TaskType.MemoryConflictReview]: {
+    labelKey: 'label.memory-conflict',
+    color: 'orange',
+    icon: 'approval',
+  },
   [TaskType.RecognizerFeedbackApproval]: {
     labelKey: 'label.recognizer-feedback',
     color: 'purple',
