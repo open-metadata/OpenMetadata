@@ -10,6 +10,8 @@ export interface ProgressBarProps
    * The current value of the progress bar.
    */
   value: number;
+  /** Chart-series color; omitted bars use the semantic brand color. */
+  color?: string;
   /**
    * The minimum value of the progress bar.
    * @default 0
@@ -43,6 +45,7 @@ export interface ProgressBarProps
  */
 export const ProgressBarBase = ({
   value,
+  color,
   min = 0,
   max = 100,
   className,
@@ -70,7 +73,10 @@ export const ProgressBarBase = ({
           'tw:size-full tw:rounded-md tw:bg-fg-brand-primary tw:transition tw:duration-75 tw:ease-linear',
           progressClassName
         )}
-        style={{ transform: `translateX(-${100 - percentage}%)` }}
+        style={{
+          backgroundColor: color,
+          transform: `translateX(-${100 - percentage}%)`,
+        }}
       />
     </div>
   );
@@ -98,6 +104,7 @@ export interface ProgressIndicatorWithTextProps extends ProgressBarProps {
  */
 export const ProgressBar = ({
   value,
+  color,
   min = 0,
   max = 100,
   valueFormatter,
@@ -117,6 +124,7 @@ export const ProgressBar = ({
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy}
       className={className}
+      color={color}
       max={max}
       min={min}
       progressClassName={progressClassName}

@@ -44,6 +44,18 @@ describe('ProgressBarBase', () => {
 });
 
 describe('ProgressBar', () => {
+  it('retains chart-series colors through the labeled component', () => {
+    render(<ProgressBar color="#123456" labelPosition="right" value={42} />);
+    expect(screen.getByRole('progressbar')).toHaveAttribute(
+      'aria-valuenow',
+      '42'
+    );
+    expect(screen.getByRole('progressbar').firstElementChild).toHaveStyle({
+      backgroundColor: '#123456',
+    });
+    expect(screen.getByText('42%')).toBeInTheDocument();
+  });
+
   it('passes aria-label through to the progressbar', () => {
     render(
       <ProgressBar
