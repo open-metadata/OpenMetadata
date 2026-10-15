@@ -16,6 +16,7 @@ package org.openmetadata.service.rdf;
 import java.net.URI;
 import java.util.Set;
 import java.util.TreeSet;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -38,10 +39,13 @@ import org.openmetadata.service.Entity;
  *
  * @param glossaryIri entity IRI of the owning glossary; null for a relationship type
  * @param status the owner's lifecycle status; null when the owner has none
+ * @param digest the graph digest; null when its blank nodes cannot be canonicalized, so no closure
+ *     can pin the graph
  * @param definesProperty the predicate a relationship type's graph defines; null otherwise
  * @param usesProperties object properties the graph declares and does not define, which is how a
  *     closure finds the relationship-type graphs its members need
  */
+@Slf4j
 record OntologyGraphMember(
     String graphIri,
     String entityType,
@@ -77,7 +81,7 @@ record OntologyGraphMember(
         baseUri.resolve("entity/" + entityType + "/" + owner.getId()).toString(),
         glossaryIri(owner, baseUri),
         status(owner),
-        OntologyGraphDigest.of(content),
+        digest(graphIri, content),
         content.size(),
         definesProperty,
         Set.copyOf(uses));
@@ -91,7 +95,12 @@ record OntologyGraphMember(
         model.createProperty(OntologyReasoningVocabulary.GRAPH_OF),
         model.createResource(entityIri));
     graph.addProperty(model.createProperty(OntologyReasoningVocabulary.ENTITY_TYPE), entityType);
-    graph.addProperty(model.createProperty(OntologyReasoningVocabulary.CONTENT_DIGEST), digest);
+    if (digest != null) {
+      graph.addProperty(model.createProperty(OntologyReasoningVocabulary.CONTENT_DIGEST), digest);
+      graph.addProperty(
+          model.createProperty(OntologyReasoningVocabulary.DIGEST_ALGORITHM),
+          OntologyGraphCanonicalForm.ALGORITHM);
+    }
     graph.addProperty(
         model.createProperty(OntologyReasoningVocabulary.TRIPLE_COUNT),
         model.createTypedLiteral(Long.toString(tripleCount), XSDDatatype.XSDinteger));
@@ -114,6 +123,22 @@ record OntologyGraphMember(
                 model.createProperty(OntologyReasoningVocabulary.USES_PROPERTY),
                 model.createResource(property)));
     return model;
+  }
+
+  /**
+   * The graph is still written without a digest: refusing the entity write would lose the
+   * authored content, and a closure reports the graph instead of pinning it.
+   */
+  private static String digest(final String graphIri, final Model content) {
+    try {
+      return OntologyGraphDigest.of(content);
+    } catch (OntologyGraphCanonicalForm.TooSymmetricException e) {
+      LOG.warn(
+          "Ontology graph {} has no digest and cannot be reasoned over: {}",
+          graphIri,
+          e.getMessage());
+      return null;
+    }
   }
 
   private static String entityType(final EntityInterface<?> owner) {

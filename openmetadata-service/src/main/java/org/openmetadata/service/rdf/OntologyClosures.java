@@ -94,6 +94,13 @@ public final class OntologyClosures {
   private static final String RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
   private static final String OWL = "http://www.w3.org/2002/07/owl#";
   private static final String XSD = "http://www.w3.org/2001/XMLSchema#";
+  private static final int MAX_LISTED_UNDIGESTED = 10;
+
+  /** A member record whose digest the current graph digest algorithm computed. */
+  private static final String DIGESTED =
+      " omr:contentDigest ?d ; omr:digestAlgorithm \""
+          + OntologyGraphCanonicalForm.ALGORITHM
+          + "\" ";
 
   /** SPARQL access to the serving dataset. */
   public interface Store {
@@ -218,8 +225,9 @@ public final class OntologyClosures {
    * these entities added, in whichever glossary of the closure owns them. Production is untouched:
    * no activation changes, and the candidate's manifest is a separate graph. The result carries the
    * CHECK request that asks the store whether the candidate is consistent. Refused, like activation,
-   * when an import is missing or imports form a cycle, since its manifest could not pin that
-   * closure. See ADR:2026-10-15-candidate-checks-add-draft-graphs-to-the-approved-closure.
+   * when an import is missing, imports form a cycle, or a graph has no current digest, since its
+   * manifest could not pin that closure. See
+   * ADR:2026-10-15-candidate-checks-add-draft-graphs-to-the-approved-closure.
    */
   public Optional<RdfOntologyClosure> candidate(
       final UUID glossaryId, final Collection<UUID> entityIds) {
@@ -308,8 +316,8 @@ public final class OntologyClosures {
     }
 
     /**
-     * A missing import or an import cycle: the closure digest records neither, so no manifest of
-     * this closure can be published.
+     * A missing import, an import cycle or a graph without a current digest: the closure digest
+     * records none of them, so no manifest of this closure can be published.
      */
     boolean unpinnable() {
       return !pinsAll || imports.stream().anyMatch(Node::unpinnable);
@@ -354,11 +362,18 @@ public final class OntologyClosures {
     path.pop();
 
     final SortedMap<String, String> candidates = overlay.take(glossaryIri);
-    final SortedMap<String, String> types = typeGraphs(glossaryIri, candidates.keySet());
+    final Set<String> undigested = new TreeSet<>();
+    final SortedMap<String, String> types =
+        typeGraphs(glossaryIri, candidates.keySet(), undigested);
     final Counts counts = counts(glossaryIri);
     counts.relationshipTypes = types.size();
     counts.addCandidates(candidates.keySet(), baseUri);
     problems.addAll(completeness(glossary, counts));
+    undigested.addAll(undigestedApproved(glossaryIri));
+    if (!undigested.isEmpty()) {
+      problems.add(undigestedProblem(glossary, undigested));
+      pinsAll = false;
+    }
     if (path.isEmpty() && !metadata.projectionReady()) {
       problems.add(
           new RdfOntologyClosureProblem()
@@ -454,6 +469,48 @@ public final class OntologyClosures {
     return problems;
   }
 
+  /**
+   * Approved graphs of the glossary whose record has no {@value
+   * OntologyGraphCanonicalForm#ALGORITHM} digest: written by an earlier build, or with blank nodes
+   * too symmetric to canonicalize. At most {@value #MAX_LISTED_UNDIGESTED} plus one are read.
+   */
+  private List<String> undigestedApproved(final String glossaryIri) {
+    return store
+        .select(
+            prefixes()
+                + "SELECT ?g WHERE { GRAPH <"
+                + members
+                + "> { ?g omr:glossary <"
+                + glossaryIri
+                + "> ; omr:lifecycleStatus \""
+                + APPROVED
+                + "\" FILTER NOT EXISTS { ?g"
+                + DIGESTED
+                + "} } } ORDER BY STR(?g) LIMIT "
+                + (MAX_LISTED_UNDIGESTED + 1))
+        .stream()
+        .map(row -> row.get("g"))
+        .toList();
+  }
+
+  private static RdfOntologyClosureProblem undigestedProblem(
+      final Glossary glossary, final Set<String> graphs) {
+    final List<String> listed = graphs.stream().limit(MAX_LISTED_UNDIGESTED).toList();
+    return new RdfOntologyClosureProblem()
+        .withCode(RdfOntologyClosureProblemCode.INCOMPLETE_PROJECTION)
+        .withGlossary(glossary.getEntityReference())
+        .withMessage(
+            "Glossary "
+                + glossary.getFullyQualifiedName()
+                + " needs graphs that have no "
+                + OntologyGraphCanonicalForm.ALGORITHM
+                + " digest, so no manifest can pin them: "
+                + String.join(", ", listed)
+                + (graphs.size() > listed.size() ? ", and more" : "")
+                + ". Run RdfIndexApp to digest graphs an earlier version wrote; a graph that still"
+                + " has none has blank nodes too symmetric to canonicalize");
+  }
+
   /** Member records of the glossary grouped by entity type and status. */
   private Counts counts(final String glossaryIri) {
     final Counts counts = new Counts();
@@ -473,20 +530,24 @@ public final class OntologyClosures {
 
   /**
    * Relationship-type graphs that define a property the glossary's Approved members or its
-   * candidates use, and the types those types' axioms name in turn.
+   * candidates use, and the types those types' axioms name in turn. A used type graph without a
+   * current digest goes to {@code undigested} instead.
    */
   private SortedMap<String, String> typeGraphs(
-      final String glossaryIri, final Set<String> candidateGraphs) {
+      final String glossaryIri, final Set<String> candidateGraphs, final Set<String> undigested) {
     final SortedMap<String, String> types = new TreeMap<>();
     addTypeRows(
         types,
+        undigested,
         "SELECT DISTINCT ?tg ?d WHERE { GRAPH <"
             + members
             + "> { ?g omr:glossary <"
             + glossaryIri
             + "> ; omr:lifecycleStatus \""
             + APPROVED
-            + "\" ; omr:usesProperty ?p . ?tg omr:definesProperty ?p ; omr:contentDigest ?d } }");
+            + "\" ; omr:usesProperty ?p . ?tg omr:definesProperty ?p . OPTIONAL { ?tg"
+            + DIGESTED
+            + "} } }");
     Set<String> frontier = new TreeSet<>(types.keySet());
     frontier.addAll(candidateGraphs);
     while (!frontier.isEmpty()) {
@@ -494,12 +555,14 @@ public final class OntologyClosures {
       for (final List<String> batch : batches(frontier)) {
         addTypeRows(
             types,
+            undigested,
             "SELECT DISTINCT ?tg ?d WHERE { VALUES ?g { "
                 + iris(batch)
                 + " } GRAPH <"
                 + members
-                + "> { ?g omr:usesProperty ?p . ?tg omr:definesProperty ?p ; "
-                + "omr:contentDigest ?d } }");
+                + "> { ?g omr:usesProperty ?p . ?tg omr:definesProperty ?p . OPTIONAL { ?tg"
+                + DIGESTED
+                + "} } }");
       }
       frontier = new TreeSet<>(types.keySet());
       frontier.removeAll(before);
@@ -507,8 +570,15 @@ public final class OntologyClosures {
     return types;
   }
 
-  private void addTypeRows(final SortedMap<String, String> types, final String query) {
-    store.select(prefixes() + query).forEach(row -> types.put(row.get("tg"), row.get("d")));
+  private void addTypeRows(
+      final SortedMap<String, String> types, final Set<String> undigested, final String query) {
+    for (final Map<String, String> row : store.select(prefixes() + query)) {
+      if (row.get("d") == null) {
+        undigested.add(row.get("tg"));
+      } else {
+        types.put(row.get("tg"), row.get("d"));
+      }
+    }
   }
 
   /**
@@ -601,7 +671,9 @@ public final class OntologyClosures {
               + glossaryIri
               + "> ; omr:lifecycleStatus \""
               + APPROVED
-              + "\" ; omr:contentDigest ?d } FILTER(STR(?g) > \""
+              + "\" ;"
+              + DIGESTED
+              + "} FILTER(STR(?g) > \""
               + last
               + "\") } ORDER BY STR(?g) LIMIT "
               + pageSize);
@@ -612,9 +684,9 @@ public final class OntologyClosures {
    * The closure digest, version {@value #DIGEST_ALGORITHM}: SHA-256 over UTF-8 lines, each ending
    * in a newline: the algorithm name; {@code ontology <iri>}; {@code glossary <iri>}; {@code
    * selection APPROVED|CANDIDATE}; one {@code member <graph> <digest>} per pinned graph in graph-IRI
-   * order; then one {@code import <ontology> <closure digest>} per import, sorted. A missing
-   * import or an import cycle has no line: such a closure is never published (see {@link
-   * Node#unpinnable()}).
+   * order; then one {@code import <ontology> <closure digest>} per import, sorted. Member digests
+   * are {@value OntologyGraphCanonicalForm#ALGORITHM} graph digests. A missing import or an import
+   * cycle has no line: such a closure is never published (see {@link Node#unpinnable()}).
    */
   static final class ClosureDigest {
     private final MessageDigest sha256 = OntologyGraphDigest.newSha256();
@@ -994,7 +1066,9 @@ public final class OntologyClosures {
                   + iris(batch)
                   + " } GRAPH <"
                   + members
-                  + "> { ?g omr:entityType ?t ; omr:contentDigest ?d . "
+                  + "> { ?g omr:entityType ?t ;"
+                  + DIGESTED
+                  + ". "
                   + "OPTIONAL { ?g omr:lifecycleStatus ?s } OPTIONAL { ?g omr:glossary ?gl } } }")) {
         records.put(graphToEntity.get(row.get("g")), row);
       }

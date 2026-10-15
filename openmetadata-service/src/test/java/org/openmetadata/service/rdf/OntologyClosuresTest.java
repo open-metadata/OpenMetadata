@@ -20,12 +20,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -256,6 +259,38 @@ class OntologyClosuresTest {
   }
 
   @Test
+  void theClosureDigestIsSha256OverTheDocumentedLines() throws Exception {
+    final Glossary retail = catalog.glossary("Retail");
+    final OntologyAxiom axiom =
+        save(axiom(retail, "Contactable", named(EX + "Customer"), EntityStatus.APPROVED));
+    final String member = graph(Entity.ONTOLOGY_AXIOM, axiom.getId());
+
+    final RdfOntologyClosure closure = closures.activate(retail.getId()).orElseThrow();
+
+    final String lines =
+        String.join(
+            "\n",
+            "om-closure-v2",
+            "ontology <" + closure.getOntologyIri() + ">",
+            "glossary <" + GlossaryOntologyIri.entityIri(retail.getId(), URI.create(BASE)) + ">",
+            "selection APPROVED",
+            "member <" + member + "> " + recordedDigest(member),
+            "");
+    assertEquals(
+        "sha256:"
+            + HexFormat.of()
+                .formatHex(
+                    MessageDigest.getInstance("SHA-256")
+                        .digest(lines.getBytes(StandardCharsets.UTF_8))),
+        closure.getClosureDigest());
+    assertEquals(
+        OntologyGraphCanonicalForm.ALGORITHM,
+        single(
+            "SELECT ?a WHERE { GRAPH <%s> { <%s> <%sdigestAlgorithm> ?a } }"
+                .formatted(OntologyGraphs.membersGraph(BASE), member, OMR)));
+  }
+
+  @Test
   void aMissingImportOrAnImportCycleRefusesActivationAndCandidates() {
     final Glossary retail = catalog.glossary("Retail");
     final OntologyAxiom draft =
@@ -295,6 +330,36 @@ class OntologyClosuresTest {
         OntologyClosures.PublicationRefusedException.class,
         () -> closures.candidate(first.getId(), List.of(secondDraft.getId())));
     assertTrue(manifestGraphs().isEmpty(), "no candidate is published either");
+  }
+
+  @Test
+  void aGraphWithoutACurrentDigestRefusesActivationAndCandidates() {
+    final Glossary retail = catalog.glossary("Retail");
+    final OntologyAxiom approved =
+        save(axiom(retail, "Contactable", named(EX + "Customer"), EntityStatus.APPROVED));
+    final OntologyAxiom draft =
+        save(axiom(retail, "Vip", named(EX + "Customer"), EntityStatus.DRAFT));
+    final String stale = graph(Entity.ONTOLOGY_AXIOM, approved.getId());
+    UpdateAction.parseExecute(
+        "DELETE WHERE { GRAPH <%s> { <%s> <%sdigestAlgorithm> ?a } }"
+            .formatted(OntologyGraphs.membersGraph(BASE), stale, OMR),
+        dataset);
+
+    final RdfOntologyClosure described = closures.approved(retail.getId()).orElseThrow();
+    assertEquals(List.of(RdfOntologyClosureProblemCode.INCOMPLETE_PROJECTION), codes(described));
+    assertTrue(described.getProblems().getFirst().getMessage().contains(stale));
+    assertEquals(0L, described.getMemberCount(), "a graph without a current digest is not pinned");
+
+    assertThrows(
+        OntologyClosures.PublicationRefusedException.class,
+        () -> closures.activate(retail.getId()));
+    assertThrows(
+        OntologyClosures.PublicationRefusedException.class,
+        () -> closures.candidate(retail.getId(), List.of(draft.getId())));
+    assertTrue(manifestGraphs().isEmpty());
+
+    save(approved.withDescription("Projected again by this version"));
+    assertEquals(List.of(), codes(closures.activate(retail.getId()).orElseThrow()));
   }
 
   @Test

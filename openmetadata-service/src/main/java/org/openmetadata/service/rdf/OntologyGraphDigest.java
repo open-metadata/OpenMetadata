@@ -18,13 +18,12 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import org.apache.jena.rdf.model.Model;
-import org.openmetadata.service.ontology.RdfBlankNodeCanonicalizer;
 
 /**
- * The content digest of one ontology graph: SHA-256 over its canonical N-Triples, written {@code
- * sha256:<hex>}. Blank nodes are relabelled from their neighbourhood by {@link
- * RdfBlankNodeCanonicalizer}, so two projections of the same axiom digest equally even though
- * Jena gives their blank nodes different labels; lines are sorted and each ends with a newline.
+ * The content digest of one ontology graph: SHA-256 over its canonical N-Triples ({@link
+ * OntologyGraphCanonicalForm}, {@value OntologyGraphCanonicalForm#ALGORITHM}), written {@code
+ * sha256:<hex>}. Nothing in it depends on blank node labels, so two projections of the same axiom,
+ * and the store's copy of either, digest equally.
  *
  * <p>See ADR:2026-10-15-reasoning-closures-are-approved-graphs-pinned-by-a-content-manifest.
  */
@@ -33,8 +32,12 @@ public final class OntologyGraphDigest {
 
   private OntologyGraphDigest() {}
 
+  /**
+   * @throws OntologyGraphCanonicalForm.TooSymmetricException when the graph's blank nodes cannot
+   *     be canonicalized within the bounds
+   */
   public static String of(final Model graph) {
-    return sha256(new RdfBlankNodeCanonicalizer().canonicalize(graph));
+    return sha256(OntologyGraphCanonicalForm.of(graph.getGraph().find().toList()));
   }
 
   static String sha256(final String text) {

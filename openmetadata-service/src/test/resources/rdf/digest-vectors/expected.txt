@@ -1,0 +1,10 @@
+# Graph digests (om-graph-v2) computed by OpenMetadata's OntologyGraphDigest over
+# OntologyGraphCanonicalForm, Jena 6.2.0. The store's GraphDigestTest requires the same digests
+# for the same files; "refused" means the graph is too symmetric to digest within the bounds.
+axiom.ttl sha256:1cf52f055ebf4d54e7c845dff23f3364d4af108d5cc9533fab63f7576b2b496c
+cycles.ttl sha256:0ceb074b1f1e8f416701a8421ef3d581004f62f60c46cb1d65ad8a9a791069b7
+empty.ttl sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+list.ttl sha256:333c7f9389edb471dfad24562703155cfc1e054d27b0239f73085954fa672863
+nested-twins.ttl sha256:c33d1ff5f4a2ec64920c6d15bdd4eed4c792b29fb6a28e2c190c1a7e66f340ef
+too-symmetric.ttl refused
+twins.ttl sha256:337d044a2afd9ad1c9e6edbf18262c82b5d142c1a7a4292609d1b6bed4c0edad
