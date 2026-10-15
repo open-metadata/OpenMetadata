@@ -95,8 +95,10 @@
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.10</jacoco-plugin.version>
-    <!-- Upgrading to jdbi version causes test failures-->
-    <jdbi3.version>3.37.1</jdbi3.version>
+    <!-- Matches the Jdbi that dropwizard-jdbi3 is built against; its jdbi3-guava arrives at this
+         version. Jdbi before 3.45.4 pins virtual threads while opening a handle, and Collate must
+         run the same version (ADR:2026-10-13-jdbi-never-pins-virtual-threads-and-collate-runs-the-same-version). -->
+    <jdbi3.version>3.49.5</jdbi3.version>
     <commons-cli.version>1.9.0</commons-cli.version>
     <commons-io.version>2.17.0</commons-io.version>
     <redshift-jdbc.version>2.2.2</redshift-jdbc.version>
@@ -1228,11 +1230,10 @@
               <include>org.openmetadata.service.apps.*.java</include>
               <include>org.openmetadata.service.cache.*.java</include>
               <include>org.openmetadata.service.events.*.java</include>
-              <include>org.openmetadata.service.formatter.**.*.java</include>
               <include>org.openmetadata.service.governance.*.java</include>
               <include>org.openmetadata.service.jdbi3.*.java</include>
               <include>org.openmetadata.service.monitoring.*.java</include>
-              <include>org.openmetadata.service.notifications.**.*.java</include>
+              <include>org.openmetadata.service.alerting.**.*.java</include>
               <include>org.openmetadata.service.pipelineService.*.java</include>
               <include>org.openmetadata.service.resources.**.*.java</include>
               <include>org.openmetadata.service.rules.*.java</include>
