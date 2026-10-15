@@ -153,6 +153,7 @@ const LeftSidebar = () => {
         dataTestId={item.dataTestId}
         href={item.redirect_url}
         icon={item.icon}
+        size="sm"
         truncate={false}
         type={parentKey ? 'collapsible-child' : 'link'}
         onClick={() => navigateToItem(item, parentKey)}>
@@ -240,6 +241,7 @@ const LeftSidebar = () => {
             selectedKeys.includes(child.key)
           )}
           icon={item.icon}
+          size="sm"
           truncate={false}
           type="collapsible">
           <span data-testid={item.dataTestId}>{t(item.title)}</span>
@@ -247,7 +249,7 @@ const LeftSidebar = () => {
         <ul className="tw:m-0 tw:list-none tw:p-0">
           {item.children?.map((child) => (
             <li
-              className="tw:py-0.5"
+              className="tw:py-1"
               data-testid={`side-bar-${child.dataTestId}`}
               key={child.key}>
               {renderLeaf(child, item.key)}
@@ -286,7 +288,7 @@ const LeftSidebar = () => {
             <ul className="left-sidebar-menu tw:m-0 tw:list-none tw:px-3 tw:py-0">
               {sideBarItems.map((item) => (
                 <li
-                  className="tw:py-0.5"
+                  className="tw:py-1.5"
                   data-testid={`side-bar-${item.dataTestId}`}
                   key={item.key}>
                   {item.children?.length ? renderGroup(item) : renderLeaf(item)}
@@ -300,7 +302,9 @@ const LeftSidebar = () => {
             <Divider className="tw:my-2" />
             <ul className="tw:m-0 tw:list-none tw:p-0">
               {[SETTING_ITEM, LOGOUT_ITEM].map((item) => (
-                <li key={item.key}>{renderLeaf(item)}</li>
+                <li className="tw:py-1" key={item.key}>
+                  {renderLeaf(item)}
+                </li>
               ))}
             </ul>
           </nav>
