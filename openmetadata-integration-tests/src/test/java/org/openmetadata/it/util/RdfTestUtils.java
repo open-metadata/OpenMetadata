@@ -26,6 +26,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -361,6 +362,7 @@ public final class RdfTestUtils {
           HttpRequest.newBuilder()
               .uri(URI.create(endpoint + "?query=" + encodedQuery))
               .header("Accept", "application/sparql-results+json")
+              .header("Authorization", FusekiTestImage.adminAuthorization())
               .timeout(Duration.ofSeconds(30))
               .GET()
               .build();
@@ -392,6 +394,7 @@ public final class RdfTestUtils {
           HttpRequest.newBuilder()
               .uri(URI.create(endpoint + "?query=" + encodedQuery))
               .header("Accept", "application/sparql-results+json")
+              .header("Authorization", FusekiTestImage.adminAuthorization())
               .timeout(Duration.ofSeconds(30))
               .GET()
               .build();
