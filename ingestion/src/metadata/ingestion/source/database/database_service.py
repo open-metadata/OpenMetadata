@@ -22,7 +22,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
 
-from metadata.domain.tags import TagRegistry
+from metadata.domain.tags import TagDefinition, TagRegistry
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -241,6 +241,19 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         if cached is not None:
             return cached
         return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
+
+    def register_tag(
+        self,
+        *,
+        definition: TagDefinition | None,
+        entity_fqn: str | None = None,
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Queue a definition and optional assignment, yielding preparation errors."""
+        if definition is None:
+            return
+        error = self.tags_registry.register(definition, entity_fqn=entity_fqn)
+        if error is not None:
+            yield Either(left=error, right=None)
 
     @property
     def name(self) -> str:

@@ -644,10 +644,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 schema_name,
             )
             for key, value in (dataset_obj.labels or {}).items():
-                if error := self.tags_registry.register(
-                    map_bigquery_tag(classification_name=key, tag_name=value, tag_type="Dataset"), entity_fqn=schema_fqn
-                ):
-                    yield Either(left=error, right=None)
+                yield from self.register_tag(
+                    definition=map_bigquery_tag(classification_name=key, tag_name=value, tag_type="Dataset"),
+                    entity_fqn=schema_fqn,
+                )
 
             if not self.service_connection.includePolicyTags:
                 return
@@ -655,10 +655,11 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             self._prefetch_policy_tags()
             for classification_name in self._taxonomy_cache.values():
                 for tag_name in self._taxonomy_to_tags.get(classification_name, []):
-                    if error := self.tags_registry.register(
-                        map_bigquery_tag(classification_name=classification_name, tag_name=tag_name, tag_type="Policy")
-                    ):
-                        yield Either(left=error, right=None)
+                    yield from self.register_tag(
+                        definition=map_bigquery_tag(
+                            classification_name=classification_name, tag_name=tag_name, tag_type="Policy"
+                        )
+                    )
         except Exception as exc:
             yield Either(
                 right=None,
@@ -822,10 +823,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             table_name,
         )
         for key, value in (table_obj.labels or {}).items():
-            if error := self.tags_registry.register(
-                map_bigquery_tag(classification_name=key, tag_name=value, tag_type="Table"), entity_fqn=table_fqn
-            ):
-                yield Either(left=error, right=None)
+            yield from self.register_tag(
+                definition=map_bigquery_tag(classification_name=key, tag_name=value, tag_type="Table"),
+                entity_fqn=table_fqn,
+            )
         if self.service_connection.includePolicyTags:
             yield from self._register_column_policy_tags(table_obj.schema, table_fqn)
 
@@ -856,17 +857,15 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             column_path = (*parent_path, field.name)
             if field.policy_tags and field.policy_tags.names:
                 policy_tag = self._get_policy_tag(field.policy_tags.names[0])
-                if policy_tag and (
-                    error := self.tags_registry.register(
-                        map_bigquery_tag(
+                if policy_tag:
+                    yield from self.register_tag(
+                        definition=map_bigquery_tag(
                             classification_name=policy_tag["taxonomy"],
                             tag_name=policy_tag["display_name"],
                             tag_type="Policy",
                         ),
                         entity_fqn=fqn._build(*fqn.split(table_fqn), *column_path),
                     )
-                ):
-                    yield Either(left=error, right=None)
             if field.fields:
                 yield from self._register_column_policy_tags(field.fields, table_fqn, column_path)
 

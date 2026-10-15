@@ -673,16 +673,15 @@ class SnowflakeSource(
 
                 entity_fqn = fqn._build(self.context.get().database_service, *fqn_elements)  # pyright: ignore[reportAttributeAccessIssue]
                 try:
-                    if error := self.tags_registry.register(
-                        TagDefinition(
+                    yield from self.register_tag(
+                        definition=TagDefinition(
                             classification_name=row[0],
                             tag_name=row[1],
                             classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
                             tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                         ),
                         entity_fqn=entity_fqn,
-                    ):
-                        yield Either(left=error, right=None)
+                    )
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     yield Either(
@@ -698,16 +697,15 @@ class SnowflakeSource(
             if schema_name in self.schema_tags_map:
                 for tag_info in self.schema_tags_map[schema_name]:
                     try:
-                        if error := self.tags_registry.register(
-                            TagDefinition(
+                        yield from self.register_tag(
+                            definition=TagDefinition(
                                 classification_name=tag_info["tag_name"],
                                 tag_name=tag_info["tag_value"],
                                 classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
                                 tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                             ),
                             entity_fqn=schema_fqn,
-                        ):
-                            yield Either(left=error, right=None)
+                        )
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
                         yield Either(
@@ -738,16 +736,15 @@ class SnowflakeSource(
         )
         for tag_info in self.database_tags_map[database_name]:
             try:
-                if error := self.tags_registry.register(
-                    TagDefinition(
+                yield from self.register_tag(
+                    definition=TagDefinition(
                         classification_name=tag_info["tag_name"],
                         tag_name=tag_info["tag_value"],
                         classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
                         tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                     ),
                     entity_fqn=database_fqn,
-                ):
-                    yield Either(left=error, right=None)
+                )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 yield Either(

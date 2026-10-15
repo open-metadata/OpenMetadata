@@ -207,16 +207,15 @@ class S3Source(StorageServiceSource):
             if container_details.container_fqn:
                 tags_list = self._fetch_s3_tags(container_details)
                 for tag in tags_list:
-                    if error := self.tags_registry.register(
-                        TagDefinition(
+                    yield from self.register_tag(
+                        definition=TagDefinition(
                             classification_name=tag.Key,
                             tag_name=tag.Value,
                             tag_description="S3 TAG VALUE",
                             classification_description="S3 TAG KEY",
                         ),
                         entity_fqn=container_details.container_fqn,
-                    ):
-                        yield Either(left=error, right=None)
+                    )
         except Exception as exc:
             logger.debug("Failed to ingest tags due to: %s", exc)
             logger.debug(traceback.format_exc())

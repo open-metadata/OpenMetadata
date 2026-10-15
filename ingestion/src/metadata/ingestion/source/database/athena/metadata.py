@@ -245,16 +245,15 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
         """Register each LF-tag value and attach it to the source entity."""
         for value in tag.TagValues:
             try:
-                if error := self.tags_registry.register(
-                    TagDefinition(
+                yield from self.register_tag(
+                    definition=TagDefinition(
                         classification_name=tag.TagKey,
                         tag_name=value,
                         classification_description=ATHENA_TAG_CLASSIFICATION,
                         tag_description=ATHENA_TAG,
                     ),
                     entity_fqn=entity_fqn,
-                ):
-                    yield Either(left=error, right=None)
+                )
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

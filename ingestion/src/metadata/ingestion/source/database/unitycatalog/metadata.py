@@ -983,11 +983,10 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                 for tag in self.sql_connection.execute(text(query)):
                     if not tag.tag_name:
                         continue
-                    if error := self.tags_registry.register(
-                        map_databricks_tag(tag.tag_name, tag.tag_value, UNITY_CATALOG_TAG_MAPPING),
+                    yield from self.register_tag(
+                        definition=map_databricks_tag(tag.tag_name, tag.tag_value, UNITY_CATALOG_TAG_MAPPING),
                         entity_fqn=fqn._build(*tag_fqn_builder(tag)),
-                    ):
-                        yield Either(left=error, right=None)
+                    )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning("Error getting tags for %s: %s", error_context, exc)

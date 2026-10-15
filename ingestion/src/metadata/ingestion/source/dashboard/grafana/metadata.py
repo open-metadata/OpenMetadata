@@ -16,7 +16,6 @@ import traceback
 from collections.abc import Iterable
 from typing import cast
 
-from metadata.domain.tags import TagAssignment
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -148,21 +147,13 @@ class GrafanaSource(DashboardServiceSource):
             # Build folder hierarchy display name
             display_name = dashboard_details.dashboard.title
 
-            tag_labels = None
-            if self.source_config.includeTags:
-                tag_values = dashboard_details.dashboard.tags
-                if tag_values:
-                    tag_entity_fqn = fqn._build(
-                        vars(self.context.get())["dashboard_service"], dashboard_details.dashboard.uid
-                    )
-                    try:
-                        for tag_name in tag_values:
-                            assignment = TagAssignment(GRAFANA_TAG_CATEGORY, tag_name, tag_entity_fqn)
-                            if error := self.tags_registry.attach(assignment):
-                                yield Either(left=error, right=None)
-                        tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
-                    finally:
-                        self.tags_registry.clear_scope(tag_entity_fqn)
+            tag_labels = yield from self.prepare_tag_labels(
+                classification_name=GRAFANA_TAG_CATEGORY,
+                get_tags=lambda: dashboard_details.dashboard.tags,
+                get_entity_fqn=lambda: fqn._build(
+                    vars(self.context.get())["dashboard_service"], dashboard_details.dashboard.uid
+                ),
+            )
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.dashboard.uid),
                 displayName=display_name,

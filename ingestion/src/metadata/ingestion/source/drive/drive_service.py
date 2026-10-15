@@ -20,7 +20,7 @@ from typing import Annotated, Any
 
 from pydantic import Field
 
-from metadata.domain.tags import TagRegistry
+from metadata.domain.tags import TagDefinition, TagRegistry
 from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
 from metadata.generated.schema.api.data.createFile import CreateFileRequest
 from metadata.generated.schema.api.data.createSpreadsheet import (
@@ -181,6 +181,19 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         if cached is not None:
             return cached
         return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
+
+    def register_tag(
+        self,
+        *,
+        definition: TagDefinition | None,
+        entity_fqn: str | None = None,
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Queue a definition and optional assignment, yielding preparation errors."""
+        if definition is None:
+            return
+        error = self.tags_registry.register(definition, entity_fqn=entity_fqn)
+        if error is not None:
+            yield Either(left=error, right=None)
 
     # Big union of types we want to fetch dynamically
     service_connection: DriveConnection.model_fields["config"].annotation  # noqa: F821

@@ -161,6 +161,9 @@ def test_label_preparation_failure_does_not_queue_a_definition(tag_metadata):
 
 def test_injected_policy_applies_to_both_operations(tag_metadata):
     class SourcePolicy(TagCanonicalizer):
+        def resolve(self, **kwargs):
+            raise AssertionError("Registration must use the primitive policy methods")
+
         def classification(self, name, default_description):
             return Canonical("SourceClass", "Resolved classification")
 

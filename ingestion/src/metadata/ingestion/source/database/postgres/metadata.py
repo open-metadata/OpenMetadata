@@ -248,16 +248,15 @@ class PostgresSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
                     *fqn_elements,
                 )
                 try:
-                    if error := self.tags_registry.register(
-                        TagDefinition(
+                    yield from self.register_tag(
+                        definition=TagDefinition(
                             classification_name=self.service_connection.classificationName,
                             tag_name=row[1],
                             tag_description="Postgres Tag Value",
                             classification_description="Postgres Tag Name",
                         ),
                         entity_fqn=entity_fqn,
-                    ):
-                        yield Either(left=error, right=None)
+                    )
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(

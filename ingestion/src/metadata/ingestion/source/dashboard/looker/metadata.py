@@ -49,7 +49,6 @@ from looker_sdk.sdk.api40.models import (
 )
 from pydantic import ValidationError
 
-from metadata.domain.tags import TagAssignment
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -650,21 +649,13 @@ class LookerSource(DashboardServiceSource):
 
                 datamodel_view_name = f"{first_model_name}_{view.name}_view"
 
-                tag_labels = None
-                if self.source_config.includeTags:
-                    tag_values = view.tags or []
-                    if tag_values:
-                        tag_entity_fqn = fqn._build(
-                            vars(self.context.get())["dashboard_service"], "model", datamodel_view_name
-                        )
-                        try:
-                            for tag_name in tag_values:
-                                assignment = TagAssignment(LOOKER_TAG_CATEGORY, tag_name, tag_entity_fqn)
-                                if error := self.tags_registry.attach(assignment):
-                                    yield Either(left=error, right=None)
-                            tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
-                        finally:
-                            self.tags_registry.clear_scope(tag_entity_fqn)
+                tag_labels = yield from self.prepare_tag_labels(
+                    classification_name=LOOKER_TAG_CATEGORY,
+                    get_tags=lambda view=view: view.tags or [],
+                    get_entity_fqn=lambda datamodel_view_name=datamodel_view_name: fqn._build(
+                        vars(self.context.get())["dashboard_service"], "model", datamodel_view_name
+                    ),
+                )
                 data_model_request = CreateDashboardDataModelRequest(
                     name=EntityName(datamodel_view_name),
                     displayName=view.name,
@@ -756,21 +747,13 @@ class LookerSource(DashboardServiceSource):
             else:
                 if model.tags and self.source_config.includeTags:
                     yield from self.yield_data_model_tags(model.tags or [])
-                tag_labels = None
-                if self.source_config.includeTags:
-                    tag_values = model.tags or []
-                    if tag_values:
-                        tag_entity_fqn = fqn._build(
-                            vars(self.context.get())["dashboard_service"], "model", datamodel_name
-                        )
-                        try:
-                            for tag_name in tag_values:
-                                assignment = TagAssignment(LOOKER_TAG_CATEGORY, tag_name, tag_entity_fqn)
-                                if error := self.tags_registry.attach(assignment):
-                                    yield Either(left=error, right=None)
-                            tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
-                        finally:
-                            self.tags_registry.clear_scope(tag_entity_fqn)
+                tag_labels = yield from self.prepare_tag_labels(
+                    classification_name=LOOKER_TAG_CATEGORY,
+                    get_tags=lambda: model.tags or [],
+                    get_entity_fqn=lambda: fqn._build(
+                        vars(self.context.get())["dashboard_service"], "model", datamodel_name
+                    ),
+                )
                 explore_datamodel = CreateDashboardDataModelRequest(
                     name=EntityName(datamodel_name),
                     displayName=model.name,
@@ -985,21 +968,13 @@ class LookerSource(DashboardServiceSource):
                     for name in related_metric_names(service, candidate, self._metric_candidates)
                     if name in emitted
                 ]
-                tag_labels = None
-                if self.source_config.includeTags:
-                    tag_values = candidate.tags
-                    if tag_values:
-                        tag_entity_fqn = fqn.quote_name(
-                            looker_metric_name(service, candidate.project, candidate.view, candidate.name)
-                        )
-                        try:
-                            for tag_name in tag_values:
-                                assignment = TagAssignment(LOOKER_TAG_CATEGORY, tag_name, tag_entity_fqn)
-                                if error := self.tags_registry.attach(assignment):
-                                    yield Either(left=error, right=None)
-                            tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
-                        finally:
-                            self.tags_registry.clear_scope(tag_entity_fqn)
+                tag_labels = yield from self.prepare_tag_labels(
+                    classification_name=LOOKER_TAG_CATEGORY,
+                    get_tags=lambda candidate=candidate: candidate.tags,
+                    get_entity_fqn=lambda candidate=candidate: fqn.quote_name(
+                        looker_metric_name(service, candidate.project, candidate.view, candidate.name)
+                    ),
+                )
                 metric_request = build_metric_request(
                     service,
                     candidate,
@@ -1120,21 +1095,13 @@ class LookerSource(DashboardServiceSource):
                 if view.tags and self.source_config.includeTags:
                     yield from self.yield_data_model_tags(view.tags or [])
                 datamodel_view_name = build_datamodel_name(explore.model_name, view.name) + "_view"
-                tag_labels = None
-                if self.source_config.includeTags:
-                    tag_values = view.tags or []
-                    if tag_values:
-                        tag_entity_fqn = fqn._build(
-                            vars(self.context.get())["dashboard_service"], "model", datamodel_view_name
-                        )
-                        try:
-                            for tag_name in tag_values:
-                                assignment = TagAssignment(LOOKER_TAG_CATEGORY, tag_name, tag_entity_fqn)
-                                if error := self.tags_registry.attach(assignment):
-                                    yield Either(left=error, right=None)
-                            tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
-                        finally:
-                            self.tags_registry.clear_scope(tag_entity_fqn)
+                tag_labels = yield from self.prepare_tag_labels(
+                    classification_name=LOOKER_TAG_CATEGORY,
+                    get_tags=lambda view=view: view.tags or [],
+                    get_entity_fqn=lambda datamodel_view_name=datamodel_view_name: fqn._build(
+                        vars(self.context.get())["dashboard_service"], "model", datamodel_view_name
+                    ),
+                )
                 data_model_request = CreateDashboardDataModelRequest(
                     name=EntityName(datamodel_view_name),
                     displayName=view.name,

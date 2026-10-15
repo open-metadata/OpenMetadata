@@ -260,16 +260,15 @@ class TableaupipelineSource(PipelineServiceSource):
         if not self.source_config.includeTags or not pipeline_details.tags:
             return
         for tag_name in pipeline_details.tags:
-            if error := self.tags_registry.register(
-                TagDefinition(
+            yield from self.register_tag(
+                definition=TagDefinition(
                     classification_name=TABLEAU_TAG_CLASSIFICATION,
                     tag_name=tag_name,
                     tag_description="Tableau Tag",
                     classification_description="Tags associated with Tableau Prep flows",
                 ),
                 entity_fqn=self.get_pipeline_fqn(pipeline_details),
-            ):
-                yield Either(left=error, right=None)
+            )
 
     def get_owners(self, pipeline_details: TableauPipelineDetails) -> EntityReferenceList | None:
         """Resolve the Tableau owner of the flow, data source or workbook to an

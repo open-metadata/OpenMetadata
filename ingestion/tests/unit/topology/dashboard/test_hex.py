@@ -269,7 +269,7 @@ class TestHexSource(TestCase):
         tags = self.hex_source._extract_tags_from_project(SAMPLE_PROJECT_NO_OWNER)
         self.assertEqual(tags, [])
 
-    def test_get_dashboard_tags(self):
+    def test_yield_dashboard_omits_missing_tags_and_preserves_label_options(self):
         definitions = list(self.hex_source.yield_tags(SAMPLE_PROJECT))
         assert all(record.left is None for record in definitions)
         assert {record.right.tag_request.name.root for record in definitions} == {
@@ -280,23 +280,26 @@ class TestHexSource(TestCase):
         self.metadata.get_by_name.side_effect = lambda **kwargs: (
             None if kwargs["fqn"] == "HexCategories.Sales" else object()
         )
-        tags = self.hex_source._get_dashboard_tags(SAMPLE_PROJECT)
+        [record] = list(self.hex_source.yield_dashboard(SAMPLE_PROJECT))
+        assert record.left is None
+        tags = record.right.tags
+        assert tags is not None
         assert {tag.tagFQN.root for tag in tags} == {"HexCategories.Analytics", "HexCategories.Published"}
         assert all(tag.labelType == LabelType.Automated and tag.state == State.Suggested for tag in tags)
 
     def test_yield_dashboard_success(self):
         """Test successful dashboard creation"""
-        # Mock tag labels
-        mock_tag_labels = [
+        self.metadata.get_by_name.side_effect = lambda **kwargs: (
+            object() if kwargs["fqn"] == "HexCategories.Analytics" else None
+        )
+        expected_tag_labels = [
             TagLabel(
                 tagFQN="HexCategories.Analytics",
-                labelType=LabelType.Manual,
+                labelType=LabelType.Automated,
                 state=State.Suggested,
                 source=TagSource.Classification,
             )
         ]
-        self.hex_source._get_dashboard_tags = MagicMock(return_value=mock_tag_labels)
-
         # Mock owner ref
         mock_owner_ref = EntityReferenceList(
             root=[EntityReference(id="e3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="user")]
@@ -321,7 +324,7 @@ class TestHexSource(TestCase):
             dashboard_request.sourceUrl,
             SourceUrl("https://app.hex.tech/app/projects/proj_123456789"),
         )
-        self.assertEqual(dashboard_request.tags, mock_tag_labels)
+        assert dashboard_request.tags == expected_tag_labels
         self.assertEqual(dashboard_request.owners, mock_owner_ref)
 
     def test_yield_dashboard_error(self):

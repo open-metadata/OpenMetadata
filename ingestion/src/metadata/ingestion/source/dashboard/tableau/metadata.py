@@ -22,7 +22,6 @@ from typing import Any
 
 from requests.utils import urlparse  # pyright: ignore[reportPrivateImportUsage]
 
-from metadata.domain.tags import TagAssignment
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -310,19 +309,13 @@ class TableauSource(DashboardServiceSource):
             return
         try:
             data_model_tags = data_model.tags or []
-            tag_labels = None
-            if self.source_config.includeTags:
-                tag_values = [tag.name for tag in data_model_tags]
-                if tag_values:
-                    tag_entity_fqn = fqn._build(vars(self.context.get())["dashboard_service"], "model", data_model.id)
-                    try:
-                        for tag_name in tag_values:
-                            assignment = TagAssignment(TABLEAU_TAG_CATEGORY, tag_name, tag_entity_fqn)
-                            if error := self.tags_registry.attach(assignment):
-                                yield Either(left=error, right=None)
-                        tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
-                    finally:
-                        self.tags_registry.clear_scope(tag_entity_fqn)
+            tag_labels = yield from self.prepare_tag_labels(
+                classification_name=TABLEAU_TAG_CATEGORY,
+                get_tags=lambda: [tag.name for tag in data_model_tags],
+                get_entity_fqn=lambda: fqn._build(
+                    vars(self.context.get())["dashboard_service"], "model", data_model.id
+                ),
+            )
             data_model_request = CreateDashboardDataModelRequest(
                 name=EntityName(data_model.id),
                 displayName=data_model_name,
@@ -379,19 +372,11 @@ class TableauSource(DashboardServiceSource):
         try:
             base_url = self.get_base_url()
             dashboard_url = f"{clean_uri(str(base_url))}/#{urlparse(dashboard_details.webpageUrl).fragment}/views"
-            tag_labels = None
-            if self.source_config.includeTags:
-                tag_values = list(dashboard_details.tags or [])
-                if tag_values:
-                    tag_entity_fqn = fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.id)
-                    try:
-                        for tag_name in tag_values:
-                            assignment = TagAssignment(TABLEAU_TAG_CATEGORY, tag_name, tag_entity_fqn)
-                            if error := self.tags_registry.attach(assignment):
-                                yield Either(left=error, right=None)
-                        tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
-                    finally:
-                        self.tags_registry.clear_scope(tag_entity_fqn)
+            tag_labels = yield from self.prepare_tag_labels(
+                classification_name=TABLEAU_TAG_CATEGORY,
+                get_tags=lambda: list(dashboard_details.tags or []),
+                get_entity_fqn=lambda: fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.id),
+            )
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.name,
@@ -968,19 +953,13 @@ class TableauSource(DashboardServiceSource):
                     f"/{workbook_chart_name.chart_url_name}"
                 )
 
-                tag_labels = None
-                if self.source_config.includeTags:
-                    tag_values = list(chart.tags or [])
-                    if tag_values:
-                        tag_entity_fqn = fqn._build(vars(self.context.get())["dashboard_service"], chart.id)
-                        try:
-                            for tag_name in tag_values:
-                                assignment = TagAssignment(TABLEAU_TAG_CATEGORY, tag_name, tag_entity_fqn)
-                                if error := self.tags_registry.attach(assignment):
-                                    yield Either(left=error, right=None)
-                            tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
-                        finally:
-                            self.tags_registry.clear_scope(tag_entity_fqn)
+                tag_labels = yield from self.prepare_tag_labels(
+                    classification_name=TABLEAU_TAG_CATEGORY,
+                    get_tags=lambda chart=chart: list(chart.tags or []),
+                    get_entity_fqn=lambda chart=chart: fqn._build(
+                        vars(self.context.get())["dashboard_service"], chart.id
+                    ),
+                )
                 chart_request = CreateChartRequest(
                     name=EntityName(chart.id),
                     displayName=chart.name,

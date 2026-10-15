@@ -17,7 +17,6 @@ from collections.abc import Iterable
 
 from packaging import version
 
-from metadata.domain.tags import TagAssignment
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -146,21 +145,13 @@ class RedashSource(DashboardServiceSource):
             for widgets in dashboard_details.get("widgets") or []:
                 dashboard_description = widgets.get("text")
 
-            tag_labels = None
-            if self.source_config.includeTags:
-                tag_values = dashboard_details.get("tags")
-                if tag_values:
-                    tag_entity_fqn = fqn._build(
-                        vars(self.context.get())["dashboard_service"], str(dashboard_details["id"])
-                    )
-                    try:
-                        for tag_name in tag_values:
-                            assignment = TagAssignment(REDASH_TAG_CATEGORY, tag_name, tag_entity_fqn)
-                            if error := self.tags_registry.attach(assignment):
-                                yield Either(left=error, right=None)
-                        tag_labels = self.tags_registry.labels_for(tag_entity_fqn) or None
-                    finally:
-                        self.tags_registry.clear_scope(tag_entity_fqn)
+            tag_labels = yield from self.prepare_tag_labels(
+                classification_name=REDASH_TAG_CATEGORY,
+                get_tags=lambda: dashboard_details.get("tags"),
+                get_entity_fqn=lambda: fqn._build(
+                    vars(self.context.get())["dashboard_service"], str(dashboard_details["id"])
+                ),
+            )
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(str(dashboard_details["id"])),
                 displayName=dashboard_details.get("name"),

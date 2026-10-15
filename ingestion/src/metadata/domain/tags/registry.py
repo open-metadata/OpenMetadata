@@ -118,19 +118,15 @@ class TagRegistry:
         try:
             if not self._valid_names(definition.classification_name, definition.tag_name, entity_fqn):
                 return None
-            classification = self._canonicalizer.classification(
-                definition.classification_name, definition.classification_description
-            )
-            tag = self._canonicalizer.tag(classification.name, definition.tag_name, definition.tag_description)
-            tag_fqn = cast("str", fqn.build(None, Tag, classification_name=classification.name, tag_name=tag.name))
+            resolved, tag_fqn = self._resolve_tag(definition)
             record = self._build_pending_record(
-                classification_name=classification.name,
-                classification_description=classification.description,
-                tag_name=tag.name,
-                tag_description=tag.description,
+                classification_name=resolved.classification_name,
+                classification_description=resolved.classification_description,
+                tag_name=resolved.tag_name,
+                tag_description=resolved.tag_description,
             )
             assignment = (
-                TagAssignment(classification.name, tag.name, entity_fqn, label_type, state)
+                TagAssignment(resolved.classification_name, resolved.tag_name, entity_fqn, label_type, state)
                 if entity_fqn is not None
                 else None
             )
@@ -152,16 +148,27 @@ class TagRegistry:
         try:
             if not self._valid_names(assignment.classification_name, assignment.tag_name, assignment.entity_fqn):
                 return None
-            classification = self._canonicalizer.classification(assignment.classification_name, "")
-            tag = self._canonicalizer.tag(classification.name, assignment.tag_name, "")
-            canonical = replace(assignment, classification_name=classification.name, tag_name=tag.name)
-            tag_fqn = cast("str", fqn.build(None, Tag, classification_name=classification.name, tag_name=tag.name))
+            resolved, tag_fqn = self._resolve_tag(
+                TagDefinition(assignment.classification_name, assignment.tag_name, "", "")
+            )
+            canonical = replace(
+                assignment, classification_name=resolved.classification_name, tag_name=resolved.tag_name
+            )
             label = self._build_label(canonical, tag_fqn)
             with self._lock:
                 self._store_assignment_locked(canonical, label)
         except Exception as exc:
             return self._processing_error("attach", assignment, assignment.entity_fqn, exc)
         return None
+
+    def _resolve_tag(self, definition: TagDefinition) -> tuple[TagDefinition, str]:
+        classification = self._canonicalizer.classification(
+            definition.classification_name, definition.classification_description
+        )
+        tag = self._canonicalizer.tag(classification.name, definition.tag_name, definition.tag_description)
+        resolved = TagDefinition(classification.name, tag.name, classification.description, tag.description)
+        tag_fqn = cast("str", fqn.build(None, Tag, classification_name=classification.name, tag_name=tag.name))
+        return resolved, tag_fqn
 
     def _store_assignment_locked(self, assignment: TagAssignment, label: TagLabel) -> None:
         """Store an attachment. Caller must hold the state lock."""

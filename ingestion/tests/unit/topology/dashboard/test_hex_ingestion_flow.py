@@ -23,6 +23,9 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.tagLabel import LabelType, State
+from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.hex.metadata import HexSource
 from metadata.ingestion.source.dashboard.hex.models import (
@@ -453,32 +456,20 @@ class TestHexIngestionFlow(TestCase):
         mock_client.get_project_url = MagicMock(return_value="https://app.hex.tech/proj_rich")
 
         metadata = MagicMock()
-        metadata.get_reference_by_email = MagicMock(
-            return_value=MagicMock(root=[MagicMock(id="user_123", type="user")])
+        metadata.get_reference_by_email.return_value = EntityReferenceList(
+            root=[EntityReference(id="00000000-0000-0000-0000-000000000001", type="user")]
         )
+        metadata.es_search_from_fqn.return_value = []
+        metadata.get_by_name.return_value = object()
 
         source = HexSource.create(
             config_dict=self.config["source"],
             metadata=metadata,
         )
 
-        source.context = MagicMock()
-        source.context.get = MagicMock(
-            return_value=SimpleNamespace(
-                dashboard_service="test_hex_service",
-                charts=None,
-            )
-        )
-
-        # Mock tag extraction
-        source._get_dashboard_tags = MagicMock(
-            return_value=[
-                MagicMock(tagFQN="HexCategories.Analytics"),
-                MagicMock(tagFQN="HexCategories.Finance"),
-                MagicMock(tagFQN="HexCategories.Real-time"),
-                MagicMock(tagFQN="HexCategories.Published"),
-            ]
-        )
+        source.context = TopologyContextManager(source.topology)
+        source.context.get().upsert("dashboard_service", "my_service")
+        source.context.get().upsert("charts", [])
 
         # Process dashboard
         dashboards = []
@@ -492,22 +483,20 @@ class TestHexIngestionFlow(TestCase):
                 elif result.left:
                     errors.append(result.left)
 
-        # Either we get a dashboard or an error, both are valid
-        self.assertGreaterEqual(len(dashboards) + len(errors), 1)
-
-        # If we got a dashboard, verify it
-        if dashboards:
-            dashboard_req = dashboards[0]
-
-            # Verify owner was extracted
-            self.assertIsNotNone(dashboard_req.owners)
-
-            # Verify tags were extracted
-            self.assertIsNotNone(dashboard_req.tags)
-            self.assertEqual(len(dashboard_req.tags), 4)
-        else:
-            # Check we got an error at least
-            self.assertGreater(len(errors), 0)
+        assert errors == []
+        assert len(dashboards) == 1
+        dashboard_req = dashboards[0]
+        assert dashboard_req.owners == metadata.get_reference_by_email.return_value
+        assert dashboard_req.tags is not None
+        assert {tag.tagFQN.root for tag in dashboard_req.tags} == {
+            "HexCategories.Analytics",
+            "HexCategories.Finance",
+            "HexCategories.Real-time",
+            "HexCategories.Published",
+        }
+        assert len(dashboard_req.tags) == 4
+        assert all(tag.labelType == LabelType.Automated and tag.state == State.Suggested for tag in dashboard_req.tags)
+        assert source.tags_registry.stats()["live_entities"] == 0
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")

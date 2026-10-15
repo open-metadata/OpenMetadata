@@ -14,13 +14,14 @@ Base class for ingesting dashboard services
 
 import traceback
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Callable, Generator, Iterable
 from contextlib import closing
+from itertools import chain
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
-from metadata.domain.tags import TagDefinition, TagRegistry
+from metadata.domain.tags import TagAssignment, TagDefinition, TagRegistry
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -56,6 +57,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
@@ -240,6 +242,49 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             return cached
         return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
 
+    def register_tag(
+        self,
+        *,
+        definition: TagDefinition | None,
+        entity_fqn: str | None = None,
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Queue a definition and optional assignment, yielding preparation errors."""
+        if definition is None:
+            return
+        error = self.tags_registry.register(definition, entity_fqn=entity_fqn)
+        if error is not None:
+            yield Either(left=error, right=None)
+
+    def prepare_tag_labels(
+        self,
+        *,
+        classification_name: str,
+        get_tags: Callable[[], Iterable[str] | None],
+        get_entity_fqn: Callable[[], str],
+    ) -> Generator[Either, None, list[TagLabel] | None]:
+        """Yield assignment errors, return verified labels, and release the entity scope."""
+        if not self.source_config.includeTags:
+            return None
+        tags = get_tags()
+        if tags is None:
+            return None
+        names = iter(tags)
+        try:
+            first = next(names)
+        except StopIteration:
+            return None
+        entity_fqn = get_entity_fqn()
+        registry = self.tags_registry
+        try:
+            for name in chain((first,), names):
+                assignment = TagAssignment(classification_name, name, entity_fqn)
+                error = registry.attach(assignment)
+                if error is not None:
+                    yield Either(left=error, right=None)
+            return registry.labels_for(entity_fqn) or None
+        finally:
+            registry.clear_scope(entity_fqn)
+
     def yield_tag_definitions(
         self,
         *,
@@ -253,8 +298,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             return
         for tag_name in tags:
             definition = TagDefinition(classification_name, tag_name, classification_description, tag_description)
-            if error := self.tags_registry.register(definition):
-                yield Either(left=error, right=None)
+            yield from self.register_tag(definition=definition)
         if registry := vars(self).get("tags_registry"):
             with closing(registry.drain()) as definitions:
                 for definition in definitions:
