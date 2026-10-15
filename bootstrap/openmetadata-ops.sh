@@ -53,19 +53,25 @@ else
   CLASSPATH=`mvn -pl openmetadata-service -q exec:exec -Dexec.executable=echo -Dexec.args="%classpath"`
 fi
 
-# As in bin/openmetadata-server-start.sh: hand JAVA_TOOL_OPTIONS to java as an @argfile on fd 3, so
-# neither the JVM's startup echo nor ps shows it (a value with quotes or '#' stays in the env).
+# As in bin/openmetadata-server-start.sh: pass JAVA_TOOL_OPTIONS in a -XX:VMOptionsFile on fd 3,
+# so neither the JVM's startup echo nor ps shows it.
 JAVA_TOOL_ARGS=""
-case "$JAVA_TOOL_OPTIONS" in
-  *\"* | *\'* | *#*) ;;
-  ?*)
-    exec 3<<EOF
-$JAVA_TOOL_OPTIONS
-EOF
-    JAVA_TOOL_ARGS="@/dev/fd/3"
+if [ -n "$JAVA_TOOL_OPTIONS" ]; then
+  java_tool_options_file=""
+  for tmp_dir in /dev/shm "${TMPDIR:-/tmp}"; do
+    java_tool_options_file=$(mktemp "$tmp_dir/jvm-options.XXXXXX" 2>/dev/null) && break
+  done
+  if [ -n "$java_tool_options_file" ] &&
+    printf '%s\n' "$JAVA_TOOL_OPTIONS" > "$java_tool_options_file"; then
+    exec 3< "$java_tool_options_file"
+    JAVA_TOOL_ARGS="-XX:VMOptionsFile=/dev/fd/3"
     unset JAVA_TOOL_OPTIONS
-    ;;
-esac
+  else
+    echo "Warning: could not write JAVA_TOOL_OPTIONS to /dev/shm or ${TMPDIR:-/tmp}," \
+      "so the JVM will print it at startup" >&2
+  fi
+  [ -z "$java_tool_options_file" ] || rm -f "$java_tool_options_file"
+fi
 
 ${JAVA} ${JAVA_TOOL_ARGS} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${OPENMETADATA_SETUP_MAIN_CLASS} -c $CONFIG_FILE_PATH "$@"
 exit $?

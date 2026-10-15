@@ -77,22 +77,28 @@ else
 fi
 
 # The JVM echoes JAVA_TOOL_OPTIONS to stderr at startup ("Picked up JAVA_TOOL_OPTIONS: ..."), which
-# puts any secret set there, such as a truststore password, into the container log. Plain arguments
-# would show in ps instead, so hand the options to the java launcher as an @argfile read from fd 3:
-# argv only shows the file name (except on musl, where the launcher re-execs with them expanded),
-# and the heredoc leaves no file behind. It goes ahead of our options so ours still take precedence.
-# A value with quotes or '#' stays in the environment, because argfiles read those differently.
+# puts any secret set there, such as a truststore password, into the container log, and plain
+# arguments would show in ps instead. So pass the options in a -XX:VMOptionsFile: the JVM parses it
+# exactly like JAVA_TOOL_OPTIONS, quotes and '#' included, and does not echo it. The file is opened
+# on fd 3 and unlinked at once, tmpfs first, so ps only ever shows /dev/fd/3, even after musl's
+# launcher re-exec. It goes ahead of our options so ours still take precedence.
 JAVA_TOOL_ARGS=""
-case "$JAVA_TOOL_OPTIONS" in
-  *\"* | *\'* | *#*) ;;
-  ?*)
-    exec 3<<EOF
-$JAVA_TOOL_OPTIONS
-EOF
-    JAVA_TOOL_ARGS="@/dev/fd/3"
+if [ -n "$JAVA_TOOL_OPTIONS" ]; then
+  java_tool_options_file=""
+  for tmp_dir in /dev/shm "${TMPDIR:-/tmp}"; do
+    java_tool_options_file=$(mktemp "$tmp_dir/jvm-options.XXXXXX" 2>/dev/null) && break
+  done
+  if [ -n "$java_tool_options_file" ] &&
+    printf '%s\n' "$JAVA_TOOL_OPTIONS" > "$java_tool_options_file"; then
+    exec 3< "$java_tool_options_file"
+    JAVA_TOOL_ARGS="-XX:VMOptionsFile=/dev/fd/3"
     unset JAVA_TOOL_OPTIONS
-    ;;
-esac
+  else
+    echo "Warning: could not write JAVA_TOOL_OPTIONS to /dev/shm or ${TMPDIR:-/tmp}," \
+      "so the JVM will print it at startup" >&2
+  fi
+  [ -z "$java_tool_options_file" ] || rm -f "$java_tool_options_file"
+fi
 
 # Set Debug options if enabled
 if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
