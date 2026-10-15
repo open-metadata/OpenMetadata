@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PageLayout } from '@openmetadata/ui-core-components';
+import { Badge, Box, PageLayout } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -31,6 +31,12 @@ const ColumnBulkOperations = () => {
     { label: t('label.column-bulk-operations') },
   ];
 
+  const deprecatedBadge = (
+    <Badge color="warning" data-testid="deprecated-badge" size="sm">
+      {t('label.deprecated')}
+    </Badge>
+  );
+
   return (
     <PageLayoutV1
       pageTitle={t('label.column-bulk-operations')}
@@ -41,6 +47,7 @@ const ColumnBulkOperations = () => {
         })}>
         {isAiMode ? (
           <PageLayout.PageHeader
+            badge={deprecatedBadge}
             breadcrumb={
               <HeaderBreadcrumb
                 noMargin
@@ -54,7 +61,10 @@ const ColumnBulkOperations = () => {
             variant="gradient"
           />
         ) : (
-          <HeaderBreadcrumb items={breadcrumbItems} showHome={false} />
+          <Box align="center" gap={2}>
+            <HeaderBreadcrumb items={breadcrumbItems} showHome={false} />
+            {deprecatedBadge}
+          </Box>
         )}
         <ColumnGrid />
       </div>
