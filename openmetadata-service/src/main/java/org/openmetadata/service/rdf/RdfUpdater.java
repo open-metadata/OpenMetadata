@@ -13,6 +13,7 @@
 package org.openmetadata.service.rdf;
 
 import java.time.Clock;
+import java.util.OptionalLong;
 import java.util.UUID;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
@@ -85,6 +86,22 @@ public final class RdfUpdater {
     if (isEnabled() && !RdfExcludedEntities.isExcluded(Entity.getEntityTypeFromObject(entity))) {
       submit(RdfLiveWrite.EntityUpdate.capture(entity));
     }
+  }
+
+  /**
+   * Queues a refresh of an entity's projection from its row, like a live write: the entity is
+   * projected as the database holds it then, or removed if its row is gone.
+   */
+  public static void refreshEntity(final String entityType, final UUID entityId) {
+    if (isEnabled() && !RdfExcludedEntities.isExcluded(entityType)) {
+      submit(new RdfLiveWrite.EntityUpdate(entityType, entityId));
+    }
+  }
+
+  /** When the oldest live write still queued was queued; empty when none is, or RDF is off. */
+  public static OptionalLong oldestQueuedWriteAt() {
+    final RdfLiveWriteStore store = liveWriteStore;
+    return store == null ? OptionalLong.empty() : store.oldestPendingWriteAt();
   }
 
   public static void deleteEntity(final EntityReference entity) {

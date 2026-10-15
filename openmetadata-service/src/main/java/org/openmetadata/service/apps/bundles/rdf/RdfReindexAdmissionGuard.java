@@ -31,9 +31,10 @@ import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchReindexLockDAO.Sea
 
 /**
  * Defers a cron-triggered RDF full reindex while a Search reindex is active, so the two heavy apps
- * never run concurrent full entity-table scans against the database. Nothing else in the platform
- * enforces this: the apps use separate lock tables and their default crons (RDF Sat 00:00, Search
- * Sun 00:30) only avoid collision when neither overruns nor is triggered manually.
+ * never run concurrent full entity-table scans against the database. Neither app ships a schedule
+ * any more (the scheduled repairs keep both projections current), so this applies to a schedule an
+ * operator set; the RDF repair checks for a running search reindex itself before it starts a
+ * rebuild.
  *
  * <p>Three activity signals are checked; any one of them means "search reindex active":
  *
@@ -44,7 +45,7 @@ import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchReindexLockDAO.Sea
  *   <li>the latest Search app run record in a live status with a fresh timestamp. The timestamp
  *       only advances on the distributed path, so a long-running non-distributed search reindex
  *       can outlive the freshness bound — that trade was chosen deliberately: a stale-crash
- *       false-positive would silently skip every weekend RDF rebuild, which is worse than a rare
+ *       false-positive would silently skip every scheduled RDF rebuild, which is worse than a rare
  *       concurrent run on a legacy single-server deployment.
  * </ol>
  *
@@ -59,9 +60,8 @@ public class RdfReindexAdmissionGuard {
   static final long DEFAULT_POLL_INTERVAL_MS = TimeUnit.SECONDS.toMillis(60);
   // Deferral happens on the app's Quartz worker, and that pool is 10 threads for every
   // native app on the server. Holding one for hours to catch a window is a poor trade when
-  // the run is weekly and the next scheduled slot will retry, so the wait is deliberately
-  // short: long enough to outlast a search reindex finishing up, not long enough to matter
-  // to the scheduler.
+  // the next scheduled slot will retry, so the wait is deliberately short: long enough to
+  // outlast a search reindex finishing up, not long enough to matter to the scheduler.
   static final long DEFAULT_MAX_DEFERRAL_MS = TimeUnit.MINUTES.toMillis(30);
   static final long ACTIVITY_FRESHNESS_MS = TimeUnit.MINUTES.toMillis(10);
 

@@ -177,8 +177,8 @@ PREPARE search_index_retry_next_attempt_stmt FROM @search_index_retry_next_attem
 EXECUTE search_index_retry_next_attempt_stmt;
 DEALLOCATE PREPARE search_index_retry_next_attempt_stmt;
 
--- Scheduled search repair: the window of changed rows it has checked, and when it last swept
--- for what remains of rows that are gone. One row per repair; any server may run the next pass.
+-- Scheduled search and RDF repairs: the window of changed rows each has checked, and when it last
+-- swept for what remains of rows that are gone. One row per repair; any server may run the next pass.
 CREATE TABLE IF NOT EXISTS projection_repair_state (
     name VARCHAR(64) NOT NULL,
     changedSince BIGINT NOT NULL,
