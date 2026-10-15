@@ -964,7 +964,7 @@ public class DomainRepository extends EntityRepository<Domain> {
       Domain parentWithFields = get(null, updated.getId(), getFields("parent,owners,experts"));
       parentWithFields.setFullyQualifiedName(newFqn);
       parentWithFields.setName(updated.getName());
-      searchRepository.updateEntityIndex(parentWithFields);
+      searchRepository.getLiveWrites().updateEntityIndex(parentWithFields);
 
       // Bulk update all domain entities' FQNs and parent.fullyQualifiedName in search
       // index

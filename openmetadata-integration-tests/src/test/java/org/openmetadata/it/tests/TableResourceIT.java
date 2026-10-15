@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -4641,14 +4642,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       body = new String(content.readAllBytes(), StandardCharsets.UTF_8);
     }
     JsonNode hits = new ObjectMapper().readTree(body).path("hits");
+    // Assertion failures, not exceptions, so a caller's Awaitility poll waits for the queued write.
     if (hits.path("total").path("value").asInt() != 1) {
-      throw new IllegalStateException(
-          "Expected exactly one search hit for table " + tableId + ", got: " + body);
+      fail("Expected exactly one search hit for table " + tableId + ", got: " + body);
     }
     JsonNode upstreamLineage = hits.path("hits").get(0).path("_source").path("upstreamLineage");
     if (!upstreamLineage.isArray() || upstreamLineage.isEmpty()) {
-      throw new IllegalStateException(
-          "upstreamLineage missing or empty for table " + tableId + ": " + body);
+      fail("upstreamLineage missing or empty for table " + tableId + ": " + body);
     }
     return upstreamLineage.toString();
   }

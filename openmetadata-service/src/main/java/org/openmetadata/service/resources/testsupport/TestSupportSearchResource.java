@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -27,6 +28,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Map;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +46,9 @@ import org.openmetadata.service.security.Authorizer;
  * {@code alias}, {@code mapping}, {@code indices}, {@code exists} — each of which builds the engine
  * request <b>server-side</b> from a validated index/alias name. There is no caller-controlled
  * request path or HTTP method, so no mutating engine operation (e.g. {@code _doc}, {@code _bulk},
- * {@code _delete_by_query}) can be reached through this resource. Every method requires admin.
+ * {@code _delete_by_query}) can be reached through this resource. It can also wait for the search
+ * writes this server has queued, which apply after the API calls that made them return. Every
+ * method requires admin.
  *
  * <p><b>Disabled by default.</b> This is a test-only surface, so it does not register unless {@code
  * OM_TEST_SUPPORT_SEARCH_ENABLED=true} (env var or system property) — a production deployment never
@@ -65,6 +69,8 @@ public class TestSupportSearchResource {
   private static final Pattern SAFE_PATTERN = Pattern.compile("[a-zA-Z0-9][a-zA-Z0-9._-]*\\*?");
 
   private static final String ENABLED_FLAG = "OM_TEST_SUPPORT_SEARCH_ENABLED";
+
+  private static final Duration MAX_AWAIT = Duration.ofMinutes(5);
 
   private final Authorizer authorizer;
 
@@ -188,6 +194,24 @@ public class TestSupportSearchResource {
             .rawSearchRequest("GET", existsPath(index, alias), null);
     boolean exists = response.statusCode() >= 200 && response.statusCode() < 300;
     return Response.ok(Map.of("exists", exists)).build();
+  }
+
+  @POST
+  @Path("/queued-writes/await")
+  @Operation(
+      operationId = "testSupportAwaitQueuedSearchWrites",
+      summary =
+          "Wait until the search writes this server has queued so far are applied and searchable",
+      responses = {@ApiResponse(responseCode = "200", description = "{\"applied\": boolean}")})
+  public Response awaitQueuedWrites(
+      @Context SecurityContext securityContext,
+      @QueryParam("timeoutSeconds") @DefaultValue("60") int timeoutSeconds)
+      throws InterruptedException, IOException {
+    authorizer.authorizeAdmin(securityContext);
+    final Duration timeout =
+        Duration.ofSeconds(Math.clamp(timeoutSeconds, 1, MAX_AWAIT.toSeconds()));
+    final boolean applied = Entity.getSearchRepository().awaitQueuedWritesSearchable(timeout);
+    return Response.ok(Map.of("applied", applied)).build();
   }
 
   private Response engineGet(SecurityContext securityContext, String enginePath)

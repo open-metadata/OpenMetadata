@@ -211,7 +211,7 @@ public class ElasticSearchClient implements SearchClient {
       Rest5ClientTransport transport =
           new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper());
       ElasticsearchClient newClient =
-          new ShardFailureAwareElasticsearchClient(new MeteredElasticsearchTransport(transport));
+          new ByQueryAwareElasticsearchClient(new MeteredElasticsearchTransport(transport));
 
       LOG.info("Successfully initialized new Elasticsearch Java API client");
       return newClient;

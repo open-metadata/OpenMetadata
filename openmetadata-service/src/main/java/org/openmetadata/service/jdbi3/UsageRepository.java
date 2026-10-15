@@ -146,9 +146,10 @@ public class UsageRepository {
       return;
     }
     try {
-      // updateEntity reloads with only the index's required reindex fields (not "*"), so
-      // this is a single bounded reload + index — cheap enough to run inline per report.
-      search.updateEntity(Entity.getEntityReferenceById(entityType, entityId, Include.ALL));
+      // Queued: the reload of the index's required fields and the write run after the response.
+      search
+          .getLiveWrites()
+          .updateEntity(Entity.getEntityReferenceById(entityType, entityId, Include.ALL));
     } catch (Exception e) {
       // A search-index hiccup must not fail the usage write, which is already committed.
       LOG.warn("Failed to update search index with usage for {} {}", entityType, entityId, e);

@@ -64,7 +64,11 @@ import {
 } from './glossaryPicker';
 import { waitForSearchIndexed } from './polling';
 import { sidebarClick } from './sidebar';
-import { waitForResponseWithStatus } from './waitHelpers';
+import {
+  openTabUntilListed,
+  searchAssetPickerUntilListed,
+  waitForResponseWithStatus,
+} from './waitHelpers';
 
 const waitForSearchDebounce = async (page: Page) => {
   // Wait for loader to appear and disappear after search
@@ -705,10 +709,20 @@ export const checkDomainDisplayName = async (
   );
 };
 
+/**
+ * The count comes from search, which is eventually consistent: a count the
+ * page read just after adding or removing assets can be stale, so the page is
+ * reloaded between reads to query it afresh.
+ */
 export const checkAssetsCount = async (page: Page, count: number) => {
+  let hasRead = false;
   await expect
     .poll(
       async () => {
+        if (hasRead) {
+          await page.reload({ waitUntil: 'domcontentloaded' });
+        }
+        hasRead = true;
         const text = await page
           .getByTestId('assets')
           .getByTestId('count')
@@ -716,7 +730,7 @@ export const checkAssetsCount = async (page: Page, count: number) => {
 
         return text?.trim();
       },
-      { timeout: 30_000, intervals: [500, 1_000, 2_000] }
+      { timeout: 60_000, intervals: [1_000, 2_000, 3_000] }
     )
     .toBe(count.toString());
 };
@@ -901,21 +915,15 @@ export const addAssetsToDomain = async (
     const entityDisplayName = get(asset, 'entityResponseData.displayName');
     const visibleName = entityDisplayName ?? name ?? '';
 
-    const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${encodeURIComponent(
-        visibleName
-      )}&index=all&from=0&size=25&*`
+    const assetCard = page.locator(`[data-testid="table-data-card_${fqn}"]`);
+    await searchAssetPickerUntilListed(
+      page,
+      page.getByTestId('asset-selection-modal').getByTestId('searchbar'),
+      visibleName,
+      assetCard
     );
-    await page
-      .getByTestId('asset-selection-modal')
-      .getByTestId('searchbar')
-      .fill(visibleName);
-    await searchRes;
 
-    await page
-      .locator(`[data-testid="table-data-card_${fqn}"]`)
-      .getByTestId('asset-checkbox')
-      .click();
+    await assetCard.getByTestId('asset-checkbox').click();
 
     await expect(
       page.locator(
@@ -963,19 +971,15 @@ export const addServicesToDomain = async (
   await assetRes;
 
   for (const { name = '', fullyQualifiedName: fqn } of services) {
-    const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
+    const serviceCard = page.locator(`[data-testid="table-data-card_${fqn}"]`);
+    await searchAssetPickerUntilListed(
+      page,
+      page.getByTestId('asset-selection-modal').getByTestId('searchbar'),
+      name,
+      serviceCard
     );
-    await page
-      .getByTestId('asset-selection-modal')
-      .getByTestId('searchbar')
-      .fill(name);
-    await searchRes;
 
-    await page
-      .locator(`[data-testid="table-data-card_${fqn}"]`)
-      .getByTestId('asset-checkbox')
-      .click();
+    await serviceCard.getByTestId('asset-checkbox').click();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1023,20 +1027,15 @@ export const addAssetsToDataProduct = async (
       );
     }
 
-    const searchRes = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes(`q=${name}`) &&
-        response.url().includes('index=all') &&
-        response.url().includes('size=25')
+    const assetCard = page.locator(`[data-testid="table-data-card_${fqn}"]`);
+    await searchAssetPickerUntilListed(
+      page,
+      page.getByTestId('searchbar'),
+      name,
+      assetCard
     );
-    await page.getByTestId('searchbar').fill(name);
-    await searchRes;
 
-    await page
-      .locator(`[data-testid="table-data-card_${fqn}"]`)
-      .getByTestId('asset-checkbox')
-      .click();
+    await assetCard.getByTestId('asset-checkbox').click();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1814,17 +1813,24 @@ export const verifyDataProductsCount = async (
 
 /**
  * Navigates to a subdomain from the current domain/subdomain page.
- * Clicks on the Sub Domains tab and then clicks on the specified subdomain.
+ * Opens the Sub Domains tab until the subdomain is listed (the list is
+ * search-backed, so one created moments ago can be missing at first), then
+ * clicks it.
  */
 export const navigateToSubDomain = async (
   page: Page,
   subDomainData: { name: string }
 ) => {
-  await page.getByTestId('subdomains').getByText('Sub Domains').click();
+  const subDomainCard = page.getByTestId(subDomainData.name);
+  await openTabUntilListed(
+    page,
+    page.getByTestId('subdomains').getByText('Sub Domains'),
+    subDomainCard
+  );
   await waitForAllLoadersToDisappear(page);
 
   await Promise.all([
-    page.getByTestId(subDomainData.name).click(),
+    subDomainCard.click(),
     page.waitForResponse('/api/v1/domains/name/*'),
   ]);
 };
@@ -2034,22 +2040,15 @@ export const addInputPortToDataProduct = async (
     state: 'visible',
   });
 
-  const searchBar = page
-    .getByTestId('asset-selection-modal')
-    .getByTestId('searchbar');
-
-  const searchRes = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/search/query') &&
-      res.request().method() === 'GET'
+  const assetCard = page.locator(`[data-testid="table-data-card_${fqn}"]`);
+  await searchAssetPickerUntilListed(
+    page,
+    page.getByTestId('asset-selection-modal').getByTestId('searchbar'),
+    displayName,
+    assetCard
   );
-  await searchBar.fill(displayName);
-  await searchRes;
 
-  await page
-    .locator(`[data-testid="table-data-card_${fqn}"]`)
-    .getByTestId('asset-checkbox')
-    .click();
+  await assetCard.getByTestId('asset-checkbox').click();
 
   const addRes = page.waitForResponse(
     (res) =>
@@ -2081,22 +2080,15 @@ export const addOutputPortToDataProduct = async (
     state: 'visible',
   });
 
-  const searchBar = page
-    .getByTestId('asset-selection-modal')
-    .getByTestId('searchbar');
-
-  const searchRes = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/search/query') &&
-      res.request().method() === 'GET'
+  const assetCard = page.locator(`[data-testid="table-data-card_${fqn}"]`);
+  await searchAssetPickerUntilListed(
+    page,
+    page.getByTestId('asset-selection-modal').getByTestId('searchbar'),
+    displayName,
+    assetCard
   );
-  await searchBar.fill(displayName);
-  await searchRes;
 
-  await page
-    .locator(`[data-testid="table-data-card_${fqn}"]`)
-    .getByTestId('asset-checkbox')
-    .click();
+  await assetCard.getByTestId('asset-checkbox').click();
 
   const addRes = page.waitForResponse(
     (res) =>

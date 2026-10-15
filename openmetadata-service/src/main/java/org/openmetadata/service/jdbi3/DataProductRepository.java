@@ -301,7 +301,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     try {
       DataProduct dataProduct = find(dataProductId, ALL, false);
       setFieldsInternal(dataProduct, getPutFields());
-      searchRepository.updateEntityIndex(dataProduct);
+      searchRepository.getLiveWrites().updateEntityIndex(dataProduct);
     } catch (EntityNotFoundException e) {
       // A retained product can still be hard-deleted elsewhere in the same domain cascade.
       // This loop runs post-commit, so skip the vanished product and keep reindexing the rest.
@@ -811,7 +811,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         success.add(new BulkResponse().withRequest(ref));
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-        searchRepository.updateEntity(ref);
+        searchRepository.getLiveWrites().updateEntity(ref);
       } catch (RuleValidationException e) {
         LOG.warn(
             "Validation failed for asset {} in bulk operation: {}", ref.getId(), e.getMessage());
@@ -902,7 +902,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   private void updateAssetSearchIndexes(String oldFqn, String newFqn) {
     if (searchRepository != null) {
-      searchRepository.deferIfFlushScopeActive(
+      searchRepository.queueFanOut(
           () -> searchRepository.getSearchClient().updateDataProductReferences(oldFqn, newFqn),
           "updateDataProductReferences",
           null,
@@ -1182,7 +1182,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       // This runs inside the domain-change @Transaction. Defer the batched reindex until commit so
       // its re-reads see the committed (post-detach) rows rather than the in-flight transaction
       // state — matching updateEntitiesByReference's transactional contract.
-      searchRepository.deferIfFlushScopeActive(
+      searchRepository.queueFanOut(
           () -> searchRepository.updateEntitiesByReference(reindexQueue),
           "detachConflictingDataProductsReindex",
           null,

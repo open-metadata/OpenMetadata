@@ -376,6 +376,14 @@ class TestCaseRepositoryTest {
               })
           .when(searchRepository)
           .deleteByScript(eq(Entity.TEST_CASE_RESULT), anyString(), anyMap());
+      // The search delete is a queued fan-out; apply it where the counting mocks can see it.
+      doAnswer(
+              invocation -> {
+                invocation.<Runnable>getArgument(0).run();
+                return null;
+              })
+          .when(searchRepository)
+          .queueFanOut(any(Runnable.class), anyString(), any(), any(), any());
     }
 
     private TestCaseRepository registerRepositories(MockedStatic<Entity> entity) {

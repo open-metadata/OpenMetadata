@@ -4032,8 +4032,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   private static int deferOrRunSearchBackedInvalidation(IntSupplier invalidation, String tagFqn) {
     int result = 0;
     if (SearchRepository.isSearchWriteDeferralActive()) {
-      SearchRepository.deferOrRunSearchWrite(
-          invalidation::getAsInt, "invalidateCacheForTaggedEntities", null, tagFqn, null);
+      SearchRepository.runAfterCommit(
+          invalidation::getAsInt, "invalidateCacheForTaggedEntities", tagFqn);
     } else {
       result = invalidation.getAsInt();
     }

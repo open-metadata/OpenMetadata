@@ -81,6 +81,7 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.search.LiveSearchWrites;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
@@ -2301,42 +2302,32 @@ public class EntityCsvTest {
   }
 
   @Test
-  void test_flushPendingSearchIndexUpdatesClearsQueueOnSuccessAndFailure() {
+  void test_flushPendingSearchIndexUpdatesQueuesWritesAndClearsQueue() {
     SearchRepository searchRepository = mock(SearchRepository.class);
-    Table successEntity = tableEntity("orders", "service.db.schema.orders", "Orders");
-    Table failedEntity = tableEntity("payments", "service.db.schema.payments", "Payments");
-    List<List<EntityInterface<?>>> capturedBatches = new ArrayList<>();
+    LiveSearchWrites liveWrites = mock(LiveSearchWrites.class);
+    Table orders = tableEntity("orders", "service.db.schema.orders", "Orders");
+    Table payments = tableEntity("payments", "service.db.schema.payments", "Payments");
+    List<List<EntityInterface<?>>> queuedBatches = new ArrayList<>();
 
-    TestCsv successfulCsv = new TestCsv();
-    successfulCsv.pendingSearchIndexUpdates.add(successEntity);
+    TestCsv testCsv = new TestCsv();
+    testCsv.pendingSearchIndexUpdates.add(orders);
+    testCsv.pendingSearchIndexUpdates.add(payments);
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      Mockito.when(searchRepository.getLiveWrites()).thenReturn(liveWrites);
       Mockito.doAnswer(
               invocation -> {
-                capturedBatches.add(new ArrayList<>(invocation.getArgument(0)));
+                queuedBatches.add(new ArrayList<>(invocation.getArgument(0)));
                 return null;
               })
-          .when(searchRepository)
-          .updateEntitiesBulk(Mockito.anyList());
-      successfulCsv.flushPendingSearchIndexUpdates();
-      assertEquals(List.of(successEntity), capturedBatches.get(0));
-      assertTrue(successfulCsv.pendingSearchIndexUpdates.isEmpty());
-    }
+          .when(liveWrites)
+          .updateEntitiesIndex(Mockito.anyList(), Mockito.anyMap());
 
-    TestCsv failingCsv = new TestCsv();
-    failingCsv.pendingSearchIndexUpdates.add(failedEntity);
-    SearchRepository failingRepository = mock(SearchRepository.class);
+      testCsv.flushPendingSearchIndexUpdates();
 
-    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
-      entity.when(Entity::getSearchRepository).thenReturn(failingRepository);
-      Mockito.doThrow(new IllegalStateException("search bulk failed"))
-          .when(failingRepository)
-          .updateEntitiesBulk(List.of(failedEntity));
-
-      failingCsv.flushPendingSearchIndexUpdates();
-
-      assertTrue(failingCsv.pendingSearchIndexUpdates.isEmpty());
+      assertEquals(List.of(List.of(orders, payments)), queuedBatches);
+      assertTrue(testCsv.pendingSearchIndexUpdates.isEmpty());
     }
   }
 

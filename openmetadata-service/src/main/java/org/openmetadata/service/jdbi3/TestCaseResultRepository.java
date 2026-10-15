@@ -32,6 +32,7 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.OrderedLaneTask;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
@@ -45,6 +46,8 @@ import org.openmetadata.service.util.RestUtil;
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
+  private static final String CLEAR_INDEXED_STATUS_OPERATION = "clearIndexedStatus";
+  private static final String DELETE_RESULTS_OPERATION = "deleteAllTestCaseResults";
   private static final String CLEAR_INDEXED_STATUS_SCRIPT =
       """
       def indexed = ctx._source.testCaseResult;
@@ -263,7 +266,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     if (storedTestCaseResult != null) {
       // Delete main result
       timeSeriesDao.deleteAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
-      searchRepository.deleteTimeSeriesEntityById(storedTestCaseResult);
+      searchRepository.getLiveWrites().deleteTimeSeriesEntityById(storedTestCaseResult);
 
       // Delete associated dimensional results
       dimensionResultRepository.deleteByTestCaseAndTimestamp(fqn, timestamp);
@@ -386,13 +389,25 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
    * result newer than the deleted one, in case a new result was indexed first.
    */
   private void clearIndexedStatus(TestCase testCase, TestCaseResult deleted) {
+    final String testCaseId = testCase.getId().toString();
     searchRepository
-        .getSearchClient()
-        .updateEntity(
-            searchRepository.getWriteIndexName(searchRepository.getIndexMapping(TEST_CASE)),
-            testCase.getId().toString(),
-            Map.of("deletedTimestamp", deleted.getTimestamp()),
-            CLEAR_INDEXED_STATUS_SCRIPT);
+        .getLiveWrites()
+        .queue(
+            new OrderedLaneTask(
+                () ->
+                    searchRepository
+                        .getSearchClient()
+                        .updateEntity(
+                            searchRepository.getWriteIndexName(
+                                searchRepository.getIndexMapping(TEST_CASE)),
+                            testCaseId,
+                            Map.of("deletedTimestamp", deleted.getTimestamp()),
+                            CLEAR_INDEXED_STATUS_SCRIPT,
+                            TEST_CASE),
+                CLEAR_INDEXED_STATUS_OPERATION,
+                testCaseId,
+                testCase.getFullyQualifiedName(),
+                TEST_CASE));
   }
 
   @Override
@@ -426,12 +441,19 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     // Delete all dimensional results
     dimensionResultRepository.deleteAllByTestCases(testCaseFQNs);
 
+    // After the queued writes, so a result written just before the delete is not indexed after it.
     Map<String, Object> params = Map.of("fqns", testCaseFQNs);
-    searchRepository.deleteByScript(
-        TEST_CASE_RESULT,
-        "!doc['testCaseFQN.keyword'].empty && "
-            + "params.fqns.contains(doc['testCaseFQN.keyword'].value)",
-        params);
+    searchRepository.queueFanOut(
+        () ->
+            searchRepository.deleteByScript(
+                TEST_CASE_RESULT,
+                "!doc['testCaseFQN.keyword'].empty && "
+                    + "params.fqns.contains(doc['testCaseFQN.keyword'].value)",
+                params),
+        DELETE_RESULTS_OPERATION,
+        null,
+        null,
+        TEST_CASE_RESULT);
   }
 
   private void storeDimensionalResults(TestCase testCase, TestCaseResult testCaseResult) {

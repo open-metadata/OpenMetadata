@@ -36,6 +36,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.factories.MlModelServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateContainer;
@@ -409,6 +410,7 @@ public class LineageResourceIT {
 
     addLineage(client, root, mid);
     addLineage(client, mid, leaf);
+    QueuedSearchWrites.await();
 
     String queryFilter =
         """

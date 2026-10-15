@@ -71,15 +71,13 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
+import org.openmetadata.service.events.lifecycle.OrderedLaneTask;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchAggregation;
-import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.vector.TestSuiteBodyTextContributor;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
@@ -97,6 +95,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public static final String TESTS_REVISION_EXTENSION = "internal.testSuite.testsRevision";
   public static final String TESTS_REVISION_FIELD = "testsRevision";
   private static final String TESTS_REVISION_SCHEMA = "testsRevision";
+  private static final String INDEX_BASIC_TEST_SUITE_OPERATION = "postCreate.updateTestSuiteIndex";
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
   private static final int MAX_CONCURRENT_REPORT_QUERIES = 10;
@@ -620,36 +619,34 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   protected void postCreate(TestSuite entity) {
     super.postCreate(entity);
-    if (Boolean.TRUE.equals(entity.getBasic()) && entity.getBasicEntityReference() != null) {
-      // Update table index with test suite field
-      EntityInterface<?> entityInterface =
-          getEntity(entity.getBasicEntityReference(), "testSuite", ALL);
-      IndexMapping indexMapping =
-          searchRepository.getIndexMapping(entity.getBasicEntityReference().getType());
-      SearchClient searchClient = searchRepository.getSearchClient();
-      SearchIndex index =
-          searchRepository
-              .getSearchIndexFactory()
-              .buildIndex(entity.getBasicEntityReference().getType(), entityInterface);
-      Map<String, Object> doc = index.buildSearchIndexDoc();
-      try {
-        searchClient.updateEntity(
-            indexMapping.getIndexName(searchRepository.getClusterAlias()),
-            entity.getBasicEntityReference().getId().toString(),
-            doc,
-            "ctx._source.testSuite = params.testSuite;");
-      } catch (Exception e) {
-        SearchIndexRetryQueue.enqueue(
-            entity.getBasicEntityReference().getId().toString(),
-            entityInterface.getFullyQualifiedName(),
-            entity.getBasicEntityReference().getType(),
-            SearchIndexRetryQueue.failureReason("postCreate.updateTestSuiteIndex", e));
-        LOG.error(
-            "Failed to update search index for entity [{}] in postCreate: {}",
-            entity.getBasicEntityReference().getId(),
-            e.getMessage());
-      }
+    final EntityReference basicEntity = entity.getBasicEntityReference();
+    if (Boolean.TRUE.equals(entity.getBasic()) && basicEntity != null) {
+      // On the table's lane, so it follows the table's own queued writes.
+      searchRepository
+          .getLiveWrites()
+          .queue(
+              new OrderedLaneTask(
+                  () -> indexTestSuiteOf(basicEntity),
+                  INDEX_BASIC_TEST_SUITE_OPERATION,
+                  basicEntity.getId().toString(),
+                  basicEntity.getFullyQualifiedName(),
+                  basicEntity.getType()));
     }
+  }
+
+  private void indexTestSuiteOf(EntityReference basicEntity) {
+    final EntityInterface<?> entityInterface = getEntity(basicEntity, "testSuite", ALL);
+    final IndexMapping indexMapping = searchRepository.getIndexMapping(basicEntity.getType());
+    final Map<String, Object> doc =
+        searchRepository.getDocumentBuilder().build(basicEntity.getType(), entityInterface);
+    searchRepository
+        .getSearchClient()
+        .updateEntity(
+            searchRepository.getWriteIndexName(indexMapping),
+            basicEntity.getId().toString(),
+            doc,
+            "ctx._source.testSuite = params.testSuite;",
+            basicEntity.getType());
   }
 
   private void fetchAndSetTestCaseResultSummary(
@@ -994,7 +991,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     suite.setUpdatedBy(updatedBy);
     suite.setUpdatedAt(System.currentTimeMillis());
     storeEntity(suite, true);
-    searchRepository.updateEntityIndex(suite);
+    searchRepository.getLiveWrites().updateEntityIndex(suite);
     return previousVersion;
   }
 

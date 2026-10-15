@@ -480,7 +480,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private void updateAssetIndexes(String oldFqn, String newFqn) {
-    searchRepository.deferIfFlushScopeActive(
+    searchRepository.queueFanOut(
         () -> runAssetIndexRewrite(oldFqn, newFqn),
         "classificationUpdateAssetIndexes",
         null,

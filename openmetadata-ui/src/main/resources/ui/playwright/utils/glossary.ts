@@ -76,7 +76,10 @@ import {
   waitForTaskListResponse,
   waitForTaskResolveResponse,
 } from './task';
-import { waitForResponseWithStatus } from './waitHelpers';
+import {
+  searchAssetPickerUntilListed,
+  waitForResponseWithStatus,
+} from './waitHelpers';
 
 const GLOSSARY_TERM_APPROVAL_WORKFLOW = 'GlossaryTermApprovalWorkflow';
 const AUTO_APPROVED_BY_REVIEWER_STAGE = 'Auto-Approved by Reviewer';
@@ -747,21 +750,19 @@ export const addAssetToGlossaryTerm = async (
   for (const asset of assets) {
     const entityFqn = get(asset, 'entityResponseData.fullyQualifiedName');
     const entityName = get(asset, 'entityResponseData.name');
-    const searchRes = page.waitForResponse('/api/v1/search/query*');
     const entityDisplayName = get(asset, 'entityResponseData.displayName');
 
     const visibleName = entityDisplayName ?? entityName;
-    await page
-      .locator(
-        '[data-testid="asset-selection-modal"] [data-testid="searchbar"]'
-      )
-      .fill(visibleName);
-
-    await searchRes;
-    await page
-      .locator(`[data-testid="table-data-card_${entityFqn}"]`)
-      .getByTestId('asset-checkbox')
-      .click();
+    const assetCard = page.locator(
+      `[data-testid="table-data-card_${entityFqn}"]`
+    );
+    await searchAssetPickerUntilListed(
+      page,
+      page.getByTestId('asset-selection-modal').getByTestId('searchbar'),
+      visibleName,
+      assetCard
+    );
+    await assetCard.getByTestId('asset-checkbox').click();
     await waitForAllLoadersToDisappear(page);
     await expect(
       page.locator(

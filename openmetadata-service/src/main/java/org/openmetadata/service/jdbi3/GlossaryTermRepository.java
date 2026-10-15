@@ -1940,7 +1940,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
         invalidateCacheAfterTagMutation(asset.getEntityReference());
 
-        searchRepository.updateEntity(ref);
+        searchRepository.getLiveWrites().updateEntity(ref);
         RdfUpdater.updateEntity(asset);
       }
     }
@@ -1955,7 +1955,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       applyTags(getUniqueTags(glossary.getTags()), term.getFullyQualifiedName());
       invalidateCacheAfterTagMutation(term.getEntityReference());
 
-      searchRepository.updateEntity(term.getEntityReference());
+      searchRepository.getLiveWrites().updateEntity(term.getEntityReference());
       RdfUpdater.updateEntity(term);
     }
 
@@ -2011,7 +2011,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
       invalidateCacheAfterTagMutation(table.getEntityReference());
-      searchRepository.updateEntity(table.getEntityReference());
+      searchRepository.getLiveWrites().updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);
     }
 
@@ -2217,7 +2217,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       if (!dryRun) {
         // Update ES
-        searchRepository.updateEntity(ref);
+        searchRepository.getLiveWrites().updateEntity(ref);
         RdfUpdater.updateEntity(asset);
       }
     }
@@ -2258,7 +2258,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     if (!dryRun) {
       // Update the parent table's search index
-      searchRepository.updateEntity(table.getEntityReference());
+      searchRepository.getLiveWrites().updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);
     }
   }
@@ -2433,7 +2433,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void updateAssetIndexes(String oldFqn, String newFqn) {
-    searchRepository.deferIfFlushScopeActive(
+    searchRepository.queueFanOut(
         () ->
             searchRepository
                 .getSearchClient()

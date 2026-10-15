@@ -141,7 +141,7 @@ public class DataQualityDimensionRepository extends EntityRepository<DataQuality
     // Deferred to the post-commit drain for the same reason as the reclassification path: this
     // runs inside the delete transaction, and the cleanup re-reads test definitions and rebuilds
     // search documents on its own connection. Submitting here would race the commit.
-    searchRepository.deferIfFlushScopeActive(
+    searchRepository.queueFanOut(
         () ->
             AsyncService.getInstance()
                 .executeDatabaseTask(
@@ -225,7 +225,7 @@ public class DataQualityDimensionRepository extends EntityRepository<DataQuality
     }
     for (EntityReference testCase :
         Entity.getEntityReferencesByIds(Entity.TEST_CASE, testCaseIds, Include.ALL)) {
-      searchRepository.updateEntity(testCase);
+      searchRepository.getLiveWrites().updateEntity(testCase);
     }
   }
 

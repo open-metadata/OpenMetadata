@@ -34,8 +34,7 @@ class SearchIndexRetryQueueTest {
         SearchIndexRetryQueue.withPropagationContext("bulk flush timed out", displayNameChange());
 
     String retryReason =
-        SearchIndexRetryQueue.preservePropagationContext(
-            originalReason, "retryFailed: connection reset");
+        SearchIndexRetryQueue.preserveRetryContext(originalReason, "retryFailed: connection reset");
 
     assertTrue(retryReason.startsWith("retryFailed: connection reset"));
     assertEquals(

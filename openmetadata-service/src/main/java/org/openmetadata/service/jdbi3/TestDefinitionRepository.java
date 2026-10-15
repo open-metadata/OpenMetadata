@@ -265,7 +265,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     // updater's @Transaction and the worker re-reads the relationships on its own connection, so
     // submitting here would race the commit: a worker that won would rebuild the documents from
     // the pre-repoint rows, and nothing would re-trigger it.
-    searchRepository.deferIfFlushScopeActive(
+    searchRepository.queueFanOut(
         () ->
             AsyncService.getInstance()
                 .executeDatabaseTask(
@@ -299,7 +299,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
         List<UUID> ids = page.stream().map(UUID::fromString).toList();
         for (EntityReference testCase :
             Entity.getEntityReferencesByIds(Entity.TEST_CASE, ids, Include.ALL)) {
-          searchRepository.updateEntity(testCase);
+          searchRepository.getLiveWrites().updateEntity(testCase);
         }
       } catch (RuntimeException e) {
         LOG.error(

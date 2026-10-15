@@ -14,8 +14,10 @@
 package org.openmetadata.service.events.lifecycle;
 
 import io.micrometer.core.instrument.Metrics;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -63,6 +65,11 @@ public final class OrderedLaneExecutor implements AutoCloseable {
   private static final String SHED_METRIC = "search.ordered_lane.shed";
   private static final int LANE_UNKNOWN = -1;
 
+  /** Returned by {@link #currentLane()} on a thread that is not running a task of this executor. */
+  public static final int NO_LANE = LANE_UNKNOWN;
+
+  private static final long MARKER_RETRY_MILLIS = 10L;
+
   /**
    * Sentinel cause handed to the {@code laneFailureHandler} when a task is shed to the durable outbox
    * because its lane queue was full (as opposed to a task that failed while executing). It lets the
@@ -80,6 +87,7 @@ public final class OrderedLaneExecutor implements AutoCloseable {
   private final int laneQueueCapacity;
   private final long shutdownTimeoutSeconds;
   private final BiConsumer<OrderedTask, Throwable> laneFailureHandler;
+  private final ThreadLocal<Integer> runningLane = new ThreadLocal<>();
 
   public OrderedLaneExecutor(BiConsumer<OrderedTask, Throwable> laneFailureHandler) {
     this(laneFailureHandler, DEFAULT_LANE_QUEUE_CAPACITY, DEFAULT_SHUTDOWN_TIMEOUT_SECONDS);
@@ -150,7 +158,7 @@ public final class OrderedLaneExecutor implements AutoCloseable {
    */
   private void submitToLane(int lane, OrderedTask task) {
     try {
-      lanes[lane].execute(new LaneRunnable(task));
+      lanes[lane].execute(new LaneRunnable(lane, task));
     } catch (RejectedExecutionException rejected) {
       shedToOutbox(lane, task);
     }
@@ -163,16 +171,29 @@ public final class OrderedLaneExecutor implements AutoCloseable {
    * possibly-already-torn-down search/DAO client during shutdown.
    */
   private final class LaneRunnable implements Runnable {
+    private final int lane;
     private final OrderedTask task;
 
-    private LaneRunnable(OrderedTask task) {
+    private LaneRunnable(int lane, OrderedTask task) {
+      this.lane = lane;
       this.task = task;
     }
 
     @Override
     public void run() {
-      runSafely(task);
+      runningLane.set(lane);
+      try {
+        runSafely(task);
+      } finally {
+        runningLane.remove();
+      }
     }
+  }
+
+  /** The lane whose task the calling thread is running, or {@link #NO_LANE}. */
+  public int currentLane() {
+    final Integer lane = runningLane.get();
+    return lane == null ? NO_LANE : lane;
   }
 
   /**
@@ -208,6 +229,59 @@ public final class OrderedLaneExecutor implements AutoCloseable {
     } catch (Throwable handlerFailure) {
       LOG.error("Ordered-lane failure handler threw; the failed task is lost", handlerFailure);
     }
+  }
+
+  /**
+   * Waits until every task submitted before this call has run. Each lane runs its queue in order, so
+   * one marker queued behind every lane's work is enough. For draining and tests; never call it on a
+   * request thread.
+   *
+   * @return {@code false} if {@code timeout} passed first
+   */
+  public boolean awaitQueuedTasks(final Duration timeout) throws InterruptedException {
+    return awaitQueuedTasks(timeout, NO_LANE);
+  }
+
+  /**
+   * As {@link #awaitQueuedTasks(Duration)}, but not waiting on {@code skipLane}: a task running on
+   * that lane has already seen every task queued on it before itself.
+   */
+  public boolean awaitQueuedTasks(final Duration timeout, final int skipLane)
+      throws InterruptedException {
+    final long deadline = System.nanoTime() + timeout.toNanos();
+    final CountDownLatch markers =
+        new CountDownLatch(skipLane == NO_LANE ? laneCount : laneCount - 1);
+    for (int index = 0; index < laneCount; index++) {
+      if (index != skipLane) {
+        queueMarker(lanes[index], markers::countDown, deadline);
+      }
+    }
+    return markers.await(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
+  }
+
+  private static void queueMarker(
+      final ThreadPoolExecutor lane, final Runnable marker, final long deadline)
+      throws InterruptedException {
+    boolean queued = false;
+    while (!queued && !lane.isShutdown() && System.nanoTime() < deadline) {
+      try {
+        lane.execute(marker);
+        queued = true;
+      } catch (RejectedExecutionException full) {
+        // The lane is full; its consumer frees space as it runs, so try again shortly.
+        TimeUnit.MILLISECONDS.sleep(MARKER_RETRY_MILLIS);
+      }
+    }
+    if (!queued && hasDrained(lane, deadline)) {
+      marker.run();
+    }
+  }
+
+  /** A stopping lane takes no marker, but runs everything it accepted before it terminates. */
+  private static boolean hasDrained(final ThreadPoolExecutor lane, final long deadline)
+      throws InterruptedException {
+    return lane.isShutdown()
+        && lane.awaitTermination(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
   }
 
   @Override

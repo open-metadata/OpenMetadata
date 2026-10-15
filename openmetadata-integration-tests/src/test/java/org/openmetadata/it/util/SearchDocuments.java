@@ -36,6 +36,7 @@ public final class SearchDocuments {
   /** The document as stored in {@code indexOrAlias}, or empty when there is no such document. */
   public static Optional<JsonNode> find(final String indexOrAlias, final String id)
       throws IOException {
+    QueuedSearchWrites.await();
     final Object client = Entity.getSearchRepository().getSearchClient().getHighLevelClient();
     final Map<?, ?> source =
         client instanceof ElasticsearchClient elastic
@@ -73,6 +74,7 @@ public final class SearchDocuments {
 
   private static void send(final String method, final String endpoint, final Object body)
       throws IOException {
+    QueuedSearchWrites.await();
     final RawSearchResponse response =
         Entity.getSearchRepository()
             .getSearchClient()

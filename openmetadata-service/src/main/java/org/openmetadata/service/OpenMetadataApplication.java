@@ -1442,6 +1442,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       RdfUpdater.stop();
       AsyncService.getInstance().shutdown();
       EntityLifecycleEventDispatcher.getInstance().shutdown();
+      Entity.getSearchRepository().getLiveWrites().close();
       AppScheduler.shutDown();
       // Before RDF teardown: closing the engine can still fire workflow listeners that write
       // through to repositories, and those writes may fan out to the RDF updater.

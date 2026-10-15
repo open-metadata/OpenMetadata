@@ -95,6 +95,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String PIPELINE_PATCH_FIELDS = "tasks";
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("tasks.description");
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
+  private static final String PIPELINE_STATUS_INDEX_OPERATION = "indexPipelineStatus";
 
   public PipelineRepository() {
     super(
@@ -305,20 +306,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       storePipelineExecutionInRdf(pipeline, pipelineStatus);
     }
 
-    // Index pipeline execution in Elasticsearch for analytics
-    try {
-      indexPipelineExecutionInES(pipeline, pipelineStatus);
-    } catch (Exception e) {
-      LOG.error("Failed to index pipeline execution in Elasticsearch", e);
-      // Don't fail the entire operation if ES indexing fails
-    }
-
-    // Update the pipeline's own ES index with latest status
-    searchRepository.updateEntityIndex(pipeline);
-    searchRepository
-        .getSearchClient()
-        .reindexAcrossIndices(
-            "upstreamLineage.pipeline.fullyQualifiedName", pipeline.getEntityReference());
+    queueStatusIndexes(pipeline, List.of(pipelineStatus), true);
 
     return new RestUtil.PutResponse<>(
         Response.Status.OK,
@@ -359,7 +347,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     if (!written.isEmpty()) {
       bulkUpsertPipelineStatuses(pipeline.getFullyQualifiedName(), written);
-      searchRepository.bulkIndexPipelineExecutions(pipeline, written);
       if (RdfUpdater.isEnabled()) {
         written.forEach(status -> storePipelineExecutionInRdf(pipeline, status));
       }
@@ -367,8 +354,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     if (latestChanged) {
       applyStatusChange(pipeline, latestStatus, stored.get(latestStatus.getTimestamp()));
-      refreshPipelineIndexes(pipeline);
     }
+    queueStatusIndexes(pipeline, written, latestChanged);
 
     // This endpoint emits one change event per status, which the response filter cannot do, so the
     // repository owns emission and ENTITY_NO_CHANGE stops the filter adding a duplicate.
@@ -426,6 +413,31 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     for (int i = 0; i < changeEvents.size(); i += CHANGE_EVENT_CHUNK_SIZE) {
       insertChangeEventsBatch(
           changeEvents.subList(i, Math.min(i + CHANGE_EVENT_CHUNK_SIZE, changeEvents.size())));
+    }
+  }
+
+  /**
+   * Indexes the new executions and, when the latest status changed, refreshes the pipeline's own
+   * document and the lineage that names it, after the request returns.
+   */
+  private void queueStatusIndexes(
+      final Pipeline pipeline, final List<PipelineStatus> written, final boolean latestChanged) {
+    final List<PipelineStatus> statuses = JsonUtils.deepCopyList(written, PipelineStatus.class);
+    searchRepository
+        .getLiveWrites()
+        .queueWrite(
+            pipeline,
+            PIPELINE_STATUS_INDEX_OPERATION,
+            indexed -> indexStatuses((Pipeline) indexed, statuses, latestChanged));
+  }
+
+  private void indexStatuses(
+      final Pipeline pipeline, final List<PipelineStatus> statuses, final boolean latestChanged) {
+    if (!statuses.isEmpty()) {
+      searchRepository.bulkIndexPipelineExecutions(pipeline, statuses);
+    }
+    if (latestChanged) {
+      refreshPipelineIndexes(pipeline);
     }
   }
 

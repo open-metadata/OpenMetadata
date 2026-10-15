@@ -19,6 +19,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
@@ -98,6 +99,7 @@ public class IncidentPaginationIT {
   }
 
   private void waitForDataIndexed() throws Exception {
+    QueuedSearchWrites.await();
     String firstFqn = testCases.get(0).getFullyQualifiedName();
     final Instant[] lastRecreation = {Instant.MIN};
     AtomicReference<String> lastError = new AtomicReference<>("no attempts yet");
@@ -385,6 +387,8 @@ public class IncidentPaginationIT {
     fetched.setDomains(List.of(shared.DOMAIN.getEntityReference()));
     fetched.setDisplayName(displayName);
     client.testCases().update(fetched.getId().toString(), fetched);
+    // A wrong propagation would be a queued fan-out; let it land before checking it did not.
+    QueuedSearchWrites.await();
 
     await("Incident search source should not receive parent propagation")
         .atMost(Duration.ofSeconds(60))

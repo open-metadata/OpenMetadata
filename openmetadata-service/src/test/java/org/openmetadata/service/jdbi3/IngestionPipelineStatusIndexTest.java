@@ -24,6 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.UUID;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.search.LiveSearchWrites;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -58,6 +60,8 @@ class IngestionPipelineStatusIndexTest {
   @Test
   void addPipelineStatusKeepsOwnersAndDomainsOnTheIndexedPipeline() {
     SearchRepository searchRepository = mock(SearchRepository.class);
+    LiveSearchWrites liveWrites = mock(LiveSearchWrites.class);
+    when(searchRepository.getLiveWrites()).thenReturn(liveWrites);
 
     // Only the two lookups the repository constructor needs are stubbed; the rest of Entity stays
     // real so the repository is built with its actual allowed fields.
@@ -79,7 +83,7 @@ class IngestionPipelineStatusIndexTest {
       repository.addPipelineStatus(null, PIPELINE_FQN, new PipelineStatus().withRunId("run-1"));
 
       ArgumentCaptor<IngestionPipeline> indexed = ArgumentCaptor.forClass(IngestionPipeline.class);
-      verify(searchRepository).updateEntityIndex(indexed.capture());
+      verify(liveWrites).updateEntityIndex(indexed.capture());
       assertEquals(List.of(OWNER), indexed.getValue().getOwners());
       assertEquals(List.of(DOMAIN), indexed.getValue().getDomains());
       assertEquals(List.of(FOLLOWER), indexed.getValue().getFollowers());

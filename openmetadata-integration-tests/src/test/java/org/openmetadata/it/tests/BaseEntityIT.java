@@ -31,6 +31,7 @@ import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.ApiAssertions;
 import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.EntityValidation;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -1878,6 +1879,7 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
    * `v1/search/get/<index>/doc/<id>` endpoint so subclasses don't need to override.
    */
   protected void awaitEntityIndexed(UUID id) {
+    QueuedSearchWrites.await();
     OpenMetadataClient client = SdkClients.adminClient();
     String docPath = "/v1/search/get/" + getSearchIndex() + "/doc/" + id;
     Awaitility.await("Entity " + id + " indexed in " + getSearchIndex())
@@ -6080,6 +6082,7 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
    * Subclasses should override to use entity-specific search.
    */
   protected String searchForEntity(String entityId) throws Exception {
+    QueuedSearchWrites.await();
     OpenMetadataClient client = SdkClients.adminClient();
     return client.search().query("id:" + entityId).index(getSearchIndexName()).size(1).execute();
   }

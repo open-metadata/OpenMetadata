@@ -48,7 +48,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
       return;
     }
     try {
-      searchRepository.createEntityIndex(entity);
+      searchRepository.getLiveWrites().createEntityIndex(entity);
     } catch (Exception e) {
       LOG.error(
           "Failed to create search index for entity {} {}",
@@ -69,7 +69,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
       return;
     }
     try {
-      searchRepository.updateEntityIndex(entity);
+      searchRepository.getLiveWrites().updateEntityIndex(entity);
     } catch (Exception e) {
       LOG.error(
           "Failed to update search index for entity {} {}",
@@ -87,7 +87,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
       return;
     }
     try {
-      searchRepository.updateEntity(entityRef);
+      searchRepository.getLiveWrites().updateEntity(entityRef);
     } catch (Exception e) {
       LOG.error(
           "Failed to update search index for entity {} {}",
@@ -109,7 +109,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
       return;
     }
     try {
-      searchRepository.deleteEntityIndex(entity);
+      searchRepository.getLiveWrites().deleteEntityIndex(entity);
     } catch (Exception e) {
       LOG.error(
           "Failed to delete search index for entity {} {}",
@@ -128,7 +128,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
       return;
     }
     try {
-      searchRepository.softDeleteOrRestoreEntityIndex(entity, isDeleted);
+      searchRepository.getLiveWrites().softDeleteOrRestoreEntityIndex(entity, isDeleted);
     } catch (Exception e) {
       LOG.error(
           "Failed to {} search index for entity {} {}",
@@ -152,10 +152,10 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
 
   @Override
   public boolean isAsync() {
-    // Search indexing must be visible to follow-up operations in the same request flow (e.g., a
-    // postCreate hook that immediately updates the indexed document, or a create-then-search). It
-    // therefore runs synchronously post-commit on the request thread — never deferred to a
-    // background lane, which would make the entity eventually consistent and break read-your-write.
+    // Runs inline after commit only to queue the write: LiveSearchWrites snapshots the entity and
+    // applies the write on the entity's lane once the request has returned, so search is
+    // eventually consistent and the API never waits for the search cluster. Later writes to the
+    // same entity, from here or from a repository, share that lane and stay in order.
     return false;
   }
 
@@ -170,7 +170,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
           entities.stream().collect(Collectors.groupingBy(e -> e.getEntityReference().getType()));
 
       for (Map.Entry<String, List<EntityInterface<?>>> entry : entitiesByType.entrySet()) {
-        searchRepository.createEntitiesIndex(entry.getValue());
+        searchRepository.getLiveWrites().createEntitiesIndex(entry.getValue());
       }
     } catch (Exception e) {
       LOG.error("Failed to create search indexes for {} entities", entities.size(), e);
@@ -208,7 +208,9 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
         updateContext == null ? EntityUpdateContext.empty() : updateContext;
 
     try {
-      searchRepository.updateEntitiesIndex(entities, effectiveContext.relationshipRevisions());
+      searchRepository
+          .getLiveWrites()
+          .updateEntitiesIndex(entities, effectiveContext.relationshipRevisions());
       LOG.debug("Successfully updated search indexes for {} entities", entities.size());
     } catch (Exception e) {
       LOG.error("Failed to bulk update search indexes for {} entities", entities.size(), e);
@@ -222,7 +224,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
                   : changeDescription,
               subjectContext);
         } else {
-          searchRepository.updateEntityIndex(entity, relationshipRevision);
+          searchRepository.getLiveWrites().updateEntityIndex(entity, relationshipRevision);
         }
       }
     }

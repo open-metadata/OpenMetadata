@@ -35,6 +35,7 @@ import { DashboardDataModelClass } from './DashboardDataModelClass';
 import { DatabaseClass } from './DatabaseClass';
 import { DatabaseSchemaClass } from './DatabaseSchemaClass';
 import { DirectoryClass } from './DirectoryClass';
+import { EntityClass } from './EntityClass';
 import { FileClass } from './FileClass';
 import { MetricClass } from './MetricClass';
 import { MlModelClass } from './MlModelClass';
@@ -367,6 +368,14 @@ export class EntityDataClass {
 
     await settleAll(dependentEntityCreationPromises);
 
+    // The specs sharing these entities reach many of them through search,
+    // which indexes each one after its create call returns.
+    await settleAll(
+      this.searchableDataAssets().map((entity) =>
+        entity.waitUntilSearchable(apiContext)
+      )
+    );
+
     const entityTypesToSetup = Object.values(CUSTOM_PROPERTIES_ENTITIES).map(
       (entity) => entity.name
     );
@@ -374,6 +383,45 @@ export class EntityDataClass {
     for (const entityType of entityTypesToSetup) {
       await this.setupCustomPropertyData(apiContext, entityType);
     }
+  }
+
+  private static searchableDataAssets(): EntityClass[] {
+    return [
+      this.table1,
+      this.table2,
+      this.topic1,
+      this.topic2,
+      this.dashboard1,
+      this.dashboard2,
+      this.mlModel1,
+      this.mlModel2,
+      this.pipeline1,
+      this.pipeline2,
+      this.dashboardDataModel1,
+      this.dashboardDataModel2,
+      this.apiCollection1,
+      this.apiCollection2,
+      this.apiEndpoint1,
+      this.apiEndpoint2,
+      this.storedProcedure1,
+      this.storedProcedure2,
+      this.searchIndex1,
+      this.searchIndex2,
+      this.container1,
+      this.container2,
+      this.database,
+      this.databaseSchema,
+      this.metric1,
+      this.chart1,
+      this.directory1,
+      this.directory2,
+      this.file1,
+      this.file2,
+      this.spreadsheet1,
+      this.spreadsheet2,
+      this.worksheet1,
+      this.worksheet2,
+    ];
   }
 
   static async postRequisitesForTests(apiContext: APIRequestContext) {

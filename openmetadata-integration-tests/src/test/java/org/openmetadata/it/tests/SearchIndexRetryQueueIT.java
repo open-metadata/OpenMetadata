@@ -6,12 +6,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import lombok.SneakyThrows;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -25,17 +29,24 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SearchDocuments;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
+import org.openmetadata.service.search.DeferredSearchWrites;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexRetryWorker;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchVersionGuard;
+import org.openmetadata.service.util.LineageUtil;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 @ExtendWith(TestNamespaceExtension.class)
 @Isolated("Owns the global retry queue and application worker lifecycle")
@@ -107,6 +118,93 @@ class SearchIndexRetryQueueIT {
   // ---------------------------------------------------------------------------
   // DAO-level tests
   // ---------------------------------------------------------------------------
+
+  @Test
+  void deferredFailureRecordsCommittedWorkAndContinuesPublishing(TestNamespace ns) {
+    final String entityId = UUID.randomUUID().toString();
+    final String entityFqn = ns.prefix("deferred");
+    final AtomicInteger published = new AtomicInteger();
+    Entity.getEntityRepository(Entity.TABLE)
+        .executeInTransaction(
+            () -> {
+              SearchRepository.deferOrRunSearchWrite(
+                  SearchIndexRetryQueueIT::failDelivery,
+                  "cascade",
+                  entityId,
+                  entityFqn,
+                  Entity.TABLE);
+              PostCommitActionQueue.runOrDefer(published::incrementAndGet);
+              assertEquals(0, retryQueueDAO.countByStatus(SearchIndexRetryQueue.STATUS_PENDING));
+              return null;
+            });
+    QueuedSearchWrites.await();
+
+    final SearchIndexRetryRecord retry =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 10).getFirst();
+    assertEquals(entityId, retry.getEntityId());
+    assertEquals(entityFqn, retry.getEntityFqn());
+    assertEquals(Entity.TABLE, retry.getEntityType());
+    assertTrue(retry.getFailureReason().contains("cascade: injected target failure"));
+    assertEquals(1, published.get());
+  }
+
+  @Test
+  void deferredLineageFailuresRetainIdsOrNamesWithoutLosingLaterWrites(TestNamespace ns) {
+    final UUID entityId = UUID.randomUUID();
+    final String entityFqn = ns.prefix("lineage");
+    final AtomicInteger delivered = new AtomicInteger();
+    DeferredSearchWrites.runLineage(
+        List.of(
+            new LineageUtil.DeferredLineageEsWrite(
+                SearchIndexRetryQueueIT::failTransport,
+                new EntityReference().withId(entityId).withType(Entity.TABLE)),
+            new LineageUtil.DeferredLineageEsWrite(
+                SearchIndexRetryQueueIT::failDelivery,
+                new EntityReference().withFullyQualifiedName(entityFqn).withType(Entity.TABLE)),
+            new LineageUtil.DeferredLineageEsWrite(SearchIndexRetryQueueIT::failDelivery, null),
+            new LineageUtil.DeferredLineageEsWrite(delivered::incrementAndGet, null)));
+    QueuedSearchWrites.await();
+
+    final List<SearchIndexRetryRecord> retries =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 10);
+    assertEquals(2, retries.size());
+    assertTrue(retries.stream().anyMatch(retry -> entityId.toString().equals(retry.getEntityId())));
+    assertTrue(retries.stream().anyMatch(retry -> entityFqn.equals(retry.getEntityFqn())));
+    assertTrue(retries.stream().allMatch(retry -> retry.getFailureReason().startsWith("lineage:")));
+    assertEquals(1, delivered.get());
+  }
+
+  @Test
+  void deferredSearchSupportsNameOnlyLocatorsAndSelfRecoveringWrites(TestNamespace ns) {
+    final String entityFqn = ns.prefix("nameOnly");
+    final AtomicInteger delivered = new AtomicInteger();
+    DeferredSearchWrites.run(
+        List.of(
+            new SearchRepository.DeferredSearchWrite(
+                SearchIndexRetryQueueIT::failDelivery, "cascade", null, entityFqn, null),
+            new SearchRepository.DeferredSearchWrite(
+                SearchIndexRetryQueueIT::failDelivery, "selfRecovering", null, null, null),
+            new SearchRepository.DeferredSearchWrite(
+                delivered::incrementAndGet, "healthy", null, null, null)));
+    QueuedSearchWrites.await();
+
+    final List<SearchIndexRetryRecord> retries =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 10);
+    assertEquals(1, retries.size());
+    assertEquals(entityFqn, retries.getFirst().getEntityFqn());
+    assertEquals("", retries.getFirst().getEntityId());
+    assertEquals("", retries.getFirst().getEntityType());
+    assertEquals(1, delivered.get());
+  }
+
+  private static void failDelivery() {
+    throw new IllegalStateException("injected target failure");
+  }
+
+  @SneakyThrows(IOException.class)
+  private static void failTransport() {
+    throw new IOException("injected transport failure");
+  }
 
   @Test
   void testUpsertAndFindByStatus(TestNamespace ns) {
@@ -506,7 +604,12 @@ class SearchIndexRetryQueueIT {
         entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING, claimToken);
 
     retryQueueDAO.updateFailureAndRetryCount(
-        entityId, entityFqn, "retry 1 failed", SearchIndexRetryQueue.STATUS_PENDING, claimToken);
+        entityId,
+        entityFqn,
+        "retry 1 failed",
+        SearchIndexRetryQueue.STATUS_PENDING,
+        claimToken,
+        System.currentTimeMillis());
 
     List<SearchIndexRetryRecord> records =
         retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
@@ -521,49 +624,33 @@ class SearchIndexRetryQueueIT {
   }
 
   @Test
-  void testClaimPendingHonorsRetryBackoff(TestNamespace ns) {
+  void aFailedRetryIsNotClaimedAgainUntilItsBackoffHasPassed(TestNamespace ns) {
     String entityId = UUID.randomUUID().toString();
     String entityFqn = ns.prefix("rq") + ".backoff";
-
     retryQueueDAO.upsert(
         entityId, entityFqn, "initial", SearchIndexRetryQueue.STATUS_PENDING, "table");
-    String initialClaimToken = UUID.randomUUID().toString();
+    String claimToken = UUID.randomUUID().toString();
     retryQueueDAO.claimRecord(
-        entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING, initialClaimToken);
+        entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING, claimToken);
+    long retryAt = System.currentTimeMillis() + Duration.ofMinutes(5).toMillis();
     retryQueueDAO.updateFailureAndRetryCount(
         entityId,
         entityFqn,
         "retry 1 failed",
-        SearchIndexRetryQueue.STATUS_PENDING_RETRY_1,
-        initialClaimToken);
-
-    List<SearchIndexRetryRecord> delayedFirstRetry = retryQueueDAO.claimPending(1000, 3600, 7200);
-    assertTrue(
-        delayedFirstRetry.stream().noneMatch(record -> record.getEntityId().equals(entityId)));
-
-    List<SearchIndexRetryRecord> eligibleFirstRetry = retryQueueDAO.claimPending(1000, 0, 0);
-    SearchIndexRetryRecord firstRetryClaim =
-        eligibleFirstRetry.stream()
-            .filter(record -> record.getEntityId().equals(entityId))
-            .findFirst()
-            .orElseThrow();
-
-    retryQueueDAO.updateFailureAndRetryCount(
-        entityId,
-        entityFqn,
-        "retry 2 failed",
         SearchIndexRetryQueue.STATUS_PENDING_RETRY_2,
-        firstRetryClaim.getClaimToken());
+        claimToken,
+        retryAt);
 
-    List<SearchIndexRetryRecord> delayedSecondRetry = retryQueueDAO.claimPending(1000, 0, 7200);
-    assertTrue(
-        delayedSecondRetry.stream().noneMatch(record -> record.getEntityId().equals(entityId)));
-
-    List<SearchIndexRetryRecord> eligibleSecondRetry = retryQueueDAO.claimPending(1000, 0, 0);
-    assertTrue(
-        eligibleSecondRetry.stream().anyMatch(record -> record.getEntityId().equals(entityId)));
+    assertTrue(claimedIds(retryAt - 1).isEmpty(), "a row is not claimed before its retry time");
+    assertEquals(List.of(entityId), claimedIds(retryAt));
 
     retryQueueDAO.deleteByEntity(entityId, entityFqn);
+  }
+
+  private static List<String> claimedIds(long now) {
+    return retryQueueDAO.claimPending(1000, now).stream()
+        .map(SearchIndexRetryRecord::getEntityId)
+        .toList();
   }
 
   @Test
@@ -589,7 +676,12 @@ class SearchIndexRetryQueueIT {
       String claimToken = UUID.randomUUID().toString();
       retryQueueDAO.claimRecord(entityId, entityFqn, statusProgression[i], claimToken);
       retryQueueDAO.updateFailureAndRetryCount(
-          entityId, entityFqn, "attempt " + (i + 1) + " failed", nextStatuses[i], claimToken);
+          entityId,
+          entityFqn,
+          "attempt " + (i + 1) + " failed",
+          nextStatuses[i],
+          claimToken,
+          System.currentTimeMillis());
     }
 
     List<SearchIndexRetryRecord> failed =
@@ -689,12 +781,17 @@ class SearchIndexRetryQueueIT {
   // ---------------------------------------------------------------------------
 
   @Test
-  void testClientErrorStatusCodesAreNotRetryable() {
+  void testDocumentErrorStatusCodesAreNotRetryable() {
     assertFalse(SearchIndexRetryQueue.isRetryableStatusCode(400));
-    assertFalse(SearchIndexRetryQueue.isRetryableStatusCode(404));
-    assertFalse(SearchIndexRetryQueue.isRetryableStatusCode(409));
     assertFalse(SearchIndexRetryQueue.isRetryableStatusCode(413));
     assertFalse(SearchIndexRetryQueue.isRetryableStatusCode(422));
+  }
+
+  @Test
+  void testMissingIndexTimeoutAndConflictStatusCodesAreRetryable() {
+    assertTrue(SearchIndexRetryQueue.isRetryableStatusCode(404));
+    assertTrue(SearchIndexRetryQueue.isRetryableStatusCode(408));
+    assertTrue(SearchIndexRetryQueue.isRetryableStatusCode(409));
   }
 
   @Test
@@ -720,6 +817,62 @@ class SearchIndexRetryQueueIT {
   // ---------------------------------------------------------------------------
   // Worker integration tests
   // ---------------------------------------------------------------------------
+
+  @Test
+  void aRetryDoesNotReplaceADocumentAWriteReadMoreRecently(TestNamespace ns) throws Exception {
+    final Table table = createTestTable(ns);
+    SdkClients.adminClient()
+        .tables()
+        .update(table.getId().toString(), table.withDescription("stored in the database"));
+    final String tableId = table.getId().toString();
+    final String tables =
+        SearchDocuments.servingIndex(
+            searchRepository
+                .getIndexMapping(Entity.TABLE)
+                .getIndexName(searchRepository.getClusterAlias()));
+    final long newerRead = System.currentTimeMillis() + Duration.ofHours(1).toMillis();
+    SearchDocuments.update(
+        tables,
+        tableId,
+        Map.of(
+            "description",
+            "written by a newer live update",
+            SearchVersionGuard.SOURCE_READ_AT,
+            newerRead));
+
+    SearchIndexRetryQueue.enqueue(
+        tableId, table.getFullyQualifiedName(), Entity.TABLE, "simulated failure");
+    processRetriesUntilDone(tableId);
+
+    assertEquals(
+        "written by a newer live update",
+        SearchDocuments.find(tables, tableId).orElseThrow().path("description").asText());
+  }
+
+  private void processRetriesUntilDone(final String entityId) {
+    final SearchIndexRetryWorker worker =
+        new SearchIndexRetryWorker(collectionDAO, searchRepository);
+    worker.start();
+    try {
+      Awaitility.await("The retry for " + entityId + " is processed")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofMillis(500))
+          .until(
+              () ->
+                  retryQueueDAO
+                      .findByStatuses(
+                          List.of(
+                              SearchIndexRetryQueue.STATUS_PENDING,
+                              SearchIndexRetryQueue.STATUS_PENDING_RETRY_1,
+                              SearchIndexRetryQueue.STATUS_PENDING_RETRY_2,
+                              SearchIndexRetryQueue.STATUS_IN_PROGRESS),
+                          1000)
+                      .stream()
+                      .noneMatch(record -> record.getEntityId().equals(entityId)));
+    } finally {
+      worker.stop();
+    }
+  }
 
   @Test
   void testWorkerProcessesValidEntityRetry(TestNamespace ns) throws Exception {

@@ -47,6 +47,7 @@ import { sidebarClick } from '../../utils/sidebar';
 import {
   clickAndWaitFor,
   clickUntilVisible,
+  openTabUntilListed,
   waitForResponseWithStatus,
 } from '../../utils/waitHelpers';
 
@@ -179,11 +180,13 @@ test.describe('Data Product Comprehensive Tests', () => {
       await page.getByRole('button', { name: 'Save' }).click();
       await createRes;
 
-      // Verify data product was created - navigate to Data Products tab
-      await page.getByTestId('data_products').click();
-
-      // Data product cards use testid pattern: explore-card-{name}
-      await expect(page.getByTestId(`explore-card-${dpName}`)).toBeVisible();
+      // Verify data product was created - it is listed on the Data Products tab
+      // (cards use the testid pattern explore-card-{name})
+      await openTabUntilListed(
+        page,
+        page.getByTestId('data_products'),
+        page.getByTestId(`explore-card-${dpName}`)
+      );
     } finally {
       await domain.delete(apiContext);
       await afterAction();

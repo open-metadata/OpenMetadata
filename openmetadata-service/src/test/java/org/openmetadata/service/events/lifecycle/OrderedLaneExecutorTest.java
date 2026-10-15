@@ -14,6 +14,7 @@
 package org.openmetadata.service.events.lifecycle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
@@ -70,6 +71,40 @@ class OrderedLaneExecutorTest {
       assertEquals(
           sequence(taskCount), executionOrder, "Same-entity tasks must apply in submission order");
     }
+  }
+
+  @Test
+  void theBarrierWaitsForTasksQueuedBeforeItExceptOnTheSkippedLane() throws InterruptedException {
+    try (OrderedLaneExecutor executor = new OrderedLaneExecutor((task, failure) -> {})) {
+      final UUID blocked = UUID.randomUUID();
+      final CountDownLatch running = new CountDownLatch(1);
+      final CountDownLatch release = new CountDownLatch(1);
+      executor.submit(
+          blocked,
+          () -> {
+            running.countDown();
+            release.await();
+          });
+      assertTrue(running.await(10, TimeUnit.SECONDS));
+
+      assertFalse(executor.awaitQueuedTasks(Duration.ofMillis(200)));
+      assertTrue(
+          executor.awaitQueuedTasks(Duration.ofSeconds(10), executor.laneFor(blocked)),
+          "a task on the skipped lane has already seen that lane's earlier tasks");
+
+      release.countDown();
+      assertTrue(executor.awaitQueuedTasks(Duration.ofSeconds(10)));
+    }
+  }
+
+  @Test
+  void aBarrierOnStoppedLanesPassesOnceTheyHaveDrained() throws InterruptedException {
+    final OrderedLaneExecutor executor = new OrderedLaneExecutor((task, failure) -> {});
+    executor.close();
+
+    assertTrue(
+        executor.awaitQueuedTasks(Duration.ofSeconds(10)),
+        "a stopped lane takes no marker but has run everything it accepted");
   }
 
   @Test
