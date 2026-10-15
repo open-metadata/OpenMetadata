@@ -1551,14 +1551,21 @@ const LANDING_PAGE_SCROLL_CONTAINER = '[data-testid="home-landing-page"]';
 const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.YoursAndFollowed';
 const FOLLOWING_WIDGET_BODY_SKELETON = 'topic-body-skeleton-yoursAndFollowed';
 const FOLLOWED_ASSET_LIST = 'followed-assets';
+const FOLLOWING_WIDGET_CARD = 'topic-card-yoursAndFollowed';
 
 const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   const followingWidgetPanel = page.getByTestId(FOLLOWING_WIDGET_KEY);
+  // The grid cell is laid out (so "visible") even below the fold, but its
+  // DeferredWidget mounts the card only once scrolled into view. Gate on the
+  // card, or the skeleton check below passes vacuously on an unmounted widget.
+  const followingWidgetCard = followingWidgetPanel.getByTestId(
+    FOLLOWING_WIDGET_CARD
+  );
 
   await expect
     .poll(
       async () => {
-        if (await followingWidgetPanel.isVisible().catch(() => false)) {
+        if (await followingWidgetCard.isVisible().catch(() => false)) {
           return true;
         }
 
@@ -1575,7 +1582,7 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
           scroller?.scrollBy({ top: 700, behavior: 'instant' });
         }, LANDING_PAGE_SCROLL_CONTAINER);
 
-        return followingWidgetPanel.isVisible().catch(() => false);
+        return followingWidgetCard.isVisible().catch(() => false);
       },
       {
         timeout: 60_000,
