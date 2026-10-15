@@ -56,103 +56,51 @@
         -moz-appearance: none;
         appearance: none;
 
-        .stat-label {
-          font-size: var(--om-font-size-xs);
-          font-weight: var(--om-font-weight-regular);
-          display: block;
-        }
-
         &.new-card {
           width: 25%;
+          color: @grey-600;
 
           &:hover {
             border-radius: var(--om-radius-md);
-            .stat-count.new {
-              color: @purple-2;
-            }
-            .stat-label.new {
-              color: @purple-2;
-            }
-          }
-          .stat-count.new {
-            color: @grey-600;
-          }
-
-          .stat-label.new {
-            color: @grey-600;
-            font-weight: var(--om-font-weight-regular);
+            color: @purple-2;
           }
 
           &.active {
             background-color: @purple-1;
             border-radius: var(--om-radius-md);
-            .stat-count.new {
-              color: @purple-2;
-            }
-            .stat-label.new {
-              color: @purple-2;
-            }
+            color: @purple-2;
           }
         }
 
         &.ack-card {
           width: 50%;
+          color: @grey-600;
+
           &:hover {
             border-radius: var(--om-radius-md);
-            .stat-count.ack {
-              color: @blue-3;
-            }
-            .stat-label.ack {
-              color: @blue-3;
-            }
-          }
-          .stat-count.ack {
-            color: @grey-600;
-          }
-
-          .stat-label.ack {
-            color: @grey-600;
+            color: @blue-3;
           }
 
           &.active {
             background-color: @blue-22;
             border-radius: var(--om-radius-md);
-            .stat-count.ack {
-              color: @blue-3;
-            }
-            .stat-label.ack {
-              color: @blue-3;
-            }
+            color: @blue-3;
           }
         }
 
         &.assigned-card {
           width: 25%;
-          .stat-count.assigned {
-            color: @grey-600;
-          }
+          color: @grey-600;
+
           &:hover {
             border-radius: var(--om-radius-md);
-            .stat-count.assigned {
-              color: @yellow-11;
-            }
-            .stat-label.assigned {
-              color: @yellow-11;
-            }
-          }
-          .stat-label.assigned {
-            color: @grey-600;
+            color: @yellow-11;
           }
 
           &.active {
             background-color: @yellow-10;
             border-radius: var(--om-radius-md);
-            .stat-count.assigned {
-              color: @yellow-11;
-            }
-            .stat-label.assigned {
-              color: @yellow-11;
-            }
+            color: @yellow-11;
           }
         }
       }
