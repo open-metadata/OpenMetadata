@@ -496,8 +496,16 @@ const tabLabels = () =>
     .getAllByRole('button')
     .map((tab) => tab.textContent);
 
+// The footer slot's measured height. jsdom lays nothing out, so the measuring itself is
+// useSlotInset's own test; here it only feeds the page.
+let mockFooterInset = 0;
+jest.mock('../hooks/useSlotInset', () => ({
+  useSlotInset: () => ({ ref: jest.fn(), inset: mockFooterInset }),
+}));
+
 describe('ConnectionServiceDetailsPage', () => {
   beforeEach(() => {
+    mockFooterInset = 0;
     jest.clearAllMocks();
     mockTabParam = undefined;
     mockServiceCategory = 'databaseServices';
@@ -1462,6 +1470,31 @@ describe('ConnectionServiceDetailsPage', () => {
           screen.getByTestId('service-details-footer-slot')
         ).toBeInTheDocument();
       });
+    });
+
+    // The footer (Collate's composer) overlays the bottom of the page, so the tab content reserves
+    // its height to let the last rows scroll clear of it.
+    it("reserves the footer's height at the bottom of the tab content", async () => {
+      mockFooterInset = 149;
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(
+        screen.getByTestId('service-details-scroll-container')
+      ).toHaveStyle({ paddingBottom: '149px' });
+    });
+
+    it('reserves nothing when no footer is contributed', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(
+        screen.getByTestId('service-details-scroll-container').style
+          .paddingBottom
+      ).toBe('');
     });
   });
 });

@@ -32,6 +32,10 @@ import {
 } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import {
+  FORM_DRAWER_WIDTH_WITHOUT_HINT,
+  FORM_DRAWER_WIDTH_WITH_HINT,
+} from '../../../../constants/common/formHint.constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
@@ -101,7 +105,9 @@ const getResolvedDrawerWidth = (
     return '52vw';
   }
 
-  return showHint ? '80vw' : '60vw';
+  return showHint
+    ? FORM_DRAWER_WIDTH_WITH_HINT
+    : FORM_DRAWER_WIDTH_WITHOUT_HINT;
 };
 
 const getDefaultDrawerTitle = (
