@@ -240,6 +240,8 @@ runs:
         if [[ -n "${{ inputs.ingestion-image-path }}" ]]; then
           fast_args+=("${{ inputs.ingestion-image-path }}")
         fi
-        timeout --signal=TERM --kill-after=30s 5m \
+        # 7m, not 5m: a fixture restored across schema/migration changes runs
+        # `openmetadata-ops.sh migrate` here before the server starts.
+        timeout --signal=TERM --kill-after=30s 7m \
           ./.github/scripts/start_playwright_fast_environment.sh "${fast_args[@]}"
       shell: bash

@@ -44,9 +44,11 @@ SEED_PREFIXES = (
 # what gets SEEDED. Runtime-only code (query aggregators, REST resources,
 # reindex orchestrators) does not change fixture content — it changes how
 # the app *reads* the seeded state — and used to invalidate every
-# fixture-relevant PR. Measured invalidation drops from ~13% under the old
-# broad prefixes to ~4-5% under this tighter set (sampled against the last
-# 60 main commits).
+# fixture-relevant PR.
+#
+# Dependency pins (pom.xml, package.json, yarn.lock) are not inputs: they
+# change libraries, not seeded rows. A release version bump is still caught by
+# the manifest's `seedVersion`.
 #
 # The narrower sets replace three old broad entries:
 #   1. `openmetadata-spec/`                    → JSON schemas + search mappings
@@ -68,7 +70,6 @@ SEED_PREFIXES = (
 #   * `openmetadata-service/src/main/java/.../resources/search{,index}/`
 #     — REST endpoints for search, not seeding
 FIXTURE_PREFIXES = (
-    "pom.xml",
     "bootstrap/sql/",
     "openmetadata-spec/src/main/resources/json/schema/",
     "openmetadata-spec/src/main/resources/elasticsearch/",
@@ -102,20 +103,28 @@ FIXTURE_PREFIXES = (
     "conf/openmetadata.yaml",
     "openmetadata-ui/src/main/resources/ui/.npmrc",
     "openmetadata-ui/src/main/resources/ui/.nvmrc",
-    "openmetadata-ui/src/main/resources/ui/package.json",
     "openmetadata-ui/src/main/resources/ui/public/app-worker.js",
     "openmetadata-ui/src/main/resources/ui/playwright/utils/tokenStorage.ts",
     "openmetadata-ui/src/main/resources/ui/src/utils/OidcTokenStorage.ts",
     "openmetadata-ui/src/main/resources/ui/src/utils/SwMessenger.ts",
     "openmetadata-ui/src/main/resources/ui/src/utils/SwTokenStorage.ts",
     "openmetadata-ui/src/main/resources/ui/src/utils/SwTokenStorageUtils.ts",
-    "openmetadata-ui/src/main/resources/ui/yarn.lock",
     ".github/actions/setup-openmetadata-test-environment/",
     ".github/scripts/create_playwright_fixture.sh",
     ".github/scripts/start_playwright_fast_environment.sh",
     ".github/scripts/start_playwright_autopilot_mysql.sh",
     ".github/scripts/rotate_playwright_auth_state.py",
     ".github/scripts/playwright_cache_fingerprint.py",
+)
+
+# Fixture inputs that `openmetadata-ops.sh migrate` brings an older fixture up
+# to date with, exactly as it upgrades a production database. A fixture whose
+# `fixture-base` hash matches can be restored and migrated instead of rebuilt;
+# only main rebuilds the exact fixture.
+FIXTURE_UPGRADABLE_PREFIXES = (
+    "bootstrap/sql/",
+    "openmetadata-spec/src/main/resources/json/schema/",
+    "openmetadata-service/src/main/java/org/openmetadata/service/migration/",
 )
 
 DISTRIBUTION_PREFIXES = (
@@ -257,9 +266,15 @@ def select_files(kind: str, files: Sequence[str], root: Path) -> list[str]:
         selected = {path for path in files if matches_prefix(path, SCHEMA_PREFIXES)}
     elif kind == "seed":
         selected = {path for path in files if matches_prefix(path, SEED_PREFIXES)}
-    elif kind == "fixture":
+    elif kind in ("fixture", "fixture-base"):
         selected = {path for path in files if matches_prefix(path, FIXTURE_PREFIXES)}
         selected.update(typescript_dependencies(FIXTURE_TYPESCRIPT_ENTRYPOINTS, root))
+        if kind == "fixture-base":
+            selected = {
+                path
+                for path in selected
+                if not matches_prefix(path, FIXTURE_UPGRADABLE_PREFIXES)
+            }
     elif kind == "distribution":
         selected = {
             path
@@ -280,6 +295,10 @@ def select_files(kind: str, files: Sequence[str], root: Path) -> list[str]:
     # Include these scripts before they are staged while developing the cache format.
     explicit_inputs = {
         "fixture": (
+            ".github/scripts/playwright_cache_fingerprint.py",
+            ".github/scripts/rotate_playwright_auth_state.py",
+        ),
+        "fixture-base": (
             ".github/scripts/playwright_cache_fingerprint.py",
             ".github/scripts/rotate_playwright_auth_state.py",
         ),
@@ -332,7 +351,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--kind",
         required=True,
-        choices=("fixture", "distribution", "ingestion", "schema", "seed"),
+        choices=(
+            "fixture",
+            "fixture-base",
+            "distribution",
+            "ingestion",
+            "schema",
+            "seed",
+        ),
     )
     parser.add_argument(
         "--bundle-mode", choices=("regular", "coarse"), default="regular"
