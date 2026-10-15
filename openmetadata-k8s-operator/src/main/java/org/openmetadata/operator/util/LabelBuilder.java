@@ -13,9 +13,12 @@
 
 package org.openmetadata.operator.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.operator.model.OMJobResource;
+import org.openmetadata.operator.model.OMJobSpec;
 
 /**
  * Utility for building consistent Kubernetes labels and selectors.
@@ -78,45 +81,41 @@ public class LabelBuilder {
    * Build labels for main ingestion pod
    */
   public static Map<String, String> buildMainPodLabels(OMJobResource omJob) {
-    Map<String, String> labels = buildBaseLabels(omJob);
-    labels.put(LABEL_POD_TYPE, POD_TYPE_MAIN);
-
-    // Add any additional labels from OMJob spec
-    if (omJob.getSpec() != null && omJob.getSpec().getMainPodSpec() != null) {
-      Map<String, String> additionalLabels = omJob.getSpec().getMainPodSpec().getLabels();
-      if (additionalLabels != null) {
-        labels.putAll(additionalLabels);
-      }
-    }
-
-    return labels;
+    OMJobSpec spec = omJob.getSpec();
+    return buildPodLabels(omJob, spec == null ? null : spec.getMainPodSpec(), POD_TYPE_MAIN);
   }
 
   /**
    * Build labels for exit handler pod
    */
   public static Map<String, String> buildExitHandlerLabels(OMJobResource omJob) {
+    OMJobSpec spec = omJob.getSpec();
+    return buildPodLabels(
+        omJob, spec == null ? null : spec.getExitHandlerSpec(), POD_TYPE_EXIT_HANDLER);
+  }
+
+  /**
+   * Labels from the OMJob spec may replace the defaults (the server sets its own managed-by), but
+   * never the identity labels the operator selects its pods by.
+   */
+  private static Map<String, String> buildPodLabels(
+      OMJobResource omJob, OMJobSpec.OMJobPodSpec podSpec, String podType) {
     Map<String, String> labels = buildBaseLabels(omJob);
-    labels.put(LABEL_POD_TYPE, POD_TYPE_EXIT_HANDLER);
-
-    // Add any additional labels from OMJob spec
-    if (omJob.getSpec() != null && omJob.getSpec().getExitHandlerSpec() != null) {
-      Map<String, String> additionalLabels = omJob.getSpec().getExitHandlerSpec().getLabels();
-      if (additionalLabels != null) {
-        labels.putAll(additionalLabels);
-      }
+    if (podSpec != null && !nullOrEmpty(podSpec.getLabels())) {
+      labels.putAll(podSpec.getLabels());
     }
-
+    labels.put(LABEL_OMJOB_NAME, buildOMJobNameLabelValue(omJob));
+    labels.put(LABEL_POD_TYPE, podType);
     return labels;
   }
 
   /**
-   * Build selector for finding pods belonging to an OMJob
+   * Build selector for finding pods belonging to an OMJob. It uses only labels the operator owns:
+   * the server replaces managed-by with its own value, so selecting on it matches no pods.
    */
   public static Map<String, String> buildPodSelector(OMJobResource omJob) {
     Map<String, String> selector = new HashMap<>();
     selector.put(LABEL_OMJOB_NAME, buildOMJobNameLabelValue(omJob));
-    selector.put(LABEL_APP_MANAGED_BY, MANAGED_BY_OMJOB_OPERATOR);
     return selector;
   }
 
