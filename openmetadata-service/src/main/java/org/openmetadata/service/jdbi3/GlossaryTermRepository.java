@@ -30,6 +30,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.invalid
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.ownTagsWith;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
@@ -1966,6 +1967,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         invalidateCacheAfterTagMutation(asset.getEntityReference());
 
         searchRepository.updateEntity(ref);
+        // updateEntity clears the change description, so the descriptor-driven child fan-out never
+        // fires from here. Drive it explicitly or entity children (test cases, test suites) never
+        // pick the term up.
+        searchRepository.propagateTagChangeToChildren(asset, List.of(tagLabel), List.of());
         RdfUpdater.updateEntity(asset);
       }
     }
@@ -2032,9 +2037,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         columnFqn, FullyQualifiedName.buildHash(columnFqn), allAssetTags, glossaryTags, false);
 
     if (!dryRun && CommonUtil.nullOrEmpty(result.getFailedRequest())) {
-      List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
-      columnTags.add(tagLabel);
-      applyTags(getUniqueTags(columnTags), columnFqn);
+      applyTags(ownTagsWith(targetColumn.getTags(), tagLabel), columnFqn);
       invalidateCacheAfterTagMutation(table.getEntityReference());
       searchRepository.updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);
@@ -2243,11 +2246,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (!dryRun) {
         // Update ES
         searchRepository.updateEntity(ref);
+        searchRepository.propagateTagChangeToChildren(
+            asset, List.of(), List.of(removedLabel(term)));
         RdfUpdater.updateEntity(asset);
       }
     }
 
     return result.withSuccessRequest(success);
+  }
+
+  /**
+   * The label the child-doc cascade removes. The delete script matches on the FQN and only touches
+   * the child's DERIVED copies, so a child's own label of the same term is left alone.
+   */
+  private static TagLabel removedLabel(GlossaryTerm term) {
+    return new TagLabel()
+        .withTagFQN(term.getFullyQualifiedName())
+        .withSource(TagSource.GLOSSARY)
+        .withLabelType(TagLabel.LabelType.DERIVED);
   }
 
   /**

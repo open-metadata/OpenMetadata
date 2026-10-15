@@ -4745,6 +4745,7 @@
     "ingestion-pipeline-name-successfully-deployed-entity": "C'est bon! La pipeline d'ingestion a été déployée avec succès. {{entity}} s'exécutera à intervalles réguliers selon le calendrier.",
     "inherited-contract-cannot-be-deleted": "Les contrats hérités ne peuvent pas être supprimés.Supprimez l'entité du produit de données ou créez un contrat spécifique à l'entité.",
     "inherited-role-description": "Rôles hérités de vos équipes.",
+    "inherited-tag-warning": "Cette étiquette est héritée de l'actif parent et ne peut être supprimée que depuis celui-ci.",
     "input-output-port-plural": "Ports d'Entrée/Sortie",
     "input-output-ports-description": "Les ports d'entrée et de sortie définissent quels actifs de données un Produit de Données consomme et produit. Ils sont essentiels pour comprendre la lignée des données et les dépendances dans une architecture Data Mesh.",
     "input-placeholder": "Utilisez @mention pour taguer et commenter...",

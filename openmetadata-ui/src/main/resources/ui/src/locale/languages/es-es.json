@@ -4745,6 +4745,7 @@
     "ingestion-pipeline-name-successfully-deployed-entity": "¡Listo! El <Nombre del Pipeline de Ingestión> se ha implementado correctamente. El {{entity}} se ejecutará a intervalos regulares según el horario.",
     "inherited-contract-cannot-be-deleted": "Los contratos heredados no se pueden eliminar.Elimine la entidad del Producto de datos o cree un contrato específico de la entidad.",
     "inherited-role-description": "Roles heredados de tus equipos.",
+    "inherited-tag-warning": "Esta etiqueta se hereda del activo principal y solo puede eliminarse allí.",
     "input-output-port-plural": "Puertos de Entrada/Salida",
     "input-output-ports-description": "Los puertos de entrada y salida definen qué activos de datos consume y produce un Producto de Datos. Son esenciales para comprender el linaje de datos y las dependencias en una arquitectura de Malla de Datos.",
     "input-placeholder": "Usa @mention para etiquetar y comentar...",

@@ -4745,6 +4745,7 @@
     "ingestion-pipeline-name-successfully-deployed-entity": "तुम्ही सर्व सेट आहात! <Ingestion Pipeline Name> यशस्वीरित्या तैनात केले गेले आहे. {{entity}} वेळापत्रकानुसार नियमित अंतराने चालेल.",
     "inherited-contract-cannot-be-deleted": "वारशाने मिळालेले करार हटवले जाऊ शकत नाहीत. डेटा उत्पादनातून एंटिटी काढा किंवा एंटिटी-विशिष्ट करार तयार करा.",
     "inherited-role-description": "Roles inherited from your teams.",
+    "inherited-tag-warning": "हा टॅग मूळ मालमत्तेकडून वारसा मिळालेला आहे आणि तो फक्त तेथेच काढता येतो.",
     "input-output-port-plural": "इनपुट/आउटपुट पोर्ट",
     "input-output-ports-description": "इनपुट आणि आउटपुट पोर्ट डेटा उत्पादन कोणती डेटा मालमत्ता वापरते आणि उत्पादन करते ते परिभाषित करतात. डेटा मेश आर्किटेक्चरमध्ये डेटा वंशावळी आणि अवलंबित्व समजून घेण्यासाठी ते आवश्यक आहेत.",
     "input-placeholder": "@mention वापरून टॅग करा आणि टिप्पणी करा...",

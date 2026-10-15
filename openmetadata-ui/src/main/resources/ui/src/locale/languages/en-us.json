@@ -4745,6 +4745,7 @@
     "ingestion-pipeline-name-successfully-deployed-entity": "You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The {{entity}} will run at a regular interval as per the schedule.",
     "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "inherited-role-description": "Roles inherited from your teams.",
+    "inherited-tag-warning": "This tag is inherited from the parent asset and can only be removed there.",
     "input-output-port-plural": "Input/Output Ports",
     "input-output-ports-description": "Input and output ports define which data assets a Data Product consumes and produces. They are essential for understanding data lineage and dependencies in a Data Mesh architecture.",
     "input-placeholder": "Use @mention to tag and comment...",

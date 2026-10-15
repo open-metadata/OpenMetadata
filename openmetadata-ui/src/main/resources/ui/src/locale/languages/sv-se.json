@@ -4745,6 +4745,7 @@
     "ingestion-pipeline-name-successfully-deployed-entity": "Allt är klart! <Ingestion Pipeline Name> har distribuerats. {{entity}} körs med jämna intervall enligt schemat.",
     "inherited-contract-cannot-be-deleted": "Ärvda kontrakt kan inte tas bort. Ta bort entiteten från dataprodukten eller skapa ett entitetsspecifikt kontrakt.",
     "inherited-role-description": "Roles inherited from your teams.",
+    "inherited-tag-warning": "Den här taggen ärvs från den överordnade tillgången och kan endast tas bort där.",
     "input-output-port-plural": "In-/utportar",
     "input-output-ports-description": "In- och utportar definierar vilka datatillgångar en dataprodukt konsumerar och producerar. De är väsentliga för att förstå datahärkomst och beroenden i en Data Mesh-arkitektur.",
     "input-placeholder": "Använd @mention för att tagga och kommentera...",

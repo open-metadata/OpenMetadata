@@ -4745,6 +4745,7 @@
     "ingestion-pipeline-name-successfully-deployed-entity": "همه چیز آماده است! <Ingestion Pipeline Name> با موفقیت پیاده‌سازی شد. {{entity}} به‌طور منظم طبق برنامه اجرا خواهد شد.",
     "inherited-contract-cannot-be-deleted": "قراردادهای ارثی قابل حذف نیستند. موجودیت را از محصول داده حذف کنید یا یک قرارداد مخصوص موجودیت ایجاد کنید.",
     "inherited-role-description": "نقش‌های به‌ارث‌رسیده از تیم‌های شما.",
+    "inherited-tag-warning": "این برچسب از دارایی والد به ارث رسیده است و فقط از آنجا قابل حذف است.",
     "input-output-port-plural": "پورت‌های ورودی/خروجی",
     "input-output-ports-description": "پورت‌های ورودی و خروجی تعیین می‌کنند که یک محصول داده چه دارایی‌های داده‌ای را مصرف و تولید می‌کند. آنها برای درک نسب داده و وابستگی‌ها در معماری Data Mesh ضروری هستند.",
     "input-placeholder": "Usa @mention para etiquetar y comentar...",

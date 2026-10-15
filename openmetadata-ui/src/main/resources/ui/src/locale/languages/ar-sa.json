@@ -4745,6 +4745,7 @@
     "ingestion-pipeline-name-successfully-deployed-entity": "أنت جاهز تمامًا! تم نشر <Ingestion Pipeline Name> بنجاح. سيتم تشغيل {{entity}} على فترات منتظمة وفقًا للجدول الزمني.",
     "inherited-contract-cannot-be-deleted": "لا يمكن حذف العقود الموروثة. أزل الكيان من منتج البيانات أو أنشئ عقدًا خاصًا بالكيان.",
     "inherited-role-description": "Roles inherited from your teams.",
+    "inherited-tag-warning": "هذه العلامة موروثة من الأصل الأصلي ولا يمكن إزالتها إلا من هناك.",
     "input-output-port-plural": "منافذ الإدخال/الإخراج",
     "input-output-ports-description": "تحدد منافذ الإدخال والإخراج أصول البيانات التي يستهلكها منتج البيانات وينتجها. إنها ضرورية لفهم نسب البيانات والتبعيات في بنية شبكة البيانات.",
     "input-placeholder": "استخدم @mention للإشارة والتعليق...",

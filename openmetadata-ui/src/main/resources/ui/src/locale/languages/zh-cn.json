@@ -4745,6 +4745,7 @@
     "ingestion-pipeline-name-successfully-deployed-entity": "您已准备就绪！提取工作流已成功部署, {{entity}}将按照计划定期运行。",
     "inherited-contract-cannot-be-deleted": "继承的合同无法删除。从数据产品中删除实体或创建特定于实体的合同。",
     "inherited-role-description": "从您的团队继承的角色。",
+    "inherited-tag-warning": "此标签继承自父资产，只能在父资产中移除。",
     "input-output-port-plural": "输入/输出端口",
     "input-output-ports-description": "输入和输出端口定义了数据产品消费和生产哪些数据资产。它们对于理解数据网格架构中的数据血缘和依赖关系至关重要。",
     "input-placeholder": "使用 @mention 进行标记和评论...",

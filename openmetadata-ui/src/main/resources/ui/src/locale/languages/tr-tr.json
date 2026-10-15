@@ -4745,6 +4745,7 @@
     "ingestion-pipeline-name-successfully-deployed-entity": "Her şey hazır! <Alım İş Akışı Adı> başarıyla dağıtıldı. {{entity}} zamanlamaya göre düzenli aralıklarla çalışacaktır.",
     "inherited-contract-cannot-be-deleted": "Kalıtsal sözleşmeler silinemez. Varlığı Veri Ürününden kaldırın veya varlığa özel bir sözleşme oluşturun.",
     "inherited-role-description": "Roles inherited from your teams.",
+    "inherited-tag-warning": "Bu etiket üst varlıktan devralınır ve yalnızca orada kaldırılabilir.",
     "input-output-port-plural": "Giriş/Çıkış Portları",
     "input-output-ports-description": "Giriş ve çıkış portları, bir Veri Ürününün hangi veri varlıklarını tükettiğini ve ürettiğini tanımlar. Veri kökenini ve Veri Ağı mimarisindeki bağımlılıkları anlamak için gereklidirler.",
     "input-placeholder": "Etiketlemek ve yorum yapmak için @bahset kullanın...",

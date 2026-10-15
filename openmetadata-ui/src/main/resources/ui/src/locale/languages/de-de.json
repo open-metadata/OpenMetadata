@@ -4745,6 +4745,7 @@
     "ingestion-pipeline-name-successfully-deployed-entity": "Sie sind bereit! Die <Ingestion-Pipeline-Name> wurde erfolgreich bereitgestellt. Die {{entity}} wird gemäß dem Zeitplan in regelmäßigen Abständen ausgeführt.",
     "inherited-contract-cannot-be-deleted": "Geerbte Verträge können nicht gelöscht werden. Entfernen Sie die Entität aus dem Datenprodukt oder erstellen Sie einen entitätsspezifischen Vertrag.",
     "inherited-role-description": "Von Ihren Teams geerbte Rollen.",
+    "inherited-tag-warning": "Dieses Tag wird vom übergeordneten Asset geerbt und kann nur dort entfernt werden.",
     "input-output-port-plural": "Eingabe-/Ausgabe-Ports",
     "input-output-ports-description": "Eingabe- und Ausgabe-Ports definieren, welche Datenassets ein Datenprodukt konsumiert und produziert. Sie sind essentiell für das Verständnis von Datenherkunft und Abhängigkeiten in einer Data-Mesh-Architektur.",
     "input-placeholder": "Verwenden Sie @mention, um zu markieren und zu kommentieren...",

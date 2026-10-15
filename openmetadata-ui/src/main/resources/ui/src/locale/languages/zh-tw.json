@@ -4745,6 +4745,7 @@
     "ingestion-pipeline-name-successfully-deployed-entity": "您已全部設定完成！<擷取管線名稱> 已成功部署。{{entity}} 將根據排程定期執行。",
     "inherited-contract-cannot-be-deleted": "無法刪除繼承的合約。請從資料產品中移除實體或建立實體專屬合約。",
     "inherited-role-description": "Roles inherited from your teams.",
+    "inherited-tag-warning": "此標籤繼承自父資產，只能在父資產中移除。",
     "input-output-port-plural": "輸入/輸出連接埠",
     "input-output-ports-description": "輸入和輸出連接埠定義了資料產品消費和生產哪些資料資產。它們對於理解資料網格架構中的資料血緣和依賴關係至關重要。",
     "input-placeholder": "使用 @mention 標記並留言...",
