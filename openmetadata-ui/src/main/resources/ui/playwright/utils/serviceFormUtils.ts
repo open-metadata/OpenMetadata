@@ -84,11 +84,14 @@ export const selectIngestionRunnerFromDropdown = async (
   const runnerSelector = page.getByTestId('select-widget-root/ingestionRunner');
 
   if (await runnerSelector.isVisible()) {
-    await runnerSelector.click();
-
+    // The runner list loads asynchronously, so a one-shot open-then-click races
+    // it: the popover is a non-modal react-aria listbox, and any scroll that
+    // contains the trigger — including the one Playwright performs as part of a
+    // click's actionability checks — closes it again, leaving the option click
+    // to wait out the timeout on a detached node. `selectOptionWithRetry`
+    // reopens the list and retries the click until it lands.
     const runnerOption = page.getByRole('option').getByText(runnerDisplayName);
-    await runnerOption.waitFor({ state: 'visible' });
-    await runnerOption.click();
+    await selectOptionWithRetry(runnerSelector, runnerOption);
 
     await expect(runnerSelector).toContainText(runnerDisplayName);
   }
