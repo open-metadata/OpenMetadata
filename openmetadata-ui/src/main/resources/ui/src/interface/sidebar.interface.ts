@@ -16,7 +16,6 @@
 export interface LeftSidebarItem {
   key: string;
   isBeta?: boolean;
-  isDeprecated?: boolean;
   title: string;
   redirect_url?: string;
   icon: SvgComponent;
