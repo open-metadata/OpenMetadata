@@ -10,37 +10,92 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Plus, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
 import { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+
+interface InspectorSectionProps {
+  readonly children: ReactNode;
+  readonly testId?: string;
+}
+
+export const InspectorSection = ({
+  children,
+  testId,
+}: InspectorSectionProps) => (
+  <Box
+    className="tw:rounded-xl tw:bg-secondary tw:px-4 tw:pt-3 tw:pb-4"
+    data-testid={testId}
+    direction="col"
+    gap={2}>
+    {children}
+  </Box>
+);
 
 interface InspectorSectionHeadingProps {
   readonly count: number;
   readonly label: string;
+  readonly addTestId?: string;
+  readonly onAdd?: () => void;
 }
 
 export const InspectorSectionHeading = ({
   count,
   label,
-}: InspectorSectionHeadingProps) => (
-  <div className="tw:mb-3 tw:flex tw:items-center tw:gap-2">
-    <h3 className="tw:m-0 tw:text-md tw:font-semibold tw:text-primary">
-      {label}
-    </h3>
-    <Badge color="gray" size="sm" type="pill-color">
-      {count}
-    </Badge>
-  </div>
-);
+  addTestId,
+  onAdd,
+}: InspectorSectionHeadingProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="center" className="tw:min-h-8" gap={2}>
+      <Typography
+        aria-level={3}
+        className="tw:text-primary"
+        role="heading"
+        size="text-sm"
+        weight="semibold">
+        {label}
+      </Typography>
+      <Badge color="gray" size="sm" type="pill-color">
+        {count}
+      </Badge>
+      {onAdd ? (
+        <Button
+          className="tw:ml-auto"
+          color="link-color"
+          data-testid={addTestId}
+          iconLeading={Plus}
+          size="sm"
+          type="button"
+          onPress={onAdd}>
+          {t('label.add')}
+        </Button>
+      ) : null}
+    </Box>
+  );
+};
 
 export const InspectorEmptyText = ({
   children,
 }: {
   readonly children: ReactNode;
 }) => (
-  <Typography as="p" className="tw:m-0" color="secondary" size="text-sm">
-    {children}
-  </Typography>
+  <Box
+    align="center"
+    className="tw:min-h-14 tw:rounded-lg tw:border tw:border-dashed tw:border-primary tw:bg-surface tw:px-4 tw:py-3 tw:text-center"
+    justify="center">
+    <Typography as="p" className="tw:m-0 tw:text-tertiary" size="text-sm">
+      {children}
+    </Typography>
+  </Box>
 );
 
 export const InspectorList = ({
@@ -48,9 +103,11 @@ export const InspectorList = ({
 }: {
   readonly children: ReactNode;
 }) => (
-  <div className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary">
+  <Box
+    className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:bg-surface"
+    direction="col">
     {children}
-  </div>
+  </Box>
 );
 
 interface InspectorRowProps {
@@ -59,34 +116,98 @@ interface InspectorRowProps {
 }
 
 export const InspectorRow = ({ children, testId }: InspectorRowProps) => (
-  <div
-    className="tw:flex tw:min-h-12 tw:items-center tw:gap-3 tw:px-3 tw:py-2"
-    data-testid={testId}>
+  <Box
+    align="center"
+    className="tw:min-h-12 tw:px-3 tw:py-2"
+    data-testid={testId}
+    gap={3}>
     {children}
-  </div>
+  </Box>
 );
 
-interface InspectorAddButtonProps {
-  readonly isDisabled: boolean;
+interface InspectorRemoveButtonProps {
+  readonly isDisabled?: boolean;
   readonly label: string;
-  readonly testId: string;
-  readonly onClick: () => void;
+  readonly testId?: string;
+  readonly onRemove: () => void;
 }
 
-export const InspectorAddButton = ({
+export const InspectorRemoveButton = ({
   isDisabled,
   label,
   testId,
-  onClick,
-}: InspectorAddButtonProps) => (
-  <Button
-    className="tw:mt-3 tw:w-full tw:after:outline-dashed"
-    color="secondary"
+  onRemove,
+}: InspectorRemoveButtonProps) => (
+  <ButtonUtility
+    color="tertiary"
     data-testid={testId}
-    iconLeading={Plus}
+    icon={Trash01}
     isDisabled={isDisabled}
-    size="sm"
-    onPress={onClick}>
-    {label}
-  </Button>
+    size="xs"
+    tooltip={label}
+    onClick={onRemove}
+  />
 );
+
+interface InspectorFormProps {
+  readonly children: ReactNode;
+  readonly isSubmitDisabled: boolean;
+  readonly submitLabel: string;
+  readonly submitTestId?: string;
+  readonly testId?: string;
+  readonly title: string;
+  readonly onCancel: () => void;
+  readonly onSubmit: () => void;
+}
+
+export const InspectorForm = ({
+  children,
+  isSubmitDisabled,
+  submitLabel,
+  submitTestId,
+  testId,
+  title,
+  onCancel,
+  onSubmit,
+}: InspectorFormProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box
+      className="tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:px-3.5 tw:pt-3 tw:pb-3.5"
+      data-testid={testId}
+      direction="col"
+      gap={3}>
+      <Box align="center" gap={2}>
+        <Typography
+          className="tw:flex-1 tw:text-secondary"
+          size="text-xs"
+          weight="semibold">
+          {title}
+        </Typography>
+        <ButtonUtility
+          color="tertiary"
+          icon={XClose}
+          size="xs"
+          tooltip={t('label.cancel')}
+          onClick={onCancel}
+        />
+      </Box>
+      {children}
+      <Box gap={2} justify="end">
+        <Button color="secondary" size="sm" type="button" onPress={onCancel}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          color="primary"
+          data-testid={submitTestId}
+          isDisabled={isSubmitDisabled}
+          size="sm"
+          type="button"
+          onPress={onSubmit}>
+          {submitLabel}
+        </Button>
+      </Box>
+    </Box>
+  );
+};

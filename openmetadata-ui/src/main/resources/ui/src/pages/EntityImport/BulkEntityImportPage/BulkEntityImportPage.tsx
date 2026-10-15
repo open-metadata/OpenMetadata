@@ -88,6 +88,7 @@ import {
   CsvDocumentation,
   getCsvAsyncJobs,
   getCsvDocumentation,
+  resolveCsvImportResult,
 } from '../../../rest/csvAPI';
 import {
   getCsvHeaderKey,
@@ -1085,16 +1086,42 @@ const BulkEntityImportPage = () => {
   // out of handleImportWebsocketResponse purely to keep that function's
   // cyclomatic complexity down; behavior/order is unchanged.
   const handleCompletedWebsocketJob = useCallback(
-    (activeImportJob: CSVImportJobType, importResults?: CSVImportResult) => {
+    async (
+      activeImportJob: CSVImportJobType,
+      importResults?: CSVImportResult
+    ) => {
+      // The completion frame is thin (id + status only); the result is persisted on the job
+      // row and fetched here so a large result never travels through the websocket relay. A
+      // frame that still carries an inline result (e.g. an aborted import) is used as-is.
+      let resolvedResults = importResults;
+      try {
+        resolvedResults = await resolveCsvImportResult(
+          activeImportJob.jobId,
+          importResults
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+
+      if (!resolvedResults) {
+        // The result could not be fetched; the error toast above already informed the user.
+        // Unblock the UI instead of feeding an empty result downstream (the same hang this
+        // PR fixes) — the validate/import buttons gate on isValidating.
+        setIsValidating(false);
+        handleResetImportJob();
+
+        return;
+      }
+
       appendActiveImportLogLine(t('message.import-csv-job-completed'));
-      setValidationData(importResults);
+      setValidationData(resolvedResults);
       fetchCsvJobs();
 
       // If the job is aborted, or failed before processing any rows (e.g. malformed CSV),
       // reset to upload step. If rows were processed but all failed, fall through to
       // show the validation grid so the user can inspect and fix errors.
-      if (isAbortedOrEmptyFailureImport(importResults)) {
-        setValidationData(importResults);
+      if (isAbortedOrEmptyFailureImport(resolvedResults)) {
+        setValidationData(resolvedResults);
 
         handleActiveStepChange(VALIDATION_STEP.UPLOAD);
 
@@ -1125,7 +1152,7 @@ const BulkEntityImportPage = () => {
       }
 
       handleImportWebsocketResponseWithActiveStep(
-        importResults as CSVImportResult
+        resolvedResults as CSVImportResult
       );
     },
     [
@@ -1175,7 +1202,10 @@ const BulkEntityImportPage = () => {
       });
 
       if (websocketResponse.status === 'COMPLETED') {
-        handleCompletedWebsocketJob(activeImportJob, websocketResponse.result);
+        void handleCompletedWebsocketJob(
+          activeImportJob,
+          websocketResponse.result
+        );
       }
 
       if (websocketResponse.status === 'FAILED') {

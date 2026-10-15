@@ -35,6 +35,7 @@ import {
   checkAssetsCount,
   selectDataProduct,
   selectDomain,
+  selectDomainFromNavbar,
 } from '../../utils/domain';
 import {
   escapeESReservedCharacters,
@@ -42,6 +43,7 @@ import {
   openClassificationTagPicker,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { loginAsIsolatedAdmin } from '../../utils/isolatedDomainUser';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 import {
@@ -916,8 +918,12 @@ test.describe('Data Product Search and Filter', () => {
   });
 
   test('Filter data products by domain in global selector', async ({
-    page,
+    browser,
   }) => {
+    // Picks a navbar domain, which is saved per user: use a throwaway admin so it can't leak.
+    const { page, afterAction: pickerDone } = await loginAsIsolatedAdmin(
+      browser
+    );
     const { afterAction, apiContext } = await getApiContext(page);
     const domain1 = new Domain();
     const domain2 = new Domain();
@@ -934,28 +940,8 @@ test.describe('Data Product Search and Filter', () => {
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
 
-      // Select domain1 from global dropdown
-      await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('domain-dropdown-search').waitFor({
-        state: 'visible',
-      });
-
-      const searchDomainRes = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain')
-      );
-      await page
-        .getByTestId('domain-dropdown-search')
-        .fill(domain1.responseData.displayName);
-      await searchDomainRes;
-
-      const tagSelector = page.getByTestId(
-        `tree-node-${domain1.responseData.fullyQualifiedName}`
-      );
-      await tagSelector.waitFor({ state: 'visible' });
-      await tagSelector.click();
-      await waitForAllLoadersToDisappear(page);
+      // Select domain1 from global dropdown (waits for the save and the reload)
+      await selectDomainFromNavbar(page, domain1.responseData);
 
       // Verify only dp1 is visible (from domain1)
       await expect(page.getByTestId(dp1.data.name)).toBeVisible({
@@ -965,16 +951,14 @@ test.describe('Data Product Search and Filter', () => {
       // dp2 should not be visible (it's in domain2)
       await expect(page.getByTestId(dp2.data.name)).not.toBeVisible();
 
-      // Clear domain filter
-      await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('tree-node-All Domains').click();
-
+      // No need to clear the pick: deleting the isolated admin drops it.
       await dp1.delete(apiContext);
       await dp2.delete(apiContext);
     } finally {
       await domain1.delete(apiContext);
       await domain2.delete(apiContext);
       await afterAction();
+      await pickerDone();
     }
   });
 });

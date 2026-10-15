@@ -18,6 +18,10 @@ import {
   EditableAnnouncement,
 } from './AnnouncementModal.interface';
 
+/** The title's length rule, shared by the asset dialog and the settings form. */
+export const ANNOUNCEMENT_TITLE_MIN_LENGTH = 5;
+export const ANNOUNCEMENT_TITLE_MAX_LENGTH = 124;
+
 /** Epoch millis -> the `yyyy-MM-dd` day they fall on in the viewer's zone. */
 export const toCalendarDay = (ms: number): string =>
   DateTime.fromMillis(ms).toFormat('yyyy-MM-dd');

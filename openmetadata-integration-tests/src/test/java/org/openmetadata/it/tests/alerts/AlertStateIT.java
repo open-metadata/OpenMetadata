@@ -42,14 +42,15 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.alerting.AlertDiagnostics;
 import org.openmetadata.service.cache.CacheBundle;
-import org.openmetadata.service.events.scheduled.AlertJobs;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.AlertRows;
-import org.openmetadata.service.events.subscription.ledger.AlertRecord;
-import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.events.consumer.AbstractEventConsumer;
+import org.openmetadata.service.events.consumer.AlertRows;
+import org.openmetadata.service.events.consumer.ConsumerJob;
+import org.openmetadata.service.events.consumer.ledger.AlertRecord;
+import org.openmetadata.service.events.consumer.ledger.LedgerKeys;
+import org.openmetadata.service.events.consumer.schedule.AlertJobs;
+import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO.FailedEventRow;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
@@ -127,18 +128,18 @@ class AlertStateIT {
 
   // The alert's row is read when a tick opens, and what runs leave behind lives in rows.
   @Test
-  void everyJobUsesAlertPublisherAndCarriesNoData(TestNamespace ns) throws Exception {
+  void everyJobUsesTheConsumerJobAndCarriesNoData(TestNamespace ns) throws Exception {
     EventSubscription plain = create(ns, "no_job_data", true);
     EventSubscription withItsOwnConsumer =
         AlertFixtures.tableAlert(
             ns,
             "own_consumer_job",
-            LatchedConsumer.class.getName(),
+            LatchedConsumer.ID,
             List.of(AlertFixtures.external(WEBHOOK, "http://localhost:9/unused")));
 
     for (EventSubscription alert : List.of(plain, withItsOwnConsumer)) {
       JobDetail job = scheduler().getJobDetail(jobKey(alert));
-      assertEquals(AlertPublisher.class, job.getJobClass());
+      assertEquals(ConsumerJob.class, job.getJobClass());
       assertTrue(job.getJobDataMap().isEmpty());
     }
   }
@@ -259,13 +260,10 @@ class AlertStateIT {
     assertEquals(SubscriptionStatus.Status.DISABLED, statusOf(alert, destination));
     assertEquals(
         SubscriptionStatus.Status.DISABLED,
-        shownStatusOf(
-            EventSubscriptionScheduler.getInstance()
-                .destinationsWithStatus(AlertRows.read(alert.getId()))));
+        shownStatusOf(AlertDiagnostics.destinationsWithStatus(AlertRows.read(alert.getId()))));
     assertEquals(
         SubscriptionStatus.Status.DISABLED,
-        shownStatusOf(
-            EventSubscriptionScheduler.getInstance().listAlertDestinations(alert.getId())));
+        shownStatusOf(AlertDiagnostics.listDestinations(alert.getId())));
 
     save(withDestinationEnabled(AlertRows.read(alert.getId()), true));
 
@@ -598,9 +596,7 @@ class AlertStateIT {
 
   private static SubscriptionStatus.Status statusOf(
       EventSubscription alert, SubscriptionDestination destination) {
-    return EventSubscriptionScheduler.getInstance()
-        .getStatusForEventSubscription(alert.getId(), destination.getId())
-        .getStatus();
+    return AlertDiagnostics.destinationStatus(alert.getId(), destination.getId()).getStatus();
   }
 
   private static SubscriptionStatus.Status shownStatusOf(

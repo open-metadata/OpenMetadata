@@ -187,9 +187,8 @@ async function assertOntologyDesignContract(
   ).toBeVisible();
   await expect(subNavigation).toHaveCSS('height', '56px');
   await expect(dataTab).toHaveAttribute('aria-selected', 'true');
-  await expect(cluster).toHaveCSS('width', '236px');
-  await expect(assetName).toHaveCSS('font-family', /Geist Mono/);
-  await expect(assetName).toHaveCSS('font-size', '11px');
+  await expect(cluster).toHaveCSS('width', '380px');
+  await expect(assetName).toHaveCSS('font-size', '14px');
   await expect(assetName).toHaveCSS('font-weight', '500');
 }
 
