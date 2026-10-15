@@ -97,6 +97,7 @@ public class LabelBuilder {
   /**
    * Labels from the OMJob spec may replace the defaults (the server sets its own managed-by), but
    * never the identity labels the operator selects its pods by.
+   * ADR:2026-10-15-omjob-pods-are-selected-only-by-operator-owned-labels
    */
   private static Map<String, String> buildPodLabels(
       OMJobResource omJob, OMJobSpec.OMJobPodSpec podSpec, String podType) {
@@ -112,6 +113,7 @@ public class LabelBuilder {
   /**
    * Build selector for finding pods belonging to an OMJob. It uses only labels the operator owns:
    * the server replaces managed-by with its own value, so selecting on it matches no pods.
+   * ADR:2026-10-15-omjob-pods-are-selected-only-by-operator-owned-labels
    */
   public static Map<String, String> buildPodSelector(OMJobResource omJob) {
     Map<String, String> selector = new HashMap<>();
