@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Card, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 
 import classNames from 'classnames';
 import { useCallback } from 'react';
@@ -53,13 +53,15 @@ const SettingItemCard = ({
       <Card.Content className="tw:flex tw:items-center tw:gap-4">
         <div className="setting-card-icon">
           {data.iconColor ? (
-            <div
+            <Box
+              align="center"
               className={classNames(
-                'tw:flex tw:size-22.5 tw:items-center tw:justify-center tw:rounded-[28px]',
+                'tw:size-22.5 tw:rounded-[28px]',
                 ICON_TILE_COLORS[data.iconColor]
-              )}>
+              )}
+              justify="center">
               <data.icon className="tw:size-8" />
-            </div>
+            </Box>
           ) : (
             <Icon component={data.icon} />
           )}
