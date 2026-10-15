@@ -28,10 +28,8 @@ import {
 import { exportMetricDetailsInCSVSync } from '../../rest/metricsAPI';
 import { exportDatabaseServiceDetailsInCSV } from '../../rest/serviceAPI';
 import { exportTableDetailsInCSV } from '../../rest/tableAPI';
-import {
-  exportTestCasesInCSV,
-  TestCaseExportFilters,
-} from '../../rest/testAPI';
+import { TestCaseExportFilters } from '../../rest/testAPI';
+import { withTestCaseExportFilters } from '../DataQuality/TestCaseExport.utils';
 import entityUtilClassBase from '../EntityUtilClassBase';
 import { t } from '../i18next/LocalUtil';
 import { getDataQualityPagePath } from '../RouterUtils';
@@ -69,8 +67,7 @@ export const getBulkEditCSVExportEntityApi = (
       return exportMetricDetailsInCSVSync;
 
     case EntityType.TEST_CASE:
-      return (name: string, params?: { recursive?: boolean }) =>
-        exportTestCasesInCSV(name, { ...params, ...testCaseExportFilters });
+      return withTestCaseExportFilters(testCaseExportFilters);
 
     default:
       return exportTableDetailsInCSV;

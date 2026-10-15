@@ -26,8 +26,9 @@ import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import LimitWrapper from '../hoc/LimitWrapper';
-import { exportTestCasesInCSV, TestCaseExportFilters } from '../rest/testAPI';
+import { TestCaseExportFilters } from '../rest/testAPI';
 import { getTestCaseBulkEditSearch } from './DataQuality/DataQualityPureUtils';
+import { withTestCaseExportFilters } from './DataQuality/TestCaseExport.utils';
 import { getEntityBulkEditPath, getEntityImportPath } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
 
@@ -105,8 +106,7 @@ export const getTestCaseManageMenuItems = (
             onClick: () =>
               showModal({
                 name: fqn,
-                onExport: (name: string, params?: { recursive?: boolean }) =>
-                  exportTestCasesInCSV(name, { ...params, ...listFilters }),
+                onExport: withTestCaseExportFilters(listFilters),
                 exportTypes: [ExportTypes.CSV],
               }),
           },

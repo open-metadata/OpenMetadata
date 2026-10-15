@@ -134,6 +134,17 @@ export const QualityTab = () => {
   const [searchValue, setSearchValue] = useState<string>();
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
+  const testCaseParams = useMemo<ListTestCaseParamsBySearch>(
+    () => ({
+      ...sortOptions,
+      testCaseType: selectedTestType,
+      testCaseStatus: isEmpty(selectedTestCaseStatus)
+        ? undefined
+        : selectedTestCaseStatus,
+      q: searchValue,
+    }),
+    [sortOptions, selectedTestType, selectedTestCaseStatus, searchValue]
+  );
   const testSuite = useMemo(() => table?.testSuite, [table]);
   const [ingestionPipelineCount, setIngestionPipelineCount] =
     useState<number>(0);
@@ -202,11 +213,7 @@ export const QualityTab = () => {
   }) => {
     if (currentPage) {
       fetchAllTests({
-        ...sortOptions,
-        testCaseType: selectedTestType,
-        testCaseStatus: isEmpty(selectedTestCaseStatus)
-          ? undefined
-          : selectedTestCaseStatus,
+        ...testCaseParams,
         offset: (currentPage - 1) * pageSize,
       });
     }
@@ -216,17 +223,18 @@ export const QualityTab = () => {
   const handleSearchTestCase = (value?: string) => {
     setSearchValue(value);
     fetchAllTests({
-      testCaseType: selectedTestType,
-      testCaseStatus: isEmpty(selectedTestCaseStatus)
-        ? undefined
-        : selectedTestCaseStatus,
+      ...testCaseParams,
       q: value,
     });
   };
 
   const handleSortTestCase = async (apiParams?: ListTestCaseParamsBySearch) => {
     setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
-    await fetchAllTests({ ...(apiParams ?? DEFAULT_SORT_ORDER), offset: 0 });
+    await fetchAllTests({
+      ...testCaseParams,
+      ...(apiParams ?? DEFAULT_SORT_ORDER),
+      offset: 0,
+    });
     handlePageChange(INITIAL_PAGING_VALUE);
   };
 
@@ -255,7 +263,7 @@ export const QualityTab = () => {
     if (value !== selectedTestCaseStatus) {
       setSelectedTestCaseStatus(value);
       fetchAllTests({
-        testCaseType: selectedTestType,
+        ...testCaseParams,
         testCaseStatus: isEmpty(value) ? undefined : value,
       });
     }
@@ -285,31 +293,17 @@ export const QualityTab = () => {
           navigate,
           showModal,
           EntityType.TABLE,
-          getTestCaseExportFilters({
-            testCaseType: selectedTestType,
-            testCaseStatus: selectedTestCaseStatus,
-            q: searchValue,
-          })
+          getTestCaseExportFilters(testCaseParams)
         )
       : [];
-  }, [
-    globalPermissions,
-    table,
-    navigate,
-    showModal,
-    selectedTestType,
-    selectedTestCaseStatus,
-    searchValue,
-  ]);
+  }, [globalPermissions, table, navigate, showModal, testCaseParams]);
 
   const handleTestCaseTypeChange = (value: TestCaseType) => {
     if (value !== selectedTestType) {
       setSelectedTestType(value);
       fetchAllTests({
+        ...testCaseParams,
         testCaseType: value,
-        testCaseStatus: isEmpty(selectedTestCaseStatus)
-          ? undefined
-          : selectedTestCaseStatus,
       });
     }
   };
@@ -531,10 +525,9 @@ export const QualityTab = () => {
         {qualityTab === EntityTabs.TEST_CASES && (
           <DataQualityTab
             removeTableBorder
-            afterDeleteAction={async (...params) => {
-              await fetchAllTests(...params);
-              params?.length &&
-                (await getResourceLimit('dataQuality', true, true));
+            afterDeleteAction={async () => {
+              await fetchAllTests(testCaseParams);
+              await getResourceLimit('dataQuality', true, true);
             }}
             breadcrumbData={tableBreadcrumb}
             entityPermissions={allTestCasesPermissions}

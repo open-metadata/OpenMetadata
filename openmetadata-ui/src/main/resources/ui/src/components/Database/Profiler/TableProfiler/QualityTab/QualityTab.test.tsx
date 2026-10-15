@@ -53,6 +53,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
@@ -644,6 +645,78 @@ describe('QualityTab', () => {
       { testCaseType: 'all', q: 'nulls' }
     );
   });
+
+  it.each(['status', 'type', 'sort', 'page', 'delete', 'search'])(
+    'should keep list and export filters aligned after changing %s',
+    async (action) => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const { ExtraTestCaseDropdownOptions } = jest.requireMock(
+        '../../../../../utils/TestCaseUtils'
+      );
+      const Searchbar = jest.requireMock(
+        '../../../../common/SearchBarComponent/SearchBar.component'
+      );
+      const DataQualityTab = jest.requireMock(
+        '../../DataQualityTab/DataQualityTab'
+      );
+
+      (useTableProfiler as jest.Mock).mockReturnValue(mockUseTableProfiler);
+
+      await act(async () => {
+        render(<QualityTab />);
+      });
+      await act(async () => {
+        Searchbar.mock.calls.at(-1)[0].onSearch('nulls');
+      });
+      await user.click(screen.getByRole('button', { name: /label.type/ }));
+      await user.click(screen.getByRole('option', { name: 'label.column' }));
+      await user.click(screen.getByRole('button', { name: /label.status/ }));
+      await user.click(screen.getByRole('option', { name: 'label.failed' }));
+
+      const sortOptions = { sortField: 'name', sortType: 'asc' };
+      await act(async () => {
+        await DataQualityTab.mock.calls.at(-1)[0].fetchTestCases(sortOptions);
+      });
+      mockUseTableProfiler.fetchAllTests.mockClear();
+
+      if (action === 'status') {
+        await user.click(screen.getByRole('button', { name: /label.status/ }));
+        await user.click(screen.getByRole('option', { name: 'label.aborted' }));
+      } else if (action === 'type') {
+        await user.click(screen.getByRole('button', { name: /label.type/ }));
+        await user.click(screen.getByRole('option', { name: 'label.table' }));
+      } else {
+        await act(async () => {
+          const props = DataQualityTab.mock.calls.at(-1)[0];
+          if (action === 'sort') {
+            await props.fetchTestCases(sortOptions);
+          } else if (action === 'page') {
+            props.pagingData.pagingHandler({ currentPage: 2 });
+          } else if (action === 'delete') {
+            await props.afterDeleteAction();
+          } else {
+            Searchbar.mock.calls.at(-1)[0].onSearch('updated nulls');
+          }
+        });
+      }
+
+      const expectedFilters = {
+        testCaseType: action === 'type' ? 'table' : 'column',
+        testCaseStatus: action === 'status' ? 'Aborted' : 'Failed',
+        q: action === 'search' ? 'updated nulls' : 'nulls',
+      };
+
+      expect(mockUseTableProfiler.fetchAllTests).toHaveBeenLastCalledWith({
+        ...sortOptions,
+        ...expectedFilters,
+        ...(action === 'page' ? { offset: 10 } : {}),
+        ...(action === 'sort' ? { offset: 0 } : {}),
+      });
+      expect(ExtraTestCaseDropdownOptions.mock.calls.at(-1)[6]).toEqual(
+        expectedFilters
+      );
+    }
+  );
 
   it('should not call ExtraTestCaseDropdownOptions when table has no fullyQualifiedName', async () => {
     const { ExtraTestCaseDropdownOptions } = jest.requireMock(
