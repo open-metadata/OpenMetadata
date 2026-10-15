@@ -50,13 +50,15 @@ test.describe('Ontology Studio', () => {
     page,
   }) => {
     await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
-    await expect(page.getByTestId('heading')).toHaveText('Ontology Studio');
+    await expect(
+      page.getByRole('heading', { name: 'Ontology Studio', exact: true })
+    ).toBeVisible();
     await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'true'
     );
     await expect(page.getByTestId('submode-tab-graph')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'true'
     );
     await expect(
@@ -69,7 +71,7 @@ test.describe('Ontology Studio', () => {
     await page.getByTestId('submode-tab-tree').click();
     await expect(page.getByTestId('ontology-tree-view')).toBeVisible();
     await expect(page.getByTestId('submode-tab-tree')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'true'
     );
 
@@ -101,7 +103,7 @@ test.describe('Ontology Studio', () => {
       await expect(graph).toBeVisible();
       await page.getByTestId('mode-tab-query').click();
       await expect(page.getByTestId('mode-tab-query')).toHaveAttribute(
-        'aria-pressed',
+        'aria-selected',
         'true'
       );
       await expect(graph).not.toBeVisible();
@@ -181,7 +183,7 @@ test.describe('Ontology Studio', () => {
 
     try {
       await expect(page.getByTestId('mode-tab-edit')).toHaveAttribute(
-        'aria-pressed',
+        'aria-selected',
         'true'
       );
       await expect(

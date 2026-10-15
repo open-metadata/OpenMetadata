@@ -17,6 +17,7 @@ import {
   Table,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -28,7 +29,6 @@ import {
   ManageMenuItem,
 } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ClientErrors } from '../../../../enums/Axios.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -129,7 +129,7 @@ const FailedTestCaseSampleData = ({
           description={t('message.delete-entity-type-action-description', {
             entityType: t('label.sample-data'),
           })}
-          icon={IconDelete}
+          icon={Trash01}
           id="delete-button"
           name={t('label.delete')}
         />
@@ -281,7 +281,7 @@ const FailedTestCaseSampleData = ({
           weight="bold">
           {t('label.sample-data')}
         </Typography>
-        <div className="d-flex gap-4">
+        <Box gap={4}>
           {testCaseData?.inspectionQuery && !isVersionPage && (
             <Button
               color="primary"
@@ -289,7 +289,8 @@ const FailedTestCaseSampleData = ({
               href={observabilityRouterClassBase.getTestCaseDetailPagePath(
                 testCaseData?.fullyQualifiedName ?? '',
                 TestCasePageTabs.SQL_QUERY
-              )}>
+              )}
+              size="md">
               {t('label.explore-with-query')}
             </Button>
           )}
@@ -304,7 +305,7 @@ const FailedTestCaseSampleData = ({
               onOpenChange={setShowActions}
             />
           )}
-        </div>
+        </Box>
       </Box>
       <div className="tw:overflow-x-auto tw:border tw:border-border-secondary tw:rounded-[10px]">
         <Table

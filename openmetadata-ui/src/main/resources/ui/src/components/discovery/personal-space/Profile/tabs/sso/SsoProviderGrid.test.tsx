@@ -19,31 +19,26 @@ jest.mock('react-i18next', () => ({
 }));
 
 describe('SsoProviderGrid', () => {
-  it('offers every SSO provider as one choice', () => {
+  it('offers every SSO provider as a clickable card', () => {
     render(<SsoProviderGrid onSelect={jest.fn()} />);
 
-    expect(
-      screen.getByRole('radiogroup', { name: 'label.choose-provider' })
-    ).toBeInTheDocument();
-    expect(screen.getAllByRole('radio')).toHaveLength(8);
-    expect(screen.getByRole('radio', { name: 'LDAP' })).not.toBeChecked();
+    expect(screen.getByTestId('sso-provider-grid')).toBeInTheDocument();
+    expect(screen.getAllByRole('button')).toHaveLength(8);
+    expect(screen.getByRole('button', { name: 'LDAP' })).toBeInTheDocument();
   });
 
-  it('reports the picked provider and marks the selected one', () => {
+  it('reports the provider on click and on keyboard activation', () => {
     const onSelect = jest.fn();
-    const { rerender } = render(<SsoProviderGrid onSelect={onSelect} />);
+    render(<SsoProviderGrid onSelect={onSelect} />);
 
-    fireEvent.click(screen.getByText('Okta'));
+    fireEvent.click(screen.getByRole('button', { name: 'Okta' }));
 
     expect(onSelect).toHaveBeenCalledWith(AuthProvider.Okta);
 
-    rerender(
-      <SsoProviderGrid
-        selectedProvider={AuthProvider.Okta}
-        onSelect={onSelect}
-      />
-    );
+    fireEvent.keyDown(screen.getByRole('button', { name: 'LDAP' }), {
+      key: 'Enter',
+    });
 
-    expect(screen.getByRole('radio', { name: 'Okta' })).toBeChecked();
+    expect(onSelect).toHaveBeenLastCalledWith(AuthProvider.LDAP);
   });
 });

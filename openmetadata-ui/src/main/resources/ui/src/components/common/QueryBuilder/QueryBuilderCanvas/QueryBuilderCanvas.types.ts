@@ -25,6 +25,8 @@ type QueryBuilderButtonKind = 'addRule' | 'delRule' | 'addGroup' | 'delGroup';
 // The testids Playwright locates each surface's buttons by.
 export interface QueryBuilderButtonPreset {
   testIds: Record<QueryBuilderButtonKind, string>;
+  // The rule's remove button; `secondary` matches a form whose other rows remove with a plain button.
+  delRuleColor?: 'link-destructive' | 'secondary';
 }
 
 export interface QueryBuilderNode {
@@ -55,7 +57,8 @@ interface QueryBuilderCanvasContext {
   showConjunction: boolean;
   // Each rule's position in render order, so a row can name itself.
   ruleIndexById: Record<string, number>;
-  // A builder emptied to nothing leaves the user no way back, so the last remaining condition keeps no delete control.
+  // A builder emptied to nothing leaves the user no way back, so the last remaining condition keeps no delete control
+  // unless the caller opts in with `allowRemoveLastRule`.
   canRemoveRule: boolean;
 }
 
@@ -140,4 +143,6 @@ export type QueryBuilderCanvasProps = Omit<
   'canRemoveRule' | 'ruleIndexById'
 > & {
   tree: unknown;
+  // Lets the last remaining condition be removed, for a caller that handles an emptied builder itself.
+  allowRemoveLastRule?: boolean;
 };

@@ -146,6 +146,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
                 Entity.getEntity(
                     Entity.TABLE, table.getId(), "columns,lifeCycle", Include.NON_DELETED),
             new TableRefreshHistoryLoader(daoCollection.profilerDataTimeSeriesDao(), clock));
+    supportsSearch = true;
   }
 
   @Override
@@ -1590,7 +1591,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private void updateLatestResult(DataContract dataContract, DataContractResult result) {
     try {
-      DataContract updated = JsonUtils.deepCopy(dataContract, DataContract.class);
+      // Reload with the relationship fields the search doc is built from: callers pass contracts
+      // fetched without owners/reviewers, and the reindex after this update would blank them.
+      DataContract original =
+          Entity.getEntity(
+              Entity.DATA_CONTRACT,
+              dataContract.getId(),
+              "owners,reviewers,extension",
+              Include.NON_DELETED);
+      DataContract updated = JsonUtils.deepCopy(original, DataContract.class);
       updated.setLatestResult(
           new LatestResult()
               .withTimestamp(result.getTimestamp())
@@ -1598,7 +1607,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               .withMessage(result.getResult())
               .withResultId(result.getId()));
       EntityRepository.EntityUpdater entityUpdater =
-          getUpdater(dataContract, updated, EntityRepository.Operation.PATCH, null);
+          getUpdater(original, updated, EntityRepository.Operation.PATCH, null);
       entityUpdater.update();
     } catch (Exception e) {
       LOG.error(

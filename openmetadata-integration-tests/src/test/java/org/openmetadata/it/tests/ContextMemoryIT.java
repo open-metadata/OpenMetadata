@@ -720,13 +720,8 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     ListParams params = new ListParams();
     params.setLimit(100);
     params.setFields("primaryEntity,relatedEntities");
-    ListResponse<ContextMemory> response = listEntities(params);
 
-    ContextMemory listed =
-        response.getData().stream()
-            .filter(memory -> memory.getId().equals(created.getId()))
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("Created memory not found in list response"));
+    ContextMemory listed = findListed(params, created.getId());
 
     assertNotNull(
         listed.getPrimaryEntity(), "primaryEntity must populate on the list path (bulk fetch)");
@@ -739,6 +734,26 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
         listed.getRelatedEntities().stream()
             .anyMatch(ref -> ref.getId().equals(testUser2().getId())),
         "relatedEntities must contain the related user reference");
+  }
+
+  /** Pages through the list: memories other tests create concurrently can sort ahead of it. */
+  private ContextMemory findListed(ListParams params, UUID id) {
+    ListResponse<ContextMemory> page = listEntities(params);
+    ContextMemory listed = findById(page, id);
+    while (listed == null && page.getPaging().getAfter() != null) {
+      params.setAfter(page.getPaging().getAfter());
+      page = listEntities(params);
+      listed = findById(page, id);
+    }
+    assertNotNull(listed, "Created memory not found in list response");
+    return listed;
+  }
+
+  private static ContextMemory findById(ListResponse<ContextMemory> page, UUID id) {
+    return page.getData().stream()
+        .filter(memory -> memory.getId().equals(id))
+        .findFirst()
+        .orElse(null);
   }
 
   @Test
