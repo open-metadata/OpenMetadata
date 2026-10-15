@@ -27,6 +27,11 @@ matching entry.
 - The size the user picks is remembered per scale (`useSavedPageSize`): list sizes in
   `globalPageSize`, grid sizes in `globalGridPageSize`. A page that switches views comes back to
   the size last picked in each, and a grid size never lands in a list picker.
+- Every paged view starts from that saved size; no page sets a fixed starting size of its own.
+  This includes views with no size picker (Metrics, KPIs, Domains, Data Products, reindex
+  failures, Context Center memories). A size carried in the URL (`pageSize` param or settings
+  hash) still wins, so a shared link opens at its own size. Fixed fetch batches that are not a
+  paged view (e.g. loading all glossary terms, approval tasks) are out of scope.
 - `usePaging` treats a caller that declares no options as on the list scale, so a grid size left
   in the shared URL param, or an off-scale size an older build stored in the preference, never
   reaches a 15/25/50 picker.

@@ -45,6 +45,7 @@ import {
 } from '../../../../../../generated/events/api/typedEvent';
 import { EventSubscription } from '../../../../../../generated/events/eventSubscription';
 import { Paging } from '../../../../../../generated/type/paging';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { getAlertEventsFromId } from '../../../../../../rest/alertsAPI';
 import { getAlertStatusIcon } from '../../../../../../utils/Alerts/AlertsUtil';
@@ -88,7 +89,8 @@ function NotificationRecentEvents({
   );
   const { state: hashState, updateParams } = useSettingsHash();
   const initialPage = Number(hashState.params.page) || 1;
-  const initialPageSize = Number(hashState.params.pageSize) || PAGE_SIZE_BASE;
+  const { savedPageSize, savePageSize } = useSavedPageSize();
+  const initialPageSize = Number(hashState.params.pageSize) || savedPageSize;
 
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
@@ -154,10 +156,11 @@ function NotificationRecentEvents({
     (size: number) => {
       setCurrentPage(1);
       setPageSize(size);
+      savePageSize(size);
       updateParams({ page: '1', pageSize: String(size) });
       getAlertRecentEvents(0, size);
     },
-    [updateParams, getAlertRecentEvents]
+    [savePageSize, updateParams, getAlertRecentEvents]
   );
 
   const showPagination = useMemo(

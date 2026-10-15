@@ -22,7 +22,6 @@ import ArchiveView from '../../../components/ContextCenter/ArchiveView/ArchiveVi
 import { ArchiveItem } from '../../../components/ContextCenter/ArchiveView/ArchiveView.interface';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
-import { ARCHIVE_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../enums/permissions.enum';
@@ -52,7 +51,7 @@ const ContextCenterArchivePage: FC = () => {
   const pageLayoutClassNames = useContextCenterPageLayout();
   const { currentUser } = useApplicationStore();
   const { getResourcePermission } = usePermissionProvider();
-  const { paging, pageSize, handlePagingChange } = usePaging(ARCHIVE_PAGE_SIZE);
+  const { paging, pageSize, handlePagingChange } = usePaging();
   const [items, setItems] = useState<ArchiveItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);

@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useState } from 'react';
+import { useSavedPageSize } from '../../../../hooks/paging/useSavedPageSize';
 
 interface PageState {
   /** The query the page belongs to; a page of another query is page 1. */
@@ -23,13 +24,24 @@ interface PageState {
  * Page state for the incident listings, which take a 1-based page. Any change
  * to the query — or to the page size — reads as the first page again. That
  * reset is derived rather than set from an effect, so the stale page is never
- * fetched on the way.
+ * fetched on the way. The page size starts from `defaultPageSize` when given,
+ * otherwise from the size the user last picked on the list scale.
  */
 export const useIncidentPaging = (
   queryKey: string,
-  defaultPageSize: number
+  defaultPageSize?: number
 ) => {
-  const [pageSize, setPageSize] = useState(defaultPageSize);
+  const { savedPageSize, savePageSize } = useSavedPageSize();
+  const [pageSize, setPageSizeState] = useState(
+    defaultPageSize ?? savedPageSize
+  );
+  const setPageSize = useCallback(
+    (size: number) => {
+      setPageSizeState(size);
+      savePageSize(size);
+    },
+    [savePageSize]
+  );
   const pagedKey = `${queryKey}|${pageSize}`;
   const [page, setPage] = useState<PageState>({
     queryKey: pagedKey,

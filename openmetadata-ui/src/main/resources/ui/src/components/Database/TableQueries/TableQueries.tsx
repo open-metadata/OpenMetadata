@@ -31,10 +31,7 @@ import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-} from '../../../constants/constants';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { USAGE_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
@@ -150,7 +147,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     paging,
     handlePagingChange,
     showPagination,
-  } = usePaging(PAGE_SIZE_BASE);
+  } = usePaging();
 
   const { getEntityPermission, permissions } = usePermissionProvider();
 

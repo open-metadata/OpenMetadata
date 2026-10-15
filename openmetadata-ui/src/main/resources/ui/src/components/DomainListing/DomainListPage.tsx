@@ -32,10 +32,11 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { PageViewMode } from '../../generated/type/personaPreferences';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
-import { getViewPageSize } from '../../utils/PaginationUtils';
+import { getViewPageSizeOptions } from '../../utils/PaginationUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
@@ -63,9 +64,12 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const personaView = usePersonaViewMode(VIEW_MODE_PAGE.Domains);
   const [selectedView, setView] = useState<PageViewMode>();
   const view = selectedView ?? personaView;
+  const { savedPageSize: listingPageSize } = useSavedPageSize(
+    getViewPageSizeOptions(view)
+  );
   const domainListing = useDomainListingData({
     enableNlq: isAiMode,
-    pageSize: getViewPageSize(view),
+    pageSize: listingPageSize,
   });
   // Card and table views page at different sizes, so the current page may not exist in the other.
   const { handlePageChange } = domainListing;

@@ -63,8 +63,6 @@ export const INCIDENT_GROUP_DETAIL_PARAM = 'group';
 /** Dimension the page opens with when the URL does not carry a valid one. */
 export const DEFAULT_INCIDENT_GROUP_BY = IncidentGroupBy.TestDefinition;
 
-export const INCIDENT_GROUPS_PAGE_SIZE = PAGE_SIZE_BASE;
-
 /** The page sizes the application's paged lists offer. */
 export const INCIDENT_GROUPS_PAGE_SIZE_OPTIONS = [
   PAGE_SIZE_BASE,

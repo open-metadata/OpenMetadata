@@ -29,11 +29,7 @@ import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPr
 import { ColumnsType } from '../../components/common/Table/Table.interface';
 import Table from '../../components/common/Table/TableV2';
 import { EmptyGraphPlaceholder } from '../../components/DataInsight/EmptyGraphPlaceholder';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
-  pagingObject,
-} from '../../constants/constants';
+import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
@@ -41,6 +37,7 @@ import { ResourceEntity } from '../../enums/permissions.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getListKPIs } from '../../rest/KpiAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
@@ -54,6 +51,7 @@ const KPIList = () => {
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const isAdminUser = currentUser?.isAdmin ?? false;
+  const { savedPageSize: kpiPageSize } = useSavedPageSize();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const viewKPIPermission = useMemo(
@@ -78,7 +76,7 @@ const KPIList = () => {
           TabSpecificField.DATA_INSIGHT_CHART,
           TabSpecificField.METRIC_TYPE,
         ],
-        limit: PAGE_SIZE_MEDIUM,
+        limit: kpiPageSize,
         before: param && param.before,
         after: param && param.after,
       });
@@ -254,8 +252,8 @@ const KPIList = () => {
         customPaginationProps={{
           currentPage: kpiPage,
           isLoading,
-          showPagination: kpiList.length > PAGE_SIZE_MEDIUM,
-          pageSize: PAGE_SIZE_MEDIUM,
+          showPagination: kpiList.length > kpiPageSize,
+          pageSize: kpiPageSize,
           paging: kpiPaging,
           pagingHandler: kpiPagingHandler,
         }}

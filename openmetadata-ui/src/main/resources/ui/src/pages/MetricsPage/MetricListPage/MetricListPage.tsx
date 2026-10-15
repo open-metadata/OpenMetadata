@@ -93,6 +93,7 @@ import type { TagLabel } from '../../../generated/type/tagLabel';
 import { TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
@@ -123,7 +124,7 @@ import {
   MetricTreeNode,
   VisibleMetricTableRow,
 } from '../../../utils/MetricEntityUtils/MetricHierarchyUtils';
-import { getViewPageSize } from '../../../utils/PaginationUtils';
+import { getViewPageSizeOptions } from '../../../utils/PaginationUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -263,7 +264,9 @@ const MetricListPage = () => {
   // Owned by TableV2's Customize menu; card view only reads it.
   const visibleColumns = getVisibleMetricColumns(selectedEntityTableColumns);
   const [viewMode, setViewMode] = useState<MetricViewMode>(getInitialViewMode);
-  const metricPageSize = getViewPageSize(viewMode);
+  const { savedPageSize: metricPageSize } = useSavedPageSize(
+    getViewPageSizeOptions(viewMode)
+  );
   const [isExporting, setIsExporting] = useState(false);
   const [isMetricActionsOpen, setIsMetricActionsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);

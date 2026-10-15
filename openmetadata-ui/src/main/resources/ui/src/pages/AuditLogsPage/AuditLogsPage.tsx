@@ -51,6 +51,7 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import {
   exportAuditLogs,
   getAuditLogExportJob,
@@ -104,7 +105,8 @@ const AuditLogsPage = () => {
     {}
   );
   const filterParamsRef = useRef<Partial<AuditLogListParams>>({});
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_MEDIUM);
+  const { savedPageSize, savePageSize } = useSavedPageSize();
+  const [pageSize, setPageSize] = useState(savedPageSize);
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportDateRange, setExportDateRange] = useState<
@@ -161,10 +163,14 @@ const AuditLogsPage = () => {
     [fetchAuditLogs, paging]
   );
 
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-    setCurrentPage(1);
-  }, []);
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      setPageSize(size);
+      savePageSize(size);
+      setCurrentPage(1);
+    },
+    [savePageSize]
+  );
 
   const handleFiltersChange = useCallback(
     (filters: AuditLogActiveFilter[], params: Partial<AuditLogListParams>) => {

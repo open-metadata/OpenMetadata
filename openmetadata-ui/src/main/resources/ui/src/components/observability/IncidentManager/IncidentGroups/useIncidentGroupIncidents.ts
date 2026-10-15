@@ -32,7 +32,8 @@ interface UseIncidentGroupIncidentsProps {
   group?: TestCaseIncidentGroup;
   /** The filters the group was fetched with, so the list matches its count. */
   filters: IncidentGroupFilters;
-  defaultPageSize: number;
+  /** Overrides the size the user last picked; used by tests that page small sets. */
+  defaultPageSize?: number;
 }
 
 const NO_INCIDENTS: TestCaseResolutionStatus[] = [];

@@ -25,6 +25,3 @@ type ViewMode = PageViewMode | `${PageViewMode}`;
 
 export const getViewPageSizeOptions = (view?: ViewMode) =>
   view === PageViewMode.Card ? GRID_PAGE_SIZE_OPTIONS : LIST_PAGE_SIZE_OPTIONS;
-
-export const getViewPageSize = (view?: ViewMode) =>
-  getViewPageSizeOptions(view)[0];

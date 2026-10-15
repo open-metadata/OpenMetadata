@@ -30,7 +30,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RDF_INDEX_APP_NAME } from '../../../../constants/Applications.constant';
-import { PAGE_SIZE_BASE } from '../../../../constants/constants';
+import { useSavedPageSize } from '../../../../hooks/paging/useSavedPageSize';
 import { getRdfReindexFailures } from '../../../../rest/rdfAPI';
 import { getReindexFailures } from '../../../../rest/searchAPI';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
@@ -90,6 +90,7 @@ const ReindexFailures = ({
   const [data, setData] = useState<ReindexFailureRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const { savedPageSize: pageSize } = useSavedPageSize();
   const [entityTypeFilter, setEntityTypeFilter] = useState<string | undefined>(
     undefined
   );
@@ -109,8 +110,8 @@ const ReindexFailures = ({
             ? getRdfReindexFailures
             : getReindexFailures;
         const response = await fetcher({
-          offset: (page - 1) * PAGE_SIZE_BASE,
-          limit: PAGE_SIZE_BASE,
+          offset: (page - 1) * pageSize,
+          limit: pageSize,
           entityType,
         });
         if (requestId !== requestSequence.current) {
@@ -133,7 +134,7 @@ const ReindexFailures = ({
         }
       }
     },
-    [appName]
+    [appName, pageSize]
   );
 
   useEffect(() => {
@@ -289,7 +290,7 @@ const ReindexFailures = ({
               loading={loading}
               pagination={{
                 current: currentPage,
-                pageSize: PAGE_SIZE_BASE,
+                pageSize,
                 showSizeChanger: false,
                 total,
               }}

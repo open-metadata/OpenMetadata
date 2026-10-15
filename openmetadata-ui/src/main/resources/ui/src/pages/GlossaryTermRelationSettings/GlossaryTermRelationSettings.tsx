@@ -36,6 +36,7 @@ import {
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { useAuth } from '../../hooks/authHooks';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { getRelationTypeUsageCounts } from '../../rest/glossaryAPI';
 import {
   createRelationshipType,
@@ -132,7 +133,8 @@ const GlossaryTermRelationSettingsPage = () => {
   );
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+  const { savedPageSize, savePageSize } = useSavedPageSize();
+  const [pageSize, setPageSize] = useState(savedPageSize);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -348,6 +350,7 @@ const GlossaryTermRelationSettingsPage = () => {
                 onPageChange={setCurrentPage}
                 onPageSizeChange={(nextPageSize) => {
                   setPageSize(nextPageSize);
+                  savePageSize(nextPageSize);
                   setCurrentPage(1);
                 }}
               />

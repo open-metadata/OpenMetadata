@@ -23,8 +23,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VIEW_MODE_PAGE } from '../../../constants/platform/personaAppLayout.constants';
 import { PageViewMode } from '../../../generated/type/personaPreferences';
+import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../../hooks/platform/usePersonaViewMode';
-import { getViewPageSize } from '../../../utils/PaginationUtils';
+import { getViewPageSizeOptions } from '../../../utils/PaginationUtils';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
@@ -51,9 +52,12 @@ const SubDomainsTable = ({
   const personaView = usePersonaViewMode(VIEW_MODE_PAGE.SubDomains);
   const [selectedView, setView] = useState<PageViewMode>();
   const view = selectedView ?? personaView;
+  const { savedPageSize: listingPageSize } = useSavedPageSize(
+    getViewPageSizeOptions(view)
+  );
   const subdomainListing = useSubdomainListingData({
     parentDomainFqn: domainFqn,
-    pageSize: getViewPageSize(view),
+    pageSize: listingPageSize,
   });
   // Card and table views page at different sizes, so the current page may not exist in the other.
   const { handlePageChange } = subdomainListing;

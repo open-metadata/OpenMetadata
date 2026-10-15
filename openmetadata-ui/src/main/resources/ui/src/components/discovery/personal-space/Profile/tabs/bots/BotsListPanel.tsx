@@ -51,6 +51,7 @@ import { User } from '../../../../../../generated/entity/teams/user';
 import { Include } from '../../../../../../generated/type/include';
 import { Paging } from '../../../../../../generated/type/paging';
 import { useAuth } from '../../../../../../hooks/authHooks';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { getBots } from '../../../../../../rest/botsAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
@@ -103,8 +104,9 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const [currentPage, setCurrentPage] = useState(
     Number(hashState.params.page) || 1
   );
+  const { savedPageSize, savePageSize } = useSavedPageSize();
   const [pageSize, setPageSize] = useState(
-    Number(hashState.params.pageSize) || PAGE_SIZE_BASE
+    Number(hashState.params.pageSize) || savedPageSize
   );
   const [reloadKey, setReloadKey] = useState(0);
   const fetchRequestIdRef = useRef(0);
@@ -345,6 +347,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const handlePageSizeChange = useCallback(
     (newSize: number) => {
       setPageSize(newSize);
+      savePageSize(newSize);
       setCurrentPage(1);
       updateParams({
         page: '1',
@@ -353,7 +356,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
         pageSize: String(newSize),
       });
     },
-    [updateParams]
+    [savePageSize, updateParams]
   );
 
   const handleShowDeletedToggle = useCallback(

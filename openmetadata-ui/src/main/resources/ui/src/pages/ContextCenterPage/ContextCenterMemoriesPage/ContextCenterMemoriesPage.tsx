@@ -58,7 +58,6 @@ import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../../components/discovery/p
 import {
   DEFAULT_MEMORY_STATUSES,
   FILTER_TABS,
-  MEMORIES_PER_PAGE,
   MEMORY_FIELDS,
   MEMORY_STATUS_LABEL_KEYS,
 } from '../../../constants/ContextCenter.constants';
@@ -70,6 +69,7 @@ import {
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import { useMemoryConflictReviews } from '../../../hooks/discovery/context-center/useMemoryConflictReviews';
+import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { queryClient } from '../../../queryClient';
 import {
@@ -339,6 +339,7 @@ const ContextCenterMemoriesPage: FC = () => {
     ContextMemoryStatus[]
   >(DEFAULT_MEMORY_STATUSES);
   const [currentPage, setCurrentPage] = useState(1);
+  const { savedPageSize: memoriesPerPage } = useSavedPageSize();
   const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
   const [selectedAuthor, setSelectedAuthor] = useState<MemoryFilterOption>();
   const [authorOptions, setAuthorOptions] = useState<MemoryFilterOption[]>([]);
@@ -437,8 +438,8 @@ const ContextCenterMemoriesPage: FC = () => {
             ? currentUser?.id ?? currentUser?.name
             : selectedAuthor?.id;
         const response = await getListContextMemories({
-          limit: MEMORIES_PER_PAGE,
-          offset: (currentPage - 1) * MEMORIES_PER_PAGE,
+          limit: memoriesPerPage,
+          offset: (currentPage - 1) * memoriesPerPage,
           fields: MEMORY_FIELDS,
           q: debouncedSearch.trim() || undefined,
           assets: selectedAsset?.id,
@@ -463,6 +464,7 @@ const ContextCenterMemoriesPage: FC = () => {
       activeFilter,
       applyMemoryListResponse,
       currentPage,
+      memoriesPerPage,
       currentUser?.id,
       currentUser?.name,
       debouncedSearch,
@@ -604,7 +606,7 @@ const ContextCenterMemoriesPage: FC = () => {
     fetchMemoryCounts();
   }, [fetchMemoryCounts]);
 
-  const totalPages = Math.max(1, Math.ceil(totalMemories / MEMORIES_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalMemories / memoriesPerPage));
 
   const {
     hasActiveFilters,

@@ -28,7 +28,6 @@ import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import IncidentGroupRelatedBadge from './IncidentGroupRelatedBadge';
 import {
-  INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
   INCIDENT_GROUP_SEPARATOR,
 } from './IncidentGroups.constants';
@@ -71,7 +70,6 @@ const IncidentGroupDetail = ({
   } = useIncidentGroupIncidents({
     group,
     filters,
-    defaultPageSize: INCIDENT_GROUPS_PAGE_SIZE,
   });
   const name = getIncidentGroupName(
     group,

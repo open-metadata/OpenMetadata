@@ -53,6 +53,7 @@ import {
 } from '../../../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../../../context/WebSocketProvider/WebSocketProvider';
 import { Paging } from '../../../../../../generated/type/paging';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import {
   exportAuditLogs,
@@ -127,8 +128,9 @@ async function walkToPageCursor(
   return { cursor, discoveredCursors };
 }
 
-function resolvePageSize(hash: number | undefined): number {
-  return hash || PAGE_SIZE_MEDIUM;
+// A size in the hash (a shared or reloaded link) wins over the size the user last picked.
+function resolvePageSize(hash: number | undefined, saved: number): number {
+  return hash || saved;
 }
 
 interface AccessControlAuditLogsPanelProps {
@@ -149,7 +151,8 @@ const AccessControlAuditLogsPanel: React.FC<
     cursorType: hashCursorType,
     setPage: setHashPage,
   } = useHashPagingParams();
-  const pageSize = resolvePageSize(hashPageSize);
+  const { savedPageSize, savePageSize } = useSavedPageSize();
+  const pageSize = resolvePageSize(hashPageSize, savedPageSize);
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [paging, setPaging] = useState<Paging>(INITIAL_PAGING);
@@ -240,9 +243,10 @@ const AccessControlAuditLogsPanel: React.FC<
   const handlePageSizeChange = useCallback(
     (size: number) => {
       pageCursorsRef.current = {};
+      savePageSize(size);
       setHashPage(1, undefined, undefined, size);
     },
-    [setHashPage]
+    [savePageSize, setHashPage]
   );
 
   const handleFiltersChange = useCallback(

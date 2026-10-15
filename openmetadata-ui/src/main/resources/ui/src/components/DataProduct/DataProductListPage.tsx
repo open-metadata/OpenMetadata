@@ -43,13 +43,14 @@ import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.consta
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { PageViewMode } from '../../generated/type/personaPreferences';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import dataProductClassBase from '../../utils/DataProduct/DataProductClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
-import { getViewPageSize } from '../../utils/PaginationUtils';
+import { getViewPageSizeOptions } from '../../utils/PaginationUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
@@ -157,9 +158,12 @@ const DataProductListPage = ({
   const personaView = usePersonaViewMode(VIEW_MODE_PAGE.DataProducts);
   const [selectedView, setView] = useState<PageViewMode>();
   const view = selectedView ?? personaView;
+  const { savedPageSize: listingPageSize } = useSavedPageSize(
+    getViewPageSizeOptions(view)
+  );
   const dataProductListing = useDataProductListingData({
     enableNlq: isAiMode,
-    pageSize: getViewPageSize(view),
+    pageSize: listingPageSize,
   });
   // Card and table views page at different sizes, so the current page may not exist in the other.
   const { handlePageChange } = dataProductListing;

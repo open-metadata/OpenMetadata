@@ -50,6 +50,7 @@ import {
   ProviderType,
 } from '../../../../../../generated/events/eventSubscription';
 import { Paging } from '../../../../../../generated/type/paging';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import {
   getAlertsFromName,
@@ -83,7 +84,8 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
     cursorType: hashCursorType,
     setPage: setHashPage,
   } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  const { savedPageSize, savePageSize } = useSavedPageSize();
+  const pageSize = hashPageSize || savedPageSize;
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
@@ -327,6 +329,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   };
 
   const handlePageSizeChange = (size: number) => {
+    savePageSize(size);
     setHashPage(1, undefined, undefined, size);
     setCursorCache(new Map());
   };

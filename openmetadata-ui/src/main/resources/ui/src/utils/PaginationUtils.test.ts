@@ -3,11 +3,7 @@ import {
   LIST_PAGE_SIZE_OPTIONS,
 } from '../constants/constants';
 import { PageViewMode } from '../generated/type/personaPreferences';
-import {
-  computeTotalPages,
-  getViewPageSize,
-  getViewPageSizeOptions,
-} from './PaginationUtils';
+import { computeTotalPages, getViewPageSizeOptions } from './PaginationUtils';
 
 /*
  *  Copyright 2024 Collate.
@@ -70,10 +66,5 @@ describe('view page sizes', () => {
       LIST_PAGE_SIZE_OPTIONS
     );
     expect(getViewPageSizeOptions(undefined)).toBe(LIST_PAGE_SIZE_OPTIONS);
-  });
-
-  it('starts each view on the first step of its scale', () => {
-    expect(getViewPageSize(PageViewMode.Card)).toBe(12);
-    expect(getViewPageSize(PageViewMode.Table)).toBe(15);
   });
 });

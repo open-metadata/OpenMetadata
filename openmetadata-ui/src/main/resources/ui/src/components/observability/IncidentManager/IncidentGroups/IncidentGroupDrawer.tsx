@@ -23,10 +23,7 @@ import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import IncidentGroupRelatedBadge from './IncidentGroupRelatedBadge';
-import {
-  INCIDENT_GROUPS_PAGE_SIZE,
-  INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
-} from './IncidentGroups.constants';
+import { INCIDENT_GROUPS_PAGE_SIZE_OPTIONS } from './IncidentGroups.constants';
 import {
   IncidentGroupDrawerProps,
   IncidentGroupStatProps,
@@ -96,7 +93,6 @@ const IncidentGroupDrawer = ({
   } = useIncidentGroupIncidents({
     group,
     filters,
-    defaultPageSize: INCIDENT_GROUPS_PAGE_SIZE,
   });
 
   return (
