@@ -96,6 +96,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.events.lifecycle.OrderedLaneTask;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -1580,6 +1581,38 @@ class SearchRepositoryBehaviorTest {
             List.of(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     "databaseSchema.id", schema.getId().toString())));
+  }
+
+  @Test
+  void aTableDeletedOnAWriteLaneRemovesItsColumnDocumentsOffTheLane() throws Exception {
+    SearchRepository repo =
+        spy(
+            newRepository(
+                Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING),
+                "cluster"));
+    doReturn(true).when(repo).isColumnIndexingEnabled();
+    Table table = tableWithOneColumn();
+    List<Boolean> onWriteLane = new java.util.concurrent.CopyOnWriteArrayList<>();
+    doAnswer(
+            invocation -> {
+              onWriteLane.add(repo.getLiveWrites().isApplyingQueuedWrite());
+              return null;
+            })
+        .when(searchClient)
+        .deleteEntityByFields(anyList(), anyList());
+
+    repo.getLiveWrites()
+        .queue(
+            new OrderedLaneTask(
+                () -> repo.deleteEntityIndex(table),
+                "deleteEntityIndex",
+                table.getId().toString(),
+                table.getFullyQualifiedName(),
+                Entity.TABLE));
+    awaitQueuedWrites(repo);
+
+    assertFalse(onWriteLane.isEmpty(), "the table's column documents are deleted");
+    assertFalse(onWriteLane.contains(true), "no delete by query runs on the write lane");
   }
 
   @Test

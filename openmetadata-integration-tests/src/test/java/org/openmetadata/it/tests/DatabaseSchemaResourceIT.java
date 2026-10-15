@@ -24,6 +24,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.GovernanceWorkflowActions;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -801,6 +802,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     org.openmetadata.schema.entity.data.Table downstreamTable =
         client.tables().create(downstreamRequest);
 
+    QueuedSearchWrites.await();
     org.awaitility.Awaitility.await("Wait for tables to be indexed in search")
         .atMost(30, java.util.concurrent.TimeUnit.SECONDS)
         .pollInterval(2, java.util.concurrent.TimeUnit.SECONDS)

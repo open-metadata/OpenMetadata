@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
@@ -1967,6 +1968,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         String.format(
             "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"certification.tagLabel.tagFQN\":\"%s\"}}]}}}",
             originalTagFqn);
+    QueuedSearchWrites.await();
     Awaitility.await("Schema should be searchable by original tag FQN")
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(1, TimeUnit.SECONDS)
@@ -2032,6 +2034,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         String.format(
             "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"certification.tagLabel.tagFQN\":\"%s\"}}]}}}",
             newTagFqn);
+    QueuedSearchWrites.await();
     Awaitility.await("Schema should be searchable by new tag FQN after rename")
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(1, TimeUnit.SECONDS)
@@ -2459,6 +2462,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
   private void awaitTableTag(
       OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedTagFqn) {
+    QueuedSearchWrites.await();
     Awaitility.await("table search doc carries tag " + expectedTagFqn)
         .atMost(Duration.ofSeconds(60))
         .pollDelay(Duration.ofMillis(500))

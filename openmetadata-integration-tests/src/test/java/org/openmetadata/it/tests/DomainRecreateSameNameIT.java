@@ -27,6 +27,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -95,6 +96,7 @@ public class DomainRecreateSameNameIT {
     assertNotEquals(
         domainV1.getId(), domainV2.getId(), "Recreated domain must be a new entity with a new id");
 
+    QueuedSearchWrites.await();
     Awaitility.await("recreated domain must not inherit the deleted domain's assets")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(1))
