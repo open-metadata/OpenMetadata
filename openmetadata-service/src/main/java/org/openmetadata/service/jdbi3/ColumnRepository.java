@@ -13,12 +13,14 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
 import static org.openmetadata.service.events.ChangeEvents.createChangeEventForEntity;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.isSystemGenerated;
 
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
@@ -967,20 +969,17 @@ public class ColumnRepository {
     return escaped;
   }
 
-  private String formatTags(List<TagLabel> tags, boolean classificationsOnly) {
-    if (tags == null || tags.isEmpty()) {
-      return "";
-    }
-
-    return tags.stream()
-        .filter(
-            tag -> {
-              if (classificationsOnly) {
-                return tag.getSource() == TagLabel.TagSource.CLASSIFICATION;
-              } else {
-                return tag.getSource() == TagLabel.TagSource.GLOSSARY;
-              }
-            })
+  /**
+   * The column's own labels of one source, for the CSV export. DERIVED labels -- inherited from the
+   * table, or implied by a term -- are left out: CSV import stores what it reads as MANUAL, so
+   * exporting them would pin them on the column after their source is gone. Package-private for
+   * tests.
+   */
+  static String formatTags(List<TagLabel> tags, boolean classificationsOnly) {
+    TagLabel.TagSource source =
+        classificationsOnly ? TagLabel.TagSource.CLASSIFICATION : TagLabel.TagSource.GLOSSARY;
+    return listOrEmpty(tags).stream()
+        .filter(tag -> tag.getSource() == source && !isSystemGenerated(tag))
         .map(TagLabel::getTagFQN)
         .collect(Collectors.joining(";"));
   }
