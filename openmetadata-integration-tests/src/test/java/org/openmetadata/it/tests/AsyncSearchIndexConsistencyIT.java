@@ -347,6 +347,8 @@ public class AsyncSearchIndexConsistencyIT {
       throws Exception {
     final Table table = ShortStackFactory.table(namespace);
     final UUID follower = UserTestFactory.createUser(namespace, "missing_doc_follower").getId();
+    // The table's own create must land first, or it can recreate the document after the delete.
+    QueuedSearchWrites.await();
     final SearchRepository search = Entity.getSearchRepository();
     search
         .getSearchClient()
@@ -359,7 +361,7 @@ public class AsyncSearchIndexConsistencyIT {
         source -> {
           assertEquals(table.getId().toString(), source.path("id").asText());
           assertEquals(table.getName(), source.path("name").asText());
-          assertEquals(follower.toString(), source.path("followers").get(0).asText());
+          assertEquals(follower.toString(), source.path("followers").path(0).asText());
           assertFalse(source.has("followersToAdd"));
           assertFalse(source.has("followersToRemove"));
         });
