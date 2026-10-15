@@ -91,7 +91,14 @@ export const selectIngestionRunnerFromDropdown = async (
     // to wait out the timeout on a detached node. `selectOptionWithRetry`
     // reopens the list and retries the click until it lands.
     const runnerOption = page.getByRole('option').getByText(runnerDisplayName);
-    await selectOptionWithRetry(runnerSelector, runnerOption);
+    // Retry against the inner AriaButton, not the Select root: the test id sits
+    // on the react-aria `Select` wrapper, and only the button carries
+    // `aria-expanded`. Reading it on the root always yields null, so every pass
+    // would re-click the trigger and toggle an already-open popover shut.
+    await selectOptionWithRetry(
+      runnerSelector.getByRole('button'),
+      runnerOption
+    );
 
     await expect(runnerSelector).toContainText(runnerDisplayName);
   }
