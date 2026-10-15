@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.context.review;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -34,6 +35,7 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 
 class MemoryEvidenceHoldsTest {
@@ -138,19 +140,32 @@ class MemoryEvidenceHoldsTest {
   }
 
   @Test
-  void aRetryAfterAPartialFailureHoldsWhatTheFirstAttemptMissed() {
-    UUID first = memories.add(ContextMemoryStatus.APPROVED, query);
-    UUID second = memories.add(ContextMemoryStatus.APPROVED, query);
-    memories.failNextWrite(second);
+  void aMemoryThatCannotBeWrittenNeitherRefusesTheDeleteNorStopsTheOthers() {
+    UUID unwritable = memories.add(ContextMemoryStatus.APPROVED, query);
+    UUID other = memories.add(ContextMemoryStatus.APPROVED, query);
+    memories.failNextWrite(unwritable, new IllegalStateException("the database went away"));
 
-    assertThrows(IllegalStateException.class, () -> holds.holdMemoriesSupportedBy(query));
-    assertEquals(ContextMemoryStatus.DRAFT, memories.current(first).getEntityStatus());
-    assertEquals(ContextMemoryStatus.APPROVED, memories.current(second).getEntityStatus());
+    assertDoesNotThrow(() -> holds.holdMemoriesSupportedBy(query));
 
-    holds.holdMemoriesSupportedBy(query);
+    assertEquals(ContextMemoryStatus.APPROVED, memories.current(unwritable).getEntityStatus());
+    assertEquals(ContextMemoryStatus.DRAFT, memories.current(other).getEntityStatus());
+    assertEquals(List.of(other), memories.writes);
+  }
 
-    assertEquals(ContextMemoryStatus.DRAFT, memories.current(second).getEntityStatus());
-    assertEquals(List.of(first, second), memories.writes, "the held memory is not written again");
+  /**
+   * A principal a memory was shared with and that was deleted since stays in {@code sharedWith}, and
+   * every PATCH of that memory then fails looking it up. Deleting the Query must still succeed.
+   */
+  @Test
+  void aMemorySharedWithADeletedPrincipalDoesNotBlockDeletingItsQuery() {
+    UUID memory = memories.add(ContextMemoryStatus.APPROVED, query);
+    memories.failNextWrite(
+        memory, EntityNotFoundException.byMessage("user instance for " + UUID.randomUUID()));
+
+    assertDoesNotThrow(() -> holds.holdMemoriesSupportedBy(query));
+
+    assertEquals(ContextMemoryStatus.APPROVED, memories.current(memory).getEntityStatus());
+    assertTrue(memories.writes.isEmpty());
   }
 
   @Test
@@ -249,7 +264,7 @@ class MemoryEvidenceHoldsTest {
     private final Map<UUID, ContextMemory> rows = new LinkedHashMap<>();
     private final Map<UUID, List<UnaryOperator<ContextMemory>>> beforeWrite = new LinkedHashMap<>();
     private final Map<UUID, UnaryOperator<ContextMemory>> beforeLoad = new LinkedHashMap<>();
-    private final List<UUID> failing = new ArrayList<>();
+    private final Map<UUID, RuntimeException> failing = new LinkedHashMap<>();
     private final List<UUID> writes = new ArrayList<>();
 
     UUID add(ContextMemoryStatus status, Query... cited) {
@@ -275,8 +290,8 @@ class MemoryEvidenceHoldsTest {
       beforeLoad.put(id, edit);
     }
 
-    void failNextWrite(UUID id) {
-      failing.add(id);
+    void failNextWrite(UUID id, RuntimeException failure) {
+      failing.put(id, failure);
     }
 
     @Override
@@ -307,8 +322,9 @@ class MemoryEvidenceHoldsTest {
       if (!edits.isEmpty()) {
         edit(id, edits.removeFirst());
       }
-      if (failing.remove(id)) {
-        throw new IllegalStateException("the database went away");
+      RuntimeException failure = failing.remove(id);
+      if (failure != null) {
+        throw failure;
       }
       if (!change.before().getUpdatedAt().equals(rows.get(id).getUpdatedAt())) {
         throw new PreconditionFailedException("changed since read");

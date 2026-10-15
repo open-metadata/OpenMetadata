@@ -34,13 +34,17 @@ read the Query.
    search document stops listing a Query that no longer exists. The hold records no disputes, so
    it opens no conflict review task: Draft is the human review queue.
 3. **Ordering.** The hold runs in `QueryRepository.preDelete`, before the row removal. Every delete
-   path reaches it: a direct delete, and a cascade from the service. If the hold fails, the delete
-   is refused. A hold left behind by a failed delete is a false alarm that a reviewer clears. A
-   delete with no hold would leave an Approved memory resting on nothing.
+   path reaches it: a direct delete, and a cascade from the service. Edits that keep racing a hold
+   refuse the delete, which a retry resolves; a hold left behind by a refused delete is a false
+   alarm that a reviewer clears. A memory that cannot be written at all is logged by id and left
+   unheld, and the delete goes ahead. One shared with a principal deleted since is the known case:
+   every PATCH of it fails. Deleting a Query, or recursively deleting its service, must not depend
+   on the state of unrelated memory data.
 4. **Concurrency and idempotency.** For each memory, the hold:
    - reads the memory again and checks that it still cites the Query;
    - writes as `governance-bot` with a guarded PATCH: an `updatedAt` test plus the ETag;
-   - on a concurrent edit, reads and decides again, at most three times, then refuses the delete.
+   - on a concurrent edit, reads and decides again, at most three times, then refuses the delete;
+   - on any other failure, logs a warning naming the memory and the Query, and moves on.
 
    A memory that is already Draft is skipped. So a repeated delete, or a retry after a partial
    failure, writes only what is still missing.
@@ -67,6 +71,9 @@ read the Query.
 - A deleted Query cannot be restored, and the held memory does not recover its link. A reviewer
   decides from the reason and the memory's history. If the delete fails after the hold, the
   memory is in review with its link already removed: a false alarm a reviewer clears.
+- A memory whose hold could not be written stays in its stage with its evidence link gone. The
+  warning names it. Nothing else surfaces it yet; the evidence re-verification that would close
+  the race below would catch it too.
 - Deleting a Query costs one relationship lookup. A service delete pays that lookup once for each
   of its Queries.
 - One race remains. A memory write that resolves a Query after the delete's lookup, but before the

@@ -38,8 +38,10 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
  * Holds every active memory a Query supports for review once that Query is retired
  * (ADR:2026-10-15-a-memory-cites-its-supporting-queries-and-their-retirement-holds-it-for-review).
  * The Query's delete calls it first: a Query has no soft delete, so every delete removes the
- * relationship rows that say which memories cite it, and a hold that fails refuses the delete
- * instead of leaving an Approved memory whose evidence is gone.
+ * relationship rows that say which memories cite it. Edits that keep racing a hold refuse the
+ * delete, which a retry resolves. A memory that cannot be written at all, such as one shared with
+ * a principal deleted since, is logged and left unheld: a core delete must not depend on the state
+ * of unrelated AI data.
  */
 @Slf4j
 public final class MemoryEvidenceHolds {
@@ -126,6 +128,12 @@ public final class MemoryEvidenceHolds {
         throw concurrentEdit;
       }
       settled = false;
+    } catch (RuntimeException unwritable) {
+      LOG.warn(
+          "[MemoryEvidence] could not hold memory {} for review; deleting query {} anyway",
+          memoryId,
+          queryId,
+          unwritable);
     }
     return settled;
   }

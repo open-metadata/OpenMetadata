@@ -16,6 +16,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
@@ -46,6 +47,7 @@ import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
@@ -55,6 +57,7 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -171,6 +174,43 @@ public class ContextMemoryQueryEvidenceIT {
         .delete(evidence.service().getId().toString(), Map.of("recursive", "true"));
 
     assertEquals(ContextMemoryStatus.DRAFT, read(memory).getEntityStatus());
+  }
+
+  /**
+   * A principal a memory was shared with and that was deleted since stays in {@code sharedWith}, so
+   * every PATCH of that memory fails looking it up. Its hold cannot be written, and that must not
+   * keep anyone from deleting the Query.
+   */
+  @Test
+  void aMemoryThatCanNoLongerBeWrittenDoesNotBlockDeletingItsQuery(TestNamespace ns) {
+    Evidence evidence = evidence(ns);
+    Query query = evidence.query("SELECT SUM(amount_cents) FROM orders WHERE channel = 'web'");
+    User reader = user();
+    ContextMemory memory =
+        admin()
+            .create(
+                evidence
+                    .request("shared-deleted", ContextMemoryStatus.APPROVED, query)
+                    .withPrimaryEntity(null)
+                    .withMemoryScope(ContextMemoryScope.USER_GLOBAL)
+                    .withShareConfig(
+                        new MemoryShareConfig()
+                            .withVisibility(MemoryVisibility.SHARED)
+                            .withSharedWith(
+                                List.of(
+                                    new MemorySharedPrincipal()
+                                        .withPrincipal(reader.getEntityReference())))));
+    SdkClients.adminClient().users().delete(reader.getId());
+
+    delete(query);
+
+    assertThrows(
+        Exception.class,
+        () -> SdkClients.adminClient().queries().get(query.getId().toString()),
+        "the query is deleted");
+    ContextMemory unheld = read(memory);
+    assertEquals(ContextMemoryStatus.APPROVED, unheld.getEntityStatus());
+    assertTrue(relatedIds(unheld).isEmpty(), "the delete still removes the evidence link");
   }
 
   @Test
@@ -367,6 +407,13 @@ public class ContextMemoryQueryEvidenceIT {
                 "type", TaskEntityType.MemoryConflictReview.value(),
                 "status", TaskEntityStatus.Open.value()))
         .getData();
+  }
+
+  private static User user() {
+    String name = "shared_" + UUID.randomUUID().toString().substring(0, 8);
+    return SdkClients.adminClient()
+        .users()
+        .create(new CreateUser().withName(name).withEmail(name + "@test.openmetadata.org"));
   }
 
   /** A user who may edit memories, and whom one deny rule keeps from reading any Query. */
