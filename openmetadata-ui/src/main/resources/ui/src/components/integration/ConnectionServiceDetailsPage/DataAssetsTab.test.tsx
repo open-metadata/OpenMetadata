@@ -190,4 +190,16 @@ describe('DataAssetsTab — layout', () => {
       expect.objectContaining({ wrapInCard: false })
     );
   });
+
+  // data-assets-tab.less stops the classic tab body sizing itself off the viewport (dead space
+  // below a short table) through these two wrappers. jsdom applies no stylesheet, so this pins the
+  // hook the rule hangs on; the rule's effect is only visible in a browser.
+  it('nests the asset list in the wrappers its stylesheet targets', () => {
+    renderTab();
+
+    const list = screen.getByTestId('service-main-tab-content');
+
+    expect(list.parentElement).toHaveClass('data-assets-table-wrapper');
+    expect(list.closest('.data-assets-tab')).not.toBeNull();
+  });
 });
