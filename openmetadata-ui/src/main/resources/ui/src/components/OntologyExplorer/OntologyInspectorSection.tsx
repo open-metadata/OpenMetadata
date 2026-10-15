@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
+import { ReactNode } from 'react';
 
 interface InspectorSectionHeadingProps {
   readonly count: number;
@@ -23,19 +23,51 @@ export const InspectorSectionHeading = ({
   count,
   label,
 }: InspectorSectionHeadingProps) => (
-  <div className="tw:mb-2.5 tw:flex tw:items-center tw:gap-2">
-    <h3 className="tw:m-0 tw:font-body tw:text-[13px] tw:leading-normal tw:font-semibold tw:text-primary">
+  <div className="tw:mb-3 tw:flex tw:items-center tw:gap-2">
+    <h3 className="tw:m-0 tw:text-md tw:font-semibold tw:text-primary">
       {label}
     </h3>
-    <span className="tw:rounded-full tw:border tw:border-secondary tw:bg-tertiary tw:px-2 tw:py-px tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-secondary">
+    <Badge color="gray" size="sm" type="pill-color">
       {count}
-    </span>
+    </Badge>
+  </div>
+);
+
+export const InspectorEmptyText = ({
+  children,
+}: {
+  readonly children: ReactNode;
+}) => (
+  <Typography as="p" className="tw:m-0" color="secondary" size="text-sm">
+    {children}
+  </Typography>
+);
+
+export const InspectorList = ({
+  children,
+}: {
+  readonly children: ReactNode;
+}) => (
+  <div className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary">
+    {children}
+  </div>
+);
+
+interface InspectorRowProps {
+  readonly children: ReactNode;
+  readonly testId?: string;
+}
+
+export const InspectorRow = ({ children, testId }: InspectorRowProps) => (
+  <div
+    className="tw:flex tw:min-h-12 tw:items-center tw:gap-3 tw:px-3 tw:py-2"
+    data-testid={testId}>
+    {children}
   </div>
 );
 
 interface InspectorAddButtonProps {
   readonly isDisabled: boolean;
-  readonly isPrimary?: boolean;
   readonly label: string;
   readonly testId: string;
   readonly onClick: () => void;
@@ -43,26 +75,18 @@ interface InspectorAddButtonProps {
 
 export const InspectorAddButton = ({
   isDisabled,
-  isPrimary = false,
   label,
   testId,
   onClick,
 }: InspectorAddButtonProps) => (
   <Button
-    noTextPadding
-    className={classNames(
-      'tw:mt-2 tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:rounded-[9px] tw:border tw:border-dashed tw:bg-primary tw:px-2.5 tw:py-[9px] tw:*:data-icon:size-3',
-      'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold',
-      isPrimary
-        ? 'tw:border-brand tw:text-brand-tertiary'
-        : 'tw:border-primary tw:text-secondary',
-      isDisabled && 'tw:cursor-not-allowed tw:opacity-50'
-    )}
-    color="tertiary"
+    className="tw:mt-3 tw:w-full tw:after:outline-dashed"
+    color="secondary"
     data-testid={testId}
     iconLeading={Plus}
     isDisabled={isDisabled}
-    onClick={onClick}>
+    size="sm"
+    onPress={onClick}>
     {label}
   </Button>
 );

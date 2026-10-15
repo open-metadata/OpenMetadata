@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
-import { Grid, SimpleModal } from '@openmetadata/ui-core-components';
-import { Input } from 'antd';
+import { CheckOutlined } from '@ant-design/icons';
+import { Grid, Input, SimpleModal } from '@openmetadata/ui-core-components';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -149,12 +149,15 @@ const AddAttributeModal: FC<Props> = ({
       ) : (
         <>
           <Input
-            data-testid="search-input"
+            aria-label={t('label.search-entity', {
+              entity: type,
+            })}
+            icon={Search}
+            inputDataTestId="search-input"
             placeholder={t('label.search-entity', {
               entity: type,
             })}
-            prefix={<SearchOutlined style={{ color: '#37352F4D' }} />}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={handleSearch}
           />
           {isEmpty(searchedData) ? (
             <ErrorPlaceHolder

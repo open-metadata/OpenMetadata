@@ -35,6 +35,10 @@ import {
   createNodeConfig,
   isValidString,
 } from '../../../../utils/WorkflowBuilderUtils';
+import {
+  parseFqnList,
+  serializeFqnList,
+} from '../../../../utils/WorkflowSerializationUtils';
 import Certification from '../../../Certification/Certification.component';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 import TagSelector from '../../../Tag/TagSelector/TagSelector';
@@ -118,9 +122,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
       return [];
     }
 
-    const uniqueTagFQNs = [
-      ...new Set(value.split(',').map((tag) => tag.trim())),
-    ];
+    const uniqueTagFQNs = [...new Set(parseFqnList(value))];
 
     return uniqueTagFQNs.map((tagFQN: string) => ({
       tagFQN,
@@ -133,15 +135,8 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
     }));
   };
 
-  const convertTagsToFieldValue = (tags: TagLabel[]): string => {
-    if (tags.length === 0) {
-      return '';
-    } else if (tags.length === 1) {
-      return tags[0].tagFQN;
-    } else {
-      return tags.map((tag) => tag.tagFQN).join(',');
-    }
-  };
+  const convertTagsToFieldValue = (tags: TagLabel[]): string =>
+    serializeFqnList(tags.map((tag) => tag.tagFQN));
 
   const handleTagsChange = useCallback(
     (newTags: TagLabel[]) => {
