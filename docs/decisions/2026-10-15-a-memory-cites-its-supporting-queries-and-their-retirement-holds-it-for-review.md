@@ -49,11 +49,17 @@ read the Query.
    same reason. This covers a capture that races the supersession of its own Query.
 6. **Audit.** The reason names the Query by id only. The memory's version history records the move
    to Draft by `governance-bot`. The Query's delete event records its FQN and who deleted it.
-7. **Permissions.** Memory reads apply the rule below: get, get by name, list, and both version
-   endpoints. When the caller lacks `ViewBasic` on a Query, its reference is reduced to `{id,
+7. **Permissions.** Every memory response applies the rule below: get, get by name, list, both
+   version endpoints, and the memory that a create, update, patch, pin, unpin, restore or delete
+   answers with. When the caller lacks `ViewBasic` on a Query, its reference is reduced to `{id,
    type}`, in place, so the list keeps its order. This also covers the references that a change to
-   the links records in the change descriptions. Concept-context evidence already requires the
-   caller to see both the memory and the Query.
+   the links records in the change descriptions. A write's change event is built from its
+   response, so it records what that writer may see. Concept-context evidence already requires
+   the caller to see both the memory and the Query.
+8. **Review queue.** The Context Center Memories list shows Approved, Unprocessed and Draft by
+   default, so an evidence hold, which opens no review task, is visible where people look. The
+   "Needs review" count keeps counting open conflict review tasks. The sidebar badge and dashboard
+   keep counting Approved and Unprocessed memories.
 
 ## Consequences
 

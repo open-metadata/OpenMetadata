@@ -253,6 +253,21 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     return memories;
   }
 
+  /**
+   * A write answers with the memory it wrote, redacted for the writer. A copy, because the event
+   * filter builds this write's change event from the response entity asynchronously.
+   */
+  private Response withVisibleEvidence(SecurityContext securityContext, Response response) {
+    Response visible = response;
+    if (response.getEntity() instanceof ContextMemory memory) {
+      ContextMemory copy = JsonUtils.deepCopy(memory, ContextMemory.class);
+      ContextMemoryEvidenceAccess.redactUnviewableQueries(
+          List.of(copy), authorizer, securityContext);
+      visible = Response.fromResponse(response).entity(copy).build();
+    }
+    return visible;
+  }
+
   private ContextMemory withVisibleEvidence(SecurityContext securityContext, ContextMemory memory) {
     ContextMemoryEvidenceAccess.redactUnviewableQueries(
         List.of(memory), authorizer, securityContext);
@@ -599,7 +614,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Valid CreateContextMemory create) {
     ContextMemory memory =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, memory);
+    return withVisibleEvidence(securityContext, create(uriInfo, securityContext, memory));
   }
 
   @PUT
@@ -628,7 +643,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     if (existing != null) {
       enforceCurrentVisibility(securityContext, existing.getId());
     }
-    return createOrUpdate(uriInfo, securityContext, memory);
+    return withVisibleEvidence(securityContext, createOrUpdate(uriInfo, securityContext, memory));
   }
 
   @PATCH
@@ -659,7 +674,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     // A PATCH answers with the whole memory, and Data Consumers may edit any entity's description
     // and tags, so without this anyone holding a memory's id could read it by patching it.
     enforceCurrentVisibility(securityContext, id);
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return withVisibleEvidence(securityContext, patchInternal(uriInfo, securityContext, id, patch));
   }
 
   @PUT
@@ -683,7 +698,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return setPinned(uriInfo, securityContext, id, true);
+    return withVisibleEvidence(securityContext, setPinned(uriInfo, securityContext, id, true));
   }
 
   @DELETE
@@ -707,7 +722,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return setPinned(uriInfo, securityContext, id, false);
+    return withVisibleEvidence(securityContext, setPinned(uriInfo, securityContext, id, false));
   }
 
   private Response setPinned(
@@ -751,7 +766,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return withVisibleEvidence(
+        securityContext, delete(uriInfo, securityContext, id, recursive, hardDelete));
   }
 
   @DELETE
@@ -777,7 +793,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           boolean hardDelete,
       @Parameter(description = "Fully qualified name of the context memory") @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return withVisibleEvidence(
+        securityContext, deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete));
   }
 
   @PUT
@@ -805,6 +822,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                       mediaType = "application/json",
                       schema = @Schema(type = "string", format = "uuid")))
           RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return withVisibleEvidence(
+        securityContext, restoreEntity(uriInfo, securityContext, restore.getId()));
   }
 }

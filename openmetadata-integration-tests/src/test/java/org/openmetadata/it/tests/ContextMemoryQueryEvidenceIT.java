@@ -62,6 +62,7 @@ import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 
 /**
@@ -230,15 +231,7 @@ public class ContextMemoryQueryEvidenceIT {
   void aReaderWhoMayNotViewTheQuerySeesOnlyItsId(TestNamespace ns) {
     Evidence evidence = evidence(ns);
     Query query = evidence.query("SELECT SUM(salary) FROM payroll");
-    ContextMemory memory =
-        admin()
-            .create(
-                evidence
-                    .request("public", ContextMemoryStatus.APPROVED, query)
-                    .withPrimaryEntity(null)
-                    .withMemoryScope(ContextMemoryScope.USER_GLOBAL)
-                    .withShareConfig(
-                        new MemoryShareConfig().withVisibility(MemoryVisibility.PUBLIC)));
+    ContextMemory memory = admin().create(publicRequest(evidence, "public", query));
     ContextMemoryService reader = new ContextMemoryService(queryBlindUser(ns).getHttpClient());
 
     EntityReference seen =
@@ -262,6 +255,35 @@ public class ContextMemoryQueryEvidenceIT {
     String asReader = JsonUtils.pojoToJson(reader.get(memory.getId().toString(), RELATED));
     assertFalse(asReader.contains(query.getFullyQualifiedName()), asReader);
     assertTrue(asReader.contains(query.getId().toString()), asReader);
+  }
+
+  @Test
+  void aWriteAnswersWithTheEvidenceTheWriterMayView(TestNamespace ns) {
+    Evidence evidence = evidence(ns);
+    Query query = evidence.query("SELECT SUM(salary) FROM payroll WHERE active");
+    ContextMemory memory = admin().create(publicRequest(evidence, "pinned", query));
+    OpenMetadataClient reader = queryBlindUser(ns);
+
+    String pinned =
+        reader
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT, "/v1/contextCenter/memories/" + memory.getId() + "/pin", null);
+
+    assertTrue(pinned.contains(query.getId().toString()), pinned);
+    assertFalse(pinned.contains(query.getFullyQualifiedName()), pinned);
+    assertEquals(
+        query.getFullyQualifiedName(),
+        read(memory).getRelatedEntities().getFirst().getFullyQualifiedName(),
+        "the stored link keeps the full reference");
+  }
+
+  private static CreateContextMemory publicRequest(Evidence evidence, String name, Query query) {
+    return evidence
+        .request(name, ContextMemoryStatus.APPROVED, query)
+        .withPrimaryEntity(null)
+        .withMemoryScope(ContextMemoryScope.USER_GLOBAL)
+        .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PUBLIC));
   }
 
   private record Evidence(TestNamespace ns, DatabaseService service, Table table) {
@@ -347,7 +369,7 @@ public class ContextMemoryQueryEvidenceIT {
         .getData();
   }
 
-  /** A user every policy lets read memories, and one deny rule keeps from reading any Query. */
+  /** A user who may edit memories, and whom one deny rule keeps from reading any Query. */
   private static OpenMetadataClient queryBlindUser(TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
     Rule denyQueries =
@@ -356,13 +378,19 @@ public class ContextMemoryQueryEvidenceIT {
             .withResources(List.of("query"))
             .withOperations(List.of(MetadataOperation.VIEW_ALL, MetadataOperation.VIEW_BASIC))
             .withEffect(Rule.Effect.DENY);
+    Rule editMemories =
+        new Rule()
+            .withName("EditMemories")
+            .withResources(List.of("contextMemory"))
+            .withOperations(List.of(MetadataOperation.EDIT_ALL))
+            .withEffect(Rule.Effect.ALLOW);
     Policy policy =
         admin
             .policies()
             .create(
                 new CreatePolicy()
                     .withName(ns.prefix("query-blind"))
-                    .withRules(List.of(denyQueries)));
+                    .withRules(List.of(denyQueries, editMemories)));
     Role role =
         admin
             .roles()
