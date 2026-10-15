@@ -72,7 +72,7 @@ an area's `sources`), so the next change gets it without anyone remembering.
 
 ```bash
 make java_affected_run                         # unit step first, then one step per lane and engine
-make java_affected_run ARGS="--update-pr"      # once the PR exists: upsert the block in its body
+make java_affected_run ARGS="--update-pr"      # once the PR exists: summary in its body, details in a comment
 ```
 
 Measured on 2026-10-07: one unit class took 0.9 min. One small IT took 2.0 min, almost all of
@@ -83,12 +83,16 @@ IT step pays. Big classes add their own time; CI's parallel lane runs 334 classe
 - The run stops at the first failing step. `--keep-going` runs the rest.
 - A step passes only with exit 0, no failures, more than zero tests, and a report for every
   selected class. A green `BUILD SUCCESS` with zero tests is a failure.
-- Results: `target/java-tests/local-pr-results.md`. Before the PR exists, paste it between the
-  `local-java-test-results` markers under "Backend integration tests". Never edit the block.
-- The block's "Tests run locally" list names every class each step ran, with its counts. A module
+- Results: the summary `target/java-tests/local-pr-results.md` and the details
+  `target/java-tests/local-pr-results-details.md`. Before the PR exists, paste the summary between
+  the `local-java-test-results` markers under "Backend integration tests". Once it exists,
+  `gh pr comment --body-file target/java-tests/local-pr-results-details.md` posts the details, and
+  a later `--update-pr` run edits that comment. Never edit either by hand.
+- The summary stays short: the verdict, a row per step, and up to ten failed or missing names.
+  The details' "Tests run locally" list names every class each step ran, with its counts. A module
   run in full is given as counts only: its class list alone can pass GitHub's 65,536-character
-  limit for a PR description. That list is the PR's record of what ran before review, so tests
-  you ran by hand outside the planner go in the PR's Tests section too.
+  limit for a comment. That list is the PR's record of what ran before review, so tests you ran
+  by hand outside the planner go in the PR's Tests section too.
 
 A full-suite plan (`[integration] FULL suite`) is every merge-queue IT. Running it in CI is
 usually faster than locally:

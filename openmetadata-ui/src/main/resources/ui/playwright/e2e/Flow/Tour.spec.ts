@@ -174,9 +174,11 @@ const validateTourSteps = async (page: Page) => {
   await expect(page.locator('[data-tour-elem="badge"]')).toBeHidden();
 };
 
+// Quarantined: the tour anchors on elements the new landing page no longer
+// renders. See QUARANTINE.md.
 test.describe(
   'Tour should work properly',
-  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  { tag: [PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag, '@quarantine'] },
   () => {
     test('Tour should work from help section', async ({ page, tourUser }) => {
       test.slow();

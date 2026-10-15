@@ -293,7 +293,6 @@ const TestSuiteDetail = () => {
           <DataQualityTab
             afterDeleteAction={handleTestCasesRemoved}
             breadcrumbData={incidentUrlState}
-            editVariant="modal"
             fetchTestCases={handleSortTestCase}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}

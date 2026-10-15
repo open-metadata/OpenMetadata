@@ -129,7 +129,11 @@ def test_merge_queue_failures_alert_ci_cleanup_only_through_the_dequeue_report()
     assert "::error title=Merge queue failed tests::" in annotate["run"]
 
     dequeue = workflow("merge-queue-dequeue-report.yml")
-    assert dequeue[True]["pull_request_target"]["types"] == ["dequeued"]
+    assert dequeue[True]["pull_request_target"]["types"] == [
+        "dequeued",
+        "enqueued",
+        "synchronize",
+    ]
     report = json.dumps(dequeue["jobs"]["report"])
     assert "C0AC5T013V1" in report
     assert "check_name=playwright-summary" in report
@@ -337,3 +341,47 @@ def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):
     [warning] = [line for line in result.stdout.splitlines() if line.startswith("::warning")]
     message = warning.split("::", 2)[2].replace("%0A", "\n").replace("%25", "%")
     assert sorted(line.split(" › ")[1] for line in message.splitlines()) == sorted(titles)
+
+
+def test_dequeue_report_labels_conflicts_and_evicts_main_conflicts():
+    dequeue = workflow("merge-queue-dequeue-report.yml")
+    jobs = dequeue["jobs"]
+    # The report itself must still fire only on a real dequeue.
+    assert "github.event.action == 'dequeued'" in jobs["report"]["if"]
+    label = next(
+        s for s in jobs["report"]["steps"] if s["name"] == "Label what the entry conflicts with"
+    )
+    assert label["if"] == "${{ steps.event.outputs.reason == 'MERGE_CONFLICT' }}"
+    # Labelling must never skip the dequeue comment or the Slack alert.
+    assert label["continue-on-error"] is True
+    run = label["run"]
+    # CONFLICTING against main means rebase; MERGEABLE means only an entry ahead.
+    assert run.index("CONFLICTING)") < run.index('label="merge conflict"')
+    assert run.index("MERGEABLE)") < run.index('label="queue conflict"')
+    # The conflict note goes into the PR comment, never the #ci-cleanup text.
+    comment = next(
+        s for s in jobs["report"]["steps"] if s["name"] == "Comment the checks that caused the dequeue"
+    )["run"]
+    assert "{ echo; cat conflict.txt; } >> body.md" in comment
+    assert "conflict.txt > detail.txt" not in comment
+    assert "conflict.txt >> detail.txt" not in comment
+    # UNKNOWN must never be guessed into a label.
+    assert "still UNKNOWN; leaving the PR unlabelled" in run
+
+    assert dequeue[True]["push"]["branches"] == ["main"]
+    evict = jobs["evict-main-conflicts"]
+    assert evict["if"] == "${{ github.event_name == 'push' }}"
+    run = evict["steps"][0]["run"]
+    # GitHub handles entries it is building; only QUEUED ones that conflict
+    # with main are dequeued.
+    assert 'select(.state == "QUEUED")' in run
+    assert '[ "$state" = "CONFLICTING" ] || continue' in run
+    assert run.index('if [ "$DRY_RUN" = "true" ]') < run.index("dequeuePullRequest")
+    # One entry's label/comment failure must not stop the remaining evictions.
+    assert '|| echo "::warning::could not label #$pr"' in run
+    assert '|| echo "::warning::could not comment on #$pr"' in run
+
+    clear = jobs["clear-conflict-labels"]
+    # synchronize fires on every push; skip unless a label is there to clear.
+    assert "contains(github.event.pull_request.labels.*.name, 'merge conflict')" in clear["if"]
+    assert "contains(github.event.pull_request.labels.*.name, 'queue conflict')" in clear["if"]

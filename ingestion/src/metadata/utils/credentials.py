@@ -42,6 +42,11 @@ logger = utils_logger()
 
 GOOGLE_CREDENTIALS = "GOOGLE_APPLICATION_CREDENTIALS"
 
+# google-auth defaults to this domain when a service account has no `universe_domain`.
+# Sovereign / partner clouds (e.g. S3NS PREMI3NS with `s3nsapis.fr`) override it via
+# `GcpCredentialsValues.universeDomain`.
+DEFAULT_GOOGLE_UNIVERSE_DOMAIN = "googleapis.com"
+
 GOOGLE_CLOUD_SCOPES = [
     "https://www.googleapis.com/auth/cloud-platform",
     "https://www.googleapis.com/auth/drive",
@@ -129,7 +134,7 @@ def create_credential_tmp_file(credentials: dict) -> str:
 def build_google_credentials_dict(
     gcp_values: GcpCredentialsValues | GcpExternalAccount,
     single_project: bool = False,
-) -> dict[str, str]:
+) -> dict[str, str | list[str] | dict[str, str] | None]:
     """
     Given GcPCredentialsValues, build a dictionary as the JSON file
     downloaded from GCP with the service_account
@@ -162,6 +167,7 @@ def build_google_credentials_dict(
             "token_uri": str(gcp_values.tokenUri),
             "auth_provider_x509_cert_url": str(gcp_values.authProviderX509CertUrl),
             "client_x509_cert_url": str(gcp_values.clientX509CertUrl),
+            "universe_domain": gcp_values.universeDomain or DEFAULT_GOOGLE_UNIVERSE_DOMAIN,
         }
     if isinstance(gcp_values, GcpExternalAccount):
         return {
