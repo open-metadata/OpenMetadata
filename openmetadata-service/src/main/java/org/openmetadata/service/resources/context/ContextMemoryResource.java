@@ -192,25 +192,27 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           UUID primaryEntityId)
       throws IOException {
     if (statuses != null || hasSearchBackedListParams(q, assets, author, pinned, sortBy, offset)) {
-      return listMemoriesFromSearch(
-          uriInfo,
+      return withVisibleEvidence(
           securityContext,
-          fieldsParam,
-          q,
-          assets,
-          author,
-          pinned,
-          sortBy,
-          sortOrder,
-          limitParam,
-          offset == null ? 0 : offset,
-          before,
-          after,
-          include,
-          sourceFileId,
-          sourceEntityId,
-          primaryEntityId,
-          statuses == null ? null : parseStatuses(statuses));
+          listMemoriesFromSearch(
+              uriInfo,
+              securityContext,
+              fieldsParam,
+              q,
+              assets,
+              author,
+              pinned,
+              sortBy,
+              sortOrder,
+              limitParam,
+              offset == null ? 0 : offset,
+              before,
+              after,
+              include,
+              sourceFileId,
+              sourceEntityId,
+              primaryEntityId,
+              statuses == null ? null : parseStatuses(statuses)));
     }
 
     ListFilter filter = new ListFilter(include);
@@ -237,9 +239,24 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     List<ContextMemory> visible =
         ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
     // Keep the cursor so clients can page past hidden rows.
-    return visible.size() == memories.getData().size()
-        ? memories
-        : new ResultList<>(visible).setPaging(memories.getPaging());
+    return withVisibleEvidence(
+        securityContext,
+        visible.size() == memories.getData().size()
+            ? memories
+            : new ResultList<>(visible).setPaging(memories.getPaging()));
+  }
+
+  private ResultList<ContextMemory> withVisibleEvidence(
+      SecurityContext securityContext, ResultList<ContextMemory> memories) {
+    ContextMemoryEvidenceAccess.redactUnviewableQueries(
+        memories.getData(), authorizer, securityContext);
+    return memories;
+  }
+
+  private ContextMemory withVisibleEvidence(SecurityContext securityContext, ContextMemory memory) {
+    ContextMemoryEvidenceAccess.redactUnviewableQueries(
+        List.of(memory), authorizer, securityContext);
+    return memory;
   }
 
   private ResultList<ContextMemory> listMemoriesFromSearch(
@@ -457,7 +474,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
             ContextMemoryVisibility.guardFields(entityType, fieldsParam),
             include);
     ContextMemoryVisibility.enforceVisibility(memory, securityContext);
-    return memory;
+    return withVisibleEvidence(securityContext, memory);
   }
 
   @GET
@@ -495,7 +512,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
             ContextMemoryVisibility.guardFields(entityType, fieldsParam),
             include);
     ContextMemoryVisibility.enforceVisibility(memory, securityContext);
-    return memory;
+    return withVisibleEvidence(securityContext, memory);
   }
 
   @GET
@@ -519,7 +536,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @PathParam("id")
           UUID id) {
     enforceCurrentVisibility(securityContext, id);
-    return listVersionsInternal(securityContext, id);
+    return ContextMemoryEvidenceAccess.redactUnviewableQueries(
+        listVersionsInternal(securityContext, id), authorizer, securityContext);
   }
 
   @GET
@@ -546,7 +564,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @PathParam("version")
           String version) {
     enforceCurrentVisibility(securityContext, id);
-    return getVersionInternal(securityContext, id, version);
+    return withVisibleEvidence(securityContext, getVersionInternal(securityContext, id, version));
   }
 
   /** Current visibility governs every response containing a stored memory. */
