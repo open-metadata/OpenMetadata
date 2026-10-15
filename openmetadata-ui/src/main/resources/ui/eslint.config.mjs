@@ -53,6 +53,7 @@ const MIGRATED_ANTD_COMPONENTS = [
   'Badge',
   'Carousel',
   'Collapse',
+  'ConfigProvider',
   'Drawer',
   'Layout',
   'List',

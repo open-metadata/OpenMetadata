@@ -1058,11 +1058,6 @@
       "count": 1
     }
   },
-  "src/context/AntDConfigProvider/AntDConfigProvider.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1

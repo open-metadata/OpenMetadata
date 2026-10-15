@@ -871,7 +871,7 @@ a[href].link-text-grey,
 // AI dark-mode brand ACCENTS -> blue-400 (#53b1fd), the devrel dark palette:
 // #1570ef carries fills/borders, #53b1fd labels/icons/links (~5.4:1 on dark;
 // #1570ef is only ~3.3:1 as text).
-// UntitledUIThemeProvider + AntDConfigProvider inject the configured brand
+// UntitledUIThemeProvider + useThemeCssVariables inject the configured brand
 // primary (#1570ef) as theme-agnostic inline custom properties on <html> — the
 // same element that carries `.dark-mode` — so the token layer's dark flip can't
 // override them (inline wins on that element). Re-point the brand *accent* vars
@@ -906,7 +906,7 @@ a[href].link-text-grey,
 }
 
 // Legacy Ant links: `.text-link-color` uses `@primary-color`
-// (= var(--ant-primary-color)), injected by AntDConfigProvider as #1570ef and
+// (= var(--ant-primary-color)), injected by useThemeCssVariables as #1570ef and
 // never flipped. Point it at the core link token, which flips in dark.
 .dark-mode .text-link-color,
 .dark-mode a.text-link-color {
