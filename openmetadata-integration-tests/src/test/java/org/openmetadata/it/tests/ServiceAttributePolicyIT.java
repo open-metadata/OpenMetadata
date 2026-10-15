@@ -26,6 +26,7 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -101,6 +102,7 @@ public class ServiceAttributePolicyIT {
       // makes the "gone" assertions below meaningful — an absence check alone would also pass if
       // the table had simply never been indexed.
       assertNotNull(restricted.tables().get(table.getId().toString(), ""));
+      QueuedSearchWrites.await();
       Awaitility.await("table is indexed and visible before the service is tagged")
           .atMost(Duration.ofSeconds(90))
           .pollInterval(Duration.ofSeconds(2))
@@ -122,6 +124,7 @@ public class ServiceAttributePolicyIT {
           () -> restricted.databaseServices().get(service.getId().toString(), ""),
           "the service is its own service, so it is hidden alongside its assets");
 
+      QueuedSearchWrites.await();
       Awaitility.await("tagged service's table leaves the restricted user's search results")
           .atMost(Duration.ofSeconds(90))
           .pollInterval(Duration.ofSeconds(2))
@@ -187,6 +190,7 @@ public class ServiceAttributePolicyIT {
       // Before the environment is set the table is both readable and indexed — establishing this
       // first is what makes the "hidden" assertions below meaningful.
       assertNotNull(restricted.tables().get(table.getId().toString(), ""));
+      QueuedSearchWrites.await();
       Awaitility.await("table is indexed and visible before the environment is set")
           .atMost(Duration.ofSeconds(90))
           .pollInterval(Duration.ofSeconds(2))
@@ -213,6 +217,7 @@ public class ServiceAttributePolicyIT {
           ForbiddenException.class,
           () -> restricted.databaseServices().get(service.getId().toString(), ""),
           "the service is its own service, so it is hidden alongside its assets");
+      QueuedSearchWrites.await();
       Awaitility.await("environment-tagged service's table leaves the restricted search results")
           .atMost(Duration.ofSeconds(90))
           .pollInterval(Duration.ofSeconds(2))
@@ -247,6 +252,7 @@ public class ServiceAttributePolicyIT {
           ForbiddenException.class,
           () -> restricted.databaseServices().get(service.getId().toString(), ""),
           "the service is still hidden after the omission PUT");
+      QueuedSearchWrites.await();
       Awaitility.await("table stays absent from search after the omission PUT")
           .atMost(Duration.ofSeconds(90))
           .pollInterval(Duration.ofSeconds(2))

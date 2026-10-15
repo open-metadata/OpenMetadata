@@ -64,6 +64,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.OssTestServer;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -507,6 +508,7 @@ public class SystemResourceIT {
         // Reindexing must use the current preference, including after caches were populated.
         Entity.getSearchRepository()
             .createEntityIndex(client.tables().get(created.getId().toString(), "*"));
+        QueuedSearchWrites.await();
         await()
             .atMost(Duration.ofSeconds(30))
             .untilAsserted(

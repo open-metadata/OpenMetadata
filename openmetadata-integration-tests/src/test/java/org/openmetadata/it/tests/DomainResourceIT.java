@@ -533,6 +533,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   private void verifyDomainInSearch(String expectedFqn, String domainId) {
     OpenMetadataClient client = SdkClients.adminClient();
 
+    QueuedSearchWrites.await();
     Awaitility.await("Domain " + domainId + " should appear in search with FQN " + expectedFqn)
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -566,6 +567,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
     String domainName = fqn.contains(".") ? fqn.substring(fqn.lastIndexOf(".") + 1) : fqn;
 
+    QueuedSearchWrites.await();
     Awaitility.await("Old FQN " + fqn + " should disappear from search")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -993,6 +995,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     String analyticsV2OldFqn = analyticsV2.getFullyQualifiedName();
     String childOldFqn = child.getFullyQualifiedName();
 
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for initial indexing of child domain")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -1210,6 +1213,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     String oldAnalyticsProdFqn = analyticsProd.getFullyQualifiedName();
     String oldChildFqn = child.getFullyQualifiedName();
 
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for initial indexing of child domain")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -1590,6 +1594,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
   private void awaitAssetDomainFqn(
       OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedDomainFqn) {
+    QueuedSearchWrites.await();
     Awaitility.await("asset " + tableId + " carries domain FQN " + expectedDomainFqn + " in search")
         .atMost(Duration.ofSeconds(60))
         .pollDelay(Duration.ofMillis(500))
@@ -1633,6 +1638,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
     addAssetsToDomain(hr.getFullyQualifiedName(), List.of(schema.getEntityReference()));
 
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for domain-page asset add to propagate inherited domain in search")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -1670,6 +1676,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             ns, "rm", finance.getFullyQualifiedName(), removeDomain.getFullyQualifiedName());
     Table inheritedChild = createDomainChildTable(ns, "rm_t1", schema, null);
 
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for child to inherit removeDomain in search")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -1690,6 +1697,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     // and its inheriting descendants must follow to Finance in search — not stay stale on
     // removeDomain and not be blanked out. Polled so the assertion holds across the full async
     // propagation window (guards against a regression that clears/mis-sets the child late).
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for schema and inheriting child to re-inherit Finance after removal")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -1985,6 +1993,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     Table explicitChild =
         createDomainChildTable(ns, "ovr_expl", schema, cDom.getFullyQualifiedName());
 
+    QueuedSearchWrites.await();
     Awaitility.await("baseline domains in search")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))

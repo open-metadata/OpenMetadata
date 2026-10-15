@@ -866,6 +866,7 @@ public class DataProductDomainMigrationIT {
             domainFqn);
 
     // Use Awaitility to poll for the expected state
+    QueuedSearchWrites.await();
     Awaitility.await()
         .atMost(30, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)

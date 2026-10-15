@@ -3854,6 +3854,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     addColumnLineage(client, sourceTable, targetTable, sourceColFqn, targetColFqn);
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      QueuedSearchWrites.await();
       Awaitility.await("Wait for column lineage to be indexed in search")
           .atMost(Duration.ofSeconds(30))
           .pollInterval(Duration.ofSeconds(2))
@@ -3992,6 +3993,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     addColumnLineage(client, sourceTable, targetTable, sourceColFqn, targetColFqn);
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      QueuedSearchWrites.await();
       Awaitility.await("Wait for column lineage to be indexed in search")
           .atMost(Duration.ofSeconds(30))
           .pollInterval(Duration.ofSeconds(2))
@@ -4005,6 +4007,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       sourceTable.setColumns(List.of(ColumnBuilder.of("COL_TO_RENAME", "BIGINT").build()));
       client.tables().update(sourceTable.getId().toString(), sourceTable);
 
+      QueuedSearchWrites.await();
       Awaitility.await("Wait for renamed column lineage to be rewritten in search")
           .atMost(Duration.ofSeconds(15))
           .pollInterval(Duration.ofSeconds(2))
@@ -4053,6 +4056,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     addColumnLineage(client, sourceTable, targetTable, originalColFqn, targetColFqn);
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      QueuedSearchWrites.await();
       Awaitility.await("Wait for column lineage to be indexed in search")
           .atMost(Duration.ofSeconds(30))
           .pollInterval(Duration.ofSeconds(2))
@@ -4081,6 +4085,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       sourceTable.setColumns(List.of(ColumnBuilder.of("revert_col", "BIGINT").build()));
       client.tables().update(sourceTable.getId().toString(), sourceTable);
 
+      QueuedSearchWrites.await();
       Awaitility.await("Wait for the reverted column FQN to be restored in search")
           .atMost(Duration.ofSeconds(15))
           .pollInterval(Duration.ofSeconds(2))
@@ -4132,6 +4137,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     addColumnLineage(client, sourceTable, targetTable, addedColFqn, targetColFqn);
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      QueuedSearchWrites.await();
       Awaitility.await("Wait for column lineage to be indexed in search")
           .atMost(Duration.ofSeconds(30))
           .pollInterval(Duration.ofSeconds(2))
@@ -4198,6 +4204,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     addColumnLineage(client, sourceTable, targetTable, childColFqn, targetColFqn);
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      QueuedSearchWrites.await();
       Awaitility.await("Wait for nested column lineage to be indexed in search")
           .atMost(Duration.ofSeconds(30))
           .pollInterval(Duration.ofSeconds(2))
@@ -4212,6 +4219,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       sourceTable.setColumns(List.of(structColumn("struct_col", "CHILD_COL")));
       sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
 
+      QueuedSearchWrites.await();
       Awaitility.await("Wait for the renamed nested column to be rewritten in search")
           .atMost(Duration.ofSeconds(30))
           .pollInterval(Duration.ofSeconds(2))
@@ -4268,6 +4276,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     addColumnLineage(client, sourceTable, targetTable, droppedColFqn, targetColFqn);
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      QueuedSearchWrites.await();
       Awaitility.await("Wait for column lineage to be indexed in search")
           .atMost(Duration.ofSeconds(30))
           .pollInterval(Duration.ofSeconds(2))
@@ -4422,6 +4431,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                         .withToColumn(target.getFullyQualifiedName() + ".tgt_col"))));
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      QueuedSearchWrites.await();
       Awaitility.await("Wait for column lineage to be indexed in search")
           .atMost(Duration.ofSeconds(30))
           .pollInterval(Duration.ofSeconds(2))
@@ -5479,6 +5489,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table tableWithDesc = client.tables().create(withDesc);
 
     // Poll until the last created table is indexed using SDK search API
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for tables to be indexed in search")
         .atMost(Duration.ofSeconds(60))
         .pollDelay(Duration.ofMillis(500))
@@ -5562,6 +5573,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = client.tables().create(req);
 
     // Poll until the table is indexed in search using SDK search API
+    QueuedSearchWrites.await();
     Awaitility.await("Wait for searchable table to be indexed")
         .atMost(Duration.ofSeconds(60))
         .pollDelay(Duration.ofMillis(500))
@@ -5723,6 +5735,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
           "All table domains should be marked as inherited");
 
       String tableId = table.getId().toString();
+      QueuedSearchWrites.await();
       Awaitility.await("Wait for table to appear in search index")
           .pollDelay(Duration.ofMillis(500))
           .pollInterval(Duration.ofSeconds(2))
@@ -7281,6 +7294,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     String tableId = table.getId().toString();
     String domainFqn = domain.getFullyQualifiedName();
+    QueuedSearchWrites.await();
     Awaitility.await("Table search index should reflect inherited domain from service")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -7352,6 +7366,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     client.databaseServices().update(fetchedService.getId().toString(), fetchedService);
 
     String tableId = table.getId().toString();
+    QueuedSearchWrites.await();
     Awaitility.await(
             "Table search index should reflect updated service displayName via nested field propagation")
         .atMost(Duration.ofSeconds(30))

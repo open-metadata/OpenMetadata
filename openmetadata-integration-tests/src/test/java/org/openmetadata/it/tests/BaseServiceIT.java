@@ -11,6 +11,7 @@ import java.util.List;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.CreateEntity;
@@ -216,6 +217,7 @@ public abstract class BaseServiceIT<T extends EntityInterface<?>, K extends Crea
       // and can sit briefly behind a concurrent full-reindex alias swap, so allow the same
       // tolerance
       // as the post-delete checks rather than a tighter 60s that flakes under full IT load.
+      QueuedSearchWrites.await();
       Awaitility.await("descendant indexed in search before delete: " + sd.index())
           .atMost(Duration.ofSeconds(120))
           .pollInterval(Duration.ofSeconds(1))

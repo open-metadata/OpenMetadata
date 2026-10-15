@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -122,6 +123,7 @@ public class SearchFieldlessQueryIT {
   }
 
   private static void awaitIndexed(String tableName) {
+    QueuedSearchWrites.await();
     Awaitility.await()
         .atMost(90, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)

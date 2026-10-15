@@ -1099,6 +1099,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             request,
             RequestOptions.builder().build());
 
+    QueuedSearchWrites.await();
     Awaitility.await("test cases added to logical suite and search index updated")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))
@@ -1130,6 +1131,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertTrue(testIdsInSuite.contains(testCase2.getId()));
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      QueuedSearchWrites.await();
       Awaitility.await("edited test cases added to logical suite are indexed")
           .atMost(SEARCH_CONVERGENCE_TIMEOUT)
           .pollInterval(Duration.ofSeconds(2))
@@ -1187,6 +1189,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         "testCase1 should no longer belong to the logical suite");
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      QueuedSearchWrites.await();
       Awaitility.await("test case removed from the logical suite is reindexed")
           .atMost(SEARCH_CONVERGENCE_TIMEOUT)
           .pollInterval(Duration.ofSeconds(2))
@@ -1389,6 +1392,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         persistedSuiteIds.containsAll(logicalSuites.stream().map(TestSuite::getId).toList()));
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      QueuedSearchWrites.await();
       Awaitility.await("every concurrent logical suite membership is indexed")
           .atMost(SEARCH_CONVERGENCE_TIMEOUT)
           .pollInterval(Duration.ofSeconds(2))
@@ -1777,6 +1781,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     addTestCasesToLogicalTestSuite(client, logicalSuite.getId(), List.of(testCase.getId()));
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      QueuedSearchWrites.await();
       Awaitility.await("logical suite membership indexed before PUT")
           .atMost(SEARCH_CONVERGENCE_TIMEOUT)
           .pollInterval(Duration.ofSeconds(2))
@@ -1807,6 +1812,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
       // to the async SearchIndexRetryQueue, so convergence is eventually-consistent, not strictly
       // bounded by the write returning. Poll generously (and ignore transient query hiccups) rather
       // than assuming the sync drain always wins on the first sample under heavy parallel load.
+      QueuedSearchWrites.await();
       Awaitility.await("PUT preserves logical suite membership in search")
           .atMost(SEARCH_CONVERGENCE_TIMEOUT)
           .pollInterval(Duration.ofSeconds(2))
@@ -2711,6 +2717,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .create();
 
     String fieldQuery = "name.keyword:" + testCaseName;
+    QueuedSearchWrites.await();
     Awaitility.await("/v1/search/query honours a field-scoped Lucene query")
         .atMost(SEARCH_CONVERGENCE_TIMEOUT)
         .pollInterval(Duration.ofSeconds(2))
@@ -3561,6 +3568,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .queryParam("offset", "0")
             .build();
 
+    QueuedSearchWrites.await();
     Awaitility.await("test case present in ES-backed search/list with incidentId")
         .atMost(180, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
@@ -3631,6 +3639,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .queryParam("offset", "0")
             .build();
 
+    QueuedSearchWrites.await();
     Awaitility.await("incidentStatus inlined in ES-backed search/list")
         .atMost(180, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
@@ -5683,6 +5692,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     // 3. Verify the test case search index document is updated with the inherited tag
     String testCaseId = testCase.getId().toString();
+    QueuedSearchWrites.await();
     Awaitility.await(
             "Test case search index should contain inherited tag from table after table tag update")
         .atMost(Duration.ofSeconds(30))
@@ -5729,6 +5739,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     client.tables().update(fetchedTable.getId().toString(), fetchedTable);
 
     String testCaseId = testCase.getId().toString();
+    QueuedSearchWrites.await();
     Awaitility.await(
             "Test case search index should contain inherited owner from table after owner update")
         .atMost(Duration.ofSeconds(30))
@@ -5845,6 +5856,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     String testCaseId = testCase.getId().toString();
     String dpFqn = dataProduct.getFullyQualifiedName();
+    QueuedSearchWrites.await();
     Awaitility.await("Test case search index should contain inherited dataProduct from table")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -6042,6 +6054,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .testDefinition("columnValuesToBeNotNull")
         .create();
 
+    QueuedSearchWrites.await();
     Awaitility.await()
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))
@@ -6093,6 +6106,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .parameter("maxValue", "1000")
         .create();
 
+    QueuedSearchWrites.await();
     Awaitility.await()
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))
@@ -6146,6 +6160,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .parameter("maxValue", "1000")
         .create();
 
+    QueuedSearchWrites.await();
     Awaitility.await()
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))

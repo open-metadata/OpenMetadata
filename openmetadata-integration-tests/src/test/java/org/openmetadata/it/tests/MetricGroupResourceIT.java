@@ -46,6 +46,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.ShortStackFactory;
+import org.openmetadata.it.util.QueuedSearchWrites;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -1333,6 +1334,7 @@ public class MetricGroupResourceIT {
         String.format(
             "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"id.keyword\":\"%s\"}},{\"term\":{\"metricCount\":%d}}]}}}",
             group.getId(), metricCount);
+    QueuedSearchWrites.await();
     Awaitility.await("Metric Group is returned by filtered search after reindex")
         .pollDelay(Duration.ZERO)
         .pollInterval(Duration.ofMillis(200))
@@ -1357,6 +1359,7 @@ public class MetricGroupResourceIT {
 
   private static void awaitSearchDocument(
       RestClient rest, String index, UUID id, Consumer<JsonNode> assertion) {
+    QueuedSearchWrites.await();
     Awaitility.await("Search document " + index + "/" + id + " is refreshed")
         .pollDelay(Duration.ZERO)
         .pollInterval(Duration.ofMillis(200))
@@ -1371,6 +1374,7 @@ public class MetricGroupResourceIT {
   }
 
   private static void awaitSearchDocumentDeletion(RestClient rest, String index, UUID id) {
+    QueuedSearchWrites.await();
     Awaitility.await("Search document " + index + "/" + id + " is deleted")
         .pollDelay(Duration.ZERO)
         .pollInterval(Duration.ofMillis(200))
