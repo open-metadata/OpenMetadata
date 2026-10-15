@@ -69,12 +69,12 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.entityRelationship.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
-import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchEngineErrors;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchPropagationLimits;
@@ -653,12 +653,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       return getResponse(Response.Status.NOT_FOUND, "Document not found.");
     }
 
+    String index = Entity.getSearchRepository().getIndexOrAliasName(indexName);
     try {
-      GetResponse<Map> response =
-          client.get(
-              g ->
-                  g.index(Entity.getSearchRepository().getIndexOrAliasName(indexName)).id(entityId),
-              Map.class);
+      GetResponse<Map> response = client.get(g -> g.index(index).id(entityId), Map.class);
 
       // This path runs no query and has no SubjectContext, so it cannot tell whose restricted
       // memory a document is: a non-org-wide memory reads as not found rather than leaking.
@@ -669,8 +666,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       }
     } catch (ElasticsearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to find doc with id %s", entityId));
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
       }
