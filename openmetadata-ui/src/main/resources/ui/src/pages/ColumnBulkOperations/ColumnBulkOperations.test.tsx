@@ -37,6 +37,8 @@ const renderPage = (isAiMode: boolean) => {
   );
 };
 
+const getBadge = () => screen.getByRole('button', { name: 'label.deprecated' });
+
 describe('ColumnBulkOperations', () => {
   it.each([
     ['AI', true],
@@ -44,40 +46,25 @@ describe('ColumnBulkOperations', () => {
   ])('shows the Deprecated badge in %s mode', (_, isAiMode) => {
     renderPage(isAiMode);
 
-    expect(screen.getByTestId('deprecated-badge')).toHaveTextContent(
-      'label.deprecated'
-    );
+    expect(getBadge()).toBeInTheDocument();
     expect(screen.getByTestId('column-grid')).toBeInTheDocument();
   });
 
-  it('describes the deprecation to screen readers before the card opens', () => {
+  it('explains the deprecation in a tooltip linked to the badge on keyboard focus', () => {
     renderPage(true);
+    // Keyboard modality, so react-aria opens the tooltip on focus.
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    act(() => getBadge().focus());
 
-    expect(screen.getByTestId('deprecated-badge')).toHaveAccessibleDescription(
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
       'message.feature-deprecated-but-functional'
     );
-  });
-
-  it('explains the deprecation in a card on hovering the badge', () => {
-    jest.useFakeTimers();
-    // Establish pointer modality so react-aria accepts hover events.
-    fireEvent.mouseMove(document);
-    renderPage(true);
-    const trigger = screen.getByTestId('deprecated-badge')
-      .parentElement as HTMLElement;
-
-    fireEvent.mouseEnter(trigger, { pointerType: 'mouse' });
-    act(() => jest.advanceTimersByTime(300));
-
-    expect(screen.getByTestId('deprecated-popover')).toHaveTextContent(
-      'message.feature-deprecated-but-functional'
+    expect(getBadge()).toHaveAccessibleDescription(
+      expect.stringContaining('message.feature-deprecated-but-functional')
     );
 
-    fireEvent.mouseLeave(trigger, { pointerType: 'mouse' });
-    act(() => jest.advanceTimersByTime(200));
+    fireEvent.keyDown(getBadge(), { key: 'Escape' });
 
-    expect(screen.queryByTestId('deprecated-popover')).not.toBeInTheDocument();
-
-    jest.useRealTimers();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 });

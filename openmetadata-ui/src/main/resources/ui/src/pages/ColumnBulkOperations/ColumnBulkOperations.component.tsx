@@ -14,14 +14,12 @@ import {
   Badge,
   BadgeWithIcon,
   Box,
-  HoverCard,
   PageLayout,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { useId } from 'react';
-import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import {
@@ -35,7 +33,6 @@ import ColumnGrid from './ColumnGrid/ColumnGrid.component';
 const ColumnBulkOperations = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const deprecationDescriptionId = useId();
 
   const breadcrumbItems = [
     isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
@@ -43,10 +40,11 @@ const ColumnBulkOperations = () => {
   ];
 
   const deprecatedBadge = (
-    <HoverCard
-      className="tw:w-100 tw:max-w-[calc(100vw-2rem)] tw:p-0"
-      content={
-        <div data-testid="deprecated-popover">
+    <Tooltip
+      containerClassName="tw:w-100 tw:max-w-[calc(100vw-2rem)] tw:gap-0 tw:bg-primary tw:p-0 tw:outline-1 tw:outline-secondary_alt"
+      placement="bottom start"
+      title={
+        <div className="tw:break-normal" data-testid="deprecated-popover">
           <Box
             align="center"
             className="tw:border-b tw:border-secondary tw:px-5 tw:py-3"
@@ -55,39 +53,40 @@ const ColumnBulkOperations = () => {
               aria-hidden
               className="tw:size-4 tw:text-fg-quaternary"
             />
-            <Typography size="text-xs" weight="semibold">
+            <Typography
+              className="tw:text-primary"
+              size="text-xs"
+              weight="semibold">
               {t('label.about-this-feature')}
             </Typography>
           </Box>
           <Box className="tw:px-5 tw:pt-4 tw:pb-5" direction="col" gap={2}>
             <Box align="center" gap={2} wrap="wrap">
-              <Typography size="text-sm">
+              <Typography
+                className="tw:text-primary"
+                size="text-sm"
+                weight="regular">
                 {t('label.column-bulk-operations')}
               </Typography>
               <Badge color="warning" size="sm">
                 {t('label.deprecated')}
               </Badge>
             </Box>
-            <Typography as="p" color="secondary" size="text-xs">
+            <Typography
+              as="p"
+              className="tw:text-tertiary"
+              size="text-xs"
+              weight="regular">
               {t('message.feature-deprecated-but-functional')}
             </Typography>
           </Box>
         </div>
       }
-      placement="bottom start">
-      <AriaButton
-        aria-describedby={deprecationDescriptionId}
-        className="tw:cursor-default tw:rounded-full tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
-        data-testid="deprecated-badge">
-        <BadgeWithIcon color="warning" iconTrailing={InfoCircle} size="sm">
-          {t('label.deprecated')}
-        </BadgeWithIcon>
-      </AriaButton>
-      {/* The card is portalled and absent until opened, so the description is duplicated here. */}
-      <span className="tw:sr-only" id={deprecationDescriptionId}>
-        {t('message.feature-deprecated-but-functional')}
-      </span>
-    </HoverCard>
+      triggerClassName="tw:rounded-full tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2">
+      <BadgeWithIcon color="warning" iconTrailing={InfoCircle} size="sm">
+        {t('label.deprecated')}
+      </BadgeWithIcon>
+    </Tooltip>
   );
 
   return (
