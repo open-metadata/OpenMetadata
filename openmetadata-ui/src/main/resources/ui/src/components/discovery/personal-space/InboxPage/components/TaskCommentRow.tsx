@@ -37,8 +37,8 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import { resolveCommentPermissions } from '../../../../../utils/TaskCommentUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import { CommentEditForm } from '../../../../common/CommentComposer/CommentComposer';
 import { formatInboxDateTime, INBOX_MESSAGE_CLASS } from '../inbox.utils';
-import { InboxCommentEdit } from './InboxCommentComposer';
 
 export interface TaskCommentRowProps {
   comment: TaskComment;
@@ -116,7 +116,7 @@ const TaskCommentBody = ({
 }: TaskCommentBodyProps) => {
   if (isEditing) {
     return (
-      <InboxCommentEdit
+      <CommentEditForm
         message={comment.message}
         testId="edit-task-comment"
         onCancel={onCancelEdit}

@@ -46,10 +46,12 @@ import {
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import CommentComposer, {
+  CommentEditForm,
+} from '../../../../common/CommentComposer/CommentComposer';
 import { formatActivityTime, INBOX_MESSAGE_CLASS } from '../inbox.utils';
 import { useFeedDeleteAccess } from '../useFeedDeleteAccess';
 import AuthorPopover from './AuthorPopover';
-import InboxCommentComposer, { InboxCommentEdit } from './InboxCommentComposer';
 
 // Admins bypass policy evaluation server-side. ConditionalAllow → author
 // only: exact for the default isOwner() rule; an approximation for other
@@ -225,7 +227,7 @@ const ReplyRow = ({
           )}
         </Box>
         {isEditing ? (
-          <InboxCommentEdit
+          <CommentEditForm
             message={reply.message}
             testId="edit-message"
             onCancel={() => setIsEditing(false)}
@@ -296,7 +298,7 @@ const ActivityThread = ({
           />
         ))
       )}
-      <InboxCommentComposer
+      <CommentComposer
         focused={focusComposer}
         placeHolder={t('label.reply-in-conversation')}
         onSave={onReply}

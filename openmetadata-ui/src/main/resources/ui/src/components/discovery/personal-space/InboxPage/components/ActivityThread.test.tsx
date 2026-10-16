@@ -71,7 +71,7 @@ jest.mock('./AuthorPopover', () => ({
   default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
-jest.mock('./InboxCommentComposer', () => ({
+jest.mock('../../../../common/CommentComposer/CommentComposer', () => ({
   __esModule: true,
   default: ({
     focused,
@@ -87,7 +87,7 @@ jest.mock('./InboxCommentComposer', () => ({
       composer
     </button>
   ),
-  InboxCommentEdit: ({
+  CommentEditForm: ({
     onSave,
     onCancel,
     testId,

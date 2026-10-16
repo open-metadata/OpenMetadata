@@ -177,7 +177,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-import InboxCommentComposer, { InboxCommentEdit } from './InboxCommentComposer';
+import CommentComposer, { CommentEditForm } from './CommentComposer';
 
 // Stands in for typing: the editor reports its markdown through onTextChange.
 const type = (text: string) =>
@@ -190,9 +190,9 @@ beforeEach(() => {
   mockCurrentUser = { name: 'alice', displayName: 'Alice Johnson' };
 });
 
-describe('InboxCommentComposer', () => {
+describe('CommentComposer', () => {
   it("renders the current user's avatar", () => {
-    render(<InboxCommentComposer onSave={mockOnSave} />);
+    render(<CommentComposer onSave={mockOnSave} />);
 
     const avatar = screen.getByTestId('avatar');
 
@@ -203,7 +203,7 @@ describe('InboxCommentComposer', () => {
   // The design's arrow button replaces the editor's own send button.
   it('posts and clears the draft from the send button', () => {
     mockEditorContent = 'Looks right';
-    render(<InboxCommentComposer onSave={mockOnSave} />);
+    render(<CommentComposer onSave={mockOnSave} />);
 
     type('Looks right');
     fireEvent.click(screen.getByTestId('send-button'));
@@ -213,7 +213,7 @@ describe('InboxCommentComposer', () => {
   });
 
   it('keeps the send button disabled until something is typed', () => {
-    render(<InboxCommentComposer onSave={mockOnSave} />);
+    render(<CommentComposer onSave={mockOnSave} />);
 
     expect(screen.getByTestId('send-button')).toBeDisabled();
 
@@ -232,7 +232,7 @@ describe('InboxCommentComposer', () => {
 
   it('disables the send button again once the comment is sent', () => {
     mockEditorContent = 'Looks right';
-    render(<InboxCommentComposer onSave={mockOnSave} />);
+    render(<CommentComposer onSave={mockOnSave} />);
 
     type('Looks right');
     fireEvent.click(screen.getByTestId('send-button'));
@@ -241,7 +241,7 @@ describe('InboxCommentComposer', () => {
   });
 
   it('disables the send button again after Enter sends the comment', () => {
-    render(<InboxCommentComposer onSave={mockOnSave} />);
+    render(<CommentComposer onSave={mockOnSave} />);
 
     type('hello');
     fireEvent.click(screen.getByTestId('feed-editor'));
@@ -251,7 +251,7 @@ describe('InboxCommentComposer', () => {
   });
 
   it('forwards the editor save to onSave', () => {
-    render(<InboxCommentComposer onSave={mockOnSave} />);
+    render(<CommentComposer onSave={mockOnSave} />);
 
     fireEvent.click(screen.getByTestId('feed-editor'));
 
@@ -261,7 +261,7 @@ describe('InboxCommentComposer', () => {
   // A refused comment comes back to the editor rather than vanishing with it.
   it('puts the draft back when the save fails', async () => {
     mockOnSave.mockRejectedValueOnce(new Error('refused'));
-    render(<InboxCommentComposer onSave={mockOnSave} />);
+    render(<CommentComposer onSave={mockOnSave} />);
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('feed-editor'));
@@ -275,7 +275,7 @@ describe('InboxCommentComposer', () => {
 
   it('leaves the editor empty when the save succeeds', async () => {
     mockOnSave.mockResolvedValueOnce(undefined);
-    render(<InboxCommentComposer onSave={mockOnSave} />);
+    render(<CommentComposer onSave={mockOnSave} />);
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('feed-editor'));
@@ -285,7 +285,7 @@ describe('InboxCommentComposer', () => {
   });
 
   it('passes the default placeholder to the editor', () => {
-    render(<InboxCommentComposer onSave={mockOnSave} />);
+    render(<CommentComposer onSave={mockOnSave} />);
 
     expect(screen.getByTestId('feed-editor')).toHaveAttribute(
       'data-placeholder',
@@ -295,7 +295,7 @@ describe('InboxCommentComposer', () => {
 
   it('respects a custom placeholder', () => {
     render(
-      <InboxCommentComposer placeHolder="Reply here" onSave={mockOnSave} />
+      <CommentComposer placeHolder="Reply here" onSave={mockOnSave} />
     );
 
     expect(screen.getByTestId('feed-editor')).toHaveAttribute(
@@ -306,11 +306,11 @@ describe('InboxCommentComposer', () => {
 
   it('exposes the placeholder to the editor chrome via a CSS variable', () => {
     render(
-      <InboxCommentComposer placeHolder="Reply here" onSave={mockOnSave} />
+      <CommentComposer placeHolder="Reply here" onSave={mockOnSave} />
     );
 
     const holder = document.querySelector(
-      '[style*="--inbox-composer-placeholder"]'
+      '[style*="--comment-composer-placeholder"]'
     );
 
     expect(holder).not.toBeNull();
@@ -319,13 +319,15 @@ describe('InboxCommentComposer', () => {
 
   // The format bar starts hidden; the toggle beside send shows and hides it.
   describe('formatting toggle', () => {
+    // The class that hides Quill's format bar while the toggle is off.
+    const COLLAPSED_CLASS = 'tw:[&_.ql-toolbar.ql-snow]:hidden!';
     const editorRoot = () => screen.getByTestId('editor-root');
 
     it('starts with the format bar hidden', () => {
-      render(<InboxCommentComposer onSave={jest.fn()} />);
+      render(<CommentComposer onSave={jest.fn()} />);
 
       expect(editorRoot()).toHaveClass(
-        'inbox-comment-composer__editor--collapsed'
+        COLLAPSED_CLASS
       );
       expect(screen.getByTestId('formatting-toggle')).toHaveAttribute(
         'aria-label',
@@ -334,12 +336,12 @@ describe('InboxCommentComposer', () => {
     });
 
     it('shows the format bar, then hides it again', () => {
-      render(<InboxCommentComposer onSave={jest.fn()} />);
+      render(<CommentComposer onSave={jest.fn()} />);
 
       fireEvent.click(screen.getByTestId('formatting-toggle'));
 
       expect(editorRoot()).not.toHaveClass(
-        'inbox-comment-composer__editor--collapsed'
+        COLLAPSED_CLASS
       );
       expect(screen.getByTestId('formatting-toggle')).toHaveAttribute(
         'aria-label',
@@ -349,7 +351,7 @@ describe('InboxCommentComposer', () => {
       fireEvent.click(screen.getByTestId('formatting-toggle'));
 
       expect(editorRoot()).toHaveClass(
-        'inbox-comment-composer__editor--collapsed'
+        COLLAPSED_CLASS
       );
     });
   });
@@ -358,10 +360,10 @@ describe('InboxCommentComposer', () => {
   // design's into its own buttons, Quill's and quill-emoji's alike.
   describe('format bar icons', () => {
     const iconIn = (button: Element | null) =>
-      button?.querySelector('svg.inbox-comment-composer__icon');
+      button?.querySelector('svg.comment-composer-icon');
 
     it("draws the design's icon into each format button", async () => {
-      render(<InboxCommentComposer onSave={jest.fn()} />);
+      render(<CommentComposer onSave={jest.fn()} />);
 
       await waitFor(() =>
         expect(iconIn(screen.getByTestId('bold-control'))).toBeTruthy()
@@ -372,7 +374,7 @@ describe('InboxCommentComposer', () => {
     });
 
     it('draws the icons into a format bar rebuilt after mount', async () => {
-      render(<InboxCommentComposer onSave={jest.fn()} />);
+      render(<CommentComposer onSave={jest.fn()} />);
       const newBar = document.createElement('div');
       newBar.className = 'ql-toolbar';
       newBar.innerHTML =
@@ -400,7 +402,7 @@ describe('InboxCommentComposer', () => {
     };
 
     it('anchors the picker above its button and marks the button open', async () => {
-      render(<InboxCommentComposer onSave={jest.fn()} />);
+      render(<CommentComposer onSave={jest.fn()} />);
       const button = screen.getByTestId('emoji-control');
       const picker = openPicker('-250px');
 
@@ -421,7 +423,7 @@ describe('InboxCommentComposer', () => {
     // The editor loads lazily and quill rebuilds its bar on re-initialising,
     // so the bar can be a new one by the time the picker opens.
     it('anchors the picker in a format bar rebuilt after mount', async () => {
-      render(<InboxCommentComposer onSave={jest.fn()} />);
+      render(<CommentComposer onSave={jest.fn()} />);
       const oldBar = screen.getByTestId('format-bar');
       const newBar = document.createElement('div');
       newBar.className = 'ql-toolbar';
@@ -443,7 +445,7 @@ describe('InboxCommentComposer', () => {
     });
 
     it('opens below the bar when quill-emoji chose below', async () => {
-      render(<InboxCommentComposer onSave={jest.fn()} />);
+      render(<CommentComposer onSave={jest.fn()} />);
       const picker = openPicker();
 
       await waitFor(() => expect(picker.style.top).toBe('100%'));
@@ -454,10 +456,10 @@ describe('InboxCommentComposer', () => {
 });
 
 // An edited comment opens in the same box a new one is written in.
-describe('InboxCommentEdit', () => {
+describe('CommentEditForm', () => {
   const renderEdit = (onSave = jest.fn(), onCancel = jest.fn()) =>
     render(
-      <InboxCommentEdit
+      <CommentEditForm
         message="**Looking** at this today."
         testId="edit-comment"
         onCancel={onCancel}
@@ -478,7 +480,7 @@ describe('InboxCommentEdit', () => {
       expect(
         screen
           .getByTestId('bold-control')
-          .querySelector('svg.inbox-comment-composer__icon')
+          .querySelector('svg.comment-composer-icon')
       ).toBeTruthy()
     );
   });
