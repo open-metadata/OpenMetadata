@@ -459,6 +459,7 @@ public class SearchRepository {
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
   private Map<String, IndexMapping> aliasIndexMap;
+  private Set<String> knownIndexNames = Set.of();
 
   /**
    * Staged index names being populated by an in-flight reindex, keyed by the canonical index name
@@ -592,6 +593,7 @@ public class SearchRepository {
     IndexMappingLoader mappingLoader = IndexMappingLoader.getInstance();
     entityIndexMap = mappingLoader.getIndexMapping();
     aliasIndexMap = buildAliasIndexMap(entityIndexMap);
+    knownIndexNames = SearchIndexUtils.knownIndexNames(entityIndexMap);
   }
 
   private static Map<String, IndexMapping> buildAliasIndexMap(
@@ -1220,6 +1222,11 @@ public class SearchRepository {
   /** @see SearchIndexUtils#getIndexOrAliasName(String, Map, Map, String) */
   public String getIndexOrAliasName(String name) {
     return SearchIndexUtils.getIndexOrAliasName(name, entityIndexMap, aliasIndexMap, clusterAlias);
+  }
+
+  /** @see SearchIndexUtils#unknownIndexNames(String, Set, String) */
+  public List<String> unknownIndexNames(String resolvedIndex) {
+    return SearchIndexUtils.unknownIndexNames(resolvedIndex, knownIndexNames, clusterAlias);
   }
 
   /**
@@ -4672,8 +4679,9 @@ public class SearchRepository {
         searchAfter);
   }
 
-  public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    return searchClient.searchBySourceUrl(sourceUrl);
+  public Response searchBySourceUrl(String sourceUrl, SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchBySourceUrl(sourceUrl, subjectContext);
   }
 
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
@@ -4707,6 +4715,10 @@ public class SearchRepository {
       SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
     SearchLineageResult result = searchClient.searchLineageWithDirection(lineageRequest);
     return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
+  }
+
+  public Optional<EntityReference> getLineageRoot(String fqn) throws IOException {
+    return searchClient.getLineageRoot(fqn);
   }
 
   public LineagePaginationInfo getLineagePaginationInfo(
@@ -4817,9 +4829,16 @@ public class SearchRepository {
   }
 
   public Response searchByField(
-      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      SubjectContext subjectContext)
       throws IOException {
-    return searchClient.searchByField(fieldName, fieldValue, index, deleted, from, size);
+    return searchClient.searchByField(
+        fieldName, fieldValue, index, deleted, from, size, subjectContext);
   }
 
   public Response searchByFieldWithOptions(
