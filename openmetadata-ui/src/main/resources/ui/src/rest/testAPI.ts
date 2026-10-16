@@ -94,6 +94,27 @@ export type ListTestCaseParamsBySearch = Omit<
   testCaseStatus?: TestCaseStatus | TestCaseStatus[];
 };
 
+/**
+ * The test case list filters that `/name/{name}/export` and `/exportAsync`
+ * accept, so an export selects the rows the user filtered the list to.
+ */
+export type TestCaseExportFilters = Pick<
+  ListTestCaseParamsBySearch,
+  | 'testCaseStatus'
+  | 'testCaseType'
+  | 'entityLink'
+  | 'tags'
+  | 'tier'
+  | 'owner'
+  | 'q'
+  | 'testPlatforms'
+  | 'dataQualityDimension'
+  | 'serviceName'
+  | 'dataProductFqn'
+  | 'startTimestamp'
+  | 'endTimestamp'
+>;
+
 export type ListTestDefinitionsParams = ListParams & {
   entityType?: EntityType;
   testPlatform?: TestPlatform;
@@ -549,7 +570,7 @@ export const listTestCases = async (params: ListTestCasesParams) => {
 
 export const exportTestCasesInCSV = async (
   name: string,
-  params?: { recursive?: boolean }
+  params?: { recursive?: boolean } & TestCaseExportFilters
 ): Promise<CSVImportAsyncResponse> => {
   const response = await APIClient.get(
     `/dataQuality/testCases/name/${getEncodedFqn(name)}/exportAsync`,

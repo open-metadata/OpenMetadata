@@ -69,7 +69,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // Data Marketplace announcements carousel spec dropped its `.first()` item
     // lookup, and picking the bulk-import entity type by its option role
     // removes one more.
-    'om-playwright/no-positional-locator': 551,
+    'om-playwright/no-positional-locator': 543,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
