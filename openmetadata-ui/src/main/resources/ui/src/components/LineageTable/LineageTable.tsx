@@ -116,12 +116,14 @@ const LINEAGE_IMPACT_OPTION_ICONS: Record<
 
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { updateEntityData } = useLineageHandlers();
-  const { selectedQuickFilters, setSelectedQuickFilters } = useLineageStore(
-    useShallow((s) => ({
-      selectedQuickFilters: s.selectedQuickFilters,
-      setSelectedQuickFilters: s.setSelectedQuickFilters,
-    }))
-  );
+  const { selectedQuickFilters, setSelectedQuickFilters, timeFilter } =
+    useLineageStore(
+      useShallow((s) => ({
+        selectedQuickFilters: s.selectedQuickFilters,
+        setSelectedQuickFilters: s.setSelectedQuickFilters,
+        timeFilter: s.timeFilter,
+      }))
+    );
 
   const { lineageConfig } = useLineageStore();
   const { fqn } = useFqn();
@@ -522,6 +524,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         queryFilter,
         columnFilter: columnFilterValue,
         direction: lineageDirection,
+        startTime: timeFilter?.startTime,
+        endTime: timeFilter?.endTime,
       });
 
       const upstreamEdges = map(res.upstreamEdges ?? [], (edge) => edge);
@@ -557,6 +561,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         queryFilter,
         lineageDirection,
         columnFilterValue,
+        startTime: timeFilter?.startTime,
+        endTime: timeFilter?.endTime,
       });
       const shouldIncludePaginationInfo =
         paginationInfoKeyRef.current !== paginationInfoKey;
@@ -574,6 +580,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         query_filter: queryFilter,
         column_filter: columnFilterValue,
         include_pagination_info: shouldIncludePaginationInfo,
+        startTime: timeFilter?.startTime,
+        endTime: timeFilter?.endTime,
       });
 
       delete res.nodes[fqn];
@@ -635,6 +643,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     setLineagePagingInfo,
     setLoading,
     impactLevel,
+    timeFilter?.startTime,
+    timeFilter?.endTime,
   ]);
 
   // Table-level lineage: fetch on all dependencies
