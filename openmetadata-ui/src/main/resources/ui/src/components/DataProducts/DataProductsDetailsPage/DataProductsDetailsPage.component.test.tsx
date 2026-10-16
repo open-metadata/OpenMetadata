@@ -459,6 +459,20 @@ describe('DataProductsDetailsPage — contract latest-result button', () => {
     );
   });
 
+  it('keeps the selected version when linking to the contract tab from version history', async () => {
+    (getContractByEntityId as jest.Mock).mockResolvedValueOnce({
+      latestResult: { status: ContractExecutionStatus.Failed },
+    });
+
+    render(<DataProductsDetailsPage {...defaultProps} isVersionsView />);
+
+    const badge = await screen.findByTestId('data-contract-latest-result-btn');
+    const href = badge.getAttribute('href') ?? '';
+
+    expect(href).toContain('/versions/0.1');
+    expect(href.endsWith('/contract')).toBe(true);
+  });
+
   it('does not render the button for a passing contract', async () => {
     (getContractByEntityId as jest.Mock).mockResolvedValueOnce({
       latestResult: { status: ContractExecutionStatus.Success },

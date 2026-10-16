@@ -944,14 +944,23 @@ const DataProductsDetailsPage = ({
     ) {
       return (
         <ContractLatestResultBadge
-          href={getDataProductDetailsPath(dataProductFqn, EntityTabs.CONTRACT)}
+          href={
+            isVersionsView
+              ? getVersionPath(
+                  EntityType.DATA_PRODUCT,
+                  dataProductFqn,
+                  toString(dataProduct.version),
+                  EntityTabs.CONTRACT
+                )
+              : getDataProductDetailsPath(dataProductFqn, EntityTabs.CONTRACT)
+          }
           status={dataContract.latestResult.status}
         />
       );
     }
 
     return null;
-  }, [dataContract, dataProductFqn]);
+  }, [dataContract, dataProductFqn, dataProduct.version, isVersionsView]);
 
   const statusBadge = useMemo(() => {
     const shouldShowStatus = entityUtilClassBase.shouldShowEntityStatus(
