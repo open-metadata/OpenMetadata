@@ -7460,14 +7460,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryTerms/tabs/TermsRowEditor.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/Glossary/GlossaryTermRelatedTerms.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component.tsx"
       ],
       "specs": [
