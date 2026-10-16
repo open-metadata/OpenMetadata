@@ -4911,7 +4911,7 @@
     "metadata-agents-description": "استخراج فراداده، استفاده، تبارشناسی و پروفایل‌سازی از منبع.",
     "metadata-agents-table-description": "عوامل متادیتا برای استخراج متادیتا از سرویس‌های منبع استفاده می‌شوند.",
     "metadata-completion-filled-in": "همه آنچه این مرحله نیاز دارد فراهم است.",
-    "metadata-completion-hint": "این وظیفه پس از فراهم شدن همه موارد خودبه‌خود تکمیل می‌شود. اگر پس از آن هنوز باز بود، از \"Re-check\" استفاده کنید.",
+    "metadata-completion-hint": "این وظیفه پس از فراهم شدن همه موارد خودبه‌خود تکمیل می‌شود. اگر پس از آن هنوز باز بود، از \"Recheck\" استفاده کنید.",
     "metadata-completion-leave": "این دارایی برای خروج از {{stage}} به موارد زیر نیاز دارد.",
     "metadata-completion-message": "تکمیل فراداده‌های ناقص برای",
     "metadata-completion-move": "این دارایی برای انتقال از {{stage}} به {{targetStage}} به موارد زیر نیاز دارد.",

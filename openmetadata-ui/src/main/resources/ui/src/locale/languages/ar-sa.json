@@ -4911,7 +4911,7 @@
     "metadata-agents-description": "استخرج البيانات الوصفية والاستخدام والمسار والتحليل من المصدر.",
     "metadata-agents-table-description": "تُستخدم وكلاء البيانات الوصفية لاستخراج البيانات الوصفية من الخدمات المصدر.",
     "metadata-completion-filled-in": "كل ما تحتاجه هذه المرحلة مكتمل.",
-    "metadata-completion-hint": "تكتمل هذه المهمة تلقائيًا بمجرد اكتمال كل شيء. إذا بقيت مفتوحة بعد ذلك، فاستخدم \"Re-check\".",
+    "metadata-completion-hint": "تكتمل هذه المهمة تلقائيًا بمجرد اكتمال كل شيء. إذا بقيت مفتوحة بعد ذلك، فاستخدم \"Recheck\".",
     "metadata-completion-leave": "يحتاج هذا الأصل إلى ما يلي لنقله خارج {{stage}}.",
     "metadata-completion-message": "أكمل البيانات الوصفية الناقصة لـ",
     "metadata-completion-move": "يحتاج هذا الأصل إلى ما يلي لنقله من {{stage}} إلى {{targetStage}}.",

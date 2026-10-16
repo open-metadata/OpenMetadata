@@ -18,20 +18,30 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
+import workflowClassBase from '../../../utils/WorkflowClassBase';
 
 interface WorkflowCardProps {
   data: SettingMenuItem;
   onClick: (key: string) => void;
   className?: string;
+  /** The workflow the card shows, handed to the footer a downstream build adds. */
+  workflow?: WorkflowDefinition;
 }
 
-const WorkflowCard = ({ data, onClick, className }: WorkflowCardProps) => {
+const WorkflowCard = ({
+  data,
+  onClick,
+  className,
+  workflow,
+}: WorkflowCardProps) => {
   const handleOnClick = useCallback(
     () => onClick(data.key),
     [onClick, data.key]
   );
+  const Footer = useMemo(() => workflowClassBase.getWorkflowCardFooter(), []);
 
   const IconComponent = data.icon;
   const titleText = data.category ?? data.label ?? '';
@@ -79,6 +89,7 @@ const WorkflowCard = ({ data, onClick, className }: WorkflowCardProps) => {
         title={data.description || undefined}>
         {data.description}
       </Typography>
+      {Footer && workflow ? <Footer workflow={workflow} /> : null}
     </Card>
   );
 };

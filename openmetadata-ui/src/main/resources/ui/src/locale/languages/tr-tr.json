@@ -4911,7 +4911,7 @@
     "metadata-agents-description": "Kaynaktan meta veri, kullanım, veri kökeni ve profil çıkarın.",
     "metadata-agents-table-description": "Metadata Agent'ları, kaynak servislerden metadata çıkarmak için kullanılır.",
     "metadata-completion-filled-in": "Bu aşamanın ihtiyaç duyduğu her şey hazır.",
-    "metadata-completion-hint": "Her şey hazır olduğunda bu görev kendiliğinden tamamlanır. Sonrasında hâlâ açıksa \"Re-check\" seçeneğini kullanın.",
+    "metadata-completion-hint": "Her şey hazır olduğunda bu görev kendiliğinden tamamlanır. Sonrasında hâlâ açıksa \"Recheck\" seçeneğini kullanın.",
     "metadata-completion-leave": "Bu varlığın {{stage}} aşamasından çıkabilmesi için şunlar gerekir.",
     "metadata-completion-message": "Şunun eksik meta verilerini doldurun:",
     "metadata-completion-move": "Bu varlığın {{stage}} aşamasından {{targetStage}} aşamasına geçmesi için şunlar gerekir.",

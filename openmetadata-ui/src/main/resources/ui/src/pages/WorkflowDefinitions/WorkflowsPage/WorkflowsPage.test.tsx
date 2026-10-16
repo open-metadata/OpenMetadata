@@ -139,13 +139,30 @@ describe('WorkflowsPage on OSS', () => {
     expect(
       await screen.findByTestId('pw-oss-test-workflow')
     ).toBeInTheDocument();
+    expect(screen.getByTestId('workflow-count')).toHaveTextContent('2');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'label.lifecycle' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'label.lifecycle' }));
 
     expect(
       screen.queryByTestId('pw-oss-test-workflow')
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('pw-oss-lifecycle')).toBeInTheDocument();
+    expect(screen.getByTestId('workflow-count')).toHaveTextContent('1');
+    expect(
+      screen.getByRole('radio', { name: 'label.lifecycle' })
+    ).toBeChecked();
+  });
+
+  it('lists every workflow without a filter header when no downstream build adds tabs', async () => {
+    mockGetWorkflowDefinitions.mockResolvedValue(WORKFLOWS);
+
+    renderPage();
+
+    expect(
+      await screen.findByTestId('pw-oss-test-workflow')
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('workflow-count')).not.toBeInTheDocument();
   });
 
   it('opens the workflow details page unless a downstream build routes the workflow elsewhere', async () => {

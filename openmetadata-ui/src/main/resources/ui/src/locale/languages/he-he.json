@@ -4911,7 +4911,7 @@
     "metadata-agents-description": "חלץ מטא-נתונים, שימוש, שושלת ופרופיל מהמקור.",
     "metadata-agents-table-description": "סוכני מטא-דאטה משמשים לחילוץ מטא-דאטה משירותי המקור.",
     "metadata-completion-filled-in": "כל מה שהשלב הזה צריך קיים.",
-    "metadata-completion-hint": "המשימה מסתיימת מעצמה כשהכול קיים. אם היא עדיין פתוחה לאחר מכן, השתמשו ב-\"Re-check\".",
+    "metadata-completion-hint": "המשימה מסתיימת מעצמה כשהכול קיים. אם היא עדיין פתוחה לאחר מכן, השתמשו ב-\"Recheck\".",
     "metadata-completion-leave": "הנכס צריך את הדברים הבאים כדי לצאת מ-{{stage}}.",
     "metadata-completion-message": "השלמת מטא-נתונים חסרים עבור",
     "metadata-completion-move": "הנכס צריך את הדברים הבאים כדי לעבור מ-{{stage}} ל-{{targetStage}}.",

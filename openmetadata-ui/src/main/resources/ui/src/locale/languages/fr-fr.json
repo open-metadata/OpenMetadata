@@ -4911,7 +4911,7 @@
     "metadata-agents-description": "Extrayez les métadonnées, l'utilisation, le lignage et le profilage depuis la source.",
     "metadata-agents-table-description": "Les agents de métadonnées sont utilisés pour extraire les métadonnées des services sources.",
     "metadata-completion-filled-in": "Tout ce dont cette étape a besoin est en place.",
-    "metadata-completion-hint": "Cette tâche se termine d'elle-même une fois que tout est en place. Si elle reste ouverte ensuite, utilisez « Re-check ».",
+    "metadata-completion-hint": "Cette tâche se termine d'elle-même une fois que tout est en place. Si elle reste ouverte ensuite, utilisez « Recheck ».",
     "metadata-completion-leave": "Cet actif a besoin des éléments suivants pour quitter {{stage}}.",
     "metadata-completion-message": "Compléter les métadonnées manquantes pour",
     "metadata-completion-move": "Cet actif a besoin des éléments suivants pour passer de {{stage}} à {{targetStage}}.",

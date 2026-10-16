@@ -38,6 +38,10 @@ export interface WorkflowsPageTab {
   includes?: (workflow: WorkflowDefinition) => boolean;
 }
 
+export interface WorkflowCardFooterProps {
+  workflow: WorkflowDefinition;
+}
+
 export class WorkflowClassBase {
   /** What the builder allows; `workflow` is the one open in it, when there is one. */
   public getCapabilities(_workflow?: WorkflowDefinition): WorkflowCapabilities {
@@ -55,6 +59,11 @@ export class WorkflowClassBase {
 
   /** Content shown above the workflow list; OpenMetadata has none. */
   public getWorkflowsPageSection(): ComponentType | null {
+    return null;
+  }
+
+  /** Content shown at the bottom of each workflow's card; OpenMetadata has none. */
+  public getWorkflowCardFooter(): ComponentType<WorkflowCardFooterProps> | null {
     return null;
   }
 

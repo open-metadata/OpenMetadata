@@ -11,13 +11,21 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  ButtonGroup,
+  ButtonGroupItem,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import WorkflowCard from '../../../components/WorkflowDefinitions/WorkflowCard/WorkflowCard.component';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
-import workflowClassBase from '../../../utils/WorkflowClassBase';
+import workflowClassBase, {
+  WorkflowsPageTab,
+} from '../../../utils/WorkflowClassBase';
 
 export type WorkflowListItem = SettingMenuItem & WorkflowDefinition;
 
@@ -26,8 +34,54 @@ interface WorkflowListProps {
   onWorkflowClick: (key: string) => void;
 }
 
-const WorkflowList = ({ workflows, onWorkflowClick }: WorkflowListProps) => {
+interface WorkflowListHeaderProps {
+  tabs: WorkflowsPageTab[];
+  activeTabId?: string;
+  count: number;
+  onTabChange: (id: string) => void;
+}
+
+/** The list's title and count, with the tabs a downstream build adds as a filter. */
+const WorkflowListHeader = ({
+  tabs,
+  activeTabId,
+  count,
+  onTabChange,
+}: WorkflowListHeaderProps) => {
   const { t } = useTranslation();
+
+  return (
+    <Box align="center" className="tw:pb-3" gap={3} justify="between">
+      <Box align="center" gap={2}>
+        <Typography as="h2" className="tw:m-0" size="text-md" weight="semibold">
+          {t('label.all-entity', { entity: t('label.workflow-plural') })}
+        </Typography>
+        <Badge data-testid="workflow-count" size="sm">
+          {count}
+        </Badge>
+      </Box>
+      <ButtonGroup
+        disallowEmptySelection
+        aria-label={t('label.workflow-plural')}
+        selectedKeys={activeTabId ? [activeTabId] : []}
+        size="sm"
+        onSelectionChange={(keys) => {
+          const [id] = keys;
+          if (id !== undefined) {
+            onTabChange(String(id));
+          }
+        }}>
+        {tabs.map((tab) => (
+          <ButtonGroupItem id={tab.id} key={tab.id}>
+            {t(tab.labelKey)}
+          </ButtonGroupItem>
+        ))}
+      </ButtonGroup>
+    </Box>
+  );
+};
+
+const WorkflowList = ({ workflows, onWorkflowClick }: WorkflowListProps) => {
   const tabs = useMemo(() => workflowClassBase.getWorkflowsPageTabs(), []);
   const [activeTabId, setActiveTabId] = useState(tabs[0]?.id);
   const includes = tabs.find((tab) => tab.id === activeTabId)?.includes;
@@ -36,27 +90,19 @@ const WorkflowList = ({ workflows, onWorkflowClick }: WorkflowListProps) => {
   return (
     <>
       {tabs.length ? (
-        <Tabs
-          className="tw:pb-4"
-          selectedKey={activeTabId}
-          onSelectionChange={(key) => setActiveTabId(String(key))}>
-          <Tabs.List
-            aria-label={t('label.workflow-plural')}
-            size="sm"
-            type="underline">
-            {tabs.map((tab) => (
-              <Tabs.Item id={tab.id} key={tab.id}>
-                {t(tab.labelKey)}
-              </Tabs.Item>
-            ))}
-          </Tabs.List>
-        </Tabs>
+        <WorkflowListHeader
+          activeTabId={activeTabId}
+          count={visibleWorkflows.length}
+          tabs={tabs}
+          onTabChange={setActiveTabId}
+        />
       ) : null}
       <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pb-4">
         {visibleWorkflows.map((workflow) => (
           <WorkflowCard
             data={workflow}
             key={workflow.key}
+            workflow={workflow}
             onClick={onWorkflowClick}
           />
         ))}

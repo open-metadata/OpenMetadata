@@ -4911,7 +4911,7 @@
     "metadata-agents-description": "Extrae metadatos, uso, linaje y perfilado desde el origen.",
     "metadata-agents-table-description": "Los agentes de metadatos se utilizan para extraer metadatos de los servicios de origen.",
     "metadata-completion-filled-in": "Todo lo que necesita esta etapa está listo.",
-    "metadata-completion-hint": "Esta tarea se completa sola cuando todo está listo. Si sigue abierta después, usa \"Re-check\".",
+    "metadata-completion-hint": "Esta tarea se completa sola cuando todo está listo. Si sigue abierta después, usa \"Recheck\".",
     "metadata-completion-leave": "Este activo necesita lo siguiente para salir de {{stage}}.",
     "metadata-completion-message": "Completar los metadatos que faltan de",
     "metadata-completion-move": "Este activo necesita lo siguiente para pasar de {{stage}} a {{targetStage}}.",

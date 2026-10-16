@@ -4911,7 +4911,7 @@
     "metadata-agents-description": "แยกเมทาดาทา การใช้งาน สายข้อมูล และการทำโปรไฟล์จากแหล่งที่มา",
     "metadata-agents-table-description": "Metadata Agents ใช้สำหรับดึงข้อมูลจากบริการต้นทาง",
     "metadata-completion-filled-in": "ทุกอย่างที่ขั้นตอนนี้ต้องการพร้อมแล้ว",
-    "metadata-completion-hint": "งานนี้จะเสร็จสิ้นเองเมื่อทุกอย่างพร้อม หากยังเปิดอยู่หลังจากนั้น ให้ใช้ \"Re-check\"",
+    "metadata-completion-hint": "งานนี้จะเสร็จสิ้นเองเมื่อทุกอย่างพร้อม หากยังเปิดอยู่หลังจากนั้น ให้ใช้ \"Recheck\"",
     "metadata-completion-leave": "สินทรัพย์นี้ต้องมีสิ่งต่อไปนี้เพื่อออกจาก {{stage}}",
     "metadata-completion-message": "กรอกเมทาดาทาที่ขาดหายสำหรับ",
     "metadata-completion-move": "สินทรัพย์นี้ต้องมีสิ่งต่อไปนี้เพื่อย้ายจาก {{stage}} ไปยัง {{targetStage}}",

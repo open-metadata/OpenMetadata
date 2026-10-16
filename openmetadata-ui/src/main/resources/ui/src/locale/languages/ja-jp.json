@@ -4911,7 +4911,7 @@
     "metadata-agents-description": "ソースからメタデータ、使用状況、リネージ、プロファイリングを抽出します。",
     "metadata-agents-table-description": "メタデータエージェントは、ソースサービスからメタデータを抽出するために使用されます。",
     "metadata-completion-filled-in": "このステージに必要なものはすべて揃っています。",
-    "metadata-completion-hint": "すべて揃うと、このタスクは自動的に完了します。その後も開いたままの場合は「Re-check」を使用してください。",
+    "metadata-completion-hint": "すべて揃うと、このタスクは自動的に完了します。その後も開いたままの場合は「Recheck」を使用してください。",
     "metadata-completion-leave": "このアセットが{{stage}}から移るには、次のものが必要です。",
     "metadata-completion-message": "不足しているメタデータの入力:",
     "metadata-completion-move": "このアセットを{{stage}}から{{targetStage}}に移すには、次のものが必要です。",

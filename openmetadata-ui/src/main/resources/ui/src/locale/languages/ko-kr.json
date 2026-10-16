@@ -4911,7 +4911,7 @@
     "metadata-agents-description": "소스에서 메타데이터, 사용량, 계보 및 프로파일링을 추출합니다.",
     "metadata-agents-table-description": "메타데이터 에이전트는 소스 서비스에서 메타데이터를 추출하는 데 사용됩니다.",
     "metadata-completion-filled-in": "이 단계에 필요한 모든 것이 갖춰졌습니다.",
-    "metadata-completion-hint": "모든 것이 갖춰지면 이 작업은 자동으로 완료됩니다. 그 후에도 열려 있으면 \"Re-check\"를 사용하세요.",
+    "metadata-completion-hint": "모든 것이 갖춰지면 이 작업은 자동으로 완료됩니다. 그 후에도 열려 있으면 \"Recheck\"를 사용하세요.",
     "metadata-completion-leave": "이 자산이 {{stage}}에서 벗어나려면 다음이 필요합니다.",
     "metadata-completion-message": "누락된 메타데이터 입력:",
     "metadata-completion-move": "이 자산을 {{stage}}에서 {{targetStage}}(으)로 옮기려면 다음이 필요합니다.",

@@ -73,7 +73,7 @@ public final class MetadataCollectionService {
       List.of(
           new TaskAvailableTransition()
               .withId(RECHECK)
-              .withLabel("Re-check")
+              .withLabel("Recheck")
               .withTargetTaskStatus(TaskEntityStatus.Completed)
               .withResolutionType(TaskResolutionType.Completed)
               .withRequiresComment(false));

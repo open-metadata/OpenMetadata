@@ -4911,7 +4911,7 @@
     "metadata-agents-description": "从数据源提取元数据、使用情况、血缘和剖析信息。",
     "metadata-agents-table-description": "元数据代理用于从源服务中提取元数据。",
     "metadata-completion-filled-in": "此阶段所需的一切均已就绪。",
-    "metadata-completion-hint": "一切就绪后，此任务会自动完成。如果之后仍处于打开状态，请使用“Re-check”。",
+    "metadata-completion-hint": "一切就绪后，此任务会自动完成。如果之后仍处于打开状态，请使用“Recheck”。",
     "metadata-completion-leave": "此资产需要满足以下各项，才能离开{{stage}}。",
     "metadata-completion-message": "补全缺失的元数据：",
     "metadata-completion-move": "此资产需要满足以下各项，才能从{{stage}}移至{{targetStage}}。",

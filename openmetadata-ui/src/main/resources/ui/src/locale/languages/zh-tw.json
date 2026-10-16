@@ -4911,7 +4911,7 @@
     "metadata-agents-description": "從來源擷取中繼資料、使用情況、譜系與剖析資訊。",
     "metadata-agents-table-description": "元資料代理程式用於從來源服務中擷取元資料。",
     "metadata-completion-filled-in": "此階段所需的一切皆已就緒。",
-    "metadata-completion-hint": "一切就緒後，此任務會自動完成。如果之後仍為開啟狀態，請使用「Re-check」。",
+    "metadata-completion-hint": "一切就緒後，此任務會自動完成。如果之後仍為開啟狀態，請使用「Recheck」。",
     "metadata-completion-leave": "此資產需要滿足以下各項，才能離開{{stage}}。",
     "metadata-completion-message": "補齊缺少的中繼資料：",
     "metadata-completion-move": "此資產需要滿足以下各項，才能從{{stage}}移至{{targetStage}}。",
