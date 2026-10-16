@@ -97,13 +97,18 @@ export function getStudioNodeAccentColor(node: OntologyNode): string {
 }
 
 export function getOntologyEdgeId(edge: MergedEdge): string {
-  const identity =
-    edge.id ??
-    `${edge.from}-${edge.to}-${edge.relationType}-${
-      edge.edgeKind ?? 'ontology'
-    }`;
+  if (edge.id) {
+    return `edge-${edge.id}`;
+  }
+  // A proposal can repeat a relationship that already exists; G6 rejects two
+  // edges with one id, so a proposal is keyed by the operation proposing it.
+  if (edge.proposal) {
+    return `edge-proposal-${edge.proposal.operationId}`;
+  }
 
-  return `edge-${identity}`;
+  return `edge-${edge.from}-${edge.to}-${edge.relationType}-${
+    edge.edgeKind ?? 'ontology'
+  }`;
 }
 
 function getCardinalityEndLabels(
