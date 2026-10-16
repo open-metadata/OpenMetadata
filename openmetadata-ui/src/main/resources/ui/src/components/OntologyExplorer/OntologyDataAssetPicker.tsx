@@ -97,6 +97,7 @@ const OntologyDataAssetPicker = ({
 
   useEffect(() => {
     setRequest({ attempt: 0, page: 1 });
+    setLoadedPage(0);
   }, [query, scope, termFqn]);
 
   useEffect(() => {

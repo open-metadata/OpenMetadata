@@ -194,6 +194,51 @@ describe('OntologyDataAssetPicker', () => {
     ).toEqual([1, 2, 2]);
   });
 
+  it('starts a changed search from its first page, even after that page failed', async () => {
+    mockSearch
+      .mockResolvedValueOnce({
+        hits: { hits: [hit('t-1', 'customers', 'table')], total: { value: 3 } },
+      } as never)
+      .mockResolvedValueOnce({
+        hits: { hits: [hit('t-2', 'orders', 'table')], total: { value: 3 } },
+      } as never)
+      .mockRejectedValueOnce(new Error('timeout'))
+      .mockResolvedValueOnce({
+        hits: { hits: [hit('t-9', 'invoices', 'table')], total: { value: 1 } },
+      } as never);
+    render(
+      <OntologyDataAssetPicker
+        term={TERM}
+        onCancel={jest.fn()}
+        onPartialSave={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+    fireEvent.click(await screen.findByTestId('ontology-data-asset-load-more'));
+    await screen.findByTestId('ontology-data-asset-option-t-2');
+
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: 'message.search-tables-and-columns',
+      }),
+      { target: { value: 'inv' } }
+    );
+    await waitFor(() => expect(mockSearch).toHaveBeenCalledTimes(3));
+    const loadMore = screen.getByTestId('ontology-data-asset-load-more');
+    await waitFor(() => expect(loadMore).toBeEnabled());
+    fireEvent.click(loadMore);
+
+    expect(
+      await screen.findByTestId('ontology-data-asset-option-t-9')
+    ).toBeInTheDocument();
+    expect(mockSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pageNumber: 1, query: '*inv*' })
+    );
+    expect(
+      screen.queryByTestId('ontology-data-asset-option-t-1')
+    ).not.toBeInTheDocument();
+  });
+
   it('loads the next page of matches on demand', async () => {
     mockSearch.mockResolvedValueOnce({
       hits: {
