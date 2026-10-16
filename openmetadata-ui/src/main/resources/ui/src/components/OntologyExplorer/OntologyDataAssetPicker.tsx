@@ -39,13 +39,15 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 type AssetScope = 'all' | 'tables' | 'columns';
 
+// "All" is every data asset a glossary term can tag, columns included, as the
+// Add Assets modal offers.
 const SCOPE_INDEXES: Record<
   AssetScope,
-  Array<SearchIndex.TABLE | SearchIndex.COLUMN>
+  SearchIndex.DATA_ASSET | SearchIndex.TABLE | SearchIndex.COLUMN
 > = {
-  all: [SearchIndex.TABLE, SearchIndex.COLUMN],
-  columns: [SearchIndex.COLUMN],
-  tables: [SearchIndex.TABLE],
+  all: SearchIndex.DATA_ASSET,
+  columns: SearchIndex.COLUMN,
+  tables: SearchIndex.TABLE,
 };
 const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 250;
@@ -84,6 +86,7 @@ const OntologyDataAssetPicker = ({
   const [request, setRequest] = useState({ attempt: 0, page: 1 });
   const [loadedPage, setLoadedPage] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasFailed, setHasFailed] = useState(false);
   const [total, setTotal] = useState(0);
   // Why the server refused an asset, keyed by asset id.
   const [failures, setFailures] = useState<Map<string, string>>(
@@ -95,9 +98,12 @@ const OntologyDataAssetPicker = ({
   const [isSaving, setIsSaving] = useState(false);
   const termFqn = term.fullyQualifiedName ?? term.name;
 
+  // A new search drops the old rows at once, so nothing on screen belongs to it.
   useEffect(() => {
     setRequest({ attempt: 0, page: 1 });
     setLoadedPage(0);
+    setResults([]);
+    setTotal(0);
   }, [query, scope, termFqn]);
 
   useEffect(() => {
@@ -109,6 +115,7 @@ const OntologyDataAssetPicker = ({
         const response = await searchQuery({
           pageNumber: page,
           pageSize: PAGE_SIZE,
+          includeDeleted: false,
           query: query.trim() ? `*${query.trim()}*` : '',
           queryFilter: getQueryFilterToExcludeTerm(termFqn),
           searchIndex: SCOPE_INDEXES[scope],
@@ -123,10 +130,12 @@ const OntologyDataAssetPicker = ({
           );
           setResults((current) => (page === 1 ? hits : [...current, ...hits]));
           setLoadedPage(page);
+          setHasFailed(false);
           setTotal(response.hits.total.value ?? 0);
         }
       } catch (error) {
         if (isCurrent) {
+          setHasFailed(true);
           showErrorToast(error as AxiosError);
         }
       } finally {
@@ -182,22 +191,38 @@ const OntologyDataAssetPicker = ({
       const result = await addAssetsToGlossaryTerm(term, [
         ...selected.values(),
       ]);
-      const failed = new Map(
-        (result.failedRequest ?? []).map(({ message, request }) => [
-          (request as EntityReference | undefined)?.id ?? '',
-          message ?? '',
-        ])
-      );
-      if (failed.size === 0) {
+      const refused = result.failedRequest ?? [];
+      if (refused.length === 0) {
         onSave();
 
         return;
       }
-      setFailures(failed);
-      setSelected(
-        (current) => new Map([...current].filter(([id]) => failed.has(id)))
+      const failed = new Map(
+        refused.flatMap(({ message, request }) => {
+          const id = (request as EntityReference | undefined)?.id;
+
+          return id ? [[id, message ?? ''] as const] : [];
+        })
       );
-      if (failed.size < selected.size) {
+      setFailures(failed);
+      // A refusal the server did not tie to an asset leaves the whole
+      // selection in place, as nothing tells which asset it was.
+      if (failed.size === refused.length) {
+        setSelected(
+          (current) => new Map([...current].filter(([id]) => failed.has(id)))
+        );
+      }
+      // A refused asset may be outside the current search, where its row and
+      // reason are not shown.
+      const visibleIds = new Set(results.map(({ id }) => id));
+      const hidden = refused.find(
+        ({ request }) =>
+          !visibleIds.has((request as EntityReference | undefined)?.id ?? '')
+      );
+      if (hidden) {
+        showErrorToast(hidden.message ?? t('server.unexpected-error'));
+      }
+      if (refused.length < selected.size) {
         onPartialSave();
       }
     } catch (error) {
@@ -206,6 +231,47 @@ const OntologyDataAssetPicker = ({
       setIsSaving(false);
     }
   };
+
+  const renderListFooter = () => {
+    if (hasFailed || results.length < total) {
+      return (
+        <Box
+          className="tw:border-t tw:border-secondary tw:p-2"
+          justify="center">
+          <Button
+            color="link-gray"
+            data-testid="ontology-data-asset-load-more"
+            isDisabled={isLoading}
+            isLoading={isLoading}
+            size="sm"
+            onPress={loadMore}>
+            {hasFailed ? t('label.retry') : t('label.load-more')}
+          </Button>
+        </Box>
+      );
+    }
+
+    return isLoading || results.length > 0 ? null : (
+      <Typography
+        as="p"
+        className="tw:px-3 tw:py-6 tw:text-center tw:text-tertiary"
+        data-testid="ontology-data-asset-empty"
+        size="text-sm">
+        {t('label.no-data-found')}
+      </Typography>
+    );
+  };
+
+  const renderSelectedCount = () =>
+    selected.size > 0 ? (
+      <Typography
+        as="span"
+        className="tw:mr-auto tw:text-tertiary"
+        data-testid="ontology-data-asset-selected-count"
+        size="text-xs">
+        {t('label.n-selected', { count: selected.size })}
+      </Typography>
+    ) : null;
 
   return (
     <Card
@@ -303,23 +369,10 @@ const OntologyDataAssetPicker = ({
             </li>
           ))}
         </ul>
-        {results.length < total ? (
-          <Box
-            className="tw:border-t tw:border-secondary tw:p-2"
-            justify="center">
-            <Button
-              color="link-gray"
-              data-testid="ontology-data-asset-load-more"
-              isDisabled={isLoading}
-              isLoading={isLoading}
-              size="sm"
-              onPress={loadMore}>
-              {t('label.load-more')}
-            </Button>
-          </Box>
-        ) : null}
+        {renderListFooter()}
       </Card>
-      <Box gap={2} justify="end">
+      <Box align="center" gap={2} justify="end">
+        {renderSelectedCount()}
         <Button color="secondary" size="sm" onPress={onCancel}>
           {t('label.cancel')}
         </Button>

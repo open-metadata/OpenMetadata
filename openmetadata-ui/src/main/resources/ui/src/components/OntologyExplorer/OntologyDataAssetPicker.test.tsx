@@ -19,6 +19,7 @@ import {
 } from '../../generated/type/bulkOperationResult';
 import { addAssetsToGlossaryTerm } from '../../rest/glossaryAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import { showErrorToast } from '../../utils/ToastUtils';
 import OntologyDataAssetPicker from './OntologyDataAssetPicker';
 
 jest.mock('../../rest/searchAPI', () => ({ searchQuery: jest.fn() }));
@@ -50,6 +51,9 @@ const hit = (id: string, name: string, entityType: string) => ({
 describe('OntologyDataAssetPicker', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Drop queued one-off responses a failed test may have left behind.
+    mockSearch.mockReset();
+    mockAddAssets.mockReset();
     mockSearch.mockResolvedValue({
       hits: {
         hits: [hit('t-1', 'customers', 'table'), hit('t-2', 'orders', 'table')],
@@ -61,7 +65,7 @@ describe('OntologyDataAssetPicker', () => {
     } as BulkOperationResult);
   });
 
-  it('searches tables and columns, then narrows to columns', async () => {
+  it('searches every data asset, then narrows to columns', async () => {
     render(
       <OntologyDataAssetPicker
         term={TERM}
@@ -74,7 +78,7 @@ describe('OntologyDataAssetPicker', () => {
     await waitFor(() =>
       expect(mockSearch).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          searchIndex: [SearchIndex.TABLE, SearchIndex.COLUMN],
+          searchIndex: SearchIndex.DATA_ASSET,
         })
       )
     );
@@ -87,7 +91,7 @@ describe('OntologyDataAssetPicker', () => {
 
     await waitFor(() =>
       expect(mockSearch).toHaveBeenLastCalledWith(
-        expect.objectContaining({ searchIndex: [SearchIndex.COLUMN] })
+        expect.objectContaining({ searchIndex: SearchIndex.COLUMN })
       )
     );
   });
@@ -224,9 +228,18 @@ describe('OntologyDataAssetPicker', () => {
       { target: { value: 'inv' } }
     );
     await waitFor(() => expect(mockSearch).toHaveBeenCalledTimes(3));
-    const loadMore = screen.getByTestId('ontology-data-asset-load-more');
-    await waitFor(() => expect(loadMore).toBeEnabled());
-    fireEvent.click(loadMore);
+
+    // The old search's rows are gone at once, and the failed page is offered
+    // again.
+    expect(
+      screen.queryByTestId('ontology-data-asset-option-t-1')
+    ).not.toBeInTheDocument();
+
+    const retry = await screen.findByTestId('ontology-data-asset-load-more');
+
+    expect(retry).toHaveTextContent('label.retry');
+
+    fireEvent.click(retry);
 
     expect(
       await screen.findByTestId('ontology-data-asset-option-t-9')
@@ -272,5 +285,55 @@ describe('OntologyDataAssetPicker', () => {
     expect(
       screen.queryByTestId('ontology-data-asset-load-more')
     ).not.toBeInTheDocument();
+  });
+
+  it('says when nothing matches', async () => {
+    mockSearch.mockResolvedValue({
+      hits: { hits: [], total: { value: 0 } },
+    } as never);
+    render(
+      <OntologyDataAssetPicker
+        term={TERM}
+        onCancel={jest.fn()}
+        onPartialSave={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(
+      await screen.findByTestId('ontology-data-asset-empty')
+    ).toHaveTextContent('label.no-data-found');
+  });
+
+  it('reports a refused asset that is not in the current search, and counts the selection', async () => {
+    mockAddAssets.mockResolvedValue({
+      failedRequest: [
+        {
+          message: 'No edit access',
+          request: { id: 'elsewhere', type: 'table' },
+        },
+      ],
+      status: Status.Failure,
+    } as BulkOperationResult);
+    render(
+      <OntologyDataAssetPicker
+        term={TERM}
+        onCancel={jest.fn()}
+        onPartialSave={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+    await screen.findByTestId('ontology-data-asset-option-t-1');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+
+    expect(
+      screen.getByTestId('ontology-data-asset-selected-count')
+    ).toHaveTextContent('label.n-selected');
+
+    fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
+
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith('No edit access')
+    );
   });
 });

@@ -521,5 +521,11 @@ export const OntologyConceptRealization: React.FC<
     </div>
   );
 
-  return isInspector ? renderInspectorSection() : renderDefaultSection();
+  if (isInspector) {
+    return renderInspectorSection();
+  }
+
+  // Read-only and with nothing recorded, a bare "Realized in 0" heading says
+  // nothing, so the section is left out (as on the glossary term Assets tab).
+  return realizations.length > 0 || canAuthor ? renderDefaultSection() : null;
 };

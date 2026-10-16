@@ -81,13 +81,27 @@ describe('OntologyConceptRealization', () => {
     ).toHaveTextContent('Customer Dimension');
   });
 
-  it('shows no placeholder when no asset realizes the concept', () => {
+  it('leaves the section out when nothing realizes the concept and it cannot be edited', () => {
     render(<OntologyConceptRealization realizations={[]} />);
+
+    expect(
+      screen.queryByTestId('ontology-realizations')
+    ).not.toBeInTheDocument();
+  });
+
+  it('still offers to add the first realization while editing', () => {
+    render(
+      <OntologyConceptRealization
+        isEditMode
+        realizations={[]}
+        termId="term-1"
+      />
+    );
 
     expect(screen.getByTestId('ontology-realizations')).toHaveTextContent(
       'label.realized-in'
     );
-    expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
+    expect(screen.getByTestId('add-realization')).toBeInTheDocument();
   });
 
   it('treats a realization with no explicit role as the primary store', () => {
