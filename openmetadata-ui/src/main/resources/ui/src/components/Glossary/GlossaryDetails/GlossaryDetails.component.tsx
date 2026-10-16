@@ -150,7 +150,7 @@ const GlossaryDetails = ({
           />
         ),
         key: EntityTabs.TERMS,
-        children: <GenericTab type={PageType.Glossary} variant="flat" />,
+        children: <GenericTab type={PageType.Glossary} />,
       },
       ...(!isVersionView
         ? [

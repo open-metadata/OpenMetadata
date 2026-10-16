@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  Card,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -118,13 +119,10 @@ const HealthCheckCard = ({ name, validation }: HealthCheckCardProps) => {
   const logs = passed ? undefined : validation.message;
 
   return (
-    <Box
-      className={classNames(
-        'tw:overflow-hidden tw:rounded-[10px] tw:border',
-        status.border
-      )}
+    <Card
+      className={classNames('tw:flex tw:flex-col', status.border)}
       data-testid={name}
-      direction="col">
+      variant="muted">
       <Box
         align="center"
         className={classNames('tw:px-5 tw:py-3', status.background)}
@@ -170,7 +168,7 @@ const HealthCheckCard = ({ name, validation }: HealthCheckCardProps) => {
         </Typography>
         {logs && <HealthCheckLogs logs={logs} />}
       </Box>
-    </Box>
+    </Card>
   );
 };
 

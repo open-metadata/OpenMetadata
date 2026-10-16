@@ -293,6 +293,25 @@ def test_classes_no_lane_runs_are_read_from_the_code_and_the_pom() -> None:
     assert by_name["TableResourceIT"] not in REPO.never_run
 
 
+def test_an_abstract_unit_test_runs_through_the_classes_that_extend_it() -> None:
+    # Surefire runs SessionStoreContractTest's tests only inside RedisSessionStoreTest and writes
+    # no report under its name, so selecting it by name failed a step whose tests all passed.
+    session = f"{SERVICE}/security/session/UserSession.java"
+    contract = "openmetadata-service/src/test/java/org/openmetadata/service/security/session/SessionStoreContractTest.java"
+
+    _, uses_it = plan_for(session)
+    _, changes_it = plan_for(contract)
+
+    for plan in (uses_it, changes_it):
+        units = plan.unit_tests["openmetadata-service"]
+        assert "SessionStoreContractTest" not in units
+        assert "RedisSessionStoreTest" in units
+    assert "SessionServiceTest" in uses_it.unit_tests["openmetadata-service"]
+    assert changes_it.unit_tests["openmetadata-service"]["RedisSessionStoreTest"] == {
+        "extends SessionStoreContractTest, which changed"
+    }
+
+
 def test_a_change_runs_the_tests_that_name_it_and_its_callers_tests() -> None:
     # The review case: TestCaseDeleteResilienceIT guards TableRepository's delete cleanup
     # from outside the databases area, and the old map missed it.
@@ -648,6 +667,13 @@ def test_steps_a_ci_run_covers_are_not_run_locally(
     assert by_lane["rdf"].ci_url == ""
     assert any("-DintegrationTests.lane=rdf" in argv for argv in ran)
     assert not any("-DintegrationTests.lane=parallel" in argv for argv in ran)
+    # The covered lane's classes ran in CI, so none of them lacks a local report.
+    assert by_lane["parallel"].missing_classes == []
+    assert by_lane["rdf"].missing_classes
+    block = PLANNER.render_block(
+        plan, results, "0123456789abcdef", "origin/main", False
+    )
+    assert "(mysql-elasticsearch · parallel)" not in block
 
 
 def test_commands_in_the_pr_abbreviate_long_class_lists() -> None:
@@ -895,11 +921,170 @@ def test_class_lists_past_the_budget_are_cut_to_counts() -> None:
     )
 
     assert len(text) < PLANNER.CLASS_LIST_BUDGET + 2_000
-    assert (
-        "400 classes, 8000 tests executed (too many to list in the PR description)"
-        in text
-    )
+    assert "400 classes, 8000 tests executed (too many to list)" in text
     assert "SomeLongEntityNameResource399IT" in text
+
+
+def test_the_pr_description_gets_a_summary_and_a_comment_gets_the_details() -> None:
+    names = [f"C{i}IT" for i in range(15)]
+    command = PLANNER.Command(
+        "integration", "mysql-elasticsearch · parallel", ["mvn", "verify"], [], names
+    )
+    result = PLANNER.StepResult(
+        command,
+        exit_code=1,
+        minutes=2.0,
+        tests=30,
+        failures=15,
+        classes_run=set(names),
+        failed_tests=[f"{name}#test" for name in names],
+        class_counts={name: [2, 0, 1] for name in names},
+    )
+    plan = PLANNER.Plan(
+        [],
+        commands=[command],
+        triggers={"area tables": {TABLE_REPOSITORY}},
+        not_run_locally={"it/SimpleReindexTriggerUIIT.java": "nightly"},
+    )
+    url = "https://github.com/o/r/pull/7#issuecomment-2"
+
+    summary = PLANNER.render_block(
+        plan, [result], "0123456789abcdef", "origin/main", False, url
+    )
+    details = PLANNER.render_details(
+        plan, [result], "0123456789abcdef", "origin/main", False
+    )
+
+    assert f"[Details]({url})" in summary
+    assert "`C9IT#test` and 5 more in the details" in summary
+    assert "C10IT#test" not in summary
+    assert "- Impacted, not run locally: 1 class (listed in the details)" in summary
+    for section in ("Tests run locally", "Why these tests", "Commands", "<details>"):
+        assert section not in summary
+    assert details.startswith(PLANNER.DETAILS_MARKER)
+    assert "`C14IT#test`" in details
+    for section in (
+        "Tests run locally",
+        "Why these tests",
+        "Impacted, not run locally (1)",
+        "Commands",
+    ):
+        assert section in details
+
+
+def test_the_details_comment_is_posted_once_then_edited_in_place(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    marker = PLANNER.DETAILS_MARKER
+    comments = [{"id": 1, "login": "teammate", "body": f"{marker}\ntheirs"}]
+
+    def gh(argv, **kwargs):
+        args = argv[1:]
+        if args == ["api", "user", "--jq", ".login"]:
+            out = "me\n"
+        elif args[:2] == ["api", "--paginate"]:
+            assert args[2] == "repos/o/r/issues/7/comments"
+            jq = args[args.index("--jq") + 1]
+            assert '.user.login == "me"' in jq and marker in jq
+            out = "".join(
+                f"{c['id']}\n"
+                for c in comments
+                if c["login"] == "me" and marker in c["body"]
+            )
+        else:
+            method, endpoint = args[2], args[3]
+            body = json.loads(kwargs["input"])["body"]
+            if method == "POST":
+                assert endpoint == "repos/o/r/issues/7/comments"
+                comments.append({"id": len(comments) + 1, "login": "me", "body": body})
+                comment_id = len(comments)
+            else:
+                comment_id = int(endpoint.rsplit("/", 1)[1])
+                assert endpoint == f"repos/o/r/issues/comments/{comment_id}"
+                next(c for c in comments if c["id"] == comment_id)["body"] = body
+            out = f"https://github.com/o/r/pull/7#issuecomment-{comment_id}\n"
+        return subprocess.CompletedProcess(argv, 0, stdout=out, stderr="")
+
+    monkeypatch.setattr(PLANNER.subprocess, "run", gh)
+    pr = {"number": 7, "url": "https://github.com/o/r/pull/7", "body": ""}
+
+    first = PLANNER.upsert_details_comment(REPO_ROOT, pr, f"{marker}\nrun 1\n")
+    second = PLANNER.upsert_details_comment(REPO_ROOT, pr, f"{marker}\nrun 2\n")
+
+    assert first == second == "https://github.com/o/r/pull/7#issuecomment-2"
+    assert [c["body"] for c in comments] == [
+        f"{marker}\ntheirs",
+        f"{marker}\nrun 2\n",
+    ]
+    # GitHub rejects a comment over its limit; the summary then goes without a link.
+    too_long = "x" * (PLANNER.GITHUB_BODY_LIMIT + 1)
+    assert PLANNER.upsert_details_comment(REPO_ROOT, pr, too_long) == ""
+    assert len(comments) == 2
+
+
+def test_update_pr_posts_the_details_and_links_them_from_the_summary(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    changed = tmp_path / "changed.txt"
+    changed.write_text(f"{IT_TESTS}/TableResourceIT.java\n")
+    head = PLANNER.git(REPO_ROOT, "rev-parse", "HEAD")
+    workflow = IMPACT_MAP["maven"]["ciWorkflows"]["mysql-elasticsearch"]
+    run = {
+        "headSha": head,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://ci/1",
+        "workflowName": workflow["workflow"],
+        "jobs": [
+            {"name": job, "conclusion": "success"}
+            for jobs in workflow["laneJobs"].values()
+            for job in jobs
+        ],
+    }
+    pr = {"number": 7, "url": "https://github.com/o/r/pull/7"}
+    pr["body"] = "#### Backend integration tests\n"
+    posted: list[str] = []
+    edited: list[str] = []
+    real_run = subprocess.run
+
+    def gh(argv, **kwargs):
+        if argv[0] != "gh":
+            return real_run(argv, **kwargs)
+        args = argv[1:]
+        out = ""
+        if args[:2] == ["run", "view"]:
+            out = json.dumps(run)
+        elif args[:2] == ["pr", "view"]:
+            out = json.dumps(pr)
+        elif args == ["api", "user", "--jq", ".login"]:
+            out = "me\n"
+        elif args[:2] == ["api", "--method"]:
+            posted.append(json.loads(kwargs["input"])["body"])
+            out = "https://github.com/o/r/pull/7#issuecomment-1\n"
+        elif args[:2] == ["pr", "edit"]:
+            edited.append(Path(args[args.index("--body-file") + 1]).read_text())
+        return subprocess.CompletedProcess(argv, 0, stdout=out, stderr="")
+
+    monkeypatch.setattr(PLANNER.subprocess, "run", gh)
+    monkeypatch.setattr(PLANNER, "RESULTS_MARKDOWN", str(tmp_path / "summary.md"))
+    monkeypatch.setattr(PLANNER, "DETAILS_MARKDOWN", str(tmp_path / "details.md"))
+
+    exit_code = PLANNER.main(
+        ["--changed-files", str(changed), "--run", "--update-pr", "--ci-run", "1"]
+    )
+
+    summary = (tmp_path / "summary.md").read_text()
+    details = (tmp_path / "details.md").read_text()
+    assert exit_code == 0
+    assert posted == [details]
+    assert "every lane class, in [this CI run](https://ci/1)" in details
+    assert "[Details](https://github.com/o/r/pull/7#issuecomment-1)" in summary
+    assert "passed in [CI](https://ci/1)" in summary
+    assert "Tests run locally" not in summary
+    assert "Selected but produced no report" not in summary
+    [body] = edited
+    assert body.startswith("#### Backend integration tests")
+    assert summary.strip() in body
 
 
 def test_a_step_that_ran_no_tests_is_not_a_pass() -> None:
@@ -987,7 +1172,7 @@ def test_a_nested_class_several_its_inherit_does_not_shrink_the_step_totals(
     )
     note = "\n".join(PLANNER.render_tests_run([result]))
     assert "keep only the last run of a nested class" in note
-    assert "The step totals above are Maven's own counts._" in note
+    assert "The summary's step totals are Maven's own counts._" in note
 
 
 def test_generated_code_older_than_a_change_to_its_inputs_is_stale(

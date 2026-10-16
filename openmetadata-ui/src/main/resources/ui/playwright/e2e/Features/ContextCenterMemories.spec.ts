@@ -28,7 +28,7 @@ import {
   MEMORIES_API,
   MEMORIES_URL,
   navigateToMemories,
-  patchMemory,
+  recordMemoryOutcomes,
   searchAndGetMemoryRow,
 } from '../../utils/ContextCenterUtil';
 import {
@@ -74,7 +74,10 @@ test.describe(
     // 11 memories forces 2 pages (page size = 10)
     const PAGINATION_COUNT = 11;
 
-    test.beforeAll(async ({ browser }) => {
+    test.beforeAll(async ({ browser }, testInfo) => {
+      // Seeds a table, ~16 memories and two search-index waits; give the hook the same
+      // headroom as the test.slow() tests it serves, or a slow server fails every test here.
+      testInfo.setTimeout(testInfo.timeout * 3);
       globalMemoryIds.length = 0;
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -99,16 +102,20 @@ test.describe(
       await dataConsumerAfterAction();
       await dataConsumerSetupPage.close();
 
-      for (let i = 0; i < PAGINATION_COUNT; i++) {
-        const data = await createMemoryViaApi(apiContext, {
-          name: `cc_memory_pg_${uuid()}`,
-          title: `Pagination Memory ${String(i + 1).padStart(2, '0')}`,
-          question: `Pagination question ${i + 1}`,
-          answer: `Pagination answer ${i + 1}`,
-          shareConfig: { visibility: 'Shared' },
-        });
-        globalMemoryIds.push(data.id);
-      }
+      // Independent creates: run them together so the hook stays inside its timeout on a
+      // slow server instead of paying for 11 sequential round trips.
+      const paginationMemories = await Promise.all(
+        Array.from({ length: PAGINATION_COUNT }, (_, i) =>
+          createMemoryViaApi(apiContext, {
+            name: `cc_memory_pg_${uuid()}`,
+            title: `Pagination Memory ${String(i + 1).padStart(2, '0')}`,
+            question: `Pagination question ${i + 1}`,
+            answer: `Pagination answer ${i + 1}`,
+            shareConfig: { visibility: 'Shared' },
+          })
+        )
+      );
+      globalMemoryIds.push(...paginationMemories.map((memory) => memory.id));
 
       // ── Second author — attributed to the dataConsumer fixture via `owners`,
       // no separate login needed since the author filter/"Created by Me" tab
@@ -980,7 +987,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      test('selecting "Most Used" actually reorders rows by usageCount', async ({
+      test('selecting "Most Used" actually reorders rows by the answers a memory was applied to', async ({
         browser,
         page,
       }) => {
@@ -989,16 +996,10 @@ test.describe(
         const { apiContext, afterAction } = await createNewPage(browser);
         // Make the entity-visibility memory the clear most-used memory in
         // the whole fixture set, so it must render first once sorted.
-        // usageCount/lastUsedAt are excluded from ContextMemoryRepository's
-        // change tracking (server-side telemetry fields), so a patch that
-        // touches ONLY usageCount is silently dropped before it's persisted —
-        // also flipping `pinned` (a tracked field) forces the patch to
-        // persist, carrying usageCount along with it.
-        await patchMemory(apiContext, entityMemoryId, [
-          { op: 'add', path: '/usageCount', value: 999999 },
-          { op: 'add', path: '/lastUsedAt', value: Date.now() },
-          { op: 'add', path: '/pinned', value: true },
-        ]);
+        await recordMemoryOutcomes(apiContext, entityMemoryId, {
+          appliedCount: 999999,
+          lastAppliedAt: Date.now(),
+        });
         await afterAction();
 
         await navigateToMemories(page);
@@ -1008,7 +1009,7 @@ test.describe(
           page,
           (res) =>
             res.url().includes(MEMORIES_API) &&
-            res.url().includes('sortBy=usageCount') &&
+            res.url().includes('sortBy=appliedCount') &&
             res.request().method() === 'GET',
           200
         );
@@ -1025,7 +1026,7 @@ test.describe(
           rows.first().getByText('Cited 999999 times')
         ).toBeVisible();
 
-        // lastUsedAt is rendered next to the usage count as
+        // lastAppliedAt is rendered next to the count as
         // "Cited N times · Last {relative-time}" — assert the "Last" label
         // is present rather than a specific relative-time string, since the
         // exact rendered value depends on wall-clock time between the patch
@@ -1187,6 +1188,8 @@ test.describe(
       test('view modal switches to edit mode and saves changes', async ({
         page,
       }) => {
+        test.slow();
+
         await navigateToMemories(page);
 
         const row = await searchAndGetMemoryRow(
@@ -1222,6 +1225,8 @@ test.describe(
       test('cancel button in edit mode closes the modal without saving', async ({
         page,
       }) => {
+        test.slow();
+
         await navigateToMemories(page);
 
         const row = await searchAndGetMemoryRow(
@@ -1467,53 +1472,29 @@ test.describe(
           hasText: assetName,
         });
 
-        // Retry the open→search→click→close cycle until the asset chip appears.
-        // The picker popover can close on a scroll before the click lands, so the
-        // whole sequence is wrapped in toPass.
+        // Retry the open→search→click→close cycle until the asset chip appears: the picker
+        // popover can close on a scroll before the click lands. Each step waits on what the
+        // picker shows, not on a search request — reopening can reuse the results it already
+        // has — and allows for a slow search, so one slow response cannot spend the whole budget.
+        const picker = page.getByTestId('picker-popover');
         await expect(async () => {
-          if (await assetChip.isVisible()) return;
-
-          const initialSearchRes = waitForResponseWithStatus(
-            page,
-            (res) =>
-              res.request().method() === 'GET' &&
-              new URL(res.url()).pathname === '/api/v1/search/query',
-            200
-          );
-          await linkBtn.click();
-          await initialSearchRes;
-
-          const assetSearch = page
-            .getByTestId('picker-popover')
-            .getByRole('textbox');
-          await expect(assetSearch).toBeVisible({ timeout: 5000 });
-
-          const searchRes = waitForResponseWithStatus(
-            page,
-            (res) => {
-              const url = new URL(res.url());
-
-              return (
-                res.request().method() === 'GET' &&
-                url.pathname === '/api/v1/search/query' &&
-                url.searchParams.get('q') === `*${table.name}*`
-              );
-            },
-            200
-          );
-          await assetSearch.fill(table.name);
-          await searchRes;
-
-          const option = page
-            .getByTestId('picker-popover')
-            .getByRole('option', { name: assetName });
-          await option.click({ timeout: 3000 });
-
+          if (await assetChip.isVisible()) {
+            return;
+          }
+          if (!(await picker.isVisible())) {
+            await linkBtn.click();
+          }
+          await picker
+            .getByRole('textbox')
+            .fill(table.name, { timeout: 10_000 });
+          await picker
+            .getByRole('option', { name: assetName })
+            .click({ timeout: 20_000 });
           await page.keyboard.press('Escape');
 
           // Failing assertion drives the retry
-          await expect(assetChip).toBeVisible({ timeout: 3000 });
-        }).toPass({ timeout: 20000 });
+          await expect(assetChip).toBeVisible({ timeout: 5_000 });
+        }).toPass({ timeout: 90_000 });
 
         const updateResPromise = waitForResponseWithStatus(
           page,
@@ -2161,6 +2142,8 @@ test.describe(
       test('delete button inside the edit modal deletes the memory', async ({
         page,
       }) => {
+        test.slow();
+
         await navigateToMemories(page);
 
         const row = await searchAndGetMemoryRow(

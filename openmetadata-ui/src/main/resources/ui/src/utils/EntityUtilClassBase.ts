@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import type { ItemType } from 'antd/lib/menu/hooks/useItems';
 import type { Operation } from 'fast-json-patch';
 import { capitalize } from 'lodash';
 import type { FC } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
+import { ManageMenuItem as ItemType } from '../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { type OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';

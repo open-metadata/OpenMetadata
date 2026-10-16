@@ -142,6 +142,12 @@ export const DEFAULT_MEMORY_STATUSES = [
   ContextMemoryStatus.Unprocessed,
 ];
 
+// Draft holds a memory for a person: one whose supporting query was deleted has no review task.
+export const DEFAULT_MEMORY_LIST_STATUSES = [
+  ...DEFAULT_MEMORY_STATUSES,
+  ContextMemoryStatus.Draft,
+];
+
 export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
   [ContextMemoryStatus.Unprocessed]: 'label.unprocessed',
   [ContextMemoryStatus.Approved]: 'label.approved',
@@ -156,6 +162,7 @@ export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
 export const FILTER_TABS = [
   { id: 'all', label: 'label.all' },
   { id: 'created-by-me', label: 'label.created-by-me' },
+  { id: 'needs-review', label: 'label.needs-review' },
 ] as const;
 
 // utility-gray-blue-50 resolves to gray-blue-950 in dark, which reads as a

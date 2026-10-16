@@ -382,6 +382,98 @@ ALTER TABLE announcement_entity
   GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Notice')) STORED;
 CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);
 
+-- Approval-gated change requests: request aggregate, immutable revisions, reviewer decisions and
+-- the publications of each request. activeInterceptKey is non-null only while an intercepted
+-- request is Pending, so the unique index allows at most one active request per (entity, requester).
+CREATE TABLE IF NOT EXISTS change_request (
+  id VARCHAR(36) NOT NULL,
+  entityType VARCHAR(256) NOT NULL,
+  entityId VARCHAR(36) NOT NULL,
+  requestedBy VARCHAR(256) NOT NULL,
+  workflowDefinitionId VARCHAR(36) NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  activeInterceptKey VARCHAR(300) DEFAULT NULL,
+  taskId VARCHAR(36) DEFAULT NULL,
+  deliveryStatus VARCHAR(32) NOT NULL,
+  deliveryAttempts INTEGER NOT NULL DEFAULT 0,
+  nextDeliveryAt BIGINT NOT NULL,
+  claimToken VARCHAR(36) DEFAULT NULL,
+  leaseUntil BIGINT DEFAULT NULL,
+  updatedAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS change_request_active_intercept_key ON change_request (activeInterceptKey);
+CREATE INDEX IF NOT EXISTS change_request_entity_status_index ON change_request (entityId, status);
+CREATE INDEX IF NOT EXISTS change_request_requester_status_index ON change_request (requestedBy, status);
+CREATE INDEX IF NOT EXISTS change_request_workflow_status_index ON change_request (workflowDefinitionId, status);
+CREATE INDEX IF NOT EXISTS change_request_delivery_index ON change_request (deliveryStatus, nextDeliveryAt);
+CREATE INDEX IF NOT EXISTS change_request_task_index ON change_request (taskId);
+
+CREATE TABLE IF NOT EXISTS change_revision (
+  id VARCHAR(36) NOT NULL,
+  changeRequestId VARCHAR(36) NOT NULL,
+  revisionNumber INTEGER NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS change_revision_request_number_key ON change_revision (changeRequestId, revisionNumber);
+
+CREATE TABLE IF NOT EXISTS approval_decision (
+  id VARCHAR(36) NOT NULL,
+  changeRequestId VARCHAR(36) NOT NULL,
+  revisionId VARCHAR(36) NOT NULL,
+  decidedBy VARCHAR(256) NOT NULL,
+  decision VARCHAR(32) NOT NULL,
+  decidedAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS approval_decision_revision_index ON approval_decision (revisionId, decidedBy);
+CREATE INDEX IF NOT EXISTS approval_decision_request_index ON approval_decision (changeRequestId);
+
+CREATE TABLE IF NOT EXISTS change_application (
+  id VARCHAR(36) NOT NULL,
+  changeRequestId VARCHAR(36) NOT NULL,
+  revisionId VARCHAR(36) NOT NULL,
+  appliedAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS change_application_request_index ON change_application (changeRequestId);
+CREATE INDEX IF NOT EXISTS change_application_revision_index ON change_application (revisionId);
+
+-- Ordered history of every change request step (submitted, revised, approved, applied, ended).
+CREATE TABLE IF NOT EXISTS change_lifecycle_event (
+  id VARCHAR(36) NOT NULL,
+  changeRequestId VARCHAR(36) NOT NULL,
+  eventSequence INTEGER NOT NULL,
+  eventType VARCHAR(32) NOT NULL,
+  eventAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS change_lifecycle_event_request_sequence_key ON change_lifecycle_event (changeRequestId, eventSequence);
+
+-- Single source of truth for entityReference / entityReferenceList custom-property values, one row
+-- per referenced entity. columnKey is '' for entity-level values, else the column's FQN hash. A hard
+-- delete removes the rows pointing at the deleted entity through the targetId index.
+CREATE TABLE IF NOT EXISTS custom_property_reference (
+    id VARCHAR(36) NOT NULL,
+    columnKey VARCHAR(512) NOT NULL DEFAULT '',
+    propertyName VARCHAR(256) NOT NULL,
+    targetId VARCHAR(36) NOT NULL,
+    holderType VARCHAR(256) NOT NULL,
+    targetType VARCHAR(256) NOT NULL,
+    position INT NOT NULL,
+    json JSONB NOT NULL,
+    PRIMARY KEY (id, columnKey, propertyName, targetId)
+);
+CREATE INDEX IF NOT EXISTS custom_property_reference_target ON custom_property_reference (targetId);
+CREATE INDEX IF NOT EXISTS custom_property_reference_property
+  ON custom_property_reference (holderType, propertyName);
+
 -- Allow Data Consumer to run agent SPARQL queries by default (#34231). Seed data never updates a policy
 -- that already exists, so existing installs get the rule here. The rule is only added while an allow
 -- rule of the policy still lists ViewAll, since the grant is acceptable only where Data Consumers can
@@ -401,6 +493,38 @@ SET json = jsonb_set(
 WHERE json->>'name' = 'DataConsumerPolicy'
   AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'))
   AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('ViewAll')));
+
+-- Name the MCP knowledge-graph tools in the description of the DataConsumerPolicy-ExecuteSparqlQuery-Rule that the statement
+-- above adds (#34270). That INSERT must stay exactly as it was first shipped, because the runner
+-- tracks statements by a hash of their text: an edited INSERT would run again where 2.1.0 is already
+-- recorded, and its only guard is "the rule does not exist", so it would add back a rule an
+-- administrator deleted on purpose. This is a separate, appended statement that changes only the
+-- description, and only where it still reads exactly as the old shipped text: a deleted rule, a
+-- customised description and a fresh install (seeded with the new text) are left alone.
+UPDATE policy_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{rules}',
+    (
+        SELECT jsonb_agg(
+            CASE
+                WHEN existing.rule->>'name' = 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'
+                     AND existing.rule->>'description' = 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.'
+                THEN jsonb_set(existing.rule, '{description}', to_jsonb('Allow authenticated users and bots to run read-only SPARQL queries through the agent SPARQL endpoint and the MCP knowledge-graph tools (sparql_query, entity_neighborhood, find_by_tag, and ontology_describe with a resource). Results are not filtered by asset or domain policies, so remove this rule if viewing is restricted through custom policies.'::text))
+                ELSE existing.rule
+            END
+            ORDER BY existing.position
+        )
+        FROM jsonb_array_elements(json->'rules') WITH ORDINALITY AS existing(rule, position)
+    )
+)
+WHERE json->>'name' = 'DataConsumerPolicy'
+  AND EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(json->'rules') AS current_rule(rule)
+        WHERE current_rule.rule->>'name' = 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'
+          AND current_rule.rule->>'description' = 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.'
+      );
 
 -- Allow Data Consumer to create context memories by default (ai-platform#1580). Seed data never
 -- updates a policy that already exists, so existing installs get the rule here. A memory is knowledge
@@ -538,6 +662,13 @@ ALTER TABLE announcement_entity DROP COLUMN IF EXISTS status;
 UPDATE announcement_entity
 SET json = json - 'status'
 WHERE json ->> 'status' IS NOT NULL;
+
+-- Alert jobs are stored with the runtime's own job class, whatever consumer the alert names, so a
+-- stored job never names a consumer class. A job a previous release stored under a consumer's
+-- class is moved to it here; the alert reconciler would otherwise do it, one round at a time.
+UPDATE QRTZ_JOB_DETAILS
+SET JOB_CLASS_NAME = 'org.openmetadata.service.events.consumer.ConsumerJob'
+WHERE SCHED_NAME = 'OMEventSubScheduler' AND JOB_GROUP = 'OMAlertJobGroup';
 
 -- Reasoning results record the serving dataset they read. Every promotion assigns a new generation,
 -- even when it reuses a physical dataset name, so a result computed before it never passes for

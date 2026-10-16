@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from 'antd';
+import { Badge } from '@openmetadata/ui-core-components';
+
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import { LeftSidebarItemProps } from './LeftSidebar.interface';
@@ -33,10 +34,11 @@ const LeftSidebarItem = ({
       {isBeta && (
         <Badge
           className="service-beta-tag"
-          count={t('label.beta')}
-          size="small"
-          style={{ marginLeft: 8 }}
-        />
+          color="brand"
+          size="sm"
+          style={{ marginLeft: 8 }}>
+          {t('label.beta')}
+        </Badge>
       )}
     </NavLink>
   ) : (

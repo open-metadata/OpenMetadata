@@ -13,11 +13,12 @@
 
 import {
   Box,
+  Checkbox,
   Divider,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Checkbox, Select } from 'antd';
+import { Select } from 'antd';
 import { capitalize } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
@@ -48,13 +49,14 @@ const FilterPattern = ({
         </Grid.Item>
         <Grid.Item className="layout-column" span={16}>
           <Checkbox
-            checked={checked}
+            aria-label={`${type} ${t('label.filter-pattern')}`}
             className="filter-pattern-checkbox"
             data-testid={`${type}-filter-pattern-checkbox`}
-            disabled={isDisabled}
             id={`root/${type}FilterPattern`}
+            isDisabled={isDisabled}
+            isSelected={checked}
             name={`root/${type}FilterPattern`}
-            onChange={(e) => handleChecked(e.target.checked)}
+            onChange={(e) => handleChecked(e)}
           />
         </Grid.Item>
       </Grid>

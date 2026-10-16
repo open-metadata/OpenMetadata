@@ -637,6 +637,27 @@ describe('SSOConfigurationForm', () => {
       return view;
     };
 
+    it('should leave the label, description and errors of an enum select to the field template', async () => {
+      await selectNewLdapConfiguration();
+
+      const select = screen.getByTestId(
+        'select-widget-root/authenticationConfiguration/ldapConfiguration/truststoreConfigType'
+      );
+
+      expect(screen.getAllByText('Trust Store Config Type')).toHaveLength(1);
+      // The template's <label htmlFor> and specs find the select by its field id.
+      expect(
+        document.getElementById(
+          'root/authenticationConfiguration/ldapConfiguration/truststoreConfigType'
+        )
+      ).toBe(within(select).getByRole('button'));
+      expect(
+        within(select).queryByText(
+          'Truststore Type e.g. TrustAll, HostName, JVMDefault, CustomTrustStore.'
+        )
+      ).not.toBeInTheDocument();
+    });
+
     const signInThroughTestLogin = async () => {
       fireEvent.click(screen.getByTestId('test-login-sso-configuration'));
       const form = await screen.findByTestId('sso-test-login-credentials-form');
@@ -2534,6 +2555,363 @@ describe('SSOConfigurationForm', () => {
         'sessionExpiry',
         7200
       );
+    });
+  });
+
+  describe('Provider-specific fields', () => {
+    const OIDC = 'authenticationConfiguration/oidcConfiguration';
+    const SAML = 'authenticationConfiguration/samlConfiguration';
+    const LDAP = 'authenticationConfiguration/ldapConfiguration';
+
+    const isRendered = (container: HTMLElement, path: string) =>
+      container.querySelector(`[id="root/${path}"]`) !== null;
+
+    const renderProviderForm = async (provider: AuthProvider) => {
+      const { container } = renderComponent({ selectedProvider: provider });
+      await screen.findByTestId('save-sso-configuration');
+
+      return container;
+    };
+
+    beforeEach(() => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+    });
+
+    it.each([AuthProvider.Google, AuthProvider.Auth0, AuthProvider.Okta])(
+      'should configure a new %s client as confidential, through the OIDC fields',
+      async (provider) => {
+        const container = await renderProviderForm(provider);
+
+        expect(
+          screen.getByRole('radio', { name: /confidential/i })
+        ).toBeChecked();
+
+        for (const path of [
+          'authenticationConfiguration/providerName',
+          'authenticationConfiguration/authority',
+          'authenticationConfiguration/jwtPrincipalClaims',
+          `${OIDC}/id`,
+          `${OIDC}/secret`,
+          `${OIDC}/scope`,
+          `${OIDC}/discoveryUri`,
+          `${OIDC}/callbackUrl`,
+        ]) {
+          expect([path, isRendered(container, path)]).toEqual([path, true]);
+        }
+
+        for (const path of [
+          'authenticationConfiguration/clientId',
+          'authenticationConfiguration/callbackUrl',
+          'authenticationConfiguration/publicKeyUrls',
+          'authenticationConfiguration/tokenValidationAlgorithm',
+          `${OIDC}/serverUrl`,
+          `${OIDC}/preferredJwsAlgorithm`,
+          `${OIDC}/responseType`,
+          LDAP,
+          SAML,
+        ]) {
+          expect([path, isRendered(container, path)]).toEqual([path, false]);
+        }
+      }
+    );
+
+    it.each([AuthProvider.Google, AuthProvider.Auth0, AuthProvider.Okta])(
+      'should ask a public %s client for its client ID, callback and public keys instead of OIDC credentials',
+      async (provider) => {
+        const container = await renderProviderForm(provider);
+
+        fireEvent.click(screen.getByRole('radio', { name: /public/i }));
+
+        expect(screen.getByRole('radio', { name: /public/i })).toBeChecked();
+        expect(screen.getAllByRole('radio')).toHaveLength(2);
+
+        for (const path of [
+          'authenticationConfiguration/clientId',
+          'authenticationConfiguration/callbackUrl',
+          'authenticationConfiguration/authority',
+          'authenticationConfiguration/publicKeyUrls',
+        ]) {
+          expect([path, isRendered(container, path)]).toEqual([path, true]);
+        }
+
+        expect(
+          container.querySelector(`[id^="root/${OIDC}"]`)
+        ).not.toBeInTheDocument();
+        expect(
+          isRendered(container, 'authenticationConfiguration/secret')
+        ).toBe(false);
+        expect(
+          isRendered(
+            container,
+            'authenticationConfiguration/tokenValidationAlgorithm'
+          )
+        ).toBe(false);
+      }
+    );
+
+    it.each([
+      [AuthProvider.Google, false, false],
+      [AuthProvider.Auth0, false, false],
+      [AuthProvider.Okta, true, false],
+      [AuthProvider.Azure, false, true],
+    ])(
+      'should match the %s OIDC fields to what the provider supports (client auth method: %s, tenant: %s)',
+      async (provider, hasClientAuthMethod, hasTenant) => {
+        const container = await renderProviderForm(provider);
+
+        expect(
+          isRendered(container, `${OIDC}/clientAuthenticationMethod`)
+        ).toBe(hasClientAuthMethod);
+        expect(isRendered(container, `${OIDC}/tenant`)).toBe(hasTenant);
+      }
+    );
+
+    it.each([
+      AuthProvider.Google,
+      AuthProvider.Auth0,
+      AuthProvider.Okta,
+      AuthProvider.Azure,
+    ])(
+      'should show the %s OIDC callback URL as a generated, read-only value',
+      async (provider) => {
+        const container = await renderProviderForm(provider);
+
+        expect(
+          container.querySelector(`[id="root/${OIDC}/callbackUrl"]`)
+        ).toHaveAttribute('readonly');
+        expect(
+          container.querySelector(`[id="root/${OIDC}/callbackUrl__help"]`)
+        ).toHaveTextContent(/auto-generated callback url/i);
+      }
+    );
+
+    it('should show the SAML IdP and SP fields, with the generated SP values read-only', async () => {
+      const container = await renderProviderForm(AuthProvider.Saml);
+
+      for (const path of [
+        `${SAML}/idp/entityId`,
+        `${SAML}/idp/ssoLoginUrl`,
+        `${SAML}/idp/idpX509Certificate`,
+        `${SAML}/idp/nameId`,
+        `${SAML}/sp/spX509Certificate`,
+        `${SAML}/sp/spPrivateKey`,
+        `${SAML}/security/strictMode`,
+        `${SAML}/debugMode`,
+      ]) {
+        expect([path, isRendered(container, path)]).toEqual([path, true]);
+      }
+
+      expect(
+        container.querySelector(`[id="root/${SAML}/sp/entityId"]`)
+      ).toHaveAttribute('readonly');
+      expect(
+        container.querySelector(`[id="root/${SAML}/sp/entityId__help"]`)
+      ).toHaveTextContent(/auto-generated service provider entity id/i);
+      expect(
+        container.querySelector(`[id="root/${SAML}/sp/acs"]`)
+      ).toHaveAttribute('readonly');
+      expect(
+        container.querySelector(`[id="root/${SAML}/sp/acs__help"]`)
+      ).toHaveTextContent(/auto-generated assertion consumer service url/i);
+
+      for (const path of [
+        `${SAML}/sp/callback`,
+        'authenticationConfiguration/clientId',
+        'authenticationConfiguration/callbackUrl',
+        'authenticationConfiguration/publicKeyUrls',
+        'authenticationConfiguration/jwtPrincipalClaims',
+        'authenticationConfiguration/tokenValidationAlgorithm',
+        'authorizerConfiguration/useRolesFromProvider',
+        'authorizerConfiguration/allowedEmailRegistrationDomains',
+        OIDC,
+        LDAP,
+      ]) {
+        expect([path, isRendered(container, path)]).toEqual([path, false]);
+      }
+
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    });
+
+    it('should show the LDAP connection fields and role mapping, without OIDC or JWT claim fields', async () => {
+      const container = await renderProviderForm(AuthProvider.LDAP);
+
+      for (const path of [
+        `${LDAP}/host`,
+        `${LDAP}/port`,
+        `${LDAP}/dnAdminPrincipal`,
+        `${LDAP}/dnAdminPassword`,
+        `${LDAP}/userBaseDN`,
+        `${LDAP}/groupBaseDN`,
+        `${LDAP}/mailAttributeName`,
+        `${LDAP}/authReassignRoles`,
+      ]) {
+        expect([path, isRendered(container, path)]).toEqual([path, true]);
+      }
+
+      expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+
+      for (const path of [
+        `${LDAP}/usernameAttributeName`,
+        'authenticationConfiguration/jwtPrincipalClaims',
+        'authenticationConfiguration/publicKeyUrls',
+        'authenticationConfiguration/tokenValidationAlgorithm',
+        'authorizerConfiguration/useRolesFromProvider',
+        'authorizerConfiguration/allowedEmailRegistrationDomains',
+        OIDC,
+        SAML,
+      ]) {
+        expect([path, isRendered(container, path)]).toEqual([path, false]);
+      }
+
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    });
+
+    it('should not offer LDAP role mapping to other providers', async () => {
+      await renderProviderForm(AuthProvider.Google);
+
+      expect(screen.queryByTestId('add-mapping-btn')).not.toBeInTheDocument();
+    });
+
+    it('should keep the OIDC advanced fields in an Advanced Config section that starts collapsed', async () => {
+      const container = await renderProviderForm(AuthProvider.Google);
+
+      const advancedConfig = container.querySelector(
+        '.sso-advanced-properties-collapse'
+      ) as HTMLElement;
+      const header = within(advancedConfig).getByRole('button', {
+        name: /label.advanced-config/,
+      });
+
+      for (const field of [
+        'useNonce',
+        'disablePkce',
+        'maxClockSkew',
+        'tokenValidity',
+        'maxAge',
+      ]) {
+        expect(
+          advancedConfig.querySelector(`[id="root/${OIDC}/${field}"]`)
+        ).toBeInTheDocument();
+      }
+
+      expect(header).toHaveAttribute('aria-expanded', 'false');
+
+      fireEvent.click(header);
+
+      expect(header).toHaveAttribute('aria-expanded', 'true');
+
+      fireEvent.click(header);
+
+      expect(header).toHaveAttribute('aria-expanded', 'false');
+    });
+  });
+
+  describe('SAML metadata upload', () => {
+    const IDP = 'authenticationConfiguration/samlConfiguration/idp';
+    const VALID_METADATA = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://sts.example.com/tenant/">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data>
+          <X509Certificate>MIIDGzCCAgOgAwIBAgIJAKoFLkqLEfB0</X509Certificate>
+        </X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://sso.example.com/tenant/saml2"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    // jsdom 20 implements neither DataTransfer nor Blob.text(), both of which the upload handler uses.
+    class FileListTransfer {
+      files: File[] = [];
+      items = { add: (file: File) => this.files.push(file) };
+    }
+
+    const xmlFile = (content: string, name: string) => {
+      const file = new File([content], name, { type: 'text/xml' });
+      Object.defineProperty(file, 'text', {
+        value: () => Promise.resolve(content),
+      });
+
+      return file;
+    };
+
+    const upload = (file: File) =>
+      fireEvent.change(screen.getByTestId('file-upload-input'), {
+        target: { files: [file] },
+      });
+
+    beforeAll(() => {
+      Object.defineProperty(window, 'DataTransfer', {
+        value: FileListTransfer,
+        configurable: true,
+      });
+    });
+
+    beforeEach(() => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+    });
+
+    it('should invite the admin to upload IdP metadata for a SAML provider', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Saml });
+
+      const dropZone = await screen.findByTestId('file-uploader');
+
+      expect(dropZone).toHaveTextContent(
+        'label.or-drag-and-drop-an-xml-file-here'
+      );
+      expect(dropZone).toHaveTextContent(
+        'message.upload-saml-metadata-xml-description'
+      );
+    });
+
+    it('should fill the IdP fields from valid metadata and clear them when the metadata cannot be parsed', async () => {
+      const { container } = renderComponent({
+        selectedProvider: AuthProvider.Saml,
+      });
+      await screen.findByTestId('file-uploader');
+
+      upload(xmlFile(VALID_METADATA, 'idp-metadata.xml'));
+
+      expect(
+        await screen.findByText('message.metadata-xml-file-parsed-success')
+      ).toBeInTheDocument();
+
+      await waitFor(() =>
+        expect(
+          container.querySelector(`[id="root/${IDP}/entityId"]`)
+        ).toHaveValue('https://sts.example.com/tenant/')
+      );
+
+      expect(
+        container.querySelector(`[id="root/${IDP}/ssoLoginUrl"]`)
+      ).toHaveValue('https://sso.example.com/tenant/saml2');
+      expect(
+        container.querySelector(`[id="root/${IDP}/idpX509Certificate"]`)
+      ).toHaveValue(
+        '-----BEGIN CERTIFICATE-----\nMIIDGzCCAgOgAwIBAgIJAKoFLkqLEfB0\n-----END CERTIFICATE-----'
+      );
+
+      fireEvent.click(screen.getByTestId('change-metadata-xml-btn'));
+      upload(xmlFile('This is not valid XML content &&&', 'broken.xml'));
+
+      expect(
+        await screen.findByText('message.metadata-xml-file-parsed-error')
+      ).toBeInTheDocument();
+
+      await waitFor(() =>
+        expect(
+          container.querySelector(`[id="root/${IDP}/entityId"]`)
+        ).toHaveValue('')
+      );
+
+      expect(
+        container.querySelector(`[id="root/${IDP}/ssoLoginUrl"]`)
+      ).toHaveValue('');
+      expect(
+        container.querySelector(`[id="root/${IDP}/idpX509Certificate"]`)
+      ).toHaveValue('');
     });
   });
 });

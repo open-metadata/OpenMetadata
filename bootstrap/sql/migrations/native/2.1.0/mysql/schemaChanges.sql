@@ -516,6 +516,97 @@ PREPARE announcement_type_index_stmt FROM @announcement_type_index_ddl;
 EXECUTE announcement_type_index_stmt;
 DEALLOCATE PREPARE announcement_type_index_stmt;
 
+-- Approval-gated change requests: request aggregate, immutable revisions, reviewer decisions and
+-- the publications of each request. activeInterceptKey is non-null only while an intercepted
+-- request is Pending, so the unique index allows at most one active request per (entity, requester).
+CREATE TABLE IF NOT EXISTS change_request (
+  id varchar(36) NOT NULL,
+  entityType varchar(256) NOT NULL,
+  entityId varchar(36) NOT NULL,
+  requestedBy varchar(256) NOT NULL,
+  workflowDefinitionId varchar(36) NOT NULL,
+  status varchar(32) NOT NULL,
+  activeInterceptKey varchar(300) DEFAULT NULL,
+  taskId varchar(36) DEFAULT NULL,
+  deliveryStatus varchar(32) NOT NULL,
+  deliveryAttempts int NOT NULL DEFAULT 0,
+  nextDeliveryAt bigint unsigned NOT NULL,
+  claimToken varchar(36) DEFAULT NULL,
+  leaseUntil bigint unsigned DEFAULT NULL,
+  updatedAt bigint unsigned NOT NULL,
+  json json NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY change_request_active_intercept_key (activeInterceptKey),
+  KEY change_request_entity_status_index (entityId, status),
+  KEY change_request_requester_status_index (requestedBy, status),
+  KEY change_request_workflow_status_index (workflowDefinitionId, status),
+  KEY change_request_delivery_index (deliveryStatus, nextDeliveryAt),
+  KEY change_request_task_index (taskId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS change_revision (
+  id varchar(36) NOT NULL,
+  changeRequestId varchar(36) NOT NULL,
+  revisionNumber int NOT NULL,
+  status varchar(32) NOT NULL,
+  json json NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY change_revision_request_number_key (changeRequestId, revisionNumber)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS approval_decision (
+  id varchar(36) NOT NULL,
+  changeRequestId varchar(36) NOT NULL,
+  revisionId varchar(36) NOT NULL,
+  decidedBy varchar(256) NOT NULL,
+  decision varchar(32) NOT NULL,
+  decidedAt bigint unsigned NOT NULL,
+  json json NOT NULL,
+  PRIMARY KEY (id),
+  KEY approval_decision_revision_index (revisionId, decidedBy),
+  KEY approval_decision_request_index (changeRequestId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS change_application (
+  id varchar(36) NOT NULL,
+  changeRequestId varchar(36) NOT NULL,
+  revisionId varchar(36) NOT NULL,
+  appliedAt bigint unsigned NOT NULL,
+  json json NOT NULL,
+  PRIMARY KEY (id),
+  KEY change_application_request_index (changeRequestId),
+  KEY change_application_revision_index (revisionId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Ordered history of every change request step (submitted, revised, approved, applied, ended).
+CREATE TABLE IF NOT EXISTS change_lifecycle_event (
+  id varchar(36) NOT NULL,
+  changeRequestId varchar(36) NOT NULL,
+  eventSequence int NOT NULL,
+  eventType varchar(32) NOT NULL,
+  eventAt bigint unsigned NOT NULL,
+  json json NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY change_lifecycle_event_request_sequence_key (changeRequestId, eventSequence)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Single source of truth for entityReference / entityReferenceList custom-property values, one row
+-- per referenced entity. columnKey is '' for entity-level values, else the column's FQN hash. A hard
+-- delete removes the rows pointing at the deleted entity through the targetId index.
+CREATE TABLE IF NOT EXISTS custom_property_reference (
+    id VARCHAR(36) NOT NULL,
+    columnKey VARCHAR(512) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+    propertyName VARCHAR(256) NOT NULL,
+    targetId VARCHAR(36) NOT NULL,
+    holderType VARCHAR(256) NOT NULL,
+    targetType VARCHAR(256) NOT NULL,
+    position INT NOT NULL,
+    json JSON NOT NULL,
+    PRIMARY KEY (id, columnKey, propertyName, targetId),
+    INDEX custom_property_reference_target (targetId),
+    INDEX custom_property_reference_property (holderType, propertyName)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- Allow Data Consumer to run agent SPARQL queries by default (#34231). Seed data never updates a policy
 -- that already exists, so existing installs get the rule here. The rule is only added while an allow
 -- rule of the policy still lists ViewAll, since the grant is acceptable only where Data Consumers can
@@ -535,6 +626,25 @@ SET json = JSON_ARRAY_APPEND(
 WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
   AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'), '$.rules')
   AND JSON_CONTAINS(json, JSON_OBJECT('effect', 'allow', 'operations', JSON_ARRAY('ViewAll')), '$.rules');
+
+-- Name the MCP knowledge-graph tools in the description of the DataConsumerPolicy-ExecuteSparqlQuery-Rule that the statement
+-- above adds (#34270). That INSERT must stay exactly as it was first shipped, because the runner
+-- tracks statements by a hash of their text: an edited INSERT would run again where 2.1.0 is already
+-- recorded, and its only guard is "the rule does not exist", so it would add back a rule an
+-- administrator deleted on purpose. This is a separate, appended statement that changes only the
+-- description, and only where it still reads exactly as the old shipped text: a deleted rule, a
+-- customised description and a fresh install (seeded with the new text) are left alone.
+UPDATE policy_entity
+SET json = JSON_REPLACE(
+    json,
+    REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule', NULL, '$.rules[*].name')), '.name', '.description'),
+    'Allow authenticated users and bots to run read-only SPARQL queries through the agent SPARQL endpoint and the MCP knowledge-graph tools (sparql_query, entity_neighborhood, find_by_tag, and ontology_describe with a resource). Results are not filtered by asset or domain policies, so remove this rule if viewing is restricted through custom policies.'
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
+  AND JSON_UNQUOTE(JSON_EXTRACT(
+        json,
+        REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule', NULL, '$.rules[*].name')), '.name', '.description')
+      )) = 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.';
 
 -- Allow Data Consumer to create context memories by default (ai-platform#1580). Seed data never
 -- updates a policy that already exists, so existing installs get the rule here. A memory is knowledge
@@ -717,6 +827,13 @@ DEALLOCATE PREPARE announcement_status_column_stmt;
 UPDATE announcement_entity
 SET json = JSON_REMOVE(json, '$.status')
 WHERE JSON_EXTRACT(json, '$.status') IS NOT NULL;
+
+-- Alert jobs are stored with the runtime's own job class, whatever consumer the alert names, so a
+-- stored job never names a consumer class. A job a previous release stored under a consumer's
+-- class is moved to it here; the alert reconciler would otherwise do it, one round at a time.
+UPDATE QRTZ_JOB_DETAILS
+SET JOB_CLASS_NAME = 'org.openmetadata.service.events.consumer.ConsumerJob'
+WHERE SCHED_NAME = 'OMEventSubScheduler' AND JOB_GROUP = 'OMAlertJobGroup';
 
 -- Reasoning results record the serving dataset they read. Every promotion assigns a new generation,
 -- even when it reuses a physical dataset name, so a result computed before it never passes for

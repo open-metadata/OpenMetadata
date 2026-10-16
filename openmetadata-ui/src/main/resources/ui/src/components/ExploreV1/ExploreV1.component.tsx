@@ -79,6 +79,7 @@ import {
 import searchClassBase from '../../utils/SearchClassBase';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
+import { DomainFilterChip } from '../common/DomainFilterChip/DomainFilterChip.component';
 import {
   CSV_JOBS_REFRESH_EVENT,
   markCsvJobOwned,
@@ -409,6 +410,7 @@ const ExploreFilterStatusRow = ({
             onRemoveBrowseLevel={handleRemoveBrowseLevel}
             onRemoveValue={handleRemoveQuickFilterValue}
           />
+          <DomainFilterChip className="tw:mt-2" />
         </div>
       )}
       {isElasticSearchIssue ? (
@@ -1288,9 +1290,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
               data-testid="sort-order-button"
               iconLeading={
                 isAscSortOrder ? (
-                  <IconAscending style={{ fontSize: '14px' }} {...sortProps} />
+                  <IconAscending {...sortProps} />
                 ) : (
-                  <IconDescending style={{ fontSize: '14px' }} {...sortProps} />
+                  <IconDescending {...sortProps} />
                 )
               }
               size="sm"
@@ -1316,7 +1318,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
               <Button
                 hideFocusOutline
                 color="tertiary"
-                iconTrailing={<ChevronDown size={14} />}
+                iconTrailing={ChevronDown}
                 size="sm">
                 {t('label.tool-plural')}
               </Button>

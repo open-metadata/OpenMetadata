@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Form, Input } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, pickBy } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -36,6 +36,8 @@ import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { AlertAiFormValidationErrors } from '../../components/observability/Alerts/AlertAiFormFields.interface';
+import { validateAlertAiForm } from '../../components/observability/Alerts/AlertAiFormFieldsValidationUtils';
 import {
   PAGE_SIZE_LARGE,
   ROUTES,
@@ -77,8 +79,8 @@ import {
 } from '../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import { toCapabilitiesInput } from '../../utils/Alerts/AlertSelectionUtil';
+import { getAlertSourceChanges } from '../../utils/Alerts/ClassicAlertForm.utils';
 import alertsClassBase from '../../utils/AlertsClassBase';
-import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -98,9 +100,15 @@ const NO_SOURCES: string[] = [];
 
 const AddNotificationPage = () => {
   const [form] = useForm<ModifiedCreateEventSubscription>();
+  const [ruleValidationErrors, setRuleValidationErrors] =
+    useState<AlertAiFormValidationErrors>({});
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { t } = useTranslation();
+  const getRuleValidationErrors = () =>
+    pickBy(validateAlertAiForm(form.getFieldsValue(true), t), (_, path) =>
+      path.startsWith('input.')
+    );
   const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
     useApplicationStore();
   const { getResourceLimit } = useLimitStore();
@@ -310,10 +318,7 @@ const AddNotificationPage = () => {
   if (isSystemProvider) {
     return (
       <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography
-          as="p"
-          className="tw-max-w-md"
-          style={{ marginBottom: '0' }}>
+        <Typography as="p" className="tw-max-w-md tw:mb-0">
           {t('message.system-alert-edit-message')}
         </Typography>
       </ErrorPlaceHolder>
@@ -331,8 +336,8 @@ const AddNotificationPage = () => {
           <Card className="steps-form-container">
             <Card.Content>
               <Grid
-                className="layout-row layout-grid"
-                style={{ ...getLayoutGutter(16, 16) }}>
+                className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+                rowGap="4">
                 <Grid.Item className="layout-column" span={24}>
                   <TitleBreadcrumb titleLinks={breadcrumb} />
                 </Grid.Item>
@@ -356,13 +361,16 @@ const AddNotificationPage = () => {
                         resources: alert?.filteringRules?.resources,
                       }}
                       validateMessages={VALIDATION_MESSAGES}
-                      onFinish={handleSave}>
+                      onFinish={handleSave}
+                      onFinishFailed={() =>
+                        setRuleValidationErrors(getRuleValidationErrors())
+                      }>
                       {isLoading ? (
                         <SkeletonParagraph animation={false} rows={8} />
                       ) : (
                         <Grid
-                          className="layout-row layout-grid"
-                          style={{ ...getLayoutGutter(20, 20) }}>
+                          className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5"
+                          rowGap="5">
                           <Grid.Item className="layout-column" span={24}>
                             <Form.Item
                               label={t('label.name')}
@@ -389,15 +397,30 @@ const AddNotificationPage = () => {
                               className="layout-row"
                               justify="center"
                               wrap="wrap">
-                              <Box
-                                className="layout-column tw:block"
-                                style={{
-                                  maxWidth: '100%',
-                                  flex: '0 0 100%',
-                                }}>
-                                <AlertFormSourceItem
-                                  filterResources={entityFunctions}
-                                />
+                              <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
+                                <Form.Item
+                                  className="m-b-0"
+                                  name="resources"
+                                  rules={[
+                                    {
+                                      required: true,
+                                      message: t('label.please-select-entity', {
+                                        entity: t('label.data-asset'),
+                                      }),
+                                    },
+                                  ]}>
+                                  <AlertFormSourceItem
+                                    filterResources={entityFunctions}
+                                    onChange={(next, previous) => {
+                                      setRuleValidationErrors({});
+                                      Object.entries(
+                                        getAlertSourceChanges(next, previous)
+                                      ).forEach(([key, value]) =>
+                                        form.setFieldValue(key, value)
+                                      );
+                                    }}
+                                  />
+                                </Form.Item>
                               </Box>
                               {shouldShowFiltersSection && (
                                 <>
@@ -408,13 +431,51 @@ const AddNotificationPage = () => {
                                       orientation="vertical"
                                     />
                                   </Box>
-                                  <Box
-                                    className="layout-column tw:block"
-                                    style={{
-                                      maxWidth: '100%',
-                                      flex: '0 0 100%',
-                                    }}>
-                                    <ObservabilityFormFiltersItem />
+                                  <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
+                                    <ObservabilityFormFiltersItem
+                                      validationErrors={ruleValidationErrors}
+                                      value={
+                                        values ?? form.getFieldsValue(true)
+                                      }
+                                      onChange={(next) => {
+                                        const data =
+                                          typeof next === 'function'
+                                            ? next(form.getFieldsValue(true))
+                                            : next;
+                                        form.setFieldValue('input', data.input);
+                                        if (!isEmpty(ruleValidationErrors)) {
+                                          setRuleValidationErrors(
+                                            getRuleValidationErrors()
+                                          );
+                                        }
+                                      }}
+                                    />
+                                    <Form.Item
+                                      hidden
+                                      getValueProps={() => ({ value: '' })}
+                                      name="input"
+                                      rules={[
+                                        {
+                                          validator: () => {
+                                            const [firstError] = Object.values(
+                                              getRuleValidationErrors()
+                                            );
+
+                                            return firstError
+                                              ? Promise.reject(
+                                                  new Error(firstError)
+                                                )
+                                              : Promise.resolve();
+                                          },
+                                        },
+                                      ]}>
+                                      <input
+                                        readOnly
+                                        aria-hidden="true"
+                                        tabIndex={-1}
+                                        type="hidden"
+                                      />
+                                    </Form.Item>
                                   </Box>
                                 </>
                               )}
@@ -425,12 +486,7 @@ const AddNotificationPage = () => {
                                   orientation="vertical"
                                 />
                               </Box>
-                              <Box
-                                className="layout-column tw:block"
-                                style={{
-                                  maxWidth: '100%',
-                                  flex: '0 0 100%',
-                                }}>
+                              <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                                 <DestinationFormItemFormBridge
                                   renderValidationField={(validate) => (
                                     <Form.Item
@@ -469,12 +525,7 @@ const AddNotificationPage = () => {
                                             orientation="vertical"
                                           />
                                         </Box>
-                                        <Box
-                                          className="layout-column tw:block"
-                                          style={{
-                                            maxWidth: '100%',
-                                            flex: '0 0 100%',
-                                          }}>
+                                        <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                                           <Widget
                                             alertDetails={alert}
                                             formRef={form}
@@ -483,6 +534,13 @@ const AddNotificationPage = () => {
                                               templateResourcePermission
                                             }
                                             templates={templates}
+                                            values={values}
+                                            onValuesChange={(changes) =>
+                                              Object.entries(changes).forEach(
+                                                ([key, value]) =>
+                                                  form.setFieldValue(key, value)
+                                              )
+                                            }
                                           />
                                         </Box>
                                       </Fragment>
@@ -504,8 +562,16 @@ const AddNotificationPage = () => {
                           />
                           <Form.Item
                             hidden
-                            name="customNotificationTemplateData"
-                          />
+                            getValueProps={() => ({ value: '' })}
+                            name="notificationTemplate">
+                            <input readOnly type="hidden" />
+                          </Form.Item>
+                          <Form.Item
+                            hidden
+                            getValueProps={() => ({ value: '' })}
+                            name="customNotificationTemplateData">
+                            <input readOnly type="hidden" />
+                          </Form.Item>
 
                           {!isUndefined(inlineAlertDetails) && (
                             <Grid.Item className="layout-column" span={24}>
@@ -533,6 +599,12 @@ const AddNotificationPage = () => {
                                     }
                                     templates={templates}
                                     values={values}
+                                    onValuesChange={(changes) =>
+                                      Object.entries(changes).forEach(
+                                        ([key, value]) =>
+                                          form.setFieldValue(key, value)
+                                      )
+                                    }
                                   />
                                 )
                               )}

@@ -247,7 +247,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
           <Button
             color="primary"
             data-testid="add-role"
-            size="sm"
+            size="xs"
             onPress={() => onNavigate({ type: 'roles-add' })}>
             {addRole}
           </Button>
@@ -259,7 +259,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
           <Button
             color="primary"
             data-testid="add-policy"
-            size="sm"
+            size="xs"
             onPress={() => onNavigate({ type: POLICIES_ADD })}>
             {addPolicy}
           </Button>

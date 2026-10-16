@@ -121,7 +121,7 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn().mockImplementation(() => mockShowSuccessToast()),
 }));
 
-jest.mock('../../../common/FormBuilder/FormBuilder', () =>
+jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   jest
     .fn()
     .mockImplementation(({ onSubmit }) => (
@@ -214,7 +214,7 @@ describe('AppDetails component', () => {
 
     // back button
     fireEvent.click(
-      screen.getByRole('button', { name: 'left label.browse-app-plural' })
+      screen.getByRole('button', { name: 'label.browse-app-plural' })
     );
 
     expect(mockNavigate).toHaveBeenCalledWith(

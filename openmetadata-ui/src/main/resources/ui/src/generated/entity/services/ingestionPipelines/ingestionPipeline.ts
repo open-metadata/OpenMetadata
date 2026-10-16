@@ -944,6 +944,7 @@ export enum PipelineType {
     Metadata = "metadata",
     PolicyAgent = "policyAgent",
     Profiler = "profiler",
+    ReverseMetadata = "reverseMetadata",
     TestSuite = "TestSuite",
     Usage = "usage",
 }
@@ -1603,6 +1604,14 @@ export interface Pipeline {
      */
     verifyCerts?: boolean;
     /**
+     * Optional map from a database name in the dbt manifest to the database it is ingested
+     * under in OpenMetadata, for when the engine dbt runs on names it differently. For example,
+     * dbt-trino writes the Trino catalog name (bq_catalog) for tables that the BigQuery
+     * connector ingests under the GCP project id (my-gcp-project). Mapped tables are looked up
+     * in every database service.
+     */
+    catalogMapping?: { [key: string]: string };
+    /**
      * Custom OpenMetadata Classification name for dbt tags.
      */
     dbtClassificationName?: string;
@@ -1653,6 +1662,11 @@ export interface Pipeline {
      */
     markDeletedApiCollections?: boolean;
     /**
+     * Reverse Metadata Agent: JSONLogic expression selecting the assets whose changes are
+     * propagated. Empty means all assets of the service.
+     */
+    filter?: string;
+    /**
      * Optional value of the ingestion runner name responsible for running the workflow
      */
     ingestionRunner?: string;
@@ -1664,6 +1678,27 @@ export interface Pipeline {
      * Service to be modified
      */
     service?: EntityReference;
+    /**
+     * Reverse Metadata Agent: name of the security service (e.g. Ranger) the changes are
+     * applied to instead of this service.
+     */
+    sinkService?: string;
+    /**
+     * Reverse Metadata Agent: templated SQL command used instead of the default operations.
+     */
+    SQLTemplate?: string;
+    /**
+     * Reverse Metadata Agent: propagate description changes to the source.
+     */
+    updateDescriptions?: boolean;
+    /**
+     * Reverse Metadata Agent: propagate owner changes to the source.
+     */
+    updateOwners?: boolean;
+    /**
+     * Reverse Metadata Agent: propagate tag changes to the source.
+     */
+    updateTags?: boolean;
     /**
      * Regex to only fetch MCP servers with names matching the pattern.
      */
@@ -3283,6 +3318,11 @@ export interface GCPCredentialsConfiguration {
      * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
+    /**
+     * Google Cloud service domain, used to override the default `googleapis.com` domain for
+     * sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).
+     */
+    universeDomain?: string;
     /**
      * Path of the file containing the GCP credentials info
      */
