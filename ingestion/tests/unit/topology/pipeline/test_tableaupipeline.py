@@ -31,9 +31,6 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -184,10 +181,12 @@ def _build_source(config: dict):
         mock_conn = MagicMock()
         mock_conn.get_flow_lineage.return_value = None
         get_conn.return_value = mock_conn
-        workflow_cfg = OpenMetadataWorkflowConfig.model_validate(config)
+        metadata = create_autospec(OpenMetadata, instance=True)
+        metadata.es_search_from_fqn.return_value = []
+        metadata.get_by_name.return_value = None
         source = TableaupipelineSource.create(
             config["source"],
-            workflow_cfg.workflowConfig.openMetadataServerConfig,
+            metadata,
         )
         source.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
         source.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
@@ -447,6 +446,7 @@ class TestOwners:
 class TestTags:
     def test_yields_tag_classification(self, source):
         results = list(source.yield_tag_details(PIPELINE_DETAILS))
+        assert all(record.left is None for record in results)
         rights = [r.right for r in results if r.right is not None]
         assert rights, f"No tag results: {results}"
 
@@ -458,6 +458,12 @@ class TestTags:
         tag_names = [str(r.tag_request.name.root) for r in rights if r.tag_request is not None]
         assert "sales" in tag_names, f"Expected 'sales' in {tag_names}"
         assert "daily" in tag_names, f"Expected 'daily' in {tag_names}"
+        source.metadata.get_by_name.return_value = object()
+        source.source_config.includeOwners = False
+        [pipeline] = list(source.yield_pipeline_details(PIPELINE_DETAILS))
+        assert pipeline.left is None
+        assert sorted(tag.tagFQN.root for tag in pipeline.right.tags) == ["TableauTags.daily", "TableauTags.sales"]
+        assert source.tags_registry.stats()["live_entities"] == 0
 
     def test_no_tags_yields_nothing(self, source):
         assert list(source.yield_tag_details(PIPELINE_DETAILS_MIN)) == []
