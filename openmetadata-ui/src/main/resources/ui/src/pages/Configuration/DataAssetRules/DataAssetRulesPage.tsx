@@ -30,8 +30,13 @@ import './DataAssetRulesPage.less';
 
 const DataAssetRulesPage: React.FC = () => {
   const { t } = useTranslation();
-  const { semanticsRules, isLoading, isSaveLoading, updateSemanticsRules } =
-    useSemanticsRulesState();
+  const {
+    semanticsRules,
+    isLoading,
+    isSaveLoading,
+    updateSemanticsRules,
+    toggleRuleEnabled,
+  } = useSemanticsRulesState();
 
   const onSemanticsRuleChange = useCallback(
     async (updatedSemanticsRules: SemanticsRule[]) => {
@@ -43,6 +48,7 @@ const DataAssetRulesPage: React.FC = () => {
   const { addSemanticsRuleButton, semanticsRuleList } = useSemanticsRuleList({
     semanticsRules,
     onSemanticsRuleChange,
+    onToggleRuleEnabled: toggleRuleEnabled,
     isSaveLoading,
     isLoading,
   });

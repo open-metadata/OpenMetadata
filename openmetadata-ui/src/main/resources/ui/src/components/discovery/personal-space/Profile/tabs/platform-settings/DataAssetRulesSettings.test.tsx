@@ -12,10 +12,9 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { SettingType } from '../../../../../../generated/settings/settings';
 import {
   getSettingsConfigFromConfigType,
-  updateSettingsConfig,
+  toggleEntityRuleEnabled,
 } from '../../../../../../rest/settingConfigAPI';
 import DataAssetRulesSettings from './DataAssetRulesSettings';
 
@@ -25,6 +24,7 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../../../../../rest/settingConfigAPI', () => ({
   getSettingsConfigFromConfigType: jest.fn(),
+  toggleEntityRuleEnabled: jest.fn(),
   updateSettingsConfig: jest.fn(),
 }));
 
@@ -63,7 +63,7 @@ const mockRules = (rules: unknown[]) =>
 describe('Data Asset Rules settings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (updateSettingsConfig as jest.Mock).mockResolvedValue({ data: {} });
+    (toggleEntityRuleEnabled as jest.Mock).mockResolvedValue({ data: {} });
   });
 
   it('lists the rules with their enabled state', async () => {
@@ -81,7 +81,7 @@ describe('Data Asset Rules settings', () => {
     ).not.toBeChecked();
   });
 
-  it('toggling a rule saves the whole rule list with only that rule flipped', async () => {
+  it('toggling a rule sends only the rule name and new enabled state, not the whole list', async () => {
     mockRules(RULES);
     render(<DataAssetRulesSettings />);
     const toggle = await screen.findByTestId('toggle-Single Glossary Term');
@@ -90,12 +90,10 @@ describe('Data Asset Rules settings', () => {
       fireEvent.click(toggle.querySelector('input') as Element);
     });
 
-    expect(updateSettingsConfig).toHaveBeenCalledWith({
-      config_type: SettingType.EntityRulesSettings,
-      config_value: {
-        entitySemantics: [RULES[0], { ...RULES[1], enabled: true }],
-      },
-    });
+    expect(toggleEntityRuleEnabled).toHaveBeenCalledWith(
+      'Single Glossary Term',
+      true
+    );
   });
 
   it('shows an empty state without an Add action, as adding is not supported yet', async () => {
