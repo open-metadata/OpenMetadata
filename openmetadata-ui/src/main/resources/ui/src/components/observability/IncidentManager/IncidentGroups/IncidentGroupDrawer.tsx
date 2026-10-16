@@ -241,7 +241,7 @@ const IncidentGroupDrawer = ({
                       />
                     )}
                     <PaginationCardWithControls
-                      className="tw:shrink-0 tw:border-t tw:border-secondary tw:shadow-none"
+                      className="tw:shrink-0 tw:border-0 tw:border-t tw:border-secondary tw:shadow-none"
                       page={currentPage}
                       pageSize={pageSize}
                       pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
