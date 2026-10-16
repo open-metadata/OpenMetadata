@@ -111,6 +111,8 @@ export interface IncidentGroupDetailProps {
 
 export interface IncidentGroupStatProps {
   icon: FC<{ className?: string }>;
+  /** Foreground token colouring the icon, e.g. `tw:text-fg-error-primary`. */
+  iconClassName: string;
   label: string;
   value: ReactNode;
   testId: string;

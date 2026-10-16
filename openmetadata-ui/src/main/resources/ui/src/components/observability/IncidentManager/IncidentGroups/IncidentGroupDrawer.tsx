@@ -54,13 +54,14 @@ const DRAWER_WIDTH = 1040;
 
 const IncidentGroupStat = ({
   icon: Icon,
+  iconClassName,
   label,
   value,
   testId,
 }: IncidentGroupStatProps) => (
   <Box className="tw:flex-1 tw:px-4 tw:py-3" direction="col" gap={1}>
     <Box align="center" className="tw:text-secondary" gap={2}>
-      <Icon className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
+      <Icon className={`tw:size-4 tw:shrink-0 ${iconClassName}`} />
       <Typography as="span" size="text-sm" weight="medium">
         {label}
       </Typography>
@@ -160,15 +161,19 @@ const IncidentGroupDrawer = ({
               {/* Fills the panel without overflowing it: only the incident
                   rows scroll, so the summary and the pager stay in view. */}
               <Box className="tw:h-full tw:min-h-0" direction="col" gap={6}>
-                <Card className="tw:flex tw:shrink-0 tw:divide-x tw:divide-secondary">
+                <Card
+                  className="tw:flex tw:shrink-0 tw:divide-x tw:divide-secondary"
+                  color="secondary">
                   <IncidentGroupStat
                     icon={AlertTriangle}
+                    iconClassName="tw:text-fg-error-primary"
                     label={t('label.incident-plural')}
                     testId="incident-group-stat-count"
                     value={group.incidentCount}
                   />
                   <IncidentGroupStat
                     icon={Calendar}
+                    iconClassName="tw:text-fg-brand-primary"
                     label={t('label.first-seen')}
                     testId="incident-group-stat-first-seen"
                     value={
@@ -179,6 +184,7 @@ const IncidentGroupDrawer = ({
                   />
                   <IncidentGroupStat
                     icon={Clock}
+                    iconClassName="tw:text-fg-warning-primary"
                     label={t('label.last-seen')}
                     testId="incident-group-stat-last-seen"
                     value={
