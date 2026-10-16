@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1921 endpoints** across 75 resource packages · 1911 carry a summary.
+**1922 endpoints** across 75 resource packages · 1912 carry a summary.
 
 ## (root)
 
@@ -2124,6 +2124,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/personas` | List personas |
 | `POST` | `/v1/personas` | Create a Persona |
 | `PUT` | `/v1/personas` | Update Persona |
+| `GET` | `/v1/personas/aiContext/status` | List the compiled AI context state of personas |
 | `DELETE` | `/v1/personas/async/{id}` | Asynchronously delete a Persona by id |
 | `GET` | `/v1/personas/me/context` | Get the materialized AI context for the caller's active persona |
 | `PATCH` | `/v1/personas/name/{fqn}` | Update a Persona using name. |

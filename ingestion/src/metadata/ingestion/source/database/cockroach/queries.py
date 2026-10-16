@@ -54,8 +54,8 @@ LEFT JOIN
     pg_description d 
 ON 
     n.oid = d.objoid
-WHERE 
-    d.objsubid = 0;
+    AND d.classoid = 'pg_namespace'::regclass
+    AND d.objsubid = 0;
 """  # noqa: W291
 
 

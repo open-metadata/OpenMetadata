@@ -448,11 +448,6 @@
       "count": 7
     }
   },
-  "playwright/e2e/Pages/DataMarketplaceAnnouncements.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
@@ -763,11 +758,6 @@
   "playwright/utils/sso-providers/keycloak-saml.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
-    }
-  },
-  "playwright/utils/sso.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 7
     }
   },
   "playwright/utils/task.ts": {

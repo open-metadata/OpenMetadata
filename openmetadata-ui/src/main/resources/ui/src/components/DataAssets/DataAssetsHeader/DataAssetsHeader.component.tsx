@@ -40,6 +40,7 @@ import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
+import { DomainMismatchAlert } from '../../../components/common/DomainMismatchAlert/DomainMismatchAlert.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
@@ -113,6 +114,7 @@ import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.comp
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { TagChipTooltip } from '../../Tag/TagChipTooltip/TagChipTooltip';
@@ -1254,6 +1256,10 @@ export const DataAssetsHeader = ({
         )}
         data-testid="data-assets-header">
         {tableClassBase.getRequestDataAccessBanner()}
+        <DomainMismatchAlert
+          domains={(dataAsset as EntitiesWithDomainField).domains}
+          entityId={dataAsset.id ?? ''}
+        />
 
         <div
           className={classNames(
@@ -1288,6 +1294,10 @@ export const DataAssetsHeader = ({
             {dataContractLatestResultButton}
             {sourceUrlButton}
             {tableClassBase.getRequestDataAccessButton()}
+            <ChangeRequestsIndicator
+              entityId={dataAsset.id ?? ''}
+              entityType={entityType}
+            />
             {headerActions}
             {renderManageButton()}
           </div>

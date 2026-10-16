@@ -1400,7 +1400,9 @@ export interface CreateEventSubscription {
      */
     batchSize?: number;
     /**
-     * Consumer Class for the Event Subscription. Will use 'AlertPublisher' if not provided.
+     * Id of the registered consumer that runs this Event Subscription. Will use `alert`, the
+     * consumer that sends its notifications, if not provided. A Java class name a consumer was
+     * once stored under is accepted and saved as its id; any other name is rejected.
      */
     className?: string;
     config?:    { [key: string]: any };

@@ -2,22 +2,28 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.it.factories.ShortStackFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -30,6 +36,7 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Table;
@@ -41,6 +48,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
@@ -324,6 +332,139 @@ public class ContextMemoryWriteAccessIT {
     CreateContextMemory visibleRequest = entityMemory(ns, "visible.for.edits");
     ContextMemory visible = editor.put(visibleRequest);
     assertEquals(visible.getId(), editor.put(visibleRequest).getId());
+  }
+
+  @Test
+  void onlyAdminsAndBotsRecordOutcomesAndNoOtherWriteChangesThem(TestNamespace ns) {
+    ContextMemory created = adminMemories().create(preference(ns, "outcomes"));
+    MemoryOutcomes counted = outcomes(12, System.currentTimeMillis());
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> recordOutcomes(userClient(createUser(ns, null)), created.getId(), counted));
+    ContextMemory recorded = recordOutcomes(SdkClients.adminClient(), created.getId(), counted);
+    assertEquals(counted, recorded.getOutcomes());
+    assertEquals(created.getVersion(), recorded.getVersion());
+    assertEquals(created.getUpdatedAt(), recorded.getUpdatedAt());
+    assertThrows(
+        ConflictException.class,
+        () ->
+            recordOutcomes(
+                SdkClients.adminClient(), created.getId(), outcomes(1, 1_000_000_000_000L)));
+
+    ContextMemory patched =
+        adminMemories()
+            .patch(
+                created.getId(),
+                JsonUtils.readTree(
+                    "[{\"op\":\"add\",\"path\":\"/pinned\",\"value\":true},"
+                        + "{\"op\":\"add\",\"path\":\"/outcomes\","
+                        + "\"value\":{\"appliedCount\":999999}}]"));
+    assertEquals(counted, patched.getOutcomes());
+    assertEquals(counted, adminMemories().get(created.getId().toString()).getOutcomes());
+    Awaitility.await("search holds the recorded counts, not the patched ones")
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              JsonNode source = searchedMemory(created.getId());
+              assertTrue(source.at("/pinned").asBoolean());
+              assertEquals(12, source.at("/outcomes/appliedCount").asInt());
+            });
+  }
+
+  @Test
+  void recordingOutcomesWithoutABodyIsABadRequest(TestNamespace ns) {
+    ContextMemory created = adminMemories().create(preference(ns, "outcomes-no-body"));
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> recordOutcomes(SdkClients.adminClient(), created.getId(), null));
+    assertNull(adminMemories().get(created.getId().toString()).getOutcomes());
+  }
+
+  static Stream<Arguments> invalidRecounts() {
+    long now = System.currentTimeMillis();
+    return Stream.of(
+        Arguments.of("no-counted-at", outcomes(4, now).withCountedAt(null)),
+        Arguments.of("counted-an-hour-ahead", outcomes(4, now + Duration.ofHours(1).toMillis())),
+        Arguments.of("counted-in-microseconds", outcomes(4, now * 1_000)),
+        Arguments.of("negative-count", outcomes(-1, now)));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("invalidRecounts")
+  void anInvalidRecountIsABadRequestAndStoresNothing(
+      String reason, MemoryOutcomes recount, TestNamespace ns) {
+    ContextMemory created = adminMemories().create(preference(ns, "outcomes-" + reason));
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> recordOutcomes(SdkClients.adminClient(), created.getId(), recount));
+    assertNull(adminMemories().get(created.getId().toString()).getOutcomes());
+  }
+
+  @Test
+  void aBotRecordsOutcomes(TestNamespace ns) {
+    ContextMemory created = adminMemories().create(preference(ns, "outcomes-bot"));
+    MemoryOutcomes counted = outcomes(5, System.currentTimeMillis());
+
+    assertEquals(
+        counted, recordOutcomes(SdkClients.botClient(), created.getId(), counted).getOutcomes());
+  }
+
+  @Test
+  void aMemoryNeverCountedIsIndexedWithoutOutcomes(TestNamespace ns) {
+    ContextMemory created = adminMemories().create(preference(ns, "outcomes-never-counted"));
+
+    Awaitility.await("search holds the memory with no outcomes, so lists fall back to usage")
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              JsonNode source = searchedMemory(created.getId());
+              assertEquals(created.getId().toString(), source.at("/id").asText());
+              assertTrue(source.at("/outcomes").isMissingNode());
+            });
+  }
+
+  private static MemoryOutcomes outcomes(int applied, long countedAt) {
+    return new MemoryOutcomes()
+        .withAppliedCount(applied)
+        .withPositiveCount(3)
+        .withNegativeCount(1)
+        .withCorrectedCount(2)
+        .withLastAppliedAt(countedAt - 1_000L)
+        .withLastCorrectedAt(countedAt - 2_000L)
+        .withCountedAt(countedAt);
+  }
+
+  private static OpenMetadataClient userClient(User user) {
+    return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+  }
+
+  private static ContextMemory recordOutcomes(
+      OpenMetadataClient client, UUID id, MemoryOutcomes outcomes) {
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/contextCenter/memories/" + id + "/outcomes",
+            outcomes,
+            ContextMemory.class);
+  }
+
+  private static JsonNode searchedMemory(UUID id) {
+    String response =
+        SdkClients.adminClient()
+            .search()
+            .query("*")
+            .index("context_memory_search_index")
+            .queryFilter("{\"query\":{\"term\":{\"id.keyword\":\"" + id + "\"}}}")
+            .execute();
+    return JsonUtils.readTree(response).at("/hits/hits/0/_source");
   }
 
   private static ContextMemory setPinnedAs(User user, UUID id, boolean pinned) {

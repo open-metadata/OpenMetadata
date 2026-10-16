@@ -679,9 +679,9 @@ test('Data Quality Widget', async ({ browser, page, persona, testUser }) => {
       'My Data'
     );
     await expect(widget.getByTestId('data-quality-rows')).toBeVisible();
-    await expect(
-      widget.getByTestId(`failed-test-${testCase.id}`)
-    ).toContainText(testCase.name);
+    await expect(widget.getByTestId(`dq-test-${testCase.id}`)).toContainText(
+      testCase.name
+    );
   });
 
   await test.step('Widening the range refetches the 30-day window', async () => {
@@ -713,9 +713,7 @@ test('Data Quality Widget', async ({ browser, page, persona, testUser }) => {
     await expect(widget.getByTestId('dq-range-filter')).toContainText(
       'Last 30 days'
     );
-    await expect(
-      widget.getByTestId(`failed-test-${testCase.id}`)
-    ).toBeVisible();
+    await expect(widget.getByTestId(`dq-test-${testCase.id}`)).toBeVisible();
   });
 
   await test.step('View test opens the test case page', async () => {

@@ -154,8 +154,8 @@ SET json = JSON_SET(json, '$.parameterDefinition', JSON_ARRAY())
 WHERE name IN (
     'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
     'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
-    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
-    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValueLengthsToBeBetween',
+    'columnValuesMissingCount', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
     'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
     'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
     'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
@@ -239,8 +239,8 @@ SET json = JSON_ARRAY_APPEND(
 WHERE name IN (
     'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
     'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
-    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
-    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValueLengthsToBeBetween',
+    'columnValuesMissingCount', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
     'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
     'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
     'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
@@ -267,8 +267,8 @@ SET json = JSON_ARRAY_APPEND(
 WHERE name IN (
     'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
     'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
-    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
-    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValueLengthsToBeBetween',
+    'columnValuesMissingCount', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
     'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
     'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
     'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
@@ -295,8 +295,8 @@ SET json = JSON_ARRAY_APPEND(
 WHERE name IN (
     'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
     'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
-    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
-    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValueLengthsToBeBetween',
+    'columnValuesMissingCount', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
     'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
     'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
   )

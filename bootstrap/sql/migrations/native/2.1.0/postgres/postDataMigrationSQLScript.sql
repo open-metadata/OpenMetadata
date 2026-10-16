@@ -140,8 +140,8 @@ SET json = jsonb_set(json::jsonb, '{parameterDefinition}', '[]'::jsonb)
 WHERE name IN (
     'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
     'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
-    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
-    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValueLengthsToBeBetween',
+    'columnValuesMissingCount', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
     'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
     'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
     'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
@@ -216,8 +216,8 @@ SET json = jsonb_set(
 WHERE name IN (
     'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
     'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
-    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
-    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValueLengthsToBeBetween',
+    'columnValuesMissingCount', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
     'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
     'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
     'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
@@ -241,8 +241,8 @@ SET json = jsonb_set(
 WHERE name IN (
     'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
     'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
-    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
-    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValueLengthsToBeBetween',
+    'columnValuesMissingCount', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
     'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
     'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
     'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
@@ -266,8 +266,8 @@ SET json = jsonb_set(
 WHERE name IN (
     'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
     'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
-    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
-    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValueLengthsToBeBetween',
+    'columnValuesMissingCount', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
     'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
     'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
   )

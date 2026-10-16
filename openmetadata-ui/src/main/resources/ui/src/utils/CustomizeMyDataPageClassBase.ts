@@ -165,6 +165,19 @@ class CustomizeMyDataPageClassBase {
   }
 
   /**
+   * Optional "Needs you now" section, placed between the announcements rail
+   * and the topic widgets in both app modes.
+   *
+   * OSS has no ranked inbox to read from, so the page renders without it.
+   * Collate returns a section backed by its landing-page API; that component
+   * decides for itself which parts the current app mode should show.
+   * ADR:2026-10-14-needs-you-now-is-a-class-base-home-slot-and-oss-merges-first
+   */
+  public getNeedsYouNowSection(): ComponentType | null {
+    return null;
+  }
+
+  /**
    * Widget keys a saved landing layout may keep, matched by prefix.
    *
    * Every key `getWidgetsFromKey` resolves has to be listed here, or reading a

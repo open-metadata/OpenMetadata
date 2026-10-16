@@ -72,13 +72,15 @@ const TopicEmptyState: React.FC<TopicEmptyStateProps> = ({
         'tw:text-text-primary!',
         layout === 'footer' ? 'tw:mt-7' : 'tw:mt-5'
       )}
-      size="text-md"
+      // The footer-led empty state keeps the Widget Empty States design's
+      // larger type; the default one follows the landing page's 14px scale.
+      size={layout === 'footer' ? 'text-md' : 'text-sm'}
       weight="semibold">
       {title}
     </Typography>
     <Typography
       className="tw:mt-1 tw:max-w-90 tw:text-pretty tw:text-text-secondary!"
-      size="text-sm">
+      size={layout === 'footer' ? 'text-sm' : 'text-xs'}>
       {description}
     </Typography>
     {action && (
@@ -87,7 +89,7 @@ const TopicEmptyState: React.FC<TopicEmptyStateProps> = ({
         color="primary"
         data-testid={`topic-empty-action-${topicKey}`}
         iconLeading={Plus}
-        size="sm"
+        size="xs"
         onPress={action.onPress}>
         {action.label}
       </Button>

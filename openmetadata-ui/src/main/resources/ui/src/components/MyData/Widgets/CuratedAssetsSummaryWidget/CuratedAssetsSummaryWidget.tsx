@@ -260,7 +260,7 @@ const CuratedAssetsSummaryWidgetContent: React.FC<
           <div
             className="tw:flex tw:flex-col tw:items-start tw:gap-3"
             data-testid="widget-empty-state">
-            <Typography className="tw:text-text-secondary!" size="text-sm">
+            <Typography className="tw:text-text-secondary!" size="text-xs">
               {t('message.no-curated-assets')}
             </Typography>
             <Button color="primary" size="sm" onPress={openModal}>
@@ -278,7 +278,7 @@ const CuratedAssetsSummaryWidgetContent: React.FC<
             <Button
               color="secondary"
               data-testid="edit-curated-assets"
-              size="sm"
+              size="xs"
               onPress={openModal}>
               {t('label.edit')}
             </Button>
