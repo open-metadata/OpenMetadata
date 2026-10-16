@@ -133,6 +133,31 @@ class TestGlueScriptSnowflakeParser:
         assert result.snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
         assert result.snowflake_targets == [SnowflakeRef(table="ORDERS_DAILY", database="SALES_DB", schema="CURATED")]
 
+    def test_format_given_as_a_constant(self):
+        """The Snowflake docs idiom: format(SNOWFLAKE_SOURCE_NAME)."""
+        script = """
+SNOWFLAKE_SOURCE_NAME = "net.snowflake.spark.snowflake"
+sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW"}
+df = spark.read.format(SNOWFLAKE_SOURCE_NAME).options(**sf_options).option("dbtable", "ORDERS").load()
+df.write.format(SNOWFLAKE_SOURCE_NAME).options(**sf_options).option("dbtable", "ORDERS_DAILY").save()
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
+        assert result.snowflake_targets == [SnowflakeRef(table="ORDERS_DAILY", database="SALES_DB", schema="RAW")]
+
+    def test_other_formats_are_ignored(self):
+        """A non-Snowflake read must not swallow the Snowflake read that follows it."""
+        script = """
+PARQUET = "parquet"
+sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW"}
+events = spark.read.format(PARQUET).option("dbtable", "NOT_SNOWFLAKE").schema(s)
+orders = spark.read.format("snowflake").options(**sf_options).option("dbtable", "ORDERS").load()
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
+
     @pytest.mark.parametrize(
         ("dbtable", "expected"),
         [

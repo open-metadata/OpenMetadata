@@ -127,15 +127,22 @@ SPARK_WRITE_INSERTINTO_PATTERN = re.compile(
 #   df.write.format("snowflake").options(**sf_options).option("dbtable", "T").mode("...").save()
 # The database / schema usually live in a shared options dict (sfDatabase / sfSchema).
 
-SNOWFLAKE_FORMATS = r"(?:snowflake|net\.snowflake\.spark\.snowflake)"
+SNOWFLAKE_FORMATS = {"snowflake", "net.snowflake.spark.snowflake"}
+
+# format() takes a literal or a name bound to one, as in the Snowflake docs.
+# Any format matches here and _is_snowflake_format filters, so a chain must
+# not run into the next read/write or a non-Snowflake one would swallow it.
+#   SNOWFLAKE_SOURCE_NAME = "net.snowflake.spark.snowflake"
+#   spark.read.format(SNOWFLAKE_SOURCE_NAME)...
+SPARK_FORMAT_ARG = r"\.format\s*\(\s*(?:[\"']([^\"']+)[\"']|([A-Za-z_]\w*))\s*\)"
 
 SPARK_READ_SNOWFLAKE_PATTERN = re.compile(
-    rf"\.read\.format\s*\(\s*[\"']{SNOWFLAKE_FORMATS}[\"']\s*\)(.*?)\.load\s*\(",
+    rf"\.read{SPARK_FORMAT_ARG}((?:(?!\.read\.).)*?)\.load\s*\(",
     re.DOTALL,
 )
 
 SPARK_WRITE_SNOWFLAKE_PATTERN = re.compile(
-    rf"\.write\.format\s*\(\s*[\"']{SNOWFLAKE_FORMATS}[\"']\s*\)(.*?)\.save\s*\(",
+    rf"\.write{SPARK_FORMAT_ARG}((?:(?!\.write\.).)*?)\.save\s*\(",
     re.DOTALL,
 )
 
@@ -466,15 +473,28 @@ def _snowflake_ref(block: str, source_code: str) -> SnowflakeRef | None:
     return SnowflakeRef(table=table, database=database, schema=schema)
 
 
+def _resolve_spark_format(literal: str | None, name: str | None, source_code: str) -> str | None:
+    """The format string, looking up `name = "..."` in the script when format() was given a name."""
+    if literal:
+        return literal
+    match = re.search(rf"^\s*{name}\s*=\s*[\"']([^\"']+)[\"']", source_code, re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def _is_snowflake_format(match: re.Match, source_code: str) -> bool:
+    spark_format = _resolve_spark_format(match.group(1), match.group(2), source_code)
+    return bool(spark_format) and spark_format.lower() in SNOWFLAKE_FORMATS
+
+
 def _parse_spark_snowflake(source_code: str, result: ScriptLineageResult):
     for match in SPARK_READ_SNOWFLAKE_PATTERN.finditer(source_code):
-        ref = _snowflake_ref(match.group(1), source_code)
+        ref = _snowflake_ref(match.group(3), source_code) if _is_snowflake_format(match, source_code) else None
         if ref:
             result.snowflake_sources.append(ref)
             logger.debug(f"Found Spark read.format('snowflake') source: {ref}")
 
     for match in SPARK_WRITE_SNOWFLAKE_PATTERN.finditer(source_code):
-        ref = _snowflake_ref(match.group(1), source_code)
+        ref = _snowflake_ref(match.group(3), source_code) if _is_snowflake_format(match, source_code) else None
         if ref:
             result.snowflake_targets.append(ref)
             logger.debug(f"Found Spark write.format('snowflake') target: {ref}")
