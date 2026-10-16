@@ -13,11 +13,14 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
-import static org.openmetadata.service.formatter.util.FormatterUtil.createChangeEventForEntity;
+import static org.openmetadata.service.events.ChangeEvents.createChangeEventForEntity;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.isSystemGenerated;
 
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
@@ -123,7 +126,7 @@ public class ColumnRepository {
     Objects.requireNonNull(columnFQN, "columnFQN cannot be null");
     ChildFieldResolver.ChildContainerSpec spec = validateEntityType(entityType);
     String parentFQN = extractParentFQN(columnFQN, entityType);
-    EntityInterface parent = fetchAuthorizedParent(securityContext, spec, parentFQN, include);
+    EntityInterface<?> parent = fetchAuthorizedParent(securityContext, spec, parentFQN, include);
     ChildFieldResolver.ensureChildFqns(parent, entityType);
     FieldInterface child =
         ChildFieldResolver.locate(parent, entityType, columnFQN)
@@ -134,14 +137,15 @@ public class ColumnRepository {
         : child;
   }
 
-  private EntityInterface fetchAuthorizedParent(
+  private EntityInterface<?> fetchAuthorizedParent(
       SecurityContext securityContext,
       ChildFieldResolver.ChildContainerSpec spec,
       String parentFQN,
       Include include) {
     String entityType = spec.entityType();
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
-    EntityInterface parent =
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
+    EntityInterface<?> parent =
         repository.getByName(
             null,
             parentFQN,
@@ -157,7 +161,7 @@ public class ColumnRepository {
 
   @SuppressWarnings({"unchecked", "rawtypes"})
   private ResourceContextInterface resourceContextFor(
-      String entityType, EntityInterface entity, EntityRepository<?> repository) {
+      String entityType, EntityInterface<?> entity, EntityRepository<?> repository) {
     return new ResourceContext(entityType, entity, repository);
   }
 
@@ -169,7 +173,7 @@ public class ColumnRepository {
   private Column enrichChild(
       SecurityContext securityContext,
       ChildFieldResolver.ChildContainerSpec spec,
-      EntityInterface parent,
+      EntityInterface<?> parent,
       Column column,
       String fieldsParam) {
     return switch (spec.entityType()) {
@@ -256,16 +260,23 @@ public class ColumnRepository {
     String parentFQN = extractParentFQN(columnFQN, entityType);
     EntityReference parentEntityRef = getParentEntityByFQN(parentFQN, entityType);
     String user = securityContext.getUserPrincipal().getName();
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
 
-    EntityInterface original =
+    // Custom-property values are part of the baseline, so a value the update leaves out is removed
+    // (e.g. a reference value, which the column copy loaded without the extension field lacks).
+    String baselineFields =
+        spec.childExtensionType() == null
+            ? spec.requiredFields()
+            : spec.requiredFields() + "," + FIELD_EXTENSION;
+    EntityInterface<?> original =
         repository.get(
             null,
             parentEntityRef.getId(),
-            repository.getFields(spec.requiredFields()),
+            repository.getFields(baselineFields),
             Include.NON_DELETED,
             false);
-    EntityInterface updated = deepCopy(original);
+    EntityInterface<?> updated = deepCopy(original);
     ChildFieldResolver.ensureChildFqns(updated, entityType);
 
     FieldInterface child =
@@ -279,7 +290,7 @@ public class ColumnRepository {
     // A null changeSource makes this identical to the 4-argument overload the two per-type write
     // paths called before consolidation (EntityRepository delegates both to the same method with
     // changeSource null), so an unattributed write stays byte-identical on the wire.
-    RestUtil.PatchResponse<? extends EntityInterface> patchResponse =
+    RestUtil.PatchResponse<? extends EntityInterface<?>> patchResponse =
         repository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch, changeSource);
     triggerParentChangeEvent(patchResponse.entity(), user);
 
@@ -287,8 +298,8 @@ public class ColumnRepository {
   }
 
   @SuppressWarnings("unchecked")
-  private EntityInterface deepCopy(EntityInterface original) {
-    return JsonUtils.deepCopy(original, (Class<EntityInterface>) original.getClass());
+  private EntityInterface<?> deepCopy(EntityInterface<?> original) {
+    return JsonUtils.deepCopy(original, (Class<EntityInterface<?>>) original.getClass());
   }
 
   private void applyChildUpdates(
@@ -343,13 +354,14 @@ public class ColumnRepository {
   }
 
   private EntityReference getParentEntityByFQN(String parentFQN, String entityType) {
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
     return repository.findByName(parentFQN, Include.NON_DELETED).getEntityReference();
   }
 
   private void triggerParentChangeEvent(Object parent, String user) {
     ChangeEvent changeEvent =
-        createChangeEventForEntity(user, EventType.ENTITY_UPDATED, (EntityInterface) parent);
+        createChangeEventForEntity(user, EventType.ENTITY_UPDATED, (EntityInterface<?>) parent);
     Object entity = changeEvent.getEntity();
     changeEvent = copyChangeEvent(changeEvent);
     changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
@@ -403,14 +415,15 @@ public class ColumnRepository {
       String schemaName,
       String domainId) {
 
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
     ListFilter filter =
         buildSearchFilter(entityType, serviceName, databaseName, schemaName, domainId);
 
-    List<? extends EntityInterface> parents =
+    List<? extends EntityInterface<?>> parents =
         repository.listAll(repository.getFields(searchFieldsFor(entityType)), filter);
 
-    for (EntityInterface parent : parents) {
+    for (EntityInterface<?> parent : parents) {
       ChildFieldResolver.ensureChildFqns(parent, entityType);
       searchColumnsInHierarchy(columnsOf(parent), columnName, entityType, parent, groupedColumns);
     }
@@ -458,7 +471,7 @@ public class ColumnRepository {
    * and searchColumnsInHierarchy's null guard still covers a parent that has none.
    */
   @SuppressWarnings("unchecked")
-  private List<Column> columnsOf(EntityInterface parent) {
+  private List<Column> columnsOf(EntityInterface<?> parent) {
     return (List<Column>) ChildFieldResolver.containerListFor(parent, "columns");
   }
 
@@ -629,8 +642,9 @@ public class ColumnRepository {
   private Optional<FieldInterface> loadChildForPreview(String columnFQN, String entityType) {
     String parentFQN = ChildFieldResolver.parentFqnOf(columnFQN, entityType);
     EntityReference parentEntityRef = getParentEntityByFQN(parentFQN, entityType);
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
-    EntityInterface parent =
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
+    EntityInterface<?> parent =
         repository.get(
             null,
             parentEntityRef.getId(),
@@ -955,20 +969,17 @@ public class ColumnRepository {
     return escaped;
   }
 
-  private String formatTags(List<TagLabel> tags, boolean classificationsOnly) {
-    if (tags == null || tags.isEmpty()) {
-      return "";
-    }
-
-    return tags.stream()
-        .filter(
-            tag -> {
-              if (classificationsOnly) {
-                return tag.getSource() == TagLabel.TagSource.CLASSIFICATION;
-              } else {
-                return tag.getSource() == TagLabel.TagSource.GLOSSARY;
-              }
-            })
+  /**
+   * The column's own labels of one source, for the CSV export. DERIVED labels -- inherited from the
+   * table, or implied by a term -- are left out: CSV import stores what it reads as MANUAL, so
+   * exporting them would pin them on the column after their source is gone. Package-private for
+   * tests.
+   */
+  static String formatTags(List<TagLabel> tags, boolean classificationsOnly) {
+    TagLabel.TagSource source =
+        classificationsOnly ? TagLabel.TagSource.CLASSIFICATION : TagLabel.TagSource.GLOSSARY;
+    return listOrEmpty(tags).stream()
+        .filter(tag -> tag.getSource() == source && !isSystemGenerated(tag))
         .map(TagLabel::getTagFQN)
         .collect(Collectors.joining(";"));
   }

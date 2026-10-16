@@ -304,8 +304,10 @@ const EntityTitleColumn = ({
     {isTourOpen ? (
       <CoreButton color="link-color" data-testid={source.fullyQualifiedName}>
         <Typography
-          className="text-lg font-medium text-link-color"
-          data-testid="entity-header-display-name">
+          className="tw:text-link"
+          data-testid="entity-header-display-name"
+          size="text-sm"
+          weight="medium">
           {renderHighlightedText(searchClassBase.getEntityName(source))}
         </Typography>
       </CoreButton>
@@ -319,7 +321,7 @@ const EntityTitleColumn = ({
             'm-r-xs': hasGlossaryTermStatus,
           })}
           data-testid="entity-link"
-          state={{ breadcrumbData: breadcrumbs.slice(0, -1) }}
+          state={{ breadcrumbData: breadcrumbs }}
           target={searchClassBase.getSearchEntityLinkTarget(
             source,
             openEntityInNewPage
@@ -328,8 +330,10 @@ const EntityTitleColumn = ({
           onFocus={handlePrefetch}
           onMouseEnter={handlePrefetch}>
           <Typography
-            className="text-lg font-medium text-link-color break-word whitespace-normal"
-            data-testid="entity-header-display-name">
+            className="tw:text-link tw:break-words tw:whitespace-normal"
+            data-testid="entity-header-display-name"
+            size="text-sm"
+            weight="medium">
             {renderHighlightedText(searchClassBase.getEntityName(source))}
           </Typography>
         </Link>
@@ -825,7 +829,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         searchClassBase.getEntityBreadcrumbs(
           source,
           source.entityType as EntityType,
-          false
+          true
         ),
       [source]
     );

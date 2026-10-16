@@ -24,8 +24,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +46,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -52,6 +59,8 @@ class ContextMemoryVisibilityTest {
 
   private static final String ALICE = "alice";
   private static final String BOB = "bob";
+  private static final EntityReference ANCHOR =
+      new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE).withName("orders");
 
   private MockedStatic<Entity> entityStaticMock;
 
@@ -151,6 +160,49 @@ class ContextMemoryVisibilityTest {
   }
 
   @Test
+  void testAnchoredEntityMemory_visibleOnlyToReadersOfTheAnchor() {
+    ContextMemory anchored =
+        memoryOwnedBy(ALICE, MemoryVisibility.ENTITY).withPrimaryEntity(ANCHOR);
+    ContextMemoryVisibility.AnchorAccess onlyBobReadsIt =
+        (userName, anchor) -> BOB.equals(userName) && ANCHOR.getId().equals(anchor.getId());
+
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(anchored, BOB, false, onlyBobReadsIt));
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(anchored, "charlie", false, onlyBobReadsIt));
+  }
+
+  @Test
+  void testAnchoredEntityMemory_ownerAndAdminSkipTheAnchorCheck() {
+    ContextMemory anchored =
+        memoryOwnedBy(ALICE, MemoryVisibility.ENTITY).withPrimaryEntity(ANCHOR);
+    ContextMemoryVisibility.AnchorAccess nobodyReadsIt = (userName, anchor) -> false;
+
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(anchored, ALICE, false, nobodyReadsIt));
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(anchored, BOB, true, nobodyReadsIt));
+  }
+
+  @Test
+  void testUnanchoredEntityMemory_neverConsultsTheAnchorCheck() {
+    ContextMemory orgWide = memoryOwnedBy(ALICE, MemoryVisibility.ENTITY);
+    ContextMemoryVisibility.AnchorAccess mustNotBeCalled =
+        (userName, anchor) -> {
+          throw new AssertionError("an unanchored Entity memory is org-wide");
+        };
+
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(orgWide, "charlie", false, mustNotBeCalled));
+  }
+
+  @Test
+  void testAnchorAccess_neverOpensAPrivateMemory() {
+    ContextMemory privateAnchored =
+        memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE).withPrimaryEntity(ANCHOR);
+    ContextMemoryVisibility.AnchorAccess everyoneReadsIt = (userName, anchor) -> true;
+
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(privateAnchored, BOB, false, everyoneReadsIt));
+  }
+
+  @Test
   void testFilterByVisibility_stripsOtherUsersPrivateMemories() {
     ContextMemory alicePrivate = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
     ContextMemory bobPrivate = memoryOwnedBy(BOB, MemoryVisibility.PRIVATE);
@@ -181,6 +233,24 @@ class ContextMemoryVisibilityTest {
             List.of(alicePrivate, bobPrivate), "admin", true);
 
     assertEquals(2, visibleToAdmin.size());
+  }
+
+  @Test
+  void testFilterByVisibility_checksEachAnchorOncePerPage() {
+    ContextMemory first = memoryOwnedBy(ALICE, MemoryVisibility.ENTITY).withPrimaryEntity(ANCHOR);
+    ContextMemory second = memoryOwnedBy(ALICE, MemoryVisibility.ENTITY).withPrimaryEntity(ANCHOR);
+    AtomicInteger checks = new AtomicInteger();
+    ContextMemoryVisibility.AnchorAccess denied =
+        (userName, anchor) -> {
+          checks.incrementAndGet();
+          return false;
+        };
+
+    List<ContextMemory> visible =
+        ContextMemoryVisibility.filterByVisibility(List.of(first, second), BOB, false, denied);
+
+    assertTrue(visible.isEmpty());
+    assertEquals(1, checks.get());
   }
 
   @Test
@@ -220,7 +290,7 @@ class ContextMemoryVisibilityTest {
    */
   @Test
   void testEnforceVisibility_onEntityInterface_deniesAnotherUsersPrivateMemory() {
-    EntityInterface privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    EntityInterface<?> privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
     SecurityContext bob = securityContextFor(BOB);
 
     withSubject(
@@ -234,7 +304,7 @@ class ContextMemoryVisibilityTest {
 
   @Test
   void testEnforceVisibility_onEntityInterface_allowsTheOwnersOwnPrivateMemory() {
-    EntityInterface privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    EntityInterface<?> privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
     SecurityContext alice = securityContextFor(ALICE);
 
     withSubject(
@@ -247,7 +317,7 @@ class ContextMemoryVisibilityTest {
 
   @Test
   void testEnforceVisibility_onEntityInterface_ignoresTypesWithoutVisibilityRules() {
-    EntityInterface table = new Table().withName("orders").withFullyQualifiedName("s.d.orders");
+    EntityInterface<?> table = new Table().withName("orders").withFullyQualifiedName("s.d.orders");
 
     assertDoesNotThrow(
         () -> ContextMemoryVisibility.enforceVisibility(table, securityContextFor(BOB)));
@@ -255,7 +325,7 @@ class ContextMemoryVisibilityTest {
 
   @Test
   void testEnforceVisibility_onEntityInterface_letsAnAdminReadEveryMemory() {
-    EntityInterface privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    EntityInterface<?> privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
     SecurityContext admin = securityContextFor(BOB);
 
     try (MockedStatic<DefaultAuthorizer> authorizer = Mockito.mockStatic(DefaultAuthorizer.class)) {
@@ -275,23 +345,116 @@ class ContextMemoryVisibilityTest {
     assertFalse(ContextMemoryVisibility.hasVisibilityRules(null));
   }
 
-  /**
-   * Owners is a relationship field, null unless the fetch asked for it. A read path that fetches a
-   * memory without owners hands the guard an ownerless memory and denies the owner their own
-   * private memory - so the guard states the fields its own decision reads.
-   */
+  /** The guard fetches the relationship fields used for the visibility decision. */
   @Test
-  void testGuardFields_addsOwnersForMemoriesOnly() {
+  void testGuardFields_addsTheDecisionFieldsForMemoriesOnly() {
     assertEquals(
-        Entity.FIELD_OWNERS, ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, ""));
+        "owners,primaryEntity", ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, ""));
     assertEquals(
-        Entity.FIELD_OWNERS, ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, null));
-    assertEquals("tags,owners", ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "tags"));
+        "owners,primaryEntity", ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, null));
     assertEquals(
-        "sourceFile,owners",
+        "tags,owners,primaryEntity",
+        ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "tags"));
+    assertEquals(
+        "sourceFile,owners,primaryEntity",
         ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "sourceFile,owners"));
+    assertEquals(
+        "primaryEntity,owners",
+        ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "primaryEntity"));
     assertEquals("*", ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "*"));
     assertEquals("", ContextMemoryVisibility.guardFields(Entity.TABLE, ""));
+  }
+
+  @Test
+  void readableAnchorIds_keepsTheAnchorsTheCallerMayRead() {
+    EntityReference hidden =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE).withName("salaries");
+
+    Set<String> readable =
+        ContextMemoryVisibility.readableAnchorIds(
+            BOB,
+            List.of(ANCHOR.getId().toString(), hidden.getId().toString()),
+            candidates -> List.of(ANCHOR, hidden),
+            (userName, anchor) -> BOB.equals(userName) && ANCHOR.equals(anchor));
+
+    assertEquals(Set.of(ANCHOR.getId().toString()), readable);
+  }
+
+  @Test
+  void readableAnchorIds_anIdThatAnchorsNoMemoryIsNeverReadable() {
+    Set<String> readable =
+        ContextMemoryVisibility.readableAnchorIds(
+            BOB, List.of(ANCHOR.getId().toString()), candidates -> List.of(), (u, a) -> true);
+
+    assertTrue(readable.isEmpty());
+  }
+
+  @Test
+  void readableAnchorIds_anAnonymousCallerReadsNoAnchorAndLooksNothingUp() {
+    Set<String> readable =
+        ContextMemoryVisibility.readableAnchorIds(
+            null,
+            List.of(ANCHOR.getId().toString()),
+            candidates -> {
+              throw new AssertionError("an anonymous caller must not reach the database");
+            },
+            (u, a) -> true);
+
+    assertTrue(readable.isEmpty());
+  }
+
+  @Test
+  void readableAnchorIds_looksUpAtMostTheCapOfAnchors() {
+    List<String> pinned =
+        IntStream.range(0, 3 * ContextMemoryVisibility.MAX_PINNED_ANCHORS)
+            .mapToObj(i -> UUID.randomUUID().toString())
+            .toList();
+    AtomicInteger lookedUp = new AtomicInteger();
+
+    ContextMemoryVisibility.readableAnchorIds(
+        BOB,
+        pinned,
+        candidates -> {
+          lookedUp.set(candidates.size());
+          return List.of();
+        },
+        (u, a) -> true);
+
+    assertEquals(ContextMemoryVisibility.MAX_PINNED_ANCHORS, lookedUp.get());
+  }
+
+  @Test
+  void readableAnchorIds_withoutAMemoryRepositoryLeavesTheQueryOwnerOnly() {
+    assertTrue(
+        ContextMemoryVisibility.readableAnchorIds(BOB, List.of(ANCHOR.getId().toString()))
+            .isEmpty());
+  }
+
+  @Test
+  void readableAnchorIds_aFailedLookupLeavesTheQueryOwnerOnly() {
+    ContextMemoryRepository repository = Mockito.mock(ContextMemoryRepository.class);
+    Mockito.when(repository.findAnchors(any()))
+        .thenThrow(new UnableToExecuteStatementException("database unavailable"));
+    entityStaticMock.when(() -> Entity.hasEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(true);
+    entityStaticMock
+        .when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
+        .thenReturn(repository);
+
+    assertTrue(
+        ContextMemoryVisibility.readableAnchorIds(BOB, List.of(ANCHOR.getId().toString()))
+            .isEmpty());
+  }
+
+  @Test
+  void pinnedAnchors_dropsWhatIsNotAnEntityIdAndRepeats() {
+    String id = ANCHOR.getId().toString();
+
+    List<UUID> candidates =
+        ContextMemoryVisibility.pinnedAnchors(
+            Arrays.asList("not-a-uuid", "", null, " " + id.toUpperCase(Locale.ROOT) + " ", id));
+
+    assertEquals(List.of(ANCHOR.getId()), candidates);
+    assertTrue(ContextMemoryVisibility.pinnedAnchors(null).isEmpty());
   }
 
   private SecurityContext securityContextFor(String userName) {

@@ -25,6 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -164,10 +165,10 @@ class DefaultAuthorizerTest {
   void authorizeSkipsPolicyEvaluationForReviewers() {
     SecurityContext securityContext = securityContext("reviewer");
     SubjectContext reviewerContext = subjectContext("reviewer", false, false, null);
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getReviewers()).thenReturn(List.of(entityReference(Entity.USER, "reviewer")));
     ResourceContextInterface resourceContext = mock(ResourceContextInterface.class);
-    when(resourceContext.getEntity()).thenReturn(entity);
+    Mockito.<EntityInterface<?>>when(resourceContext.getEntity()).thenReturn(entity);
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_ALL);
 
@@ -188,10 +189,10 @@ class DefaultAuthorizerTest {
   void authorizeDoesNotTreatSelfAssignedReviewerAsReviewerOnCreate() {
     SecurityContext securityContext = securityContext("attacker");
     SubjectContext attackerContext = subjectContext("attacker", false, false, null);
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getReviewers()).thenReturn(List.of(entityReference(Entity.USER, "attacker")));
     CreateResourceContext<?> createResourceContext = mock(CreateResourceContext.class);
-    when(createResourceContext.getEntity()).thenReturn(entity);
+    Mockito.<EntityInterface<?>>when(createResourceContext.getEntity()).thenReturn(entity);
     OperationContext operationContext =
         new OperationContext(Entity.DATA_PRODUCT, MetadataOperation.CREATE);
 
@@ -214,10 +215,10 @@ class DefaultAuthorizerTest {
   void authorizeDelegatesPolicyEvaluationForRegularUsers() {
     SecurityContext securityContext = securityContext("analyst");
     SubjectContext analystContext = subjectContext("analyst", false, false, null);
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getReviewers()).thenReturn(null);
     ResourceContextInterface resourceContext = mock(ResourceContextInterface.class);
-    when(resourceContext.getEntity()).thenReturn(entity);
+    Mockito.<EntityInterface<?>>when(resourceContext.getEntity()).thenReturn(entity);
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_ALL);
 

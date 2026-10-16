@@ -80,47 +80,38 @@ class ColumnValuesToBeInSetValidator(
         Returns:
             List[DimensionResult]: Top N dimensions by impact score plus "Others"
         """
-        dimension_results = []
+        allowed_values = test_params[BaseColumnValuesToBeInSetValidator.ALLOWED_VALUES]
+        match_enum = test_params[BaseColumnValuesToBeInSetValidator.MATCH_ENUM]
 
-        try:
-            allowed_values = test_params[BaseColumnValuesToBeInSetValidator.ALLOWED_VALUES]
-            match_enum = test_params[BaseColumnValuesToBeInSetValidator.MATCH_ENUM]
+        # Build metric expressions using enum names as keys
+        metric_expressions = {}
+        for metric_name, metric in metrics_to_compute.items():
+            metric_instance = metric.value(column)
+            if metric_name == Metrics.countInSet.name:
+                metric_instance.values = allowed_values
+            metric_expressions[metric_name] = metric_instance.fn()
 
-            # Build metric expressions using enum names as keys
-            metric_expressions = {}
-            for metric_name, metric in metrics_to_compute.items():
-                metric_instance = metric.value(column)
-                if metric_name == Metrics.countInSet.name:
-                    metric_instance.values = allowed_values
-                metric_expressions[metric_name] = metric_instance.fn()
-
-            if match_enum and Metrics.rowCount.name in metric_expressions:
-                # Enum mode: failed = total - matched
-                metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions[Metrics.rowCount.name]
-                metric_expressions[DIMENSION_FAILED_COUNT_KEY] = (
-                    metric_expressions[Metrics.rowCount.name] - metric_expressions[Metrics.countInSet.name]
-                )
-            else:
-                # Non-enum mode: no real concept of failure, use count_in_set for ordering
-                metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions[Metrics.countInSet.name]
-                metric_expressions[DIMENSION_FAILED_COUNT_KEY] = literal(0)
-
-            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
-
-            result_rows = self._run_dimensional_validation_query(
-                source=self.runner.dataset,
-                dimension_expr=normalized_dimension,
-                metric_expressions=metric_expressions,
-                top_n=top_n,
+        if match_enum and Metrics.rowCount.name in metric_expressions:
+            # Enum mode: failed = total - matched
+            metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions[Metrics.rowCount.name]
+            metric_expressions[DIMENSION_FAILED_COUNT_KEY] = (
+                metric_expressions[Metrics.rowCount.name] - metric_expressions[Metrics.countInSet.name]
             )
+        else:
+            # Non-enum mode: no real concept of failure, use count_in_set for ordering
+            metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions[Metrics.countInSet.name]
+            metric_expressions[DIMENSION_FAILED_COUNT_KEY] = literal(0)
 
-            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
+        normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
+        result_rows = self._run_dimensional_validation_query(
+            source=self.runner.dataset,
+            dimension_expr=normalized_dimension,
+            metric_expressions=metric_expressions,
+            top_n=top_n,
+        )
 
-        return dimension_results
+        return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
     def compute_row_count(self, column: Column):
         """Compute row count for the given column

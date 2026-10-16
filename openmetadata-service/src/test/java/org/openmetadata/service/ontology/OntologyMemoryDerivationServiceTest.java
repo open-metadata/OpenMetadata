@@ -102,7 +102,7 @@ class OntologyMemoryDerivationServiceTest {
   void batchSkipsMemoriesThatStoppedBeingEligibleAndDerivesFromTheRest() throws IOException {
     final ContextMemory drafted = stored(memory(MemoryVisibility.ENTITY));
     final ContextMemory archived = stored(memory(MemoryVisibility.ENTITY));
-    archived.setStatus(ContextMemoryStatus.ARCHIVED);
+    archived.setEntityStatus(ContextMemoryStatus.ARCHIVED);
     final ContextMemory eligible = stored(memory(MemoryVisibility.ENTITY));
     final UUID deletedId = UUID.randomUUID();
     when(memories.get(isNull(), eq(deletedId), isNull(), eq(Include.NON_DELETED), eq(false)))
@@ -163,7 +163,7 @@ class OntologyMemoryDerivationServiceTest {
   void requireEligibleRejectsRestrictedInactiveAndDerivedMemories() {
     final ContextMemory restricted = memory(MemoryVisibility.PRIVATE);
     final ContextMemory archived = memory(MemoryVisibility.ENTITY);
-    archived.setStatus(ContextMemoryStatus.ARCHIVED);
+    archived.setEntityStatus(ContextMemoryStatus.ARCHIVED);
     final ContextMemory derived = memory(MemoryVisibility.PUBLIC);
     derived.setDerivedEntities(
         List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.GLOSSARY_TERM)));
@@ -171,9 +171,16 @@ class OntologyMemoryDerivationServiceTest {
     assertThrows(
         BadRequestException.class,
         () -> OntologyMemoryDerivationService.requireEligible(List.of(restricted), "bob"));
-    assertThrows(
-        BadRequestException.class,
-        () -> OntologyMemoryDerivationService.requireEligible(List.of(archived), "alice"));
+    for (ContextMemoryStatus status :
+        List.of(
+            ContextMemoryStatus.ARCHIVED,
+            ContextMemoryStatus.DEPRECATED,
+            ContextMemoryStatus.REJECTED)) {
+      archived.setEntityStatus(status);
+      assertThrows(
+          BadRequestException.class,
+          () -> OntologyMemoryDerivationService.requireEligible(List.of(archived), "alice"));
+    }
     final ClientErrorException conflict =
         assertThrows(
             ClientErrorException.class,
@@ -247,7 +254,7 @@ class OntologyMemoryDerivationServiceTest {
         .withQuestion("What is a churned customer?")
         .withAnswer("A customer who cancelled every subscription.")
         .withOwners(List.of(new EntityReference().withType("user").withName("alice")))
-        .withStatus(ContextMemoryStatus.ACTIVE)
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }
 }

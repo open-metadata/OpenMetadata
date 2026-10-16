@@ -15,9 +15,11 @@ import test, {
   expect,
   Locator,
   Page,
+  Response,
 } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { LONG_DESCRIPTION_END_TEXT } from '../constant/domain';
 import { SidebarItem } from '../constant/sidebar';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
@@ -37,14 +39,12 @@ import { TagClass } from '../support/tag/TagClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  clickOutside,
   closeFirstPopupAlert,
   fillDescriptionBox,
   getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
-  readElementInListWithScroll,
   redirectToHomePage,
   selectOptionWithRetry,
   uuid,
@@ -53,6 +53,7 @@ import {
   addOwner,
   escapeESReservedCharacters,
   openClassificationTagPicker,
+  searchCertification,
   visitEntityPageByFqn,
   waitForAllLoadersToDisappear,
 } from './entity';
@@ -61,6 +62,7 @@ import {
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from './glossaryPicker';
+import { waitForSearchIndexed } from './polling';
 import { sidebarClick } from './sidebar';
 import { waitForResponseWithStatus } from './waitHelpers';
 
@@ -68,8 +70,7 @@ const waitForSearchDebounce = async (page: Page) => {
   // Wait for loader to appear and disappear after search
   // This ensures search debounce completed and results are stable
   try {
-    await page.getByTestId('loader').first().waitFor({
-      state: 'attached',
+    await expect(page.getByTestId('loader')).not.toHaveCount(0, {
       timeout: 999,
     });
     await waitForAllLoadersToDisappear(page);
@@ -100,8 +101,10 @@ export const addTierWidget = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  const tierRadioButton = page.getByTestId(`radio-btn-${tier}`);
-  await tierRadioButton.waitFor({ state: 'visible' });
+  const tierRow = page
+    .getByTestId('drop-down-menu')
+    .getByTestId(`Tier.${tier}`);
+  await tierRow.waitFor({ state: 'visible' });
 
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -109,17 +112,13 @@ export const addTierWidget = async (
       response.request().method() === 'PATCH'
   );
 
-  await tierRadioButton.click();
-
-  const updateButton = page.getByTestId('update-tier-card');
-  await updateButton.waitFor({ state: 'visible' });
-  await updateButton.click();
+  // Picking a tier saves it and closes the picker.
+  await tierRow.click();
 
   const response = await patchRequest;
   expect(response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText(tier);
 };
@@ -137,35 +136,23 @@ export const addCertificationWidget = async (
     isUpdate
   );
 
-  await page.locator('.certification-card-popover').waitFor({
-    state: 'visible',
-  });
-  await waitForAllLoadersToDisappear(page);
-
-  await readElementInListWithScroll(
-    page,
-    page.getByTestId(
-      `radio-btn-${certification.responseData.fullyQualifiedName}`
-    ),
-    page.locator('[data-testid="certification-cards"] .ant-radio-group')
-  );
-
-  await page
-    .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
-    .click();
+  const certificationMenu = page.getByTestId('drop-down-menu');
+  await certificationMenu.waitFor({ state: 'visible' });
+  await searchCertification(page, certification.responseData.name);
 
   const patchRequest = page.waitForResponse(
     (response) =>
       response.url().includes(`/api/v1/${endpoint}`) &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('update-certification').click();
+  // Picking a row commits it and closes the menu.
+  await certificationMenu
+    .getByTestId(certification.responseData.fullyQualifiedName)
+    .click();
 
   const patchResponse = await patchRequest;
   expect(patchResponse.status()).toBe(200);
-
-  await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
+  await certificationMenu.waitFor({ state: 'hidden' });
 
   await expect(page.getByTestId('certification-label')).toContainText(
     certification.responseData.displayName
@@ -179,35 +166,23 @@ export const assignCertificationForWidget = async (
 ) => {
   await page.getByTestId('edit-certification').click();
 
-  await page.locator('.certification-card-popover').waitFor({
-    state: 'visible',
-  });
-  await waitForAllLoadersToDisappear(page);
-
-  await readElementInListWithScroll(
-    page,
-    page.getByTestId(
-      `radio-btn-${certification.responseData.fullyQualifiedName}`
-    ),
-    page.locator('[data-testid="certification-cards"] .ant-radio-group')
-  );
-
-  await page
-    .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
-    .click();
+  const certificationMenu = page.getByTestId('drop-down-menu');
+  await certificationMenu.waitFor({ state: 'visible' });
+  await searchCertification(page, certification.responseData.name);
 
   const patchRequest = page.waitForResponse(
     (response) =>
       response.url().includes(`/api/v1/${endpoint}`) &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('update-certification').click();
+  // Picking a row commits it and closes the menu.
+  await certificationMenu
+    .getByTestId(certification.responseData.fullyQualifiedName)
+    .click();
 
   const patchResponse = await patchRequest;
   expect(patchResponse.status()).toBe(200);
-
-  await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
+  await certificationMenu.waitFor({ state: 'hidden' });
 
   await expect(page.getByTestId('certification-label')).toContainText(
     certification.responseData.displayName
@@ -223,13 +198,15 @@ export const removeTierFromWidget = async (page: Page, endpoint: string) => {
       response.url().includes(`/api/v1/${endpoint}`) &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('clear-tier').click();
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('clear-filter-btn')
+    .click();
 
   const response = await patchRequest;
   expect(response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
 
   await expect(page.getByTestId('add-tier')).toBeVisible();
 };
@@ -239,23 +216,18 @@ export const removeCertificationFromWidget = async (
   endpoint: string
 ) => {
   await page.getByTestId('edit-certification').click();
-  await page.locator('.certification-card-popover').waitFor({
-    state: 'visible',
-  });
-  await waitForAllLoadersToDisappear(page);
-
+  const certificationMenu = page.getByTestId('drop-down-menu');
+  await certificationMenu.waitFor({ state: 'visible' });
   const patchRequest = page.waitForResponse(
     (response) =>
       response.url().includes(`/api/v1/${endpoint}`) &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('clear-certification').click();
+  await certificationMenu.getByTestId('clear-filter-btn').click();
 
   const response = await patchRequest;
   expect(response.status()).toBe(200);
-
-  await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
+  await certificationMenu.waitFor({ state: 'hidden' });
 
   await expect(page.getByTestId('add-certification')).toBeVisible();
 };
@@ -429,10 +401,27 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
           }
           hasSearched = true;
 
-          await Promise.all([
-            searchBox.fill(domain.name),
-            page.waitForResponse('/api/v1/search/query?q=*&index=domain*'),
-          ]);
+          // The term lives in the URL (`q`), so after a reload the box already
+          // holds it and the page has searched for it on mount; re-filling the
+          // same text sends nothing and a wait for "the" search would hang the
+          // poll. Only type, and wait, when the box does not hold the term —
+          // and wait for that term's query, not whichever domain query lands.
+          if ((await searchBox.inputValue()) !== domain.name) {
+            const typedSearch = page.waitForResponse(
+              (response) => {
+                const url = new URL(response.url());
+
+                return (
+                  url.pathname.endsWith('/api/v1/search/query') &&
+                  url.searchParams.get('index') === 'domain' &&
+                  (url.searchParams.get('q') ?? '').includes(domain.name)
+                );
+              },
+              { timeout: 15_000 }
+            );
+            await searchBox.fill(domain.name);
+            await typedSearch;
+          }
 
           await waitForSearchDebounce(page);
 
@@ -926,7 +915,7 @@ export const addAssetsToDomain = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
 
     await expect(
       page.locator(
@@ -986,7 +975,7 @@ export const addServicesToDomain = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1047,7 +1036,7 @@ export const addAssetsToDataProduct = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1126,7 +1115,7 @@ export const removeAssetsFromDataProduct = async (
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   }
 
   // Clear the filter before delete-all so the request URL matches the
@@ -1382,6 +1371,81 @@ export const addTagsAndGlossaryToDomain = async (
     fullyQualifiedName: glossaryTermFqn,
   });
   await applyGlossaryPicker(page, patchUrl);
+};
+
+/**
+ * Clears the caller's persisted navbar selection (User.defaultDomain). The pick is stored on the
+ * user, so a spec that selects a domain must clear it or every later list call by that user
+ * (in this and other specs) stays scoped to it.
+ */
+export const clearPersistedDomain = async (apiContext: APIRequestContext) => {
+  const me = await (await apiContext.get('/api/v1/users/loggedInUser')).json();
+  const res = await apiContext.patch(`/api/v1/users/${me.id}`, {
+    data: [{ op: 'add', path: '/defaultDomain', value: null }],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+
+  expect(res.ok(), `clearing defaultDomain returned ${res.status()}`).toBe(
+    true
+  );
+};
+
+/** Saves `domainId` as the caller's navbar selection (User.defaultDomain) through the API. */
+export const setPersistedDomain = async (
+  apiContext: APIRequestContext,
+  domainId: string
+) => {
+  const me = await (await apiContext.get('/api/v1/users/loggedInUser')).json();
+  const res = await apiContext.patch(`/api/v1/users/${me.id}`, {
+    data: [
+      {
+        op: 'add',
+        path: '/defaultDomain',
+        value: { id: domainId, type: 'domain' },
+      },
+    ],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+
+  expect(res.ok(), `saving defaultDomain returned ${res.status()}`).toBe(true);
+};
+
+/**
+ * Runs a navbar domain pick and waits for it to settle: the pick is saved on the user, then the
+ * page reloads. Interacting before the reload races it (e.g. a second pick lands first).
+ * A failed save shows a toast and skips the reload, so fail on its status instead of waiting.
+ */
+export const switchNavbarDomain = async (
+  page: Page,
+  pick: () => Promise<void>
+) => {
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      /\/api\/v1\/users\/[^/]+$/.test(new URL(response.url()).pathname),
+    { timeout: ACTION_TIMEOUT }
+  );
+  const reloaded = page.waitForEvent('load', { timeout: ACTION_TIMEOUT });
+  // A failed save never reloads; keep the rejection handled until the status is checked.
+  reloaded.catch(() => undefined);
+  await pick();
+  const response = await saved;
+
+  expect(
+    response.ok(),
+    `saving the navbar domain returned ${response.status()}`
+  ).toBe(true);
+
+  await reloaded;
+  await waitForAllLoadersToDisappear(page);
+};
+
+/** Clears the navbar selection through the UI ("All Domains"), which also clears the persisted pick. */
+export const clearDomainFromNavbar = async (page: Page) => {
+  await switchNavbarDomain(page, async () => {
+    await page.getByTestId('domain-dropdown').click();
+    await page.getByTestId('tree-node-All Domains').click();
+  });
 };
 
 /**
@@ -2014,7 +2078,7 @@ export const verifyPortCounts = async (
         };
       },
       {
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       }
     )
     .toEqual({
@@ -2060,7 +2124,7 @@ export const addInputPortToDataProduct = async (
   await page
     .locator(`[data-testid="table-data-card_${fqn}"]`)
     .getByTestId('asset-checkbox')
-    .check();
+    .click();
 
   const addRes = page.waitForResponse(
     (res) =>
@@ -2107,7 +2171,7 @@ export const addOutputPortToDataProduct = async (
   await page
     .locator(`[data-testid="table-data-card_${fqn}"]`)
     .getByTestId('asset-checkbox')
-    .check();
+    .click();
 
   const addRes = page.waitForResponse(
     (res) =>
@@ -2145,7 +2209,9 @@ export const renameDomain = async (page: Page, newName: string) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('rename-button-title').click();
 
-  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(
+    page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+  ).toBeVisible();
 
   await page.locator('#name').clear();
   await page.locator('#name').fill(newName);
@@ -2169,6 +2235,21 @@ export const renameDomain = async (page: Page, newName: string) => {
   await domainRes;
 };
 
+const SEARCH_QUERY_PATH = '/api/v1/search/query';
+
+/** `q` with ES escaping stripped, so it compares against the term the test typed. */
+const unescaped = (value: string | null): string =>
+  (value ?? '').replaceAll('\\', '');
+
+/** Query params of a `/search/query` response, or undefined if it is a different call. */
+const searchQueryParams = (response: Response): URLSearchParams | undefined => {
+  const url = new URL(response.url());
+
+  return url.pathname.endsWith(SEARCH_QUERY_PATH)
+    ? url.searchParams
+    : undefined;
+};
+
 /**
  * Selects a domain from the navbar dropdown.
  * Clicks the domain dropdown, searches for the domain, and selects it.
@@ -2184,17 +2265,67 @@ export const selectDomainFromNavbar = async (
   await domainDropdown.click();
   await domainSearch.waitFor({ state: 'visible' });
 
+  // Match the complete term so only the last keystroke's response resolves.
+  const domainSearchResponse = page.waitForResponse(
+    (response) => {
+      const params = searchQueryParams(response);
+
+      return (
+        params?.get('index')?.includes('domain') === true &&
+        unescaped(params.get('q')).includes(searchTerm)
+      );
+    },
+    { timeout: ACTION_TIMEOUT }
+  );
+
   await domainSearch.click();
   await page.keyboard.press('Control+a');
   await domainSearch.pressSequentially(searchTerm);
+  await domainSearchResponse;
 
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
-  await waitForAllLoadersToDisappear(page);
+  const domainNode = page.getByTestId(`tree-node-${domain.fullyQualifiedName}`);
+  await domainNode.waitFor({ state: 'visible' });
+  await switchNavbarDomain(page, () => domainNode.click());
+
+  // The label confirms the domain filter applied.
+  await expect(domainDropdown).toContainText(searchTerm);
 };
 
-/**
- * Searches for an entity in the explore page and verifies it is visible.
- */
+/** Runs one Explore search and returns the FQNs it matched. */
+const runExploreSearch = async (page: Page, searchTerm: string) => {
+  const searchBox = page.getByTestId('searchBox');
+  const searchResponse = page.waitForResponse(
+    (response) => {
+      const params = searchQueryParams(response);
+
+      if (!params || response.status() !== 200) {
+        return false;
+      }
+
+      // `track_total_hits` is on the Explore results request only, not the navbar suggestions query.
+      return (
+        unescaped(params.get('q')).includes(searchTerm) &&
+        params.get('track_total_hits') === 'true'
+      );
+    },
+    { timeout: ACTION_TIMEOUT }
+  );
+
+  await searchBox.fill(searchTerm);
+  await searchBox.press('Enter');
+  const response = await searchResponse;
+  await waitForAllLoadersToDisappear(page);
+
+  const body = await response.json();
+
+  return (
+    (body?.hits?.hits ?? []) as { _source?: { fullyQualifiedName?: string } }[]
+  )
+    .map((hit) => hit._source?.fullyQualifiedName)
+    .filter((fqn): fqn is string => Boolean(fqn));
+};
+
+/** Searches Explore and expects the entity's card. */
 export const searchAndExpectEntityVisible = async (
   page: Page,
   entity: {
@@ -2214,23 +2345,12 @@ export const searchAndExpectEntityVisible = async (
   const fqn = entity.entityResponseData.fullyQualifiedName;
   const card = page.locator(`[data-testid="table-data-card_${fqn}"]`);
 
-  await expect
-    .poll(
-      async () => {
-        await page.getByTestId('searchBox').fill(name);
-        await page.getByTestId('searchBox').press('Enter');
-        await waitForAllLoadersToDisappear(page);
+  await runExploreSearch(page, name);
 
-        return await card.isVisible().catch(() => false);
-      },
-      { timeout: timeout ?? 30_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toBe(true);
+  await expect(card).toBeVisible({ timeout: timeout ?? 15_000 });
 };
 
-/**
- * Searches for an entity in the explore page and verifies it is NOT visible.
- */
+/** Searches Explore and expects no card, after waiting for the entity to be indexed. */
 export const searchAndExpectEntityNotVisible = async (
   page: Page,
   entity: {
@@ -2241,6 +2361,18 @@ export const searchAndExpectEntityNotVisible = async (
     };
   }
 ) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    await waitForSearchIndexed(
+      apiContext,
+      entity.entityResponseData.fullyQualifiedName,
+      'all'
+    );
+  } finally {
+    await afterAction();
+  }
+
   const name = get(
     entity,
     'entityResponseData.displayName',
@@ -2249,32 +2381,34 @@ export const searchAndExpectEntityNotVisible = async (
   const fqn = entity.entityResponseData.fullyQualifiedName;
   const card = page.locator(`[data-testid="table-data-card_${fqn}"]`);
 
-  await expect
-    .poll(
-      async () => {
-        await page.getByTestId('searchBox').fill(name);
-        await page.getByTestId('searchBox').press('Enter');
-        await waitForAllLoadersToDisappear(page);
+  const hitFqns = await runExploreSearch(page, name);
 
-        return await card.isVisible().catch(() => false);
-      },
-      { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toBe(false);
+  // Check the response too, not just the rendered list.
+  expect(hitFqns).not.toContain(fqn);
+  await expect(card).toHaveCount(0);
 };
 
-/**
- * Assigns a domain to an entity via API patch.
- */
+/** `query_filter` matching a single domain by exact FQN. */
+export const domainQueryFilter = (domainFqn: string) =>
+  JSON.stringify({
+    query: {
+      bool: {
+        must: [{ term: { 'domains.fullyQualifiedName': domainFqn } }],
+      },
+    },
+  });
+
+/** Assigns a domain and waits until the search document carries it. */
 export const assignDomainToEntity = async (
   apiContext: APIRequestContext,
   entity: {
+    entityResponseData?: { fullyQualifiedName?: string };
     patch: (options: {
       apiContext: APIRequestContext;
       patchData: Operation[];
-    }) => Promise<void>;
+    }) => Promise<unknown>;
   },
-  domain: { responseData: { id?: string } }
+  domain: { responseData: { id?: string; fullyQualifiedName?: string } }
 ) => {
   await entity.patch({
     apiContext,
@@ -2291,6 +2425,19 @@ export const assignDomainToEntity = async (
       },
     ],
   });
+
+  const domainFqn = domain.responseData.fullyQualifiedName;
+
+  if (!domainFqn) {
+    throw new Error('assignDomainToEntity: domain has no fullyQualifiedName');
+  }
+
+  await waitForSearchIndexed(
+    apiContext,
+    entity.entityResponseData?.fullyQualifiedName,
+    'all',
+    { queryFilter: domainQueryFilter(domainFqn) }
+  );
 };
 
 export const verifyDescriptionRequiresScroll = async (

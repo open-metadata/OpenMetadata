@@ -10,11 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, InputNumber, Modal } from 'antd';
-import React from 'react';
+import {
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HelperTextType,
+  HookForm,
+  SimpleModal,
+} from '@openmetadata/ui-core-components';
+import React, { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
-import { LineageConfigModalProps } from './EntityLineage.interface';
+import {
+  LineageConfig,
+  LineageConfigModalProps,
+} from './EntityLineage.interface';
+
+type DepthField = 'upstreamDepth' | 'downstreamDepth' | 'nodesPerLayer';
+
+// Number inputs hold strings; the config stores numbers.
+type LineageConfigFormValues = Record<DepthField, string>;
+
+const toFormValues = (config: LineageConfig): LineageConfigFormValues => ({
+  upstreamDepth: String(config.upstreamDepth ?? ''),
+  downstreamDepth: String(config.downstreamDepth ?? ''),
+  nodesPerLayer: String(config.nodesPerLayer ?? ''),
+});
 
 const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   visible,
@@ -23,70 +44,85 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const form = useForm<LineageConfigFormValues>({
+    defaultValues: toFormValues(config),
+  });
+
+  // Callers keep the modal mounted and only toggle `visible`, so re-read the
+  // config on every open: it may have loaded since, or an edit was cancelled.
+  useEffect(() => {
+    if (visible) {
+      form.reset(toFormValues(config));
+    }
+  }, [visible, config, form]);
+
+  const getNumberField = (
+    name: DepthField,
+    label: string,
+    tooltip: string,
+    min: number,
+    testId: string
+  ): FieldProp => ({
+    name,
+    label,
+    type: FieldTypes.NUMBER,
+    required: true,
+    helperText: tooltip,
+    helperTextType: HelperTextType.TOOLTIP,
+    props: { inputDataTestId: testId },
+    rules: {
+      required: t('message.field-text-is-required', { fieldText: label }),
+      validate: (value) =>
+        Number(value) >= min ||
+        t('message.entity-size-less-than', { entity: label, min }),
+    },
+  });
+
+  const fields: FieldProp[] = [
+    getNumberField(
+      'upstreamDepth',
+      t('label.upstream-depth'),
+      t('message.upstream-depth-tooltip'),
+      0,
+      'field-upstream'
+    ),
+    getNumberField(
+      'downstreamDepth',
+      t('label.downstream-depth'),
+      t('message.downstream-depth-tooltip'),
+      0,
+      'field-downstream'
+    ),
+    getNumberField(
+      'nodesPerLayer',
+      t('label.nodes-per-layer'),
+      t('message.nodes-per-layer-tooltip'),
+      5,
+      'field-nodes-per-layer'
+    ),
+  ];
+
+  const handleSave = (values: LineageConfigFormValues) =>
+    onSave({
+      upstreamDepth: Number(values.upstreamDepth),
+      downstreamDepth: Number(values.downstreamDepth),
+      nodesPerLayer: Number(values.nodesPerLayer),
+    } as LineageConfig);
 
   return (
-    <Modal
-      maskClosable={false}
-      open={visible}
+    <SimpleModal
+      isDismissable={false}
+      isOpen={visible}
       title={t('label.lineage-config')}
       onCancel={onCancel}
-      onOk={form.submit}>
-      <Form
+      onOk={form.handleSubmit(handleSave)}>
+      <HookForm
+        className="tw:flex tw:flex-col tw:gap-4"
         form={form}
-        initialValues={config}
-        layout="vertical"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={onSave}>
-        <Form.Item
-          label={t('label.upstream-depth')}
-          name="upstreamDepth"
-          rules={[
-            {
-              required: true,
-            },
-            {
-              type: 'number',
-              min: 0,
-            },
-          ]}
-          tooltip={t('message.upstream-depth-tooltip')}>
-          <InputNumber className="w-full" data-testid="field-upstream" />
-        </Form.Item>
-
-        <Form.Item
-          label={t('label.downstream-depth')}
-          name="downstreamDepth"
-          rules={[
-            {
-              required: true,
-            },
-            {
-              type: 'number',
-              min: 0,
-            },
-          ]}
-          tooltip={t('message.downstream-depth-tooltip')}>
-          <InputNumber className="w-full" data-testid="field-downstream" />
-        </Form.Item>
-
-        <Form.Item
-          label={t('label.nodes-per-layer')}
-          name="nodesPerLayer"
-          rules={[
-            {
-              required: true,
-            },
-            {
-              type: 'number',
-              min: 5,
-            },
-          ]}
-          tooltip={t('message.nodes-per-layer-tooltip')}>
-          <InputNumber className="w-full" data-testid="field-nodes-per-layer" />
-        </Form.Item>
-      </Form>
-    </Modal>
+        onSubmit={form.handleSubmit(handleSave)}>
+        <FormFields fields={fields} />
+      </HookForm>
+    </SimpleModal>
   );
 };
 

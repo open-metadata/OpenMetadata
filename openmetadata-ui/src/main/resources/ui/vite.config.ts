@@ -22,6 +22,7 @@ import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { createChunkClassifier } from './vite/chunks';
 import {
+  bundleGraphReport,
   htmlBasePathTransform,
   injectCriticalPreloads,
   noEnumOnlyChunks,
@@ -81,6 +82,7 @@ export default defineConfig(async ({ mode }) => {
     },
     plugins: [
       isProductionBundle && !isPlaywrightBundle && noEnumOnlyChunks(),
+      isProductionBundle && !isPlaywrightBundle && bundleGraphReport(),
       htmlBasePathTransform(),
       tailwindcss(),
       react(),
@@ -168,6 +170,11 @@ export default defineConfig(async ({ mode }) => {
         // Without dedup, the linked package resolves its own node_modules copy.
         'i18next',
         'react-i18next',
+        // The linked core package has its own echarts devDependency; charts
+        // must share the app's single copy.
+        'echarts',
+        'echarts-for-react',
+        'zrender',
       ],
     },
 
@@ -361,6 +368,14 @@ export default defineConfig(async ({ mode }) => {
         // not hand the linked library a second i18next.
         'i18next',
         'react-i18next',
+        // The entries @openmetadata/ui-core-components/charts imports, so the
+        // dev pre-bundle hands it the app's echarts too.
+        'echarts/core',
+        'echarts/charts',
+        'echarts/components',
+        'echarts/features',
+        'echarts/renderers',
+        'echarts-for-react/esm/core',
       ],
       esbuildOptions: {
         target: 'esnext',

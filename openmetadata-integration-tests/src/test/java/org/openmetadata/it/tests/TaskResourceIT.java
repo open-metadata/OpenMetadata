@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.CreateAPICollection;
 import org.openmetadata.schema.api.data.CreateAPIEndpoint;
+import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -57,6 +59,7 @@ import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
+import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -82,6 +85,7 @@ import org.openmetadata.schema.type.APISchema;
 import org.openmetadata.schema.type.BulkTaskOperationParams;
 import org.openmetadata.schema.type.BulkTaskOperationResult;
 import org.openmetadata.schema.type.BulkTaskOperationType;
+import org.openmetadata.schema.type.ChartType;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContainerDataModel;
@@ -129,6 +133,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   public TaskResourceIT() {
+    supportsEntityStatus = false;
     supportsFollowers = false;
     supportsTags = true;
     supportsDomains = false;
@@ -2314,6 +2319,152 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testVisibleEndpointSearchMatchesTextAsTyped(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    Table table =
+        createTableWithDomainAndOwners(
+            ns, createDomain(ns, "visible-search-domain").getEntityReference(), List.of());
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                createTaskRequestAboutTable(ns, "visible-search", table)
+                    .withDisplayName("Review the customer's order " + ns.prefix("search"))
+                    .withAssignees(List.of(shared.USER1.getFullyQualifiedName())));
+
+    // `q` is a bound LIKE value: an apostrophe must match as typed, not doubled.
+    assertTrue(
+        searchVisibleTaskIds("customer's order " + ns.prefix("search")).contains(task.getId()),
+        "An apostrophe in the search text should match as typed");
+    // `%` and `_` are escaped, so they cannot act as wildcards.
+    assertFalse(
+        searchVisibleTaskIds("%").contains(task.getId()), "A bare % should not match every task");
+    assertFalse(
+        searchVisibleTaskIds("no-such-task-" + ns.prefix("search")).contains(task.getId()),
+        "Unrelated text should not match");
+  }
+
+  @Test
+  void testListEndpointSearchesWithinEntity(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "list-search-domain");
+    Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    Table otherTable = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    String text = "Backfill refunds " + ns.prefix("search");
+    Task match = createTaskWithDisplayName(ns, "list-search-match", table, text);
+    Task noMatch = createTaskWithDisplayName(ns, "list-search-other", table, "Unrelated work");
+    Task otherEntity = createTaskWithDisplayName(ns, "list-search-elsewhere", otherTable, text);
+
+    List<UUID> found = searchTaskIdsAbout(table.getFullyQualifiedName(), text);
+
+    assertTrue(found.contains(match.getId()), "A matching task on the entity is returned");
+    assertFalse(found.contains(noMatch.getId()), "A task on the entity that does not match is not");
+    assertFalse(
+        found.contains(otherEntity.getId()), "A matching task on another entity is not returned");
+    assertTrue(
+        searchTaskIdsAbout(table.getFullyQualifiedName(), null)
+            .containsAll(List.of(match.getId(), noMatch.getId())),
+        "Without q the entity's tasks are all listed");
+  }
+
+  @Test
+  void testListEndpointSearchPagesBothWays(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "list-search-paging-domain");
+    Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    String about = table.getFullyQualifiedName();
+    String text = "Reconcile ledgers " + ns.prefix("paging");
+    List<UUID> matching = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      matching.add(createTaskWithDisplayName(ns, "list-search-page-" + i, table, text).getId());
+    }
+    createTaskWithDisplayName(ns, "list-search-page-other", table, "Unrelated work");
+
+    JsonNode first = searchPage(about, text, "after", null);
+    JsonNode second = searchPage(about, text, "after", first.path("paging").path("after").asText());
+    JsonNode third = searchPage(about, text, "after", second.path("paging").path("after").asText());
+    List<UUID> forward = new ArrayList<>(pageIds(first));
+    forward.addAll(pageIds(second));
+    forward.addAll(pageIds(third));
+
+    assertEquals(3, forward.size(), "Each page holds one match");
+    assertTrue(forward.containsAll(matching), "Paging forward visits every match once");
+    assertEquals(
+        pageIds(second),
+        pageIds(searchPage(about, text, "before", third.path("paging").path("before").asText())),
+        "Paging back returns the previous page");
+  }
+
+  private JsonNode searchPage(String aboutEntity, String query, String cursorParam, String cursor)
+      throws Exception {
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("aboutEntity", aboutEntity)
+            .queryParam("q", query)
+            .queryParam("limit", "1");
+    if (cursor != null) {
+      options.queryParam(cursorParam, cursor);
+    }
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/tasks", null, options.build());
+    return JsonUtils.readTree(response);
+  }
+
+  private static List<UUID> pageIds(JsonNode page) {
+    List<UUID> ids = new ArrayList<>();
+    page.path("data").forEach(node -> ids.add(UUID.fromString(node.path("id").asText())));
+    return ids;
+  }
+
+  private Task createTaskWithDisplayName(
+      TestNamespace ns, String name, Table table, String displayName) {
+    return SdkClients.adminClient()
+        .tasks()
+        .create(createTaskRequestAboutTable(ns, name, table).withDisplayName(displayName));
+  }
+
+  private static RequestOptions searchOptions(String aboutEntity, String query) {
+    RequestOptions.Builder options =
+        RequestOptions.builder().queryParam("aboutEntity", aboutEntity).queryParam("limit", "100");
+    if (query != null) {
+      options.queryParam("q", query);
+    }
+    return options.build();
+  }
+
+  private List<UUID> searchTaskIdsAbout(String aboutEntity, String query) throws Exception {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/tasks", null, searchOptions(aboutEntity, query));
+    List<UUID> ids = new ArrayList<>();
+    JsonUtils.readTree(response)
+        .path("data")
+        .forEach(node -> ids.add(UUID.fromString(node.path("id").asText())));
+    return ids;
+  }
+
+  private List<UUID> searchVisibleTaskIds(String query) throws Exception {
+    String response =
+        SdkClients.user1Client()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tasks/visible",
+                null,
+                RequestOptions.builder()
+                    .queryParam("q", query)
+                    .queryParam("statusGroup", "open")
+                    .queryParam("limit", "100")
+                    .build());
+    List<UUID> ids = new ArrayList<>();
+    JsonUtils.readTree(response)
+        .path("data")
+        .forEach(node -> ids.add(UUID.fromString(node.path("id").asText())));
+    return ids;
+  }
+
+  @Test
   void testScopedTaskEndpointsHonorTimeRange(TestNamespace ns) {
     SharedEntities shared = SharedEntities.get();
     Domain domain = createDomain(ns, "time-range-domain");
@@ -2332,26 +2483,36 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .create(createTaskRequestAboutTable(ns, "time-range-created", ownedTable));
 
     // assignedTask is visible to user1 both via /visible and /owned (about a
-    // user1-owned table); createdTask exercises /created (createdBy user1).
+    // user1-owned table); createdTask exercises /created (createdBy user1). Scoped to this
+    // test's domain so tasks other concurrent tests give user1 cannot move total vs page.
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listVisible(null, null, null, "assignees,about", 1000, startTs, endTs),
+                .listVisible(
+                    null,
+                    null,
+                    domain.getFullyQualifiedName(),
+                    "assignees,about",
+                    1000,
+                    startTs,
+                    endTs),
         assignedTask.getId(),
         assignedTask.getCreatedAt());
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listOwned(null, null, null, "about", 1000, startTs, endTs),
+                .listOwned(
+                    null, null, domain.getFullyQualifiedName(), "about", 1000, startTs, endTs),
         assignedTask.getId(),
         assignedTask.getCreatedAt());
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listCreated(null, null, null, "about", 1000, startTs, endTs),
+                .listCreated(
+                    null, null, domain.getFullyQualifiedName(), "about", 1000, startTs, endTs),
         createdTask.getId(),
         createdTask.getCreatedAt());
 
@@ -3433,6 +3594,382 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertEquals(newDescription, updatedChildDesc);
   }
 
+  // ==================== Ambiguous Bare Leaf Nested Field Tests ====================
+
+  @Test
+  void testResolveAmbiguousBareLeafDescriptionUpdateTask_doesNotGuess(TestNamespace ns) {
+    // Two sibling columns [profile, address], each with a child named "street". A bare-leaf
+    // fieldPath "columns::street::description" is ambiguous across the two subtrees. Resolving
+    // the task must NOT write either sibling's child (guessing the target is worse than
+    // declining); the entity stays unchanged even though the task resolves to Approved.
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column profileStreet =
+        new Column()
+            .withName("street")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(255)
+            .withDescription(null);
+    Column profile =
+        new Column()
+            .withName("profile")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(profileStreet)));
+    Column addressStreet =
+        new Column()
+            .withName("street")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(255)
+            .withDescription(null);
+    Column address =
+        new Column()
+            .withName("address")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(addressStreet)));
+
+    Table table =
+        org.openmetadata.sdk.fluent.Tables.create()
+            .name(ns.prefix("ambiguous_bare_leaf_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(new ArrayList<>(List.of(profile, address)))
+            .execute();
+
+    String newDescription = "Road name - " + ns.shortPrefix();
+
+    org.openmetadata.schema.type.DescriptionUpdatePayload payload =
+        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+            .withFieldPath("columns::street::description")
+            .withNewDescription(newDescription);
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("ambig-bare-leaf-desc"))
+            .withDescription("Ambiguous bare leaf description update")
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.DescriptionUpdate)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withPayload(payload);
+
+    Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
+
+    ResolveTask resolveRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withNewValue(newDescription)
+            .withComment("Approved ambiguous bare leaf update");
+
+    Task resolvedTask =
+        SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
+
+    assertEquals(TaskEntityStatus.Approved, resolvedTask.getStatus());
+
+    Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns");
+
+    // Neither sibling's "street" child was written — the ambiguous name was refused, not guessed.
+    for (Column col : updatedTable.getColumns()) {
+      assertNotNull(col.getChildren(), col.getName() + " should have children");
+      for (Column child : col.getChildren()) {
+        if ("street".equals(child.getName())) {
+          assertNull(
+              child.getDescription(),
+              "street under " + col.getName() + " must not be written for an ambiguous bare leaf");
+        }
+      }
+    }
+  }
+
+  @Test
+  void testResolveAmbiguousBareLeafTagUpdateTask_doesNotGuess(TestNamespace ns) {
+    // The tag path resolves through FieldPathUtils.findField; with two siblings each having a
+    // child "street", a bare-leaf "columns::street::tags" fieldPath is ambiguous and must not
+    // tag the first sibling's child POJO. Neither "street" column receives the tag.
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column profileStreet =
+        new Column().withName("street").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column profile =
+        new Column()
+            .withName("profile")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(profileStreet)));
+    Column addressStreet =
+        new Column().withName("street").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column address =
+        new Column()
+            .withName("address")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(addressStreet)));
+
+    Table table =
+        org.openmetadata.sdk.fluent.Tables.create()
+            .name(ns.prefix("ambig_bare_leaf_tag_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(new ArrayList<>(List.of(profile, address)))
+            .execute();
+
+    List<TagLabel> tagsToAdd =
+        List.of(
+            new TagLabel()
+                .withTagFQN("PersonalData.Personal")
+                .withSource(TagLabel.TagSource.CLASSIFICATION)
+                .withLabelType(TagLabel.LabelType.MANUAL)
+                .withState(TagLabel.State.CONFIRMED)
+                .withName("Personal"));
+
+    Map<String, Object> payloadMap =
+        Map.of(
+            "fieldPath",
+            "columns::street::tags",
+            "tagsToAdd",
+            tagsToAdd,
+            "tagsToRemove",
+            List.of(),
+            "currentTags",
+            List.of(),
+            "operation",
+            "Add");
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("ambig-bare-leaf-tag"))
+            .withDescription("Ambiguous bare leaf tag update")
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.TagUpdate)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withPayload(payloadMap);
+
+    Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
+
+    ResolveTask resolveRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withNewValue(JsonUtils.pojoToJson(tagsToAdd))
+            .withComment("Approved ambiguous bare leaf tag update");
+
+    Task resolvedTask =
+        SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
+
+    assertEquals(TaskEntityStatus.Approved, resolvedTask.getStatus());
+
+    Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
+
+    // Neither sibling's "street" child was tagged — the ambiguous name was refused, not guessed.
+    for (Column col : updatedTable.getColumns()) {
+      if (col.getChildren() != null) {
+        for (Column child : col.getChildren()) {
+          if ("street".equals(child.getName())) {
+            assertTrue(
+                child.getTags() == null || child.getTags().isEmpty(),
+                "street under " + col.getName() + " must not be tagged for an ambiguous bare leaf");
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  void testApplyAmbiguousBareLeafSuggestion_doesNotGuess(TestNamespace ns) {
+    // The Suggestion path reads the field via getFieldDescription and writes via
+    // updateFieldDescription; both must refuse a bare-leaf name shared by two sibling subtrees.
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column profileStreet =
+        new Column().withName("street").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column profile =
+        new Column()
+            .withName("profile")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(profileStreet)));
+    Column addressStreet =
+        new Column().withName("street").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column address =
+        new Column()
+            .withName("address")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(addressStreet)));
+
+    Table table =
+        org.openmetadata.sdk.fluent.Tables.create()
+            .name(ns.prefix("ambig_bare_leaf_suggestion_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(new ArrayList<>(List.of(profile, address)))
+            .execute();
+
+    String suggestedDescription = "Road name - " + ns.shortPrefix();
+    Map<String, Object> rawSuggestionPayload =
+        Map.of(
+            "suggestionType", "Description",
+            "fieldPath", "columns::street::description",
+            "suggestedValue", suggestedDescription,
+            "source", "Agent",
+            "confidence", 85.0);
+
+    Task task =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/tasks",
+                Map.of(
+                    "name", ns.prefix("ambig-bare-leaf-suggestion"),
+                    "description", "Ambiguous bare leaf suggestion",
+                    "category", TaskCategory.MetadataUpdate.value(),
+                    "type", TaskEntityType.Suggestion.value(),
+                    "about", entityLink("table", table.getFullyQualifiedName()),
+                    "payload", rawSuggestionPayload),
+                Task.class);
+
+    Task appliedTask =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/tasks/" + task.getId() + "/suggestion/apply",
+                null,
+                Task.class);
+
+    assertEquals(TaskEntityStatus.Approved, appliedTask.getStatus());
+
+    Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns");
+
+    // Neither sibling's "street" child was written — the ambiguous suggestion was refused.
+    for (Column col : updatedTable.getColumns()) {
+      assertNotNull(col.getChildren(), col.getName() + " should have children");
+      for (Column child : col.getChildren()) {
+        if ("street".equals(child.getName())) {
+          assertNull(
+              child.getDescription(),
+              "street under "
+                  + col.getName()
+                  + " must not be written for an ambiguous bare leaf suggestion");
+        }
+      }
+    }
+  }
+
+  @Test
+  void testBulkResolveOneAmbiguousOneWellFormed_ambigDeclinedWellFormedWrites(TestNamespace ns) {
+    // Bulk approve: the ambiguous bare-leaf task is declined (entity untouched) while the
+    // well-formed task on the same table writes its target. The bulk result reports both
+    // as resolved (Approved), but only the well-formed column is modified — no wrong-target
+    // write from the ambiguous one.
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column id =
+        new Column().withName("id").withDataType(ColumnDataType.BIGINT).withDescription(null);
+    Column profileStreet =
+        new Column().withName("street").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column profile =
+        new Column()
+            .withName("profile")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(profileStreet)));
+    Column addressStreet =
+        new Column().withName("street").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column address =
+        new Column()
+            .withName("address")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(addressStreet)));
+
+    Table table =
+        org.openmetadata.sdk.fluent.Tables.create()
+            .name(ns.prefix("bulk_ambig_wf_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(new ArrayList<>(List.of(id, profile, address)))
+            .execute();
+
+    // Task 1: ambiguous bare-leaf — "columns::street::description" shared by two subtrees.
+    org.openmetadata.schema.type.DescriptionUpdatePayload ambigPayload =
+        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+            .withFieldPath("columns::street::description")
+            .withNewDescription("Ambiguous road name - " + ns.shortPrefix());
+    CreateTask ambigRequest =
+        new CreateTask()
+            .withName(ns.prefix("bulk-ambig-desc"))
+            .withDescription("Ambiguous bare leaf description update")
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.DescriptionUpdate)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withPayload(ambigPayload);
+
+    // Task 2: well-formed — "columns::id::description" targets a unique top-level column.
+    String wellFormedDesc = "Primary key - " + ns.shortPrefix();
+    org.openmetadata.schema.type.DescriptionUpdatePayload wfPayload =
+        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+            .withFieldPath("columns::id::description")
+            .withNewDescription(wellFormedDesc);
+    CreateTask wfRequest =
+        new CreateTask()
+            .withName(ns.prefix("bulk-wf-desc"))
+            .withDescription("Well-formed column description update")
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.DescriptionUpdate)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withPayload(wfPayload);
+
+    Task ambigTask = SdkClients.adminClient().tasks().create(ambigRequest);
+    Task wfTask = SdkClients.adminClient().tasks().create(wfRequest);
+    awaitTaskReadyForWorkflowResolution(ambigTask.getId());
+    awaitTaskReadyForWorkflowResolution(wfTask.getId());
+
+    BulkTaskOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/tasks/bulk",
+                new BulkTaskOperation()
+                    .withTaskIds(List.of(ambigTask.getId().toString(), wfTask.getId().toString()))
+                    .withOperation(BulkTaskOperationType.Approve)
+                    .withParams(
+                        new BulkTaskOperationParams().withComment("Bulk approve mixed tasks")),
+                BulkTaskOperationResult.class);
+
+    assertEquals(2, result.getSuccessful(), "both tasks should resolve as Approved");
+    assertEquals(0, result.getFailed());
+    assertEquals(
+        TaskEntityStatus.Approved,
+        SdkClients.adminClient().tasks().get(ambigTask.getId().toString()).getStatus());
+    assertEquals(
+        TaskEntityStatus.Approved,
+        SdkClients.adminClient().tasks().get(wfTask.getId().toString()).getStatus());
+
+    Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns");
+
+    // Well-formed target was written.
+    Column updatedId =
+        updatedTable.getColumns().stream()
+            .filter(c -> "id".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(updatedId);
+    assertEquals(wellFormedDesc, updatedId.getDescription(), "the well-formed target was written");
+
+    // Neither ambiguous "street" child was written.
+    for (Column col : updatedTable.getColumns()) {
+      if (col.getChildren() != null) {
+        for (Column child : col.getChildren()) {
+          if ("street".equals(child.getName())) {
+            assertNull(
+                child.getDescription(),
+                "street under " + col.getName() + " must not be written for the ambiguous task");
+          }
+        }
+      }
+    }
+  }
+
   // ==================== Multiple Columns Same Task ====================
 
   @Test
@@ -3560,6 +4097,161 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         SdkClients.adminClient().dashboards().getByName(dashboard.getFullyQualifiedName());
 
     assertEquals(newDescription, updatedDashboard.getDescription());
+  }
+
+  @Test
+  void testResolveDashboardChartDescriptionUpdateTask_doesNotChangeChart(TestNamespace ns) {
+    // Regression guard for the silent no-op bug: an approved per-chart DescriptionUpdate task on
+    // a Dashboard (fieldPath "charts::<chartName>::description", about = Dashboard) used to report
+    // success while prepare() reverted the only meaningful change, leaving the Chart description
+    // unchanged. FieldPathUtils now refuses the List<EntityReference> container, so the task
+    // resolution must still complete (the handler logs failure, does not throw) while the Chart's
+    // stored description remains the pre-task value.
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+
+    String originalChartDesc = "Original chart description";
+    String chartName = ns.prefix("revenue_chart");
+    CreateChart chartRequest = new CreateChart();
+    chartRequest.setName(chartName);
+    chartRequest.setService(service.getFullyQualifiedName());
+    chartRequest.setChartType(ChartType.Bar);
+    chartRequest.setDescription(originalChartDesc);
+    Chart chart = SdkClients.adminClient().charts().create(chartRequest);
+
+    CreateDashboard dashboardRequest =
+        new CreateDashboard()
+            .withName(ns.prefix("dashboard_chart_desc_task"))
+            .withService(service.getFullyQualifiedName())
+            .withDescription("Dashboard hosting the chart")
+            .withCharts(List.of(chart.getFullyQualifiedName()));
+    Dashboard dashboard = SdkClients.adminClient().dashboards().create(dashboardRequest);
+
+    String newDescription = "Task-proposed chart description - " + ns.shortPrefix();
+    org.openmetadata.schema.type.DescriptionUpdatePayload payload =
+        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+            .withFieldPath("charts::" + chartName + "::description")
+            .withCurrentDescription(originalChartDesc)
+            .withNewDescription(newDescription);
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("dashboard-chart-desc-task"))
+            .withDescription("Update dashboard chart description")
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.DescriptionUpdate)
+            .withAbout(entityLink("dashboard", dashboard.getFullyQualifiedName()))
+            .withPayload(payload);
+
+    Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
+
+    ResolveTask resolveRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withNewValue(newDescription)
+            .withComment("Approved");
+
+    Task resolvedTask =
+        SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
+
+    // Resolution completes: the handler logs failure but does not throw.
+    assertEquals(TaskEntityStatus.Approved, resolvedTask.getStatus());
+
+    // The Chart's stored description must NOT have the task-proposed value — the no-op is no
+    // longer masked by a false success signal.
+    Chart updatedChart = SdkClients.adminClient().charts().getByName(chart.getFullyQualifiedName());
+    assertEquals(
+        originalChartDesc,
+        updatedChart.getDescription(),
+        "Chart description must remain unchanged when the parent-side patch is a silent no-op");
+
+    // The Dashboard's chart reference projection must also carry the original description.
+    Dashboard updatedDashboard =
+        SdkClients.adminClient()
+            .dashboards()
+            .getByName(dashboard.getFullyQualifiedName(), "charts");
+    String refDesc =
+        updatedDashboard.getCharts().stream()
+            .filter(c -> c.getId().equals(chart.getId()))
+            .findFirst()
+            .map(c -> c.getDescription())
+            .orElse(null);
+    assertEquals(
+        originalChartDesc,
+        refDesc,
+        "Dashboard chart reference must retain the original description");
+  }
+
+  @Test
+  void testApplyDashboardChartDescriptionSuggestion_doesNotChangeChart(TestNamespace ns) {
+    // Sibling path: applySuggestion calls the same FieldPathUtils.updateFieldDescription. A
+    // Suggestion task on a Dashboard chart description (about = Dashboard, fieldPath =
+    // "charts::<chartName>::description") must not silently no-op while reporting Approved;
+    // the Chart description must remain the pre-suggestion value.
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+
+    String originalChartDesc = "Original chart description for suggestion";
+    String chartName = ns.prefix("suggested_chart");
+    CreateChart chartRequest = new CreateChart();
+    chartRequest.setName(chartName);
+    chartRequest.setService(service.getFullyQualifiedName());
+    chartRequest.setChartType(ChartType.Bar);
+    chartRequest.setDescription(originalChartDesc);
+    Chart chart = SdkClients.adminClient().charts().create(chartRequest);
+
+    CreateDashboard dashboardRequest =
+        new CreateDashboard()
+            .withName(ns.prefix("dashboard_chart_suggestion"))
+            .withService(service.getFullyQualifiedName())
+            .withDescription("Dashboard hosting the suggested chart")
+            .withCharts(List.of(chart.getFullyQualifiedName()));
+    Dashboard dashboard = SdkClients.adminClient().dashboards().create(dashboardRequest);
+
+    String suggestedDescription = "Suggested chart description - " + ns.shortPrefix();
+    Map<String, Object> rawSuggestionPayload =
+        Map.of(
+            "suggestionType",
+            "Description",
+            "fieldPath",
+            "charts::" + chartName + "::description",
+            "suggestedValue",
+            suggestedDescription,
+            "source",
+            "Agent",
+            "confidence",
+            90.0);
+
+    Task task =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/tasks",
+                Map.of(
+                    "name", ns.prefix("dashboard-chart-suggestion"),
+                    "description", "Suggest dashboard chart description",
+                    "category", TaskCategory.MetadataUpdate.value(),
+                    "type", TaskEntityType.Suggestion.value(),
+                    "about", entityLink("dashboard", dashboard.getFullyQualifiedName()),
+                    "payload", rawSuggestionPayload),
+                Task.class);
+
+    Task appliedTask =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/tasks/" + task.getId() + "/suggestion/apply",
+                null,
+                Task.class);
+
+    assertEquals(TaskEntityStatus.Approved, appliedTask.getStatus());
+
+    Chart updatedChart = SdkClients.adminClient().charts().getByName(chart.getFullyQualifiedName());
+    assertEquals(
+        originalChartDesc,
+        updatedChart.getDescription(),
+        "Chart description must remain unchanged when the suggestion targets a chart via the parent");
   }
 
   @Test

@@ -19,12 +19,16 @@ import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 
 export const styles = sortCx({
   common: {
+    // A link button drops the button box by default; `boxed` keeps it.
+    linkUnboxed: 'tw:justify-normal tw:rounded tw:p-0!',
     root: [
       'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:whitespace-nowrap tw:transition tw:duration-100 tw:ease-linear tw:before:absolute',
       // When button is used within `InputGroup`
       'tw:in-data-input-wrapper:shadow-xs tw:in-data-input-wrapper:focus:!z-50 tw:in-data-input-wrapper:in-data-leading:-mr-px tw:in-data-input-wrapper:in-data-leading:rounded-r-none tw:in-data-input-wrapper:in-data-leading:before:rounded-r-none tw:in-data-input-wrapper:in-data-trailing:-ml-px tw:in-data-input-wrapper:in-data-trailing:rounded-l-none tw:in-data-input-wrapper:in-data-trailing:before:rounded-l-none',
       // Disabled styles
       'tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled',
+      // The masked highlight fades the disabled border into dark surfaces.
+      'tw:dark:disabled:before:hidden tw:dark:disabled:after:outline-disabled',
       // Icon styles
       'tw:disabled:*:data-icon:text-fg-disabled_subtle',
       // Same as `icon` but for SSR icons that cannot be passed to the client as functions.
@@ -34,43 +38,51 @@ export const styles = sortCx({
       'tw:outline-brand tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
     icon: 'tw:pointer-events-none tw:size-5 tw:shrink-0 tw:transition-inherit-all',
   },
+  // Heights and icon frames follow the Figma "Icons in buttons" spec
+  // (ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec). The
+  // visible icon→label gap is `gap-*` plus the label's `px-0.5`. Icons draw in
+  // the middle 16 of 20 units, so the spec's fixed 2px frame padding needs
+  // svg padding on smaller frames: 18 → 0.25px (14px glyph), 16 → 0.5px (12px).
   sizes: {
-    xxs: {
-      root: [
-        'tw:gap-0.5 tw:rounded-md tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1.5',
-        'tw:*:data-icon:size-3',
-      ].join(' '),
-      linkRoot: 'tw:gap-0.5',
-    },
+    // Compact — 28px; 18px leading / 16px trailing icon frame.
     xs: {
       root: [
-        'tw:gap-0.5 tw:rounded-md tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1',
+        'tw:gap-0 tw:rounded-md tw:px-2 tw:py-1.25 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1.25',
         'tw:in-data-input-wrapper:px-2.5 tw:in-data-input-wrapper:py-1.5 tw:in-data-input-wrapper:data-icon-only:p-1.5',
-        'tw:*:data-icon:size-4',
+        'tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px] tw:*:data-[icon=trailing]:size-4 tw:*:data-[icon=trailing]:p-[0.5px]',
+      ].join(' '),
+      linkRoot: 'tw:gap-0',
+    },
+    // X-Small — 32px.
+    sm: {
+      root: [
+        'tw:gap-0.5 tw:rounded-lg tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-1.5',
+        'tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
       ].join(' '),
       linkRoot: 'tw:gap-0.5',
     },
-    sm: {
-      root: [
-        'tw:gap-1 tw:rounded-lg tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2',
-        'tw:in-data-input-wrapper:px-3.5 tw:in-data-input-wrapper:py-2.5 tw:in-data-input-wrapper:data-icon-only:p-2.5',
-      ].join(' '),
-      linkRoot: 'tw:gap-1',
-    },
+    // Small — 36px.
     md: {
+      root: [
+        'tw:gap-0.5 tw:rounded-lg tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2',
+        'tw:in-data-input-wrapper:px-3.5 tw:in-data-input-wrapper:py-2.5 tw:in-data-input-wrapper:data-icon-only:p-2.5',
+        'tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
+      ].join(' '),
+      linkRoot: 'tw:gap-0.5',
+    },
+    // Medium — 40px.
+    lg: {
       root: [
         'tw:gap-1 tw:rounded-lg tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2.5',
         'tw:in-data-input-wrapper:gap-1.5 tw:in-data-input-wrapper:px-4 tw:in-data-input-wrapper:text-md tw:in-data-input-wrapper:data-icon-only:p-3',
+        'tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
       ].join(' '),
       linkRoot: 'tw:gap-1',
     },
-    lg: {
-      root: 'tw:gap-1.5 tw:rounded-lg tw:px-4 tw:py-2.5 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3',
-      linkRoot: 'tw:gap-1.5',
-    },
+    // Large — 44px.
     xl: {
-      root: 'tw:gap-1.5 tw:rounded-lg tw:px-4.5 tw:py-3 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3.5',
-      linkRoot: 'tw:gap-1.5',
+      root: 'tw:gap-1 tw:rounded-lg tw:px-4 tw:py-2.5 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3 tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
+      linkRoot: 'tw:gap-1',
     },
   },
 
@@ -84,7 +96,7 @@ export const styles = sortCx({
         // Disabled styles
         'tw:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
-        'tw:*:data-icon:text-button-primary-icon tw:hover:*:data-icon:text-button-primary-icon_hover',
+        'tw:*:data-icon:text-white',
       ].join(' '),
     },
     secondary: {
@@ -94,23 +106,23 @@ export const styles = sortCx({
         // Disabled styles
         'tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
-        'tw:*:data-icon:text-fg-quaternary tw:hover:*:data-icon:text-fg-quaternary_hover',
+        'tw:*:data-icon:text-utility-gray-500 tw:hover:*:data-icon:text-utility-gray-600',
       ].join(' '),
     },
     tertiary: {
       root: [
         'tw:text-tertiary tw:hover:bg-primary_hover tw:hover:text-tertiary_hover tw:data-loading:bg-primary_hover',
         // Icon styles
-        'tw:*:data-icon:text-fg-quaternary tw:hover:*:data-icon:text-fg-quaternary_hover',
+        'tw:*:data-icon:text-utility-gray-500 tw:hover:*:data-icon:text-utility-gray-600',
       ].join(' '),
     },
     'link-gray': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-tertiary tw:hover:text-tertiary_hover',
+        'tw:text-tertiary tw:hover:text-tertiary_hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
-        'tw:*:data-icon:text-fg-quaternary tw:hover:*:data-icon:text-fg-quaternary_hover',
+        'tw:*:data-icon:text-utility-gray-500 tw:hover:*:data-icon:text-utility-gray-600',
       ].join(' '),
     },
     'link-color': {
@@ -118,7 +130,7 @@ export const styles = sortCx({
         // Dark keeps light frozen (brand-secondary) but flips to the blue link
         // tone (blue-300) per the dark-mode palette guideline — links are blue,
         // not the gray brand-secondary text step.
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-brand-secondary tw:hover:text-brand-secondary_hover tw:dark:text-link tw:dark:hover:text-link-hover',
+        'tw:text-brand-secondary tw:hover:text-brand-secondary_hover tw:dark:text-link tw:dark:hover:text-link-hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
@@ -159,7 +171,7 @@ export const styles = sortCx({
     },
     'link-destructive': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-error-primary tw:outline-error tw:hover:text-error-primary_hover',
+        'tw:text-error-primary tw:outline-error tw:hover:text-error-primary_hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
@@ -216,6 +228,12 @@ export interface CommonProps {
   noTextPadding?: boolean;
   /** When true, keeps the text visible during loading state */
   showTextWhileLoading?: boolean;
+  /**
+   * Keeps a `link-*` button's size padding, height and radius instead of
+   * collapsing it to an inline text box, so it lines up with regular buttons
+   * beside it (antd's `type="link"`).
+   */
+  boxed?: boolean;
   /** Truncates the button text with an ellipsis when it overflows */
   ellipsis?: boolean;
   /** Omits the default focus outline when the surrounding UI intentionally does not use one */
@@ -270,12 +288,13 @@ export type Props = ButtonProps | LinkProps;
 export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
   function Button(
     {
-      size = 'sm',
+      size = 'md',
       color = 'primary',
       children,
       className,
       hideFocusOutline,
       noTextPadding,
+      boxed,
       ellipsis,
       iconLeading: IconLeading,
       iconTrailing: IconTrailing,
@@ -295,7 +314,8 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
     const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
       color
     );
-    noTextPadding = isLinkType || noTextPadding;
+    const isUnboxedLink = isLinkType && !boxed;
+    noTextPadding = isUnboxedLink || noTextPadding;
 
     let props = {};
 
@@ -333,7 +353,8 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           hideFocusOutline ? 'tw:outline-none' : styles.common.focusOutline,
           styles.sizes[size].root,
           styles.colors[color].root,
-          isLinkType && styles.sizes[size].linkRoot,
+          isUnboxedLink && styles.common.linkUnboxed,
+          isUnboxedLink && styles.sizes[size].linkRoot,
           ellipsis && 'tw:min-w-0',
           (loading || (href && (disabled || loading))) &&
             'tw:pointer-events-none',

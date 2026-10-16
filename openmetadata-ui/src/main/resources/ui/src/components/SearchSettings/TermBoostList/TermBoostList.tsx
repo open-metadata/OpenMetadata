@@ -12,12 +12,11 @@
  */
 import classNames from 'classnames';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
-import TermBoostComponent from '../TermBoost/TermBoost';
+import TermBoostCard from '../../discovery/personal-space/Profile/tabs/platform-settings/search/TermBoostCard';
 import './term-boost-list.less';
 
 interface TermBoostListProps {
   className?: string;
-  termBoostCardClassName?: string;
   termBoosts: TermBoost[];
   showNewTermBoost?: boolean;
   handleDeleteTermBoost: (value: string) => void;
@@ -26,7 +25,6 @@ interface TermBoostListProps {
 
 const TermBoostList = ({
   className,
-  termBoostCardClassName,
   termBoosts,
   showNewTermBoost,
   handleDeleteTermBoost,
@@ -39,21 +37,17 @@ const TermBoostList = ({
         'd-flex items-center gap-2 flex-wrap m-b-xs term-boosts-container'
       )}>
       {termBoosts.map((termBoost) => (
-        <TermBoostComponent
-          className={termBoostCardClassName}
+        <TermBoostCard
           key={termBoost.value}
           termBoost={termBoost}
-          onDeleteBoost={handleDeleteTermBoost}
-          onTermBoostChange={handleTermBoostChange}
+          onChange={handleTermBoostChange}
+          onDelete={handleDeleteTermBoost}
         />
       ))}
       {showNewTermBoost && (
-        <TermBoostComponent
-          showNewTermBoost
-          className={termBoostCardClassName}
-          termBoost={{ field: '', value: '', boost: 0 }}
-          onDeleteBoost={() => handleDeleteTermBoost('')}
-          onTermBoostChange={handleTermBoostChange}
+        <TermBoostCard
+          onChange={handleTermBoostChange}
+          onDelete={() => handleDeleteTermBoost('')}
         />
       )}
     </div>

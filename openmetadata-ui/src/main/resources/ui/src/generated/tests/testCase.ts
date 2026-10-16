@@ -330,8 +330,10 @@ export interface EntityReference {
 /**
  * Current status of the test case.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -726,6 +728,10 @@ export interface TestCaseResult {
      */
     errorDetails?: TestCaseErrorDetails;
     /**
+     * Which rows the run was measured on. Absent for a run that recorded no scope.
+     */
+    evaluationScope?: TestCaseEvaluationScope;
+    /**
      * Number of rows that failed.
      */
     failedRows?: number;
@@ -805,6 +811,16 @@ export interface TestCaseDimensionResult {
      */
     dimensionValues: DimensionValue[];
     /**
+     * Which rows the parent run was measured on. Every dimension of a run shares it.
+     */
+    evaluationScope?: TestCaseEvaluationScope;
+    /**
+     * Whether this dimension has fewer rows than the test case's `minRowsPerDimension`. Its
+     * status is still reported, but it does not fail the test case under the `ANY_DIMENSION`
+     * policy.
+     */
+    excludedFromRollUp?: boolean;
+    /**
      * Number of rows that failed for this dimension combination
      */
     failedRows?: number;
@@ -822,6 +838,16 @@ export interface TestCaseDimensionResult {
      * considering both failure rate and data volume.
      */
     impactScore?: number;
+    /**
+     * Upper bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    maxBound?: number;
+    /**
+     * Lower bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    minBound?: number;
     /**
      * Number of rows that passed for this dimension combination
      */
@@ -868,6 +894,51 @@ export interface DimensionValue {
      * Value for this dimension (e.g., 'address', 'US', 'gold')
      */
     value: string;
+}
+
+/**
+ * Which rows the parent run was measured on. Every dimension of a run shares it.
+ *
+ * Which rows a test case run was measured on. The verdict is the subset's: nothing
+ * extrapolates it back to the table.
+ *
+ * Which rows the run was measured on. Absent for a run that recorded no scope.
+ */
+export interface TestCaseEvaluationScope {
+    /**
+     * Column the partition filter was applied on.
+     */
+    partitionColumnName?: string;
+    /**
+     * Whether the rows read were restricted to a partition. False when the test runs its own
+     * SQL, which ignores the configured partition.
+     */
+    partitioned?: boolean;
+    /**
+     * Size of the sample read, in the unit `profileSampleType` names.
+     */
+    profileSample?: number;
+    /**
+     * Whether `profileSample` is a percentage of the table or a number of rows. Read only when
+     * `sampled` is true.
+     */
+    profileSampleType?: ProfileSampleType;
+    /**
+     * Whether the run read a sample of the table. False when the test runs its own SQL, which
+     * ignores the configured sample.
+     */
+    sampled?: boolean;
+}
+
+/**
+ * Whether `profileSample` is a percentage of the table or a number of rows. Read only when
+ * `sampled` is true.
+ *
+ * Type of Profile Sample (percentage or rows)
+ */
+export enum ProfileSampleType {
+    Percentage = "PERCENTAGE",
+    Rows = "ROWS",
 }
 
 /**

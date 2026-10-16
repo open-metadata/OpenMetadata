@@ -752,12 +752,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('new')}>
-              <Typography className="stat-count new">
+              <Typography size="text-xs" weight="semibold">
                 {incidentCounts.new}
               </Typography>
-              <Typography className="stat-label new">
-                {t('label.new')}
-              </Typography>
+              <Typography size="text-xs">{t('label.new')}</Typography>
             </button>
             <Divider
               aria-hidden="true"
@@ -770,12 +768,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('ack')}>
-              <Typography className="stat-count ack">
+              <Typography size="text-xs" weight="semibold">
                 {incidentCounts.ack}
               </Typography>
-              <Typography className="stat-label ack">
-                {t('label.acknowledged')}
-              </Typography>
+              <Typography size="text-xs">{t('label.acknowledged')}</Typography>
             </button>
             <Divider
               aria-hidden="true"
@@ -788,12 +784,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('assigned')}>
-              <Typography className="stat-count assigned">
+              <Typography size="text-xs" weight="semibold">
                 {incidentCounts.assigned}
               </Typography>
-              <Typography className="stat-label assigned">
-                {t('label.assigned')}
-              </Typography>
+              <Typography size="text-xs">{t('label.assigned')}</Typography>
             </button>
           </div>
           <div>
@@ -876,10 +870,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <Tabs.List
           className={classNames(
             'tw:sticky tw:z-3 tw:gap-8 tw:bg-surface tw:px-4 tw:pt-2.5',
-            // Sits below the sticky entity title, which the column panel and the side drawer do not render.
+            // Sits below the 44px sticky entity title, which the column panel and the side drawer do not render.
             isColumnDetailPanel
               ? 'tw:top-0'
-              : 'tw:top-[54px] tw:[.drawer-summary-panel-container_&]:top-0'
+              : 'tw:top-11 tw:[.drawer-summary-panel-container_&]:top-0'
           )}
           size="sm"
           type="underline">

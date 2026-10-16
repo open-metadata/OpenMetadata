@@ -12,8 +12,8 @@
  */
 
 import { SelectItemType } from '@openmetadata/ui-core-components';
-import { ComponentProps, ReactNode } from 'react';
-import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
+import { ReactNode } from 'react';
+import { InlineAlertProps } from '../../../components/common/InlineAlert/InlineAlert.interface';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
 import {
@@ -27,6 +27,7 @@ import {
   ModifiedEventSubscription,
   ObservabilityFilterResourceDescriptor,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 
 export type AlertAiFormMode = 'add' | 'edit' | 'view';
 
@@ -42,7 +43,7 @@ export interface AlertAiFormFieldsProps {
   alert?: ModifiedEventSubscription;
   containerEntities?: string[];
   filterResources: ObservabilityFilterResourceDescriptor[];
-  inlineAlert?: ComponentProps<typeof InlineAlert>;
+  inlineAlert?: InlineAlertProps;
   isViewOnly?: boolean;
   // Accepts a value or a functional updater. Prefer the updater — it composes against the latest
   // state so rapid edits don't clobber each other. The value form stays assignable to the
@@ -54,6 +55,8 @@ export interface AlertAiFormFieldsProps {
           prev: ModifiedCreateEventSubscription
         ) => ModifiedCreateEventSubscription)
   ) => void;
+  /** The recipient categories the server offers for the selected sources. */
+  recipientCategories?: string[];
   showBasicFields?: boolean;
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
@@ -105,7 +108,7 @@ export interface AlertAiFieldStateProps {
 }
 
 export interface AlertAiFormExternalProps extends AlertAiFieldStateProps {
-  inlineAlert?: ComponentProps<typeof InlineAlert>;
+  inlineAlert?: InlineAlertProps;
 }
 
 export interface AlertAiSectionProps {
@@ -129,6 +132,8 @@ export interface RuleSectionProps {
 }
 
 export interface RuleArgumentFieldProps {
+  testId?: string;
+  sourceSearch?: AlertSourceSearch;
   argument: string;
   containerEntities?: string[];
   supportedEventTypes?: EventType[];
@@ -136,6 +141,8 @@ export interface RuleArgumentFieldProps {
   index: number;
   name: number;
   isViewOnly?: boolean;
+  /** Names the control with `aria-label` instead of a visible label. */
+  isLabelHidden?: boolean;
   onChange?: AlertAiFormFieldsProps['onChange'];
   validationErrors?: AlertAiFormValidationErrors;
   value: AlertAiFormValue;
@@ -161,6 +168,7 @@ export interface AiArgumentAutocompleteProps extends RuleArgumentFieldProps {
 export interface AlertAiDestinationSectionProps {
   isViewOnly?: boolean;
   onChange?: AlertAiFormFieldsProps['onChange'];
+  recipientCategories?: string[];
   selectedSource?: string;
   validationErrors?: AlertAiFormValidationErrors;
   value: AlertAiFormValue;
@@ -171,6 +179,6 @@ export interface AlertAiDestinationItemProps
   name: number;
   remove?: (index: number) => void;
   destination: ModifiedDestination;
-  destinationsWithStatus?: Destination[];
+  destinationsWithStatus?: Array<Destination | undefined>;
   isDestinationStatusLoading?: boolean;
 }

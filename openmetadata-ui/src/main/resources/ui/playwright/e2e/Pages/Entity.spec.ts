@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 import { Page, Request } from '@playwright/test';
-import { isUndefined } from 'lodash';
+import { isUndefined, startCase } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
-import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
+import {
+  COMMON_TIER_TAG,
+  EXTENDED_TEST_TIMEOUT,
+  KEY_PROFILE_METRICS,
+} from '../../constant/common';
 import { DATA_CONSUMER_RULES } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -60,8 +64,10 @@ import {
   removeOwner,
   removeOwnersFromList,
   removeTagsFromChildren,
+  searchClassificationTagPicker,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
 import {
   applyGlossaryPicker,
@@ -130,7 +136,13 @@ test.afterAll('Cleanup shared entities', async () => {
   await afterAction();
 });
 
-Object.entries(entities).forEach(([key, EntityClass]) => {
+const entityEntries = Object.entries(entities);
+
+pickEntityMatrix(
+  __filename,
+  entityEntries,
+  entityEntries.filter(([, EntityClass]) => EntityClass === TableClass)
+).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
   // For tables, softDeleteEntity counts and clicks the deleted table in its
   // schema's listing, so that table must be alone in its own schema.
@@ -217,7 +229,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       // minutes before retry kicks in. The warmup below eliminates the
       // main hang source (search-index freshness), but keep a tighter
       // ceiling as insurance.
-      test.setTimeout(120_000);
+      test.setTimeout(EXTENDED_TEST_TIMEOUT);
 
       const { afterAction, apiContext } = await getApiContext(page);
       const owner1Data = generateRandomUsername('PW_A_');
@@ -484,25 +496,16 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           });
 
           // Add tag via panel
-          const editButton = panelContainer.getByTestId('edit-icon-tags');
-          await editButton.click();
-
-          await page
-            .locator('[data-testid="selectable-list"]')
-            .waitFor({ state: 'visible' });
-
-          const searchTag = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag*'
+          await openClassificationTagPicker(
+            page,
+            panelContainer.getByTestId('edit-icon-tags')
           );
-          await page
-            .locator('[data-testid="tag-select-search-bar"]')
-            .fill('PersonalData.SpecialCategory');
-          await searchTag;
 
-          const tagOption = page
-            .locator('.selectable-list-item')
-            .filter({ hasText: 'SpecialCategory' });
-          await tagOption.waitFor({ state: 'visible' });
+          const tagOption = await searchClassificationTagPicker(
+            page,
+            'PersonalData.SpecialCategory'
+          );
+          await expect(tagOption).toBeVisible();
           await tagOption.click();
 
           const updateResponse = page.waitForResponse(
@@ -510,7 +513,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               response.url().includes('/api/v1/columns/name/') ||
               response.url().includes(`/api/v1/${entity.endpoint}/`)
           );
-          await page.getByRole('button', { name: 'Update' }).click();
+          await page.getByTestId('update-btn').click();
           await updateResponse;
           await waitForAllLoadersToDisappear(page);
 
@@ -537,20 +540,24 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             columnNameTestId,
             entityType: entity.type as EntityType,
           });
-          await cleanupPanelContainer.getByTestId('edit-icon-tags').click();
+          await openClassificationTagPicker(
+            page,
+            cleanupPanelContainer.getByTestId('edit-icon-tags')
+          );
 
-          // Wait for selectable list to be visible and ready
-          await page
-            .locator('[data-testid="selectable-list"]')
-            .waitFor({ state: 'visible' });
+          const cleanupTagOption = await searchClassificationTagPicker(
+            page,
+            'PersonalData.SpecialCategory'
+          );
+          await expect(cleanupTagOption).toBeVisible();
+          await cleanupTagOption.click();
 
-          await page.getByTestId('clear-all-button').click();
           const removeResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
               response.url().includes(`/api/v1/${entity.endpoint}/`)
           );
-          await page.getByRole('button', { name: 'Update' }).click();
+          await page.getByTestId('update-btn').click();
           await removeResponse;
           await waitForAllLoadersToDisappear(page);
 
@@ -618,35 +625,15 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           ).toBeVisible();
 
           // Step 2: Add a classification tag (should preserve glossary term)
-          const editTagsButton = panelContainer.locator(
-            '[data-testid="edit-icon-tags"]'
+          await openClassificationTagPicker(
+            page,
+            panelContainer.getByTestId('edit-icon-tags')
           );
-          await expect(editTagsButton).toBeVisible();
-          await editTagsButton.click();
 
-          // Wait for selectable list to be visible and ready
-          await expect(
-            page.locator('[data-testid="selectable-list"]')
-          ).toBeVisible();
-
-          const tagSearchBar = page.locator(
-            '[data-testid="tag-select-search-bar"]'
+          const tagOption = await searchClassificationTagPicker(
+            page,
+            'PII.Sensitive'
           );
-          await expect(tagSearchBar).toBeVisible();
-
-          const searchTag = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag*'
-          );
-          await tagSearchBar.fill('PII.Sensitive');
-          await searchTag;
-
-          // Wait for loader to disappear after search
-          await waitForAllLoadersToDisappear(page);
-
-          // Wait for tag option to be visible before clicking
-          const tagOption = page
-            .locator('.selectable-list-item')
-            .filter({ has: page.getByText('Sensitive', { exact: true }) });
           await expect(tagOption).toBeVisible();
           await tagOption.click();
 
@@ -656,9 +643,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               response.url().includes('/api/v1/columns/name/') ||
               response.url().includes(`/api/v1/${entity.endpoint}/`)
           );
-          const tagUpdateButton = page.getByRole('button', {
-            name: 'Update',
-          });
+          const tagUpdateButton = page.getByTestId('update-btn');
           await expect(tagUpdateButton).toBeVisible();
           await expect(tagUpdateButton).toBeEnabled();
           await tagUpdateButton.click();
@@ -723,30 +708,24 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await waitForAllLoadersToDisappear(page);
 
           // Remove tag
-          await cleanupPanel.getByTestId('edit-icon-tags').click();
-          await page
-            .locator('[data-testid="selectable-list"]')
-            .waitFor({ state: 'visible' });
-
-          const searchTagCleanup2 = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag*'
+          await openClassificationTagPicker(
+            page,
+            cleanupPanel.getByTestId('edit-icon-tags')
           );
-          await page
-            .locator('[data-testid="tag-select-search-bar"]')
-            .fill('PII.Sensitive');
-          await searchTagCleanup2;
-          await waitForAllLoadersToDisappear(page);
 
-          await page
-            .locator('.selectable-list-item')
-            .filter({ has: page.getByText('Sensitive', { exact: true }) })
-            .click();
+          const cleanupTagOption = await searchClassificationTagPicker(
+            page,
+            'PII.Sensitive'
+          );
+          await expect(cleanupTagOption).toBeVisible();
+          await cleanupTagOption.click();
+
           const tagCleanupResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
               response.url().includes(`/api/v1/${entity.endpoint}/`)
           );
-          await page.getByRole('button', { name: 'Update' }).click();
+          await page.getByTestId('update-btn').click();
           await tagCleanupResponse;
           await waitForAllLoadersToDisappear(page);
 
@@ -915,7 +894,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
 
             // Should have at least one nested column link
-            await expect(nestedColumnLinks.first()).toBeVisible({
+            await expect(
+              nestedColumnLinks.filter({ visible: true })
+            ).not.toHaveCount(0, {
               timeout: 5000,
             });
 
@@ -1211,7 +1192,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
 
             if ((await nestedColumnLinks.count()) > 0) {
-              await expect(nestedColumnLinks.first()).toBeVisible();
+              await expect(
+                nestedColumnLinks.filter({ visible: true })
+              ).not.toHaveCount(0);
 
               const linkCount = await nestedColumnLinks.count();
 
@@ -1362,16 +1345,14 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               .getByTestId('filter-icon')
               .click();
 
-            // AntD mounts the dropdown as .ant-table-filter-dropdown;
-            // TableV2 mounts ColumnFilter inside a react-aria dialog popover.
-            const filterDropdown = page.locator(
-              '.ant-table-filter-dropdown:visible, [role="dialog"]:has(.ant-menu)'
-            );
+            // TableV2 mounts ColumnFilter in `filter-dropdown`; its core
+            // checkboxes are labelled with the start-cased tag FQN.
+            const filterDropdown = page.getByTestId('filter-dropdown');
 
             await expect(filterDropdown).toBeVisible();
 
             await filterDropdown
-              .locator(`.ant-checkbox-wrapper:has(input[value="${filterTag}"])`)
+              .getByText(startCase(filterTag), { exact: true })
               .click();
 
             await expect(filterDropdown).toBeHidden();
@@ -1876,12 +1857,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                 testCaseCardsSection.locator('.test-case-card');
 
               await expect(failedCards).toHaveCount(1);
-
-              const failedCard = failedCards.first();
-
-              await expect(failedCard.locator('.test-case-name')).toContainText(
-                testCase2Name
-              );
+              await expect(
+                failedCards.locator('.test-case-name')
+              ).toContainText(testCase2Name);
             });
 
             await test.step('Filter by success and verify test case card', async () => {

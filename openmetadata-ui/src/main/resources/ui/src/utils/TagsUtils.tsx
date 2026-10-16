@@ -12,8 +12,12 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Space, Tag as AntdTag, Tooltip } from 'antd';
+import {
+  Badge,
+  Box,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -37,6 +41,7 @@ import {
 } from '../rest/tagAPI';
 import { getEntityName } from './EntityNameUtils';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryPureUtils';
+import { t } from './i18next/LocalUtil';
 import { getTagDisplay } from './TagsPureUtils';
 
 export const getClassifications = async (
@@ -119,13 +124,17 @@ export const getTaglist = async (
 
 export const getTagTooltip = (fqn: string, description?: string) => (
   <div className="text-left p-xss">
-    <div className="m-b-xs">
-      <RichTextEditorPreviewerV1
-        enableSeeMoreVariant={false}
-        markdown={`**${fqn}**\n${description ?? ''}`}
-        textVariant="white"
-      />
-    </div>
+    {/* Not markdown: an HTML description makes the previewer skip markdown, leaving `**` literal. */}
+    <strong>{fqn}</strong>
+    {description && (
+      <div className="m-b-xs">
+        <RichTextEditorPreviewerV1
+          enableSeeMoreVariant={false}
+          markdown={description}
+          textVariant="white"
+        />
+      </div>
+    )}
   </div>
 );
 
@@ -156,28 +165,34 @@ export const tagRender = (customTagProps: CustomTagProps) => {
   };
 
   return (
-    <AntdTag
-      closable
-      className="text-sm flex-center m-r-xss p-r-xss m-y-2 border-light-gray"
-      closeIcon={
-        <CloseOutlined data-testid="remove-tags" height={8} width={8} />
-      }
+    <Badge
+      className="tw:gap-1 text-sm m-r-xss m-y-2"
+      color="gray"
       data-testid={`selected-tag-${tagLabel}`}
-      onClose={onClose}
+      size="sm"
+      type="color"
       onMouseDown={onPreventMouseDown}>
       <Tooltip
-        className="cursor-pointer"
-        mouseEnterDelay={1.5}
-        placement="topLeft"
+        arrow
+        excludeTriggerFromTabOrder
+        delay={1500}
+        placement="top left"
         title={getTagTooltip(label as string)}
-        trigger="hover">
+        triggerClassName="tw:inline-flex cursor-pointer">
         <Typography
           as="p"
           className="m-0 d-inline-block break-all whitespace-normal">
           {tagLabel}
         </Typography>
       </Tooltip>
-    </AntdTag>
+      <button
+        aria-label={t('label.remove')}
+        className="tw:flex tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-quaternary"
+        type="button"
+        onClick={onClose}>
+        <CloseOutlined data-testid="remove-tags" height={8} width={8} />
+      </button>
+    </Badge>
   );
 };
 
@@ -216,9 +231,14 @@ export const fetchGlossaryList = async (
 
 export const TagListItemRenderer = (props: EntityReference) => {
   return (
-    <Space>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      gap={2}
+      itemClassName="layout-space-item">
       <ClassificationIcon className="d-block'" height={22} width={16} />
       <Typography>{getEntityName(props)}</Typography>
-    </Space>
+    </Box>
   );
 };

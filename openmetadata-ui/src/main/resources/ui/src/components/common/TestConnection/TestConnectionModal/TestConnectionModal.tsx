@@ -20,7 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
 import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
@@ -125,6 +125,52 @@ const resolveShowGateCard = (
   isFailed: boolean
 ): boolean => Boolean(gateStep) && !isFailed;
 
+// A test that times out or errors before any step runs has no step log, so the
+// failure action gets the text the dialog shows instead.
+const resolveFailureDetails = (
+  rawLog: string,
+  errorMessage: TestConnectionModalProps['errorMessage'],
+  timeoutMessage: string | undefined
+): string =>
+  rawLog ||
+  [errorMessage?.description, errorMessage?.subDescription, timeoutMessage]
+    .filter(Boolean)
+    .join('\n');
+
+// The action shows for any finished test that did not fully pass.
+const resolveFailureAction = ({
+  isTestingConnection,
+  isSuccessful,
+  isConnectionTimeout,
+  rawLog,
+  errorMessage,
+  timeoutMessage,
+  renderFailureAction,
+  onClose,
+}: {
+  isTestingConnection: boolean;
+  isSuccessful: boolean;
+  isConnectionTimeout: boolean;
+  rawLog: string;
+  errorMessage: TestConnectionModalProps['errorMessage'];
+  timeoutMessage: string;
+  renderFailureAction: TestConnectionModalProps['renderFailureAction'];
+  onClose: () => void;
+}): ReactNode => {
+  if (isTestingConnection || isSuccessful || !renderFailureAction) {
+    return undefined;
+  }
+
+  return renderFailureAction(
+    resolveFailureDetails(
+      rawLog,
+      errorMessage,
+      isConnectionTimeout ? timeoutMessage : undefined
+    ),
+    onClose
+  );
+};
+
 const resolveShowRemediationCard = (
   isComplete: boolean,
   isFailed: boolean
@@ -152,6 +198,7 @@ const TestConnectionModal = ({
   hostIp,
   connectionType,
   connectionDisplayName,
+  renderFailureAction,
 }: Readonly<TestConnectionModalProps>) => {
   const { t } = useTranslation();
 
@@ -287,6 +334,16 @@ const TestConnectionModal = ({
   };
 
   const message = getConnectionTimeoutMessage(t, serviceType, hostIp);
+  const failureAction = resolveFailureAction({
+    isTestingConnection,
+    isSuccessful,
+    isConnectionTimeout,
+    rawLog,
+    errorMessage,
+    timeoutMessage: message,
+    renderFailureAction,
+    onClose: onConfirm,
+  });
   const gateDescription = resolveGateDescription(t, gateStep, gateResult);
   const showGateCard = resolveShowGateCard(gateStep, isFailed);
   const showRemediationCard = resolveShowRemediationCard(isComplete, isFailed);
@@ -356,20 +413,24 @@ const TestConnectionModal = ({
                 <div className="tw:max-w-[520px] tw:text-sm tw:leading-5 tw:text-quaternary">
                   {message}
                 </div>
-                <Button
-                  className="tw:flex tw:items-center tw:gap-1.5"
-                  color="primary"
-                  data-testid="try-again-button"
-                  iconLeading={<IconTimeOutButton height={14} width={14} />}
-                  size="sm"
-                  onClick={onTestConnection}>
-                  {t('label.try-again')}
-                </Button>
+                <div className="tw:flex tw:items-center tw:gap-2">
+                  <Button
+                    className="tw:flex tw:items-center tw:gap-1.5"
+                    color="primary"
+                    data-testid="try-again-button"
+                    iconLeading={<IconTimeOutButton height={14} width={14} />}
+                    size="sm"
+                    onClick={onTestConnection}>
+                    {t('label.try-again')}
+                  </Button>
+                  {failureAction}
+                </div>
               </div>
             ) : (
               <>
                 <div className="tw:flex tw:flex-col tw:gap-4 tw:bg-primary tw:px-5 tw:py-4">
                   <ConnectionStatusBanner
+                    action={failureAction}
                     gateResult={gateResult}
                     isFailed={isFailed}
                     isSuccessful={isSuccessful}

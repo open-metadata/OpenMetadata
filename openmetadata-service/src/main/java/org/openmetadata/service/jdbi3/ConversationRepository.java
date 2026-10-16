@@ -110,6 +110,7 @@ public class ConversationRepository {
       SecurityContext securityContext,
       Authorizer authorizer,
       String entityLink,
+      boolean includeFields,
       UUID userId,
       ConversationFilterType filterType,
       Boolean resolved,
@@ -125,6 +126,7 @@ public class ConversationRepository {
         buildFilter(
             securityContext,
             entityLink,
+            includeFields,
             userId,
             filterType,
             resolved,
@@ -568,6 +570,7 @@ public class ConversationRepository {
   private ConversationFilter buildFilter(
       SecurityContext securityContext,
       String entityLink,
+      boolean includeFields,
       UUID userId,
       ConversationFilterType filterType,
       Boolean resolved,
@@ -586,6 +589,7 @@ public class ConversationRepository {
                 .toList();
     return ConversationFilter.builder()
         .entityLink(entityLink)
+        .includeFields(includeFields)
         .userId(userId)
         .filterType(filterType)
         .resolved(resolved)
@@ -1089,7 +1093,7 @@ public class ConversationRepository {
   private Target resolveTarget(String about, Include include) {
     MessageParser.EntityLink link = MessageParser.EntityLink.parse(about);
     EntityReference reference = EntityUtil.validateEntityLink(link);
-    EntityInterface entity = getWithDomains(reference.getType(), reference.getId(), include);
+    EntityInterface<?> entity = getWithDomains(reference.getType(), reference.getId(), include);
     return new Target(entity.getEntityReference(), emptyIfNull(entity.getDomains()));
   }
 
@@ -1098,7 +1102,7 @@ public class ConversationRepository {
    * name would 400 on every conversation scoped to a domain. Drop the field where it is unsupported
    * instead.
    */
-  private EntityInterface getWithDomains(String entityType, UUID id, Include include) {
+  private EntityInterface<?> getWithDomains(String entityType, UUID id, Include include) {
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
     return repository.get(
         null, id, repository.getOnlySupportedFields(Entity.FIELD_DOMAINS), include, false);
@@ -1108,7 +1112,7 @@ public class ConversationRepository {
     ActivityEvent event = activityStreamRepository.getById(activityId);
     EntityReference eventTarget = event.getEntity();
     try {
-      EntityInterface target = getWithDomains(eventTarget.getType(), eventTarget.getId(), ALL);
+      EntityInterface<?> target = getWithDomains(eventTarget.getType(), eventTarget.getId(), ALL);
       return new ActivityContext(
           event, new Target(target.getEntityReference(), emptyIfNull(target.getDomains())), true);
     } catch (EntityNotFoundException exception) {

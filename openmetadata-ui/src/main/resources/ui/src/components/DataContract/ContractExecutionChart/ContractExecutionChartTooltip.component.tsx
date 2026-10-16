@@ -10,49 +10,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
-import { useTranslation } from 'react-i18next';
-import type { TooltipProps } from 'recharts';
+import { DQTooltipContent } from '../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
+import { DataContractProcessedResultCharts } from './ContractExecutionChart.interface';
 
-const ContractExecutionChartTooltip = (
-  props: TooltipProps<string | number, string>
-) => {
-  const { t } = useTranslation();
-  const { active, payload = [] } = props;
+export interface ContractExecutionChartTooltipProps {
+  datum: DataContractProcessedResultCharts;
+  /** Translated `label.contract-execution-status`. */
+  label: string;
+  /** Translated name of the run's status. */
+  statusLabel: string;
+  /** Swatch colour: the bar's palette colour. */
+  color: string;
+}
 
-  const data = payload.length ? payload[0].payload.data : {};
-
-  if (!active || payload.length === 0 || !data) {
-    return null;
-  }
-
-  const timestamp =
-    payload[0].payload.displayTimestamp ||
-    payload[0].payload.name.split('_')[0];
-
-  return (
-    <Card
-      title={
-        <Typography as="h5" size="text-md" weight="semibold">
-          {formatDateTimeLong(timestamp)}
-        </Typography>
-      }>
-      <ul
-        className="test-summary-tooltip-container"
-        data-testid="test-summary-tooltip-container">
-        <li
-          className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-          key="item-contract-execution-status">
-          <span className="flex items-center text-grey-muted">
-            {t('label.contract-execution-status')}
-          </span>
-          <span className="font-medium">{data?.contractExecutionStatus}</span>
-        </li>
-      </ul>
-    </Card>
-  );
-};
+/** One run. Rendered through core `tooltip.render`, so it holds no hooks. */
+const ContractExecutionChartTooltip = ({
+  datum,
+  label,
+  statusLabel,
+  color,
+}: ContractExecutionChartTooltipProps) => (
+  <DQTooltipContent
+    header={formatDateTimeLong(datum.displayTimestamp)}
+    rows={[
+      {
+        key: 'contract-execution-status',
+        name: label,
+        value: statusLabel,
+        color,
+      },
+    ]}
+    transformLabel={false}
+  />
+);
 
 export default ContractExecutionChartTooltip;

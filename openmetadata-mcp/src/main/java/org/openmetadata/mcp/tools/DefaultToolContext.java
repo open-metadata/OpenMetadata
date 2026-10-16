@@ -96,6 +96,9 @@ public class DefaultToolContext {
         case "find_context":
           result = new FindContextTool().execute(authorizer, securityContext, params);
           break;
+        case "get_concept_context":
+          result = new GetConceptContextTool().execute(authorizer, securityContext, params);
+          break;
         case "company_context":
           result = new CompanyContextTool().execute(authorizer, securityContext, params);
           break;
@@ -334,7 +337,12 @@ public class DefaultToolContext {
   private static final List<CategoryMatcher> CATEGORY_MATCHERS =
       List.of(
           new CategoryMatcher(
-              meta -> meta.name().contains("RateLimit") || meta.message().contains("rate limit"),
+              meta ->
+                  meta.name().contains("RateLimit")
+                      // A refused or deferred graph read the caller may repeat shortly.
+                      || meta.name().contains("RdfRetryLater")
+                      || meta.name().contains("QueryCapacity")
+                      || meta.message().contains("rate limit"),
               McpToolCallUsage.ErrorCategory.RATE_LIMIT,
               STATUS_TOO_MANY_REQUESTS),
           new CategoryMatcher(
@@ -349,12 +357,15 @@ public class DefaultToolContext {
                       || meta.message().contains("permission denied"),
               McpToolCallUsage.ErrorCategory.AUTH,
               STATUS_FORBIDDEN),
-          // A disabled RDF triplestore is a deployment state, not an outage. Left unmatched it
-          // fell through to 500, and summarizeFailure then told the caller the backend was broken
-          // and that a narrower request might help - both wrong. Matched by name so the message
-          // text stays free to change.
+          // A disabled RDF triplestore, or a degraded projection that only a full rebuild clears,
+          // is a deployment state, not an outage. Left unmatched it fell through to 500, and
+          // summarizeFailure then told the caller the backend was broken and that a narrower
+          // request might help - both wrong. Matched by name so the message text stays free to
+          // change.
           new CategoryMatcher(
-              meta -> meta.name().contains("RdfNotEnabled"),
+              meta ->
+                  meta.name().contains("RdfNotEnabled")
+                      || meta.name().contains("RdfProjectionDegraded"),
               McpToolCallUsage.ErrorCategory.VALIDATION,
               STATUS_BAD_REQUEST),
           // Validation by class name runs before the NotFound message heuristic below, so a
@@ -432,12 +443,12 @@ public class DefaultToolContext {
   static BudgetedResult applyBudget(Object result, String toolName) {
     String serialized = JsonUtils.pojoToJson(result);
     Object payload = result;
-    if (serialized.length() > McpResponseTrim.MAX_RESPONSE_CHARS) {
+    if (serialized.length() > McpResponseTrim.maxResponseChars()) {
       LOG.warn(
           "[MCP] tool '{}' response {} chars exceeds {} budget; returning truncation envelope",
           toolName,
           serialized.length(),
-          McpResponseTrim.MAX_RESPONSE_CHARS);
+          McpResponseTrim.maxResponseChars());
       payload =
           McpResponseTrim.oversizedEnvelope(
               serialized.length(), Map.of("tool", toolName), OVERSIZED_ADVICE);

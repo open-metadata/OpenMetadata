@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import type { MapSeriesOption, VisualMapComponentOption } from 'echarts';
-import { CHART_PALETTE } from '../palette';
 import type {
   ChartOption,
   ChartTheme,
@@ -20,13 +19,6 @@ import type {
 } from '../types';
 import { tooltipConfig } from './common';
 import { mergeOption } from './merge';
-
-/** Default scale: light blue → the primary palette colour. */
-export const GEO_COLOR_RANGE: readonly string[] = [
-  '#e3edfd',
-  '#93b8f9',
-  CHART_PALETTE[0],
-];
 
 // Room under the map for the scale bar (24px) plus its end labels above it.
 const SCALE_BAND = 76;
@@ -105,7 +97,7 @@ export const buildGeoMapOption = (
     itemWidth: SCALE_THICKNESS,
     itemHeight: SCALE_LENGTH,
     textStyle: { color: theme.axisText },
-    inRange: { color: [...(input.colorRange ?? GEO_COLOR_RANGE)] },
+    inRange: { color: [...theme.palette.scale] },
   };
   const series: MapSeriesOption = {
     type: 'map',

@@ -17,11 +17,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.configuration.StartupChecksums;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 
 class SettingsRowMapperTest {
+
+  @Test
+  void getSettingsDeserializesGlossaryPropagationPreference() {
+    Settings settings =
+        CollectionDAO.SettingsRowMapper.getSettings(
+            SettingsType.GLOSSARY_SETTINGS, "{\"enableTagPropagation\":false}");
+    GlossarySettings config = assertInstanceOf(GlossarySettings.class, settings.getConfigValue());
+    assertEquals(false, config.getEnableTagPropagation());
+  }
 
   @Test
   void getSettings_deserializesStartupChecksums() {

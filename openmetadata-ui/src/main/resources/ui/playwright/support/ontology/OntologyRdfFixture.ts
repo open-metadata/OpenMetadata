@@ -12,6 +12,7 @@
  */
 
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { Glossary } from '../glossary/Glossary';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 
@@ -133,7 +134,7 @@ export class OntologyRdfFixture {
           return expectedTermIds.every((termId) => termId in positions);
         },
         termIds,
-        { timeout: 30_000 }
+        { timeout: ACTION_TIMEOUT }
       );
     }
   }

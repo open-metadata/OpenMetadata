@@ -57,6 +57,7 @@ export enum GlobalSettingOptions {
   EMAIL = 'email',
   NOTIFICATIONS = 'notifications',
   ALERTS = 'alerts',
+  ANNOUNCEMENTS = 'announcements',
   OBSERVABILITY = 'observability',
   GLOSSARY_TERM = 'glossaryTerm',
   ADD_NOTIFICATION = 'add-notification',
@@ -107,4 +108,6 @@ export enum GlobalSettingOptions {
   LEARNING_RESOURCES = 'learning-resources',
   COLUMN = 'column',
   APP_MODE = 'appMode',
+  GLOSSARY = 'glossary',
+  TIME_FORMAT = 'timeFormat',
 }

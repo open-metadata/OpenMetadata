@@ -45,9 +45,6 @@ jest.mock('../../ProfilerDetailsCard/ProfilerDetailsCard', () => {
 jest.mock('../../../../Visualisations/Chart/CustomBarChart', () => {
   return jest.fn().mockImplementation(() => <div>CustomBarChart</div>);
 });
-jest.mock('../../../../Visualisations/Chart/OperationDateBarChart', () => {
-  return jest.fn().mockImplementation(() => <div>OperationDateBarChart</div>);
-});
 jest.mock('../../../../PageHeader/PageHeader.component', () => {
   return jest.fn().mockImplementation(() => <div>PageHeader</div>);
 });
@@ -91,7 +88,6 @@ jest.mock('../../../../../rest/tableAPI', () => ({
 }));
 
 jest.mock('../../../../../utils/RouterUtils', () => ({
-  getAddCustomMetricPath: jest.fn(),
   getAddDataQualityTableTestPath: jest.fn(),
 }));
 
