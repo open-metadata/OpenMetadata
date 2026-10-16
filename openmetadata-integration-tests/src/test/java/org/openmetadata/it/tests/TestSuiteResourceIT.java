@@ -614,6 +614,25 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @Test
+  void list_basicSuiteInheritsTableOwner(TestNamespace ns) {
+    TestSuite testSuite = createBasicTestSuiteForOwnedTable(ns, "list_owner_table");
+
+    assertInheritedTableOwner(findInBasicSuiteList(testSuite));
+  }
+
+  @Test
+  void searchList_basicSuiteInheritsTableOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestSuite testSuite = createBasicTestSuiteForOwnedTable(ns, "search_list_owner_table");
+
+    Awaitility.await("search list returns the basic suite with its table's owner")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> assertInheritedTableOwner(searchBasicTestSuiteWithOwners(client, testSuite)));
+  }
+
+  @Test
   void test_inheritDomainFromTable(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -1407,6 +1426,72 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     } catch (Exception e) {
       throw new RuntimeException("Failed to list test suites", e);
     }
+  }
+
+  private TestSuite createBasicTestSuiteForOwnedTable(TestNamespace ns, String tableName) {
+    Table table = createTableForBasicTestSuite(ns, tableName);
+    table.setOwners(List.of(testUser1Ref()));
+    Table ownedTable = SdkClients.adminClient().tables().update(table.getId().toString(), table);
+    return createBasicTestSuiteForTable(ownedTable);
+  }
+
+  /** The DB list has no name filter, so page through basic suites until this one shows up. */
+  private TestSuite findInBasicSuiteList(TestSuite testSuite) {
+    ListParams params =
+        new ListParams()
+            .setFields("owners")
+            .setLimit(100)
+            .addFilter("testSuiteType", "basic")
+            .addFilter("includeEmptyTestSuites", "true");
+    while (true) {
+      ListResponse<TestSuite> page = SdkClients.adminClient().testSuites().list(params);
+      for (TestSuite suite : page.getData()) {
+        if (suite.getId().equals(testSuite.getId())) {
+          return suite;
+        }
+      }
+      String after = page.getPaging() == null ? null : page.getPaging().getAfter();
+      if (after == null) {
+        throw new AssertionError("Basic suite missing from list: " + testSuite.getId());
+      }
+      params.setAfter(after);
+    }
+  }
+
+  private TestSuite searchBasicTestSuiteWithOwners(OpenMetadataClient client, TestSuite testSuite)
+      throws Exception {
+    String encodedFqn =
+        java.net.URLEncoder.encode(testSuite.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    TestSuiteResource.TestSuiteList result =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/dataQuality/testSuites/search/list"
+                    + "?fields=owners&limit=10&offset=0&includeEmptyTestSuites=true"
+                    + "&testSuiteType=basic&fullyQualifiedName="
+                    + encodedFqn,
+                null,
+                TestSuiteResource.TestSuiteList.class,
+                RequestOptions.builder().build());
+    return result.getData().stream()
+        .filter(suite -> suite.getId().equals(testSuite.getId()))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private void assertInheritedTableOwner(TestSuite listedSuite) {
+    List<EntityReference> owners = listedSuite.getOwners();
+    assertNotNull(owners, "basic suite should carry its table's owners");
+    assertAll(
+        () ->
+            assertTrue(
+                owners.stream().anyMatch(owner -> testUser1().getId().equals(owner.getId())),
+                "table owner missing from " + owners),
+        () ->
+            assertTrue(
+                owners.stream().allMatch(owner -> Boolean.TRUE.equals(owner.getInherited())),
+                "owners should be marked inherited: " + owners));
   }
 
   private TestSuite createBasicTestSuiteForTable(Table table) {
