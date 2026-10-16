@@ -25,10 +25,10 @@ import { redirectToHomePage } from '../../../utils/common';
 import {
   addAndVerifyWidget,
   setUserDefaultPersona,
-  waitForLandingPageWidget,
   verifyDataProductCountInDataProductWidget,
   verifyDomainCountInDomainWidget,
   verifyWidgetCountOnCurrentPage,
+  waitForLandingPageWidget,
 } from '../../../utils/customizeLandingPage';
 import {
   addAssetsToDataProduct,
