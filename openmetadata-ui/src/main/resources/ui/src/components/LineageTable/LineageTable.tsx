@@ -647,15 +647,17 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     timeFilter?.endTime,
   ]);
 
-  // Reset to page 1 only when the time range itself changes. `handlePageChange`
-  // from `usePaging` is recreated whenever `currentPage` changes, so listing it
-  // as a dependency would re-run this effect on every page navigation and send
-  // the user back to page 1. Track the previous time bounds in a ref and only
-  // reset when they actually differ.
-  const prevTimeBoundsRef = useRef({
-    startTime: timeFilter?.startTime,
-    endTime: timeFilter?.endTime,
-  });
+  // Reset to page 1 on mount and whenever the time range changes. The ref
+  // starts as null so the effect fires on the first render — this catches the
+  // case where the user changed the time range while the table was unmounted
+  // (e.g. switched to the graph view, narrowed the range, then switched back).
+  // `handlePageChange` from `usePaging` is recreated whenever `currentPage`
+  // changes, so listing it as a dependency would re-run this effect on every
+  // page navigation. Track it in a ref so only the time bounds drive the effect.
+  const prevTimeBoundsRef = useRef<{
+    startTime: number | undefined;
+    endTime: number | undefined;
+  } | null>(null);
   const handlePageChangeRef = useRef(handlePageChange);
   handlePageChangeRef.current = handlePageChange;
 
@@ -663,6 +665,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     const prev = prevTimeBoundsRef.current;
 
     if (
+      prev === null ||
       prev.startTime !== timeFilter?.startTime ||
       prev.endTime !== timeFilter?.endTime
     ) {

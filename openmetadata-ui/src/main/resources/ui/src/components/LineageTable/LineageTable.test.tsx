@@ -1541,5 +1541,34 @@ describe('LineageTable', () => {
 
       expect(handlePageChangePage2).not.toHaveBeenCalledWith(1);
     });
+
+    it('resets to page 1 on mount when timeFilter is set (catches time changes made while unmounted)', async () => {
+      setupStoreWithTimeFilter({ startTime, endTime });
+
+      const handlePageChange = jest.fn();
+
+      mockUsePaging.mockReturnValue({
+        currentPage: 2,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+        handlePageSizeChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+      });
+
+      render(<LineageTable entity={mockEntity} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(handlePageChange).toHaveBeenCalledWith(1);
+      });
+    });
   });
 });
