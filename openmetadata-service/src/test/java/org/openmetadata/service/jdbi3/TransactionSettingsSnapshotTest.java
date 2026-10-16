@@ -89,12 +89,13 @@ class TransactionSettingsSnapshotTest {
   @Test
   void aNestedAttemptKeepsTheStartOfTheTransactionItJoined() {
     TransactionRollbackTracker.runAttempt(
-        () ->
-            TransactionRollbackTracker.runAttempt(
-                () -> {
-                  commitAnUpdateTheSnapshotCannotSee();
-                  return isMultiDomainRuleEnabled();
-                }));
+        () -> {
+          // The update lands between the two starts, so a nested attempt that recorded its own
+          // start would stamp the snapshot's rules as current.
+          commitAnUpdateTheSnapshotCannotSee();
+          return TransactionRollbackTracker.runAttempt(
+              TransactionSettingsSnapshotTest::isMultiDomainRuleEnabled);
+        });
     readingTheSnapshot.set(false);
 
     assertFalse(isMultiDomainRuleEnabled(), "a read after the transaction must see the update");
