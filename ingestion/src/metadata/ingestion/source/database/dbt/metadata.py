@@ -195,14 +195,16 @@ class DbtSource(DbtServiceSource):
         it is ingested under, so query lineage looks the tables up where they really are.
         See ADR:2026-10-14-dbt-catalog-mapping-resolves-engine-database-names.
         """
-        for catalog, database in self.catalog_mapping.items():
-            sql = re.sub(
-                rf'(?<![\w."`])("?){re.escape(catalog)}\1(?=\s*\.\s*(?:"[^"]+"|[\w$]+)\s*\.)',
-                lambda _match, database=database: f'"{database}"',
-                sql,
-                flags=re.IGNORECASE,
-            )
-        return sql
+        if not self.catalog_mapping:
+            return sql
+        # one pass over all catalogs, so a mapped database that is also a key is not mapped again
+        catalogs = "|".join(re.escape(catalog) for catalog in sorted(self.catalog_mapping, key=len, reverse=True))
+        return re.sub(
+            rf'(?<![\w."`])("?)({catalogs})\1(?=\s*\.\s*(?:"[^"]+"|[\w$]+)\s*\.)',
+            lambda match: f'"{self.catalog_mapping[match.group(2).casefold()]}"',
+            sql,
+            flags=re.IGNORECASE,
+        )
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):

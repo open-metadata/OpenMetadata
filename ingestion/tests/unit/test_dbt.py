@@ -5537,6 +5537,13 @@ class TestCatalogMapping:
         )
         assert get_lineage_by_query.call_args.kwargs["service_names"] == "bq_svc"
 
+    def test_each_catalog_is_mapped_once_when_a_database_is_also_a_mapped_catalog(self):
+        source = self._source(catalog_mapping={"hive": "warehouse", "warehouse": "warehouse_prod"})
+
+        assert source._map_catalogs_in_sql("select * from hive.raw.a join warehouse.raw.b using (id)") == (
+            'select * from "warehouse".raw.a join "warehouse_prod".raw.b using (id)'
+        )
+
     def test_without_a_mapping_compiled_sql_is_unchanged(self):
         sql = 'select id from "bq_catalog"."raw"."customers"'
 
