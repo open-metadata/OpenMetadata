@@ -810,8 +810,8 @@ const ContextCenterMemoriesPage: FC = () => {
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
     void refreshMemoryReviews();
-    fetchMemories();
-    fetchMemoryCounts();
+    void fetchMemories();
+    void fetchMemoryCounts();
   }, [handleModalClose, fetchMemories, fetchMemoryCounts]);
 
   const countCards = useMemo(

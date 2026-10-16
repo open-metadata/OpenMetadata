@@ -104,9 +104,9 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const [currentPage, setCurrentPage] = useState(
     Number(hashState.params.page) || 1
   );
-  const { savedPageSize, savePageSize } = useSavedPageSize();
+  const { savePageSize, resolvePageSize } = useSavedPageSize();
   const [pageSize, setPageSize] = useState(
-    Number(hashState.params.pageSize) || savedPageSize
+    resolvePageSize(Number(hashState.params.pageSize))
   );
   const [reloadKey, setReloadKey] = useState(0);
   const fetchRequestIdRef = useRef(0);

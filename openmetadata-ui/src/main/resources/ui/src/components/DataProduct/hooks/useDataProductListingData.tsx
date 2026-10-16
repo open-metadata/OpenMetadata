@@ -34,9 +34,11 @@ import {
 export const useDataProductListingData = ({
   enableNlq,
   pageSize = PAGE_SIZE_BASE,
+  pageSizeOptions,
 }: {
   enableNlq?: boolean;
   pageSize?: number;
+  pageSizeOptions?: number[];
 } = {}): ListingData<DataProduct> => {
   const { dataProductBasePath } = useMarketplaceStore();
   // Memoized because a ClassBase override may build these per call, and
@@ -122,6 +124,7 @@ export const useDataProductListingData = ({
     searchIndex: SearchIndex.DATA_PRODUCT,
     baseFilter: '', // No parent filter for data products
     pageSize,
+    pageSizeOptions,
     filterKeys,
     filterConfigs,
     columns,

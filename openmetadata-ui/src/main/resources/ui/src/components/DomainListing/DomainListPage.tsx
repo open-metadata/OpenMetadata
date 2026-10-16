@@ -64,12 +64,14 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const personaView = usePersonaViewMode(VIEW_MODE_PAGE.Domains);
   const [selectedView, setView] = useState<PageViewMode>();
   const view = selectedView ?? personaView;
+  const listingPageSizeOptions = getViewPageSizeOptions(view);
   const { savedPageSize: listingPageSize } = useSavedPageSize(
-    getViewPageSizeOptions(view)
+    listingPageSizeOptions
   );
   const domainListing = useDomainListingData({
     enableNlq: isAiMode,
     pageSize: listingPageSize,
+    pageSizeOptions: listingPageSizeOptions,
   });
   // Card and table views page at different sizes, so the current page may not exist in the other.
   const { handlePageChange } = domainListing;

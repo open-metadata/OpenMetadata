@@ -86,8 +86,8 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     cursorType: hashCursorType,
     setPage: setHashPage,
   } = useHashPagingParams();
-  const { savedPageSize, savePageSize } = useSavedPageSize();
-  const pageSize = hashPageSize || savedPageSize;
+  const { savePageSize, resolvePageSize } = useSavedPageSize();
+  const pageSize = resolvePageSize(hashPageSize);
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(false);

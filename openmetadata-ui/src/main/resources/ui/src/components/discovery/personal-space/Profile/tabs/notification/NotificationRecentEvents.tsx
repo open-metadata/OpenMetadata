@@ -89,8 +89,8 @@ function NotificationRecentEvents({
   );
   const { state: hashState, updateParams } = useSettingsHash();
   const initialPage = Number(hashState.params.page) || 1;
-  const { savedPageSize, savePageSize } = useSavedPageSize();
-  const initialPageSize = Number(hashState.params.pageSize) || savedPageSize;
+  const { savePageSize, resolvePageSize } = useSavedPageSize();
+  const initialPageSize = resolvePageSize(Number(hashState.params.pageSize));
 
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);

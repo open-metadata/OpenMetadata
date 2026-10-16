@@ -51,13 +51,10 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
     setPage: setHashPage,
   } = useHashPagingParams();
   // Personas render as a card grid, so they page on the grid scale.
-  const { savedPageSize, savePageSize } = useSavedPageSize(
+  const { savePageSize, resolvePageSize } = useSavedPageSize(
     GRID_PAGE_SIZE_OPTIONS
   );
-  const pageSize =
-    hashPageSize && GRID_PAGE_SIZE_OPTIONS.includes(hashPageSize)
-      ? hashPageSize
-      : savedPageSize;
+  const pageSize = resolvePageSize(hashPageSize);
 
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [isLoading, setIsLoading] = useState(false);

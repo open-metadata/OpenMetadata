@@ -16,7 +16,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { debounce } from 'lodash';
+import { debounce, noop } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LIST_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import {
@@ -387,9 +387,9 @@ export const useConnectionsData = ({
 
       return;
     }
-    void queryClient.prefetchQuery(
-      getServicesOverviewQueryOptions({ ...ESTATE_PARAMS, include })
-    );
+    queryClient
+      .query(getServicesOverviewQueryOptions({ ...ESTATE_PARAMS, include }))
+      .catch(noop);
   });
 
   const toggleSortOrder = () => {

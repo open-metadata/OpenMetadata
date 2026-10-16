@@ -52,12 +52,14 @@ const SubDomainsTable = ({
   const personaView = usePersonaViewMode(VIEW_MODE_PAGE.SubDomains);
   const [selectedView, setView] = useState<PageViewMode>();
   const view = selectedView ?? personaView;
+  const listingPageSizeOptions = getViewPageSizeOptions(view);
   const { savedPageSize: listingPageSize } = useSavedPageSize(
-    getViewPageSizeOptions(view)
+    listingPageSizeOptions
   );
   const subdomainListing = useSubdomainListingData({
     parentDomainFqn: domainFqn,
     pageSize: listingPageSize,
+    pageSizeOptions: listingPageSizeOptions,
   });
   // Card and table views page at different sizes, so the current page may not exist in the other.
   const { handlePageChange } = subdomainListing;

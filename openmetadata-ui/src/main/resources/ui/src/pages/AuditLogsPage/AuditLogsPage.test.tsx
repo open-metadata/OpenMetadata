@@ -22,6 +22,9 @@ import {
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 import { SOCKET_EVENTS } from '../../constants/constants';
+import { User } from '../../generated/entity/teams/user';
+import { usePersistentStorage } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   exportAuditLogs,
   getAuditLogExportJob,
@@ -334,6 +337,32 @@ describe('AuditLogsPage', () => {
       );
 
       await waitFor(() => expect(mockGetAuditLogs).toHaveBeenCalledTimes(1));
+    });
+
+    it('starts from the page size the user last picked', async () => {
+      // Real stores: a signed-in user whose saved list size is 50, not the page's old fixed 25.
+      const previousUser = useApplicationStore.getState().currentUser;
+      useApplicationStore.setState({
+        currentUser: { ...previousUser, name: 'audit-user' } as User,
+      });
+      usePersistentStorage
+        .getState()
+        .setUserPreference('audit-user', { globalPageSize: 50 });
+
+      render(
+        <MemoryRouter>
+          <AuditLogsPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() =>
+        expect(mockGetAuditLogs).toHaveBeenCalledWith(
+          expect.objectContaining({ limit: 50 })
+        )
+      );
+
+      usePersistentStorage.getState().clearUserPreference('audit-user');
+      useApplicationStore.setState({ currentUser: previousUser });
     });
 
     it('displays loading state initially', async () => {

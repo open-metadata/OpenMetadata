@@ -27,6 +27,7 @@ interface UseDomainListingConfig {
   enableNlq?: boolean;
   nameLabelKey?: string;
   pageSize?: number;
+  pageSizeOptions?: number[];
   basePath?: string;
   includeOwners?: boolean;
   includeGlossaryTerms?: boolean;
@@ -47,6 +48,7 @@ export const useDomainListing = (
     enableNlq = false,
     nameLabelKey = 'label.domain',
     pageSize = PAGE_SIZE_BASE,
+    pageSizeOptions,
     basePath = '/domain',
     includeOwners = true,
     includeGlossaryTerms = true,
@@ -103,6 +105,7 @@ export const useDomainListing = (
     searchIndex: SearchIndex.DOMAIN,
     baseFilter,
     pageSize,
+    pageSizeOptions,
     filterKeys,
     filterConfigs,
     columns,

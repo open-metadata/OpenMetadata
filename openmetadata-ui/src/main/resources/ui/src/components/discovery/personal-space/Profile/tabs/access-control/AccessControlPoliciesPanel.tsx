@@ -88,8 +88,8 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
     cursorType: hashCursorType,
     setPage: setHashPage,
   } = useHashPagingParams();
-  const { savedPageSize, savePageSize } = useSavedPageSize();
-  const pageSize = hashPageSize || savedPageSize;
+  const { savePageSize, resolvePageSize } = useSavedPageSize();
+  const pageSize = resolvePageSize(hashPageSize);
 
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState(true);

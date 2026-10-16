@@ -84,8 +84,8 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
     cursorType: hashCursorType,
     setPage: setHashPage,
   } = useHashPagingParams();
-  const { savedPageSize, savePageSize } = useSavedPageSize();
-  const pageSize = hashPageSize || savedPageSize;
+  const { savePageSize, resolvePageSize } = useSavedPageSize();
+  const pageSize = resolvePageSize(hashPageSize);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();

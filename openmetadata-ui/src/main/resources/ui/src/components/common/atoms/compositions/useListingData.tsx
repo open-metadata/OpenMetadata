@@ -29,6 +29,8 @@ interface UseListingDataProps<T> {
   searchIndex: SearchIndex;
   baseFilter?: string;
   pageSize?: number;
+  /** The sizes the current view offers; a URL size outside them falls back to `pageSize`. */
+  pageSizeOptions?: number[];
   filterKeys: string[];
   filterConfigs?: ExploreQuickFilterField[];
   columns: ColumnConfig<T>[];
@@ -52,6 +54,7 @@ export const useListingData = <
     searchIndex,
     baseFilter = '',
     pageSize = PAGE_SIZE_BASE,
+    pageSizeOptions,
     filterKeys,
     filterConfigs,
     columns,
@@ -86,7 +89,12 @@ export const useListingData = <
     resetAll,
   } = urlStateHook;
 
-  const effectivePageSize = urlState.pageSize || pageSize;
+  // A size left in the URL by the other view's scale (25 from the table on the card view) is not
+  // one this view offers, so it falls back to the view's own size.
+  const effectivePageSize =
+    pageSizeOptions && !pageSizeOptions.includes(urlState.pageSize)
+      ? pageSize
+      : urlState.pageSize || pageSize;
 
   const dataFetching = useDataFetching<T>({
     searchIndex,
@@ -131,7 +139,7 @@ export const useListingData = <
       urlState.currentPage,
       urlState.searchQuery,
       urlState.filters,
-      urlState.pageSize,
+      effectivePageSize,
     ]);
     if (signature === lastFetchedRef.current) {
       return;
@@ -147,7 +155,7 @@ export const useListingData = <
     urlState.currentPage,
     urlState.searchQuery,
     urlState.filters,
-    urlState.pageSize,
+    effectivePageSize,
     // `useNlq` is left out on purpose: flipping the NLQ toggle must not run a
     // query by itself. As on Explore, NLQ runs when the user submits.
     isRouteVisible,

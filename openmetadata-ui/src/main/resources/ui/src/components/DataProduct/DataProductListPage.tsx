@@ -158,12 +158,14 @@ const DataProductListPage = ({
   const personaView = usePersonaViewMode(VIEW_MODE_PAGE.DataProducts);
   const [selectedView, setView] = useState<PageViewMode>();
   const view = selectedView ?? personaView;
+  const listingPageSizeOptions = getViewPageSizeOptions(view);
   const { savedPageSize: listingPageSize } = useSavedPageSize(
-    getViewPageSizeOptions(view)
+    listingPageSizeOptions
   );
   const dataProductListing = useDataProductListingData({
     enableNlq: isAiMode,
     pageSize: listingPageSize,
+    pageSizeOptions: listingPageSizeOptions,
   });
   // Card and table views page at different sizes, so the current page may not exist in the other.
   const { handlePageChange } = dataProductListing;

@@ -128,11 +128,6 @@ async function walkToPageCursor(
   return { cursor, discoveredCursors };
 }
 
-// A size in the hash (a shared or reloaded link) wins over the size the user last picked.
-function resolvePageSize(hash: number | undefined, saved: number): number {
-  return hash || saved;
-}
-
 interface AccessControlAuditLogsPanelProps {
   /** Callback to inject action buttons into the page header. */
   onSetHeaderActions?: (actions: React.ReactNode) => void;
@@ -151,8 +146,8 @@ const AccessControlAuditLogsPanel: React.FC<
     cursorType: hashCursorType,
     setPage: setHashPage,
   } = useHashPagingParams();
-  const { savedPageSize, savePageSize } = useSavedPageSize();
-  const pageSize = resolvePageSize(hashPageSize, savedPageSize);
+  const { savePageSize, resolvePageSize } = useSavedPageSize();
+  const pageSize = resolvePageSize(hashPageSize);
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [paging, setPaging] = useState<Paging>(INITIAL_PAGING);

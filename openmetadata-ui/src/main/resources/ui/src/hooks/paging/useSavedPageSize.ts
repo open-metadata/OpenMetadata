@@ -51,5 +51,15 @@ export const useSavedPageSize = (
     [setPreference]
   );
 
-  return { savedPageSize, savePageSize };
+  // A size from the URL or settings hash (a shared or reloaded link) wins, but only if this
+  // picker offers it: an old link's 10, or a grid's 24 on a list, falls back to the saved size.
+  const resolvePageSize = useCallback(
+    (requested?: number) =>
+      requested && pageSizeOptions.includes(requested)
+        ? requested
+        : savedPageSize,
+    [pageSizeOptions, savedPageSize]
+  );
+
+  return { savedPageSize, savePageSize, resolvePageSize };
 };
