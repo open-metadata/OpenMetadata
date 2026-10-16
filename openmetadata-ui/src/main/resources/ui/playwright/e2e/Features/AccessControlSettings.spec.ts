@@ -400,6 +400,9 @@ test.describe(
             })
             .click();
           await page.keyboard.press('Escape');
+          // The open option list sits over Save; under load it can still be
+          // closing when Save is clicked.
+          await expect(page.getByRole('listbox')).toBeHidden();
         });
 
         await test.step('Confirm adding policy', async () => {
