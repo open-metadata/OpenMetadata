@@ -61,14 +61,15 @@ const SubDomainsTable = ({
     pageSize: listingPageSize,
     pageSizeOptions: listingPageSizeOptions,
   });
-  // Card and table views page at different sizes, so the current page may not exist in the other.
-  const { handlePageChange } = subdomainListing;
+  // Card and table views page at different sizes, so a switch starts over on page 1 at the new
+  // view's saved size; a size from a link applies only to the view it was opened in.
+  const { resetPaging } = subdomainListing;
   const handleViewChange = useCallback(
     (nextView: PageViewMode) => {
       setView(nextView);
-      handlePageChange(1);
+      resetPaging?.();
     },
-    [handlePageChange]
+    [resetPaging]
   );
 
   const { quickFilters, defaultFilters } = useDomainFilters({

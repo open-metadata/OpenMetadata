@@ -171,6 +171,10 @@ export const useUrlState = (
     updateUrlParams(updates);
   }, [searchKey, pageKey, filterKeys, updateUrlParams]);
 
+  const resetPaging = useCallback(() => {
+    updateUrlParams({ [pageKey]: null, [pageSizeKey]: null });
+  }, [pageKey, pageSizeKey, updateUrlParams]);
+
   return {
     urlState,
     parsedFilters,
@@ -180,5 +184,6 @@ export const useUrlState = (
     setPageSize,
     resetFilters,
     resetAll,
+    resetPaging,
   };
 };

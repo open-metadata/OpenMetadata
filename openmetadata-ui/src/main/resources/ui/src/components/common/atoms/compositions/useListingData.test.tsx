@@ -84,6 +84,7 @@ describe('useListingData', () => {
       setPageSize: mockSetPageSize,
       resetFilters: jest.fn(),
       resetAll: jest.fn(),
+      resetPaging: jest.fn(),
     });
 
     mockUseDataFetching.mockReturnValue({
@@ -205,6 +206,7 @@ describe('useListingData', () => {
         setPageSize: mockSetPageSize,
         resetFilters: jest.fn(),
         resetAll: jest.fn(),
+        resetPaging: jest.fn(),
       });
 
       act(() => {
@@ -250,6 +252,7 @@ describe('useListingData', () => {
         setPageSize: mockSetPageSize,
         resetFilters: jest.fn(),
         resetAll: jest.fn(),
+        resetPaging: jest.fn(),
       });
 
       renderHook(
@@ -284,6 +287,7 @@ describe('useListingData', () => {
         setPageSize: mockSetPageSize,
         resetFilters: jest.fn(),
         resetAll: jest.fn(),
+        resetPaging: jest.fn(),
       });
 
       mockUsePaginationState.mockReturnValueOnce({
@@ -328,6 +332,7 @@ describe('useListingData', () => {
         setPageSize: mockSetPageSize,
         resetFilters: jest.fn(),
         resetAll: jest.fn(),
+        resetPaging: jest.fn(),
       });
 
       mockUsePaginationState.mockReturnValueOnce({

@@ -176,4 +176,28 @@ describe('useUrlState', () => {
       expect(newParams.get('page')).toBe('1');
     });
   });
+
+  describe('resetPaging', () => {
+    it('drops the page and page size but keeps search and filters', () => {
+      const { result } = renderHook(
+        () => useUrlState({ filterKeys: ['owner'], defaultPageSize: 12 }),
+        { wrapper }
+      );
+
+      act(() => {
+        result.current.resetPaging();
+      });
+
+      const updateFn = mockSetSearchParams.mock.calls[0][0];
+      const newParams = updateFn(
+        new URLSearchParams('q=sales&owner=alice&page=3&size=25')
+      );
+
+      // The listing then starts on page 1 at its own default size.
+      expect(newParams.get('page')).toBeNull();
+      expect(newParams.get('size')).toBeNull();
+      expect(newParams.get('q')).toBe('sales');
+      expect(newParams.get('owner')).toBe('alice');
+    });
+  });
 });

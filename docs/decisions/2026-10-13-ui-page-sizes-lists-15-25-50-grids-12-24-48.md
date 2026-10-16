@@ -30,8 +30,11 @@ matching entry.
 - Every paged view starts from that saved size; no page sets a fixed starting size of its own.
   This includes views with no size picker (Metrics, KPIs, Domains, Data Products, reindex
   failures, Context Center memories). A size carried in the URL (`pageSize` param or settings
-  hash) still wins, so a shared link opens at its own size. Fixed fetch batches that are not a
-  paged view (e.g. loading all glossary terms, approval tasks) are out of scope.
+  hash) still wins, so a shared link opens at its own size, but only for the view it was opened
+  in: a table/card switch drops it from the URL, and the new view (and any later switch back)
+  starts at the saved size for its scale. A size the current view does not offer is ignored. Fixed
+  fetch batches that are not a paged view (e.g. loading all glossary terms, approval tasks) are
+  out of scope.
 - `usePaging` treats a caller that declares no options as on the list scale, so a grid size left
   in the shared URL param, or an off-scale size an older build stored in the preference, never
   reaches a 15/25/50 picker.

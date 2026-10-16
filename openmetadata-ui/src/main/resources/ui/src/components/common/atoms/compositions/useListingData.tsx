@@ -87,6 +87,7 @@ export const useListingData = <
     setCurrentPage,
     setPageSize,
     resetAll,
+    resetPaging,
   } = urlStateHook;
 
   // A size left in the URL by the other view's scale (25 from the table on the card view) is not
@@ -249,6 +250,7 @@ export const useListingData = <
     handleClearAll: resetAll,
     handlePageChange,
     handlePageSizeChange,
+    resetPaging,
     refetch,
   };
 };
