@@ -14,7 +14,6 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import {
   CreateTable,
-  DataType,
   TableType,
 } from '../../../src/generated/api/data/createTable';
 import { Table } from '../../../src/generated/entity/data/table';
@@ -206,14 +205,10 @@ async function createTable(
   databaseSchema: string,
   index: number
 ): Promise<Table> {
+  // Column-less on purpose: a table's columns inherit its glossary terms and count as assets of
+  // the term, so any column here would inflate the asset counts this spec pins.
   const request: CreateTable = {
-    columns: [
-      {
-        dataType: DataType.Int,
-        dataTypeDisplay: 'int',
-        name: 'id',
-      },
-    ],
+    columns: [],
     databaseSchema,
     description: 'Ontology data-mode pagination fixture.',
     displayName: `Ontology data asset ${index}`,
@@ -384,14 +379,11 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
       });
 
       const tableResources = await tableFixture.create(apiContext);
-      tables = [
-        tableResources.entity,
-        ...(await createAdditionalTables(
-          apiContext,
-          tableResources.schema.fullyQualifiedName,
-          TOTAL_ASSET_COUNT - 1
-        )),
-      ];
+      tables = await createAdditionalTables(
+        apiContext,
+        tableResources.schema.fullyQualifiedName,
+        TOTAL_ASSET_COUNT
+      );
       await addAssets(
         apiContext,
         primaryTerm,
