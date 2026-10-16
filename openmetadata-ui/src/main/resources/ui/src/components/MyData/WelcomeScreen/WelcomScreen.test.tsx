@@ -15,11 +15,16 @@ import { MemoryRouter } from 'react-router-dom';
 import WelcomeScreen from './WelcomeScreen.component';
 
 const mockNavigate = jest.fn();
+const mockUseIsAiMode = jest.fn().mockReturnValue(false);
 const mockOnClose = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => mockNavigate,
+}));
+
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockUseIsAiMode(),
 }));
 
 jest.mock('../../../context/UntitledUIThemeProvider/theme-provider', () => ({
@@ -46,12 +51,21 @@ describe('WelcomeScreen', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  it('should open add database service on connect a data source', () => {
+  it('should open add database service on connect a data source in classic mode', () => {
     render(<WelcomeScreen onClose={mockOnClose} />, { wrapper: MemoryRouter });
 
     fireEvent.click(screen.getByTestId('welcome-screen-connect-btn'));
 
     expect(mockNavigate).toHaveBeenCalledWith('/databaseServices/add-service');
+  });
+
+  it('should open add service across all categories in AI mode', () => {
+    mockUseIsAiMode.mockReturnValueOnce(true);
+    render(<WelcomeScreen onClose={mockOnClose} />, { wrapper: MemoryRouter });
+
+    fireEvent.click(screen.getByTestId('welcome-screen-connect-btn'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/all/add-service');
   });
 
   it('should start the tour on take a product tour', () => {

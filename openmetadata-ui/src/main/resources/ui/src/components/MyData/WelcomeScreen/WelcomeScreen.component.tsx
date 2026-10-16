@@ -21,13 +21,15 @@ import { split } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
+import { ALL_SERVICES_CATEGORY } from '../../../constants/ServiceType.constant';
 import { useTheme } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
-import { getAddServicePath } from '../../../utils/RouterUtils';
 
 // Figma 15448:9083 — a radial glow rising into the brand colour along the
 // bottom 65% of the panel; dark mode keeps it faint.
@@ -50,6 +52,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { currentUser } = useApplicationStore();
+  const isAiMode = useIsAiMode();
   const greeting = t('label.welcome', {
     name: split(getEntityName(currentUser), ' ')[0] || t('label.user'),
   });
@@ -106,7 +109,15 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
               iconTrailing={ArrowRight}
               size="xl"
               onPress={() =>
-                navigate(getAddServicePath(ServiceCategory.DATABASE_SERVICES))
+                navigate(
+                  // AI mode's Connections opens on every connector; classic
+                  // keeps its database-services entry point.
+                  connectionsRouterClassBase.getAddServicePath(
+                    isAiMode
+                      ? ALL_SERVICES_CATEGORY
+                      : ServiceCategory.DATABASE_SERVICES
+                  )
+                )
               }>
               {t('label.connect-a-data-source')}
             </Button>
