@@ -66,6 +66,8 @@ import {
 } from '../../../rest/metadataTypeAPI';
 import {
   patchWorkflowDefinition,
+  resumeWorkflow,
+  suspendWorkflow,
   triggerWorkflow,
 } from '../../../rest/workflowDefinitionsAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -132,6 +134,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     selectedNode,
     setEdges,
     setNodes,
+    setWorkflowDefinition,
     workflowDefinition,
     workflowMetadata,
     isNodeDragEnabled,
@@ -339,6 +342,23 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
       setShowDeleteModal(false);
     }
   }, [performDeleteWorkflow]);
+
+  const isSuspended = Boolean(workflowDefinition?.suspended);
+
+  const handleToggleSuspend = useCallback(async () => {
+    if (!workflowDefinition) {
+      return;
+    }
+
+    try {
+      await (isSuspended ? resumeWorkflow : suspendWorkflow)(
+        workflowDefinition.name
+      );
+      setWorkflowDefinition({ ...workflowDefinition, suspended: !isSuspended });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [workflowDefinition, isSuspended, setWorkflowDefinition]);
 
   const handleRunWorkflow = useCallback(async () => {
     const workflowFqn = workflowMetadata?.name;
@@ -705,8 +725,10 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
             handleRunWorkflow={handleRunWorkflow}
             handleSaveWorkflow={handleSaveWorkflowWithSnapshot}
             handleTestWorkflow={handleTestWorkflow}
+            handleToggleSuspend={handleToggleSuspend}
             isAiMode={isAiMode}
             isRunLoading={isRunLoading}
+            isSuspended={isSuspended}
             title={workflowDisplayName}
             workflowName={workflowName}
             onUpdateDisplayName={handleUpdateDisplayName}

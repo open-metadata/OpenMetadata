@@ -14,8 +14,10 @@
 import {
   Badge,
   Button,
+  ButtonUtility,
   Card,
   Dialog,
+  Dropdown,
   Input,
   Modal,
   ModalOverlay,
@@ -24,6 +26,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { DotsVertical } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +39,63 @@ import { WorkflowControls } from './WorkflowControls';
 
 const getInitialDisplayName = (title?: string) => title ?? '';
 
+type WorkflowManageMenuProps = Pick<
+  WorkflowHeaderProps,
+  'handleDeleteWorkflow' | 'handleToggleSuspend' | 'isSuspended'
+>;
+
+const WorkflowManageMenu: React.FC<WorkflowManageMenuProps> = ({
+  handleDeleteWorkflow,
+  handleToggleSuspend,
+  isSuspended = false,
+}) => {
+  const { t } = useTranslation();
+  const { showDeleteButton } = useWorkflowModeContext();
+
+  if (!showDeleteButton || (!handleToggleSuspend && !handleDeleteWorkflow)) {
+    return null;
+  }
+
+  return (
+    <Dropdown.Root>
+      <ButtonUtility
+        color="tertiary"
+        data-testid="workflow-manage-button"
+        icon={DotsVertical}
+        size="sm"
+        tooltip={t('label.more-action-plural')}
+      />
+      <Dropdown.Popover className="tw:w-min">
+        <Dropdown.Menu
+          aria-label={t('label.more-action-plural')}
+          selectionMode="none">
+          {handleToggleSuspend && (
+            <Dropdown.Item
+              data-testid={
+                isSuspended
+                  ? 'resume-workflow-button'
+                  : 'suspend-workflow-button'
+              }
+              id="suspend"
+              label={isSuspended ? t('label.resume') : t('label.suspend')}
+              onAction={handleToggleSuspend}
+            />
+          )}
+          {handleDeleteWorkflow && (
+            <Dropdown.Item
+              data-testid="delete-workflow-button"
+              id="delete"
+              textValue={t('label.delete')}
+              onAction={handleDeleteWorkflow}>
+              <span className="tw:text-error-primary">{t('label.delete')}</span>
+            </Dropdown.Item>
+          )}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
+
 export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   breadcrumb,
   editorLink,
@@ -45,6 +105,8 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   handleTestWorkflow,
   handleSaveWorkflow,
   handleDeleteWorkflow,
+  handleToggleSuspend,
+  isSuspended,
   handleRevertAndCancel,
   handleRunWorkflow,
   isRunLoading = false,
@@ -57,7 +119,6 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     showSaveButton,
     showCancelButton,
     showTestButton,
-    showDeleteButton,
     enterEditMode,
     enterViewMode,
     isViewMode,
@@ -97,12 +158,19 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     setIsEditModalOpen(false);
   };
 
+  const manageMenu = (
+    <WorkflowManageMenu
+      handleDeleteWorkflow={handleDeleteWorkflow}
+      handleToggleSuspend={handleToggleSuspend}
+      isSuspended={isSuspended}
+    />
+  );
+
   const workflowControls = useMemo(
     () => (
       <WorkflowControls
         isRunLoading={isRunLoading}
         onCancelWorkflow={showCancelButton ? enterViewMode : undefined}
-        onDeleteWorkflow={showDeleteButton ? handleDeleteWorkflow : undefined}
         onRevertAndCancel={showCancelButton ? handleRevertAndCancel : undefined}
         onRunWorkflow={handleRunWorkflow}
         onSaveWorkflow={showSaveButton ? handleSaveAndEnterViewMode : undefined}
@@ -113,8 +181,6 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
       isRunLoading,
       showCancelButton,
       enterViewMode,
-      showDeleteButton,
-      handleDeleteWorkflow,
       handleRevertAndCancel,
       handleRunWorkflow,
       showSaveButton,
@@ -210,6 +276,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
             <>
               {workflowControls}
               {editWorkflowButton}
+              {manageMenu}
             </>
           }
           badge={
@@ -282,6 +349,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
             <div className="tw:flex tw:gap-3 tw:items-center">
               {workflowControls}
               {editWorkflowButton}
+              {manageMenu}
             </div>
           </div>
         </Card>

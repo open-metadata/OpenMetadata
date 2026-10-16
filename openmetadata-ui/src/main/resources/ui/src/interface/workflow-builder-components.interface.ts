@@ -291,7 +291,6 @@ export interface WorkflowControlsProps {
   onCancelWorkflow?: () => void;
   onRevertAndCancel?: () => void;
   onRunWorkflow?: () => void;
-  onDeleteWorkflow?: () => void;
   isRunLoading?: boolean;
 }
 
@@ -306,6 +305,9 @@ export interface WorkflowHeaderProps {
   handleTestWorkflow: () => void;
   handleSaveWorkflow: () => void;
   handleDeleteWorkflow?: () => void;
+  /** Suspends the workflow, or resumes it when `isSuspended`. */
+  handleToggleSuspend?: () => void;
+  isSuspended?: boolean;
   handleRevertAndCancel?: () => void;
   handleRunWorkflow?: () => void;
   isRunLoading?: boolean;

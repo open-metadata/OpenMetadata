@@ -141,6 +141,18 @@ export const triggerWorkflow = async (workflowFqn: string) => {
   );
 };
 
+export const suspendWorkflow = async (workflowFqn: string) => {
+  return APIClient.put(
+    `${WORKFLOW_DEFINITIONS_BASE_URL}/name/${workflowFqn}/suspend`
+  );
+};
+
+export const resumeWorkflow = async (workflowFqn: string) => {
+  return APIClient.put(
+    `${WORKFLOW_DEFINITIONS_BASE_URL}/name/${workflowFqn}/resume`
+  );
+};
+
 export const validateWorkflowDefinition = async (
   workflowData: WorkflowDefinition
 ) => {
