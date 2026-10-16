@@ -18,7 +18,13 @@ describe('IngestionStatusCount', () => {
     render(
       <IngestionStatusCount
         runId="run-1"
-        summary={{ name: 'Sink', records: 30, updated_records: 3, errors: 2, warnings: 1 }}
+        summary={{
+          name: 'Sink',
+          records: 30,
+          updated_records: 3,
+          errors: 2,
+          warnings: 1,
+        }}
       />
     );
 

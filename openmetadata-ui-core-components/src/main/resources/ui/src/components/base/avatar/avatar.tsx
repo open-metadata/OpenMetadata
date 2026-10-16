@@ -6,7 +6,12 @@ import { getAvatarColorClasses } from './utils';
 
 type AvatarSize = 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
-export type AvatarIconColor = 'brand' | 'gray' | 'success' | 'warning' | 'error';
+export type AvatarIconColor =
+  | 'brand'
+  | 'gray'
+  | 'success'
+  | 'warning'
+  | 'error';
 
 const iconColors: Record<AvatarIconColor, string> = {
   brand: 'tw:bg-utility-brand-50 tw:text-utility-brand-600',
