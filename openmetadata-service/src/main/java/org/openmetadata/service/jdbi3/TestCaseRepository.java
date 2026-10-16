@@ -901,7 +901,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     validateDimensionColumns(test, table);
     setDataQualityDimension(test, testDefinition);
 
-    if (isNewTestCase(test, update)) {
+    if (!update) {
       TestCaseDefinitionConformance.validate(test, testDefinition, table, entityLink);
     }
 
@@ -1185,41 +1185,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         "testCaseResult",
         DATA_QUALITY_DIMENSION_FIELD,
         INCIDENTS_FIELD);
-  }
-
-  /**
-   * A PUT that creates a row prepares with {@code update} true, so whether the row exists decides.
-   * The FQN is set here the same way prepareInternal sets it right after prepare.
-   */
-  private boolean isNewTestCase(TestCase test, boolean update) {
-    setFullyQualifiedName(test);
-    return !update || findByNameOrNull(test.getFullyQualifiedName(), ALL) == null;
-  }
-
-  /**
-   * POST, PUT and the CSV import all create through here; the CSV import never calls prepare
-   * (ADR:2026-10-12-test-cases-are-checked-against-their-definition-at-create).
-   */
-  @Override
-  protected TestCase createNewEntity(TestCase test) {
-    validateDefinitionConformance(test);
-    return super.createNewEntity(test);
-  }
-
-  /**
-   * createMany stores in chunks, each in its own transaction, so the whole batch is checked before
-   * any of it is stored.
-   */
-  public List<TestCase> createManyTestCases(UriInfo uriInfo, List<TestCase> testCases) {
-    testCases.forEach(TestCaseRepository::validateDefinitionConformance);
-    return createMany(uriInfo, testCases);
-  }
-
-  private static void validateDefinitionConformance(TestCase test) {
-    EntityLink entityLink = EntityLink.parse(test.getEntityLink());
-    TestDefinition definition = Entity.getEntity(test.getTestDefinition(), "", NON_DELETED);
-    Table table = Entity.getEntity(entityLink, "columns", ALL);
-    TestCaseDefinitionConformance.validate(test, definition, table, entityLink);
   }
 
   @Override

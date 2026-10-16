@@ -695,7 +695,7 @@ def test_case_table_custom_sql_query_with_threshold_success():
 
 @pytest.fixture
 def test_case_table_custom_sql_query_lowercase_strategy():
-    """The server accepts an option in any case, so the runner must read `count` as COUNT"""
+    """`strategy` in any case, with spaces around it, reads as COUNT"""
     return TestCase(
         name=TEST_CASE_NAME,
         entityLink=ENTITY_LINK_USER,
@@ -711,7 +711,7 @@ def test_case_table_custom_sql_query_lowercase_strategy():
 
 @pytest.fixture
 def test_case_table_custom_sql_query_blank_strategy():
-    """The server stores a blank option as unset, so the runner must fall back to ROWS"""
+    """A blank `strategy` reads as ROWS, the definition's default"""
     return TestCase(
         name=TEST_CASE_NAME,
         entityLink=ENTITY_LINK_NAME,
@@ -925,7 +925,7 @@ def test_case_column_value_in_set_boolean():
 
 @pytest.fixture
 def test_case_column_values_not_in_set_boolean_strings():
-    """The forbidden set as the UI and generated tests write it: strings"""
+    """The forbidden set as the UI writes it, and a generated test can: a JSON array of strings"""
     return TestCase(
         name=TEST_CASE_NAME,
         entityLink=ENTITY_LINK_IS_ACTIVE,
@@ -940,7 +940,7 @@ def test_case_column_values_not_in_set_boolean_strings():
 
 @pytest.fixture
 def test_case_column_values_not_in_set_boolean_json():
-    """The forbidden set as a generated test writes it: a JSON array with a lowercase boolean"""
+    """The forbidden set as a generated test can write it: a JSON array with a lowercase boolean"""
     return TestCase(
         name=TEST_CASE_NAME,
         entityLink=ENTITY_LINK_IS_ACTIVE,
@@ -969,7 +969,7 @@ def test_case_column_value_in_set_missing_column():
 
 @pytest.fixture
 def test_case_column_value_in_set_boolean_strings():
-    """The allowed set as the UI and generated tests write it: strings"""
+    """The allowed set as the UI writes it, and a generated test can: a JSON array of strings"""
     return TestCase(
         name=TEST_CASE_NAME,
         entityLink=ENTITY_LINK_IS_ACTIVE,

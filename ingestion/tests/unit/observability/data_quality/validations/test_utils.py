@@ -71,7 +71,7 @@ def test_strings_on_a_string_or_unknown_column_stay_strings(column_type):
     ],
 )
 def test_a_json_written_set_is_read_like_a_python_one(raw, column_type, expected):
-    """Generated tests and API clients write JSON, where booleans and null are lowercase"""
+    """The UI and generated tests write JSON, where booleans and null are lowercase"""
     assert utils.parse_set_values(raw=raw, column_type=column_type) == expected
 
 

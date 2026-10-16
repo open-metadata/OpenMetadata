@@ -1320,7 +1320,7 @@ def test_suite_validation_datalake(
     ],
 )
 def test_string_booleans_on_a_datalake_column_stay_strings(test_case_type, parameter_values, status, failed_rows):
-    """Pandas infers a column of "True"/"False" strings as BOOLEAN; its sets must still compare as strings"""
+    """GenericDataFrameColumnParser types a column of "True"/"False" strings as BOOLEAN; its sets must still compare as strings"""
     test_case = TestCase(
         name="string_booleans",
         entityLink="<#E::table::service.db.users::columns::flag>",

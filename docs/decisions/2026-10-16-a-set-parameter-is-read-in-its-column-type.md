@@ -9,26 +9,28 @@
 ## Context
 
 `columnValuesToBeInSet` and `columnValuesToBeNotInSet` parsed `allowedValues` / `forbiddenValues`
-with `literal_eval`. Clients write these parameters differently: the UI writes a JSON array of
-strings, a generated test writes JSON (`[false]`), older test cases hold Python literals
-(`[True, False]`). `literal_eval` rejects JSON's lowercase `false` / `true` / `null`, which aborted
-the test, and on a BOOLEAN column it kept `"true"` / `"false"` as strings, which an engine such as
-Databricks refuses to compare with a boolean.
+with `literal_eval`. The UI writes a set as a JSON array of strings, and a generated test writes a
+JSON array, whose booleans and null are lowercase (`[false]`). `literal_eval` rejects JSON's
+lowercase `false` / `true` / `null`, which aborted the test, and on a BOOLEAN column it kept
+`"true"` / `"false"` as strings, which an engine such as Databricks refuses to compare with a
+boolean.
 
 ## Decision
 
-`parse_set_values` reads a set as a Python literal and, when it is not one, as JSON; where both
-parse a value they agree, so nothing that parsed before reads differently. A value that is neither
-raises ValueError and the test is Aborted, as before. A value that parses but is not a list (a bare
-string or number) is now rejected the same way, rather than compared as a single value. On a
-column whose engine type is boolean, `"true"` / `"false"` in any case become booleans; nothing
-else is mapped.
+`parse_set_values` reads a set as a Python literal and, when `literal_eval` rejects it, as JSON.
+`literal_eval` runs first, so a value it read before reads the same. A value neither reads still
+Aborts the test, as before. A value that parses but is not a list (a bare string or number) is now
+rejected with a ValueError, so it Aborts too. On a column typed BOOLEAN, `"true"` / `"false"` in
+any case become booleans; nothing else is mapped.
 
-The column type is the engine's (`SQAValidatorMixin.get_set_values_type`). Pandas returns none, so
-a datalake set keeps its values as written: pandas infers column types from the values, and a
-column of `"True"` / `"False"` strings reads as BOOLEAN.
+The column type is the one OpenMetadata records for the column, which the SQL runner maps to
+SQLAlchemy (`SQAValidatorMixin.get_set_values_type`). The pandas runner returns none, so a datalake
+set keeps its values as written: `GenericDataFrameColumnParser` types a column of `"True"` /
+`"False"` strings as BOOLEAN.
 
 ## Consequences
 
-A set written by any client compares the same way, and a set test no longer aborts on JSON. A
-boolean column read through pandas still compares as strings; that is deliberate, not an omission.
+A set test no longer aborts on a JSON set, and on a column typed BOOLEAN `"true"` / `"false"`
+compare as booleans. On a datalake the set is not typed, so its values compare as written. That is
+deliberate: typing it by `GenericDataFrameColumnParser` would turn a set of `"True"` / `"False"`
+strings into booleans, which the column's string values do not equal.

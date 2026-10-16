@@ -136,10 +136,10 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         )
 
     def _get_strategy(self) -> Strategy:
-        """Read `strategy` as the server accepts it: in any case, around any spaces, blank as ROWS
+        """Read `strategy` in any case, ignoring surrounding spaces; a missing or blank value is ROWS
 
-        `thresholdUnit` and `dimensionFailurePolicy` are read the same way. ROWS is the definition's
-        default, so an unset strategy also gets failed-row samples.
+        ROWS is the definition's default, so a test without a strategy is treated like ROWS,
+        failed-row samples included.
         """
         raw_strategy = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore

@@ -39,10 +39,10 @@ def parse_set_values(raw: str, column_type) -> list:
 
 
 def _parse_literal(raw: str) -> Any:
-    """A Python literal, or JSON when it is not one: JSON writes booleans and null in lowercase
+    """A Python literal, or JSON when literal_eval rejects it: JSON writes booleans and null in lowercase
 
-    Where both parse a value they agree, so a set written either way reads the same. A value that
-    is neither raises ValueError (json.JSONDecodeError is one).
+    literal_eval runs first, so a value it read before reads the same. Its ValueError and
+    SyntaxError fall through to JSON; any other error it raises propagates.
     """
     try:
         value = literal_eval(raw)

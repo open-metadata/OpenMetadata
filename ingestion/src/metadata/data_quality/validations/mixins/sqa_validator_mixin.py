@@ -80,7 +80,7 @@ class SQAValidatorMixin:
     """Validator mixin for SQA test cases"""
 
     def get_set_values_type(self):
-        """The column type the engine declares, so a set compares in that type"""
+        """The column's type as OpenMetadata records it, mapped to SQLAlchemy, so a set compares in that type"""
         return self.get_column().type  # type: ignore
 
     def get_column(self: HasValidatorContext, column_name: str | None = None) -> Column:

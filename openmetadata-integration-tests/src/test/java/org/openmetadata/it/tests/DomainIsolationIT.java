@@ -579,7 +579,7 @@ public class DomainIsolationIT {
       Table ownTable = createTable(admin, p + "_own", schema, ownDomain, cleanup);
       Table foreignTable = createTable(admin, p + "_foreign", schema, foreignDomain, cleanup);
 
-      // Supports every column type, so it fits the INT `id` column the incidents are raised on.
+      // Lists INT among its supported types, so it fits the INT `id` column the incidents are on.
       String testDefinitionFqn = "columnValuesToBeNotNull";
       String ownIncidentFqn = createIncident(admin, ownTable, p + "_own_tc", testDefinitionFqn);
       String foreignIncidentFqn =

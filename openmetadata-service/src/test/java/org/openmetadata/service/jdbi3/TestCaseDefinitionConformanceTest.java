@@ -191,7 +191,7 @@ class TestCaseDefinitionConformanceTest {
                 stored, updated, () -> LENGTHS, () -> TABLE));
   }
 
-  /** Failed-row samples and inspection queries are stored by updates that change no parameter. */
+  /** An inspection query is stored by an update that changes no parameter. */
   @Test
   void anUpdateThatChangesNoParameterDoesNotLoadTheDefinition() {
     TestCase stored = withParameter("strategy", "ROWS").withEntityLink(table().getLinkString());
