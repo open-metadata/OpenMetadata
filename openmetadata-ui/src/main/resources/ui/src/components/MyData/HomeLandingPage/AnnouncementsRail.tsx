@@ -57,8 +57,7 @@ const ACTIVE_ANNOUNCEMENTS_GC_TIME_MS =
 // card at the edge stays partly visible and the scroll reads as continuous.
 const RAIL_PAGE_FRACTION = 0.9;
 // Pager circle, matching the mock: a 28px button with a 10px glyph.
-const PAGER_BUTTON_CLASSES =
-  'tw:size-7 tw:rounded-full tw:p-0 tw:*:data-icon:size-2.5';
+const PAGER_BUTTON_CLASSES = 'tw:rounded-full';
 // Sub-pixel slack: fractional card widths leave a fraction of a pixel of scroll
 // left at either end, which would otherwise keep a pager button enabled forever.
 const RAIL_SCROLL_EPSILON = 1;
@@ -111,7 +110,7 @@ const AnnouncementsHeader = ({
 
   return (
     <div className="tw:flex tw:items-center tw:gap-2">
-      <Typography size="text-md" weight="semibold">
+      <Typography size="text-sm" weight="semibold">
         {t('label.announcement-plural')}
       </Typography>
       {count !== undefined && (
@@ -129,7 +128,7 @@ const AnnouncementsHeader = ({
         <Button
           color="link-color"
           data-testid="announcement-view-all"
-          size="sm"
+          size="xs"
           onPress={onViewAll}>
           {t('label.view-all')}
         </Button>
@@ -283,10 +282,7 @@ const AnnouncementsRail: React.FC = () => {
               // each other while the parent's gap holds "View all" clear of them.
               <div className="tw:flex tw:items-center tw:gap-2">
                 {/* Icons are passed as components, not elements, so ButtonUtility
-                tags them `data-icon` and its own sizing applies. The core
-                chevrons use a tight 20-unit viewBox, so the glyph fills more of
-                its box than the button's default size-4 assumes — hence the
-                smaller override against a fixed 28px circle. */}
+                tags them `data-icon` and its own xs sizing applies. */}
                 <ButtonUtility
                   className={PAGER_BUTTON_CLASSES}
                   color="secondary"

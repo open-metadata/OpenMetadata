@@ -61,9 +61,13 @@ const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
 // under every co-scheduled worker: an owner change made mid-reindex is missing from the
 // rebuilt index (Teams.spec.ts "Team assets should" read 0 assets). It runs in the
 // single-worker Reindex lane alongside the other reindexing specs.
+// ChangeRequestReviewLifecycle.spec.ts deploys an Enforce-mode glossary workflow, which makes
+// glossary a gated entity type server-wide while it runs, so it shares the single-worker
+// GlobalSettings lane instead of racing the glossary specs on chromium.
 const dedicatedStateTestIgnore = hasDedicatedIngestionLane
   ? [
       '**/SearchSettings.spec.ts',
+      '**/ChangeRequestReviewLifecycle.spec.ts',
       '**/SearchSeparation/**',
       '**/*AfterReindex.spec.ts',
       '**/SearchIndexApplication.spec.ts',
@@ -549,7 +553,10 @@ export default defineConfig({
           },
           {
             name: 'GlobalSettings',
-            testMatch: '**/SearchSettings.spec.ts',
+            testMatch: [
+              '**/SearchSettings.spec.ts',
+              '**/ChangeRequestReviewLifecycle.spec.ts',
+            ],
             grep: shardGrep,
             use: { ...devices['Desktop Chrome'] },
             dependencies: authDependencies,
