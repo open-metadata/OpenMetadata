@@ -1,16 +1,25 @@
 package org.openmetadata.service.governance.workflows;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.util.concurrent.Uninterruptibles;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.governance.workflows.LifecycleConfiguration;
@@ -113,6 +122,33 @@ class EntityStatusWorkflowsTest {
                 .withUpdatedBy("alice")
                 .withImpersonatedBy(WorkflowEventConsumer.GOVERNANCE_BOT)));
     assertFalse(EntityStatusWorkflows.isWorkflowChange(new Metric().withUpdatedBy("alice")));
+  }
+
+  @Test
+  void aLoadStillRunningWhenTheWorkflowsChangeIsNeverServedAfterIt()
+      throws InterruptedException, ExecutionException, TimeoutException {
+    final CountDownLatch loading = new CountDownLatch(1);
+    final CountDownLatch release = new CountDownLatch(1);
+    final AtomicInteger loads = new AtomicInteger();
+    final EntityStatusWorkflows.InvalidatingCache<String> cache =
+        new EntityStatusWorkflows.InvalidatingCache<>(
+            Duration.ofMinutes(1),
+            () -> {
+              if (loads.getAndIncrement() > 0) {
+                return "after";
+              }
+              loading.countDown();
+              Uninterruptibles.awaitUninterruptibly(release);
+              return "before";
+            });
+
+    final CompletableFuture<String> inFlight = CompletableFuture.supplyAsync(cache::get);
+    assertTrue(loading.await(5, SECONDS));
+    cache.invalidate();
+    release.countDown();
+
+    assertEquals("before", inFlight.get(5, SECONDS));
+    assertEquals("after", cache.get());
   }
 
   @Test

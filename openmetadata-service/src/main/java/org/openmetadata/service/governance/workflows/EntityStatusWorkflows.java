@@ -13,6 +13,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -46,21 +48,18 @@ public final class EntityStatusWorkflows implements StageOwnership {
   // The field names a Set Action resolves to the entity's lifecycle stage.
   private static final Set<String> STAGE_FIELD_NAMES = Set.of("status", Entity.FIELD_ENTITY_STATUS);
   private static final String FIELD_NAME_CONFIG = "fieldName";
-  private static final Boolean ACTIVE_STAGE_WORKFLOWS_KEY = Boolean.TRUE;
 
-  // Holds one entry: the active workflows that own a stage. A workflow change on this server
-  // invalidates it at once; the expiry bounds how long another server acts on a stale copy.
-  private static final LoadingCache<Boolean, List<WorkflowDefinition>> ACTIVE_STAGE_WORKFLOWS =
-      Caffeine.newBuilder()
-          .maximumSize(1)
-          .expireAfterWrite(Duration.ofSeconds(30))
-          .build(ignored -> loadActiveStageWorkflows());
+  // The active workflows that own a stage. A workflow change on this server invalidates it at
+  // once; the expiry bounds how long another server acts on a stale copy.
+  private static final InvalidatingCache<List<WorkflowDefinition>> ACTIVE_STAGE_WORKFLOWS =
+      new InvalidatingCache<>(
+          Duration.ofSeconds(30), EntityStatusWorkflows::loadActiveStageWorkflows);
 
   private EntityStatusWorkflows() {}
 
   @Override
   public List<String> owningStageOf(String entityType) {
-    return ACTIVE_STAGE_WORKFLOWS.get(ACTIVE_STAGE_WORKFLOWS_KEY).stream()
+    return ACTIVE_STAGE_WORKFLOWS.get().stream()
         .filter(workflow -> startsOn(workflow, entityType))
         .map(WorkflowDefinition::getName)
         .sorted()
@@ -69,7 +68,7 @@ public final class EntityStatusWorkflows implements StageOwnership {
 
   @Override
   public Optional<String> owningStageOf(String entityType, EntityInterface<?> entity) {
-    return ACTIVE_STAGE_WORKFLOWS.get(ACTIVE_STAGE_WORKFLOWS_KEY).stream()
+    return ACTIVE_STAGE_WORKFLOWS.get().stream()
         .filter(workflow -> appliesTo(workflow, entityType, entity))
         .map(WorkflowDefinition::getName)
         .sorted()
@@ -78,8 +77,7 @@ public final class EntityStatusWorkflows implements StageOwnership {
 
   @Override
   public boolean playbookOwnsStageOf(String entityType, EntityInterface<?> entity) {
-    return playbookOwnsStage(
-        ACTIVE_STAGE_WORKFLOWS.get(ACTIVE_STAGE_WORKFLOWS_KEY), entityType, entity);
+    return playbookOwnsStage(ACTIVE_STAGE_WORKFLOWS.get(), entityType, entity);
   }
 
   /** The owner is the first applicable workflow by name, as in {@link #owningStageOf}. */
@@ -103,7 +101,36 @@ public final class EntityStatusWorkflows implements StageOwnership {
   }
 
   public static void invalidate() {
-    ACTIVE_STAGE_WORKFLOWS.invalidateAll();
+    ACTIVE_STAGE_WORKFLOWS.invalidate();
+  }
+
+  /**
+   * One cached value that no load begun before an {@link #invalidate()} can be served after it.
+   * Caffeine leaves an entry still loading during {@code invalidateAll()} undefined, so a load that
+   * read the workflows just before a suspend or resume could otherwise cache the old list for the
+   * whole expiry. Keying by a generation that invalidation moves on strands such a load under a key
+   * no lookup reads again.
+   */
+  static final class InvalidatingCache<T> {
+    private final AtomicLong generation = new AtomicLong();
+    private final LoadingCache<Long, T> cache;
+
+    InvalidatingCache(Duration expiry, Supplier<T> loader) {
+      cache =
+          Caffeine.newBuilder()
+              .maximumSize(1)
+              .expireAfterWrite(expiry)
+              .build(ignored -> loader.get());
+    }
+
+    T get() {
+      return cache.get(generation.get());
+    }
+
+    void invalidate() {
+      generation.incrementAndGet();
+      cache.invalidateAll();
+    }
   }
 
   /**
