@@ -23,13 +23,15 @@
   @composer-border: var(--tw-color-utility-gray-blue-100);
   @composer-bg: var(--om-color-bg-primary);
 
+  // `!important`: FeedEditor sets an inline `rgba(0, 0, 0, 0.1)` border while
+  // it is focused — an edit box opens focused — which all but vanishes in dark.
   .editor-container {
-    border: 1px solid @composer-border;
+    border: 1px solid @composer-border !important;
     border-radius: 10px;
     background-color: @composer-bg;
 
     .dark-mode & {
-      border-color: var(--om-color-border-primary);
+      border-color: var(--om-color-border-primary) !important;
     }
   }
 
