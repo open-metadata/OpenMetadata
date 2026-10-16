@@ -207,7 +207,13 @@ export const searchInFields = <T extends SearchIndexField | Column>(
 export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
   const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
     ...omit(tag, 'isRemovable'),
-    labelType: LabelType.Manual,
+    // The server computes a derived label -- implied by a glossary term, or inherited from the
+    // parent entity -- and ignores it on write. Sent back as Manual it would be stored as the
+    // field's own label and outlive its source.
+    labelType:
+      tag.labelType === LabelType.Derived
+        ? LabelType.Derived
+        : LabelType.Manual,
     state: State.Confirmed,
     source: tag.source ?? 'Classification',
     tagFQN: tag.tagFQN,

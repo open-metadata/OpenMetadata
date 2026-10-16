@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from '@openmetadata/ui-core-components';
 import React, { useMemo } from 'react';
 import { Edge, useReactFlow, useViewport } from 'reactflow';
@@ -73,13 +72,7 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
           aria-label={t('label.add-entity', { entity: t('label.pipeline') })}
           color="link-color"
           data-testid="add-pipeline"
-          iconLeading={
-            <Icon
-              alt="edit-circle"
-              component={IconEditCircle}
-              style={{ fontSize: '16px' }}
-            />
-          }
+          iconLeading={<IconEditCircle className="tw:size-3.5 tw:shrink-0" />}
           onClick={() => onPipelineClick?.()}
         />
       </div>
@@ -99,13 +92,7 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
           aria-label={t('label.delete-entity', { entity: t('label.edge') })}
           color="link-color"
           data-testid="delete-button"
-          iconLeading={
-            <Icon
-              alt="times-circle"
-              component={IconTimesCircle}
-              style={{ fontSize: '16px' }}
-            />
-          }
+          iconLeading={<IconTimesCircle className="tw:size-3.5 tw:shrink-0" />}
           onClick={() => onEdgeRemove?.()}
         />
       </div>
