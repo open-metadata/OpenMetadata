@@ -12,16 +12,16 @@
  */
 
 import {
-  SortAscendingOutlined,
-  SortDescendingOutlined,
-} from '@ant-design/icons';
-import {
   Box,
   Button,
   Grid,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  SortAscending,
+  SortDescending,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -651,12 +651,15 @@ const TableQueries: FC<TableQueriesProp> = ({
                           )
                         }>
                         {isAscSortOrder ? (
-                          <SortAscendingOutlined
-                            className="text-base text-grey-muted"
-                            style={{ fontSize: '14px' }}
+                          <SortAscending
+                            className="tw:text-quaternary tw:shrink-0"
+                            size={14}
                           />
                         ) : (
-                          <SortDescendingOutlined className="text-sm text-grey-muted" />
+                          <SortDescending
+                            className="tw:text-quaternary tw:shrink-0"
+                            size={14}
+                          />
                         )}
                       </Button>
                       {addButton}

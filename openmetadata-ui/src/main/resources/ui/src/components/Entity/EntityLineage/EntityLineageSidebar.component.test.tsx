@@ -127,7 +127,7 @@ describe('EntityLineageSidebar component', () => {
       );
 
       expect(draggableIcon).toHaveAttribute('draggable', 'true');
-      expect(draggableIcon).toHaveStyle({ cursor: 'grab' });
+      expect(draggableIcon).toHaveClass('tw:cursor-grab');
     });
 
     it('should make nodes draggable when newAddedNode is empty object', () => {
@@ -138,7 +138,7 @@ describe('EntityLineageSidebar component', () => {
       );
 
       expect(draggableIcon).toHaveAttribute('draggable', 'true');
-      expect(draggableIcon).toHaveStyle({ cursor: 'grab' });
+      expect(draggableIcon).toHaveClass('tw:cursor-grab');
     });
 
     it('should disable dragging when newAddedNode is provided', () => {
@@ -320,14 +320,14 @@ describe('EntityLineageSidebar component', () => {
   });
 
   describe('integration with theme', () => {
-    it('should use theme from application store', () => {
-      const {
-        useApplicationStore,
-      } = require('../../../hooks/useApplicationStore');
-
+    it('should render the drag handle for a draggable node', () => {
+      // the brand tint comes from --tw-color-fg-brand-primary, which the theme
+      // provider sets at runtime — there is no value read through JS to assert
       render(<EntityLineageSidebar show newAddedNode={undefined} />);
 
-      expect(useApplicationStore).toHaveBeenCalled();
+      expect(
+        screen.getByTestId('table_search_index-draggable-icon')
+      ).toBeInTheDocument();
     });
 
     it('should use translation hook', () => {

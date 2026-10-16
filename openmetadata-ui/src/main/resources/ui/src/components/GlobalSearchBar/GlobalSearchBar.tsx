@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   ButtonUtility,
   Divider,
@@ -280,27 +279,24 @@ export const GlobalSearchBar = () => {
 
   const renderSearchIcon = () =>
     searchValue ? (
-      <Icon
-        alt="icon-cancel"
-        className={classNames('align-middle', {
-          'text-primary': !isSearchBlur,
+      <IconCloseCircleOutlined
+        aria-label="icon-cancel"
+        className={classNames('tw:align-middle tw:size-4 tw:shrink-0', {
+          'tw:text-brand-secondary': !isSearchBlur,
         })}
-        component={IconCloseCircleOutlined}
         data-testid="cancel-icon"
-        style={{ fontSize: '16px' }}
+        role="img"
         onClick={handleClear}
       />
     ) : (
-      <Icon
-        alt="icon-search"
-        className={classNames('align-middle', {
-          'text-color': isSearchBlur,
-          'text-primary': !isSearchBlur,
+      <IconSearch
+        aria-label="icon-search"
+        className={classNames('tw:align-middle tw:size-4 tw:shrink-0', {
+          'tw:text-brand-secondary': !isSearchBlur,
         })}
-        component={IconSearch}
         data-testid="search-icon"
-        style={{ fontSize: '16px' }}
-        onClick={(e) => {
+        role="img"
+        onClick={(e: React.MouseEvent<SVGSVGElement>) => {
           e.preventDefault();
           e.stopPropagation();
           handleOnClick();
