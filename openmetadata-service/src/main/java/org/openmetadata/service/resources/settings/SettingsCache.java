@@ -585,8 +585,7 @@ public class SettingsCache {
 
   /**
    * Runs the outermost attempt of a repository transaction, so the settings it loads are stamped
-   * with the invalidations its snapshot is certain to include
-   * (ADR:2026-10-16-settings-loaded-in-a-write-transaction-are-stamped-with-its-start).
+   * with the invalidations its snapshot is certain to include.
    */
   public static <R> R inTransactionAttempt(Supplier<R> attempt) {
     INVALIDATIONS_AT_TRANSACTION_START.set(INVALIDATIONS.get());
