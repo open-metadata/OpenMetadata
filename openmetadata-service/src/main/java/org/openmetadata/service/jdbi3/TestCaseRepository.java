@@ -901,6 +901,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     validateDimensionColumns(test, table);
     setDataQualityDimension(test, testDefinition);
 
+    if (isNewTestCase(test, update)) {
+      TestCaseDefinitionConformance.validate(test, testDefinition, table, entityLink);
+    }
+
     // Create/resolve the basic test suite only after all validations pass.
     // This avoids creating side entities when request validation fails early.
     var testSuite = getOrCreateTestSuite(test, table);
@@ -1184,8 +1188,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   /**
-   * POST, PUT and the CSV import all create through here, after a prepare whose {@code update}
-   * flag is true for a PUT that creates a row
+   * A PUT that creates a row prepares with {@code update} true, so whether the row exists decides.
+   * The FQN is set here the same way prepareInternal sets it right after prepare.
+   */
+  private boolean isNewTestCase(TestCase test, boolean update) {
+    setFullyQualifiedName(test);
+    return !update || findByNameOrNull(test.getFullyQualifiedName(), ALL) == null;
+  }
+
+  /**
+   * POST, PUT and the CSV import all create through here; the CSV import never calls prepare
    * (ADR:2026-10-12-test-cases-are-checked-against-their-definition-at-create).
    */
   @Override

@@ -958,6 +958,41 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void post_rejectedForConformance_leavesNoTestSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("post_no_suite"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>");
+    request.setTestDefinition("columnValueLengthsToBeBetween");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("minLength").withValue("1")));
+
+    assertThrows(Exception.class, () -> createEntity(request));
+    assertNull(tableTestSuite(table));
+  }
+
+  @Test
+  void put_rejectedForConformance_leavesNoTestSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("put_no_suite"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>");
+    request.setTestDefinition("columnValueLengthsToBeBetween");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("minLength").withValue("1")));
+
+    assertThrows(Exception.class, () -> SdkClients.adminClient().testCases().upsert(request));
+    assertNull(tableTestSuite(table));
+  }
+
+  private static EntityReference tableTestSuite(Table table) {
+    return SdkClients.adminClient()
+        .tables()
+        .get(table.getId().toString(), "testSuite")
+        .getTestSuite();
+  }
+
+  @Test
   void patch_toUnofferedOptionValue_4xx(TestNamespace ns) {
     Table table = createTable(ns);
     CreateTestCase request = new CreateTestCase();
