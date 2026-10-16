@@ -79,8 +79,6 @@ public final class CatalogExceptionMessage {
 
   public static final String EMAIL_EXISTS = "EMAIL_EXISTS";
 
-  public static final String EMAIL_DOMAIN_NOT_ALLOWED = "EMAIL_DOMAIN_NOT_ALLOWED";
-
   public static final String SELF_SIGNUP_NOT_ENABLED = "SELF_SIGNUP_NOT_ENABLED";
   public static final String SELF_SIGNUP_ERROR = "Signup is not supported.";
   public static final String OTHER_USER_SIGN_UP_ERROR = "OTHER_USER_SIGN_UP_ERROR";

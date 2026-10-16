@@ -2296,8 +2296,11 @@ public class SystemResourceIT {
     String putRejected = uniqueUserName("putrejected");
     String accepted = uniqueUserName("accepted");
 
-    withAuthorizerConfig(
-        SystemResourceIT::restrictToAllowedEmailDomain,
+    withSecurityConfig(
+        config -> {
+          signInThroughSso(config);
+          restrictToAllowedEmailDomain(config);
+        },
         () -> {
           OpenMetadataException postRejection =
               assertThrows(
@@ -2312,8 +2315,6 @@ public class SystemResourceIT {
           assertTrue(
               postRejection.getMessage().contains(ALLOWED_DOMAIN), postRejection.getMessage());
 
-          // PUT runs prepare() with update=true even when it creates the user, so this is the
-          // path a prepare()-based check would have let through
           OpenMetadataException putRejection =
               assertThrows(
                   OpenMetadataException.class,
@@ -2340,8 +2341,11 @@ public class SystemResourceIT {
     String rejected = uniqueUserName("legacyrejected");
     String accepted = uniqueUserName("legacyaccepted");
 
-    withAuthorizerConfig(
-        SystemResourceIT::enforceDeprecatedPrincipalDomain,
+    withSecurityConfig(
+        config -> {
+          signInThroughSso(config);
+          enforceDeprecatedPrincipalDomain(config);
+        },
         () -> {
           OpenMetadataException rejection =
               assertThrows(
@@ -2361,6 +2365,21 @@ public class SystemResourceIT {
   }
 
   @Test
+  void test_allowedEmailDomains_leavesCreationAloneUnderNativePasswordProvider() throws Throwable {
+    // Native-password sessions use OpenMetadata-issued tokens, which login never domain-checks, so
+    // creation does not check either. This server runs the openmetadata provider.
+    String outsider = uniqueUserName("nativeoutsider");
+
+    withSecurityConfig(
+        SystemResourceIT::restrictToAllowedEmailDomain,
+        () -> {
+          User created =
+              SdkClients.adminClient().users().create(createUserRequest(outsider, OUT_OF_DOMAIN));
+          assertEquals(outsider + "@" + OUT_OF_DOMAIN, created.getEmail());
+        });
+  }
+
+  @Test
   void test_allowedEmailDomains_keepsExistingOutOfDomainUsersEditable() throws Throwable {
     // Created before the restriction is switched on, as on a deployment that enables it later
     User existing =
@@ -2368,8 +2387,11 @@ public class SystemResourceIT {
             .users()
             .create(createUserRequest(uniqueUserName("existing"), OUT_OF_DOMAIN));
 
-    withAuthorizerConfig(
-        SystemResourceIT::restrictToAllowedEmailDomain,
+    withSecurityConfig(
+        config -> {
+          signInThroughSso(config);
+          restrictToAllowedEmailDomain(config);
+        },
         () -> {
           existing.setDescription("edited while the restriction is on");
           User updated = SdkClients.adminClient().users().update(existing.getId(), existing);
@@ -2391,8 +2413,11 @@ public class SystemResourceIT {
     String allowed = uniqueUserName("csvallowed");
     String rejected = uniqueUserName("csvrejected");
 
-    withAuthorizerConfig(
-        SystemResourceIT::restrictToAllowedEmailDomain,
+    withSecurityConfig(
+        config -> {
+          signInThroughSso(config);
+          restrictToAllowedEmailDomain(config);
+        },
         () -> {
           String header = exportUserCsv(team.getName()).lines().findFirst().orElseThrow();
           String csv =
@@ -2403,8 +2428,14 @@ public class SystemResourceIT {
                       userCsvRow(header, rejected, OUT_OF_DOMAIN, team.getName()))
                   + "\n";
 
-          CsvImportResult result = importUserCsv(team.getName(), csv);
+          // A dry run reports the row too, and writes nothing
+          CsvImportResult dryRun = importUserCsv(team.getName(), csv, true);
+          assertEquals(1, dryRun.getNumberOfRowsFailed(), dryRun.getImportResultsCsv());
+          assertTrue(
+              dryRun.getImportResultsCsv().contains(OUT_OF_DOMAIN), dryRun.getImportResultsCsv());
+          assertUserAbsent(allowed);
 
+          CsvImportResult result = importUserCsv(team.getName(), csv, false);
           assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus(), result.getImportResultsCsv());
           assertEquals(1, result.getNumberOfRowsFailed(), result.getImportResultsCsv());
           assertTrue(
@@ -2417,34 +2448,47 @@ public class SystemResourceIT {
     assertUserAbsent(rejected);
   }
 
-  private static void restrictToAllowedEmailDomain(ObjectNode authorizer) {
+  // An SSO provider, so creation applies the sign-in domain rule. A public client needs no
+  // discovery round-trip, and the SDK's OpenMetadata-issued tokens keep validating under it
+  private static void signInThroughSso(ObjectNode securityConfig) {
+    ((ObjectNode) securityConfig.get("authenticationConfiguration"))
+        .put("provider", "custom-oidc")
+        .put("clientType", "public");
+  }
+
+  private static void restrictToAllowedEmailDomain(ObjectNode securityConfig) {
+    ObjectNode authorizer = (ObjectNode) securityConfig.get("authorizerConfiguration");
     authorizer.put("enforcePrincipalDomain", false);
     authorizer.putArray("allowedEmailDomains").add(ALLOWED_DOMAIN);
   }
 
-  private static void enforceDeprecatedPrincipalDomain(ObjectNode authorizer) {
+  private static void enforceDeprecatedPrincipalDomain(ObjectNode securityConfig) {
     // allowedEmailDomains takes precedence, so clear it for the deprecated settings to apply
+    ObjectNode authorizer = (ObjectNode) securityConfig.get("authorizerConfiguration");
     authorizer.putArray("allowedEmailDomains");
     authorizer.putArray("allowedDomains");
     authorizer.put("enforcePrincipalDomain", true).put("principalDomain", ALLOWED_DOMAIN);
   }
 
   /**
-   * Applies {@code configureAuthorizer} to the security configuration for the duration of {@code
-   * body}, then restores the original. Safe for the rest of the suite: this class is @Isolated, and
-   * every SdkClients token is OpenMetadata-issued, which the login path exempts from domain
-   * restrictions, so authentication keeps working throughout.
+   * Applies {@code configure} to the security configuration for the duration of {@code body}, then
+   * restores the original. Safe for the rest of the suite: this class is @Isolated, and every
+   * SdkClients token is OpenMetadata-issued, which validates under any provider and which login
+   * exempts from domain restrictions, so authentication keeps working throughout.
    */
-  private static void withAuthorizerConfig(
-      Consumer<ObjectNode> configureAuthorizer, Executable body) throws Throwable {
+  private static void withSecurityConfig(Consumer<ObjectNode> configure, Executable body)
+      throws Throwable {
     OpenMetadataClient client = SdkClients.adminClient();
     String original = getSecurityConfigJson(client);
     ObjectNode updated = (ObjectNode) MAPPER.readTree(original);
-    configureAuthorizer.accept((ObjectNode) updated.get("authorizerConfiguration"));
+    configure.accept(updated);
     try {
       putSecurityConfigJson(client, MAPPER.writeValueAsString(updated));
-      assertAuthorizerChangesApplied(
-          MAPPER.readTree(original), updated, MAPPER.readTree(getSecurityConfigJson(client)));
+      JsonNode applied = MAPPER.readTree(getSecurityConfigJson(client));
+      JsonNode before = MAPPER.readTree(original);
+      for (String section : List.of("authenticationConfiguration", "authorizerConfiguration")) {
+        assertChangesApplied(before.get(section), updated.get(section), applied.get(section));
+      }
       body.execute();
     } finally {
       putSecurityConfigJson(client, original);
@@ -2453,11 +2497,7 @@ public class SystemResourceIT {
 
   // Guards against a change the server silently ignored, which would let the tests pass vacuously.
   // Emptied lists are skipped because the server may return them as absent rather than [].
-  private static void assertAuthorizerChangesApplied(
-      JsonNode original, JsonNode requested, JsonNode applied) {
-    JsonNode before = original.get("authorizerConfiguration");
-    JsonNode wanted = requested.get("authorizerConfiguration");
-    JsonNode actual = applied.get("authorizerConfiguration");
+  private static void assertChangesApplied(JsonNode before, JsonNode wanted, JsonNode actual) {
     wanted
         .fieldNames()
         .forEachRemaining(
@@ -2497,7 +2537,8 @@ public class SystemResourceIT {
 
   // User import lives at /v1/users/import?team=..., not the /name/{name}/import path the SDK's
   // generic importCsv targets
-  private static CsvImportResult importUserCsv(String teamName, String csv) throws Exception {
+  private static CsvImportResult importUserCsv(String teamName, String csv, boolean dryRun)
+      throws Exception {
     String response =
         SdkClients.adminClient()
             .getHttpClient()
@@ -2508,7 +2549,7 @@ public class SystemResourceIT {
                 RequestOptions.builder()
                     .header("Content-Type", "text/plain; charset=UTF-8")
                     .queryParam("team", teamName)
-                    .queryParam("dryRun", "false")
+                    .queryParam("dryRun", String.valueOf(dryRun))
                     .build());
     return JsonUtils.readValue(response, CsvImportResult.class);
   }
