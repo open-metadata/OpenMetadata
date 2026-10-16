@@ -116,7 +116,7 @@ export default defineConfig(async (env) => {
             'src/interface/**',
             'src/enums/**',
           ],
-          reporter: ['text-summary', 'json', 'lcov'],
+          reporter: ['text-summary', 'json', 'json-summary', 'lcov'],
           reportsDirectory: 'src/test/browser/coverage',
         },
       },

@@ -1,0 +1,154 @@
+# POC: UI integration tests (Vitest Browser Mode + MSW). No backend; every
+# /api call is mocked, so the only network use is installing deps and Chromium.
+name: UI Browser Tests (POC)
+
+on:
+  pull_request:
+    paths:
+      - "openmetadata-ui/src/main/resources/ui/**"
+      - "openmetadata-ui-core-components/src/main/resources/ui/**"
+      - ".github/workflows/ui-browser-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-browser-tests-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  UI_DIR: openmetadata-ui/src/main/resources/ui
+  STABILITY_RUNS: 5
+
+jobs:
+  browser-tests:
+    name: browser tests + coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/ui-browser-setup
+      - name: Run browser tests with coverage
+        id: tests
+        working-directory: ${{ env.UI_DIR }}
+        continue-on-error: true
+        run: |
+          start=$(date +%s)
+          yarn test:ui:coverage --reporter=default --reporter=junit \
+            --outputFile.junit=src/test/browser/junit.xml
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+      - name: Coverage comment
+        if: github.event_name == 'pull_request'
+        uses: MishaKav/jest-coverage-comment@v1.0.34
+        with:
+          coverage-summary-path: ${{ env.UI_DIR }}/src/test/browser/coverage/coverage-summary.json
+          junitxml-path: ${{ env.UI_DIR }}/src/test/browser/junit.xml
+          junitxml-title: UI browser tests (Vitest)
+          title: UI browser test coverage
+          summary-title: UI browser tests summary
+          badge-title: Browser coverage
+          unique-id-for-comment: ui-browser-tests
+      - name: Upload failure screenshots
+        if: steps.tests.outcome == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-browser-failures
+          path: |
+            ${{ env.UI_DIR }}/src/**/__screenshots__/**
+            ${{ env.UI_DIR }}/.vitest-attachments/**
+          if-no-files-found: ignore
+      - name: Fail if tests failed
+        if: steps.tests.outcome == 'failure'
+        run: exit 1
+
+  # Runs the suite several times in random order, without coverage, to show
+  # whether any test is order-dependent or flaky. No retries anywhere.
+  stability:
+    name: stability run ${{ matrix.run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/ui-browser-setup
+      - name: Run shuffled
+        working-directory: ${{ env.UI_DIR }}
+        continue-on-error: true
+        run: |
+          start=$(date +%s)
+          yarn test:ui:run --sequence.shuffle --sequence.seed=${{ matrix.run }} \
+            --reporter=default --reporter=json --outputFile.json=results.json
+          echo "{\"run\": ${{ matrix.run }}, \"seconds\": $(( $(date +%s) - start ))}" > timing.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: stability-${{ matrix.run }}
+          path: |
+            ${{ env.UI_DIR }}/results.json
+            ${{ env.UI_DIR }}/timing.json
+
+  stability-report:
+    name: stability report
+    needs: stability
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: stability-*
+          path: runs
+      - name: Summarize
+        run: |
+          {
+            echo "<!-- ui-browser-stability -->"
+            echo "### UI browser tests: stability (${STABILITY_RUNS} shuffled runs, no retries)"
+            echo
+            echo "| Run | Wall | Passed | Failed |"
+            echo "|---|---|---|---|"
+            for i in $(seq 1 "$STABILITY_RUNS"); do
+              d=runs/stability-$i
+              jq -rs '.[0] as $r | .[1] as $t |
+                "| \($t.run) | \($t.seconds)s | \($r.numPassedTests) | \($r.numFailedTests) |"' \
+                "$d/results.json" "$d/timing.json" 2>/dev/null || echo "| $i | n/a | no results | |"
+            done
+            echo
+            failed=$(jq -rs '[.[].testResults[] | .name as $f | .assertionResults[]
+                | select(.status == "failed") | "\($f | sub(".*/ui/"; "")) › \(.fullName)"]
+                | group_by(.) | map("| \(length) | \(.[0]) |") | .[]' runs/stability-*/results.json)
+            if [ -z "$failed" ]; then
+              echo "No test failed in any run."
+            else
+              echo "| Failed in N runs | Test |"
+              echo "|---|---|"
+              echo "$failed"
+            fi
+          } > report.md
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        # Edit our own marked comment; --edit-last could hit the coverage comment.
+        run: |
+          id=$(gh api "repos/$GH_REPO/issues/$PR/comments" --paginate \
+            --jq '[.[] | select(.body | startswith("<!-- ui-browser-stability -->"))][0].id // empty')
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GH_REPO/issues/comments/$id" -F body=@report.md > /dev/null
+          else
+            gh pr comment "$PR" --body-file report.md
+          fi
