@@ -88,7 +88,6 @@ jest.mock('../../../../../rest/tableAPI', () => ({
 }));
 
 jest.mock('../../../../../utils/RouterUtils', () => ({
-  getAddCustomMetricPath: jest.fn(),
   getAddDataQualityTableTestPath: jest.fn(),
 }));
 

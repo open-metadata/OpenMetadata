@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Tooltip } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconForeignKey } from '../../../assets/svg/foreign-key.svg';
@@ -30,10 +29,10 @@ const ForeignKeyConstraint = () => {
         width="100%"
       />
       <Tooltip placement="bottom" title={t('label.foreign-key')}>
-        <Icon
-          alt="foreign-key"
-          className="foreign-key-icon tw:bg-surface"
-          component={IconForeignKey}
+        <IconForeignKey
+          aria-label="foreign-key"
+          className="foreign-key-icon tw:bg-surface tw:size-3.5 tw:shrink-0"
+          role="img"
         />
       </Tooltip>
     </div>

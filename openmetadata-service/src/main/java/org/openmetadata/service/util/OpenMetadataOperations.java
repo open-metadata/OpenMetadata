@@ -5,10 +5,10 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.timestampToString;
-import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource.COLLECTION_PATH;
 import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
+import static org.openmetadata.service.util.DateStrings.getDateStringEpochMilli;
 import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;

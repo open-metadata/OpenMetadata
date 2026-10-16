@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -25,8 +24,8 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Registry } from '@rjsf/utils';
-import { Table } from 'antd';
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -49,6 +48,7 @@ import jsonLogicSearchClassBase from '../../utils/JSONLogicSearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import QueryBuilderWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import RichTextEditorPreviewerNew from '../common/RichTextEditor/RichTextEditorPreviewNew';
+import Table from '../common/Table/TableV2';
 import { SearchOutputType } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './DataAssetRules.less';
 
@@ -438,7 +438,7 @@ export const useSemanticsRuleList = ({
           <Button
             color="secondary-brand"
             data-testid="add-widget-button"
-            iconLeading={<PlusOutlined />}
+            iconLeading={Plus}
             onClick={handleAddDataAssetRule}>
             {t('label.add')}
           </Button>

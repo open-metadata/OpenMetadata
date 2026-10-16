@@ -26,8 +26,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.events.consumer.ConsumerJob;
+import org.openmetadata.service.events.consumer.ledger.LedgerKeys;
+import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
 
 /** What one tick records, for the cases today's code could not reach. */
 @Isolated
@@ -78,8 +80,7 @@ class AlertTickOutcomesIT {
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
       DirectTick.run(alert);
 
-      EventsRecord record =
-          EventSubscriptionScheduler.getInstance().getEventSubscriptionEventsRecord(alert.getId());
+      EventsRecord record = AlertDiagnostics.eventsRecord(alert.getId());
       assertEquals(1, record.getSuccessfulEventsCount());
       assertEquals(1, record.getFailedEventsCount());
       assertEquals(1, record.getTotalEventsCount() - record.getPendingEventsCount());
@@ -108,7 +109,7 @@ class AlertTickOutcomesIT {
   void aTickWhoseCommitFailsIsNotInterrupted(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       EventSubscription alert =
-          webhookAlert(ns, "commit_fails", FailingCommitConsumer.class.getName(), receiver);
+          webhookAlert(ns, "commit_fails", FailingCommitConsumer.ID, receiver);
       QuietAlert.settle(alert);
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
 
@@ -124,7 +125,7 @@ class AlertTickOutcomesIT {
   void failedCommitsNeverSetAnEventAside(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       EventSubscription alert =
-          webhookAlert(ns, "commit_recovers", FailingCommitConsumer.class.getName(), receiver);
+          webhookAlert(ns, "commit_recovers", FailingCommitConsumer.ID, receiver);
       QuietAlert.settle(alert);
       noteInterruptedTicks(alert, 5);
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
@@ -139,8 +140,7 @@ class AlertTickOutcomesIT {
   @Test
   void interruptedTicksCommitAfterEveryEvent(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
-      EventSubscription alert =
-          webhookAlert(ns, "commit_each", LatchedConsumer.class.getName(), receiver);
+      EventSubscription alert = webhookAlert(ns, "commit_each", LatchedConsumer.ID, receiver);
       QuietAlert.settle(alert);
       long openedAt = positionOf(alert);
       noteInterruptedTicks(alert, 3);
@@ -180,7 +180,7 @@ class AlertTickOutcomesIT {
 
       JsonNode answer = JsonUtils.readTree(body);
       assertEquals("NORMAL", answer.get("triggerState").asText());
-      assertTrue(answer.get("jobClass").asText().endsWith("AlertPublisher"));
+      assertEquals(ConsumerJob.class.getName(), answer.get("jobClass").asText());
       assertTrue(answer.get("lag").asLong() >= 3);
     }
   }
@@ -190,31 +190,31 @@ class AlertTickOutcomesIT {
   @Test
   void selfDrivenAlertReportsWhatItDeliveredAndNoBacklog(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
-      EventSubscription alert =
-          webhookAlert(ns, "self_driven", ReportingConsumer.class.getName(), receiver);
+      EventSubscription alert = webhookAlert(ns, "self_driven", ReportingConsumer.ID, receiver);
       QuietAlert.settle(alert);
       FixtureEvents.insert(FixtureEvents.tableEvents());
       ReportingConsumer.reportOnNextTick(alert.getId(), 2, 1);
       DirectTick.run(alert);
 
-      EventSubscriptionScheduler scheduler = EventSubscriptionScheduler.getInstance();
-      EventsRecord record = scheduler.getEventSubscriptionEventsRecord(alert.getId());
+      EventsRecord record = AlertDiagnostics.eventsRecord(alert.getId());
       assertEquals(List.of(3L, 2L, 1L, 0L), countsOf(record));
       EventSubscriptionDiagnosticInfo diagnostics =
-          scheduler.getEventSubscriptionDiagnosticInfo(alert.getId(), EVERY_ROW, 0, false);
+          AlertDiagnostics.diagnosticInfo(alert.getId(), EVERY_ROW, 0, false);
       assertEquals(2L, diagnostics.getSuccessfulEventsCount());
       assertEquals(1L, diagnostics.getFailedEventsCount());
       assertEquals(0L, diagnostics.getTotalUnprocessedEventsCount());
       assertEquals(0L, diagnostics.getRelevantUnprocessedEventsCount());
       assertTrue(diagnostics.getHasProcessedAllEvents());
       assertTrue(diagnostics.getTotalUnprocessedEventsList().isEmpty());
-      assertTrue(scheduler.checkIfPublisherPublishedAllEvents(alert.getId()));
+      assertTrue(
+          EventSubscriptionScheduler.getInstance()
+              .checkIfPublisherPublishedAllEvents(alert.getId()));
     }
   }
 
   // The count of relevant unprocessed events is the exact backlog, not the size of one
   // limit-bounded page. The sibling EventsRecord counts the same way; see
-  // getEventSubscriptionEventsRecord. Covers the scheduler call and the public REST contract.
+  // AlertDiagnostics.eventsRecord. Covers the AlertDiagnostics call and the public REST contract.
   @Test
   void diagnosticInfoCountsAllRelevantUnprocessedBeyondThePage(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
@@ -224,8 +224,7 @@ class AlertTickOutcomesIT {
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 2)); // two table events
 
       EventSubscriptionDiagnosticInfo diagnostics =
-          EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(alert.getId(), limit, 0, false);
+          AlertDiagnostics.diagnosticInfo(alert.getId(), limit, 0, false);
 
       assertEquals(
           2L,
@@ -277,7 +276,7 @@ class AlertTickOutcomesIT {
   void schedulingOfASelfDrivenAlertShowsNoLag(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       EventSubscription alert =
-          webhookAlert(ns, "self_driven_scheduling", ReportingConsumer.class.getName(), receiver);
+          webhookAlert(ns, "self_driven_scheduling", ReportingConsumer.ID, receiver);
       QuietAlert.settle(alert);
       FixtureEvents.insert(FixtureEvents.tableEvents());
 

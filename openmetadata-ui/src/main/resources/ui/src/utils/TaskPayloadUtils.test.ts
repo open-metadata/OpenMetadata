@@ -49,3 +49,44 @@ describe('getNormalizedTaskPayload suggestedValue branch', () => {
     expect(result.isSuggestionEmpty).toBe(false);
   });
 });
+
+describe('TagUpdate remove-all-tags suggestion', () => {
+  it('flags a remove-all-tags task as a NON-empty suggestion', () => {
+    const currentTags = [
+      { tagFQN: 'PII.Sensitive' },
+      { tagFQN: 'PersonalData.Personal' },
+    ];
+
+    const result = getNormalizedTaskPayload(
+      buildTask(TaskEntityType.TagUpdate, {
+        fieldPath: 'columns.email.tags',
+        currentTags,
+        tagsToRemove: currentTags,
+        tagsToAdd: [],
+        operation: 'Replace',
+      })
+    );
+
+    expect(result.suggestedTags).toEqual([]);
+    expect(result.suggestedValue).toBe('[]');
+    expect(result.isSuggestionEmpty).toBe(false);
+  });
+
+  it('preserves currentTags-only no-op rendering as a non-empty suggestion', () => {
+    const result = getNormalizedTaskPayload(
+      buildTask(TaskEntityType.TagUpdate, {
+        fieldPath: 'columns.email.tags',
+        currentTags: [{ tagFQN: 'PII.Sensitive' }],
+        tagsToAdd: [],
+        tagsToRemove: [],
+        operation: 'Replace',
+      })
+    );
+
+    expect(result.suggestedTags).toEqual([{ tagFQN: 'PII.Sensitive' }]);
+    expect(result.suggestedValue).toBe(
+      JSON.stringify([{ tagFQN: 'PII.Sensitive' }])
+    );
+    expect(result.isSuggestionEmpty).toBe(false);
+  });
+});
