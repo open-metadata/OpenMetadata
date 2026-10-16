@@ -114,3 +114,13 @@ export const addKpi = async (page: Page, data: KPIData) => {
 
   return { ...kpi, id: kpi.id, fullyQualifiedName: kpi.fullyQualifiedName };
 };
+
+// OpenMetadata renders the Data Insight left panel as links; Collate overrides it with a menu.
+export const openKpiTab = async (page: Page) => {
+  const panel = page.getByTestId('data-insight-left-panel');
+  await panel
+    .getByRole('link', { name: 'KPIs', exact: true })
+    .or(panel.getByRole('menuitem', { name: 'KPIs', exact: true }))
+    .click();
+  await page.waitForURL('**/data-insights/kpi');
+};
