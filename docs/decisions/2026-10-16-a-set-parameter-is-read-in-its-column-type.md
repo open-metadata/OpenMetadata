@@ -18,9 +18,11 @@ Databricks refuses to compare with a boolean.
 ## Decision
 
 `parse_set_values` reads a set as a Python literal and, when it is not one, as JSON; where both
-parse a value they agree, so nothing that parsed before reads differently. A value that is neither,
-or that is not a list, raises ValueError and the test is Aborted, as before. On a column whose
-engine type is boolean, `"true"` / `"false"` in any case become booleans; nothing else is mapped.
+parse a value they agree, so nothing that parsed before reads differently. A value that is neither
+raises ValueError and the test is Aborted, as before. A value that parses but is not a list (a bare
+string or number) is now rejected the same way, rather than compared as a single value. On a
+column whose engine type is boolean, `"true"` / `"false"` in any case become booleans; nothing
+else is mapped.
 
 The column type is the engine's (`SQAValidatorMixin.get_set_values_type`). Pandas returns none, so
 a datalake set keeps its values as written: pandas infers column types from the values, and a
