@@ -442,7 +442,13 @@ describe('buildGraphFromAllTerms', () => {
     expect(result.nodes).toHaveLength(1);
   });
 
-  it('drops related-term edges whose target term is not in the loaded set', () => {
+  it('draws unloaded neighbours from the relation reference instead of dropping them', () => {
+    const marketing = {
+      id: 'gloss-marketing-id',
+      name: 'Marketing',
+      fullyQualifiedName: 'Marketing',
+      displayName: 'Marketing Glossary',
+    } as Glossary;
     const terms: GlossaryTerm[] = [
       {
         id: '11111111-1111-1111-1111-111111111111',
@@ -450,13 +456,28 @@ describe('buildGraphFromAllTerms', () => {
         displayName: 'KPI 1',
         fullyQualifiedName: 'Finance.KPI 1',
         glossary: { id: 'gloss-finance-id', name: 'Finance', type: 'glossary' },
+        parent: {
+          id: '77777777-7777-7777-7777-777777777777',
+          type: 'glossaryTerm',
+          name: 'Metrics',
+          fullyQualifiedName: 'Finance.Metrics',
+        },
+        children: [
+          {
+            id: '88888888-8888-8888-8888-888888888888',
+            type: 'glossaryTerm',
+            name: 'KPI 1a',
+            fullyQualifiedName: 'Finance.Metrics.KPI 1.KPI 1a',
+          },
+        ],
         relatedTerms: [
           {
             term: {
               id: '99999999-9999-9999-9999-999999999999',
               type: 'glossaryTerm',
-              name: 'Missing',
-              fullyQualifiedName: 'Finance.Missing',
+              name: 'Audience',
+              displayName: 'Audience Size',
+              fullyQualifiedName: 'Marketing.Audience',
             },
             relationType: 'relatedTo',
           },
@@ -464,10 +485,76 @@ describe('buildGraphFromAllTerms', () => {
       } as GlossaryTerm,
     ];
 
-    const result = buildGraphFromAllTerms(terms, [baseGlossary], tStub);
+    const result = buildGraphFromAllTerms(
+      terms,
+      [baseGlossary, marketing],
+      tStub
+    );
 
-    expect(result.nodes).toHaveLength(1);
-    expect(result.edges).toHaveLength(0);
+    expect(result.nodes).toHaveLength(4);
+    expect(result.nodes).toContainEqual(
+      expect.objectContaining({
+        id: '99999999-9999-9999-9999-999999999999',
+        label: 'Audience Size',
+        glossaryId: marketing.id,
+        group: 'Marketing Glossary',
+        isReferenceOnly: true,
+      })
+    );
+    expect(result.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          from: '11111111-1111-1111-1111-111111111111',
+          to: '99999999-9999-9999-9999-999999999999',
+          relationType: 'relatedTo',
+        }),
+        expect.objectContaining({
+          from: '77777777-7777-7777-7777-777777777777',
+          to: '11111111-1111-1111-1111-111111111111',
+          relationType: 'parentOf',
+        }),
+        expect.objectContaining({
+          from: '11111111-1111-1111-1111-111111111111',
+          to: '88888888-8888-8888-8888-888888888888',
+          relationType: 'parentOf',
+        }),
+      ])
+    );
+  });
+
+  it('resolves the glossary of a referenced term with a quoted glossary name', () => {
+    const dotted = {
+      id: 'gloss-dotted-id',
+      name: 'Sales.EU',
+      fullyQualifiedName: '"Sales.EU"',
+    } as Glossary;
+    const terms = [
+      {
+        id: '11111111-1111-1111-1111-111111111111',
+        name: 'KPI 1',
+        fullyQualifiedName: 'Finance.KPI 1',
+        glossary: { id: baseGlossary.id, type: 'glossary' },
+        relatedTerms: [
+          {
+            term: {
+              id: '22222222-2222-2222-2222-222222222222',
+              type: 'glossaryTerm',
+              name: 'Region',
+              fullyQualifiedName: '"Sales.EU".Region',
+            },
+          },
+        ],
+      },
+    ] as GlossaryTerm[];
+
+    const result = buildGraphFromAllTerms(terms, [baseGlossary, dotted], tStub);
+
+    expect(result.nodes).toContainEqual(
+      expect.objectContaining({
+        id: '22222222-2222-2222-2222-222222222222',
+        glossaryId: dotted.id,
+      })
+    );
   });
 
   it('propagates persisted relationship identity and governance metadata', () => {

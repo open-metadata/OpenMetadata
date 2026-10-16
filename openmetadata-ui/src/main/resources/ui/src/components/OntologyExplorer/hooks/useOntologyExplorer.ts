@@ -28,6 +28,7 @@ import {
   getGlossaryTermAssets,
   getGlossaryTerms,
   getGlossaryTermsAssetCounts,
+  getGlossaryTermsById,
   getGlossaryTermsByIds,
   getOntologyDataGraph,
   getOntologySummary,
@@ -153,24 +154,23 @@ interface DataModeLoadResult {
 }
 
 async function fetchAllTermsForGlossary(
-  glossary: Glossary
+  glossary: Glossary,
+  signal?: AbortSignal
 ): Promise<GlossaryTerm[]> {
   const maxRenderedTerms = 1500;
   const terms: GlossaryTerm[] = [];
   let after: string | undefined;
   do {
     try {
-      const response = await getGlossaryTerms({
-        glossary: glossary.id,
-        fields: [
-          TabSpecificField.RELATED_TERMS,
-          TabSpecificField.CHILDREN,
-          TabSpecificField.PARENT,
-          TabSpecificField.OWNERS,
-        ],
-        limit: ONTOLOGY_TERMS_PAGE_SIZE,
-        after,
-      });
+      const response = await getGlossaryTerms(
+        {
+          glossary: glossary.id,
+          fields: MODEL_TERM_FIELDS,
+          limit: ONTOLOGY_TERMS_PAGE_SIZE,
+          after,
+        },
+        signal
+      );
       terms.push(...response.data);
       after = response.paging?.after;
     } catch {
@@ -181,7 +181,7 @@ async function fetchAllTermsForGlossary(
   return terms.slice(0, maxRenderedTerms);
 }
 
-async function fetchAllGlossariesPaginated(): Promise<{
+async function fetchAllGlossariesPaginated(signal?: AbortSignal): Promise<{
   glossaries: Glossary[];
   complete: boolean;
 }> {
@@ -191,11 +191,14 @@ async function fetchAllGlossariesPaginated(): Promise<{
   const MAX_SAFE_PAGES = 500;
   do {
     try {
-      const response = await getGlossariesList({
-        fields: 'owners,tags,termCount',
-        limit: 100,
-        after: afterCursor,
-      });
+      const response = await getGlossariesList(
+        {
+          fields: 'owners,tags,termCount',
+          limit: 100,
+          after: afterCursor,
+        },
+        signal
+      );
       collected.push(...response.data);
       afterCursor = response.paging?.after;
       pages += 1;
@@ -205,23 +208,6 @@ async function fetchAllGlossariesPaginated(): Promise<{
   } while (afterCursor && pages < MAX_SAFE_PAGES);
 
   return { glossaries: collected, complete: true };
-}
-
-function collectMissingRelatedTermIds(
-  accumulated: GlossaryTerm[],
-  loadedIds: Set<string>
-): Set<string> {
-  const missingIds = new Set<string>();
-  for (const term of accumulated) {
-    for (const relation of term.relatedTerms ?? []) {
-      const id = relation.term?.id;
-      if (id && !loadedIds.has(id)) {
-        missingIds.add(id);
-      }
-    }
-  }
-
-  return missingIds;
 }
 
 function ontologyAssetNode(asset: EntityReference): OntologyNode {
@@ -238,57 +224,6 @@ function ontologyAssetNode(asset: EntityReference): OntologyNode {
     serviceLabel: asset.type,
     type: ASSET_NODE_TYPE,
   };
-}
-
-// Hydrates cross-glossary related terms referenced by the input array, in
-// place. Walks term.relatedTerms transitively up to MAX_RESOLUTION_DEPTH
-// levels, batching by Id (BATCH_SIZE matches the backend MAX_BATCH_BY_IDS).
-//
-// Failure semantics: if a single batch fails (network/5xx), its Ids are
-// remembered in a skip set so subsequent depth passes don't retry them,
-// but the rest of the loop still runs — best-effort hydration matches the
-// old per-Id Promise.allSettled behavior on the client.
-async function resolveRelatedTerms(terms: GlossaryTerm[]): Promise<void> {
-  // BATCH_SIZE matches the backend MAX_BATCH_BY_IDS (100), which is sized
-  // to keep the comma-encoded ids list well below Jetty's 8 KB
-  // request-header limit.
-  const BATCH_SIZE = 100;
-  const MAX_RESOLUTION_DEPTH = 5;
-  const loadedIds = new Set(terms.map((term) => term.id ?? ''));
-  const skippedIds = new Set<string>();
-
-  for (let depth = 0; depth < MAX_RESOLUTION_DEPTH; depth++) {
-    const allMissing = collectMissingRelatedTermIds(terms, loadedIds);
-    const missingIds = Array.from(allMissing).filter(
-      (id) => !skippedIds.has(id)
-    );
-    if (missingIds.length === 0) {
-      return;
-    }
-
-    for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
-      const batch = missingIds.slice(i, i + BATCH_SIZE);
-      try {
-        const fetched = await getGlossaryTermsByIds(batch, {
-          fields: [
-            TabSpecificField.RELATED_TERMS,
-            TabSpecificField.CHILDREN,
-            TabSpecificField.PARENT,
-            TabSpecificField.OWNERS,
-          ],
-        });
-        fetched.forEach((term) => {
-          terms.push(term);
-          loadedIds.add(term.id ?? '');
-        });
-      } catch {
-        // This batch is dead for the rest of the run. Remember the Ids so
-        // collectMissingRelatedTermIds doesn't hand them back next depth
-        // pass, but let the other batches in this pass still execute.
-        batch.forEach((id) => skippedIds.add(id));
-      }
-    }
-  }
 }
 
 const mergeIncomingGraphResults = (
@@ -311,6 +246,11 @@ const mergeIncomingGraphResults = (
       if (existingIndex === undefined) {
         nodeIndexes.set(node.id, newNodes.length);
         newNodes.push(node);
+      } else if (
+        newNodes[existingIndex].isReferenceOnly &&
+        !node.isReferenceOnly
+      ) {
+        newNodes[existingIndex] = node;
       } else if (
         node.isDataModeSeed &&
         !newNodes[existingIndex].isDataModeSeed
@@ -341,6 +281,9 @@ const mergeLoadMorePage = (
   if (!prev) {
     return newPageData;
   }
+  const loadedNodes = new Map(
+    newPageData.nodes.filter((n) => !n.isReferenceOnly).map((n) => [n.id, n])
+  );
   const existingNodeIds = new Set(prev.nodes.map((n) => n.id));
   const existingEdgeKeys = new Set(
     prev.edges.map((e) => `${e.from}-${e.to}-${e.relationType}`)
@@ -349,7 +292,9 @@ const mergeLoadMorePage = (
   return {
     ...prev,
     nodes: [
-      ...prev.nodes,
+      ...prev.nodes.map((n) =>
+        n.isReferenceOnly ? loadedNodes.get(n.id) ?? n : n
+      ),
       ...newPageData.nodes.filter((n) => !existingNodeIds.has(n.id)),
     ],
     edges: [
@@ -430,6 +375,9 @@ export function useOntologyExplorer({
   const isLoadingMoreRef = useRef(false);
   const lastLoadCompletedRef = useRef<number>(0);
   const modelLoadGenerationRef = useRef(0);
+  // Cancels every request belonging to the current model load (initial load, load-more,
+  // filter loads) when a new load starts or the explorer unmounts.
+  const modelLoadAbortRef = useRef<AbortController | null>(null);
 
   const modelFiltersRef = useRef<GraphFilters>(DEFAULT_FILTERS);
   const dataFiltersRef = useRef<GraphFilters>({ ...DEFAULT_FILTERS });
@@ -676,25 +624,35 @@ export function useOntologyExplorer({
     [t]
   );
 
-  const fetchVisibleMetrics = useCallback(async (): Promise<Metric[]> => {
-    const response = await getMetrics({ fields: 'tags', limit: 300 });
+  const fetchVisibleMetrics = useCallback(
+    async (signal?: AbortSignal): Promise<Metric[]> => {
+      const response = await getMetrics(
+        { fields: 'tags', limit: 300 },
+        { signal }
+      );
 
-    return response.data;
-  }, []);
+      return response.data;
+    },
+    []
+  );
 
   const fetchTermsForGlossary = useCallback(
     async (
       glossary: Glossary,
       afterCursor?: string,
-      fields: TabSpecificField[] = MODEL_TERM_FIELDS
+      fields: TabSpecificField[] = MODEL_TERM_FIELDS,
+      signal?: AbortSignal
     ): Promise<{ terms: GlossaryTerm[]; nextCursor?: string }> => {
       try {
-        const response = await getGlossaryTerms({
-          glossary: glossary.id,
-          fields,
-          limit: ONTOLOGY_TERMS_PAGE_SIZE,
-          after: afterCursor,
-        });
+        const response = await getGlossaryTerms(
+          {
+            glossary: glossary.id,
+            fields,
+            limit: ONTOLOGY_TERMS_PAGE_SIZE,
+            after: afterCursor,
+          },
+          signal
+        );
 
         return { terms: response.data, nextCursor: response.paging?.after };
       } catch {
@@ -705,7 +663,10 @@ export function useOntologyExplorer({
   );
 
   const loadNextTermPage = useCallback(
-    async (glossaryList?: Glossary[]): Promise<GlossaryTerm[]> => {
+    async (
+      glossaryList?: Glossary[],
+      signal?: AbortSignal
+    ): Promise<GlossaryTerm[]> => {
       if (glossaryList) {
         pendingGlossariesRef.current = [...glossaryList];
         partialGlossaryRef.current = null;
@@ -722,7 +683,8 @@ export function useOntologyExplorer({
         const { terms, nextCursor } = await fetchTermsForGlossary(
           glossary,
           afterCursor,
-          fieldsToFetch
+          fieldsToFetch,
+          signal
         );
         accumulated.push(...terms);
         partialGlossaryRef.current = toPartialGlossaryState(
@@ -732,6 +694,7 @@ export function useOntologyExplorer({
       }
 
       while (
+        !signal?.aborted &&
         accumulated.length < ONTOLOGY_TERMS_PAGE_SIZE &&
         pendingGlossariesRef.current.length > 0
       ) {
@@ -742,7 +705,8 @@ export function useOntologyExplorer({
         const { terms, nextCursor } = await fetchTermsForGlossary(
           glossary,
           undefined,
-          fieldsToFetch
+          fieldsToFetch,
+          signal
         );
         accumulated.push(...terms);
         if (nextCursor) {
@@ -756,10 +720,6 @@ export function useOntologyExplorer({
         pendingGlossariesRef.current.length > 0 ||
           partialGlossaryRef.current !== null
       );
-
-      if (!isDataMode) {
-        await resolveRelatedTerms(accumulated);
-      }
 
       return accumulated;
     },
@@ -808,7 +768,11 @@ export function useOntologyExplorer({
   );
 
   const fetchGraphDataFromDatabase = useCallback(
-    async (glossaryIdParam?: string, allGlossaries?: Glossary[]) => {
+    async (
+      glossaryIdParam?: string,
+      allGlossaries?: Glossary[],
+      signal?: AbortSignal
+    ) => {
       const glossariesToUse = allGlossaries ?? glossariesRef.current;
       const glossariesToFetch = glossaryIdParam
         ? glossariesToUse.filter((g) => g.id === glossaryIdParam)
@@ -816,10 +780,14 @@ export function useOntologyExplorer({
 
       const CONCURRENCY = 8;
       const allTerms: GlossaryTerm[] = [];
-      for (let i = 0; i < glossariesToFetch.length; i += CONCURRENCY) {
+      for (
+        let i = 0;
+        i < glossariesToFetch.length && !signal?.aborted;
+        i += CONCURRENCY
+      ) {
         const batch = glossariesToFetch.slice(i, i + CONCURRENCY);
         const results = await Promise.allSettled(
-          batch.map((g) => fetchAllTermsForGlossary(g))
+          batch.map((g) => fetchAllTermsForGlossary(g, signal))
         );
         results.forEach((r) => {
           if (r.status === 'fulfilled') {
@@ -828,31 +796,43 @@ export function useOntologyExplorer({
         });
       }
 
-      if (glossaryIdParam) {
-        await resolveRelatedTerms(allTerms);
-      }
-
-      return buildGraphFromAllTermsCb(allTerms, glossariesToFetch);
+      return buildGraphFromAllTermsCb(allTerms, glossariesToUse);
     },
     // Note: glossaries intentionally excluded — allGlossaries param is always passed
     [buildGraphFromAllTermsCb]
   );
 
   const loadOntologyModel = useCallback(
-    async (glossaryIdParam?: string) => {
-      const [glossaryResult, metrics] = await Promise.all([
-        fetchAllGlossariesPaginated(),
-        fetchVisibleMetrics().catch(() => [] as Metric[]),
+    async (
+      target: { glossaryId?: string; termId?: string },
+      signal: AbortSignal
+    ) => {
+      const [glossaryResult, metrics, term] = await Promise.all([
+        fetchAllGlossariesPaginated(signal),
+        fetchVisibleMetrics(signal).catch(() => [] as Metric[]),
+        target.termId
+          ? getGlossaryTermsById(
+              target.termId,
+              { fields: MODEL_TERM_FIELDS },
+              signal
+            )
+          : undefined,
       ]);
-      const model = glossaryIdParam
-        ? await fetchGraphDataFromDatabase(
-            glossaryIdParam,
-            glossaryResult.glossaries
-          )
-        : buildGraphFromAllTermsCb(
-            await loadNextTermPage(glossaryResult.glossaries),
-            glossaryResult.glossaries
-          );
+      let model: OntologyGraphData;
+      if (term) {
+        model = buildGraphFromAllTermsCb([term], glossaryResult.glossaries);
+      } else if (target.glossaryId) {
+        model = await fetchGraphDataFromDatabase(
+          target.glossaryId,
+          glossaryResult.glossaries,
+          signal
+        );
+      } else {
+        model = buildGraphFromAllTermsCb(
+          await loadNextTermPage(glossaryResult.glossaries, signal),
+          glossaryResult.glossaries
+        );
+      }
 
       return {
         graphData: mergeMetricsIntoGraph(model, metrics, t),
@@ -882,11 +862,14 @@ export function useOntologyExplorer({
   }, []);
 
   const fetchAllGlossaryData = useCallback(
-    async (glossaryIdParam?: string) => {
+    async (target: { glossaryId?: string; termId?: string } = {}) => {
       const generation = ++modelLoadGenerationRef.current;
+      modelLoadAbortRef.current?.abort();
+      const controller = new AbortController();
+      modelLoadAbortRef.current = controller;
       setLoading(true);
       try {
-        const result = await loadOntologyModel(glossaryIdParam);
+        const result = await loadOntologyModel(target, controller.signal);
         if (generation === modelLoadGenerationRef.current) {
           commitOntologyModel(result);
         }
@@ -965,9 +948,15 @@ export function useOntologyExplorer({
 
       setLoading(true);
       try {
+        const signal = modelLoadAbortRef.current?.signal;
         const results = await Promise.all(
-          unloaded.map((id) => fetchGraphDataFromDatabase(id))
+          unloaded.map((id) =>
+            fetchGraphDataFromDatabase(id, glossariesRef.current, signal)
+          )
         );
+        if (signal?.aborted) {
+          return;
+        }
         unloaded.forEach((id) => filterFetchedGlossariesRef.current.add(id));
         mergeGraphResults(results);
       } catch {
@@ -984,6 +973,7 @@ export function useOntologyExplorer({
   useEffect(() => {
     return () => {
       modelLoadGenerationRef.current += 1;
+      modelLoadAbortRef.current?.abort();
       graphRef.current = null;
       assetFetchControllers.current.forEach((c) => c.abort());
       assetFetchControllers.current.clear();
@@ -1008,13 +998,13 @@ export function useOntologyExplorer({
     if (scope === 'global') {
       fetchAllGlossaryData();
     } else if (scope === 'glossary' && glossaryId) {
-      fetchAllGlossaryData(glossaryId);
+      fetchAllGlossaryData({ glossaryId });
     } else if (scope === 'term' && entityId) {
-      fetchAllGlossaryData(termGlossaryId);
+      fetchAllGlossaryData({ termId: entityId });
     } else {
       setLoading(false);
     }
-  }, [scope, glossaryId, entityId, termGlossaryId, fetchAllGlossaryData]);
+  }, [scope, glossaryId, entityId, fetchAllGlossaryData]);
 
   useEffect(() => {
     if (explorationMode !== 'data') {
@@ -1365,15 +1355,15 @@ export function useOntologyExplorer({
     if (scope === 'global') {
       fetchAllGlossaryData();
     } else if (scope === 'glossary' && glossaryId) {
-      fetchAllGlossaryData(glossaryId);
-    } else if (scope === 'term') {
-      fetchAllGlossaryData(termGlossaryId);
+      fetchAllGlossaryData({ glossaryId });
+    } else if (scope === 'term' && entityId) {
+      fetchAllGlossaryData({ termId: entityId });
     }
   }, [
     explorationMode,
     scope,
     glossaryId,
-    termGlossaryId,
+    entityId,
     fetchAllGlossaryData,
     loadAssetsForDataMode,
   ]);
@@ -1437,8 +1427,12 @@ export function useOntologyExplorer({
 
     isLoadingMoreRef.current = true;
     setIsLoadingMore(true);
-    loadNextTermPage()
+    const signal = modelLoadAbortRef.current?.signal;
+    loadNextTermPage(undefined, signal)
       .then((terms) => {
+        if (signal?.aborted) {
+          return;
+        }
         const newPageData = buildGraphFromAllTermsCb(terms, glossaries);
         setGraphData((prev) => mergeLoadMorePage(prev, newPageData));
       })

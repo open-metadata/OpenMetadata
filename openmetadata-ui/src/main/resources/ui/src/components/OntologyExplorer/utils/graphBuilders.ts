@@ -399,36 +399,69 @@ function addRelatedTermEdges(
   });
 }
 
-function addParentEdge(
-  term: GlossaryTerm,
+function addHierarchyEdge(
+  parentId: string | undefined,
+  childId: string,
   edges: OntologyEdge[],
   edgeSet: Set<string>,
   t: TFunction
 ): void {
-  if (!term.parent?.id || !isValidUUID(term.parent.id)) {
+  if (!parentId || !isValidUUID(parentId)) {
     return;
   }
-  const edgeKey = `parent-${term.parent.id}-${term.id}`;
+  const edgeKey = `parent-${parentId}-${childId}`;
   if (edgeSet.has(edgeKey)) {
     return;
   }
   edgeSet.add(edgeKey);
   edges.push({
-    from: term.parent.id,
-    to: term.id,
+    from: parentId,
+    to: childId,
     label: t('label.parent'),
     relationType: 'parentOf',
   });
 }
 
+const GLOSSARY_FQN_PREFIX = /^("[^"]*"|[^.]+)/;
+
+function referenceOnlyTermNode(
+  ref: EntityReference,
+  glossaryByFqn: Map<string, Glossary>
+): OntologyNode {
+  const glossaryFqn = ref.fullyQualifiedName?.match(GLOSSARY_FQN_PREFIX)?.[0];
+  const glossary = glossaryFqn ? glossaryByFqn.get(glossaryFqn) : undefined;
+
+  return {
+    id: ref.id,
+    label: ref.displayName || ref.name || ref.fullyQualifiedName || ref.id,
+    type: 'glossaryTerm',
+    fullyQualifiedName: ref.fullyQualifiedName,
+    description: ref.description,
+    glossaryId: glossary?.id,
+    group: glossary?.displayName || glossary?.name,
+    isReferenceOnly: true,
+  };
+}
+
+/**
+ * Builds the term graph from loaded terms. Neighbours that were not loaded are drawn from
+ * the reference carried on the relation instead of being fetched: fetching them would pull
+ * in their neighbours as well, which on dense ontologies cascades to the whole catalogue.
+ */
 export function buildGraphFromAllTerms(
   terms: GlossaryTerm[],
-  _glossaryList: Glossary[],
+  glossaryList: Glossary[],
   t: TFunction
 ): OntologyGraphData {
   const nodesMap = new Map<string, OntologyNode>();
   const edges: OntologyEdge[] = [];
   const edgeSet = new Set<string>();
+  const referencedTerms = new Map<string, EntityReference>();
+  const reference = (ref?: EntityReference) => {
+    if (ref?.id && isValidUUID(ref.id)) {
+      referencedTerms.set(ref.id, ref);
+    }
+  };
 
   terms.forEach((term) => {
     if (!term.id || !isValidUUID(term.id)) {
@@ -447,12 +480,29 @@ export function buildGraphFromAllTerms(
     });
 
     addRelatedTermEdges(term, edges, edgeSet);
-    addParentEdge(term, edges, edgeSet, t);
+    addHierarchyEdge(term.parent?.id, term.id, edges, edgeSet, t);
+    term.children?.forEach((child) =>
+      addHierarchyEdge(term.id, child.id, edges, edgeSet, t)
+    );
+    term.relatedTerms?.forEach((relation) => reference(relation.term));
+    reference(term.parent);
+    term.children?.forEach(reference);
   });
 
-  const nodeIds = new Set(nodesMap.keys());
+  const glossaryByFqn = new Map(
+    glossaryList.map((glossary) => [
+      glossary.fullyQualifiedName ?? glossary.name,
+      glossary,
+    ])
+  );
+  referencedTerms.forEach((ref, id) => {
+    if (!nodesMap.has(id)) {
+      nodesMap.set(id, referenceOnlyTermNode(ref, glossaryByFqn));
+    }
+  });
+
   const validEdges = edges.filter(
-    (e) => nodeIds.has(e.from) && nodeIds.has(e.to)
+    (e) => nodesMap.has(e.from) && nodesMap.has(e.to)
   );
 
   return { nodes: Array.from(nodesMap.values()), edges: validEdges };

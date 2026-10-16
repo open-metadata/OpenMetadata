@@ -18,14 +18,13 @@ import {
   redirectToHomePage,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { readNodePositions } from '../../../utils/ontologyStudio';
 
-// Regression coverage for the Sentry N+1 on the Relations Graph tab.
-// Before: opening the tab on a term with cross-glossary relatedTerms fanned
-// out 8+ sequential `GET /api/v1/glossaryTerms/{id}?fields=...` calls
-// (~180ms each, ~1.4s total). The fix routes those through the new batch
-// endpoint `GET /api/v1/glossaryTerms/byIds?ids=...`. This spec asserts
-// zero per-Id by-Id fetches with the resolution-loop fields signature when
-// visiting the tab — failing if anyone re-introduces a per-Id loop.
+// Regression coverage for the Relations Graph loading path (#32962).
+// The tab used to load the whole glossary and then hydrate related terms up to
+// five levels deep through sequential /glossaryTerms/byIds batches, which on a
+// dense ontology fetched the entire catalogue. It must now fetch only the
+// focused term and draw cross-glossary neighbours from their references.
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -83,60 +82,60 @@ test.afterAll('Cleanup glossaries', async ({ browser }) => {
   await afterAction();
 });
 
-test.describe('Glossary Relations Graph — N+1 regression guard', () => {
-  test('opening Relations Graph tab does NOT fan out per-Id glossary term fetches', async ({
+test.describe('Glossary Relations Graph — bounded loading guard', () => {
+  test('loads only the focused term and draws cross-glossary neighbours without hydration', async ({
     page,
   }) => {
     test.slow();
-    const perIdRequests: string[] = [];
-    const byIdsRequests: string[] = [];
-
-    page.on('request', (request) => {
-      const url = request.url();
-      // Match the by-Id endpoint that the resolution loop used to fire.
-      // Path shape: /api/v1/glossaryTerms/<uuid>?fields=relatedTerms,...
-      const perIdMatch =
-        /\/api\/v1\/glossaryTerms\/[0-9a-f-]{36}\?fields=/.test(url);
-      // Match the new batch endpoint.
-      const byIdsMatch = /\/api\/v1\/glossaryTerms\/byIds\?/.test(url);
-
-      if (perIdMatch && url.includes('relatedTerms')) {
-        perIdRequests.push(url);
-      }
-      if (byIdsMatch) {
-        byIdsRequests.push(url);
-      }
-    });
 
     await redirectToHomePage(page);
     await termInA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
-    // The new path's resolution loop calls /glossaryTerms/byIds once the
-    // initial paginated load finds termInB's Id missing from termInA's
-    // accumulated set. Using that response as the wait signal makes the
-    // test deterministic regardless of how long graph rendering takes.
-    const byIdsResponse = page.waitForResponse(
-      (response) => /\/api\/v1\/glossaryTerms\/byIds\?/.test(response.url()),
-      { timeout: 60_000 }
+    const termFetches: string[] = [];
+    const byIdsRequests: string[] = [];
+    page.on('request', (request) => {
+      const url = request.url();
+      if (/\/api\/v1\/glossaryTerms\/byIds\?/.test(url)) {
+        byIdsRequests.push(url);
+      }
+      if (
+        /\/api\/v1\/glossaryTerms\/[0-9a-f-]{36}\?fields=/.test(url) &&
+        url.includes('relatedTerms')
+      ) {
+        termFetches.push(url);
+      }
+    });
+
+    const focusedTermResponse = page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(`/api/v1/glossaryTerms/${termInA.responseData.id}?`) &&
+        response.url().includes('relatedTerms')
     );
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
     await expect(page.getByTestId('ontology-explorer')).toBeVisible();
-    await byIdsResponse;
-    await waitForAllLoadersToDisappear(page);
+    await focusedTermResponse;
 
-    // The old N+1 issued ≥8 of these. With the batch endpoint in place we
-    // expect zero. Allow 0 strictly — a non-zero count means somebody added
-    // a new per-Id resolution path or reverted the fix.
+    await expect
+      .poll(async () => Object.keys(await readNodePositions(page)), {
+        message: 'the cross-glossary neighbour must be drawn in the graph',
+      })
+      .toEqual(
+        expect.arrayContaining([
+          termInA.responseData.id,
+          termInB.responseData.id,
+        ])
+      );
+
     expect(
-      perIdRequests,
-      'Per-Id /glossaryTerms/{id}?fields=relatedTerms,... requests must be zero — use /glossaryTerms/byIds instead'
+      termFetches,
+      'Only the focused term should be fetched with its relations'
+    ).toHaveLength(1);
+    expect(
+      byIdsRequests,
+      'Related terms must be drawn from their references, not hydrated via /glossaryTerms/byIds'
     ).toHaveLength(0);
-
-    // At least one batch call should be present, evidencing the new path.
-    expect(
-      byIdsRequests.length,
-      '/glossaryTerms/byIds should be called at least once when resolving cross-glossary related terms'
-    ).toBeGreaterThan(0);
   });
 });
