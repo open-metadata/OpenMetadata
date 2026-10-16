@@ -15585,13 +15585,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/60/definitions/neo4jType",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/59/definitions/neo4jType",
                           "default": "Neo4j"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/60/definitions/neo4jScheme",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/59/definitions/neo4jScheme",
                           "default": "neo4j"
                         },
                         "hostPort": {
