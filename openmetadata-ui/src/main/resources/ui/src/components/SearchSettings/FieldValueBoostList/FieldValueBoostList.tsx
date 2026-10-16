@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Button, Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -101,7 +100,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               })}
               color="tertiary"
               data-testid="edit-field-value-boost-btn"
-              iconLeading={<Icon component={EditIcon} />}
+              iconLeading={<EditIcon className="tw:size-3.5 tw:shrink-0" />}
               onClick={() => handleEditFieldValueBoost(record)}
             />
             <Button
@@ -110,7 +109,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               })}
               color="tertiary"
               data-testid="delete-field-value-boost-btn"
-              iconLeading={<Icon component={Delete} />}
+              iconLeading={<Delete className="tw:size-3.5 tw:shrink-0" />}
               onClick={() => handleDeleteFieldValueBoost(record.field)}
             />
           </div>

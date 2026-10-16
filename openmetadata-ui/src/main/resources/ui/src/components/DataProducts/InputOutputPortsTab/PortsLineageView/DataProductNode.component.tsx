@@ -53,7 +53,8 @@ const DataProductNode = memo(({ data }: DataProductNodeProps) => {
         </div>
         <Typography
           as="h4"
-          className="tw:text-center tw:text-gray-400"
+          className="tw:text-center"
+          color="secondary"
           title={getEntityName(dataProduct)}>
           {getEntityName(dataProduct)}
         </Typography>

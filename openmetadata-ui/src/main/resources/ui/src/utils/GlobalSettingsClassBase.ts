@@ -12,13 +12,14 @@
  */
 import {
   AnnouncementColored,
+  DefaultAppMode,
+  DefaultTime,
   GlossaryTerm,
 } from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/apis-colored.svg';
-import { ReactComponent as AppModeIcon } from '../assets/svg/app-mode.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
@@ -721,7 +722,8 @@ class GlobalSettingsClassBase {
             description: t('message.default-app-mode-description'),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APP_MODE}`,
-            icon: AppModeIcon,
+            icon: DefaultAppMode,
+            iconColor: 'blue',
           },
           {
             label: t('label.glossary'),
@@ -729,13 +731,15 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.GLOSSARY}`,
             icon: GlossaryTerm,
+            iconColor: 'blue',
           },
           {
             label: t('label.default-time-format'),
             description: t('message.default-time-format-description'),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.TIME_FORMAT}`,
-            icon: AppModeIcon,
+            icon: DefaultTime,
+            iconColor: 'blue',
           },
         ],
       },
