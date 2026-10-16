@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
@@ -14,6 +15,7 @@ import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 
@@ -150,6 +152,92 @@ class TestCaseDefinitionConformanceTest {
   void aTableTestIsNotCheckedAgainstColumnTypes() {
     assertDoesNotThrow(
         () -> TestCaseDefinitionConformance.validate(new TestCase(), LENGTHS, TABLE, table()));
+  }
+
+  @Test
+  void anUpdateThatChangesAnOptionToOneNotOfferedIsRejected() {
+    TestCase stored = withParameter("strategy", "ROWS").withEntityLink(table().getLinkString());
+    TestCase updated = withParameter("strategy", "SUM").withEntityLink(table().getLinkString());
+    IllegalArgumentException error =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                TestCaseDefinitionConformance.validateUpdate(
+                    stored, updated, () -> CUSTOM_SQL, () -> TABLE));
+    assertTrue(error.getMessage().contains("must be one of [ROWS, COUNT]"), error.getMessage());
+  }
+
+  @Test
+  void anUpdateKeepsAStoredValueOutsideTheOptionsEditable() {
+    TestCase stored = withParameter("strategy", "SUM").withEntityLink(table().getLinkString());
+    TestCase updated =
+        withParameter("strategy", "SUM")
+            .withEntityLink(table().getLinkString())
+            .withDescription("edited");
+    assertDoesNotThrow(
+        () ->
+            TestCaseDefinitionConformance.validateUpdate(
+                stored, updated, () -> CUSTOM_SQL, () -> TABLE));
+  }
+
+  @Test
+  void anUpdateKeepsATestOnAColumnRetypedSinceEditable() {
+    TestCase stored = new TestCase().withEntityLink(column("Amount").getLinkString());
+    TestCase updated =
+        new TestCase().withEntityLink(column("Amount").getLinkString()).withDescription("edited");
+    assertDoesNotThrow(
+        () ->
+            TestCaseDefinitionConformance.validateUpdate(
+                stored, updated, () -> LENGTHS, () -> TABLE));
+  }
+
+  /** Failed-row samples and inspection queries are stored by updates that change no parameter. */
+  @Test
+  void anUpdateThatChangesNoParameterDoesNotLoadTheDefinition() {
+    TestCase stored = withParameter("strategy", "ROWS").withEntityLink(table().getLinkString());
+    TestCase updated =
+        withParameter("strategy", "ROWS")
+            .withEntityLink(table().getLinkString())
+            .withInspectionQuery("SELECT 1");
+    assertDoesNotThrow(
+        () ->
+            TestCaseDefinitionConformance.validateUpdate(
+                stored,
+                updated,
+                () -> {
+                  throw new AssertionError("the definition was loaded");
+                },
+                () -> TABLE));
+  }
+
+  @Test
+  void anUpdateThatMovesTheTestToAnUnsupportedColumnIsRejected() {
+    TestCase stored = new TestCase().withEntityLink(column("note").getLinkString());
+    TestCase updated = new TestCase().withEntityLink(column("Amount").getLinkString());
+    IllegalArgumentException error =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                TestCaseDefinitionConformance.validateUpdate(
+                    stored, updated, () -> LENGTHS, () -> TABLE));
+    assertTrue(error.getMessage().contains("NUMERIC"), error.getMessage());
+  }
+
+  @Test
+  void anUpdateThatChangesTheDefinitionChecksEveryValueAgainstIt() {
+    TestCase stored =
+        withParameter("strategy", "SUM")
+            .withEntityLink(table().getLinkString())
+            .withTestDefinition(new EntityReference().withId(UUID.randomUUID()));
+    TestCase updated =
+        withParameter("strategy", "SUM")
+            .withEntityLink(table().getLinkString())
+            .withTestDefinition(new EntityReference().withId(UUID.randomUUID()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            TestCaseDefinitionConformance.validateUpdate(
+                stored, updated, () -> CUSTOM_SQL, () -> TABLE));
   }
 
   /**

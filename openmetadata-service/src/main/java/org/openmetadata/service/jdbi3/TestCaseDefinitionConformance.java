@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
@@ -15,6 +17,7 @@ import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 
 /**
@@ -29,6 +32,40 @@ final class TestCaseDefinitionConformance {
     validateOptionValues(
         listOrEmpty(test.getParameterValues()), listOrEmpty(definition.getParameterDefinition()));
     validateColumnType(definition, table, entityLink);
+  }
+
+  /**
+   * Checks only what an update changes, so a row stored before these rules, or on a column
+   * retyped since, stays editable. A test moved to another column or definition is checked in
+   * full.
+   */
+  static void validateUpdate(
+      TestCase original,
+      TestCase updated,
+      Supplier<TestDefinition> definition,
+      Supplier<Table> table) {
+    List<TestCaseParameterValue> changed = changedValues(original, updated);
+    if (isRetargeted(original, updated)) {
+      validate(updated, definition.get(), table.get(), EntityLink.parse(updated.getEntityLink()));
+    } else if (!changed.isEmpty()) {
+      validateOptionValues(changed, listOrEmpty(definition.get().getParameterDefinition()));
+    }
+  }
+
+  private static boolean isRetargeted(TestCase original, TestCase updated) {
+    return !Objects.equals(original.getEntityLink(), updated.getEntityLink())
+        || !Objects.equals(definitionId(original), definitionId(updated));
+  }
+
+  private static UUID definitionId(TestCase test) {
+    return Optional.ofNullable(test.getTestDefinition()).map(EntityReference::getId).orElse(null);
+  }
+
+  private static List<TestCaseParameterValue> changedValues(TestCase original, TestCase updated) {
+    List<TestCaseParameterValue> stored = listOrEmpty(original.getParameterValues());
+    return listOrEmpty(updated.getParameterValues()).stream()
+        .filter(value -> !stored.contains(value))
+        .toList();
   }
 
   private static void validateOptionValues(

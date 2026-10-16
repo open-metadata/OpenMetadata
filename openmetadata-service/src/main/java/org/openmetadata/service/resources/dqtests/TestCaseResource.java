@@ -798,7 +798,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
           testCases.add(test);
         });
-    repository.createMany(uriInfo, testCases);
+    repository.createManyTestCases(uriInfo, testCases);
     return Response.ok(testCases).build();
   }
 

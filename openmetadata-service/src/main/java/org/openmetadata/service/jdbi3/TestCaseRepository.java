@@ -898,10 +898,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         testDefinition.getTestPlatforms(),
         testDefinition);
     validateColumnTestCase(table, entityLink, testDefinition.getEntityType());
-    // Same gate as the disabled-definition check: a row stored before these rules stays editable.
-    if (!update) {
-      TestCaseDefinitionConformance.validate(test, testDefinition, table, entityLink);
-    }
     validateDimensionColumns(test, table);
     setDataQualityDimension(test, testDefinition);
 
@@ -1185,6 +1181,33 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         "testCaseResult",
         DATA_QUALITY_DIMENSION_FIELD,
         INCIDENTS_FIELD);
+  }
+
+  /**
+   * POST, PUT and the CSV import all create through here, after a prepare whose {@code update}
+   * flag is true for a PUT that creates a row
+   * (ADR:2026-10-12-test-cases-are-checked-against-their-definition-at-create).
+   */
+  @Override
+  protected TestCase createNewEntity(TestCase test) {
+    validateDefinitionConformance(test);
+    return super.createNewEntity(test);
+  }
+
+  /**
+   * createMany stores in chunks, each in its own transaction, so the whole batch is checked before
+   * any of it is stored.
+   */
+  public List<TestCase> createManyTestCases(UriInfo uriInfo, List<TestCase> testCases) {
+    testCases.forEach(TestCaseRepository::validateDefinitionConformance);
+    return createMany(uriInfo, testCases);
+  }
+
+  private static void validateDefinitionConformance(TestCase test) {
+    EntityLink entityLink = EntityLink.parse(test.getEntityLink());
+    TestDefinition definition = Entity.getEntity(test.getTestDefinition(), "", NON_DELETED);
+    Table table = Entity.getEntity(entityLink, "columns", ALL);
+    TestCaseDefinitionConformance.validate(test, definition, table, entityLink);
   }
 
   @Override
@@ -2005,6 +2028,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       }
     }
 
+    private void validateChangedConformance() {
+      TestCaseDefinitionConformance.validateUpdate(
+          original,
+          updated,
+          () -> Entity.getEntity(updated.getTestDefinition(), "", ALL),
+          () -> Entity.getEntity(EntityLink.parse(updated.getEntityLink()), "columns", ALL));
+    }
+
     @Override
     protected boolean consolidateChanges(TestCase original, TestCase updated, Operation operation) {
       return false;
@@ -2013,6 +2044,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      validateChangedConformance();
       compareAndUpdate(
           "entity",
           () -> {
