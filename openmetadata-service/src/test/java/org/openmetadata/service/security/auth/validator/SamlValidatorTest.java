@@ -10,7 +10,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
@@ -1026,6 +1028,21 @@ class SamlValidatorTest {
     assertNotNull(error);
     assertTrue(connection.isDisconnected());
     assertTrue(connection.getBodyStream().isClosed());
+  }
+
+  /** The server must never send the probe to a metadata address, whatever the admin typed. */
+  @Test
+  void validateIdpConnectivityNeverProbesMetadataAddress() throws Exception {
+    validator = spy(validator);
+
+    FieldError error =
+        invokePrivate(
+            "validateIdpConnectivity",
+            SamlSSOClientConfig.class,
+            baseConfig("http://169.254.169.254/latest/meta-data/"));
+
+    assertNull(error);
+    verify(validator, never()).openConnection(any(URL.class));
   }
 
   @Test

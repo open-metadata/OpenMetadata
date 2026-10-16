@@ -428,8 +428,8 @@ describe('TestDetailsPageV1 component', () => {
 
     it('does not show the permission-loading skeleton in tour mode, even while isLoading is true', () => {
       // mockImplementationOnce would only override the FIRST call to useTourProvider() —
-      // TableDetailsPageV1 is wrapped in withSuggestions(withActivityFeed(...)), and those
-      // wrappers (or providers they render) may call the hook before the inner component
+      // TableDetailsPageV1 is wrapped in withActivityFeed(...), and that
+      // wrapper (or providers it renders) may call the hook before the inner component
       // does, silently consuming the "once" override before it reaches this test's target.
       // A persistent mockImplementation, explicitly restored after, doesn't depend on call
       // order.

@@ -13,13 +13,14 @@
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { OntologyNode } from './OntologyExplorer.interface';
-import { OntologyTreeGroup } from './OntologyStudio.utils';
+import { OntologyTreeGroup, OntologyTreeMetric } from './OntologyStudio.utils';
 import OntologyTreeView from './OntologyTreeView';
 
 const ROOT: OntologyNode = {
   id: 'root',
   label: 'Customer',
   type: 'glossaryTerm',
+  fullyQualifiedName: 'Commerce.Customer',
 };
 const CHILD: OntologyNode = {
   id: 'child',
@@ -31,6 +32,7 @@ const ORPHAN: OntologyNode = {
   label: 'Lonely',
   type: 'glossaryTermIsolated',
 };
+const METRIC: OntologyNode = { id: 'metric', label: 'Revenue', type: 'metric' };
 
 const GROUPS: OntologyTreeGroup[] = [
   {
@@ -52,7 +54,7 @@ const GROUPS: OntologyTreeGroup[] = [
         relationCount: 1,
       },
       {
-        depth: 12,
+        depth: 0,
         isIsolated: true,
         node: ORPHAN,
         parentCount: 0,
@@ -61,68 +63,71 @@ const GROUPS: OntologyTreeGroup[] = [
     ],
   },
 ];
+const METRICS: OntologyTreeMetric[] = [{ measures: [ROOT], node: METRIC }];
+
+const renderTree = (
+  props: Partial<Parameters<typeof OntologyTreeView>[0]> = {}
+) => {
+  const handlers = { onConnect: jest.fn(), onSelect: jest.fn() };
+  render(
+    <OntologyTreeView
+      groups={GROUPS}
+      metrics={METRICS}
+      {...handlers}
+      {...props}
+    />
+  );
+
+  return handlers;
+};
 
 describe('OntologyTreeView', () => {
-  it('shows an empty message when there are no groups', () => {
-    render(<OntologyTreeView groups={[]} onSelect={jest.fn()} />);
+  it('shows an empty message when there is nothing to list', () => {
+    renderTree({ groups: [], metrics: [] });
 
-    expect(screen.getByTestId('ontology-tree-view')).toBeInTheDocument();
-    expect(screen.getByText('message.ontology-tree-description')).toBeVisible();
     expect(screen.getByText('message.no-glossary-terms-found')).toBeVisible();
-    expect(screen.queryByTestId('ontology-tree-group')).not.toBeInTheDocument();
-  });
-
-  it('renders each glossary group with its terms, badges and counts', () => {
-    render(<OntologyTreeView groups={GROUPS} onSelect={jest.fn()} />);
-
-    const group = screen.getByTestId('ontology-tree-group');
-
-    expect(within(group).getByText('Commerce')).toBeVisible();
-    expect(within(group).getByText('label.x-terms')).toBeVisible();
-    expect(screen.getAllByText('label.x-relations')).toHaveLength(2);
-    expect(screen.getByText('label.polyhierarchy')).toBeVisible();
-
-    const orphanButton = screen.getByTestId('ontology-tree-term-orphan');
-
-    expect(within(orphanButton).getByText('label.isolated')).toBeVisible();
     expect(
-      within(orphanButton).queryByText('label.x-relations')
+      screen.queryByTestId('ontology-tree-concepts')
     ).not.toBeInTheDocument();
   });
 
-  it('caps the indentation depth at eight levels', () => {
-    render(<OntologyTreeView groups={GROUPS} onSelect={jest.fn()} />);
+  it('splits concepts, metrics and unconnected terms into their own sections', () => {
+    renderTree();
 
-    const orphanButton = screen.getByTestId('ontology-tree-term-orphan');
-    const childButton = screen.getByTestId('ontology-tree-term-child');
+    const concepts = screen.getByTestId('ontology-tree-concepts');
+    const metrics = screen.getByTestId('ontology-tree-metrics');
+    const unconnected = screen.getByTestId('ontology-tree-unconnected');
 
-    expect(orphanButton.querySelector('span.tw\\:shrink-0')).toHaveStyle({
-      width: `${8 * 18}px`,
-    });
-    expect(childButton.querySelector('span.tw\\:shrink-0')).toHaveStyle({
-      width: '18px',
-    });
+    expect(within(concepts).getByText('Customer')).toBeVisible();
+    expect(screen.getByTestId('ontology-tree-term-child')).toBeInTheDocument();
+    expect(within(concepts).getByText('Commerce.Customer')).toBeVisible();
+    expect(within(concepts).getByText('Order')).toBeVisible();
+    expect(within(concepts).getByText('label.polyhierarchy')).toBeVisible();
+    expect(within(concepts).queryByText('Lonely')).not.toBeInTheDocument();
+    expect(within(metrics).getByText('Revenue')).toBeVisible();
+    expect(within(metrics).getByText('Customer')).toBeVisible();
+    expect(within(unconnected).getByText('Lonely')).toBeVisible();
   });
 
-  it('highlights the selected node and reports clicks', () => {
-    const onSelect = jest.fn();
-    render(
-      <OntologyTreeView
-        groups={GROUPS}
-        selectedNodeId={CHILD.id}
-        onSelect={onSelect}
-      />
-    );
+  it('collapses and expands the concept hierarchy', () => {
+    renderTree();
 
-    expect(screen.getByTestId('ontology-tree-term-child')).toHaveClass(
-      'tw:border-brand'
-    );
-    expect(screen.getByTestId('ontology-tree-term-root')).toHaveClass(
-      'tw:border-transparent'
-    );
+    fireEvent.click(screen.getByTestId('ontology-tree-collapse-all'));
 
-    fireEvent.click(screen.getByTestId('ontology-tree-term-root'));
+    expect(screen.queryByText('Order')).not.toBeInTheDocument();
 
-    expect(onSelect).toHaveBeenCalledWith(ROOT);
+    fireEvent.click(screen.getByTestId('ontology-tree-expand-all'));
+
+    expect(screen.getByText('Order')).toBeVisible();
+  });
+
+  it('opens a row and connects an unconnected term', () => {
+    const { onConnect, onSelect } = renderTree();
+
+    fireEvent.click(screen.getByText('Order'));
+    fireEvent.click(screen.getByTestId('ontology-tree-connect-orphan'));
+
+    expect(onSelect).toHaveBeenCalledWith(CHILD);
+    expect(onConnect).toHaveBeenCalledWith(ORPHAN);
   });
 });
