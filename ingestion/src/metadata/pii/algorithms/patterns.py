@@ -1,5 +1,15 @@
 from presidio_analyzer import Pattern
 
+# Keep new grouped forms out of larger tokens and numeric runs. A prose dash after
+# a value remains valid; only a following digit extends the numeric run.
+au_abn_hyphenated = [
+    Pattern("ABN (hyphenated)", r"(?<![\w-])(?<![0-9][ _-]+)[0-9]{2}(?:-[0-9]{3}){3}(?![\w-])(?![ _-]+[0-9])", 0.3)
+]
+au_acn_hyphenated = [
+    Pattern("ACN (hyphenated)", r"(?<![\w-])(?<![0-9][ _-]+)[0-9]{3}(?:-[0-9]{3}){2}(?![\w-])(?![ _-]+[0-9])", 0.3)
+]
+it_vat_prefixed = [Pattern("IT VAT (attached prefix)", r"\bIT[0-9]{11}\b", 0.1)]
+
 credit_cards = [
     Pattern("Credit Card Number", pattern, 0.7)
     for pattern in (
