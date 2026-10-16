@@ -17,6 +17,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import { getAnnouncementTypeConfig } from '../../../utils/AnnouncementsUtils';
@@ -25,6 +26,7 @@ import { stripMarkdown } from '../../../utils/RichTextStringUtils';
 
 export interface CriticalAnnouncementBannerProps {
   announcement: AnnouncementEntity;
+  className?: string;
   onDismiss: () => void;
 }
 
@@ -55,6 +57,7 @@ const TITLE_CLASS =
  */
 const CriticalAnnouncementBanner = ({
   announcement,
+  className,
   onDismiss,
 }: CriticalAnnouncementBannerProps) => {
   const { t } = useTranslation();
@@ -63,7 +66,9 @@ const CriticalAnnouncementBanner = ({
   const description = stripMarkdown(announcement.description ?? '').trim();
 
   return (
-    <div className={BANNER_CLASS} data-testid="critical-announcement-banner">
+    <div
+      className={classNames(BANNER_CLASS, className)}
+      data-testid="critical-announcement-banner">
       <FeaturedIcon
         outlined
         className={ICON_CLASS}

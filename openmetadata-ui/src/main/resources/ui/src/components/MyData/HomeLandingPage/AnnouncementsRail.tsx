@@ -11,26 +11,10 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Button,
-  ButtonUtility,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import {
-  ChevronLeft,
-  ChevronRight,
-} from '@openmetadata/ui-core-components/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import classNames from 'classnames';
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
@@ -41,7 +25,9 @@ import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUt
 import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 import AllAnnouncementsDialog from './AllAnnouncementsDialog';
 import AnnouncementCard from './AnnouncementCard';
+import RailSectionHeader from './RailSectionHeader';
 import { useDismissedAnnouncements } from './useDismissedAnnouncements';
+import { useRailPager } from './useRailPager';
 
 export const ACTIVE_ANNOUNCEMENTS_QUERY_KEY = [
   'landingPage',
@@ -51,15 +37,6 @@ export const ACTIVE_ANNOUNCEMENTS_QUERY_KEY = [
 const ACTIVE_ANNOUNCEMENTS_TTL_MS = 60_000;
 const ACTIVE_ANNOUNCEMENTS_GC_TIME_MS =
   ACTIVE_ANNOUNCEMENTS_TTL_MS + 5 * 60 * 1000;
-
-// Fraction of the rail's visible width a pager click travels. Under 1 so the
-// card at the edge stays partly visible and the scroll reads as continuous.
-const RAIL_PAGE_FRACTION = 0.9;
-// Pager circle, matching the mock: a 28px button with a 10px glyph.
-const PAGER_BUTTON_CLASSES = 'tw:rounded-full';
-// Sub-pixel slack: fractional card widths leave a fraction of a pixel of scroll
-// left at either end, which would otherwise keep a pager button enabled forever.
-const RAIL_SCROLL_EPSILON = 1;
 
 // Asset announcements only: system ones reach users through the critical
 // banner above the rail, never here.
@@ -80,42 +57,6 @@ const getActiveAnnouncementsQueryOptions = () => ({
   staleTime: ACTIVE_ANNOUNCEMENTS_TTL_MS,
 });
 
-interface AnnouncementsHeaderProps {
-  count: number;
-  pager?: React.ReactNode;
-  onViewAll: () => void;
-}
-
-const AnnouncementsHeader = ({
-  count,
-  pager,
-  onViewAll,
-}: AnnouncementsHeaderProps) => {
-  const { t } = useTranslation();
-
-  return (
-    <div className="tw:flex tw:items-center tw:gap-2">
-      <Typography size="text-sm" weight="semibold">
-        {t('label.announcement-plural')}
-      </Typography>
-      <Badge className="tw:rounded-md" color="gray-blue" size="sm" type="color">
-        {count}
-      </Badge>
-
-      <div className="tw:ml-auto tw:flex tw:items-center tw:gap-4">
-        {pager}
-        <Button
-          color="link-color"
-          data-testid="announcement-view-all"
-          size="xs"
-          onPress={onViewAll}>
-          {t('label.view-all')}
-        </Button>
-      </div>
-    </div>
-  );
-};
-
 const AnnouncementsRail: React.FC = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -129,8 +70,6 @@ const AnnouncementsRail: React.FC = () => {
     prune: pruneDismissed,
   } = useDismissedAnnouncements(currentUser?.id);
   const [isAllOpen, setIsAllOpen] = useState(false);
-  const railRef = useRef<HTMLUListElement>(null);
-  const [canScroll, setCanScroll] = useState({ next: false, previous: false });
 
   // Only a live announcement can be dismissed, so an id the active list no
   // longer returns has expired or been deleted and will never show again.
@@ -161,50 +100,8 @@ const AnnouncementsRail: React.FC = () => {
   );
   const count = activeAnnouncements.length;
 
-  // Which pager buttons are live is a function of where the rail is scrolled —
-  // read it off the element rather than tracking an index, so it stays correct
-  // however many cards happen to fit at the current width.
-  const syncScrollState = useCallback(() => {
-    const rail = railRef.current;
-    if (!rail) {
-      return;
-    }
-    const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
-    const next = rail.scrollLeft < maxScrollLeft - RAIL_SCROLL_EPSILON;
-    const previous = rail.scrollLeft > RAIL_SCROLL_EPSILON;
-    // Smooth scrolling fires this every frame — hand back the same object when
-    // nothing changed so React bails out instead of re-rendering the rail.
-    setCanScroll((prev) =>
-      prev.next === next && prev.previous === previous
-        ? prev
-        : { next, previous }
-    );
-  }, []);
-
-  // Layout effect so the buttons are never painted in a stale enabled state
-  // after the card list changes. ResizeObserver covers the grid resizing us.
-  useLayoutEffect(() => {
-    syncScrollState();
-    const rail = railRef.current;
-    if (!rail) {
-      return;
-    }
-    const observer = new ResizeObserver(syncScrollState);
-    observer.observe(rail);
-
-    return () => observer.disconnect();
-  }, [syncScrollState, count]);
-
-  const scrollByPage = useCallback((direction: 1 | -1) => {
-    const rail = railRef.current;
-    rail?.scrollBy?.({
-      behavior: 'smooth',
-      left: direction * rail.clientWidth * RAIL_PAGE_FRACTION,
-    });
-  }, []);
-
-  const goToPrevious = useCallback(() => scrollByPage(-1), [scrollByPage]);
-  const goToNext = useCallback(() => scrollByPage(1), [scrollByPage]);
+  const { railRef, canScroll, syncScrollState, goToPrevious, goToNext } =
+    useRailPager(count);
   const openAll = useCallback(() => setIsAllOpen(true), []);
   const closeAll = useCallback(() => setIsAllOpen(false), []);
 
@@ -231,39 +128,22 @@ const AnnouncementsRail: React.FC = () => {
   return (
     <>
       <section data-testid="announcements-section">
-        <AnnouncementsHeader
-          count={count}
-          pager={
-            count > 1 && (
-              // The pager reads as one control, so its buttons stay tight to
-              // each other while the parent's gap holds "View all" clear of them.
-              <div className="tw:flex tw:items-center tw:gap-2">
-                {/* Icons are passed as components, not elements, so ButtonUtility
-                tags them `data-icon` and its own xs sizing applies. */}
-                <ButtonUtility
-                  className={PAGER_BUTTON_CLASSES}
-                  color="secondary"
-                  data-testid="announcement-previous"
-                  icon={ChevronLeft}
-                  isDisabled={!canScroll.previous}
-                  size="xs"
-                  tooltip={t('label.previous')}
-                  onClick={goToPrevious}
-                />
-                <ButtonUtility
-                  className={PAGER_BUTTON_CLASSES}
-                  color="secondary"
-                  data-testid="announcement-next"
-                  icon={ChevronRight}
-                  isDisabled={!canScroll.next}
-                  size="xs"
-                  tooltip={t('label.next')}
-                  onClick={goToNext}
-                />
-              </div>
-            )
+        <RailSectionHeader
+          action={
+            <Button
+              color="link-color"
+              data-testid="announcement-view-all"
+              size="xs"
+              onPress={openAll}>
+              {t('label.view-all')}
+            </Button>
           }
-          onViewAll={openAll}
+          canScroll={canScroll}
+          count={count}
+          testIdPrefix="announcement"
+          title={t('label.announcement-plural')}
+          onNext={goToNext}
+          onPrevious={goToPrevious}
         />
 
         {/* Container query, not a viewport breakpoint — the rail should size off
