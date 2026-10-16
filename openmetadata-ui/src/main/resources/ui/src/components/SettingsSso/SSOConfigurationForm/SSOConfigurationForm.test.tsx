@@ -2566,6 +2566,13 @@ describe('SSOConfigurationForm', () => {
     const isRendered = (container: HTMLElement, path: string) =>
       container.querySelector(`[id="root/${path}"]`) !== null;
 
+    // A deprecated setting stays in the form data as a hidden input, so the admin never sees it.
+    const isOffered = (container: HTMLElement, path: string) => {
+      const field = container.querySelector(`[id="root/${path}"]`);
+
+      return field !== null && field.getAttribute('type') !== 'hidden';
+    };
+
     const renderProviderForm = async (provider: AuthProvider) => {
       const { container } = renderComponent({ selectedProvider: provider });
       await screen.findByTestId('save-sso-configuration');
@@ -2611,6 +2618,13 @@ describe('SSOConfigurationForm', () => {
           SAML,
         ]) {
           expect([path, isRendered(container, path)]).toEqual([path, false]);
+        }
+
+        for (const path of [
+          `${OIDC}/tokenValidity`,
+          `${OIDC}/endSessionWithProvider`,
+        ]) {
+          expect([path, isOffered(container, path)]).toEqual([path, false]);
         }
       }
     );
@@ -2786,7 +2800,6 @@ describe('SSOConfigurationForm', () => {
         'useNonce',
         'disablePkce',
         'maxClockSkew',
-        'tokenValidity',
         'maxAge',
       ]) {
         expect(

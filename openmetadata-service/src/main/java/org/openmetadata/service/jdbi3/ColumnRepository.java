@@ -17,8 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
-import static org.openmetadata.service.events.ChangeEvents.createChangeEventForEntity;
+import static org.openmetadata.service.events.ChangeEventHandler.entityChangeEvent;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.isSystemGenerated;
 
@@ -364,10 +363,7 @@ public class ColumnRepository {
 
   private void triggerParentChangeEvent(Object parent, String user) {
     ChangeEvent changeEvent =
-        createChangeEventForEntity(user, EventType.ENTITY_UPDATED, (EntityInterface<?>) parent);
-    Object entity = changeEvent.getEntity();
-    changeEvent = copyChangeEvent(changeEvent);
-    changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
+        entityChangeEvent(user, EventType.ENTITY_UPDATED, (EntityInterface<?>) parent);
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
   }
 

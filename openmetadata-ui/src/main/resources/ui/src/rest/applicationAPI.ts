@@ -209,14 +209,21 @@ export const getApplicationLogs = (
 };
 
 /** Lists the AI Automations AutoPilot runs for a service, in template order. */
-export const getAiAutomationsByService = async (serviceFqn: string) => {
+export const getAiAutomationsByService = async (
+  serviceFqn: string,
+  serviceType: string
+) => {
   const response = await APIClient.get<
     PagingResponse<CollateAgentAutomation[]>
   >('/ai/automations', {
     // The list endpoint defaults to provider=user when omitted, which filters
     // out AutoPilot's provider=automation entries; request them explicitly.
+    // Service names are unique only within a service type, so the type is sent
+    // too: without it, a name two types share is rejected
+    // (ADR:openmetadata-collate/2026-10-15-an-autopilot-automation-name-carries-its-service-type-on-a-clash).
     params: {
       service: serviceFqn,
+      serviceType,
       isTemplate: false,
       provider: ProviderType.Automation,
     },
