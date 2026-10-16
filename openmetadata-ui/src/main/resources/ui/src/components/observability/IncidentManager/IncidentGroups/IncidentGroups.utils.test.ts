@@ -27,6 +27,7 @@ import {
   SPARKLINE_WIDTH,
 } from './IncidentGroups.constants';
 import {
+  countRecurringIncidentGroups,
   getIncidentGroupByOption,
   getIncidentGroupSortQuery,
   getIncidentGroupsQuery,
@@ -37,6 +38,7 @@ import {
   getIncidentTrendPoints,
   getPageAfterEmptyRead,
   hasActiveIncidentGroupFilters,
+  isRecurring,
   isUnownedIncidentGroup,
   parseIncidentGroupBy,
   parseIncidentGroupFilters,
@@ -288,6 +290,42 @@ describe('getIncidentTrendColor', () => {
       expect(getIncidentTrendColor(direction, severity)).toBe(expected);
     }
   );
+});
+
+describe('isRecurring', () => {
+  it('should treat a rising group as recurring', () => {
+    expect(
+      isRecurring(group({ trendDirection: IncidentTrendDirection.Rising }))
+    ).toBe(true);
+  });
+
+  it('should not treat a falling, steady or trendless group as recurring', () => {
+    expect(
+      isRecurring(group({ trendDirection: IncidentTrendDirection.Falling }))
+    ).toBe(false);
+    expect(
+      isRecurring(group({ trendDirection: IncidentTrendDirection.Steady }))
+    ).toBe(false);
+    expect(isRecurring(group())).toBe(false);
+  });
+});
+
+describe('countRecurringIncidentGroups', () => {
+  it('should count only the rising groups of the loaded page', () => {
+    expect(
+      countRecurringIncidentGroups([
+        group({ trendDirection: IncidentTrendDirection.Rising }),
+        group({ trendDirection: IncidentTrendDirection.Rising }),
+        group({ trendDirection: IncidentTrendDirection.Falling }),
+        group({ trendDirection: IncidentTrendDirection.Steady }),
+        group(),
+      ])
+    ).toBe(2);
+  });
+
+  it('should count nothing for an empty page', () => {
+    expect(countRecurringIncidentGroups([])).toBe(0);
+  });
 });
 
 describe('parseIncidentGroupFilters', () => {

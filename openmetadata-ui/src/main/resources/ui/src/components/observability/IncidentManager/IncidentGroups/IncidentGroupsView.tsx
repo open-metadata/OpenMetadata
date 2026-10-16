@@ -13,11 +13,20 @@
 
 import {
   Box,
+  Divider,
   EmptyPlaceholder,
   PaginationCardWithControls,
   TableCard,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Search, ShieldTick } from '@openmetadata/ui-core-components/icons';
+// The core-components icon barrel re-exports the design team's own SVG set
+import {
+  Search,
+  ShieldTick,
+  TrendUp01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, sumBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,6 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { TestCaseIncidentGroup } from '../../../../generated/tests/testCaseIncidentGroup';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import {
   showErrorToast,
@@ -49,6 +59,7 @@ import {
   PendingBulkChange,
 } from './IncidentGroups.types';
 import {
+  countRecurringIncidentGroups,
   getIncidentGroupKey,
   hasActiveIncidentGroupFilters,
 } from './IncidentGroups.utils';
@@ -59,9 +70,14 @@ import IncidentGroupsTable from './IncidentGroupsTable';
 import { useIncidentGroupBulkUpdate } from './useIncidentGroupBulkUpdate';
 import { useIncidentGroups } from './useIncidentGroups';
 
+const STAT_COUNT_ELEMENT = (
+  <Typography as="span" className="tw:text-primary" weight="semibold" />
+);
+
 /**
- * Grouped incident listing: the filter row with the `Group by` dimension
- * picker at its end, and the paged group table — plus
+ * Grouped incident listing: the header stats over the fetched groups, the
+ * filter row with the `Group by` dimension picker at its end, and the paged
+ * group table — plus
  * the loading/empty/error states of the fetch that feeds them.
  */
 const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
@@ -94,6 +110,16 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
   const { isApplying, applyBulkChange } = useIncidentGroupBulkUpdate({
     filters,
   });
+
+  /**
+   * Only the loaded page can be counted: the endpoint reports the group total
+   * but no recurring total, and a group is recurring by a field that only
+   * arrives with the group itself.
+   */
+  const recurringCount = useMemo(
+    () => countRecurringIncidentGroups(incidentGroups),
+    [incidentGroups]
+  );
 
   /**
    * A refetch keeps the rows it already has: swapping the table for a loader on
@@ -386,6 +412,9 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
     );
   };
 
+  const hasStats = !isInitialLoading && !isError;
+  const groupCount = paging?.total ?? incidentGroups.length;
+
   return (
     <Box
       aria-busy={isLoading}
@@ -394,6 +423,42 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
       direction="col">
       {detailKey === undefined ? (
         <>
+          {hasStats && (
+            <Box align="center" gap={3}>
+              <Typography
+                as="span"
+                className="tw:text-secondary"
+                data-testid="incident-groups-count"
+                size="text-sm">
+                <Transi18next
+                  i18nKey="label.group-count"
+                  renderElement={STAT_COUNT_ELEMENT}
+                  values={{ count: groupCount }}
+                />
+              </Typography>
+              <Divider className="tw:h-4" orientation="vertical" />
+              <Tooltip
+                placement="top"
+                title={t('message.recurring-groups-loaded')}>
+                <TooltipTrigger>
+                  <Box align="center" gap={1}>
+                    <TrendUp01 className="tw:size-4 tw:text-fg-error-primary" />
+                    <Typography
+                      as="span"
+                      className="tw:text-secondary"
+                      data-testid="incident-groups-recurring-count"
+                      size="text-sm">
+                      <Transi18next
+                        i18nKey="label.recurring-count"
+                        renderElement={STAT_COUNT_ELEMENT}
+                        values={{ count: recurringCount }}
+                      />
+                    </Typography>
+                  </Box>
+                </TooltipTrigger>
+              </Tooltip>
+            </Box>
+          )}
           <Box align="start" gap={2}>
             <IncidentGroupsFilters
               filters={filters}

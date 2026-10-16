@@ -42,10 +42,12 @@ describe('incident group plural counts', () => {
   it('should pick the Russian one, few and many forms', async () => {
     const t = await translatorFor('ru-RU');
 
+    expect(t('label.group-count', { count: 1 })).toBe('<0>1</0> группа');
+    expect(t('label.group-count', { count: 3 })).toBe('<0>3</0> группы');
+    expect(t('label.group-count', { count: 5 })).toBe('<0>5</0> групп');
+    expect(t('label.group-count', { count: 0 })).toBe('<0>0</0> групп');
     expect(t('label.table-count', { count: 22 })).toBe('22 таблицы');
     expect(t('label.incident-count', { count: 21 })).toBe('<0>21</0> инцидент');
-    expect(t('label.incident-count', { count: 3 })).toBe('<0>3</0> инцидента');
-    expect(t('label.incident-count', { count: 5 })).toBe('<0>5</0> инцидентов');
   });
 
   it('should pick the Arabic dual form', async () => {
@@ -57,13 +59,14 @@ describe('incident group plural counts', () => {
   it('should read zero in the singular in French', async () => {
     const t = await translatorFor('fr-FR');
 
+    expect(t('label.recurring-count', { count: 0 })).toBe('<0>0</0> récurrent');
     expect(t('label.table-count', { count: 2 })).toBe('2 tableaux');
   });
 
   it('should read English one and other', async () => {
     const t = await translatorFor('en-US');
 
-    expect(t('label.table-count', { count: 1 })).toBe('1 table');
-    expect(t('label.table-count', { count: 0 })).toBe('0 tables');
+    expect(t('label.group-count', { count: 1 })).toBe('<0>1</0> group');
+    expect(t('label.group-count', { count: 0 })).toBe('<0>0</0> groups');
   });
 });

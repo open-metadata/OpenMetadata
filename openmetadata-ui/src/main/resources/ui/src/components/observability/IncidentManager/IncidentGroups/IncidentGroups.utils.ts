@@ -220,6 +220,24 @@ export const getIncidentGroupStatusSegments = (
 };
 
 /**
+ * A group counts as recurring when its incidents keep coming back faster than
+ * they did: the server compares the second half of the trend buckets against
+ * the first and reports `Rising`. The header's `recurring` chip is built on the
+ * same field as the row's arrow, so the two always agree.
+ */
+export const isRecurring = (group: TestCaseIncidentGroup): boolean =>
+  group.trendDirection === IncidentTrendDirection.Rising;
+
+/**
+ * Recurring groups among the ones currently loaded. The endpoint reports no
+ * recurring total, so this only ever describes the page in hand — the chip
+ * built on it says so.
+ */
+export const countRecurringIncidentGroups = (
+  groups: TestCaseIncidentGroup[]
+): number => groups.filter(isRecurring).length;
+
+/**
  * Tone of the trend. Falling incident creation is good news and steady is
  * neither, so only a rising trend is graded — by the severity the group
  * carries, since a rising `Severity1` group is the one to look at first.
