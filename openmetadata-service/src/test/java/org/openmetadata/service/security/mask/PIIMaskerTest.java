@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessageSchema;
+import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
@@ -183,6 +184,68 @@ class PIIMaskerTest {
 
     Topic plainTopic = new Topic().withSampleData(null);
     assertSame(plainTopic, PIIMasker.getSampleData(plainTopic));
+  }
+
+  @Test
+  void searchIndexSampleDataMasksWhenOnlyFieldsCarryPii() {
+    // Entity has no PII tag at all; masking must be driven by the field/nested-field tags that
+    // SearchIndexRepository.getSampleData hydrates for the masker.
+    SearchIndex withTopLevelPiiField =
+        new SearchIndex()
+            .withFullyQualifiedName("service.search.orders")
+            .withTags(List.of())
+            .withFields(List.of(searchIndexField("ssn", true, null)))
+            .withSampleData(new SearchIndexSampleData().withMessages(List.of("secret-document")));
+
+    SearchIndex maskedTopLevel = PIIMasker.getSampleData(withTopLevelPiiField);
+
+    assertEquals(List.of(PIIMasker.MASKED_VALUE), maskedTopLevel.getSampleData().getMessages());
+
+    // Nested child under a non-PII parent field — this is the exact leak reported.
+    SearchIndex withNestedPiiField =
+        new SearchIndex()
+            .withFullyQualifiedName("service.search.orders")
+            .withTags(List.of())
+            .withFields(
+                List.of(
+                    searchIndexField(
+                        "payload", false, List.of(searchIndexField("ssn", true, null)))))
+            .withSampleData(new SearchIndexSampleData().withMessages(List.of("secret-document")));
+
+    SearchIndex maskedNested = PIIMasker.getSampleData(withNestedPiiField);
+
+    assertEquals(List.of(PIIMasker.MASKED_VALUE), maskedNested.getSampleData().getMessages());
+
+    // No PII tags anywhere — sample data must be returned verbatim (no false-positive masking).
+    SearchIndex withPlainFields =
+        new SearchIndex()
+            .withFullyQualifiedName("service.search.orders")
+            .withTags(List.of())
+            .withFields(
+                List.of(
+                    searchIndexField(
+                        "payload", false, List.of(searchIndexField("name", false, null)))))
+            .withSampleData(new SearchIndexSampleData().withMessages(List.of("plain-document")));
+
+    SearchIndex notMasked = PIIMasker.getSampleData(withPlainFields);
+
+    assertEquals(List.of("plain-document"), notMasked.getSampleData().getMessages());
+
+    // Null fields and null entity tags on a non-authorized path must not NPE or mask.
+    SearchIndex withNoFields =
+        new SearchIndex()
+            .withFullyQualifiedName("service.search.orders")
+            .withTags(List.of())
+            .withSampleData(new SearchIndexSampleData().withMessages(List.of("plain-document")));
+
+    SearchIndex notMaskedNoFields = PIIMasker.getSampleData(withNoFields);
+
+    assertEquals(List.of("plain-document"), notMaskedNoFields.getSampleData().getMessages());
+
+    // Null sample data is returned untouched, mirroring the Topic contract.
+    SearchIndex noSampleData =
+        new SearchIndex().withFullyQualifiedName("service.search.orders").withTags(List.of());
+    assertSame(noSampleData, PIIMasker.getSampleData(noSampleData));
   }
 
   @Test
@@ -444,6 +507,14 @@ class PIIMaskerTest {
 
   private static Field field(String name, boolean pii, List<Field> children) {
     Field field = new Field().withName(name).withFullyQualifiedName(name);
+    field.setTags(pii ? List.of(piiTag()) : List.of());
+    field.setChildren(children);
+    return field;
+  }
+
+  private static SearchIndexField searchIndexField(
+      String name, boolean pii, List<SearchIndexField> children) {
+    SearchIndexField field = new SearchIndexField().withName(name).withFullyQualifiedName(name);
     field.setTags(pii ? List.of(piiTag()) : List.of());
     field.setChildren(children);
     return field;
