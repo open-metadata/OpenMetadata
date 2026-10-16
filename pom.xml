@@ -238,21 +238,18 @@
         <artifactId>commons-lang3</artifactId>
         <version>3.18.0</version>
       </dependency>
+      <!-- okhttp 5 ships its classes in okhttp-jvm; the plain okhttp artifact is an empty jar in
+           Maven. Depend on okhttp-jvm, and let this BOM hold every okhttp3 artifact (including the
+           ones slack, feign, fabric8 and client-java pull in) on one version, so okhttp 4 and 5
+           never share the classpath. okio is not pinned: it resolves to the okio okhttp-jvm declares
+           (3.18.1 for 5.5.0). Keep it at or above that; older okio lacks classes okhttp 5 calls.
+           https://github.com/lysine-dev/okhttp#maven-and-jvm-projects -->
       <dependency>
         <groupId>com.squareup.okhttp3</groupId>
-        <artifactId>okhttp</artifactId>
-        <version>4.12.0</version>
-      </dependency>
-      <!-- Held alongside okhttp above. client-java 25.x declares logging-interceptor 5.1.0,
-           which drags in okhttp-jvm 5.1.0 — okhttp 5 moved the okhttp3.* classes into that
-           artifact, so it would sit on the classpath duplicating the pinned okhttp 4.12.0 jar
-           (split package, resolved by classpath order). client-java 25.0.1 references the exact
-           same 118 okhttp/okio members as 24.0.0, so 4.12.0 satisfies it. Drop this pin only as
-           part of a real okhttp 5 migration. -->
-      <dependency>
-        <groupId>com.squareup.okhttp3</groupId>
-        <artifactId>logging-interceptor</artifactId>
+        <artifactId>okhttp-bom</artifactId>
         <version>5.5.0</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
       <!-- CVE-2026-47857: reactor-core < 3.8.7 (reached transitively via reactor-netty and the
            azure/spring stacks). Pin the whole Reactor 2026.0 train together: reactor-core 3.8.7

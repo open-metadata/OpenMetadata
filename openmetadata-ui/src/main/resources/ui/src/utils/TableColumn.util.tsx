@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Owner } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy } from 'react';
@@ -62,11 +61,10 @@ const TagsViewer = withSuspenseFallback(
 );
 
 export const columnFilterIcon = (filtered: boolean) => (
-  <Icon
-    className={classNames('filter-icon', {
+  <FilterIcon
+    className={classNames('filter-icon tw:size-3.5 tw:shrink-0', {
       'filter-icon-active': filtered,
     })}
-    component={FilterIcon}
     data-testid="filter-icon"
   />
 );

@@ -2796,7 +2796,12 @@ describe('SSOConfigurationForm', () => {
         name: /label.advanced-config/,
       });
 
-      for (const field of ['useNonce', 'disablePkce', 'maxClockSkew', 'maxAge']) {
+      for (const field of [
+        'useNonce',
+        'disablePkce',
+        'maxClockSkew',
+        'maxAge',
+      ]) {
         expect(
           advancedConfig.querySelector(`[id="root/${OIDC}/${field}"]`)
         ).toBeInTheDocument();
