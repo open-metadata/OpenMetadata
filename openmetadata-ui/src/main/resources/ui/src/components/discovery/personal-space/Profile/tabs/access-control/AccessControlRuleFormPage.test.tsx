@@ -182,4 +182,30 @@ describe('AccessControlRuleFormPage', () => {
     expect(showErrorToast).toHaveBeenCalled();
     expect(screen.getByTestId('submit-btn')).toBeDisabled();
   });
+
+  it('ignores a policy response that arrives after the page closed', async () => {
+    let resolvePolicy: ((value: unknown) => void) | undefined;
+    (getPolicyByName as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePolicy = resolve;
+        })
+    );
+    const onRename = jest.fn();
+    const { unmount } = render(
+      <AccessControlRuleFormPage
+        fqn="OrgPolicy"
+        ruleName="DeletedRule"
+        onNavigate={onNavigate}
+        onRename={onRename}
+      />
+    );
+
+    unmount();
+    resolvePolicy?.(POLICY);
+    await Promise.resolve();
+
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(onRename).not.toHaveBeenCalled();
+  });
 });

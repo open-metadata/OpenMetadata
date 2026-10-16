@@ -62,10 +62,15 @@ const AccessControlRuleFormPage: FC<AccessControlRuleFormPageProps> = ({
   );
 
   useEffect(() => {
+    // A late response must not rename or navigate after the user has moved on.
+    let isCurrent = true;
     const fetchPolicy = async () => {
       setIsLoading(true);
       try {
         const data = await getPolicyByName(fqn, 'owners');
+        if (!isCurrent) {
+          return;
+        }
         const rule = data.rules?.find((r) => r.name === ruleName);
         // The rule was renamed or deleted since the link was made: saving would
         // send an empty patch and drop the user's input, so go back instead.
@@ -87,12 +92,20 @@ const AccessControlRuleFormPage: FC<AccessControlRuleFormPageProps> = ({
           ruleForm.reset(rule);
         }
       } catch (err) {
-        showErrorToast(err as AxiosError);
+        if (isCurrent) {
+          showErrorToast(err as AxiosError);
+        }
       } finally {
-        setIsLoading(false);
+        if (isCurrent) {
+          setIsLoading(false);
+        }
       }
     };
     void fetchPolicy();
+
+    return () => {
+      isCurrent = false;
+    };
   }, [fqn, ruleName, onNavigate, onRename, ruleForm, t]);
 
   const goBack = useCallback(
