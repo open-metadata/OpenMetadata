@@ -19,6 +19,7 @@ import {
   toastNotification,
   uuid,
 } from '../../../utils/common';
+import { expectFormHint } from '../../../utils/dataQuality';
 import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import { findSystemTestDefinition } from '../../../utils/testCases';
 
@@ -145,21 +146,17 @@ test.describe(
           .waitFor({ state: 'visible' });
         await testDefinitionFormDoc;
 
-        // The form body + doc panel confirm the drawer opened. We don't assert
-        // the "Add Test Definition" title text because it also matches the list
-        // page's Add button (strict-mode ambiguity).
-        await expect(
-          page.locator('.drawer-doc-panel.service-doc-panel')
-        ).toBeVisible();
+        // The form body + Show Hint toggle confirm the drawer opened. We don't
+        // assert the "Add Test Definition" title text because it also matches
+        // the list page's Add button (strict-mode ambiguity).
+        await expect(page.getByTestId('show-hint-toggle')).toBeChecked();
 
         // Fill in form fields
         await page
           .getByTestId('test-definition-name')
           .locator('input')
           .fill(TEST_DEFINITION_NAME);
-        await expect(
-          page.locator('.drawer-doc-panel.service-doc-panel')
-        ).toContainText('Name');
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('display-name')
           .locator('input')
