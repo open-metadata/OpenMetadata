@@ -131,7 +131,7 @@ class SampleDataCountSqlMigrationTest {
       runClampStatement(database);
 
       final Map<String, JsonNode> after = configs(database);
-      for (String name : List.of(AT_MAXIMUM, BELOW, UNSET, PROFILER)) {
+      for (final String name : List.of(AT_MAXIMUM, BELOW, UNSET, PROFILER)) {
         assertEquals(before.get(name), after.get(name), name);
       }
     }
