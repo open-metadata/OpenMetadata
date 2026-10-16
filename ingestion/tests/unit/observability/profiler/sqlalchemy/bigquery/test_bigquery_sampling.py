@@ -30,7 +30,9 @@ from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingCo
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
+from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.orm.functions.table_metric_computer import TableType
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sqlalchemy.bigquery.sampler import BigQuerySampler
@@ -349,9 +351,29 @@ class SampleTest(TestCase):
         compiled = str(select(*query.c).compile(dialect=bigquery_dialect()))
 
         assert list(query.c.keys()) == ["id", "123_id", "_123_id"]
-        assert "AS `_123_id`" in compiled
         assert "AS `_123_id_1`" in compiled
         assert "`123_id`" not in compiled.rsplit(")\n SELECT", 1)[-1]
+
+    def test_partitioned_metric_resolves_digit_leading_column(self, sampler_mock):
+        sampler = object.__new__(SQASampler)
+        sampler._table = DigitLeadingColumns
+        sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
+        sampler.partition_details = PartitionProfilerConfig(
+            enablePartitioning=True,
+            partitionColumnName="normal",
+            partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+            partitionValues=["1"],
+        )
+        dataset = sampler._partitioned_table()
+        session = MagicMock()
+        session.query.side_effect = select
+        runner = QueryRunner(session=session, dataset=dataset, raw_dataset=DigitLeadingColumns.__table__)
+
+        query = runner._select_from_sample(Mean(DigitLeadingColumns.__table__.c["2024_revenue"]).fn())
+        outer_sql = str(query.compile(dialect=bigquery_dialect())).rsplit(")\n SELECT", 1)[-1]
+
+        assert "`_2024_revenue`" in outer_sql
+        assert "`2024_revenue`" not in outer_sql
 
     def test_partitioned_fetch_sample_data_preserves_logical_column_names(self, sampler_mock):
         sampler = object.__new__(SQASampler)
@@ -377,6 +399,32 @@ class SampleTest(TestCase):
         table_data = sampler.fetch_sample_data(columns=[DigitLeadingColumns.__table__.c["2024_revenue"]])
 
         assert table_data.columns == [ColumnName("2024_revenue")]
+        assert table_data.rows == [[42]]
+
+    def test_partitioned_fetch_sample_data_matches_colliding_names_exactly(self, sampler_mock):
+        sampler = object.__new__(SQASampler)
+        sampler._table = CollidingDigitLeadingColumns
+        sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
+        sampler.partition_details = PartitionProfilerConfig(
+            enablePartitioning=True,
+            partitionColumnName="id",
+            partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+            partitionValues=["1"],
+        )
+        sampler.sample_query = None
+        sampler.sample_config = None
+        sampler.sample_limit = 100
+        sampler._handle_array_column = lambda column: False
+        sampler.get_dataset = sampler._partitioned_table
+
+        session = MagicMock()
+        session.__enter__.return_value = session
+        session.query.return_value.select_from.return_value.limit.return_value.all.return_value = [(42,)]
+        sampler.session_factory = lambda: session
+
+        table_data = sampler.fetch_sample_data(columns=[CollidingDigitLeadingColumns.__table__.c["_123_id"]])
+
+        assert table_data.columns == [ColumnName("_123_id")]
         assert table_data.rows == [[42]]
 
     def test_fetch_sample_data_preserves_physical_column_name(self, sampler_mock):

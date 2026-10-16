@@ -14,7 +14,6 @@ for the profiler
 """
 
 import hashlib
-import re
 from collections.abc import Callable
 from typing import Any, cast
 
@@ -314,14 +313,11 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         else:
             # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
             # If we use it, it will result in a cross join between self.raw_dataset and rnd table
-            target_identifiers = {getattr(col, "key", None) for col in columns} | {
-                getattr(col, "name", None) for col in columns
-            }
-            target_identifiers.discard(None)
+            requested_names = {col.name for col in columns}
             sqa_columns = [
                 col
                 for col in inspect(ds).c
-                if col.name != RANDOM_LABEL and (col.key in target_identifiers or col.name in target_identifiers)
+                if col.name != RANDOM_LABEL and col.info.get(ORIGINAL_COLUMN_NAME, col.name) in requested_names
             ]
 
         with self.session_factory() as client:
@@ -523,14 +519,19 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
     def _partition_cte_column_names(cls, column_names: list[str], dialect_name: str) -> list[str]:
         """Return unique SQL-safe CTE labels while preserving column order."""
         safe_names = []
-        used_names = set()
+        used_names = {
+            column_name
+            for column_name in column_names
+            if cls._partition_cte_column_name(column_name, dialect_name) == column_name
+        }
         for column_name in column_names:
             safe_name = cls._partition_cte_column_name(column_name, dialect_name)
-            base_name = safe_name
-            suffix = 1
-            while safe_name in used_names:
-                safe_name = f"{base_name}_{suffix}"
-                suffix += 1
+            if safe_name != column_name:
+                base_name = safe_name
+                suffix = 1
+                while safe_name in used_names:
+                    safe_name = f"{base_name}_{suffix}"
+                    suffix += 1
             used_names.add(safe_name)
             safe_names.append(safe_name)
         return safe_names
@@ -538,12 +539,9 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
     @staticmethod
     def _partition_cte_column_name(column_name: str, dialect_name: str) -> str:
         """Return the label emitted by dialects that sanitize column names."""
-        if dialect_name != "bigquery":
+        if dialect_name != "bigquery" or not column_name or not column_name[0].isdigit():
             return column_name
-        safe_name = re.sub(r"[^A-Za-z0-9_]", "_", column_name)
-        if not safe_name or not (safe_name[0].isalpha() or safe_name[0] == "_"):
-            safe_name = f"_{safe_name}"
-        return safe_name
+        return f"_{column_name}"
 
     def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""
