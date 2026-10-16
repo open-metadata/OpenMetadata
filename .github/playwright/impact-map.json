@@ -495,6 +495,13 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/context/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/context/review/**",
         "openmetadata-service/src/test/java/org/openmetadata/service/context/review/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/context/outcome/**",
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/ContextMemoryOutcomeWriteSqlTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/ContextMemoryRepositoryTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/search/ContextMemoryIndexMappingTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/search/indexes/ContextMemoryIndexTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/ContextMemoryResourceTest.java",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterPureUtils.test.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ContextMemoryLifecycle.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/ContextMemoryLifecycleTest.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/knowledge/**",
@@ -1020,6 +1027,21 @@
       "sources": ["openmetadata-ui/src/main/resources/ui/eslint-suppressions.json"],
       "projects": [],
       "specs": []
+    },
+    {
+      "_comment": "The Add/Edit Test Definition drawer and the Test Library pages that open it, in classic and AI mode. The generated map reaches only TestDefinitionFormBody (through its testIds), so a change to the drawer shell, its props or the AI-mode page would otherwise run the full suite.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/TestLibrary/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestLibrary/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/Observability.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts"
+      ]
     },
     {
       "sources": [
