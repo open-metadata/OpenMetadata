@@ -55,14 +55,14 @@ const FailingServiceRow: React.FC<FailingServiceRowProps> = ({
           <Typography
             className="tw:min-w-0 tw:text-text-primary!"
             ellipsis={{ rows: 1 }}
-            size="text-sm"
+            size="text-xs"
             weight="medium">
             {service.displayName}
           </Typography>
           <Typography
             className="tw:min-w-0 tw:text-text-tertiary!"
             ellipsis={{ rows: 1 }}
-            size="text-sm">
+            size="text-xs">
             {getFailingServiceReason(service, t)}
           </Typography>
         </span>
@@ -78,7 +78,7 @@ const FailingServiceRow: React.FC<FailingServiceRowProps> = ({
         {service.lastRunTs && (
           <Typography
             className="tw:shrink-0 tw:text-text-tertiary!"
-            size="text-sm">
+            size="text-xs">
             {getRelativeTime(service.lastRunTs)}
           </Typography>
         )}

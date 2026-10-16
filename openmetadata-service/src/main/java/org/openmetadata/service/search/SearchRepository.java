@@ -65,6 +65,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.collect.Lists;
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -186,6 +187,7 @@ import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
 @Slf4j
 public class SearchRepository {
@@ -457,6 +459,7 @@ public class SearchRepository {
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
   private Map<String, IndexMapping> aliasIndexMap;
+  private Set<String> knownIndexNames = Set.of();
 
   /**
    * Staged index names being populated by an in-flight reindex, keyed by the canonical index name
@@ -590,6 +593,7 @@ public class SearchRepository {
     IndexMappingLoader mappingLoader = IndexMappingLoader.getInstance();
     entityIndexMap = mappingLoader.getIndexMapping();
     aliasIndexMap = buildAliasIndexMap(entityIndexMap);
+    knownIndexNames = SearchIndexUtils.knownIndexNames(entityIndexMap);
   }
 
   private static Map<String, IndexMapping> buildAliasIndexMap(
@@ -1220,6 +1224,11 @@ public class SearchRepository {
     return SearchIndexUtils.getIndexOrAliasName(name, entityIndexMap, aliasIndexMap, clusterAlias);
   }
 
+  /** @see SearchIndexUtils#unknownIndexNames(String, Set, String) */
+  public List<String> unknownIndexNames(String resolvedIndex) {
+    return SearchIndexUtils.unknownIndexNames(resolvedIndex, knownIndexNames, clusterAlias);
+  }
+
   /**
    * Leaves out the column index while column indexing is off, since the caller names each type's
    * index explicitly and one missing index fails the whole request.
@@ -1562,30 +1571,71 @@ public class SearchRepository {
   }
 
   private void syncTableColumns(Table table, ChangeDescription changeDescription) {
-    // Check if columns were actually modified
-    boolean columnsChanged = hasColumnsChanged(changeDescription);
-
-    if (columnsChanged) {
-      // Columns were added/removed/modified - do full reindex
+    if (hasColumnsChanged(changeDescription) || changesTagsWithOtherFields(changeDescription)) {
+      // Rebuilt from the table: the column tree, the inherited fields and the inherited terms
       deleteTableColumns(table);
       indexTableColumns(table);
-    } else {
+    } else if (!isTagsOnlyChange(changeDescription)) {
       // Only inherited fields changed - use efficient update
       updateTableColumnsInheritedFields(table);
     }
   }
 
+  /**
+   * A tags change made together with any other field. The inherited-field update writes the
+   * table's version and updatedAt on every change, so running it next to the tag cascade puts the
+   * same two writers on the column documents that a tags-only change avoids, and conflicts=proceed
+   * drops whichever loses. Rebuilding the documents instead writes both in one go: they are built
+   * from the table, inherited terms included, so the cascade arriving afterwards changes nothing.
+   */
+  private boolean changesTagsWithOtherFields(ChangeDescription changeDescription) {
+    return changeDescription != null
+        && changedFieldNames(changeDescription)
+            .anyMatch(fieldName -> fieldName.startsWith(Entity.FIELD_TAGS))
+        && !isTagsOnlyChange(changeDescription);
+  }
+
+  /**
+   * A tags-only table change is left entirely to the descriptor-driven cascade, which is the
+   * designated writer of {@code tags} on column documents.
+   *
+   * <p>Running the inherited-field update as well would put two update-by-query operations on the
+   * same column documents milliseconds apart. Both are submitted with {@code
+   * wait_for_completion=false} and {@code conflicts=proceed}, so whichever loses the version race is
+   * skipped silently — no failure, no retry, nothing in the response — and the tag write is the one
+   * that tends to lose, leaving the column doc without the term. Nothing in the inherited-field map
+   * changes on a tags-only edit except the table's version/updatedAt mirrored onto the column, which
+   * the next column-affecting change or reindex refreshes.
+   */
+  private boolean isTagsOnlyChange(ChangeDescription changeDescription) {
+    return changeDescription != null
+        && changedFieldNames(changeDescription).findAny().isPresent()
+        && changedFieldNames(changeDescription)
+            .allMatch(fieldName -> fieldName.startsWith(Entity.FIELD_TAGS));
+  }
+
+  /**
+   * Only changes to the column tree require deleting and rebuilding column documents. Changes to a
+   * table's own tags are handled by the descriptor-driven child propagation after this sync, which
+   * applies the tag delta to {@code tableColumn} documents with an update-by-query while preserving
+   * manually applied column labels.
+   */
   private boolean hasColumnsChanged(ChangeDescription changeDescription) {
     if (changeDescription == null) {
       return true; // Default to full reindex if no change description
     }
 
-    return listOrEmpty(changeDescription.getFieldsAdded()).stream()
-            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
-        || listOrEmpty(changeDescription.getFieldsUpdated()).stream()
-            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
-        || listOrEmpty(changeDescription.getFieldsDeleted()).stream()
-            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS));
+    return changedFieldNames(changeDescription)
+        .anyMatch(fieldName -> fieldName.startsWith(Entity.FIELD_COLUMNS));
+  }
+
+  private Stream<String> changedFieldNames(ChangeDescription changeDescription) {
+    return Stream.of(
+            listOrEmpty(changeDescription.getFieldsAdded()),
+            listOrEmpty(changeDescription.getFieldsUpdated()),
+            listOrEmpty(changeDescription.getFieldsDeleted()))
+        .flatMap(List::stream)
+        .map(FieldChange::getName);
   }
 
   private void updateTableColumnsInheritedFields(Table table) {
@@ -2112,7 +2162,7 @@ public class SearchRepository {
     EntityInterface<?> entity =
         entityRepository.get(
             null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
-    entity.setChangeDescription(null);
+    clearChangeDescriptions(entity);
     updateEntityIndex(entity);
   }
 
@@ -2142,7 +2192,7 @@ public class SearchRepository {
     EntityInterface<?> entity =
         entityRepository.get(
             null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
-    entity.setChangeDescription(null);
+    clearChangeDescriptions(entity);
     updateEntityIndex(entity);
     propagateInheritedDomainsForType(
         entityReference.getType(),
@@ -2190,7 +2240,7 @@ public class SearchRepository {
                 ids.subList(start, Math.min(start + REFERENCE_REINDEX_BATCH_SIZE, ids.size())));
         final List<? extends EntityInterface<?>> entities =
             entityRepository.get(null, chunk, fields, Include.NON_DELETED);
-        entities.forEach(entity -> entity.setChangeDescription(null));
+        entities.forEach(SearchRepository::clearChangeDescriptions);
         if (!entities.isEmpty()) {
           updateEntitiesIndex(entities);
         }
@@ -2506,12 +2556,105 @@ public class SearchRepository {
       return;
     }
     String entityType = entity.getEntityReference().getType();
+    ChangeDescription currentPropagation =
+        reconcileQueuedTagChanges(entity, propagationChangeDescription);
     if (!checkIfIndexingIsSupported(entityType)
-        || !requiresPropagation(propagationChangeDescription, entityType, entity)) {
+        || !requiresPropagation(currentPropagation, entityType, entity)) {
       return;
     }
     propagateEntitySearchChanges(
-        entity, entityType, propagationChangeDescription, entityIndexMap.get(entityType));
+        entity, entityType, currentPropagation, entityIndexMap.get(entityType));
+  }
+
+  /**
+   * A retry is processed from a fresh database snapshot, but its propagation context records the
+   * delta that originally failed. The entity can change again while that retry is pending. Replaying
+   * an old add after the tag was removed (or an old delete after it was re-added) would make child
+   * documents stale immediately after the retry reindexed the current entity state.
+   *
+   * <p>Keep an add only while the parent still carries that tag, and keep a delete only while it no
+   * longer does. Other propagated fields retain their original retry context. The returned copy is
+   * safe to rewrite without mutating the context decoded from the queue.
+   */
+  private ChangeDescription reconcileQueuedTagChanges(
+      EntityInterface<?> entity, ChangeDescription queuedChange) {
+    if (queuedChange == null) {
+      return null;
+    }
+
+    ChangeDescription reconciled = JsonUtils.deepCopy(queuedChange, ChangeDescription.class);
+    List<TagLabel> currentTags = listOrEmpty(entity.getTags());
+    reconciled.setFieldsAdded(
+        reconcileQueuedTagFields(reconciled.getFieldsAdded(), currentTags, true, true));
+    reconciled.setFieldsDeleted(
+        reconcileQueuedTagFields(reconciled.getFieldsDeleted(), currentTags, false, false));
+    reconciled.setFieldsUpdated(
+        reconcileQueuedTagUpdates(reconciled.getFieldsUpdated(), currentTags));
+    return reconciled;
+  }
+
+  private List<FieldChange> reconcileQueuedTagFields(
+      List<FieldChange> fieldChanges,
+      List<TagLabel> currentTags,
+      boolean useNewValue,
+      boolean tagMustExist) {
+    List<FieldChange> reconciled = new ArrayList<>();
+    for (FieldChange fieldChange : listOrEmpty(fieldChanges)) {
+      if (!Entity.FIELD_TAGS.equals(fieldChange.getName())) {
+        reconciled.add(fieldChange);
+        continue;
+      }
+
+      Object value = useNewValue ? fieldChange.getNewValue() : fieldChange.getOldValue();
+      List<TagLabel> validTags = currentTagDelta(value, currentTags, tagMustExist);
+      if (!validTags.isEmpty()) {
+        if (useNewValue) {
+          fieldChange.setNewValue(validTags);
+        } else {
+          fieldChange.setOldValue(validTags);
+        }
+        reconciled.add(fieldChange);
+      }
+    }
+    return reconciled;
+  }
+
+  private List<FieldChange> reconcileQueuedTagUpdates(
+      List<FieldChange> fieldChanges, List<TagLabel> currentTags) {
+    List<FieldChange> reconciled = new ArrayList<>();
+    for (FieldChange fieldChange : listOrEmpty(fieldChanges)) {
+      if (!Entity.FIELD_TAGS.equals(fieldChange.getName())) {
+        reconciled.add(fieldChange);
+        continue;
+      }
+
+      List<TagLabel> validAdds = currentTagDelta(fieldChange.getNewValue(), currentTags, true);
+      List<TagLabel> validDeletes = currentTagDelta(fieldChange.getOldValue(), currentTags, false);
+      if (!validAdds.isEmpty() || !validDeletes.isEmpty()) {
+        fieldChange.setNewValue(validAdds);
+        fieldChange.setOldValue(validDeletes);
+        reconciled.add(fieldChange);
+      }
+    }
+    return reconciled;
+  }
+
+  private List<TagLabel> currentTagDelta(
+      Object queuedValue, List<TagLabel> currentTags, boolean tagMustExist) {
+    if (queuedValue == null) {
+      return List.of();
+    }
+    return JsonUtils.readOrConvertValues(queuedValue, TagLabel.class).stream()
+        .filter(queuedTag -> currentTagsContain(currentTags, queuedTag) == tagMustExist)
+        .toList();
+  }
+
+  private boolean currentTagsContain(List<TagLabel> currentTags, TagLabel queuedTag) {
+    return currentTags.stream()
+        .anyMatch(
+            currentTag ->
+                Objects.equals(currentTag.getTagFQN(), queuedTag.getTagFQN())
+                    && Objects.equals(currentTag.getSource(), queuedTag.getSource()));
   }
 
   private void propagateEntitySearchChanges(
@@ -2766,9 +2909,102 @@ public class SearchRepository {
           if (!nullOrEmpty(entityChildren)) {
             searchClient.updateChildren(entityChildren, parentMatch, updates);
           }
+          propagateTagChangesToTimeSeriesChildren(indexMapping, parentMatch, updates);
         }
       }
     }
+  }
+
+  /**
+   * Time-series test result/status documents embed the test case under {@code testCase}; unlike
+   * regular child documents they do not expose a top-level {@code tags} field. Keep the generic
+   * inherited-field script away from those strict mappings, but still cascade tag changes into the
+   * embedded test case so removed glossary terms cannot remain discoverable there.
+   */
+  private void propagateTagChangesToTimeSeriesChildren(
+      IndexMapping indexMapping,
+      Pair<String, String> parentMatch,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    Map<String, Object> updateParams = updates.getValue();
+    boolean hasAddedTags = updateParams.containsKey("tagAdded");
+    boolean hasDeletedTags = updateParams.containsKey("tagDeleted");
+    if (!hasAddedTags && !hasDeletedTags) {
+      return;
+    }
+
+    List<String> timeSeriesChildren =
+        filterChildAliasesByCapability(
+            indexMapping, capability -> capability != null && capability.isTimeSeries());
+    if (nullOrEmpty(timeSeriesChildren)) {
+      return;
+    }
+
+    Map<String, Object> tagParams = new HashMap<>();
+    if (hasAddedTags) {
+      tagParams.put("tagAdded", updateParams.get("tagAdded"));
+    }
+    if (hasDeletedTags) {
+      tagParams.put("tagDeleted", updateParams.get("tagDeleted"));
+    }
+    searchClient.updateChildren(
+        timeSeriesChildren,
+        parentMatch,
+        new ImmutablePair<>(
+            generateEmbeddedTestCaseTagLabelScript(hasAddedTags, hasDeletedTags), tagParams));
+  }
+
+  /**
+   * Cascades a tag add/remove from the bulk asset APIs onto the asset's child search docs.
+   *
+   * <p>Those APIs write {@code tag_usage} directly and then re-index the asset through {@link
+   * #updateEntity(EntityReference)}, which deliberately clears the change description — so {@code
+   * requiresPropagation} closes the gate and the descriptor-driven fan-out never runs. Children that
+   * are entities rather than fields (test cases, test suites) are only reachable this way: unlike
+   * columns, nothing rebuilds their docs from the parent, so a term removed through the glossary
+   * Assets tab used to linger on them and keep them listed under the term.
+   *
+   * <p>Search failures are queued for retry rather than thrown: the caller has already committed
+   * the {@code tag_usage} change, so the search index is what needs to catch up. Any other failure
+   * is a bug in building the update, which a retry would only repeat, so it propagates.
+   */
+  public void propagateTagChangeToChildren(
+      EntityInterface<?> entity, List<TagLabel> addedTags, List<TagLabel> deletedTags) {
+    if (entity == null || entity.getId() == null || nullOrEmpty(entity.getEntityReference())) {
+      return;
+    }
+    String entityType = entity.getEntityReference().getType();
+    if (!checkIfIndexingIsSupported(entityType) || nullOrEmpty(entityIndexMap.get(entityType))) {
+      return;
+    }
+    ChangeDescription changeDescription = tagChangeDescription(addedTags, deletedTags);
+    try {
+      propagateInheritedFieldsToChildren(
+          entityType,
+          entity.getId().toString(),
+          changeDescription,
+          entityIndexMap.get(entityType),
+          entity);
+    } catch (IOException | ElasticsearchException | OpenSearchException e) {
+      SearchIndexRetryQueue.enqueueWithPropagation(
+          entity, changeDescription, "propagateTagChangeToChildren", e);
+    }
+  }
+
+  private static ChangeDescription tagChangeDescription(
+      List<TagLabel> addedTags, List<TagLabel> deletedTags) {
+    ChangeDescription changeDescription = new ChangeDescription();
+    if (!nullOrEmpty(addedTags)) {
+      changeDescription
+          .getFieldsAdded()
+          .add(new FieldChange().withName(Entity.FIELD_TAGS).withNewValue(addedTags));
+    }
+    if (!nullOrEmpty(deletedTags)) {
+      changeDescription
+          .getFieldsDeleted()
+          .add(new FieldChange().withName(Entity.FIELD_TAGS).withOldValue(deletedTags));
+    }
+    return changeDescription;
   }
 
   /**
@@ -3511,89 +3747,100 @@ public class SearchRepository {
   }
 
   private String generateAddTagLabelListScript() {
-    return """
-        if (ctx._source.tags == null) {
-          ctx._source.tags = [];
+    return addTagLabelListBlock("ctx._source.tags") + SearchClient.TAG_RESEPARATION_SCRIPT;
+  }
+
+  private String addTagLabelListBlock(String tagPath) {
+    return String.format(
+        """
+        if (%1$s == null) {
+          %1$s = [];
         }
         if (params.tagAdded != null) {
           for (def newTag : params.tagAdded) {
             boolean exists = false;
-            for (def existing : ctx._source.tags) {
+            for (def existing : %1$s) {
               if (existing.tagFQN.equalsIgnoreCase(newTag.tagFQN)) {
                 exists = true;
                 break;
               }
             }
             if (!exists) {
-              ctx._source.tags.add(newTag);
+              %1$s.add(newTag);
             }
           }
         }
-        Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """
-        + SearchClient.TAG_RESEPARATION_SCRIPT;
+        Collections.sort(%1$s, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
+        """,
+        tagPath);
   }
 
   /**
-   * Removes the labels a parent stopped carrying, but only where the child's own copy is itself
-   * {@code Derived}.
+   * Removes a parent's tags from a child doc, but only the copies the parent-to-child cascade wrote,
+   * which it stamps {@code DERIVED}. A child that carries the same term in its own right -- applied
+   * manually, by a tool, or propagated along lineage ({@code PROPAGATED}) -- keeps it; matching on
+   * tagFQN alone used to strip it.
    *
-   * <p>A propagated label always lands as {@code Derived} — the cascade stamps every payload label
-   * that way and the add script copies it verbatim — while a label the asset carries in its own
-   * right is {@code Manual}, {@code Automated} or {@code Propagated}. Matching on {@code tagFQN}
-   * alone cannot tell them apart, so un-tagging a parent used to delete the child's own identically
-   * named tag from the index, leaving search reporting fewer tags than the API for every colliding
-   * asset beneath that parent until a reindex. A label with no {@code labelType} at all is left
-   * alone: it cannot be shown to be propagated, and wrongly keeping a stale inherited tag is a far
-   * smaller harm than wrongly deleting one the user applied.
+   * <p>An absent {@code labelType} is treated as user-applied, not system-applied: {@code
+   * tagLabel.json} defaults the field to {@code Manual}, so a doc missing it most likely carries a
+   * manual label. Getting this backwards trades a visible, reindex-clearable orphan for silent
+   * removal of a label a user set — the very stripping this block exists to stop.
+   *
+   * <p>Unlike the add block, this one walks the labels already on the child doc rather than the
+   * labels it was handed, so it has to tolerate a malformed one. A Painless exception is not covered
+   * by {@code conflicts=proceed}: it aborts the whole update-by-query, and since the fan-out is
+   * submitted with {@code wait_for_completion=false} the abort surfaces only in the task result,
+   * which nothing reads. One stored label missing {@code tagFQN} would otherwise silently drop the
+   * removal for every other document in the request.
    */
-  private static final String REMOVE_DERIVED_TAG_LABELS_SCRIPT =
-      """
-      if (ctx._source.tags != null && params.tagDeleted != null) {
-        for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
-          def existingTag = ctx._source.tags[i];
-          if (!existingTag.containsKey('labelType')
-              || existingTag.labelType == null
-              || !existingTag.labelType.equalsIgnoreCase('Derived')) {
-            continue;
-          }
-          for (int j = 0; j < params.tagDeleted.size(); j++) {
-            if (existingTag.tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
-              ctx._source.tags.remove(i);
-              break;
+  private String deleteTagLabelListBlock(String tagPath) {
+    return String.format(
+        """
+        if (%1$s != null && params.tagDeleted != null) {
+          for (int i = %1$s.size() - 1; i >= 0; i--) {
+            def existingTag = %1$s[i];
+            if (existingTag == null || existingTag.tagFQN == null) {
+              continue;
+            }
+            def existingLabelType = existingTag.labelType;
+            boolean inherited = existingLabelType != null
+                && existingLabelType.equalsIgnoreCase('%2$s');
+            if (inherited) {
+              for (int j = 0; j < params.tagDeleted.size(); j++) {
+                def removedTag = params.tagDeleted[j];
+                if (removedTag != null && existingTag.tagFQN.equalsIgnoreCase(removedTag.tagFQN)) {
+                  %1$s.remove(i);
+                  break;
+                }
+              }
             }
           }
         }
-      }
-      """;
+        """,
+        tagPath, TagLabel.LabelType.DERIVED.value());
+  }
 
   private String generateDeleteTagLabelListScript() {
-    return REMOVE_DERIVED_TAG_LABELS_SCRIPT + SearchClient.TAG_RESEPARATION_SCRIPT;
+    return deleteTagLabelListBlock("ctx._source.tags") + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateUpdateTagLabelListScript() {
-    return REMOVE_DERIVED_TAG_LABELS_SCRIPT
-        + """
-        if (ctx._source.tags == null) {
-          ctx._source.tags = [];
-        }
-        if (params.tagAdded != null) {
-          for (def newTag : params.tagAdded) {
-            boolean exists = false;
-            for (def existing : ctx._source.tags) {
-              if (existing.tagFQN.equalsIgnoreCase(newTag.tagFQN)) {
-                exists = true;
-                break;
-              }
-            }
-            if (!exists) {
-              ctx._source.tags.add(newTag);
-            }
-          }
-        }
-        Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """
+    return deleteTagLabelListBlock("ctx._source.tags")
+        + addTagLabelListBlock("ctx._source.tags")
         + SearchClient.TAG_RESEPARATION_SCRIPT;
+  }
+
+  private String generateEmbeddedTestCaseTagLabelScript(
+      boolean hasAddedTags, boolean hasDeletedTags) {
+    StringBuilder script = new StringBuilder("if (ctx._source.testCase != null) { ");
+    if (hasDeletedTags) {
+      script.append(deleteTagLabelListBlock("ctx._source.testCase.tags"));
+    }
+    if (hasAddedTags) {
+      script.append(addTagLabelListBlock("ctx._source.testCase.tags"));
+    }
+    script.append(" }");
+    return script.toString();
   }
 
   public void deleteByScript(String entityType, String scriptTxt, Map<String, Object> params) {
@@ -4106,6 +4353,19 @@ public class SearchRepository {
     return new ScriptedPartialUpdate(script, parameters);
   }
 
+  /**
+   * Suppresses child propagation for a doc rebuilt from the database. Clearing only {@code
+   * changeDescription} is not enough: {@link #getEffectiveChangeDescription} prefers {@code
+   * incrementalChangeDescription}, and a freshly re-read entity still carries whichever one its last
+   * real update wrote. That stale delta gets replayed as a fresh cascade — so a caller re-indexing an
+   * asset right after removing a tag would replay the earlier *add* and put the tag back on every
+   * child doc, racing its own removal because both fan out as async update-by-query.
+   */
+  private static void clearChangeDescriptions(EntityInterface<?> entity) {
+    entity.setChangeDescription(null);
+    entity.setIncrementalChangeDescription(null);
+  }
+
   private ChangeDescription getEffectiveChangeDescription(EntityInterface<?> entity) {
     ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
     return !isNullOrEmptyChangeDescription(incrementalChangeDescription)
@@ -4419,8 +4679,9 @@ public class SearchRepository {
         searchAfter);
   }
 
-  public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    return searchClient.searchBySourceUrl(sourceUrl);
+  public Response searchBySourceUrl(String sourceUrl, SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchBySourceUrl(sourceUrl, subjectContext);
   }
 
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
@@ -4454,6 +4715,10 @@ public class SearchRepository {
       SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
     SearchLineageResult result = searchClient.searchLineageWithDirection(lineageRequest);
     return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
+  }
+
+  public Optional<EntityReference> getLineageRoot(String fqn) throws IOException {
+    return searchClient.getLineageRoot(fqn);
   }
 
   public LineagePaginationInfo getLineagePaginationInfo(
@@ -4564,9 +4829,16 @@ public class SearchRepository {
   }
 
   public Response searchByField(
-      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      SubjectContext subjectContext)
       throws IOException {
-    return searchClient.searchByField(fieldName, fieldValue, index, deleted, from, size);
+    return searchClient.searchByField(
+        fieldName, fieldValue, index, deleted, from, size, subjectContext);
   }
 
   public Response searchByFieldWithOptions(

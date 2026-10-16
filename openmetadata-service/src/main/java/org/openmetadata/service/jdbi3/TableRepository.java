@@ -301,6 +301,7 @@ public class TableRepository extends EntityRepository<Table> {
   private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
     if (fields.contains(COLUMN_FIELD)) {
       bulkPopulateEntityFieldTags(tables, Table::getColumns);
+      inheritEntityTermsOnFields(tables, Table::getColumns);
     }
   }
 

@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -38,6 +39,8 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
  * Integration tests for ContextMemory entity operations.
@@ -583,6 +586,55 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     toEntity.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
     patchEntity(id, toEntity);
     awaitSearchPresence(id, "a memory flipped back to ENTITY stays searchable");
+  }
+
+  /**
+   * "Most used" sorts on the applied count, which only memories a recount reached carry. Memories no
+   * recount reached must still rank by the usage they recorded, not tie in arbitrary order.
+   */
+  @Test
+  void mostUsedRanksUncountedMemoriesByTheirRecordedUsage(TestNamespace ns) {
+    ContextMemory unused =
+        createEntity(memoryWithVisibility(ns, "usage-none", MemoryVisibility.PUBLIC));
+    ContextMemory usedFive =
+        createEntity(memoryWithVisibility(ns, "usage-five", MemoryVisibility.PUBLIC));
+    ContextMemory usedNine =
+        createEntity(memoryWithVisibility(ns, "usage-nine", MemoryVisibility.PUBLIC));
+    recordUsage(usedFive, 5);
+    recordUsage(usedNine, 9);
+    List<String> expected =
+        Stream.of(usedNine, usedFive, unused).map(memory -> memory.getId().toString()).toList();
+
+    Awaitility.await("uncounted memories rank by their recorded usage under Most used")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(180))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals(expected, mostUsedOrderOf(expected)));
+  }
+
+  /** Records usage as retrieval did, then writes the memory so its search document holds it. */
+  private void recordUsage(ContextMemory memory, int times) {
+    CollectionDAO collection = Entity.getDao();
+    var dao = collection.contextMemoryDAO();
+    for (int i = 0; i < times; i++) {
+      dao.recordUsage(memory.getId(), System.currentTimeMillis());
+    }
+    ContextMemory toReindex = getEntity(memory.getId().toString());
+    toReindex.setDescription("Recorded " + times + " uses");
+    patchEntity(memory.getId().toString(), toReindex);
+  }
+
+  private List<String> mostUsedOrderOf(List<String> ids) {
+    ListParams params = new ListParams().addFilter("sortBy", "appliedCount");
+    params.addFilter("sortOrder", "desc");
+    params.setLimit(1000);
+    params.setOffset(0);
+    return new ContextMemoryService(SdkClients.adminClient().getHttpClient())
+        .list(params).getData().stream()
+            .map(memory -> memory.getId().toString())
+            .filter(ids::contains)
+            .toList();
   }
 
   private void awaitSearchPresence(String id, String message) {

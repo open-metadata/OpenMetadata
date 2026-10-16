@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Grid, Typography } from '@openmetadata/ui-core-components';
 
 import { Link } from 'react-router-dom';
@@ -39,11 +38,7 @@ const getHelpDropdownLabelContentRenderer = (
       className="layout-row layout-grid cursor-pointer"
       onClick={item.handleSupportItemClick}>
       <Grid.Item className="layout-column" span={4}>
-        <Icon
-          className="align-middle"
-          component={item.icon}
-          style={{ fontSize: '18px' }}
-        />
+        <item.icon className="tw:align-middle tw:size-[18px] tw:shrink-0" />
       </Grid.Item>
       <Grid.Item className="layout-column flex items-center" span={20}>
         {isVersion ? (
@@ -62,11 +57,7 @@ const getHelpDropdownLabelContentRenderer = (
         )}
 
         {item.isExternal && (
-          <Icon
-            className="m-l-xss text-base-color"
-            component={IconExternalLink}
-            style={{ fontSize: '16px' }}
-          />
+          <IconExternalLink className="tw:ml-1 tw:text-secondary tw:size-4 tw:shrink-0" />
         )}
       </Grid.Item>
     </Grid>

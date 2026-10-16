@@ -65,6 +65,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.populateTagLabel;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
@@ -3640,7 +3641,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     for (T entity : entities) {
       List<TagLabel> nonDerivedTags =
           listOrEmpty(entity.getTags()).stream()
-              .filter(t -> !t.getLabelType().equals(TagLabel.LabelType.DERIVED))
+              .filter(t -> !TagLabelUtil.isSystemGenerated(t))
               .toList();
       if (nonDerivedTags.isEmpty()) {
         continue;
@@ -7029,7 +7030,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   @Transaction
   public final void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+      if (!TagLabelUtil.isSystemGenerated(tagLabel)) {
         daoCollection
             .tagUsageDAO()
             .applyTag(
@@ -7057,7 +7058,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Filter out DERIVED tags as they are system-generated
     List<TagLabel> nonDerivedTags =
         tagLabels.stream()
-            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .filter(tag -> !TagLabelUtil.isSystemGenerated(tag))
             .collect(Collectors.toList());
 
     if (!nonDerivedTags.isEmpty()) {
@@ -7076,7 +7077,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Filter out DERIVED tags as they are system-generated
     List<TagLabel> nonDerivedTags =
         tagLabels.stream()
-            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .filter(tag -> !TagLabelUtil.isSystemGenerated(tag))
             .collect(Collectors.toList());
 
     if (!nonDerivedTags.isEmpty()) {
@@ -9202,17 +9203,26 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return;
     }
     List<TagLabel> inherited = inheritedTagLabels(parent.getTags());
-    if (inherited.isEmpty()) {
-      return;
+    if (!inherited.isEmpty()) {
+      entity.setTags(mergeInheritedTags(entity.getTags(), inherited));
     }
-    List<TagLabel> merged = new ArrayList<>(listOrEmpty(entity.getTags()));
+  }
+
+  /**
+   * Adds labels inherited from a parent to an asset's own. Shared by entity inheritance and by the
+   * glossary terms a field inherits from its entity ({@code Entity#populateEntityFieldTags}), so the
+   * two follow the same rules.
+   */
+  public static List<TagLabel> mergeInheritedTags(
+      List<TagLabel> ownTags, List<TagLabel> inherited) {
+    List<TagLabel> merged = new ArrayList<>(listOrEmpty(ownTags));
     Set<String> existing =
         merged.stream().map(TagLabel::getTagFQN).collect(Collectors.toCollection(HashSet::new));
     Set<String> ownParents =
         merged.stream()
             .map(tag -> FullyQualifiedName.getParentFQN(tag.getTagFQN()))
             .collect(Collectors.toSet());
-    for (TagLabel tag : inherited) {
+    for (TagLabel tag : listOrEmpty(inherited)) {
       // The asset's own label wins; an inherited duplicate would otherwise shadow it as read-only.
       if (existing.contains(tag.getTagFQN()) || conflictsWithOwnTag(tag, ownParents)) {
         continue;
@@ -9220,7 +9230,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       existing.add(tag.getTagFQN());
       merged.add(tag);
     }
-    entity.setTags(merged);
+    return merged;
   }
 
   /**
@@ -9243,7 +9253,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /** Copies so the parent's own labels are not mutated, and marks the copies as derived. */
-  private static List<TagLabel> inheritedTagLabels(List<TagLabel> tags) {
+  public static List<TagLabel> inheritedTagLabels(List<TagLabel> tags) {
     if (nullOrEmpty(tags)) {
       return Collections.emptyList();
     }
@@ -9831,7 +9841,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     for (Column column : listOrEmpty(columns)) {
       validateTags(column.getTags());
       column.setTags(addDerivedTags(column.getTags()));
-      checkMutuallyExclusive(column.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(column.getTags());
       if (column.getChildren() != null) {
         validateColumnTags(column.getChildren());
       }
@@ -10775,7 +10785,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         // For PUT, we don't delete any existing tags
         // Merge the tags for validation and recording purposes
         EntityUtil.mergeTags(updatedTags, origTags);
-        checkMutuallyExclusive(updatedTags);
+        checkMutuallyExclusiveForUserAppliedTags(updatedTags);
       } else {
         // PATCH and an explicit PUT override replace tags.
         if (operation.isPut()) {
@@ -10798,7 +10808,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             addedTags.add(updatedTag);
           }
         }
-        checkMutuallyExclusive(updatedTags);
+        checkMutuallyExclusiveForUserAppliedTags(updatedTags);
       }
 
       // Filter out certification tags — handled exclusively by updateCertification()
@@ -10881,9 +10891,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       if (nullOrEmpty(tags)) {
         return Collections.emptyList();
       }
-      return tags.stream()
-          .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
-          .toList();
+      return tags.stream().filter(tag -> !TagLabelUtil.isSystemGenerated(tag)).toList();
     }
 
     protected final void applyTagsAddInFlush(List<TagLabel> tagLabels, String targetFqn) {
@@ -13794,6 +13802,46 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             field.setTags(TagLabelUtil.addDerivedTagsWithPreFetched(fieldTags, derivedTagsMap));
           }
         }
+      }
+    }
+  }
+
+  /**
+   * Has each field inherit its entity's glossary terms, as {@link Entity#populateEntityFieldTags}
+   * does on a single read, so a list returns the same field tags as a get. Expects the fields' tags
+   * to be loaded already. The entities' own tags are read here rather than taken from the entities:
+   * the bulk field fetchers run in no fixed order, so the tags fetcher may not have run yet, and a
+   * list may not ask for {@code tags} at all.
+   */
+  protected <F extends FieldInterface> void inheritEntityTermsOnFields(
+      List<T> entities, Function<T, List<F>> fieldExtractor) {
+    List<String> entityFqns =
+        listOrEmpty(entities).stream().map(EntityInterface::getFullyQualifiedName).toList();
+    inheritEntityTermsOnFields(entities, fieldExtractor, batchFetchTags(entityFqns));
+  }
+
+  /**
+   * {@link #inheritEntityTermsOnFields(List, Function)} for a caller that has just read the
+   * entities' own tags with {@link #batchFetchTags}, keyed by entity FQN.
+   */
+  protected static <E extends EntityInterface<?>, F extends FieldInterface>
+      void inheritEntityTermsOnFields(
+          List<E> entities,
+          Function<E, List<F>> fieldExtractor,
+          Map<String, List<TagLabel>> ownTagsByEntityFqn) {
+    for (E entity : listOrEmpty(entities)) {
+      inheritEntityTerms(
+          ownTagsByEntityFqn.get(entity.getFullyQualifiedName()), fieldExtractor.apply(entity));
+    }
+  }
+
+  /** One entity's step of {@link #inheritEntityTermsOnFields}. Package-private for tests. */
+  static <F extends FieldInterface> void inheritEntityTerms(
+      List<TagLabel> entityTags, List<F> fields) {
+    List<TagLabel> inheritedTerms = Entity.inheritedParentTerms(entityTags);
+    if (!inheritedTerms.isEmpty() && fields != null) {
+      for (F field : EntityUtil.getFlattenedEntityField(fields)) {
+        field.setTags(mergeInheritedTags(field.getTags(), inheritedTerms));
       }
     }
   }

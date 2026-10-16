@@ -212,7 +212,7 @@ const DataQualityPage = () => {
                       <Button
                         className="m-l-md"
                         data-testid="data-quality-add-button-menu"
-                        iconTrailing={<ChevronDown size={14} />}
+                        iconTrailing={ChevronDown}
                         size="sm">
                         {t('label.add')}
                       </Button>

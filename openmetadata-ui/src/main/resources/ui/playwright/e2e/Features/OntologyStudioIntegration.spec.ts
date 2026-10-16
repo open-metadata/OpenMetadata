@@ -316,6 +316,12 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
     await expect(
       cluster.getByText(new RegExp(`^${preview?.assetCount}\\s+assets?$`, 'i'))
     ).toBeVisible();
+    // A collapsed card shows three assets; the rest sit behind "Show N more".
+    if (assets.length > 3) {
+      await cluster
+        .getByTestId(`ontology-load-more-assets-${spiralTerm.responseData.id}`)
+        .click();
+    }
     // Tags also classify table columns, so a bounded preview can legitimately
     // contain four columns and exclude the parent table. Verify every card.
     const tableFqn = spiralTable.entityResponseData.fullyQualifiedName;

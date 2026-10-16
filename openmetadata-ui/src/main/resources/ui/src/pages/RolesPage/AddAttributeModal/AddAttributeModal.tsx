@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
 import { Grid, Input, SimpleModal } from '@openmetadata/ui-core-components';
-import { Search } from '@openmetadata/ui-core-components/icons';
+import { Check, Search } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -195,7 +194,10 @@ const AddAttributeModal: FC<Props> = ({
                   </Grid.Item>
                   <Grid.Item className="layout-column" span={2}>
                     {selectedValues.includes(option.id) && (
-                      <CheckOutlined className="text-primary" />
+                      <Check
+                        className="tw:shrink-0 tw:text-brand-secondary"
+                        data-testid="selected-check-icon"
+                      />
                     )}
                   </Grid.Item>
                 </Grid>
