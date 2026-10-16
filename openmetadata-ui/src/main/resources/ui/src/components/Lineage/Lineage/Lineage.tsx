@@ -1065,6 +1065,19 @@ export const Lineage = ({
                 );
               }
             : undefined,
+        ...(includePNG && {
+          // The canvases leave off-screen nodes out of the DOM. Mount them
+          // for the capture, which clones the DOM, so the image holds every
+          // node and not only the ones in view.
+          beforeCapture: async () => {
+            useLineageStore.getState().setRenderAllNodes(true);
+            await new Promise((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(resolve))
+            );
+          },
+          afterCapture: () =>
+            useLineageStore.getState().setRenderAllNodes(false),
+        }),
         onExport: onExportCallback ?? exportLineageData,
       });
     },
