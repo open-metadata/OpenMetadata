@@ -72,18 +72,21 @@ const getReadableDefinitions = async (instances: WorkflowInstance[]) => {
 // workflows cannot push the stage's history out of view; the page count bounds the search.
 const MAX_INSTANCE_PAGES = 8;
 
+// The server pages with an opaque cursor: the first page sends none, and each later page sends
+// the `after` cursor the previous page returned.
 const findStageRun = async (
   entityLink: string,
   timeRange: WorkflowInstanceStateParams,
-  page = 0
+  page = 0,
+  after?: string
 ): Promise<
   { instance: WorkflowInstance; definition: WorkflowDefinition } | undefined
 > => {
-  const { data } = await getWorkflowInstancesForApplication({
+  const { data, paging } = await getWorkflowInstancesForApplication({
     ...timeRange,
     entityLink,
     limit: RECENT_INSTANCES_LIMIT,
-    offset: String(page * RECENT_INSTANCES_LIMIT),
+    ...(after && { offset: after }),
   });
   const instances = orderBy(data ?? [], getInstanceStart, 'desc');
   const definitions = await getReadableDefinitions(instances);
@@ -94,15 +97,13 @@ const findStageRun = async (
       definitions[workflowDefinitionId] &&
       setsEntityStage(definitions[workflowDefinitionId])
   );
-  const hasMore =
-    instances.length === RECENT_INSTANCES_LIMIT &&
-    page + 1 < MAX_INSTANCE_PAGES;
+  const next = page + 1 < MAX_INSTANCE_PAGES ? paging?.after : undefined;
 
   if (instance?.workflowDefinitionId) {
     return { instance, definition: definitions[instance.workflowDefinitionId] };
   }
 
-  return hasMore ? findStageRun(entityLink, timeRange, page + 1) : undefined;
+  return next ? findStageRun(entityLink, timeRange, page + 1, next) : undefined;
 };
 
 /**
