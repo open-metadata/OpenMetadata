@@ -71,7 +71,6 @@ const TopicDetailsPage: FunctionComponent = () => {
     isLoading: isPermissionsLoading,
     error: permissionsError,
     canViewBasic: canViewTopic,
-    hasViewAccess,
   } = useEntityPermissions(ResourceEntity.TOPIC, topicFQN);
 
   const topicCacheKey = useMemo(
@@ -333,7 +332,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       />
     );
   }
-  if (!hasViewAccess) {
+  if (!canViewTopic) {
     return (
       <ErrorPlaceHolder
         className="border-none"
