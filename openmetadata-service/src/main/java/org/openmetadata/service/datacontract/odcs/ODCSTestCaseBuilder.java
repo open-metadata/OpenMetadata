@@ -167,7 +167,15 @@ final class ODCSTestCaseBuilder {
 
   private static ODCSRuleOutcome missingValuesTest(RuleOnTarget ruleOnTarget) {
     ODCSQualityRule rule = ruleOnTarget.rule();
-    return Optional.ofNullable(rule.getMustBe())
+    Double mustBe = rule.getMustBe();
+    if (ODCSRuleOperators.isPercentage(rule) && mustBe != null && mustBe > 0) {
+      return unsupported(
+          rule,
+          String.format(
+              "missing_values has no percentage test in OpenMetadata; this rule has %s.",
+              ODCSRuleOperators.describe(rule)));
+    }
+    return Optional.ofNullable(mustBe)
         .filter(ODCSRuleOperators::isWhole)
         .<ODCSRuleOutcome>map(
             count ->

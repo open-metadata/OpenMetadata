@@ -142,7 +142,9 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(page.getByTestId('row-limit-option-10')).toBeVisible();
       await page.getByTestId('row-limit-option-10').click();
 
-      await expect(page.getByTestId('row-limit-select')).toContainText('10');
+      await expect(
+        page.getByTestId('row-limit-select').getByRole('button')
+      ).toHaveText('10');
     });
 
     await test.step('Change row limit to 1000', async () => {
@@ -151,7 +153,9 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(page.getByTestId('row-limit-option-1000')).toBeVisible();
       await page.getByTestId('row-limit-option-1000').click();
 
-      await expect(page.getByTestId('row-limit-select')).toContainText('1000');
+      await expect(
+        page.getByTestId('row-limit-select').getByRole('button')
+      ).toHaveText('1000');
     });
 
     await test.step('Reset row limit back to 100', async () => {
@@ -160,7 +164,9 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(page.getByTestId('row-limit-option-100')).toBeVisible();
       await page.getByTestId('row-limit-option-100').click();
 
-      await expect(page.getByTestId('row-limit-select')).toContainText('100');
+      await expect(
+        page.getByTestId('row-limit-select').getByRole('button')
+      ).toHaveText('100');
     });
   });
 
@@ -184,7 +190,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Close the dropdown', async () => {
-      await page.getByTestId('sample-data').click();
+      await page.keyboard.press('Escape');
       await expect(page.getByTestId('export-button')).not.toBeVisible();
     });
   });
@@ -400,7 +406,9 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(page.getByTestId('row-limit-option-10')).toBeVisible();
       await page.getByTestId('row-limit-option-10').click();
 
-      await expect(page.getByTestId('row-limit-select')).toContainText('10');
+      await expect(
+        page.getByTestId('row-limit-select').getByRole('button')
+      ).toHaveText('10');
     });
 
     await test.step('Switch to Schema tab and back to Sample Data', async () => {

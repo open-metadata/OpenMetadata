@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import { expect, Page, test } from '@playwright/test';
+import {
+  ACTION_TIMEOUT,
+  EXTENDED_TEST_TIMEOUT,
+} from '../../../constant/common';
 import { TableClass } from '../../../support/entity/TableClass';
 import { getApiContext } from '../../../utils/common';
 import { enableAiAppMode, redirectToAiModeHomePage } from '../../Utils/appMode';
@@ -109,7 +113,7 @@ const openTestCaseFromDataQualityList = async (
   // polling the search API: the input above narrows to this unique name, so
   // this is unaffected by how many test cases the instance holds.
   const row = page.getByTestId(testCaseName).getByRole('link');
-  await expect(row).toBeVisible({ timeout: 30_000 });
+  await expect(row).toBeVisible({ timeout: ACTION_TIMEOUT });
   await row.click();
   await expectDetailPageLoaded(page);
 };
@@ -155,7 +159,7 @@ test.describe('AI Observability - test case detail breadcrumb origin', () => {
     // result has been measured past the default 60s hook timeout on a loaded
     // backend. This covers entity setup only — the tests themselves run on the
     // default timeout.
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
 
     const setupPage = await browser.newPage();
     await redirectToAiModeHomePage(setupPage);

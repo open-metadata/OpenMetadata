@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Toggle, Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal, Space } from 'antd';
+import {
+  Box,
+  Button,
+  SimpleModal,
+  Skeleton,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -320,7 +326,12 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           dragAndDropHooks={dragAndDropHooks}
           expandable={expandableConfig}
           extraTableFilters={
-            <Space align="center">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <span className="tw:inline-flex tw:items-center">
                 <Toggle
                   data-testid="show-deleted"
@@ -332,13 +343,13 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
 
               {createTeamPermission && !isTeamDeleted && (
                 <Button
+                  color="primary"
                   data-testid="add-team"
-                  type="primary"
                   onClick={handleAddTeamButtonClick}>
                   {t('label.add-entity', { entity: t('label.team') })}
                 </Button>
               )}
-            </Space>
+            </Box>
           }
           loading={isTableLoading || isTeamBasicDataLoading || isSearchLoading}
           locale={{
@@ -351,28 +362,27 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         />
       </DropZone>
 
-      <Modal
-        centered
-        destroyOnClose
-        closable={false}
-        confirmLoading={isTableLoading}
+      <SimpleModal
         data-testid="confirmation-modal"
-        maskClosable={false}
+        isDismissable={false}
+        isOkLoading={isTableLoading}
+        isOpen={isModalOpen}
         okText={t('label.confirm')}
-        open={isModalOpen}
         title={t('label.move-the-entity', { entity: t('label.team') })}
         onCancel={onDragConfirmationModalClose}
         onOk={handleChangeTeam}>
-        <Transi18next
-          i18nKey="message.entity-transfer-message"
-          renderElement={<strong />}
-          values={{
-            from: movedTeam?.from.name,
-            to: movedTeam?.to?.name ?? getEntityName(currentTeam),
-            entity: t('label.team-lowercase'),
-          }}
-        />
-      </Modal>
+        <p>
+          <Transi18next
+            i18nKey="message.entity-transfer-message"
+            renderElement={<strong />}
+            values={{
+              from: movedTeam?.from.name,
+              to: movedTeam?.to?.name ?? getEntityName(currentTeam),
+              entity: t('label.team-lowercase'),
+            }}
+          />
+        </p>
+      </SimpleModal>
     </div>
   );
 };

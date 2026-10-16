@@ -21,8 +21,10 @@ import {
   OnNodesChange,
 } from 'reactflow';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
+import { ApprovalMode } from '../generated/governance/workflows/elements/triggers/eventBasedEntityTrigger';
 import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import { WorkflowTriggerFieldsConfig } from '../rest/metadataTypeAPI';
+import type { WorkflowEditorLink } from '../utils/WorkflowClassBase';
 
 export interface DataAssetFilter {
   id: number;
@@ -44,6 +46,7 @@ export interface NodeConfig {
   scheduleType?: string;
   cronExpression?: string;
   batchSize?: number;
+  approvalMode?: ApprovalMode;
 }
 
 export interface DataAssetFiltersSectionProps {
@@ -288,12 +291,13 @@ export interface WorkflowControlsProps {
   onCancelWorkflow?: () => void;
   onRevertAndCancel?: () => void;
   onRunWorkflow?: () => void;
-  onDeleteWorkflow?: () => void;
   isRunLoading?: boolean;
 }
 
 export interface WorkflowHeaderProps {
   breadcrumb?: React.ReactNode;
+  /** Link to the editor that owns this workflow's shape, shown beside Edit Workflow. */
+  editorLink?: WorkflowEditorLink;
   isAiMode?: boolean;
   title: string;
   workflowName?: string;
@@ -301,11 +305,19 @@ export interface WorkflowHeaderProps {
   handleTestWorkflow: () => void;
   handleSaveWorkflow: () => void;
   handleDeleteWorkflow?: () => void;
+  /** Suspends the workflow, or resumes it when `isSuspended`. */
+  handleToggleSuspend?: () => void;
+  isSuspended?: boolean;
   handleRevertAndCancel?: () => void;
   handleRunWorkflow?: () => void;
   isRunLoading?: boolean;
   focusedConnection?: { sourceId: string; targetId: string } | null;
   onUpdateDisplayName?: (displayName: string) => void;
+  /**
+   * `actions` renders only the run, test, save, cancel and edit controls, for a host page that
+   * shows the workflow's title itself.
+   */
+  variant?: 'page' | 'actions';
 }
 
 export interface TaskItemProps {
@@ -333,4 +345,7 @@ export interface NodeConfigSidebarProps {
   setNodes?: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   setEdges?: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
   triggerFieldsConfig: WorkflowTriggerFieldsConfig;
+  /** The start node holds edits for approval, so an approval task can allow partial decisions. */
+  isEnforceMode?: boolean;
+  hasGitSinkNode?: boolean;
 }

@@ -21,7 +21,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Controller,
@@ -32,6 +32,8 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
+import type { Destination } from '../../../generated/events/eventSubscription';
+import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
 import type { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import {
@@ -39,8 +41,10 @@ import {
   getFormattedDestinations,
 } from '../../../utils/Alerts/AlertsUtilPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { DESTINATIONS_MIN_COUNT_ERROR_PATH } from './DestinationFormItem.constants';
 import { DestinationFormItemProps } from './DestinationFormItem.interface';
 import {
+  alignDestinationsWithTestStatus,
   getTestableExternalDestinations,
   hasExternalDestination,
 } from './DestinationFormItem.utils';
@@ -58,7 +62,7 @@ function DestinationFormItem({
   });
 
   const [destinationsWithStatus, setDestinationsWithStatus] =
-    useState<ModifiedDestination[]>();
+    useState<(Destination | undefined)[]>();
   const [isDestinationStatusLoading, setIsDestinationStatusLoading] =
     useState(false);
   // Nested header/query-param arrays can remount a destination row. Keeping
@@ -67,19 +71,19 @@ function DestinationFormItem({
     Set<number>
   >(new Set());
 
-  const selectedResources: string[] =
-    useWatch({ name: 'resources', control }) ?? [];
+  const { sources } = useAlertSelectionContext();
   const destinations: ModifiedDestination[] =
     (useWatch({ name: 'destinations', control }) as ModifiedDestination[]) ??
     [];
 
-  const selectedSource = selectedResources[0];
-
   // Submit owns required validation; this only removes its stale error after
   // the user adds a destination, avoiding an error on untouched create forms.
+  // The minimum-count error lives under the `root.*` namespace, so clearing it
+  // never wipes nested per-destination field errors (e.g.
+  // `destinations.0.config.receivers`) surfaced by `trigger('destinations')`.
   useEffect(() => {
     if (fields.length > 0) {
-      clearErrors('destinations');
+      clearErrors(DESTINATIONS_MIN_COUNT_ERROR_PATH);
     }
   }, [fields.length, clearErrors]);
 
@@ -89,11 +93,8 @@ function DestinationFormItem({
   );
 
   const disableTestDestinationButton = useMemo(
-    () =>
-      isEmpty(selectedSource) ||
-      isNil(selectedSource) ||
-      !isExternalDestinationSelected,
-    [selectedSource, isExternalDestinationSelected]
+    () => isEmpty(sources) || !isExternalDestinationSelected,
+    [sources, isExternalDestinationSelected]
   );
 
   const handleDestinationConfigExpandedChange = useCallback(
@@ -116,8 +117,10 @@ function DestinationFormItem({
     (index: number) => {
       remove(index);
       // Destination indexes shift after removal, so stale UI-only expansion
-      // state must not be applied to a different destination.
+      // state and index-aligned test statuses must not be applied to a
+      // different destination.
       setExpandedDestinationConfigs(new Set());
+      setDestinationsWithStatus(undefined);
     },
     [remove]
   );
@@ -125,8 +128,9 @@ function DestinationFormItem({
   const handleTestDestinationClick = useCallback(async () => {
     try {
       setIsDestinationStatusLoading(true);
+      const formattedDestinations = getFormattedDestinations(destinations);
       const externalDestinations = getTestableExternalDestinations(
-        getFormattedDestinations(destinations)
+        formattedDestinations
       );
       if (isEmpty(externalDestinations)) {
         setDestinationsWithStatus(undefined);
@@ -138,10 +142,10 @@ function DestinationFormItem({
         destinations: externalDestinations,
       });
       setDestinationsWithStatus(
-        getDestinationsWithTestStatus(
-          externalDestinations,
-          results
-        ) as ModifiedDestination[]
+        alignDestinationsWithTestStatus(
+          formattedDestinations,
+          getDestinationsWithTestStatus(externalDestinations, results)
+        )
       );
     } catch (e) {
       showErrorToast(e as AxiosError);
@@ -151,7 +155,9 @@ function DestinationFormItem({
   }, [destinations, trigger]);
 
   const destinationListError = (
-    formState.errors.destinations as { message?: string } | undefined
+    get(formState.errors, DESTINATIONS_MIN_COUNT_ERROR_PATH) as
+      | { message?: string }
+      | undefined
   )?.message;
 
   return (
@@ -300,7 +306,7 @@ function DestinationFormItem({
                 <Button
                   color="primary"
                   data-testid="add-destination-button"
-                  isDisabled={isEmpty(selectedSource) || isNil(selectedSource)}
+                  isDisabled={isEmpty(sources)}
                   onPress={() => append({})}>
                   {t('label.add-entity', { entity: t('label.destination') })}
                 </Button>

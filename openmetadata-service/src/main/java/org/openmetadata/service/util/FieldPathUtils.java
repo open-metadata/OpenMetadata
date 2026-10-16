@@ -22,6 +22,7 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -53,7 +54,7 @@ public class FieldPathUtils {
    * @return true if update was successful
    */
   public static boolean updateFieldDescription(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String fieldPath,
@@ -70,7 +71,7 @@ public class FieldPathUtils {
    * @param changeSource provenance of the new text, or null to leave it defaulted
    */
   public static boolean updateFieldDescription(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String fieldPath,
@@ -108,7 +109,7 @@ public class FieldPathUtils {
    * Returns empty when the path cannot be resolved. Callers can then read/mutate the POJO via
    * its own getters/setters and generate a JSON patch against the parent entity.
    */
-  public static Optional<Object> findField(EntityInterface entity, String fieldPath) {
+  public static Optional<Object> findField(EntityInterface<?> entity, String fieldPath) {
     FieldPathComponents components = parseFieldPath(fieldPath);
     if (components == null) {
       return Optional.empty();
@@ -123,7 +124,7 @@ public class FieldPathUtils {
    * @param fieldPath The field path (e.g., "columns::customer_id::description")
    * @return the current description if the field path could be resolved
    */
-  public static Optional<String> getFieldDescription(EntityInterface entity, String fieldPath) {
+  public static Optional<String> getFieldDescription(EntityInterface<?> entity, String fieldPath) {
     if (fieldPath == null
         || fieldPath.isEmpty()
         || fieldPath.equals("description")
@@ -145,7 +146,7 @@ public class FieldPathUtils {
    * Modifies the entity in memory.
    */
   private static boolean setFieldDescription(
-      EntityInterface entity, String fieldPath, String description) {
+      EntityInterface<?> entity, String fieldPath, String description) {
 
     // Handle entity-level description
     if (fieldPath == null
@@ -243,7 +244,7 @@ public class FieldPathUtils {
 
   /** Navigate entity structure and set description on target field. */
   private static boolean navigateAndSetDescription(
-      EntityInterface entity, FieldPathComponents components, String description) {
+      EntityInterface<?> entity, FieldPathComponents components, String description) {
     List<?> fieldList = resolveContainerList(entity, components.containerName());
     if (fieldList == null) {
       LOG.warn("[FieldPathUtils] Unknown container type: {}", components.containerName());
@@ -254,7 +255,7 @@ public class FieldPathUtils {
 
   /** Navigate entity structure and get the description on the target field. */
   private static Optional<String> navigateAndGetDescription(
-      EntityInterface entity, FieldPathComponents components) {
+      EntityInterface<?> entity, FieldPathComponents components) {
     List<?> fieldList = resolveContainerList(entity, components.containerName());
     if (fieldList == null) {
       LOG.warn("[FieldPathUtils] Unknown container type: {}", components.containerName());
@@ -269,11 +270,32 @@ public class FieldPathUtils {
    *
    * <p>The registry is consulted before the plain reflective getter so that a container segment on
    * a registry type always means what the registry says it means. Falling back to the getter only
-   * serves entity types the registry does not cover, for example a dashboard's charts.
+   * serves entity types the registry does not cover.
+   *
+   * <p>The reflective fallback refuses a list whose elements are {@link EntityReference}. An
+   * EntityReference is a projection of a separate entity (e.g. a dashboard's charts reference a
+   * Chart), not an editable child POJO: mutating it in memory, diffing the parent, and patching the
+   * parent is silently reverted by the parent repository's {@code prepare()}, which rebuilds the
+   * references from the persisted child entities. Returning null here surfaces the no-op as a
+   * visible failure instead of reporting success while doing nothing.
    */
-  private static List<?> resolveContainerList(EntityInterface entity, String container) {
+  private static List<?> resolveContainerList(EntityInterface<?> entity, String container) {
     List<?> fromRegistry = ChildFieldResolver.containerListFor(entity, container);
-    return fromRegistry != null ? fromRegistry : getFieldList(entity, container);
+    if (fromRegistry != null) {
+      return fromRegistry;
+    }
+    List<?> reflective = getFieldList(entity, container);
+    if (reflective != null
+        && !reflective.isEmpty()
+        && reflective.get(0) instanceof EntityReference) {
+      LOG.warn(
+          "[FieldPathUtils] '{}' resolves to an EntityReference list on {}; "
+              + "child must be patched directly, not through the parent",
+          container,
+          entity.getClass().getSimpleName());
+      return null;
+    }
+    return reflective;
   }
 
   /**
@@ -369,7 +391,7 @@ public class FieldPathUtils {
 
   /** Navigate the parsed components to the target field POJO. */
   private static Optional<Object> locateField(
-      EntityInterface entity, FieldPathComponents components) {
+      EntityInterface<?> entity, FieldPathComponents components) {
     String container = components.containerName();
     String fieldName = components.fieldName();
 
@@ -509,7 +531,7 @@ public class FieldPathUtils {
   }
 
   /** Get a field list from entity by name (columns, fields, schemaFields, etc.). */
-  private static List<?> getFieldList(EntityInterface entity, String listName) {
+  private static List<?> getFieldList(EntityInterface<?> entity, String listName) {
     Object result =
         ChildFieldResolver.invokeGetter(entity, ChildFieldResolver.getterName(listName));
     return result instanceof List<?> ? (List<?>) result : null;

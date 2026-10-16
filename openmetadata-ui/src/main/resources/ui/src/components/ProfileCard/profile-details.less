@@ -11,16 +11,6 @@
  *  limitations under the License.
  */
 @import (reference) '../../styles/variables.less';
-.profile-management-popover .ant-popover-inner-content::before,
-.profile-management-popover .ant-popover-arrow {
-  display: none !important;
-}
-.profile-management-popover.ant-popover-placement-bottomLeft {
-  top: 125px !important;
-}
-.profile-management-popover .ant-popover-inner-content {
-  padding: 0;
-}
 .profile-management-popover {
   color: var(--om-legacy-color-52525b);
 
@@ -28,34 +18,5 @@
     background-color: var(--om-legacy-color-f3f8ff) !important;
     color: var(--om-legacy-color-1677ff) !important;
     font-weight: var(--om-font-weight-semibold);
-  }
-}
-.profile-manage-item {
-  padding: var(--om-space-10) var(--om-space-16);
-  cursor: pointer;
-  .ant-typography,
-  .profile-manage-label {
-    color: text-color;
-    font-size: var(--om-font-size-sm);
-    font-style: normal;
-    font-weight: var(--om-font-weight-regular);
-    line-height: normal;
-    cursor: pointer;
-  }
-
-  .ant-btn-text {
-    padding: 0;
-  }
-
-  &:hover {
-    background-color: @primary-25;
-    svg path {
-      fill: @primary-color;
-    }
-  }
-
-  &:hover .ant-typography,
-  &:hover .profile-manage-label {
-    color: @primary-color;
   }
 }

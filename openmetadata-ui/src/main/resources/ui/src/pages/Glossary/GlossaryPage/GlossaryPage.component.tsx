@@ -40,8 +40,13 @@ import {
   ModifiedGlossary,
   useGlossaryStore,
 } from '../../../components/Glossary/useGlossary.store';
+import SuggestionsProvider from '../../../components/Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
+import {
+  PAGE_SIZE_LARGE,
+  pagingObject,
+  ROUTES,
+} from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
@@ -167,47 +172,67 @@ const GlossaryPage = () => {
     };
   }, [permissions, isGlossaryActive]);
 
-  const fetchGlossaryList = useCallback(async () => {
-    try {
-      let allGlossaries: Glossary[] = [];
-      let nextPage = paging.after;
-      let isGlossaryFound = false;
-      let settledPaging: Paging | undefined;
-      setIsLoading(true);
+  const fetchGlossaryList = useCallback(
+    async (startAfter?: string, targetFqn?: string) => {
+      try {
+        let allGlossaries: Glossary[] = [];
+        // `startAfter` lets a caller force a page-1 refresh by passing `''`,
+        // bypassing a stale `paging.after` captured in this callback's deps.
+        let nextPage = startAfter ?? paging.after;
+        const lookupFqn = targetFqn ?? glossaryFqn;
+        let isGlossaryFound = false;
+        let settledPaging: Paging | undefined;
+        setIsLoading(true);
 
-      do {
-        const { data, paging: glossaryPaging } = await getGlossariesList({
-          fields: GLOSSARY_LIST_FIELDS,
-          limit: PAGE_SIZE_LARGE,
-          ...(nextPage && { after: nextPage }),
-        });
+        do {
+          const { data, paging: glossaryPaging } = await getGlossariesList({
+            fields: GLOSSARY_LIST_FIELDS,
+            limit: PAGE_SIZE_LARGE,
+            ...(nextPage && { after: nextPage }),
+          });
 
-        allGlossaries = [...allGlossaries, ...data];
+          allGlossaries = [...allGlossaries, ...data];
 
-        if (glossaryFqn) {
-          isGlossaryFound = allGlossaries.some(
-            (item) => item.fullyQualifiedName === glossaryFqn
-          );
-        } else {
-          isGlossaryFound = true; // limit to first 50 records only if no glossaryFqn
+          if (lookupFqn) {
+            isGlossaryFound = allGlossaries.some(
+              (item) => item.fullyQualifiedName === lookupFqn
+            );
+          } else {
+            isGlossaryFound = true; // limit to first 50 records only if no glossaryFqn
+          }
+
+          nextPage = glossaryPaging?.after;
+          settledPaging = glossaryPaging;
+        } while (nextPage && !isGlossaryFound);
+
+        setGlossaries(allGlossaries);
+
+        if (settledPaging) {
+          handlePagingChange(settledPaging);
         }
-
-        nextPage = glossaryPaging?.after;
-        settledPaging = glossaryPaging;
-      } while (nextPage && !isGlossaryFound);
-
-      setGlossaries(allGlossaries);
-
-      if (settledPaging) {
-        handlePagingChange(settledPaging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+        setInitialised(true);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-      setInitialised(true);
-    }
-  }, [paging.after, glossaryFqn]);
+    },
+    [paging.after, glossaryFqn]
+  );
+
+  // Post-create refresher: reset paging state and force a page-1 fetch so the
+  // refresh does not reuse the stale `paging.after` cursor captured by
+  // `fetchGlossaryList` (which would otherwise discard all pre-cursor pages
+  // via the `setGlossaries(allGlossaries)` replace). `newFqn` is the freshly
+  // created glossary's FQN, used as the loop's stop target so the new entry is
+  // guaranteed to land in the refreshed list regardless of where it sorts.
+  const refreshGlossaryListAfterCreate = useCallback(
+    async (newFqn?: string) => {
+      handlePagingChange(pagingObject);
+      await fetchGlossaryList('', newFqn);
+    },
+    [fetchGlossaryList, handlePagingChange]
+  );
 
   const fetchNextGlossaryItems = async (after?: string) => {
     try {
@@ -233,7 +258,7 @@ const GlossaryPage = () => {
   };
 
   const { formDrawer: addGlossaryDrawer, openDrawer: handleAddGlossaryClick } =
-    useGlossaryCreateDrawer(fetchGlossaryList);
+    useGlossaryCreateDrawer(refreshGlossaryListAfterCreate);
 
   useEffect(() => {
     if (!initialised) {
@@ -387,7 +412,9 @@ const GlossaryPage = () => {
       return true;
     }
     if (isTermView) {
-      return glossaryTermFetching;
+      // Background refetches (e.g. after accepting a suggestion) keep the term
+      // mounted so its tab, scroll and suggestion state survive.
+      return glossaryTermFetching && !glossaryTermDetails;
     }
     if (isGlossaryView) {
       return glossaryFetching;
@@ -400,6 +427,7 @@ const GlossaryPage = () => {
     glossaries.length,
     isTermView,
     glossaryTermFetching,
+    glossaryTermDetails,
     isGlossaryView,
     glossaryFetching,
   ]);
@@ -658,7 +686,7 @@ const GlossaryPage = () => {
       );
     }
 
-    return (
+    const glossaryV1 = (
       <GlossaryV1
         isGlossaryActive={isGlossaryActive}
         isSummaryPanelOpen={Boolean(previewAsset)}
@@ -673,6 +701,14 @@ const GlossaryPage = () => {
         onGlossaryTermDelete={handleGlossaryTermDelete}
         onGlossaryTermUpdate={handleGlossaryTermUpdate}
       />
+    );
+
+    return isTermView ? (
+      <SuggestionsProvider entityType={EntityType.GLOSSARY_TERM}>
+        {glossaryV1}
+      </SuggestionsProvider>
+    ) : (
+      glossaryV1
     );
   };
 

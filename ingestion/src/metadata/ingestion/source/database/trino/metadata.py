@@ -288,10 +288,12 @@ def get_view_definition(self, connection: Connection, view_name: str, schema: st
     if schema is None:
         raise exc.NoSuchTableError("schema is required")
 
+    # Catalog, schema and view names come from Trino, so they are untrusted.
+    quote = self.identifier_preparer.quote_identifier
     if catalog_name:
-        full_view_name = f'"{catalog_name}"."{schema}"."{view_name}"'
+        full_view_name = f"{quote(catalog_name)}.{quote(schema)}.{quote(view_name)}"
     else:
-        full_view_name = f'"{schema}"."{view_name}"'
+        full_view_name = f"{quote(schema)}.{quote(view_name)}"
 
     try:
         # Fetch from information_schema.views (requires only read permissions)
@@ -370,6 +372,8 @@ class TrinoSource(CommonDbSourceService):
             row = result.first()
             if row and row[0] == "iceberg":
                 table_type = TableType.Iceberg
+            elif row and row[0] == "delta_lake":
+                table_type = TableType.DeltaLake
         except Exception:
             logger.debug(traceback.format_exc())
 

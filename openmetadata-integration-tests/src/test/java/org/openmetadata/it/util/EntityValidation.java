@@ -106,7 +106,7 @@ public class EntityValidation {
    * @return ChangeDescription with previousVersion set and empty field lists
    */
   public static ChangeDescription getChangeDescription(
-      EntityInterface currentEntity, UpdateType updateType) {
+      EntityInterface<?> currentEntity, UpdateType updateType) {
     if (updateType == UpdateType.REVERT) {
       // If reverting to a previous version, the change description comes from that version
       // In integration tests, we would need to fetch the previous version
@@ -139,7 +139,7 @@ public class EntityValidation {
    * @param previousVersion Version before the update (null if CREATED)
    */
   public static void validateVersion(
-      EntityInterface entity, UpdateType updateType, Double previousVersion) {
+      EntityInterface<?> entity, UpdateType updateType, Double previousVersion) {
     switch (updateType) {
       case CREATED:
         assertEquals(0.1, entity.getVersion(), 0.001, "Created entity should have version 0.1");
@@ -199,7 +199,7 @@ public class EntityValidation {
    * @param expectedChange Expected ChangeDescription (can be null for CREATED)
    */
   public static void validateChangeDescription(
-      EntityInterface updated, UpdateType updateType, ChangeDescription expectedChange) {
+      EntityInterface<?> updated, UpdateType updateType, ChangeDescription expectedChange) {
     if (updateType == UpdateType.CREATED) {
       assertEquals(0.1, updated.getVersion(), 0.001);
       assertNull(

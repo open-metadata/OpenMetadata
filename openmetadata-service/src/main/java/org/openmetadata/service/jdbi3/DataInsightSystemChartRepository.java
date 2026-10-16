@@ -232,8 +232,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         || !SERVICE_TYPES_WITH_AUTOMATIONS.contains(serviceType)) {
       return List.of();
     }
-    EntityInterface service =
-        (EntityInterface) Entity.getEntityByName(serviceType, serviceName, "", Include.NON_DELETED);
+    EntityInterface<?> service =
+        (EntityInterface<?>)
+            Entity.getEntityByName(serviceType, serviceName, "", Include.NON_DELETED);
     return Entity.getEntityRepository(serviceType)
         .findTo(service.getId(), serviceType, Relationship.CONTAINS, AI_AUTOMATION);
   }
@@ -328,7 +329,13 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           for (int from = 0; from < maxResults; from += pageSize) {
             var response =
                 searchClient.searchByField(
-                    "service.name.keyword", serviceName, INGESTION_PIPELINE, false, from, pageSize);
+                    "service.name.keyword",
+                    serviceName,
+                    INGESTION_PIPELINE,
+                    false,
+                    from,
+                    pageSize,
+                    null);
 
             if (response == null || response.getStatus() != 200) {
               break;

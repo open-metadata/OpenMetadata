@@ -47,6 +47,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.WebServiceException;
@@ -106,7 +107,12 @@ public final class SecurityUtil {
   }
 
   public static String getDomain(OpenMetadataApplicationConfig config) {
-    String principalDomain = config.getAuthorizerConfiguration().getPrincipalDomain();
+    return getDomain(config.getAuthorizerConfiguration());
+  }
+
+  /** The principal domain of {@code authorizer}, or the default when it sets none. */
+  public static String getDomain(AuthorizerConfiguration authorizer) {
+    String principalDomain = authorizer == null ? null : authorizer.getPrincipalDomain();
     return CommonUtil.nullOrEmpty(principalDomain) ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
   }
 
@@ -744,6 +750,37 @@ public final class SecurityUtil {
       }
     }
     return redirects;
+  }
+
+  /**
+   * The scheme and authority of a configured absolute URL, or {@code null} for anything else.
+   *
+   * <p>Anchors OpenMetadata's own fixed paths on the host an operator configured, rather than on
+   * whatever host a request claims to be.
+   */
+  public static String originOf(String configuredUrl) {
+    URI uri = parseOrNull(configuredUrl);
+    boolean hasOrigin = uri != null && uri.isAbsolute() && StringUtils.isNotBlank(uri.getHost());
+    return hasOrigin ? schemeAndAuthority(uri) : null;
+  }
+
+  private static String schemeAndAuthority(URI uri) {
+    try {
+      return new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null)
+          .toString();
+    } catch (URISyntaxException e) {
+      LOG.warn("Could not derive an origin from URL [{}]", uri, e);
+      return null;
+    }
+  }
+
+  private static URI parseOrNull(String value) {
+    try {
+      return StringUtils.isBlank(value) ? null : new URI(value.trim());
+    } catch (URISyntaxException e) {
+      LOG.warn("Ignoring unparseable URL [{}]", value);
+      return null;
+    }
   }
 
   private static URI parseTrustedRedirectUri(String value) {

@@ -47,7 +47,9 @@
         "PipelineReview",
         "DataQualityReview",
         "RecognizerFeedbackApproval",
-        "CustomTask"
+        "CustomTask",
+        "MemoryConflictReview",
+        "MetadataCompletion"
       ],
       "javaEnums": [
         {"name": "GlossaryApproval"},
@@ -64,7 +66,9 @@
         {"name": "PipelineReview"},
         {"name": "DataQualityReview"},
         {"name": "RecognizerFeedbackApproval"},
-        {"name": "CustomTask"}
+        {"name": "CustomTask"},
+        {"name": "MemoryConflictReview"},
+        {"name": "MetadataCompletion"}
       ]
     },
     "taskStatus": {
@@ -344,6 +348,11 @@
     "assignees": {
       "description": "Users or teams assigned to complete this task.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "useEntityOwnerFallback": {
+      "description": "Whether to assign entity owners when this task is created without assignees. Approval workflows disable this for an explicit wait strategy.",
+      "type": "boolean",
+      "default": true
     },
     "reviewers": {
       "description": "Users or teams who should review this task.",

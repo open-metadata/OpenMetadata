@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
@@ -275,7 +276,7 @@ test.describe('Task Navigation - Entity Page', () => {
       await taskCard.click();
 
       // Should open drawer with task details
-      const drawer = page.locator('.ant-drawer-content');
+      const drawer = page.getByTestId('activity-feed-drawer');
 
       if (await drawer.isVisible({ timeout: 5000 })) {
         // Drawer should show task details
@@ -481,7 +482,7 @@ test.describe('Task Navigation - URL Validation', () => {
     // because TASK-00001 is a task ID, not a table FQN
     const tableNotFound = page.waitForResponse(
       (r) => r.url().includes('/api/v1/tables/name/TASK-00001'),
-      { timeout: 30000 }
+      { timeout: ACTION_TIMEOUT }
     );
     await page.goto('/table/TASK-00001');
     const response = await tableNotFound;
@@ -649,7 +650,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       await expect(notificationBox).toBeVisible();
 
       const latestNotification = notificationBox
-        .locator('li.ant-list-item.notification-dropdown-list-btn')
+        .locator('li.notification-dropdown-list-btn')
         .first();
       await expect(latestNotification).toBeVisible();
 
@@ -751,7 +752,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
         await expect(notificationBox).toBeVisible();
 
         const latestNotification = notificationBox
-          .locator('li.ant-list-item.notification-dropdown-list-btn')
+          .locator('li.notification-dropdown-list-btn')
           .first();
         await expect(latestNotification).toBeVisible();
 

@@ -98,7 +98,7 @@ Real usage, `openmetadata-ui/src/main/resources/ui/src/components/DomainListing/
 
 ## Card
 
-`variant`: `default | elevated | outlined | ghost`. `color`:
+`variant`: `default | elevated | outlined | ghost | muted`. `color`:
 `default | brand | brandOutlined | error | warning | success`. `size`:
 `sm | md | lg` (controls `Card.Header`/`Card.Content`/`Card.Footer` padding).
 `isClickable` / `isSelected` add interactive/selected styling.
@@ -120,6 +120,19 @@ plain line.
 ```tsx
 <Divider label="or" labelAlign="center" />
 <Divider orientation="vertical" />
+```
+
+## Dialog dividers
+
+New modals pass `dividers="scroll"`: no divider under the title, and a footer divider only while
+`Dialog.Content` overflows (it appears when the form scrolls, never on a short confirmation).
+Never add your own border or `<Divider>` around a dialog's header or footer.
+
+```tsx
+<Dialog dividers="scroll" title={t('label.add-entity', { entity })} onClose={onClose}>
+  <Dialog.Content>{form}</Dialog.Content>
+  <Dialog.Footer>{actions}</Dialog.Footer>
+</Dialog>
 ```
 
 ## Color usage

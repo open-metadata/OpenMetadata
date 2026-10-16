@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Link } from 'react-router-dom';
 import { BasicEntityInfo } from '../../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
-import { ICON_DIMENSION } from '../../constants/constants';
 import { Task } from '../../generated/entity/data/pipeline';
 import {
   StoredProcedure,
@@ -42,6 +40,7 @@ export const mockTextBasedSummaryTitleResponse = (
 
 export const mockLinkBasedSummaryTitleResponse = (
   <Link
+    rel="noopener noreferrer"
     target="_blank"
     to="http://localhost:8080/taskinstance/list/?_flt_3_dag_id=dim_address_task">
     <div className="d-flex items-center">
@@ -51,7 +50,7 @@ export const mockLinkBasedSummaryTitleResponse = (
         ellipsis={{ tooltip: true }}>
         dim_address Task
       </Typography>
-      <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+      <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
     </div>
   </Link>
 );
@@ -168,6 +167,7 @@ export const mockEntityDataWithoutNestingResponse: BasicEntityInfo[] = [
     name: 'assert_table_exists',
     title: (
       <Link
+        rel="noopener noreferrer"
         target="_blank"
         to="http://localhost:8080/taskinstance/list/?_flt_3_dag_id=assert_table_exists">
         <div className="d-flex items-center">
@@ -177,7 +177,7 @@ export const mockEntityDataWithoutNestingResponse: BasicEntityInfo[] = [
             ellipsis={{ tooltip: true }}>
             Assert Table Exists
           </Typography>
-          <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+          <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
         </div>
       </Link>
     ),

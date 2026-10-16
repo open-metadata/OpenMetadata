@@ -31,9 +31,8 @@
       "$ref": "../../type/entityReferenceList.json"
     },
     "entityStatus": {
-      "description": "Status of this Knowledge Page (Draft, In Review, Approved, Rejected).",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "description": "Lifecycle stage of this Knowledge Page. When omitted, the page starts in Draft.",
+      "$ref": "../../type/status.json"
     },
     "tags": {
       "description": "Tags for this Page",

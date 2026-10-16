@@ -13,14 +13,16 @@
 
 import { expect } from '@playwright/test';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { deleteFixtureEntity } from '../../utils/apiResponse';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   createArticleViaApi,
   createMemoryViaApi,
+  MEMORIES_API,
   navigateToArticle,
   navigateToDashboard,
   parseResponseJson,
-  patchMemory,
+  recordMemoryOutcomes,
   uploadDocument,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -55,10 +57,39 @@ test.describe('Context Center - Dashboard', () => {
   let dataAsset: TopicClass;
 
   test.beforeAll(async ({ browser }) => {
+    contextArticleIdsToCleanup.clear();
+    contextMemoryIdsToCleanup.clear();
+    contextFileIdsToCleanup.clear();
+    contextFolderIdsToCleanup.clear();
     const { apiContext, afterAction } = await createNewPage(browser);
     dataAsset = new TopicClass();
     await dataAsset.create(apiContext);
     await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    try {
+      for (const [endpoint, ids] of [
+        ['/api/v1/contextCenter/pages', contextArticleIdsToCleanup],
+        [MEMORIES_API, contextMemoryIdsToCleanup],
+        ['/api/v1/contextCenter/drive/files', contextFileIdsToCleanup],
+        ['/api/v1/contextCenter/drive/folders', contextFolderIdsToCleanup],
+      ] as const) {
+        for (const id of ids) {
+          await deleteFixtureEntity(
+            apiContext,
+            `${endpoint}/${id}?hardDelete=true&recursive=true`
+          );
+        }
+        ids.clear();
+      }
+      if (dataAsset?.entityResponseData.id) {
+        await dataAsset.delete(apiContext);
+      }
+    } finally {
+      await afterAction();
+    }
   });
 
   test.beforeEach(async ({ page }) => {
@@ -129,7 +160,7 @@ test.describe('Context Center - Dashboard', () => {
       }
     });
 
-    test('recently created memory appears in the Memories pillar card recent list', async ({
+    test('recently created unprocessed memory appears in the Memories pillar card recent list', async ({
       browser,
       page,
     }) => {
@@ -144,6 +175,7 @@ test.describe('Context Center - Dashboard', () => {
         answer: 'Dashboard recent memory fixture answer',
         shareConfig: { visibility: 'Shared' },
       });
+      expect(memory.entityStatus).toBe('Unprocessed');
       contextMemoryIdsToCleanup.add(memory.id);
       await afterAction();
 
@@ -151,6 +183,9 @@ test.describe('Context Center - Dashboard', () => {
 
       const memoryCard = page.getByTestId('memory-detail-card');
       await expect(memoryCard).toBeVisible();
+      await expect(
+        memoryCard.getByRole('button', { name: 'View All Memories' })
+      ).toBeEnabled();
 
       const seededMemory = memoryCard.getByText(title);
       const isStillInTopThree = await seededMemory
@@ -201,7 +236,7 @@ test.describe('Context Center - Dashboard', () => {
   // ─── 3. Most Cited Memories Widget ───────────────────────────────────────
 
   test.describe('Most Cited Memories Widget', () => {
-    test('memory with highest usageCount appears at the top of the Most Cited Memories widget', async ({
+    test('memory applied to the most answers appears at the top of the Most Cited Memories widget', async ({
       browser,
       page,
     }) => {
@@ -214,26 +249,37 @@ test.describe('Context Center - Dashboard', () => {
         title,
         question: 'Most cited dashboard fixture question',
         answer: 'Most cited dashboard fixture answer',
+        entityStatus: 'Approved',
         shareConfig: { visibility: 'Shared' },
       });
       contextMemoryIdsToCleanup.add(memory.id);
 
-      // usageCount is excluded from ContextMemoryRepository's change
-      // tracking (server-side telemetry field), so a patch touching only
-      // usageCount is silently dropped — flipping `pinned` (a tracked
-      // field) in the same patch forces persistence, carrying usageCount
-      // along with it. Same technique used in ContextCenterMemories.spec.ts.
-      await patchMemory(apiContext, memory.id, [
-        { op: 'add', path: '/usageCount', value: 999999 },
-        { op: 'add', path: '/lastUsedAt', value: Date.now() },
-        { op: 'add', path: '/pinned', value: true },
-      ]);
+      const pendingTitle = `CC Pending Most Cited Dashboard ${uuid()}`;
+      const pendingMemory = await createMemoryViaApi(apiContext, {
+        name: `cc_memory_pending_most_cited_${uuid()}`,
+        title: pendingTitle,
+        question: 'Unprocessed most cited fixture question',
+        answer: 'Unprocessed most cited fixture answer',
+        shareConfig: { visibility: 'Shared' },
+      });
+      expect(pendingMemory.entityStatus).toBe('Unprocessed');
+      contextMemoryIdsToCleanup.add(pendingMemory.id);
+
+      await recordMemoryOutcomes(apiContext, memory.id, {
+        appliedCount: 999999,
+        lastAppliedAt: Date.now(),
+      });
+      await recordMemoryOutcomes(apiContext, pendingMemory.id, {
+        appliedCount: 2000000,
+        lastAppliedAt: Date.now(),
+      });
       await afterAction();
 
       await navigateToDashboard(page);
 
       const mostCitedCard = page.getByTestId('most-cited-memories-card');
       await expect(mostCitedCard).toBeVisible();
+      await expect(mostCitedCard.getByText(pendingTitle)).not.toBeVisible();
 
       const firstItem = mostCitedCard.getByTestId('most-cited-count').first();
       await expect(firstItem).toContainText('Cited 999999 times');
@@ -393,9 +439,35 @@ test.describe('Context Center - Dashboard', () => {
 
   test.describe('Pillar Card Navigation', () => {
     test('clicking each top summary card redirects to its corresponding list page', async ({
+      browser,
       page,
     }) => {
       test.slow();
+
+      const { apiContext, afterAction } = await createNewPage(browser);
+      try {
+        const article = await createArticleViaApi(apiContext, {
+          displayName: `CC Navigation Article ${uuid()}`,
+        });
+        contextArticleIdsToCleanup.add(article.id);
+        const document = await uploadDocument(
+          apiContext,
+          `cc-navigation-doc-${uuid()}.txt`,
+          Buffer.from('dashboard navigation fixture')
+        );
+        contextFileIdsToCleanup.add(document.id);
+        const memory = await createMemoryViaApi(apiContext, {
+          name: `cc_memory_navigation_${uuid()}`,
+          title: `CC Navigation Memory ${uuid()}`,
+          question: 'Dashboard navigation fixture question',
+          answer: 'Dashboard navigation fixture answer',
+          shareConfig: { visibility: 'Shared' },
+        });
+        expect(memory.entityStatus).toBe('Unprocessed');
+        contextMemoryIdsToCleanup.add(memory.id);
+      } finally {
+        await afterAction();
+      }
 
       await test.step('Articles card redirects to /context-center/articles', async () => {
         await navigateToDashboard(page);

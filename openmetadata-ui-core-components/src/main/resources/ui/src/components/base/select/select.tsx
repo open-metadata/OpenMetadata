@@ -1,20 +1,24 @@
 import { Avatar } from '@/components/base/avatar/avatar';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { fontSizeClass } from '@/utils/tailwindClasses';
 import { ChevronDown } from '../../../icons';
-import type { FC, ReactNode, Ref, RefAttributes } from 'react';
-import { createContext, isValidElement } from 'react';
+import type { FC, ReactNode, RefAttributes } from 'react';
+import { createContext, forwardRef, isValidElement } from 'react';
 import type { SelectProps as AriaSelectProps } from 'react-aria-components';
 import {
   Button as AriaButton,
-  ListBox as AriaListBox,
   Select as AriaSelect,
   SelectValue as AriaSelectValue,
 } from 'react-aria-components';
 import { ComboBox } from './combobox';
+import {
+  SELECT_VIRTUALIZATION_THRESHOLD,
+  SelectListBox,
+} from './select-list-box';
 import { Popover } from './popover';
 import { SelectItem } from './select-item';
 
@@ -41,11 +45,15 @@ export const SelectEmptyState = ({
   emptyState,
 }: {
   emptyState?: ReactNode;
-}) => (
-  <div className="tw:px-3 tw:py-4 tw:text-center tw:text-sm tw:text-tertiary">
-    {emptyState ?? 'No data'}
-  </div>
-);
+}) => {
+  const { t } = useCoreTranslation();
+
+  return (
+    <div className="tw:px-3 tw:py-4 tw:text-center tw:text-sm tw:text-tertiary">
+      {emptyState ?? t('label.no-data-found')}
+    </div>
+  );
+};
 
 interface SelectProps
   extends Omit<AriaSelectProps<SelectItemType>, 'children' | 'items'>,
@@ -64,7 +72,6 @@ interface SelectValueProps {
   isFocused: boolean;
   isDisabled: boolean;
   placeholder?: string;
-  ref?: Ref<HTMLButtonElement>;
   icon?: FC | ReactNode;
 }
 
@@ -81,7 +88,6 @@ const SelectValue = ({
   fontSize,
   placeholder,
   icon,
-  ref,
 }: SelectValueProps) => {
   return (
     <AriaButton
@@ -94,8 +100,7 @@ const SelectValue = ({
           'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
         isDisabled &&
           'tw:cursor-not-allowed tw:bg-disabled_subtle tw:text-disabled'
-      )}
-      ref={ref}>
+      )}>
       <AriaSelectValue<SelectItemType>
         className={cx(
           'tw:flex tw:h-max tw:w-full tw:items-center tw:justify-start tw:gap-2 tw:truncate tw:text-left tw:align-middle',
@@ -175,62 +180,83 @@ export const SelectContext = createContext<{
   size: 'sm',
 });
 
-const Select = ({
-  placeholder = 'Select',
-  icon,
-  size = 'sm',
-  fontSize = 'sm',
-  children,
-  items,
-  label,
-  hint,
-  tooltip,
-  emptyState,
-  className,
-  ...rest
-}: SelectProps) => {
-  return (
-    <SelectContext.Provider value={{ fontSize, size }}>
-      <AriaSelect
-        {...rest}
-        className={(state) =>
-          cx(
-            'tw:flex tw:flex-col tw:gap-1.5',
-            typeof className === 'function' ? className(state) : className
-          )
-        }>
-        {(state) => (
-          <>
-            {label && (
-              <Label isRequired={state.isRequired} tooltip={tooltip}>
-                {label}
-              </Label>
-            )}
+const Select = forwardRef<HTMLDivElement, Omit<SelectProps, 'ref'>>(
+  function Select(
+    {
+      placeholder = 'Select',
+      icon,
+      size = 'sm',
+      fontSize = 'sm',
+      children,
+      items,
+      label,
+      hint,
+      tooltip,
+      emptyState,
+      className,
+      // Without this react-aria keeps an empty list closed, so `emptyState`
+      // would never render.
+      allowsEmptyCollection = true,
+      ...rest
+    },
+    ref
+  ) {
+    const isVirtualized =
+      (items?.length ?? 0) > SELECT_VIRTUALIZATION_THRESHOLD;
 
-            <SelectValue
-              {...state}
-              {...{ size, fontSize, placeholder }}
-              icon={icon}
-            />
+    return (
+      <SelectContext.Provider value={{ fontSize, size }}>
+        <AriaSelect
+          {...rest}
+          allowsEmptyCollection={allowsEmptyCollection}
+          className={(state) =>
+            cx(
+              'tw:flex tw:flex-col tw:gap-1.5',
+              typeof className === 'function' ? className(state) : className
+            )
+          }
+          ref={ref}>
+          {(state) => (
+            <>
+              {label && (
+                <Label isRequired={state.isRequired} tooltip={tooltip}>
+                  {label}
+                </Label>
+              )}
 
-            <Popover className={rest.popoverClassName} size={size}>
-              <AriaListBox
-                className="tw:size-full tw:outline-hidden"
-                items={items}
-                renderEmptyState={() => (
-                  <SelectEmptyState emptyState={emptyState} />
-                )}>
-                {children}
-              </AriaListBox>
-            </Popover>
+              <SelectValue
+                {...state}
+                {...{ size, fontSize, placeholder }}
+                icon={icon}
+              />
 
-            {hint && <HintText isInvalid={state.isInvalid}>{hint}</HintText>}
-          </>
-        )}
-      </AriaSelect>
-    </SelectContext.Provider>
-  );
-};
+              <Popover
+                className={cx(
+                  isVirtualized && 'tw:overflow-hidden tw:py-0',
+                  rest.popoverClassName
+                )}
+                size={size}>
+                <SelectListBox
+                  items={items}
+                  renderEmptyState={() => (
+                    <SelectEmptyState emptyState={emptyState} />
+                  )}
+                  size={size}
+                  virtualize={isVirtualized}>
+                  {children}
+                </SelectListBox>
+              </Popover>
+
+              {hint && <HintText isInvalid={state.isInvalid}>{hint}</HintText>}
+            </>
+          )}
+        </AriaSelect>
+      </SelectContext.Provider>
+    );
+  }
+);
+
+Select.displayName = 'Select';
 
 const _Select = Select as typeof Select & {
   ComboBox: typeof ComboBox;

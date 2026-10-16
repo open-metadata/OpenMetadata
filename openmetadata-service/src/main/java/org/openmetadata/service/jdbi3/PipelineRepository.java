@@ -24,7 +24,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -887,7 +887,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Pipeline entity, String fields) {
+  public EntityInterface<?> getParentEntity(Pipeline entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -900,7 +900,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     for (Task task : listOrEmpty(entity.getTasks())) {
       validateTags(task.getTags());
       task.setTags(addDerivedTags(task.getTags()));
-      checkMutuallyExclusive(task.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(task.getTags());
     }
   }
 
@@ -971,7 +971,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Pipeline pipeline = (Pipeline) entity;
     EntityUtil.mergeTags(allTags, pipeline.getTags());
@@ -1363,8 +1363,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
       sparql.append("}");
 
-      // Execute the SPARQL update
-      rdfRepository.executeSparqlUpdate(sparql.toString());
+      try {
+        rdfRepository.executeSparqlUpdate(sparql.toString());
+      } finally {
+        // A failure can arrive after Fuseki applied the update, such as a timeout on the response.
+        RdfUpdater.recordUntrackedWrite();
+      }
 
     } catch (Exception e) {
       LOG.error("Failed to store pipeline execution in RDF", e);

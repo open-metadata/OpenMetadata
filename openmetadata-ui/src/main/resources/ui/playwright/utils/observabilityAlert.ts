@@ -30,6 +30,8 @@ import {
   addPipelineStatusUpdatesAction,
   checkRecentEventDetails,
   inputBasicAlertInformation,
+  replaceAlertSource,
+  sourceLabelOf,
   visitAlertDetailsPage,
   visitEditAlertPage,
   waitForRecentEventsToFinishExecution,
@@ -84,7 +86,13 @@ export const visitObservabilityAlertPage = async (page: Page) => {
       await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
     }
 
-    await page.waitForURL('**/observability/alerts', { timeout: 10_000 });
+    // `commit`, not the default `load`: the route change is client-side, and
+    // `load` also waits on third-party subresources (the scarf.sh pixel in
+    // index.html) that can hang in CI after the page has fully rendered.
+    await page.waitForURL('**/observability/alerts', {
+      timeout: 10_000,
+      waitUntil: 'commit',
+    });
   }).toPass({ timeout: 30_000, intervals: [1_000, 2_000] });
 
   await getAlerts;
@@ -479,11 +487,7 @@ export const editObservabilityAlert = async ({
   await fillDescriptionBox(page, ALERT_UPDATED_DESCRIPTION);
 
   // Update source
-  await page.click('[data-testid="source-select"]');
-  await page
-    .getByTestId(`${sourceName}-option`)
-    .getByText(sourceDisplayName)
-    .click();
+  await replaceAlertSource({ page, sourceName, sourceDisplayName });
 
   // Filters should reset after source change
   await expect(page.getByTestId('filter-select-0')).not.toBeAttached();
@@ -594,13 +598,8 @@ export const createCommonObservabilityAlert = async ({
 
     // Select filter
     await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-    await page.click(
-      `.ant-select-dropdown:visible [data-testid="${filter.name}-filter-option"]`
-    );
+    await page.getByRole('option', { name: filter.name, exact: true }).click();
 
-    // Focus the combobox first. Ant Design Select with mode="multiple" renders the
-    // search input as readonly until focused, which makes page.fill() fail. Click also
-    // opens the dropdown so the search query fires when we fill.
     await page.click(
       `[data-testid="${filter.inputSelector}"] [role="combobox"]`
     );
@@ -609,28 +608,23 @@ export const createCommonObservabilityAlert = async ({
     const searchOptions = page.waitForResponse('/api/v1/search/query?q=*');
     await page.fill(
       `[data-testid="${filter.inputSelector}"] [role="combobox"]`,
-      filter.inputValue,
-      {
-        force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
-      }
+      filter.inputValue
     );
 
     await searchOptions;
 
-    await page.click(
-      `.ant-select-dropdown:visible [title="${
-        filter.inputValueId ?? filter.inputValue
-      }"]`
-    );
+    await page
+      .getByRole('option', {
+        name: filter.inputValueId ?? filter.inputValue,
+        exact: true,
+      })
+      .click();
 
-    // Check if option is selected
     await expect(
-      page.locator(
-        `[data-testid="${filter.inputSelector}"] [title="${
-          filter.inputValueId ?? filter.inputValue
-        }"]`
-      )
-    ).toBeAttached();
+      page
+        .getByTestId(filter.inputSelector)
+        .getByText(filter.inputValueId ?? filter.inputValue, { exact: true })
+    ).toBeVisible();
 
     if (filter.exclude) {
       // Change filter effect
@@ -647,18 +641,12 @@ export const createCommonObservabilityAlert = async ({
     // Select action
     await page.click(`[data-testid="trigger-select-${actionNumber}"]`);
 
-    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
-    await page.click(
-      `.ant-select-dropdown:visible [data-testid="${action.name}-filter-option"]:visible`
-    );
-    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+    await expect(page.getByRole('listbox')).toHaveCount(1);
+    await page.getByRole('option', { name: action.name, exact: true }).click();
+    await expect(page.getByRole('listbox')).toHaveCount(0);
 
     if (action.inputs && action.inputs.length > 0) {
       for (const input of action.inputs) {
-        // Focus the combobox first. Ant Design Select with mode="multiple" renders
-        // the search input as readonly until focused; without the click, page.fill()
-        // (even with force: true) doesn't trigger AsyncSelect's onSearch handler, so
-        // the API call never fires and no options appear in the dropdown.
         await page.click(
           `[data-testid="${input.inputSelector}"] [role="combobox"]`
         );
@@ -668,10 +656,7 @@ export const createCommonObservabilityAlert = async ({
         );
         await page.fill(
           `[data-testid="${input.inputSelector}"] [role="combobox"]`,
-          input.inputValue,
-          {
-            force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
-          }
+          input.inputValue
         );
         if (input.waitForAPI) {
           await getSearchResult;
@@ -679,11 +664,15 @@ export const createCommonObservabilityAlert = async ({
         // Click the option whose title is the rendered label. Use inputValueId
         // when the displayed label differs from the searched value.
         const optionTitle = input.inputValueId ?? input.inputValue;
-        await page.click(`[title="${optionTitle}"]:visible`);
+        await page
+          .getByRole('option', { name: optionTitle, exact: true })
+          .click();
 
-        await expect(page.getByTestId(input.inputSelector)).toHaveText(
-          optionTitle
-        );
+        await expect(
+          page
+            .getByTestId(input.inputSelector)
+            .getByText(optionTitle, { exact: true })
+        ).toBeVisible();
 
         await clickOutside(page);
       }
@@ -734,18 +723,20 @@ export const checkAlertConfigDetails = async ({
   tableName: string;
 }) => {
   // Verify alert configs
-  await expect(page.getByTestId('source-select')).toHaveText(sourceName);
+  await expect(page.getByTestId('source-select')).toHaveText(
+    sourceLabelOf(sourceName)
+  );
 
-  await expect(page.getByTestId('filter-select-0')).toHaveText('Table Name');
+  await expect(
+    page.getByTestId('filter-select-0').getByRole('button')
+  ).toHaveText('Table Name');
   await expect(
     page.getByTestId('fqn-list-select').getByTitle(tableName)
   ).toBeAttached();
 
   await expect(
-    page
-      .getByTestId('trigger-select-0')
-      .getByTestId('Get Schema Changes-filter-option')
-  ).toBeAttached();
+    page.getByTestId('trigger-select-0').getByRole('button')
+  ).toHaveText('Get Schema Changes');
 
   await expect(
     page.getByTestId('destination-category-select-0').getByRole('combobox')

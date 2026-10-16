@@ -27,9 +27,12 @@ import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.EntityValidation;
+import org.openmetadata.it.util.GovernanceWorkflowActions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDashboard;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
@@ -37,8 +40,11 @@ import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.api.domains.DataProductPortsView;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Dashboard;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
@@ -50,6 +56,7 @@ import org.openmetadata.schema.entity.domains.odps.ODPSProductDetails;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -60,6 +67,9 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -114,6 +124,40 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         .withName(name)
         .withDescription("Test data product")
         .withDomains(List.of(domain.getFullyQualifiedName()));
+  }
+
+  @Test
+  void patch_approvingADataProductClosesItsOpenApprovalTask(TestNamespace ns) {
+    Domain domain = getOrCreateDomain(ns);
+    DataProduct dataProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_approval_task"))
+                .withDescription("Data product with an open approval task")
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+    // Put in review by someone other than the approver, so the approval is a change of its own
+    // rather than one consolidated into the same user's earlier edit
+    GovernanceWorkflowActions.moveToStage(
+        getEntityType(), dataProduct.getId(), EntityStatus.IN_REVIEW);
+    DataProduct inReview = getEntity(dataProduct.getId().toString());
+    Task approvalTask =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("dp_approval"))
+                    .withCategory(TaskCategory.Approval)
+                    .withType(TaskEntityType.RequestApproval)
+                    .withAbout(
+                        String.format(
+                            "<#E::%s::%s>", getEntityType(), inReview.getFullyQualifiedName())));
+
+    inReview.setEntityStatus(EntityStatus.APPROVED);
+    patchEntity(inReview.getId().toString(), inReview);
+
+    Task closed = SdkClients.adminClient().tasks().get(approvalTask.getId().toString());
+    assertEquals(TaskEntityStatus.Cancelled, closed.getStatus());
+    assertEquals("Approved the data product", closed.getResolution().getComment());
   }
 
   private Domain getOrCreateDomain(TestNamespace ns) {
@@ -831,6 +875,77 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         .update(editableSchema.getId().toString(), editableSchema);
   }
 
+  @Test
+  void test_domainRemovalKeepsDataProductsOnAssetsWithInheritedDomain(TestNamespace ns)
+      throws Exception {
+    Domain finance = createTestDomain(ns, "finance_inherited");
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db_inherited"))
+                    .withService(getOrCreateDatabaseService(ns).getFullyQualifiedName())
+                    .withDomains(List.of(finance.getFullyQualifiedName())));
+    // Neither the schema nor its table has a domain of its own: both inherit finance.
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema_inherited"))
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table = createChildTable(ns, "table_inherited", schema, null);
+
+    DataProduct clearedProduct = createFinanceDataProduct(ns, "dp_cleared", finance);
+    DataProduct schemaProduct = createFinanceDataProduct(ns, "dp_on_schema", finance);
+    DataProduct tableProduct = createFinanceDataProduct(ns, "dp_on_table", finance);
+    bulkAddAssets(
+        clearedProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(schema.getEntityReference())));
+    bulkAddAssets(
+        schemaProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(schema.getEntityReference())));
+    bulkAddAssets(
+        tableProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    DataProduct current =
+        SdkClients.adminClient().dataProducts().get(clearedProduct.getId().toString(), "domains");
+    current.setDomains(List.of());
+    SdkClients.adminClient().dataProducts().update(current.getId().toString(), current);
+
+    // The schema and table still resolve finance by inheritance, so every assignment still passes
+    // "Data Product Domain Validation" (a data product with no domains never conflicts).
+    List<EntityReference> schemaDataProducts =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .get(schema.getId().toString(), "dataProducts")
+            .getDataProducts();
+    assertTrue(
+        hasDataProduct(schemaDataProducts, clearedProduct.getId()),
+        "The cleared data product must stay on a schema that still inherits a domain");
+    assertTrue(
+        hasDataProduct(schemaDataProducts, schemaProduct.getId()),
+        "An unrelated finance data product must stay on a schema that still inherits finance");
+    List<EntityReference> tableDataProducts =
+        SdkClients.adminClient()
+            .tables()
+            .get(table.getId().toString(), "dataProducts")
+            .getDataProducts();
+    assertTrue(
+        hasDataProduct(tableDataProducts, tableProduct.getId()),
+        "A finance data product must stay on a descendant table that still inherits finance");
+  }
+
+  private DataProduct createFinanceDataProduct(TestNamespace ns, String suffix, Domain finance) {
+    return createEntity(
+        new CreateDataProduct()
+            .withName(ns.prefix(suffix))
+            .withDescription("Data product in finance")
+            .withDomains(List.of(finance.getFullyQualifiedName())));
+  }
+
   private void moveDataProductDomain(DataProduct dataProduct, Domain targetDomain) {
     DataProduct current =
         SdkClients.adminClient().dataProducts().get(dataProduct.getId().toString(), "domains");
@@ -841,29 +956,6 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   private boolean hasDataProduct(List<EntityReference> dataProducts, UUID dataProductId) {
     return dataProducts != null
         && dataProducts.stream().anyMatch(dp -> dp.getId().equals(dataProductId));
-  }
-
-  @Test
-  void test_entityStatusUpdateAndPatch(TestNamespace ns) throws Exception {
-    Domain domain = getOrCreateDomain(ns);
-    CreateDataProduct createDataProduct =
-        new CreateDataProduct()
-            .withName(ns.prefix("dp_status"))
-            .withDescription("Data product for status test")
-            .withDomains(List.of(domain.getFullyQualifiedName()));
-    DataProduct dataProduct = createEntity(createDataProduct);
-
-    assertEquals(EntityStatus.UNPROCESSED, dataProduct.getEntityStatus());
-
-    dataProduct.setEntityStatus(EntityStatus.IN_REVIEW);
-    DataProduct updatedDataProduct =
-        SdkClients.adminClient().dataProducts().update(dataProduct.getId().toString(), dataProduct);
-
-    assertEquals(EntityStatus.IN_REVIEW, updatedDataProduct.getEntityStatus());
-
-    DataProduct retrievedDataProduct =
-        SdkClients.adminClient().dataProducts().get(updatedDataProduct.getId().toString());
-    assertEquals(EntityStatus.IN_REVIEW, retrievedDataProduct.getEntityStatus());
   }
 
   @Test

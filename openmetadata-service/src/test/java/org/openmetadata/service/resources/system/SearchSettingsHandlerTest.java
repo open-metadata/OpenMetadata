@@ -450,6 +450,34 @@ class SearchSettingsHandlerTest {
   }
 
   @Test
+  void shippedDefaultsIndexColumns() {
+    assertTrue(defaultSearchSettings.getGlobalSettings().getEnableColumnIndexing());
+  }
+
+  @Test
+  void mergeKeepsColumnIndexingTurnedOff() {
+    SearchSettings existing = createBaseSettings(8000);
+    existing.getGlobalSettings().setEnableColumnIndexing(false);
+
+    SearchSettings merged =
+        searchSettingsHandler.mergeSearchSettings(defaultSearchSettings, existing);
+
+    assertFalse(merged.getGlobalSettings().getEnableColumnIndexing());
+  }
+
+  @Test
+  void mergeTakesColumnIndexingFromDefaultsWhenIncomingLeavesItUnset() {
+    SearchSettings defaults = createBaseSettings(5000);
+    defaults.getGlobalSettings().setEnableColumnIndexing(false);
+    SearchSettings existing = createBaseSettings(8000);
+    existing.getGlobalSettings().setEnableColumnIndexing(null);
+
+    SearchSettings merged = searchSettingsHandler.mergeSearchSettings(defaults, existing);
+
+    assertFalse(merged.getGlobalSettings().getEnableColumnIndexing());
+  }
+
+  @Test
   void testMergeWithNullIncomingReturnsDefaults() {
     SearchSettings defaults = createBaseSettings(5000);
     SearchSettings merged = searchSettingsHandler.mergeSearchSettings(defaults, null);

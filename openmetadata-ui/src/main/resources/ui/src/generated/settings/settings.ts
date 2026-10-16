@@ -39,6 +39,7 @@ export enum SettingType {
     EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
+    GlossarySettings = "glossarySettings",
     GlossaryTermRelationSettings = "glossaryTermRelationSettings",
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
@@ -112,10 +113,14 @@ export enum SettingType {
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
  *
+ * Catalog-wide preferences for glossary terms.
+ *
  * Administrator-managed SPARQL query templates available across the installation.
  *
- * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
- * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
+ * App-wide UI configuration. It exists both in the server configuration (yaml/env) and in
+ * the database, and configSource.app (APP_CONFIG_SOURCE, default DB) decides which one
+ * wins. In DB mode the stored value wins, and the server configuration only fills values
+ * the stored setting lacks.
  *
  * Fingerprints of bundled resources successfully applied during server startup.
  */
@@ -631,13 +636,16 @@ export interface PipelineServiceClientConfiguration {
      */
     authorizerConfiguration?: AuthorizerConfiguration;
     /**
-     * Automatically create Table and Pipeline entities when they are referenced in OpenLineage
-     * events but don't exist in OpenMetadata.
+     * Create a Table that an OpenLineage event references but OpenMetadata lacks, along with
+     * its missing Database and Database Schema, when the dataset namespace maps to a Database
+     * Service through namespaceToServiceMapping and the event carries the table's columns in
+     * its schema facet. Pipelines are never created.
      */
     autoCreateEntities?: boolean;
     /**
-     * Name of the Pipeline Service to use when auto-creating Pipeline entities from OpenLineage
-     * jobs. This service must exist in OpenMetadata.
+     * Name of the Pipeline Service searched for the Pipeline of an OpenLineage job, named
+     * '<namespace>-<job name>'. Pipelines are never created from OpenLineage events; a job
+     * without one is reported in the response and its edges carry no pipeline.
      */
     defaultPipelineService?: string;
     /**
@@ -646,9 +654,10 @@ export interface PipelineServiceClientConfiguration {
      */
     eventTypeFilter?: EventTypeFilter[];
     /**
-     * Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names. Used to
-     * resolve dataset references to existing tables. Example: 'postgresql://prod-db:5432' ->
-     * 'prod-postgres'
+     * Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names, matched
+     * exactly and then by the longest namespace prefix. Used to resolve dataset references to
+     * existing tables, and the only way a missing table can be created (see
+     * autoCreateEntities). Example: 'postgresql://prod-db:5432' -> 'prod-postgres'
      */
     namespaceToServiceMapping?: { [key: string]: string };
     /**
@@ -673,6 +682,13 @@ export interface PipelineServiceClientConfiguration {
      * 30000ms (30 seconds)
      */
     connectTimeout?: number;
+    /**
+     * Largest MCP tool response, in characters. Tools return fewer items to stay under it, so
+     * it bounds how much of the MCP client's context one call can use. A saved change applies
+     * right away on the server that handled the save; other servers in a cluster pick it up on
+     * restart.
+     */
+    maxResponseChars?: number;
     /**
      * Name of the MCP server
      */
@@ -703,6 +719,11 @@ export interface PipelineServiceClientConfiguration {
      */
     relationTypes?: GlossaryTermRelationType[];
     /**
+     * Apply classification tags from glossary terms to their associated assets. Changes to
+     * existing search results require reindexing.
+     */
+    enableTagPropagation?: boolean;
+    /**
      * Installation query templates visible to SPARQL console users.
      */
     queryTemplates?: SavedSparqlQuery[];
@@ -712,6 +733,16 @@ export interface PipelineServiceClientConfiguration {
      * Null means no tenant default is configured.
      */
     defaultAppMode?: DefaultAppMode | null;
+    /**
+     * Tenant-wide default order of columns in table schema views. Users can still change the
+     * order per page from the Sort menu; that choice is not saved. Null means no tenant default
+     * is configured, and columns are ordered alphabetically.
+     */
+    defaultColumnOrder?: DefaultColumnOrder | null;
+    /**
+     * Tenant-wide default time format for UI display.
+     */
+    defaultTimeFormat?: DefaultTimeFormat;
     /**
      * Timestamp when the fingerprints were last persisted.
      */
@@ -1626,12 +1657,9 @@ export interface OidcClientConfig {
      */
     discoveryUri: string;
     /**
-     * End the OpenMetadata session when the identity provider ends its own. OpenMetadata then
-     * renews the provider's tokens on the provider's schedule while the user is active, and
-     * signs the user out once the provider rejects its refresh token: after the provider's idle
-     * or maximum session lifetime, or a sign-out on providers that revoke refresh tokens with
-     * the session (Keycloak does; Microsoft Entra ID does not). When off, a session lasts the
-     * configured session expiry whatever the provider does. Applies to confidential clients.
+     * [DEPRECATED: ignored] Confidential OIDC sessions always end with the identity provider's:
+     * each refresh redeems the provider's refresh token for the browser's next ID token, and a
+     * refresh token the provider rejects ends the OpenMetadata session too.
      */
     endSessionWithProvider?: boolean;
     /**
@@ -1684,7 +1712,9 @@ export interface OidcClientConfig {
      */
     tenant: string;
     /**
-     * Lifetime in seconds of the OpenMetadata JWT issued after OIDC authentication.
+     * [DEPRECATED: ignored] OpenMetadata no longer issues its own token after OIDC
+     * authentication: the browser presents the identity provider's ID token, whose lifetime the
+     * provider sets.
      */
     tokenValidity?: number;
     /**
@@ -1950,6 +1980,19 @@ export enum DefaultAppMode {
     Classic = "classic",
 }
 
+export enum DefaultColumnOrder {
+    Alphabetical = "alphabetical",
+    SourceOrder = "sourceOrder",
+}
+
+/**
+ * Tenant-wide default time format for UI display.
+ */
+export enum DefaultTimeFormat {
+    The12H = "12h",
+    The24H = "24h",
+}
+
 /**
  * Semantics rule defined in the data contract.
  */
@@ -2059,6 +2102,12 @@ export interface GlobalSettings {
      * Flag to enable or disable RBAC Search Configuration globally.
      */
     enableAccessControl?: boolean;
+    /**
+     * Index table columns as standalone search documents in the column search index. Disabling
+     * it stops column indexing and deletes the column search index; enabling it creates the
+     * index again, and a reindex of tables fills it.
+     */
+    enableColumnIndexing?: boolean;
     /**
      * Optional list of numeric field-based boosts applied globally.
      */
