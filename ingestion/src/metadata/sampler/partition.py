@@ -12,6 +12,7 @@
 """Partition utility"""
 
 from metadata.generated.schema.entity.data.table import (
+    Column,
     DataType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
@@ -162,13 +163,15 @@ def _window_for_granularity(
     return _GRANULARITY_WINDOW.get((interval or "").upper(), (PartitionIntervalUnit.DAY, 3))
 
 
-def _get_partition_column_type(entity: Table, column_name: str | None) -> DataType | None:
+def _get_partition_column(entity: Table, column_name: str | None) -> Column | None:
     if not column_name:
         return None
     for column in entity.columns or []:
-        if column.name.root.lower() == column_name.lower():
-            return column.dataType
-    return None
+        if model_str(column.name) == column_name:
+            return column
+    # Quoted identifiers can differ only by case. A folded match is safe only when it is unique.
+    matches = [column for column in entity.columns or [] if model_str(column.name).lower() == column_name.lower()]
+    return matches[0] if len(matches) == 1 else None
 
 
 def _infer_partition_config(
@@ -186,13 +189,18 @@ def _infer_partition_config(
         return None
 
     partition = table_partition.columns[0]
-    column_type = _get_partition_column_type(entity, partition.columnName)
+    column = _get_partition_column(entity, partition.columnName)
+    column_type = column.dataType if column else None
 
-    if partition.intervalType == PartitionIntervalTypes.TIME_UNIT and column_type in _TIME_PARTITION_DATA_TYPES:
+    if (
+        column
+        and partition.intervalType == PartitionIntervalTypes.TIME_UNIT
+        and column_type in _TIME_PARTITION_DATA_TYPES
+    ):
         interval_unit, interval = _window_for_granularity(partition.interval)
         return PartitionProfilerConfig(
             enablePartitioning=True,
-            partitionColumnName=partition.columnName,
+            partitionColumnName=model_str(column.name),
             partitionIntervalUnit=interval_unit,
             partitionInterval=interval,
             partitionIntervalType=partition.intervalType,
@@ -201,10 +209,14 @@ def _infer_partition_config(
             partitionIntegerRangeEnd=None,
         )
 
-    if partition.intervalType == PartitionIntervalTypes.INTEGER_RANGE and column_type in _INTEGER_PARTITION_DATA_TYPES:
+    if (
+        column
+        and partition.intervalType == PartitionIntervalTypes.INTEGER_RANGE
+        and column_type in _INTEGER_PARTITION_DATA_TYPES
+    ):
         return PartitionProfilerConfig(
             enablePartitioning=True,
-            partitionColumnName=partition.columnName,
+            partitionColumnName=model_str(column.name),
             partitionIntervalUnit=None,
             partitionInterval=None,
             partitionIntervalType=partition.intervalType,

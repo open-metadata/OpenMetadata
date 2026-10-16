@@ -16,6 +16,10 @@ from types import SimpleNamespace
 
 import pytest
 from pydantic import BaseModel
+from sqlalchemy import DATE, DATETIME, MetaData
+from sqlalchemy import Column as SQAColumn
+from sqlalchemy import Table as SQATable
+from sqlalchemy.engine.default import DefaultDialect
 
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -41,7 +45,10 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
     DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
+from metadata.profiler.processor.handle_partition import build_partition_predicate
 from metadata.profiler.source.database.base.profiler_source import ProfilerSource
+from metadata.sampler.models import TableConfig
 from metadata.sampler.partition import get_partition_details
 from metadata.utils.logger import sampler_logger
 
@@ -332,7 +339,7 @@ def test_auto_detect_time_unit_partition(service_type, data_type, interval, expe
 
     assert partition == PartitionProfilerConfig(
         enablePartitioning=True,
-        partitionColumnName="Order_Date",
+        partitionColumnName="order_date",
         partitionIntervalType=PartitionIntervalTypes.TIME_UNIT,
         partitionIntervalUnit=expected_unit,
         partitionInterval=expected_interval,
@@ -355,6 +362,20 @@ def test_auto_detect_integer_range_partition():
         partitionIntegerRangeStart=1,
         partitionIntegerRangeEnd=10000,
     )
+
+
+def test_bigquery_integer_range_inference_is_preserved():
+    entity = _table(
+        DatabaseServiceType.BigQuery,
+        PartitionColumnDetails(columnName="id", intervalType=PartitionIntervalTypes.INTEGER_RANGE),
+        {"id": DataType.BIGINT},
+    )
+
+    partition = get_partition_details(entity, auto_detect_partition=True)
+
+    assert partition.partitionColumnName == "id"
+    assert partition.partitionIntegerRangeStart == 1
+    assert partition.partitionIntegerRangeEnd == 10000
 
 
 @pytest.mark.parametrize(
@@ -393,6 +414,78 @@ def test_auto_detect_skips_partition_column_missing_from_table():
     assert get_partition_details(entity, auto_detect_partition=True) is None
 
 
+def test_auto_detect_preserves_the_table_column_spelling():
+    entity = _table(
+        DatabaseServiceType.Postgres,
+        PartitionColumnDetails(columnName="ORDER_DATE", intervalType=PartitionIntervalTypes.TIME_UNIT),
+        {"order_date": DataType.DATE},
+    )
+
+    partition = get_partition_details(entity, auto_detect_partition=True)
+
+    assert partition.partitionColumnName == "order_date"
+
+
+@pytest.mark.parametrize(
+    "service_type,dialect_name,timestamp_cast",
+    [
+        (DatabaseServiceType.Postgres, "postgresql", "TIMESTAMP"),
+        (DatabaseServiceType.Cockroach, "cockroachdb", "TIMESTAMP"),
+        (DatabaseServiceType.Greenplum, "postgresql", "TIMESTAMP"),
+        (DatabaseServiceType.Timescale, "postgresql", "TIMESTAMP"),
+        (DatabaseServiceType.Doris, "pydoris", "DATETIME"),
+        (DatabaseServiceType.StarRocks, "starrocks", "DATETIME"),
+    ],
+)
+@pytest.mark.parametrize("data_type", [DataType.DATE, DataType.DATETIME, DataType.TIMESTAMP, DataType.TIMESTAMPZ])
+def test_inferred_partition_compiles_for_supported_dialects(service_type, dialect_name, timestamp_cast, data_type):
+    entity = _table(
+        service_type,
+        PartitionColumnDetails(columnName="ORDER_DATE", intervalType=PartitionIntervalTypes.TIME_UNIT),
+        {"order_date": data_type},
+    )
+    sqa_type = {DataType.DATE: DATE, DataType.DATETIME: DATETIME}.get(data_type, CustomTimestamp)
+    columns = SQATable("orders", MetaData(), SQAColumn("order_date", sqa_type())).c
+    dialect = DefaultDialect()
+    dialect.name = dialect_name
+    partition = get_partition_details(entity, auto_detect_partition=True)
+
+    sql = str(
+        build_partition_predicate(partition, columns).compile(dialect=dialect, compile_kwargs={"literal_binds": True})
+    )
+
+    if data_type == DataType.DATE:
+        assert sql == "order_date >= CAST(CURRENT_DATE - interval '3' DAY  AS DATE)"
+    else:
+        assert sql == f"order_date >= CAST(CURRENT_TIMESTAMP - interval '3' DAY AS {timestamp_cast})"
+
+
+@pytest.mark.parametrize("partition_column", ["order_date", "Order_Date"])
+def test_auto_detect_prefers_an_exact_column_match(partition_column):
+    entity = _table(
+        DatabaseServiceType.Postgres,
+        PartitionColumnDetails(columnName=partition_column, intervalType=PartitionIntervalTypes.TIME_UNIT),
+        {"order_date": DataType.INT, "Order_Date": DataType.DATE},
+    )
+
+    partition = get_partition_details(entity, auto_detect_partition=True)
+
+    if partition_column == "order_date":
+        assert partition is None
+    else:
+        assert partition.partitionColumnName == "Order_Date"
+
+
+def test_auto_detect_skips_an_ambiguous_column_match():
+    entity = _table(
+        DatabaseServiceType.Postgres,
+        PartitionColumnDetails(columnName="ORDER_DATE", intervalType=PartitionIntervalTypes.TIME_UNIT),
+        {"order_date": DataType.DATE, "Order_Date": DataType.DATE},
+    )
+
+    assert get_partition_details(entity, auto_detect_partition=True) is None
+
+
 def test_auto_detect_uses_first_partition_column():
     entity = _table(DatabaseServiceType.Doris, None, {"region": DataType.VARCHAR, "day": DataType.DATE})
     entity.tablePartition = TablePartition(
@@ -420,6 +513,22 @@ def test_manual_partition_config_wins_over_auto_detection():
     )
 
     assert get_partition_details(entity, auto_detect_partition=True) == manual
+
+
+@pytest.mark.parametrize("auto_detect_partition", [True, False])
+def test_workflow_partition_config_wins_over_table_settings(auto_detect_partition):
+    entity = _table(
+        DatabaseServiceType.Postgres,
+        PartitionColumnDetails(columnName="order_date", intervalType=PartitionIntervalTypes.TIME_UNIT),
+        {"order_date": DataType.DATE},
+        profiler_config=TableProfilerConfig(
+            partitioning=PartitionProfilerConfig(partitionColumnName="order_date", partitionInterval=7)
+        ),
+    )
+    workflow_partition = PartitionProfilerConfig(enablePartitioning=False)
+    workflow_config = TableConfig(fullyQualifiedName=entity.fullyQualifiedName, partitionConfig=workflow_partition)
+
+    assert get_partition_details(entity, workflow_config, auto_detect_partition) == workflow_partition
 
 
 def test_disabled_auto_detection_returns_no_partition():
