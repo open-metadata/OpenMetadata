@@ -34,6 +34,8 @@ export interface RailScrollState {
 export interface RailPager {
   railRef: RefObject<HTMLUListElement>;
   canScroll: RailScrollState;
+  /** The page the rail rests on, a page being its visible width plus a gap. */
+  pageIndex: number;
   syncScrollState: () => void;
   goToPrevious: () => void;
   goToNext: () => void;
@@ -52,6 +54,7 @@ export const useRailPager = (itemCount: number): RailPager => {
     next: false,
     previous: false,
   });
+  const [pageIndex, setPageIndex] = useState(0);
 
   const syncScrollState = useCallback(() => {
     const rail = railRef.current;
@@ -68,6 +71,10 @@ export const useRailPager = (itemCount: number): RailPager => {
         ? prev
         : { next, previous }
     );
+    // The gap is the space between two items, so one page of travel spans it.
+    const gap = Number.parseFloat(getComputedStyle(rail).columnGap) || 0;
+    const pageWidth = rail.clientWidth + gap;
+    setPageIndex(pageWidth > 0 ? Math.round(rail.scrollLeft / pageWidth) : 0);
   }, []);
 
   // Layout effect so the buttons are never painted in a stale enabled state
@@ -95,5 +102,12 @@ export const useRailPager = (itemCount: number): RailPager => {
   const goToPrevious = useCallback(() => scrollByPage(-1), [scrollByPage]);
   const goToNext = useCallback(() => scrollByPage(1), [scrollByPage]);
 
-  return { railRef, canScroll, syncScrollState, goToPrevious, goToNext };
+  return {
+    railRef,
+    canScroll,
+    pageIndex,
+    syncScrollState,
+    goToPrevious,
+    goToNext,
+  };
 };

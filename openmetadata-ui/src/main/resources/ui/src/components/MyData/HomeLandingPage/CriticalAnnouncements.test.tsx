@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import {
   AnnouncementEntity,
@@ -42,7 +48,12 @@ jest.mock('../../platform/ai-shell/context/useRouteActivation', () => ({
 }));
 
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, options?: { current?: number; total?: number }) =>
+      key === 'label.current-of-total'
+        ? `${options?.current} of ${options?.total}`
+        : key,
+  }),
 }));
 
 const mockListAnnouncements = listAnnouncements as jest.MockedFunction<
@@ -305,6 +316,56 @@ describe('CriticalAnnouncements', () => {
 
     expect(screen.getByTestId(PREV_BTN)).not.toBeDisabled();
     expect(screen.getByTestId(NEXT_BTN)).toBeDisabled();
+  });
+
+  it('announces which banner is showing as the rail pages', async () => {
+    respondWith([makeCritical('first', 1), makeCritical('second', 2)]);
+
+    renderBanner();
+
+    await screen.findByText('Title first');
+    const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 800 });
+    const position = screen.getByTestId('critical-announcement-position');
+
+    expect(position).toHaveAttribute('aria-live', 'polite');
+    expect(position).toHaveTextContent('1 of 2');
+
+    scrollRailTo(rail, 400);
+
+    expect(position).toHaveTextContent('2 of 2');
+  });
+
+  it('hands focus to previous when next is disabled under it', async () => {
+    respondWith([makeCritical('first', 1), makeCritical('second', 2)]);
+
+    renderBanner();
+
+    await screen.findByText('Title first');
+    const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 800 });
+    act(() => screen.getByTestId(NEXT_BTN).focus());
+
+    scrollRailTo(rail, 400);
+
+    expect(screen.getByTestId(NEXT_BTN)).toBeDisabled();
+    expect(screen.getByTestId(PREV_BTN)).toHaveFocus();
+  });
+
+  it('leaves focus alone once it has moved off the pager', async () => {
+    respondWith([makeCritical('first', 1), makeCritical('second', 2)]);
+
+    renderBanner();
+
+    await screen.findByText('Title first');
+    const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 800 });
+    const [dismissButton] = screen.getAllByTestId(
+      'critical-announcement-dismiss'
+    );
+    act(() => screen.getByTestId(NEXT_BTN).focus());
+    act(() => dismissButton.focus());
+
+    scrollRailTo(rail, 400);
+
+    expect(dismissButton).toHaveFocus();
   });
 
   it('dismissing shows the next one and remembers the dismissal per user', async () => {

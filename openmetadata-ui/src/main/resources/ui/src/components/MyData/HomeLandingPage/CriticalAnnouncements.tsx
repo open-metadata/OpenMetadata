@@ -16,6 +16,7 @@ import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useRailPager } from '../../../hooks/useRailPager';
 import {
   AnnouncementEntity,
   listAnnouncements,
@@ -34,7 +35,6 @@ import {
   DismissedAnnouncementsScope,
   useDismissedAnnouncements,
 } from './useDismissedAnnouncements';
-import { useRailPager } from './useRailPager';
 
 // Every live critical, newest first. The server pages in its own order, not by
 // start time, so the newest may sit on any page: sorting one page alone could
@@ -123,8 +123,14 @@ const CriticalAnnouncements = ({
     [announcements, dismissedIds]
   );
   const count = visible.length;
-  const { railRef, canScroll, syncScrollState, goToPrevious, goToNext } =
-    useRailPager(count);
+  const {
+    railRef,
+    canScroll,
+    pageIndex,
+    syncScrollState,
+    goToPrevious,
+    goToNext,
+  } = useRailPager(count);
 
   if (count === 0) {
     return <>{fallback}</>;
@@ -140,14 +146,27 @@ const CriticalAnnouncements = ({
       flow, in the page's top padding, so the banner starts where the greeting
       it replaces would. */}
       {count > 1 && (
-        <div className="tw:absolute tw:right-0 tw:bottom-full tw:mb-1.5">
-          <RailPager
-            canScroll={canScroll}
-            testIdPrefix="critical-announcement"
-            onNext={goToNext}
-            onPrevious={goToPrevious}
-          />
-        </div>
+        <>
+          <div className="tw:absolute tw:right-0 tw:bottom-full tw:mb-1">
+            <RailPager
+              canScroll={canScroll}
+              testIdPrefix="critical-announcement"
+              onNext={goToNext}
+              onPrevious={goToPrevious}
+            />
+          </div>
+          {/* One banner fills the rail, so its page is the banner's position.
+          Clamped: a dismissal can shorten the rail before it re-measures. */}
+          <span
+            aria-live="polite"
+            className="tw:sr-only"
+            data-testid="critical-announcement-position">
+            {t('label.current-of-total', {
+              current: Math.min(pageIndex, count - 1) + 1,
+              total: count,
+            })}
+          </span>
+        </>
       )}
 
       <ul

@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useRailPager } from '../../../hooks/useRailPager';
 import {
   AnnouncementEntity,
   listAnnouncements,
@@ -27,7 +28,6 @@ import AllAnnouncementsDialog from './AllAnnouncementsDialog';
 import AnnouncementCard from './AnnouncementCard';
 import RailSectionHeader from './RailSectionHeader';
 import { useDismissedAnnouncements } from './useDismissedAnnouncements';
-import { useRailPager } from './useRailPager';
 
 export const ACTIVE_ANNOUNCEMENTS_QUERY_KEY = [
   'landingPage',
