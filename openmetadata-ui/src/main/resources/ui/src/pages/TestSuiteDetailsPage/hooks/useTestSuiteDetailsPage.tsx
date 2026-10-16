@@ -72,6 +72,7 @@ import {
   ListTestCaseParamsBySearch,
   updateTestSuiteById,
 } from '../../../rest/testAPI';
+import { getTestCaseExportFilters } from '../../../utils/DataQuality/DataQualityPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { checkPermission } from '../../../utils/PermissionsUtils';
@@ -283,9 +284,20 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
       testSuite?.deleted ?? false,
       navigate,
       showModal,
-      EntityType.TEST_SUITE
+      EntityType.TEST_SUITE,
+      getTestCaseExportFilters({
+        ...testCaseRequestParams,
+        q: normalizedTestCaseSearchQuery,
+      })
     );
-  }, [globalPermissions, testSuite, navigate, showModal]);
+  }, [
+    globalPermissions,
+    testSuite,
+    navigate,
+    showModal,
+    testCaseRequestParams,
+    normalizedTestCaseSearchQuery,
+  ]);
 
   const slashedBreadCrumb = useMemo(
     () => [
