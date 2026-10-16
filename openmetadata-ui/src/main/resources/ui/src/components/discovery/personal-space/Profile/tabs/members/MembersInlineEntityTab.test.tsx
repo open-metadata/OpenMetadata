@@ -25,11 +25,11 @@ jest.mock('../../../../../common/Table/TableV2', () => ({
   __esModule: true,
   default: ({
     'data-testid': testId,
-    extraTableFilters,
+    renderToolbar,
   }: {
     'data-testid': string;
-    extraTableFilters?: React.ReactNode;
-  }) => <div data-testid={testId}>{extraTableFilters}</div>,
+    renderToolbar?: () => React.ReactNode;
+  }) => <div data-testid={testId}>{renderToolbar?.()}</div>,
 }));
 
 const baseProps = {
@@ -43,6 +43,7 @@ const baseProps = {
   available: [],
   entityLabel: 'Role',
   entityPluralLabel: 'Roles',
+  entityDescription: 'Assign roles to teams',
   tableTestId: 'team-roles-table',
   addButtonTestId: 'add-role',
   addSelectTestId: 'add-role-select',
@@ -107,5 +108,13 @@ describe('MembersInlineEntityTab', () => {
 
     expect(onCancelAdd).toHaveBeenCalled();
     expect(onConfirmAdd).toHaveBeenCalled();
+  });
+
+  it('titles the table with the entity name and description, beside the Add button', () => {
+    render(<MembersInlineEntityTab {...baseProps} />);
+
+    expect(screen.getByText('Roles')).toBeInTheDocument();
+    expect(screen.getByText('Assign roles to teams')).toBeInTheDocument();
+    expect(screen.getByTestId('add-role')).toBeInTheDocument();
   });
 });

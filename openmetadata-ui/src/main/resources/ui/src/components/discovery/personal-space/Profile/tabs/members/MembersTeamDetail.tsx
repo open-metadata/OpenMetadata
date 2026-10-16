@@ -19,6 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Reorder } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import {
@@ -1265,6 +1266,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             canEditAll={canEditAll}
             columns={roleColumns}
             dataSource={team.defaultRoles ?? []}
+            entityDescription={t('message.page-sub-header-for-roles')}
             entityLabel={t('label.role')}
             entityPluralLabel={t('label.role-plural')}
             filterOption={inlineFilterOption}
@@ -1289,6 +1291,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             canEditAll={canEditAll}
             columns={policyColumns}
             dataSource={team.policies ?? []}
+            entityDescription={t('message.page-sub-header-for-policies')}
             entityLabel={t('label.policy')}
             entityPluralLabel={t('label.policy-plural')}
             filterOption={inlineFilterOption}
@@ -1313,10 +1316,14 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       data-testid="team-detail"
       direction="col">
       {/* Pinned header: info widgets + description. Capped at half the height and
-          scrollable so a long description or the open inline editor (incl. its
-          Save/Cancel) can't push the tab table to zero height or get clipped. */}
+          scrollable so a long description can't push the tab table to zero
+          height; its cards never shrink (they would clip instead of scroll), and
+          the cap lifts while the editor is open so Save/Cancel stay in view. */}
       <Box
-        className="tw:shrink-0 tw:max-h-[50%] tw:overflow-y-auto"
+        className={classNames(
+          'tw:shrink-0 tw:overflow-y-auto tw:[&>*]:shrink-0',
+          !isDescEditing && 'tw:max-h-[50%]'
+        )}
         direction="col">
         {/* Info widget section */}
         <MembersTeamInfoWidgets

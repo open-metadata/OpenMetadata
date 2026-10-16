@@ -251,7 +251,9 @@ const PersonaUsersTab = ({
           </Card.Content>
         </Card>
       )}
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
+        size="compact">
         {canEdit && !isAdding && (
           <TableCard.Header
             className="tw:py-3"

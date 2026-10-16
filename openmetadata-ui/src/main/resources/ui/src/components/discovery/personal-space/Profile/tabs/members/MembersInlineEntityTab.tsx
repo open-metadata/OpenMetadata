@@ -36,6 +36,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
   available,
   entityLabel,
   entityPluralLabel,
+  entityDescription,
   tableTestId,
   addButtonTestId,
   addSelectTestId,
@@ -103,17 +104,6 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
         containerClassName="tw:rounded-none tw:border-0"
         data-testid={tableTestId}
         dataSource={dataSource}
-        extraTableFilters={
-          canEditAll && !isAdding ? (
-            <Button
-              color="primary"
-              data-testid={addButtonTestId}
-              size="sm"
-              onPress={onStartAdd}>
-              {t('label.add-entity', { entity: entityLabel })}
-            </Button>
-          ) : undefined
-        }
         locale={{
           emptyText: (
             <Box
@@ -133,6 +123,35 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
           ),
         }}
         pagination={false}
+        renderToolbar={() => (
+          <Box
+            align="center"
+            className="tw:border-b tw:border-secondary tw:px-4 tw:py-3"
+            direction="row"
+            gap={4}
+            justify="between">
+            <Box className="tw:min-w-0" direction="col" gap={1}>
+              <Typography
+                className="tw:text-primary"
+                size="text-sm"
+                weight="medium">
+                {entityPluralLabel}
+              </Typography>
+              <Typography className="tw:text-tertiary" size="text-xs">
+                {entityDescription}
+              </Typography>
+            </Box>
+            {canEditAll && !isAdding && (
+              <Button
+                color="primary"
+                data-testid={addButtonTestId}
+                size="sm"
+                onPress={onStartAdd}>
+                {t('label.add-entity', { entity: entityLabel })}
+              </Button>
+            )}
+          </Box>
+        )}
         rowKey="id"
         size="small"
       />
