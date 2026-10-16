@@ -170,6 +170,35 @@ describe('OntologyConceptRealization', () => {
     ).toBeInTheDocument();
   });
 
+  it('searches once typing pauses, with the last text typed', async () => {
+    mockSearchQuery.mockResolvedValue({ hits: { hits: [] } } as never);
+    render(
+      <OntologyConceptRealization
+        isEditMode
+        realizations={[]}
+        termId={TERM_ID}
+        onTermUpdate={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByTestId('add-realization'));
+    await waitFor(() => expect(mockSearchQuery).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByTestId('realization-asset-input'));
+    const search = await screen.findByPlaceholderText('label.search');
+
+    fireEvent.change(search, { target: { value: 'f' } });
+    fireEvent.change(search, { target: { value: 'fa' } });
+    fireEvent.change(search, { target: { value: 'fac' } });
+
+    await waitFor(() =>
+      expect(mockSearchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: '*fac*' })
+      )
+    );
+
+    // The opening list plus one search for the whole burst of typing.
+    expect(mockSearchQuery).toHaveBeenCalledTimes(2);
+  });
+
   it('adds a searched asset with the chosen role', async () => {
     mockSearchQuery.mockResolvedValue({
       hits: {

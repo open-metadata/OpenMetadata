@@ -71,6 +71,7 @@ export interface OntologyConceptRealizationProps {
 }
 
 const ASSET_PAGE_SIZE = 10;
+const ASSET_SEARCH_DEBOUNCE_MS = 250;
 
 const getCandidateLabel = (candidate: AssetCandidate): string =>
   candidate.displayName ?? candidate.name;
@@ -208,11 +209,30 @@ export const OntologyConceptRealization: React.FC<
         );
       }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (requestId === searchRequestRef.current) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsSearching(false);
+      // An older search finishing must not end the newest one's spinner.
+      if (requestId === searchRequestRef.current) {
+        setIsSearching(false);
+      }
     }
   }, []);
+
+  // Typing searches once it pauses, not on every key.
+  const searchTimerRef = useRef<number>();
+  useEffect(() => () => window.clearTimeout(searchTimerRef.current), []);
+  const searchCandidates = useCallback(
+    (value: string) => {
+      window.clearTimeout(searchTimerRef.current);
+      searchTimerRef.current = window.setTimeout(
+        () => void loadCandidates(value),
+        ASSET_SEARCH_DEBOUNCE_MS
+      );
+    },
+    [loadCandidates]
+  );
 
   useEffect(() => {
     if (isAdding) {
@@ -253,11 +273,16 @@ export const OntologyConceptRealization: React.FC<
     [listedCandidates, t]
   );
 
+  // Pressing the chosen asset again keeps it rather than clearing the field.
   const handleAssetChange = useCallback(
-    ([assetId]: string[]) =>
-      setSelectedAsset(
-        listedCandidates.find((candidate) => candidate.id === assetId) ?? null
-      ),
+    ([assetId]: string[]) => {
+      const asset = listedCandidates.find(
+        (candidate) => candidate.id === assetId
+      );
+      if (asset) {
+        setSelectedAsset(asset);
+      }
+    },
     [listedCandidates]
   );
 
@@ -281,7 +306,7 @@ export const OntologyConceptRealization: React.FC<
         selectionMode="single"
         triggerVariant="input"
         onChange={handleAssetChange}
-        onSearch={(text) => void loadCandidates(text)}
+        onSearch={searchCandidates}
       />
     </Box>
   );
