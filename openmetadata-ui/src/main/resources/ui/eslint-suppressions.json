@@ -242,11 +242,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/Pagination.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
-    }
-  },
   "playwright/e2e/Features/Permissions/DataProductPermissions.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 4
