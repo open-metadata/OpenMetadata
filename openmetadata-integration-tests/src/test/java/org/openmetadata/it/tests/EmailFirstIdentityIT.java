@@ -28,6 +28,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.EmailFirstUserProvisioner;
+import org.openmetadata.service.security.UserProfileClaims;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.UserUtil;
 
@@ -228,6 +229,24 @@ class EmailFirstIdentityIT {
   }
 
   @Test
+  void testSignInStoresAndRefreshesTheProviderPicture(TestNamespace ns) {
+    String localPart = ("picture" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    String email = localPart + "@x.test.om.org";
+    URI firstPicture = URI.create("https://idp.test.om.org/" + localPart + "/first.png");
+    URI newPicture = URI.create("https://idp.test.om.org/" + localPart + "/new.png");
+
+    provisionWithPicture(email, firstPicture);
+    assertEquals(firstPicture, storedPicture(email), "Sign-up must store the provider's picture");
+
+    provisionWithPicture(email, newPicture);
+    assertEquals(newPicture, storedPicture(email), "A new provider picture must replace the old");
+
+    provisionWithPicture(email, null);
+    assertEquals(
+        newPicture, storedPicture(email), "A token without a picture must keep the stored one");
+  }
+
+  @Test
   void testSynthesizedEmailDomainListingFindsAccountsToRepair(TestNamespace ns) {
     String suffix = ns.uniqueShortId().toLowerCase(Locale.ROOT);
     String syntheticDomain = "synth" + suffix + ".test.om.org";
@@ -255,6 +274,26 @@ class EmailFirstIdentityIT {
    */
   private User provision(String email, String displayName) {
     return provision(email, displayName, null);
+  }
+
+  /** Applies the picture the way the OIDC sign-in does, both to a new account and an existing one. */
+  private User provisionWithPicture(String email, URI picture) {
+    return EmailFirstUserProvisioner.forProvider(
+            "TEST",
+            new AuthorizerConfiguration(),
+            Entity.getUserRepository(),
+            user -> UserProfileClaims.syncPicture(user, picture),
+            user -> UserProfileClaims.syncPicture(user, picture))
+        .getOrCreate(email, "Picture User", null, true);
+  }
+
+  private URI storedPicture(String email) {
+    Profile profile =
+        Entity.getUserRepository()
+            .getByEmail(null, email, new EntityUtil.Fields(Set.of("profile")))
+            .getProfile();
+    assertNotNull(profile, "Expected a stored profile for " + email);
+    return profile.getImages().getImage();
   }
 
   private User provision(String email, String displayName, String identityProviderSubject) {

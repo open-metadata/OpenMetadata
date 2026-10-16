@@ -21,6 +21,7 @@ import {
   getAuthConfig,
   getUserManagerConfig,
   isRefreshableAuthError,
+  isServerDrivenLogin,
 } from './AuthProvider.util';
 
 const baseAuthConfig = (
@@ -187,5 +188,29 @@ describe('isRefreshableAuthError — 401 allow-list semantics (auth-coordinator-
 
   it('returns true for a normal 401 on any other endpoint', () => {
     expect(isRefreshableAuthError(401, '/tables/name/foo', {})).toBe(true);
+  });
+});
+
+describe('isServerDrivenLogin', () => {
+  it('is true for a confidential client, whatever the provider', () => {
+    expect(
+      isServerDrivenLogin(ClientType.Confidential, AuthProvider.Google)
+    ).toBe(true);
+  });
+
+  it('is true for SAML, which the server always completes', () => {
+    expect(isServerDrivenLogin(ClientType.Public, AuthProvider.Saml)).toBe(
+      true
+    );
+  });
+
+  it('is false for a public OIDC client, where the browser holds the provider claims', () => {
+    expect(isServerDrivenLogin(ClientType.Public, AuthProvider.Google)).toBe(
+      false
+    );
+  });
+
+  it('treats a missing client type as public', () => {
+    expect(isServerDrivenLogin(undefined, AuthProvider.Okta)).toBe(false);
   });
 });

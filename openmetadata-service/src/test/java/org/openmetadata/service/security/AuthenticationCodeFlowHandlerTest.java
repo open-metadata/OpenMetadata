@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -81,6 +82,10 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.type.profile.SubscriptionConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -90,6 +95,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.oidc.client.OidcClient;
@@ -103,6 +109,8 @@ class AuthenticationCodeFlowHandlerTest {
 
   private static final String TEST_SERVER_URL = "https://om.test";
   private static final String MCP_CALLBACK = "/mcp/callback";
+  private static final URI PROVIDER_PICTURE =
+      URI.create("https://lh3.googleusercontent.com/a/ACg8ocJ=s96-c");
   private static final String DISCOVERY_DOCUMENT =
       """
       {
@@ -510,6 +518,84 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
+  void getOrCreateOidcUser_selfSignup_takesTheDisplayNameAndPictureTheProviderAsserts()
+      throws Exception {
+    AuthenticationCodeFlowHandler handler = createSelfSignupHandler(null);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubUserNotFoundAndEchoCreate(mockedEntity);
+
+      User created =
+          invokeGetOrCreateOidcUser(
+              handler, legacyIdentity("jdoe", "Jane Doe", PROVIDER_PICTURE), new HashMap<>());
+
+      assertEquals("Jane Doe", created.getDisplayName());
+      assertEquals(PROVIDER_PICTURE, created.getProfile().getImages().getImage());
+    }
+  }
+
+  @Test
+  void getOrCreateOidcUser_existingUser_fillsTheDisplayNameAndPictureTheProviderAsserts()
+      throws Exception {
+    AuthenticationCodeFlowHandler handler = createSelfSignupHandler(null);
+    User stored = storedUser("jdoe").withDisplayName("jdoe");
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = stubStoredUserAndEchoUpdate(mockedEntity, stored);
+
+      invokeGetOrCreateOidcUser(
+          handler, legacyIdentity("jdoe", "Jane Doe", PROVIDER_PICTURE), new HashMap<>());
+
+      User persisted = capturePersistedUser(userRepository);
+      assertEquals("Jane Doe", persisted.getDisplayName());
+      assertEquals(PROVIDER_PICTURE, persisted.getProfile().getImages().getImage());
+    }
+  }
+
+  @Test
+  void getOrCreateOidcUser_existingUser_keepsTheStoredProfileWhenTheLoginUpdatesTheAccount()
+      throws Exception {
+    AuthenticationCodeFlowHandler handler = createSelfSignupHandler(null);
+    makeAdminAtLogin(handler, "jdoe@example.com");
+    SubscriptionConfig subscription =
+        new SubscriptionConfig()
+            .withSlack(new Webhook().withEndpoint(URI.create("https://hooks.slack.test/jdoe")));
+    User stored = storedUser("jdoe").withProfile(new Profile().withSubscription(subscription));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = stubStoredUserAndEchoUpdate(mockedEntity, stored);
+
+      invokeGetOrCreateOidcUser(handler, legacyIdentity("jdoe", null, null), new HashMap<>());
+
+      User persisted = capturePersistedUser(userRepository);
+      assertTrue(persisted.getIsAdmin());
+      assertNotNull(persisted.getProfile(), "Saving the login's changes erased the stored profile");
+      assertEquals(subscription, persisted.getProfile().getSubscription());
+    }
+  }
+
+  @Test
+  void getOrCreateEmailFirstOidcUser_existingUser_takesThePictureTheProviderAsserts()
+      throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+    User stored = storedUser("jdoe");
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = stubStoredUserAndEchoUpdate(mockedEntity, stored);
+      when(userRepository.getActiveUserByEmailForAuth(eq(stored.getEmail()), any()))
+          .thenAnswer(invocation -> withRequestedFieldsOnly(stored, invocation.getArgument(1)));
+
+      invokeGetOrCreateEmailFirstOidcUser(
+          handler,
+          new OidcIdentityResolver.ResolvedOidcIdentity(
+              null, stored.getEmail(), null, PROVIDER_PICTURE, true));
+
+      User persisted = capturePersistedUser(userRepository);
+      assertEquals(PROVIDER_PICTURE, persisted.getProfile().getImages().getImage());
+    }
+  }
+
+  @Test
   void getOrCreateOidcUser_selfSignup_rejectsDisallowedEmailDomain() throws Exception {
     AuthenticationCodeFlowHandler handler = createSelfSignupHandler(Set.of("allowed.com"));
 
@@ -703,20 +789,11 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   private void stubUserNotFoundAndEchoCreate(MockedStatic<Entity> mockedEntity) {
-    UserRepository userRepository = mock(UserRepository.class);
-    CollectionDAO collectionDAO = mock(CollectionDAO.class);
-    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    UserRepository userRepository = stubUserRepository(mockedEntity);
 
-    mockedEntity
-        .when(
-            () ->
-                Entity.getEntityByName(
-                    eq(Entity.USER), anyString(), anyString(), any(Include.class)))
+    when(userRepository.getByName(
+            any(), anyString(), any(EntityUtil.Fields.class), any(Include.class), anyBoolean()))
         .thenThrow(new EntityNotFoundException("user not found"));
-    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
-    mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-
-    when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
     when(userRepository.findByNameOrNull(any(), any())).thenReturn(null);
     when(userRepository.createOrUpdate(eq(null), any(User.class), any()))
         .thenAnswer(
@@ -727,15 +804,112 @@ class AuthenticationCodeFlowHandlerTest {
                     EventType.ENTITY_CREATED));
   }
 
+  /**
+   * Answers lookups the way the repository does: a stored field the caller did not ask for comes
+   * back empty, and saving that copy would erase it.
+   */
+  private UserRepository stubStoredUserAndEchoUpdate(
+      MockedStatic<Entity> mockedEntity, User stored) {
+    UserRepository userRepository = stubUserRepository(mockedEntity);
+
+    when(userRepository.getByName(
+            any(),
+            eq(stored.getName()),
+            any(EntityUtil.Fields.class),
+            any(Include.class),
+            anyBoolean()))
+        .thenAnswer(invocation -> withRequestedFieldsOnly(stored, invocation.getArgument(2)));
+    when(userRepository.findByNameOrNull(any(), any())).thenReturn(stored);
+    when(userRepository.createOrUpdate(eq(null), any(User.class), any()))
+        .thenAnswer(
+            invocation ->
+                new PutResponse<>(
+                    Response.Status.OK,
+                    invocation.getArgument(1, User.class),
+                    EventType.ENTITY_UPDATED));
+    return userRepository;
+  }
+
+  private UserRepository stubUserRepository(MockedStatic<Entity> mockedEntity) {
+    UserRepository userRepository = mock(UserRepository.class);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+
+    mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+    when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    when(userRepository.getFields(anyString()))
+        .thenAnswer(
+            invocation ->
+                new EntityUtil.Fields(Set.of(invocation.getArgument(0, String.class).split(","))));
+    when(userRepository.getAuthUpdateFields())
+        .thenReturn(new EntityUtil.Fields(Set.of("profile", "roles", "teams")));
+    return userRepository;
+  }
+
+  private static void makeAdminAtLogin(AuthenticationCodeFlowHandler handler, String email)
+      throws Exception {
+    AuthorizerConfiguration authzConfig = mock(AuthorizerConfiguration.class);
+    when(authzConfig.getAdminEmails()).thenReturn(Set.of(email));
+    setField(handler, "authorizerConfiguration", authzConfig);
+  }
+
+  private static User withRequestedFieldsOnly(User stored, EntityUtil.Fields fields) {
+    User copy = JsonUtils.deepCopy(stored, User.class);
+    copy.setProfile(fields.contains("profile") ? copy.getProfile() : null);
+    return copy;
+  }
+
+  private static User capturePersistedUser(UserRepository userRepository) {
+    ArgumentCaptor<User> persisted = ArgumentCaptor.forClass(User.class);
+    verify(userRepository).createOrUpdate(eq(null), persisted.capture(), any());
+    return persisted.getValue();
+  }
+
+  private static User storedUser(String name) {
+    return new User()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName(name)
+        .withEmail(name + "@example.com");
+  }
+
+  private static OidcIdentityResolver.ResolvedOidcIdentity legacyIdentity(
+      String userName, String displayName, URI picture) {
+    return new OidcIdentityResolver.ResolvedOidcIdentity(
+        userName, userName + "@example.com", displayName, picture, false);
+  }
+
   private User invokeGetOrCreateOidcUser(
       AuthenticationCodeFlowHandler handler, String userName, String email) throws Exception {
+    return invokeGetOrCreateOidcUser(
+        handler,
+        new OidcIdentityResolver.ResolvedOidcIdentity(userName, email, null, null, false),
+        new HashMap<>());
+  }
+
+  private User invokeGetOrCreateOidcUser(
+      AuthenticationCodeFlowHandler handler,
+      OidcIdentityResolver.ResolvedOidcIdentity identity,
+      Map<String, Object> claims)
+      throws Exception {
+    return invokeUserProvisioning(handler, "getOrCreateOidcUser", identity, claims);
+  }
+
+  private User invokeUserProvisioning(
+      AuthenticationCodeFlowHandler handler,
+      String methodName,
+      OidcIdentityResolver.ResolvedOidcIdentity identity,
+      Map<String, Object> claims)
+      throws Exception {
     Method method =
         AuthenticationCodeFlowHandler.class.getDeclaredMethod(
-            "getOrCreateOidcUser", String.class, String.class, Map.class);
+            methodName, OidcIdentityResolver.ResolvedOidcIdentity.class, Map.class);
     method.setAccessible(true);
     User result;
     try {
-      result = (User) method.invoke(handler, userName, email, new HashMap<String, Object>());
+      result = (User) method.invoke(handler, identity, claims);
     } catch (InvocationTargetException e) {
       Throwable cause = e.getCause();
       if (cause instanceof RuntimeException runtimeException) {
@@ -1969,19 +2143,16 @@ class AuthenticationCodeFlowHandlerTest {
 
   private User invokeGetOrCreateEmailFirstOidcUser(
       AuthenticationCodeFlowHandler handler, String email, String displayName) throws Exception {
-    Method method =
-        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
-            "getOrCreateEmailFirstOidcUser", String.class, String.class, Map.class);
-    method.setAccessible(true);
-    try {
-      return (User) method.invoke(handler, email, displayName, new HashMap<String, Object>());
-    } catch (InvocationTargetException e) {
-      Throwable cause = e.getCause();
-      if (cause instanceof RuntimeException runtimeException) {
-        throw runtimeException;
-      }
-      throw e;
-    }
+    return invokeGetOrCreateEmailFirstOidcUser(
+        handler,
+        new OidcIdentityResolver.ResolvedOidcIdentity(null, email, displayName, null, true));
+  }
+
+  private User invokeGetOrCreateEmailFirstOidcUser(
+      AuthenticationCodeFlowHandler handler, OidcIdentityResolver.ResolvedOidcIdentity identity)
+      throws Exception {
+    return invokeUserProvisioning(
+        handler, "getOrCreateEmailFirstOidcUser", identity, new HashMap<>());
   }
 
   private Object invokePrivateMethod(
