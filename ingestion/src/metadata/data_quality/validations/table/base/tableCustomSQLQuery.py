@@ -83,7 +83,6 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         operator = cast(str, operator)  # satisfy mypy  # noqa: TC006
         sql_expression = cast(str, sql_expression)  # satisfy mypy  # noqa: TC006
         threshold = cast(float, threshold)  # satisfy mypy  # noqa: TC006
-        strategy = cast(Strategy, strategy)  # satisfy mypy  # noqa: TC006
 
         row_count = None
         try:
@@ -136,10 +135,11 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             passed_rows=passed_rows,
         )
 
-    def _get_strategy(self) -> Strategy | None:
-        """Read `strategy` as the server accepts it: in any case, around any spaces, blank as unset
+    def _get_strategy(self) -> Strategy:
+        """Read `strategy` as the server accepts it: in any case, around any spaces, blank as ROWS
 
-        `thresholdUnit` and `dimensionFailurePolicy` are read the same way.
+        `thresholdUnit` and `dimensionFailurePolicy` are read the same way. ROWS is the definition's
+        default, so an unset strategy also gets failed-row samples.
         """
         raw_strategy = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
@@ -148,7 +148,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             default="",
         )
         value = str(raw_strategy).strip().upper()
-        return Strategy(value) if value else None
+        return Strategy(value) if value else Strategy.ROWS
 
     def _aborted(self, msg: str) -> TestCaseResult:
         logger.error(msg)
