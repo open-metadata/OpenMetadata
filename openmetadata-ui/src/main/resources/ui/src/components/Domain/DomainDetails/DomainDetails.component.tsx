@@ -131,6 +131,7 @@ import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
@@ -1052,7 +1053,7 @@ const DomainDetails = ({
                   <Dropdown.Root>
                     <Button
                       data-testid="domain-details-add-button"
-                      iconTrailing={<ChevronDown size={14} />}
+                      iconTrailing={ChevronDown}
                       size="sm">
                       {t('label.add')}
                     </Button>
@@ -1072,6 +1073,13 @@ const DomainDetails = ({
                       </Dropdown.Menu>
                     </Dropdown.Popover>
                   </Dropdown.Root>
+                )}
+
+                {!isVersionsView && (
+                  <ChangeRequestsIndicator
+                    entityId={domain.id}
+                    entityType={EntityType.DOMAIN}
+                  />
                 )}
 
                 <Box align="center" gap={4}>

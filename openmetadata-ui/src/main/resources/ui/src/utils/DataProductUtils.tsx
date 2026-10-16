@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Icon as ImageIcon } from '@openmetadata/ui-core-components/icon';
 
@@ -397,7 +396,7 @@ export const getDataProductDetailTabs = ({
         />
       ),
       key: EntityTabs.DOCUMENTATION,
-      children: <GenericTab type={PageType.DataProduct} variant="flat" />,
+      children: <GenericTab type={PageType.DataProduct} />,
     },
     ...(isVersionsView
       ? []
@@ -463,7 +462,7 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
         className="layout-space layout-space-horizontal"
         gap={2}
         itemClassName="layout-space-item">
-        <Icon component={DataProductIcon} style={{ fontSize: '16px' }} />
+        <DataProductIcon className="tw:size-4 tw:shrink-0" />
         <Typography>{getEntityName(props)}</Typography>
       </Box>
       {props.description && (

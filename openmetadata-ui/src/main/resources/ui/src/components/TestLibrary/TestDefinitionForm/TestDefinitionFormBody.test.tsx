@@ -53,14 +53,12 @@ const Harness: FC<{
   defaultValues?: Partial<TestDefinitionFormValues>;
   errorMessage?: string;
   onErrorDismiss?: () => void;
-  onActiveFieldChange?: (fieldId: string) => void;
 }> = ({
   isEditMode = false,
   isReadOnlyField = false,
   defaultValues,
   errorMessage,
   onErrorDismiss,
-  onActiveFieldChange,
 }) => {
   const form = useForm<TestDefinitionFormValues>({
     mode: 'onChange',
@@ -75,7 +73,6 @@ const Harness: FC<{
         form={form}
         isEditMode={isEditMode}
         isReadOnlyField={isReadOnlyField}
-        onActiveFieldChange={onActiveFieldChange}
         onErrorDismiss={onErrorDismiss}
       />
     </HookForm>
