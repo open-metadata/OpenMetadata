@@ -623,6 +623,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const activeJobIdRef = useRef<string | null>(null);
   // The server starts the job before answering the POST, so a small job can
   // finish over the socket before the jobId is known; hold those messages.
+  // ADR:2026-10-16-column-bulk-update-buffers-socket-messages-until-its-job-id-is-known
   const earlySocketMessagesRef = useRef<string[] | null>(null);
   const bulkAssetsNotificationRef = useRef<(message: string) => void>(() => {});
   const lastBulkUpdateCountRef = useRef<number>(0);
@@ -1824,9 +1825,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     if (!earlyMessages || activeJobIdRef.current) {
       return false;
     }
-    if (earlyMessages.length < MAX_EARLY_SOCKET_MESSAGES) {
-      earlyMessages.push(message);
+    if (earlyMessages.length >= MAX_EARLY_SOCKET_MESSAGES) {
+      earlyMessages.shift();
     }
+    earlyMessages.push(message);
 
     return true;
   };
