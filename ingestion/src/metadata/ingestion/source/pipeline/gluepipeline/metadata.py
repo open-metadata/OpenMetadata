@@ -418,9 +418,15 @@ class GluepipelineSource(PipelineServiceSource):
     def _search_unique_table(
         self, table_name: str, database_name: str | None, schema_name: str | None
     ) -> EntityReference | None:
+        """
+        The matches of every configured service are collected before deciding, so the
+        same table ingested from two Snowflake services is ambiguous rather than
+        resolved to whichever service is listed first.
+        """
+        table_fqns: set[str] = set()
         for db_service_name in self.get_db_service_names() or ["*"]:
             try:
-                table_fqns = fqn.build(
+                found = fqn.build(
                     metadata=self.metadata,
                     entity_type=Table,
                     table_name=table_name,
@@ -432,15 +438,15 @@ class GluepipelineSource(PipelineServiceSource):
             except Exception as exc:
                 logger.debug("Failed to search table %s in service %s: %s", table_name, db_service_name, exc)
                 continue
-            if not table_fqns:
-                continue
-            if len(table_fqns) > 1:
-                logger.warning("Snowflake table %s matches several tables %s; skipping lineage", table_name, table_fqns)
-                return None
-            table_entity = self.metadata.get_entity_reference(entity=Table, fqn=table_fqns[0])
-            if table_entity:
-                return table_entity
-        return None
+            table_fqns.update(found or [])
+        if not table_fqns:
+            return None
+        if len(table_fqns) > 1:
+            logger.warning(
+                "Snowflake table %s matches several tables %s; skipping lineage", table_name, sorted(table_fqns)
+            )
+            return None
+        return self.metadata.get_entity_reference(entity=Table, fqn=table_fqns.pop())
 
     def _resolve_glue_connection(self, connection_name: str) -> dict | None:
         if connection_name in self._glue_connection_cache:

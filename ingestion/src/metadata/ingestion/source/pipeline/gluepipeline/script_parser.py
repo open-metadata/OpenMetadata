@@ -136,18 +136,28 @@ SNOWFLAKE_FORMATS = {"snowflake", "net.snowflake.spark.snowflake"}
 #   spark.read.format(SNOWFLAKE_SOURCE_NAME)...
 SPARK_FORMAT_ARG = r"\.format\s*\(\s*(?:[\"']([^\"']+)[\"']|([A-Za-z_]\w*))\s*\)"
 
+# Calls may sit on either side of format(): df.write.mode("append").format("snowflake")...save()
+# Group 1 = chain before format(), 2/3 = format argument, 4 = chain after format().
+_NOT_ANOTHER_STATEMENT = r"(?!\.read\s*\.|\.write\s*\.|\.load\s*\(|\.save\s*\()"
+
 SPARK_READ_SNOWFLAKE_PATTERN = re.compile(
-    rf"\.read{SPARK_FORMAT_ARG}((?:(?!\.read\.).)*?)\.load\s*\(",
+    rf"\.read\s*(?=\.)((?:{_NOT_ANOTHER_STATEMENT}.)*?){SPARK_FORMAT_ARG}((?:{_NOT_ANOTHER_STATEMENT}.)*?)\.load\s*\(",
     re.DOTALL,
 )
 
 SPARK_WRITE_SNOWFLAKE_PATTERN = re.compile(
-    rf"\.write{SPARK_FORMAT_ARG}((?:(?!\.write\.).)*?)\.save\s*\(",
+    rf"\.write\s*(?=\.)((?:{_NOT_ANOTHER_STATEMENT}.)*?){SPARK_FORMAT_ARG}((?:{_NOT_ANOTHER_STATEMENT}.)*?)\.save\s*\(",
     re.DOTALL,
 )
 
 SNOWFLAKE_DATABASE_PATTERN = re.compile(r"[\"']sfDatabase[\"']\s*[:=]\s*[\"']([^\"']+)[\"']")
 SNOWFLAKE_SCHEMA_PATTERN = re.compile(r"[\"']sfSchema[\"']\s*[:=]\s*[\"']([^\"']+)[\"']")
+
+# .options(**sf_options) / connection_options=sf_options: the name of the shared options dict
+SHARED_OPTIONS_NAME_PATTERN = re.compile(r"(?:\*\*\s*|connection_options\s*=\s*)([A-Za-z_]\w*)")
+
+# Snowflake identifiers: "ORDERS.V2" is one quoted name, FINANCE.CURATED.ORDERS are three
+QUALIFIED_NAME_PART_PATTERN = re.compile(r'"[^"]*"|[^.]+')
 
 # --- Helpers for extracting keyword arguments from function calls ---
 
@@ -455,23 +465,51 @@ def _unique_script_option(pattern: re.Pattern, source_code: str) -> str | None:
     return values.pop() if len(values) == 1 else None
 
 
+def _shared_options_dict(block: str, source_code: str) -> str:
+    """
+    Body of the dict the block passes as .options(**name) / connection_options=name,
+    so keys kept there (dbtable, sfDatabase, sfSchema) are read from the right dict
+    instead of from the first one in the script. Empty when there is none.
+    """
+    match = SHARED_OPTIONS_NAME_PATTERN.search(block)
+    if not match:
+        return ""
+    literal = re.search(rf"^\s*{match.group(1)}\s*=\s*\{{([^{{}}]*)\}}", source_code, re.MULTILINE | re.DOTALL)
+    return literal.group(1) if literal else ""
+
+
+def _split_qualified_name(name: str) -> list[str]:
+    return [part.strip('"') for part in QUALIFIED_NAME_PART_PATTERN.findall(name)]
+
+
 def _snowflake_ref(block: str, source_code: str) -> SnowflakeRef | None:
     """
     `dbtable` may be qualified (DB.SCHEMA.TABLE or SCHEMA.TABLE); otherwise
-    sfDatabase / sfSchema are taken from the block or, failing that, from the
-    script when it defines a single value (the usual shared options dict).
+    sfDatabase / sfSchema are taken from the block, then from the shared options
+    dict the block passes, then from the script when it defines a single value.
     """
-    table = _extract_option(block, "dbtable")
+    shared = _shared_options_dict(block, source_code)
+    table = _extract_option(block, "dbtable") or _extract_option(shared, "dbtable")
     if not table:
         return None
-    database = _extract_option(block, "sfDatabase") or _unique_script_option(SNOWFLAKE_DATABASE_PATTERN, source_code)
-    schema = _extract_option(block, "sfSchema") or _unique_script_option(SNOWFLAKE_SCHEMA_PATTERN, source_code)
+    database = (
+        _extract_option(block, "sfDatabase")
+        or _extract_option(shared, "sfDatabase")
+        or _unique_script_option(SNOWFLAKE_DATABASE_PATTERN, source_code)
+    )
+    schema = (
+        _extract_option(block, "sfSchema")
+        or _extract_option(shared, "sfSchema")
+        or _unique_script_option(SNOWFLAKE_SCHEMA_PATTERN, source_code)
+    )
 
-    parts = table.replace('"', "").split(".")
+    parts = _split_qualified_name(table)
     if len(parts) == 3:
         database, schema, table = parts
     elif len(parts) == 2:
         schema, table = parts
+    else:
+        table = parts[0] if parts else table
     return SnowflakeRef(table=table, database=database, schema=schema)
 
 
@@ -484,19 +522,25 @@ def _resolve_spark_format(literal: str | None, name: str | None, source_code: st
 
 
 def _is_snowflake_format(match: re.Match, source_code: str) -> bool:
-    spark_format = _resolve_spark_format(match.group(1), match.group(2), source_code)
+    spark_format = _resolve_spark_format(match.group(2), match.group(3), source_code)
     return bool(spark_format) and spark_format.lower() in SNOWFLAKE_FORMATS
+
+
+def _spark_snowflake_ref(match: re.Match, source_code: str) -> SnowflakeRef | None:
+    if not _is_snowflake_format(match, source_code):
+        return None
+    return _snowflake_ref(match.group(1) + match.group(4), source_code)
 
 
 def _parse_spark_snowflake(source_code: str, result: ScriptLineageResult):
     for match in SPARK_READ_SNOWFLAKE_PATTERN.finditer(source_code):
-        ref = _snowflake_ref(match.group(3), source_code) if _is_snowflake_format(match, source_code) else None
+        ref = _spark_snowflake_ref(match, source_code)
         if ref:
             result.snowflake_sources.append(ref)
             logger.debug("Found Spark read.format('snowflake') source: %s", ref)
 
     for match in SPARK_WRITE_SNOWFLAKE_PATTERN.finditer(source_code):
-        ref = _snowflake_ref(match.group(3), source_code) if _is_snowflake_format(match, source_code) else None
+        ref = _spark_snowflake_ref(match, source_code)
         if ref:
             result.snowflake_targets.append(ref)
             logger.debug("Found Spark write.format('snowflake') target: %s", ref)

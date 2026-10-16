@@ -211,6 +211,44 @@ df = glueContext.create_dynamic_frame.from_options(
         assert result.snowflake_sources == []
         assert [ref.table for ref in result.jdbc_sources] == ["customers"]
 
+    def test_calls_before_format_are_accepted(self):
+        """mode() / option() may come before format() in a read or write chain."""
+        script = """
+sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW"}
+orders = spark.read.option("dbtable", "ORDERS").options(**sf_options).format("snowflake").load()
+orders.write.mode("append").format("snowflake").options(**sf_options).option("dbtable", "ORDERS_DAILY").save()
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
+        assert result.snowflake_targets == [SnowflakeRef(table="ORDERS_DAILY", database="SALES_DB", schema="RAW")]
+
+    def test_dbtable_kept_in_the_shared_options_dict(self):
+        """dbtable, sfDatabase and sfSchema may all live in the dict passed as **name / connection_options=name."""
+        script = """
+src_options = {"sfURL": "acme.snowflakecomputing.com", "sfDatabase": "SALES_DB", "sfSchema": "RAW", "dbtable": "ORDERS"}
+tgt_options = {"sfDatabase": "SALES_DB", "sfSchema": "CURATED", "dbtable": "ORDERS_DAILY"}
+orders = spark.read.format("snowflake").options(**src_options).load()
+orders.write.format("snowflake").options(**tgt_options).mode("overwrite").save()
+glueContext.create_dynamic_frame.from_options(connection_type="snowflake", connection_options=src_options)
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_sources == [
+            SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW"),
+            SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW"),
+        ]
+        assert result.snowflake_targets == [SnowflakeRef(table="ORDERS_DAILY", database="SALES_DB", schema="CURATED")]
+
+    def test_quoted_name_with_a_dot_is_one_identifier(self):
+        script = """
+sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW"}
+df = spark.read.format("snowflake").options(**sf_options).option("dbtable", '"ORDERS.V2"').load()
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_sources == [SnowflakeRef(table="ORDERS.V2", database="SALES_DB", schema="RAW")]
+
 
 class TestSnowflakeStudioNode:
     def test_visual_nodes_are_mapped(self):
@@ -321,6 +359,21 @@ class TestResolveSnowflakeEntities:
         assert lineage_details["sources"] == [ORDERS_REF]
         assert len(build.call_args_list) == 1
         assert build.call_args.kwargs["schema_name"] is None
+
+    def test_same_table_in_two_services_is_ambiguous(self, glue_source):
+        """Two Snowflake services with the same table: do not link whichever service is listed first."""
+        glue_source.get_db_service_names = MagicMock(return_value=["snowflake_prod", "snowflake_dr"])
+        lineage_details = {"sources": [], "targets": []}
+
+        with patch("metadata.ingestion.source.pipeline.gluepipeline.metadata.fqn.build") as build:
+            build.side_effect = lambda **kwargs: [f"{kwargs['service_name']}.SALES_DB.RAW.ORDERS"]
+            glue_source._resolve_snowflake_entities(
+                [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")], lineage_details, "sources"
+            )
+
+        assert lineage_details["sources"] == []
+        assert [call.kwargs["service_name"] for call in build.call_args_list] == ["snowflake_prod", "snowflake_dr"] * 2
+        glue_source.metadata.get_entity_reference.assert_not_called()
 
     def test_not_found(self, glue_source):
         lineage_details = {"sources": [], "targets": []}
