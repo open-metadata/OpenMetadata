@@ -55,6 +55,14 @@ jest.mock('../../../rest/glossaryAPI', () => ({
   addGlossaries: jest.fn(),
 }));
 
+jest.mock('../../../rest/intakeFormsAPI', () => ({
+  getIntakeFormByEntityType: jest.fn().mockResolvedValue(null),
+}));
+
+jest.mock('../../../rest/metadataTypeAPI', () => ({
+  getCustomPropertiesByEntityType: jest.fn().mockResolvedValue([]),
+}));
+
 jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: jest.fn().mockResolvedValue({ hits: { hits: [] } }),
 }));
@@ -99,6 +107,10 @@ const openAndFill = async () => {
   fireEvent.change(screen.getByLabelText('description-editor'), {
     target: { value: 'Business terms' },
   });
+  // Saving waits for the intake form, which loads when the drawer opens.
+  await waitFor(() =>
+    expect(screen.getByTestId('save-glossary')).toBeEnabled()
+  );
   fireEvent.click(screen.getByTestId('save-glossary'));
 };
 

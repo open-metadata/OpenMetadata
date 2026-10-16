@@ -888,6 +888,7 @@ const DataProductsDetailsPage = ({
       feedCount,
       getEntityFeedCount,
       labelMap: tabLabelMap,
+      onUpdateEntityDetails: onRefresh,
     });
 
     return getDetailsTabWithNewLabel(
@@ -907,6 +908,7 @@ const DataProductsDetailsPage = ({
     feedCount,
     inputPortsCount,
     outputPortsCount,
+    onRefresh,
   ]);
 
   // `/dataProduct/:fqn` has no tab segment; resolve to the first rendered tab when the

@@ -150,6 +150,8 @@ import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.interface';
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
+import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
+import { getLifecycleMove } from '../LifecycleApprovalCard/LifecycleApprovalCard.utils';
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import TaskActionSplitButton, {
@@ -159,10 +161,15 @@ import { TaskTabProps } from './TaskTab.interface';
 import {
   computeTaskEditAccessFlags,
   computeTaskOwnershipFlags,
+  computeWorkflowTaskAccess,
 } from './TaskTab.utils';
 
 const FeedbackApprovalTask = withSuspenseFallback(
   lazy(() => import('../../../../pages/TasksPage/shared/FeedbackApprovalTask'))
+);
+
+const MetadataCompletionTask = withSuspenseFallback(
+  lazy(() => import('../MetadataCompletionTask/MetadataCompletionTask'))
 );
 
 type ProposedChanges = Record<string, { added: string[]; removed: string[] }>;
@@ -434,6 +441,10 @@ export const TaskTabNew = ({
     () => (isTaskApprovalRequest ? extractProposedChanges(task.payload) : null),
     [isTaskApprovalRequest, task.payload]
   );
+  // A lifecycle approval gates a stage move, so it shows the move instead of field edits.
+  const lifecycleMove = isTaskApprovalRequest
+    ? getLifecycleMove(task.payload)
+    : null;
   const changeRequestId = useMemo(
     () => (isTaskApprovalRequest ? changeRequestIdOf(task.payload) : undefined),
     [isTaskApprovalRequest, task.payload]
@@ -1160,12 +1171,26 @@ export const TaskTabNew = ({
     }
   };
 
+  const { hasWorkflowAccess, showsWorkflowActions } = computeWorkflowTaskAccess(
+    {
+      isRequestApproval: task.type === TaskEntityType.RequestApproval,
+      hasChangeRequest: Boolean(changeRequestId),
+      isAssignee,
+      isPartOfAssigneeTeam: Boolean(isPartOfAssigneeTeam),
+      hasEditAccess,
+      isCreator,
+    }
+  );
+
   const workflowTransitionActions = useMemo(() => {
-    if (!isWorkflowDrivenTask || !task.availableTransitions?.length) {
+    if (
+      !isWorkflowDrivenTask ||
+      !task.availableTransitions?.length ||
+      !showsWorkflowActions
+    ) {
       return null;
     }
 
-    const hasWorkflowAccess = hasEditAccess || isCreator;
     const menuItems: TaskActionSplitButtonItem[] =
       task.availableTransitions.map((transition) => ({
         key: transition.id,
@@ -1239,9 +1264,9 @@ export const TaskTabNew = ({
       </Box>
     );
   }, [
-    hasEditAccess,
+    hasWorkflowAccess,
+    showsWorkflowActions,
     isActionLoading,
-    isCreator,
     isWorkflowDrivenTask,
     runWorkflowTransition,
     selectedTransition,
@@ -1826,6 +1851,10 @@ export const TaskTabNew = ({
       ) : null;
     }
 
+    if (task.type === TaskEntityType.MetadataCompletion) {
+      return <MetadataCompletionTask task={task} />;
+    }
+
     if (!shouldRenderTaskPayload) {
       return null;
     }
@@ -2075,7 +2104,11 @@ export const TaskTabNew = ({
       </Box>
       <Divider className="m-0" />
       {!darHeaderRows && <div>{taskHeader}</div>}
-      {renderProposedChangesSection()}
+      {lifecycleMove ? (
+        <LifecycleApprovalCard move={lifecycleMove} />
+      ) : (
+        renderProposedChangesSection()
+      )}
       <div>
         {renderFeedbackOrTaskPayload()}
         {renderActionRequiredSection()}

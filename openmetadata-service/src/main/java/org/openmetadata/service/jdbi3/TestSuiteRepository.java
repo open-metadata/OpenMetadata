@@ -339,6 +339,18 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
+  protected String getInheritableFields() {
+    return "owners,domains";
+  }
+
+  @Override
+  protected void applyInheritance(
+      TestSuite entity, EntityUtil.Fields fields, EntityInterface<?> parent) {
+    inheritOwners(entity, fields, parent);
+    super.applyInheritance(entity, fields, parent);
+  }
+
+  @Override
   public EntityInterface<?> getParentEntity(TestSuite entity, String fields) {
     if (entity.getBasic() && entity.getBasicEntityReference() != null) {
       var filteredFields = EntityUtil.getFilteredFields(TABLE, fields);

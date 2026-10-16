@@ -85,3 +85,36 @@ export const computeTaskEditAccessFlags = ({
 
   return { hasEditAccess, shouldEditAssignee };
 };
+
+interface WorkflowTaskAccessParams {
+  isRequestApproval: boolean;
+  hasChangeRequest: boolean;
+  isAssignee: boolean;
+  isPartOfAssigneeTeam: boolean;
+  hasEditAccess: boolean;
+  isCreator: boolean;
+}
+
+/**
+ * Who acts on a workflow-driven task. A workflow's approval — a stage move or a held change — is
+ * decided by its assignees: an admin or owner who is not assigned gets no action, matching the
+ * server. Other workflow tasks keep the edit access of the task tab.
+ */
+export const computeWorkflowTaskAccess = ({
+  isRequestApproval,
+  hasChangeRequest,
+  isAssignee,
+  isPartOfAssigneeTeam,
+  hasEditAccess,
+  isCreator,
+}: WorkflowTaskAccessParams) => {
+  const decidedByAssignees = isRequestApproval || hasChangeRequest;
+  const hasWorkflowAccess = decidedByAssignees
+    ? isAssignee || isPartOfAssigneeTeam
+    : hasEditAccess || isCreator;
+
+  return {
+    hasWorkflowAccess,
+    showsWorkflowActions: !decidedByAssignees || hasWorkflowAccess,
+  };
+};
