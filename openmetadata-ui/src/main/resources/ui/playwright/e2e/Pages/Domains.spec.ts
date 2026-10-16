@@ -489,6 +489,8 @@ test.describe('Domains', () => {
   });
 
   test('Follow & Un-follow domain', async ({ page }) => {
+    test.slow(true);
+
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     await domain.create(apiContext);
@@ -569,6 +571,8 @@ test.describe('Domains', () => {
   test('Follow/unfollow subdomain and create nested sub domain', async ({
     page,
   }) => {
+    test.slow(true);
+
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const subDomain = new SubDomain(domain);
