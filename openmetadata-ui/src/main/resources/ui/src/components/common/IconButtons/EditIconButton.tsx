@@ -94,7 +94,6 @@ const BaseIconButton = forwardRef<HTMLButtonElement, BaseIconButtonProps>(
 export const EditIconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
   (props, ref) => (
     <BaseIconButton
-      bordered={props.newLook}
       defaultIcon={Edit01}
       ref={ref}
       {...props}
@@ -104,7 +103,6 @@ export const EditIconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
 
 export const RequestIconButton = (props: IconButtonProps) => (
   <BaseIconButton
-    bordered={props.newLook}
     defaultIcon={MessagePlusSquare}
     {...props}
   />
@@ -112,7 +110,6 @@ export const RequestIconButton = (props: IconButtonProps) => (
 
 export const CommentIconButton = (props: IconButtonProps) => (
   <BaseIconButton
-    bordered={props.newLook}
     defaultIcon={MessageChatSquare}
     {...props}
   />
