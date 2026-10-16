@@ -57,11 +57,11 @@ const createDescriptionTaskViaUI = async (
 ) => {
   await page.getByTestId('request-description').click();
 
-  await page.waitForSelector('#title', { state: 'visible' });
+  await expect(page.getByTestId('title').locator('input')).toBeVisible();
 
-  expect(await page.locator('#title').inputValue()).toContain(
-    `description for ${entityType}`
-  );
+  expect(
+    await page.getByTestId('title').locator('input').inputValue()
+  ).toContain(`description for ${entityType}`);
 
   await selectAssignee(page, assigneeName);
 
@@ -84,11 +84,11 @@ const createTagTaskViaUI = async (
 ) => {
   await page.getByTestId('request-entity-tags').click();
 
-  await page.waitForSelector('#title', { state: 'visible' });
+  await expect(page.getByTestId('title').locator('input')).toBeVisible();
 
-  expect(await page.locator('#title').inputValue()).toContain(
-    `tags for ${entityType}`
-  );
+  expect(
+    await page.getByTestId('title').locator('input').inputValue()
+  ).toContain(`tags for ${entityType}`);
 
   await selectAssignee(page, assigneeName);
   await addTagSuggestion({
@@ -326,9 +326,11 @@ test.describe('Task Workflow - Table Column Tasks', () => {
     });
 
     await test.step('Fill task form and submit', async () => {
-      await page.waitForSelector('#title', { state: 'visible' });
+      await expect(page.getByTestId('title').locator('input')).toBeVisible();
 
-      expect(await page.locator('#title').inputValue()).toContain('columns');
+      expect(
+        await page.getByTestId('title').locator('input').inputValue()
+      ).toContain('columns');
 
       await selectAssignee(page, userName);
 
@@ -375,9 +377,11 @@ test.describe('Task Workflow - Table Column Tasks', () => {
     });
 
     await test.step('Fill tag task form and submit', async () => {
-      await page.waitForSelector('#title', { state: 'visible' });
+      await expect(page.getByTestId('title').locator('input')).toBeVisible();
 
-      expect(await page.locator('#title').inputValue()).toContain('columns');
+      expect(
+        await page.getByTestId('title').locator('input').inputValue()
+      ).toContain('columns');
 
       await selectAssignee(page, userName);
 

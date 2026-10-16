@@ -27,7 +27,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -350,6 +352,26 @@ class VectorDocBuilderChunkTest {
       List<Map<String, Object>> owners = (List<Map<String, Object>>) doc.get("owners");
       assertEquals(ownerId.toString(), owners.get(0).get("id"), "the filter matches on owners.id");
       assertEquals("alice", owners.get(0).get("name"));
+    }
+  }
+
+  /** A filtered recall reads the kind off the chunk, so every chunk must carry it, not chunk 0. */
+  @Test
+  void chunkDocs_carryTheMemoryKindOnEveryChunk() {
+    ContextMemory memory =
+        memory(MemoryVisibility.PRIVATE)
+            .withMemoryScope(ContextMemoryScope.USER_GLOBAL)
+            .withMemoryType(ContextMemoryType.NOTE)
+            .withPinned(true)
+            .withDescription("fiscal ".repeat(900));
+
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(memory, new MockEmbeddingClient());
+
+    assertTrue(docs.size() > 1, "fixture must span multiple chunks to catch chunk-0-only stamping");
+    for (Map<String, Object> doc : docs) {
+      assertEquals("UserGlobal", doc.get(ContextMemoryIndex.FIELD_MEMORY_SCOPE));
+      assertEquals("Note", doc.get(ContextMemoryIndex.FIELD_MEMORY_TYPE));
+      assertEquals(Boolean.TRUE, doc.get(ContextMemoryIndex.FIELD_PINNED));
     }
   }
 

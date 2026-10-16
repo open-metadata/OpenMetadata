@@ -12,13 +12,13 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Upload01 as ImportIcon } from '@openmetadata/ui-core-components/icons';
 import { lowerCase } from 'lodash';
 import type { ReactElement, ReactNode } from 'react';
 import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
+import { ManageMenuItem as ItemType } from '../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageMenuItem } from '../components/common/ManageMenuButton/ManageMenuButton.component';
 import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';

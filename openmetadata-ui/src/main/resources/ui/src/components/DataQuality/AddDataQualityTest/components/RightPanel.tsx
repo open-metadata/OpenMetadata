@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Row } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+
 import React from 'react';
 import { RightPanelProps } from '../AddDataQualityTest.interface';
 
@@ -23,12 +23,12 @@ import { RightPanelProps } from '../AddDataQualityTest.interface';
  */
 const RightPanel: React.FC<RightPanelProps> = ({ data }) => {
   return (
-    <Row>
+    <Box className="layout-row" wrap="wrap">
       <Typography as="p" data-testid="right-panel-header">
         {data.title}
       </Typography>
       <Typography as="div">{data.body}</Typography>
-    </Row>
+    </Box>
   );
 };
 

@@ -187,7 +187,7 @@
     },
     "memoryDispute": {
       "javaType": "org.openmetadata.schema.entity.context.MemoryDispute",
-      "description": "A memory owned by someone else whose claim contradicts this one. Both remain Approved.",
+      "description": "An Approved memory whose claim contradicts the Draft memory that records the dispute.",
       "type": "object",
       "properties": {
         "memory": {
@@ -199,7 +199,7 @@
           "type": "string"
         },
         "detectedAt": {
-          "description": "When the contradiction was detected.",
+          "description": "When the contradiction was detected. Defaults to the time of the write that records the dispute.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
         }
       },
@@ -258,12 +258,21 @@
       "description": "Why the memory reached its current status, e.g. the reconciliation verdict or the missing anchor. Cleared by a status change that brings no reason of its own.",
       "type": "string"
     },
+    "lastReviewedAt": {
+      "description": "When this memory was last confirmed to hold: set whenever it becomes Approved, and each time Memory Reconciliation revalidates it. An Approved memory with no value predates the field.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "lastContentUpdatedAt": {
+      "description": "Server-owned timestamp of the latest change to memory content or its subject. Review, lifecycle, pin, tag, share and usage writes preserve it. Legacy memories fall back to updatedAt until their next write. Used for knowledge recency independently of the audit timestamp.",
+      "$ref": "../../type/basic.json#/definitions/timestamp",
+      "readOnly": true
+    },
     "supersededBy": {
       "description": "The memory that replaced this one. Set if and only if entityStatus is Superseded or the legacy Deprecated stage.",
       "$ref": "../../type/entityReference.json"
     },
     "disputes": {
-      "description": "Memories owned by someone else whose claims contradict this one.",
+      "description": "Unresolved conflicts that hold this Draft memory in review, one per contradicting memory. Only a Draft memory records disputes, and leaving Draft clears them; version history keeps them. A memory that enters Draft with disputes opens a memory conflict review task.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/memoryDispute"

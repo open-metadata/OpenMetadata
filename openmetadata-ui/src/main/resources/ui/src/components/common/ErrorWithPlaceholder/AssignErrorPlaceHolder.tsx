@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
@@ -47,7 +47,16 @@ const AssignErrorPlaceHolder = ({
         'h-full flex-center border-default border-radius-sm bg-white'
       )}
       data-testid={`assign-error-placeholder-${heading}`}>
-      <Space align="center" className="w-full" direction="vertical" size={10}>
+      <Box
+        inline
+        align="center"
+        className="layout-space w-full"
+        direction="col"
+        itemClassName="layout-space-item"
+        style={{
+          columnGap: 'var(--om-space-10)',
+          rowGap: 'var(--om-space-10)',
+        }}>
         <AddPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
@@ -63,7 +72,7 @@ const AssignErrorPlaceHolder = ({
 
           {button}
         </div>
-      </Space>
+      </Box>
     </div>
   );
 };

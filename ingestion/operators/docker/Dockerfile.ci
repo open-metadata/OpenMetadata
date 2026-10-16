@@ -164,9 +164,13 @@ ARG INGESTION_DEPENDENCY="all"
 # Pre-install the unmaintained dialect package that declares SQLAlchemy<2 in its
 # metadata but works at runtime with SQLAlchemy 2.0.
 RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3"
-RUN pip install "datamodel-code-generator==0.64.0"
-RUN mkdir -p /ingestion/src/metadata/generated
-RUN python /scripts/datamodel_generation.py
+# 0.64.0 is vulnerable to CVE-2026-107377 (first patched in 0.81.0). Generate with
+# 0.83.0, then remove it in the same layer so its files cannot remain in the final
+# image's lower layers.
+RUN pip install "datamodel-code-generator==0.83.0" \
+  && mkdir -p /ingestion/src/metadata/generated \
+  && python /scripts/datamodel_generation.py \
+  && pip uninstall -y datamodel-code-generator
 RUN pip install ".[airflow]"
 RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
@@ -183,6 +187,7 @@ COPY ingestion/operators/docker/*.py .
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
+RUN python -c "import importlib.util as u; assert u.find_spec('datamodel_code_generator') is None"
 
 # Drop build-only packages that leaked into the runtime image. libmariadb-dev
 # and libmariadb-dev-compat are only needed to compile mysqlclient (done above);
@@ -280,6 +285,13 @@ USER openmetadata
 # compiled earlier, or from the DB2 driver on amd64. Modules that a slimmer
 # INGESTION_DEPENDENCY does not install are skipped.
 RUN python -c "import importlib, importlib.util as u; [importlib.import_module(m) for m in ('MySQLdb', 'psycopg2', 'kerberos', '_mysql_connector', 'ibm_db') if u.find_spec(m)]"
+
+# Models are opt-in so the default image remains unchanged. Run this after the
+# package installs and before the spaCy cleanup below, while using the runtime user.
+ARG AUTO_CLASSIFICATION_LANGUAGES=""
+RUN if [ -n "$AUTO_CLASSIFICATION_LANGUAGES" ]; then \
+      metadata install-classification-models --languages "$AUTO_CLASSIFICATION_LANGUAGES"; \
+    fi
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
 # See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the

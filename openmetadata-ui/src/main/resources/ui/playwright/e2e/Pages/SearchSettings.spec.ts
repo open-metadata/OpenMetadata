@@ -28,6 +28,7 @@ import {
   mockEntitySearchSettings,
   openMatchingFieldsPanel,
   restoreDefaultSearchSettings,
+  selectSettingOption,
   setSliderValue,
 } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
@@ -147,26 +148,21 @@ test.describe('Search Settings', () => {
       // Add and remove field value boost
       await page.getByTestId('add-field-value-boost-btn').click();
 
-      await page
-        .locator('.field-value-boost-modal:visible')
-        .waitFor({ state: 'visible' });
+      const modal = page.getByTestId('field-value-boost-dialog');
 
-      const modal = page.locator('.field-value-boost-modal:visible');
+      await modal.waitFor({ state: 'visible' });
 
-      await modal.locator('#field').click();
+      await selectSettingOption(
+        page,
+        modal.getByTestId('field-select'),
+        'totalVotes'
+      );
 
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('totalVotes')
-        .click();
+      await modal.getByRole('slider').fill('25.6');
 
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .waitFor({ state: 'hidden' });
+      await expect(modal.getByTestId('field-boost-value')).toHaveText('25.6');
 
-      await setSliderValue(page, 'field-boost-slider', 25.6);
-
-      await modal.locator('button').filter({ hasText: 'Save' }).click();
+      await modal.getByTestId('save-field-value-boost').click();
 
       await toastNotification(page, /Search Settings updated successfully/);
 
@@ -266,35 +262,23 @@ test.describe('Search Settings', () => {
 
       // Match Type
       const matchTypeSelect = page.getByTestId('match-type-select');
-      await matchTypeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Fuzzy Match')
-        .click();
+      await selectSettingOption(page, matchTypeSelect, 'Fuzzy Match');
 
       // Score Mode
       const scoreModeSelect = page.getByTestId('score-mode-select');
-      await scoreModeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Max')
-        .click();
+      await selectSettingOption(page, scoreModeSelect, 'Max');
 
       // Boost Mode
       const boostModeSelect = page.getByTestId('boost-mode-select');
-      await boostModeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Replace')
-        .click();
+      await selectSettingOption(page, boostModeSelect, 'Replace');
 
       // Save
       await page.getByTestId('save-btn').click();
 
       await toastNotification(page, /Search Settings updated successfully/);
 
-      await expect(scoreModeSelect).toHaveText('Max');
-      await expect(boostModeSelect).toHaveText('Replace');
+      await expect(scoreModeSelect.getByRole('button')).toHaveText('Max');
+      await expect(boostModeSelect.getByRole('button')).toHaveText('Replace');
     });
 
     test('Highlight toggle is offered for analyzed fields', async ({
@@ -488,7 +472,10 @@ test.describe('Search Settings', () => {
         page.getByTestId('highlight-field-switch').getByRole('switch')
       ).not.toBeChecked();
 
-      const searchInput = page.getByTestId('searchbar');
+      // The shell also renders a searchbar; preview queries belong to this page.
+      const searchInput = page
+        .getByTestId('page-layout-v1')
+        .getByTestId('searchbar');
       const searchPreviewResponse = page.waitForResponse(
         (response) =>
           response.url().endsWith('/api/v1/search/preview') &&
@@ -719,7 +706,10 @@ test.describe('Search Settings', () => {
         );
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByTestId('searchbar').fill('test');
+        await page
+          .getByTestId('page-layout-v1')
+          .getByTestId('searchbar')
+          .fill('test');
 
         const freshCard = page.getByTestId(
           'table-data-card_pw_race_service.fresh_result'
@@ -737,7 +727,7 @@ test.describe('Search Settings', () => {
         const ngramSliderHandle = page
           .getByTestId('field-configuration-panel-name.ngram')
           .getByTestId('field-weight-slider')
-          .locator('.ant-slider-handle');
+          .getByRole('slider');
 
         // Register before triggering so the delayed stale request and response
         // are both observed.
@@ -812,11 +802,7 @@ test.describe('Search Settings', () => {
       );
 
       const matchTypeSelect = page.getByTestId('match-type-select');
-      await matchTypeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Exact Match')
-        .click();
+      await selectSettingOption(page, matchTypeSelect, 'Exact Match');
 
       const saveSettings = page.waitForResponse(
         (response) =>
@@ -862,7 +848,9 @@ test.describe('Search Settings', () => {
         );
         await columnCard.click();
 
-        const searchInput = page.getByTestId('searchbar');
+        const searchInput = page
+          .getByTestId('page-layout-v1')
+          .getByTestId('searchbar');
         const previewResponse = page.waitForResponse(
           (response) =>
             response.url().endsWith('/api/v1/search/preview') &&

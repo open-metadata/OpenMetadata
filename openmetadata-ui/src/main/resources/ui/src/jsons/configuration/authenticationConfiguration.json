@@ -177,7 +177,8 @@
         },
         "dnAdminPassword": {
           "description": "Password for LDAP Admin",
-          "type": "string"
+          "type": "string",
+          "format": "password"
         },
         "sslEnabled": {
           "description": "LDAPS (secure LDAP) or LDAP",
@@ -279,7 +280,8 @@
                 },
                 "trustStoreFilePassword": {
                   "description": "Truststore file password",
-                  "type": "string"
+                  "type": "string",
+                  "format": "password"
                 },
                 "trustStoreFileFormat": {
                   "description": "Truststore file format",
@@ -377,8 +379,7 @@
             },
             "idpX509Certificate": {
               "description": "X509 Certificate ",
-              "type": "string",
-              "format": "password"
+              "type": "string"
             },
             "nameId": {
               "description": "Name ID format for SAML assertions",
@@ -407,8 +408,7 @@
             },
             "spX509Certificate": {
               "description": "X509 Certificate ",
-              "type": "string",
-              "format": "password"
+              "type": "string"
             },
             "spPrivateKey": {
               "description": "Sp Private Key for Signing and Encryption Only",
@@ -516,8 +516,7 @@
             },
             "idpX509Certificate": {
               "description": "X509 Certificate ",
-              "type": "string",
-              "format": "password"
+              "type": "string"
             },
             "nameId": {
               "description": "Name ID format for SAML assertions",
@@ -546,8 +545,7 @@
             },
             "spX509Certificate": {
               "description": "X509 Certificate ",
-              "type": "string",
-              "format": "password"
+              "type": "string"
             },
             "spPrivateKey": {
               "description": "Sp Private Key for Signing and Encryption Only",

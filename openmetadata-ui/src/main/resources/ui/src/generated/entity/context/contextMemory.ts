@@ -40,7 +40,9 @@ export interface ContextMemory {
      */
     displayName?: string;
     /**
-     * Memories owned by someone else whose claims contradict this one.
+     * Unresolved conflicts that hold this Draft memory in review, one per contradicting memory.
+     * Only a Draft memory records disputes, and leaving Draft clears them; version history
+     * keeps them. A memory that enters Draft with disputes opens a memory conflict review task.
      */
     disputes?: MemoryDispute[];
     /**
@@ -75,6 +77,19 @@ export interface ContextMemory {
      * Incremental change that led to this version.
      */
     incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Server-owned timestamp of the latest change to memory content or its subject. Review,
+     * lifecycle, pin, tag, share and usage writes preserve it. Legacy memories fall back to
+     * updatedAt until their next write. Used for knowledge recency independently of the audit
+     * timestamp.
+     */
+    lastContentUpdatedAt?: number;
+    /**
+     * When this memory was last confirmed to hold: set whenever it becomes Approved, and each
+     * time Memory Reconciliation revalidates it. An Approved memory with no value predates the
+     * field.
+     */
+    lastReviewedAt?: number;
     /**
      * Last time the memory was used by AI-assisted retrieval.
      */
@@ -324,11 +339,12 @@ export interface EntityReference {
 }
 
 /**
- * A memory owned by someone else whose claim contradicts this one. Both remain Approved.
+ * An Approved memory whose claim contradicts the Draft memory that records the dispute.
  */
 export interface MemoryDispute {
     /**
-     * When the contradiction was detected.
+     * When the contradiction was detected. Defaults to the time of the write that records the
+     * dispute.
      */
     detectedAt?: number;
     /**

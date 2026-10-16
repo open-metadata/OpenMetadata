@@ -25,7 +25,12 @@ import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
 import { ENTITY_PATH } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { getApiContext } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  isClassificationTagSelected,
+  openClassificationTagPicker,
+  searchClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { waitForSearchIndexed } from './polling';
 
 export const getEntityFqn = (
@@ -36,56 +41,18 @@ export const getEntityFqn = (
   ).entityResponseData?.fullyQualifiedName;
 };
 
-const findOptionByScrolling = async (page: Page, endpoint: string) => {
-  const maxTries = 12; // Bound the scan; the list is ~25 options over ~3 viewports.
-  const filterName = ENDPOINT_TO_FILTER_MAP[endpoint];
-  const dropdown = page
-    .getByTestId('global-search-select-dropdown')
-    .locator('.rc-virtual-list-holder');
-  const option = page.getByTestId(`global-search-select-option-${filterName}`);
+const selectSearchIndexOption = async (page: Page, endpoint: string) => {
+  const option = page.getByTestId(
+    `global-search-select-option-${ENDPOINT_TO_FILTER_MAP[endpoint]}`
+  );
 
-  // The filter list is virtualised, so only the ~11 rows around the current
-  // offset exist in the DOM: every option below "Container" — Stored Procedure,
-  // Data Product, API Endpoint, API Collection, Metric and the rest — is absent
-  // until scrolled into range.
-  //
-  // waitFor() rather than isVisible(): isVisible() resolves immediately and
-  // never retries, so probing it straight after scrollBy() races the re-render
-  // of the virtual window. That is why every entity type past the initial
-  // window was flaky under CI load while those inside it never were. When the
-  // option is already rendered this resolves instantly, so the timeout is only
-  // ever paid once per scroll step.
-  for (let tries = 0; tries < maxTries; tries++) {
-    const appeared = await option
-      .waitFor({ state: 'visible', timeout: 1_000 })
-      .then(() => true)
-      .catch(() => false);
-
-    if (appeared) {
-      await option.click();
-
-      return true;
-    }
-
-    // Advance a whole viewport so the scan covers the list in a few steps, and
-    // detect the end from the clamped scrollTop rather than a fixed try count.
-    const movedBy = await dropdown.evaluate((element) => {
-      const before = element.scrollTop;
-      element.scrollBy(0, element.clientHeight);
-
-      return element.scrollTop - before;
-    });
-
-    if (movedBy === 0) {
-      break; // Already at the bottom: the option is not in this list.
-    }
+  // The core Select renders every option, so a missing one is genuinely absent.
+  if ((await option.count()) === 0) {
+    return false;
   }
+  await option.click();
 
-  await dropdown.evaluate((element) => {
-    element.scrollTop = 0;
-  });
-
-  return false;
+  return true;
 };
 
 export const openEntitySummaryPanel = async ({
@@ -123,15 +90,16 @@ export const openEntitySummaryPanel = async ({
     }
   }
   const runSearch = async () => {
-    if (endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
+    const exploreSearchWrapper = page.getByTestId('explore-search-input');
+    const isExplore = (await exploreSearchWrapper.count()) > 0;
+    // Explore owns its entity tabs and has no navbar filter dropdown.
+    if (!isExplore && endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
       await page.getByTestId('global-search-selector').waitFor({
         state: 'visible',
       });
       await page.getByTestId('global-search-selector').click();
-      await page.getByTestId('global-search-select-dropdown').waitFor({
-        state: 'visible',
-      });
-      if (!(await findOptionByScrolling(page, endpoint))) {
+      await page.getByRole('listbox').waitFor({ state: 'visible' });
+      if (!(await selectSearchIndexOption(page, endpoint))) {
         return false;
       }
     }
@@ -141,11 +109,9 @@ export const openEntitySummaryPanel = async ({
     // ever time out. Pick whichever this page actually renders.
     // `explore-search-input` marks the field wrapper, not the field, so the
     // textbox inside it is what accepts fill().
-    const exploreSearchWrapper = page.getByTestId('explore-search-input');
-    const searchBox =
-      (await exploreSearchWrapper.count()) > 0
-        ? exploreSearchWrapper.getByRole('textbox')
-        : page.getByTestId('searchBox');
+    const searchBox = isExplore
+      ? exploreSearchWrapper.getByRole('textbox')
+      : page.getByTestId('searchBox');
 
     try {
       await searchBox.waitFor({ state: 'visible', timeout: 15_000 });
@@ -297,45 +263,18 @@ export const editTags = async (page: Page, tagName: string) => {
     })
     .toBeGreaterThan(0);
 
-  if (await editIcon.isVisible()) {
-    await editIcon.click();
-  } else {
-    await addTagChip.click();
-  }
-
-  await page
-    .locator('[data-testid="selectable-list"]')
-    .waitFor({ state: 'visible' });
-
-  await page
-    .locator('[data-testid="selectable-list"]')
-    .scrollIntoViewIfNeeded();
-
-  const searchTagResponsePromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=`) &&
-      response.url().includes('index=tag')
+  await openClassificationTagPicker(
+    page,
+    (await editIcon.isVisible()) ? editIcon : addTagChip
   );
-  const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
-  await searchBar.fill(tagName);
 
-  const searchTagResponse = await searchTagResponsePromise;
-  expect(searchTagResponse.status()).toBe(200);
-
-  await waitForAllLoadersToDisappear(page);
-
-  const tagOption = page
-    .locator('.selectable-list-item')
-    .filter({ hasText: tagName });
-  // Wait for tag option to be visible before clicking
-  await tagOption.waitFor({ state: 'visible' });
+  const tagOption = await searchClassificationTagPicker(page, tagName);
+  await expect(tagOption).toBeVisible();
   await tagOption.click();
 
-  const updateBtn = page.getByRole('button', { name: 'Update' });
-  await updateBtn.waitFor({ state: 'visible' });
-  await updateBtn.click();
-  await waitForPatchResponse(page);
+  const patchPromise = waitForPatchResponse(page);
+  await page.getByTestId('update-btn').click();
+  await patchPromise;
 
   await expect(page.getByText(/Tags updated successfully/i)).toBeVisible();
 };
@@ -438,24 +377,19 @@ export const removeTagsFromPanel = async (
   page: Page,
   tagDisplayNames: string[]
 ) => {
-  await page.getByTestId('edit-icon-tags').click();
-
-  await page
-    .locator('[data-testid="selectable-list"]')
-    .waitFor({ state: 'visible' });
-
-  await waitForAllLoadersToDisappear(page);
+  await openClassificationTagPicker(page, page.getByTestId('edit-icon-tags'));
 
   for (const tagName of tagDisplayNames) {
-    const tagOption = page
-      .locator('.selectable-list-item')
-      .filter({ hasText: tagName });
-    await tagOption.waitFor({ state: 'visible' });
-    await tagOption.click();
+    const tagOption = await searchClassificationTagPicker(page, tagName);
+    await expect(tagOption).toBeVisible();
+
+    if (await isClassificationTagSelected(tagOption)) {
+      await tagOption.click();
+    }
   }
 
   const patchPromise = waitForPatchResponse(page);
-  await page.getByRole('button', { name: 'Update' }).click();
+  await page.getByTestId('update-btn').click();
   await patchPromise;
 };
 
@@ -536,21 +470,18 @@ export const assignTierToPanel = async (page: Page, tierName: string) => {
   // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('edit-icon-tier').click({ force: true });
 
-  const tierPopover = page.getByTestId('cards');
+  const tierPopover = page.getByTestId('drop-down-menu');
   await tierPopover.waitFor({ state: 'visible' });
 
   await waitForAllLoadersToDisappear(page);
 
-  const tierRadioButton = page.getByTestId(`radio-btn-${tierName}`);
-  await tierRadioButton.waitFor({ state: 'visible' });
+  const tierRow = tierPopover.getByTestId(`Tier.${tierName}`);
+  await tierRow.waitFor({ state: 'visible' });
 
   const patchPromise = waitForPatchResponse(page);
 
-  await tierRadioButton.click();
-
-  const updateButton = page.getByTestId('update-tier-card');
-  await updateButton.waitFor({ state: 'visible' });
-  await updateButton.click();
+  // Picking a tier saves it and closes the picker.
+  await tierRow.click();
 
   await patchPromise;
 
@@ -565,10 +496,10 @@ export const removeTierFromPanel = async (page: Page) => {
   // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('edit-icon-tier').click({ force: true });
 
-  const tierPopover = page.getByTestId('cards');
+  const tierPopover = page.getByTestId('drop-down-menu');
   await tierPopover.waitFor({ state: 'visible' });
 
-  const clearButton = tierPopover.getByTestId('clear-tier');
+  const clearButton = tierPopover.getByTestId('clear-filter-btn');
   await clearButton.waitFor({ state: 'visible' });
 
   const patchPromise = waitForPatchResponse(page);

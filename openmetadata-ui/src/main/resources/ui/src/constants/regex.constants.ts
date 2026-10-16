@@ -103,3 +103,8 @@ export const ADMONITION_BLOCK_REGEX = new RegExp(
   `^\\$\\$(${ADMONITION_TYPES.join('|')})\\n([\\s\\S]*?)\\n\\$\\$`,
   'gm'
 );
+
+// Allowlist for entity-link hrefs (mention/hashtag): absolute http(s) URLs,
+// root-relative paths and fragments. An allowlist, because a `javascript:`
+// blocklist is bypassed by whitespace the URL parser strips (`java\tscript:`).
+export const SAFE_HREF_REGEX = /^(https?:\/\/|\/|#)/i;

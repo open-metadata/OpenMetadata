@@ -31,6 +31,7 @@ const PIPELINE_TYPE_TO_LOG_TASK_FIELD: Record<
   [PipelineType.ElasticSearchReindex]: 'elasticsearch_reindex_task',
   [PipelineType.AutoClassification]: 'auto_classification_task',
   [PipelineType.PolicyAgent]: 'ingestion_task',
+  [PipelineType.ReverseMetadata]: 'ingestion_task',
 };
 
 export const getLogTaskFieldForType = (

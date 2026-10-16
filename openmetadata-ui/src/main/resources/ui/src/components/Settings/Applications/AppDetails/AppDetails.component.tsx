@@ -17,10 +17,15 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Tabs,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import { Button, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -198,7 +203,7 @@ const AppDetails = () => {
     try {
       setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
       if (action === AppAction.ENABLE) {
-        handleRestore();
+        await handleRestore();
       } else {
         await uninstallApp(
           appData?.fullyQualifiedName ?? '',
@@ -594,7 +599,11 @@ const AppDetails = () => {
     }
 
     return (
-      <Tooltip title={runtimeDisabledReason}>
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={runtimeDisabledReason}
+        triggerClassName="tw:inline-flex">
         <div
           className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
           data-testid="runtime-disabled-badge">
@@ -619,7 +628,14 @@ const AppDetails = () => {
             href={appData?.developerUrl}
             rel="noopener noreferrer"
             target="_blank">
-            <Space>{t('label.visit-developer-website')}</Space>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              {t('label.visit-developer-website')}
+            </Box>
           </a>
         </Typography>
       </div>
@@ -665,10 +681,9 @@ const AppDetails = () => {
       <Box>
         <div className="d-flex tw:min-w-0 tw:flex-auto">
           <Button
-            className="p-0"
-            icon={<LeftOutlined />}
-            size="small"
-            type="text"
+            color="tertiary"
+            iconLeading={<LeftOutlined />}
+            size="xs"
             onClick={onBrowseAppsClick}>
             <Typography className="font-medium">
               {t('label.browse-app-plural')}
@@ -691,7 +706,12 @@ const AppDetails = () => {
       </Box>
       <Box direction="col">
         <div>
-          <Space className="app-details-header w-full" size={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal app-details-header w-full"
+            gap={6}
+            itemClassName="layout-space-item">
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
@@ -699,28 +719,38 @@ const AppDetails = () => {
               {renderRuntimeDisabledBadge()}
 
               <div className="d-flex items-center flex-wrap gap-6">
-                <Space size={8}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <ClockCircleOutlined />
                   <Typography className="text-xs" color="secondary">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
                     )}`}
                   </Typography>
-                </Space>
+                </Box>
 
-                <Space size={8}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <UserOutlined />
                   <Typography className="text-xs" color="secondary">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,
                     })}
                   </Typography>
-                </Space>
+                </Box>
 
                 {renderDeveloperUrl()}
               </div>
             </div>
-          </Space>
+          </Box>
         </div>
         <div>{renderAppDetailsBody()}</div>
       </Box>

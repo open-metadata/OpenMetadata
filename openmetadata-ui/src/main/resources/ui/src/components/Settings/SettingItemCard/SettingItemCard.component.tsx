@@ -12,13 +12,21 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Badge, Card } from 'antd';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
 import './setting-item-card.style.less';
+
+// Sized and tinted to match the 90px tiles baked into the legacy colored SVGs.
+const ICON_TILE_COLORS: Record<
+  NonNullable<SettingMenuItem['iconColor']>,
+  string
+> = {
+  blue: 'tw:bg-utility-blue-50 tw:text-utility-blue-700',
+};
 
 interface SettingMenuItemProps {
   data: SettingMenuItem;
@@ -42,23 +50,39 @@ const SettingItemCard = ({
       className={classNames('setting-card-item', className)}
       data-testid={data.key}
       onClick={handleOnClick}>
-      <div className="setting-card-icon">
-        <Icon component={data.icon} />
-        {Boolean(data?.isBeta) && (
-          <Badge className="service-beta-tag" count={t('label.beta')} />
-        )}
-      </div>
-      <div className="setting-card-content">
-        <Typography className="setting-card-title font-semibold">
-          {data.category ?? data.label}
-        </Typography>
-        <Typography
-          as="p"
-          className="setting-card-description font-normal text-sm"
-          ellipsis={{ rows: 2 }}>
-          {data.description}
-        </Typography>
-      </div>
+      <Card.Content className="tw:flex tw:items-center tw:gap-4">
+        <div className="setting-card-icon">
+          {data.iconColor ? (
+            <Box
+              align="center"
+              className={classNames(
+                'tw:size-22.5 tw:rounded-[28px]',
+                ICON_TILE_COLORS[data.iconColor]
+              )}
+              justify="center">
+              <data.icon className="tw:size-8" />
+            </Box>
+          ) : (
+            <Icon component={data.icon} />
+          )}
+          {Boolean(data?.isBeta) && (
+            <Badge className="service-beta-tag" color="brand" size="sm">
+              {t('label.beta')}
+            </Badge>
+          )}
+        </div>
+        <div className="setting-card-content">
+          <Typography className="setting-card-title font-semibold">
+            {data.category ?? data.label}
+          </Typography>
+          <Typography
+            as="p"
+            className="setting-card-description font-normal text-sm"
+            ellipsis={{ rows: 2 }}>
+            {data.description}
+          </Typography>
+        </div>
+      </Card.Content>
     </Card>
   );
 };

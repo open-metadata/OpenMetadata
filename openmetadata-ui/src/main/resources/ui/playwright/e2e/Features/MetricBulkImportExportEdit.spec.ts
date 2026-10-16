@@ -816,7 +816,7 @@ const uploadMetricCsvAndWaitForPreview = async (
   const nextPreviewButton = page.getByRole('button', {
     name: /Next:\s*Preview/i,
   });
-  const fileInput = page.locator('.file-dragger-wrapper input[type="file"]');
+  const fileInput = page.getByTestId('upload-file-input');
 
   await expect(fileInput).toBeAttached();
   await fileInput.setInputFiles(csvPath);
@@ -1851,7 +1851,8 @@ test.describe(
         .first();
       await expect(row).toBeVisible();
 
-      await row.getByRole('status').click();
+      // Status and Health are both role="status" pills; click the Status one.
+      await row.getByTestId('metric-status-pill').click();
 
       await expect(page).toHaveURL(/\/metric\//);
     });

@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Button, Col, InputNumber, Row, Slider, Tooltip } from 'antd';
+import {
+  Box,
+  Button,
+  NumberInput,
+  Slider,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
+import { isNumber } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { percentageFormatter } from '../../../utils/ChartUtils';
 import { SliderWithInputProps } from './SliderWithInput.interface';
 const SliderWithInput = ({
   value,
@@ -25,43 +31,47 @@ const SliderWithInput = ({
   const { t } = useTranslation();
 
   return (
-    <Row className={className} data-testid="percentage-input" gutter={20}>
-      <Col flex="auto">
+    <Box
+      className={`layout-row ${className} tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5`}
+      data-testid="percentage-input"
+      wrap="wrap">
+      <Box className="layout-column tw:block tw:flex-auto">
         <Slider
-          marks={{
-            [min]: `${min}%`,
-            100: '100%',
-          }}
-          max={100}
-          min={min}
-          tooltip={{ open: false }}
-          value={value}
-          onChange={onChange}
+          showRange
+          aria-label={t('label.profile-sample')}
+          labelFormatter={(value) => `${value}%`}
+          maxValue={100}
+          minValue={min}
+          step={1}
+          value={value ?? min}
+          onChange={(next) => onChange(isNumber(next) ? next : next[0])}
         />
-      </Col>
-      <Col className="w-32">
-        <div className="flex items-center gap-2">
-          <InputNumber
-            data-testid="slider-input"
-            formatter={percentageFormatter}
-            max={100}
-            min={min}
+      </Box>
+      <Box className="layout-column tw:block tw:w-44">
+        <Box align="center" gap={2}>
+          <NumberInput
+            aria-label={t('label.profile-sample')}
+            formatOptions={{ style: 'unit', unit: 'percent' }}
+            inputDataTestId="slider-input"
+            maxValue={100}
+            minValue={min}
             step={1}
-            value={value}
-            onChange={onChange}
+            value={value ?? Number.NaN}
+            onChange={(next) => onChange(Number.isNaN(next) ? null : next)}
           />
-          <Tooltip title={t('label.clear')}>
+          <Tooltip arrow title={t('label.clear')}>
             <Button
-              className="p-0"
+              aria-label={t('label.clear')}
+              color="tertiary"
               data-testid="clear-slider-input"
-              type="text"
-              onClick={() => onChange(null)}>
-              <CloseOutlined />
-            </Button>
+              iconLeading={XClose}
+              size="xs"
+              onPress={() => onChange(null)}
+            />
           </Tooltip>
-        </div>
-      </Col>
-    </Row>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

@@ -13,14 +13,14 @@
 
 import Icon, { CloseCircleOutlined } from '@ant-design/icons';
 import {
-  Button as CoreButton,
+  Box,
+  Button,
   ButtonGroup,
   ButtonGroupItem,
   Dropdown,
+  Grid,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
 import { Key, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +37,7 @@ import {
 } from '../../../constants/SegmentToggle.constants';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
 import { getPipelineStatus } from '../../../rest/pipelineAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -64,7 +65,6 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
   );
   const [endTime, setEndTime] = useState(() => getCurrentMillis());
-  const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [status, setStatus] = useState(MenuOptions.all);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -133,9 +133,16 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     <div
       className="h-full p-md border-default border-radius-sm"
       data-testid="execution-tab">
-      <Row gutter={[16, 16]}>
-        <Col span={24}>
-          <Space className="justify-between w-full">
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(16, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal justify-between w-full"
+            gap={2}
+            itemClassName="layout-space-item">
             <ButtonGroup
               disallowEmptySelection
               className={SEGMENT_TOGGLE_GROUP_CLASS}
@@ -158,16 +165,21 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               ))}
             </ButtonGroup>
 
-            <Space>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <Dropdown.Root>
-                <CoreButton
+                <Button
                   className="tw:text-brand-secondary tw:after:outline-brand"
                   color="secondary"
                   data-testid="status-button"
                   iconLeading={<FilterIcon height={12} width={12} />}
                   size="sm">
                   {status === MenuOptions.all ? t('label.status') : status}
-                </CoreButton>
+                </Button>
                 <Dropdown.Popover className="tw:w-auto" placement="bottom">
                   <Dropdown.Menu
                     aria-label={t('label.status')}
@@ -182,42 +194,21 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                 </Dropdown.Popover>
               </Dropdown.Root>
               {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
-                <>
-                  <Button
-                    ghost
-                    className={classNames('range-picker-button delay-100', {
-                      'range-picker-button-width delay-100':
-                        !datesSelected && !isClickedCalendar,
-                    })}
-                    data-testid="data-range-picker-button"
-                    icon={<Icon component={Calendar} size={12} />}
-                    type="primary"
-                    onClick={() => {
-                      setIsClickedCalendar(true);
-                    }}>
-                    <span className="date-container">
-                      {!datesSelected && <span>{t('label.date-filter')}</span>}
-                      <DatePicker.RangePicker
-                        allowClear
-                        showNow
-                        bordered={false}
-                        className="executions-date-picker"
-                        clearIcon={<CloseCircleOutlined />}
-                        data-testid="data-range-picker"
-                        open={isClickedCalendar}
-                        placeholder={['', '']}
-                        suffixIcon={null}
-                        onChange={onDateChange}
-                        onOpenChange={setIsClickedCalendar}
-                      />
-                    </span>
-                  </Button>
-                </>
+                <DatePicker.RangePicker
+                  allowClear
+                  showNow
+                  className="executions-date-picker"
+                  clearIcon={<CloseCircleOutlined />}
+                  data-testid="data-range-picker"
+                  placeholder={[t('label.date-filter'), '']}
+                  suffixIcon={<Icon component={Calendar} size={12} />}
+                  onChange={onDateChange}
+                />
               ) : null}
-            </Space>
-          </Space>
-        </Col>
-        <Col span={24}>
+            </Box>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
             <ListView
               executions={executions}
@@ -235,8 +226,8 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               tasks={tasks}
             />
           )}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </div>
   );
 };

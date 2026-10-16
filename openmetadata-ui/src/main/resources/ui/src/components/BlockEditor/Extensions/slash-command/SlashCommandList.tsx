@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import { Image, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
@@ -114,34 +113,39 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
     }
 
     return (
-      <Space
+      <Box
+        inline
         className="slash-menu-wrapper"
-        direction="vertical"
+        direction="col"
+        gap={2}
         id="editor-commands-viewport">
         {filteredItems.map((item, index) => (
-          <Space
+          <Box
+            inline
+            align="center"
             className={classNames('w-full cursor-pointer slash-command-item', {
               'bg-grey-2': index === selectedIndex,
             })}
+            gap={2}
             id={`editor-command-${item.title}`}
             key={item.title}
             onClick={() => selectItem(index)}>
-            <Image
+            <img
+              alt=""
               className={classNames('slash-command-image', {
                 'svg-image': item.isSvg,
               })}
-              preview={false}
               src={item.imgSrc}
             />
-            <Space direction="vertical" size={0}>
+            <Box inline direction="col">
               <Typography as="article" className="font-bold">
                 {item.title}
               </Typography>
               <Typography as="article">{item.description}</Typography>
-            </Space>
-          </Space>
+            </Box>
+          </Box>
         ))}
-      </Space>
+      </Box>
     );
   }
 );

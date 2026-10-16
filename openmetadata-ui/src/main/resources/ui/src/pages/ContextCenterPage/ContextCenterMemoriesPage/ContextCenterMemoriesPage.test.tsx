@@ -67,7 +67,7 @@ jest.mock('../../../rest/miscAPI', () => ({
 
 jest.mock('../../../utils/ContextCenterClassBase', () => ({
   __esModule: true,
-  default: { getContainerClassName: jest.fn().mockReturnValue('') },
+  default: { getPageContainerClassName: jest.fn().mockReturnValue('') },
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -84,13 +84,14 @@ jest.mock(
   '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component',
   () => ({
     __esModule: true,
-    default: ({ onSearch }: { onSearch: (value: string) => void }) => (
-      <input
-        aria-label="Search memories"
-        data-testid="memory-search"
-        onChange={(event) => onSearch(event.target.value)}
-      />
-    ),
+    default: ({ onSearch }: { onSearch?: (value: string) => void }) =>
+      onSearch ? (
+        <input
+          aria-label="Search memories"
+          data-testid="memory-search"
+          onChange={(event) => onSearch(event.target.value)}
+        />
+      ) : null,
   })
 );
 
@@ -106,6 +107,38 @@ jest.mock(
           data-can-edit={String(Boolean(canEdit))}
           data-testid="memories-view"
         />
+      )),
+  })
+);
+
+const mockUseMemoryConflictReviews = jest.fn().mockReturnValue({
+  reviews: [],
+  total: 0,
+  isCountLoading: false,
+  isLoading: false,
+  isError: false,
+  hasMore: false,
+  isLoadingMore: false,
+  loadMore: jest.fn(),
+  retry: jest.fn(),
+});
+
+jest.mock(
+  '../../../hooks/discovery/context-center/useMemoryConflictReviews',
+  () => ({
+    useMemoryConflictReviews: (isAdmin: boolean, isListing: boolean) =>
+      mockUseMemoryConflictReviews(isAdmin, isListing),
+  })
+);
+
+jest.mock(
+  '../../../components/discovery/context-center/MemoryConflictReviews/MemoryConflictReviews',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(({ reviews }: { reviews: unknown[] }) => (
+        <div data-review-count={reviews.length} data-testid="memory-reviews" />
       )),
   })
 );
@@ -345,6 +378,44 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       );
     });
   });
+
+  it('keeps the typed author results when the menu-open search resolves after them', async () => {
+    mockGetResourcePermission.mockResolvedValue({ EditAll: true });
+    const authorHits = (name: string, displayName: string) =>
+      ({
+        data: {
+          hits: { hits: [{ _id: name, _source: { name, displayName } }] },
+        },
+      } as Awaited<ReturnType<typeof getUserAndTeamSearch>>);
+    const menuOpenSearches: Array<(value: unknown) => void> = [];
+    (getUserAndTeamSearch as jest.Mock).mockImplementation((query: string) =>
+      query
+        ? Promise.resolve(authorHits('typed-user', 'Typed User'))
+        : new Promise((resolve) => {
+            menuOpenSearches.push(resolve);
+          })
+    );
+    renderPage();
+
+    fireEvent.click(screen.getByTestId('author-filter-button'));
+    fireEvent.change(
+      await screen.findByPlaceholderText('label.search-entity'),
+      {
+        target: { value: 'typed' },
+      }
+    );
+
+    expect(await screen.findByText('Typed User')).toBeInTheDocument();
+
+    await act(async () => {
+      menuOpenSearches.forEach((resolve) =>
+        resolve(authorHits('other-user', 'Other User'))
+      );
+    });
+
+    expect(screen.getByText('Typed User')).toBeInTheDocument();
+    expect(screen.queryByText('Other User')).not.toBeInTheDocument();
+  });
 });
 
 describe('ContextCenterMemoriesPage — memory links', () => {
@@ -430,5 +501,106 @@ describe('ContextCenterMemoriesPage — memory links', () => {
       '?author=test.user'
     );
     expect(screen.queryByTestId('view-memory-modal')).not.toBeInTheDocument();
+  });
+});
+
+describe('ContextCenterMemoriesPage — needs review', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({ EditAll: true });
+    mockUseMemoryConflictReviews.mockReturnValue({
+      reviews: [{ id: 'task-1' }, { id: 'task-2' }],
+      total: 2,
+      isCountLoading: false,
+      isLoading: false,
+      isError: false,
+      hasMore: false,
+      isLoadingMore: false,
+      loadMore: jest.fn(),
+      retry: jest.fn(),
+    });
+  });
+
+  afterEach(() => {
+    (getListContextMemories as jest.Mock).mockResolvedValue({
+      data: [{ id: 'memory-1', title: 'Test Memory' }],
+      paging: { total: 1 },
+    });
+  });
+
+  it('keeps open reviews reachable when there are no memories to list', async () => {
+    (getListContextMemories as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByTestId('memory-count-card-needs-review')
+    );
+
+    expect(await screen.findByTestId('memory-reviews')).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.context-center-memories-empty-subtitle')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the empty state once there are neither memories nor reviews', async () => {
+    (getListContextMemories as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockUseMemoryConflictReviews.mockReturnValue({
+      reviews: [],
+      total: 0,
+      isCountLoading: false,
+      isLoading: false,
+      isError: false,
+      hasMore: false,
+      isLoadingMore: false,
+      loadMore: jest.fn(),
+      retry: jest.fn(),
+    });
+    renderPage();
+
+    expect(
+      await screen.findByText('message.context-center-memories-empty-subtitle')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('memory-count-card-needs-review')
+    ).not.toBeInTheDocument();
+  });
+
+  it('counts the open reviews and lists them in their own tab', async () => {
+    renderPage();
+
+    const card = await screen.findByTestId('memory-count-card-needs-review');
+
+    expect(card).toHaveTextContent('2');
+    expect(mockUseMemoryConflictReviews).toHaveBeenLastCalledWith(false, false);
+    expect(screen.queryByTestId('memory-reviews')).not.toBeInTheDocument();
+
+    fireEvent.click(card);
+
+    expect(await screen.findByTestId('memory-reviews')).toHaveAttribute(
+      'data-review-count',
+      '2'
+    );
+    expect(mockUseMemoryConflictReviews).toHaveBeenLastCalledWith(false, true);
+  });
+
+  /** Reviews name their memories by reference only, so a memory search cannot find them. */
+  it('hides the memory search while reviewing conflicts', async () => {
+    renderPage();
+
+    expect(await screen.findByTestId('memory-search')).toBeInTheDocument();
+
+    fireEvent.click(
+      await screen.findByTestId('memory-count-card-needs-review')
+    );
+
+    await screen.findByTestId('memory-reviews');
+
+    expect(screen.queryByTestId('memory-search')).not.toBeInTheDocument();
   });
 });

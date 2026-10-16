@@ -13,10 +13,17 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Box,
+  Button,
+} from '@openmetadata/ui-core-components';
+import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Collapse, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
@@ -24,8 +31,6 @@ import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../../../constants/Services.constant';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import './object-field-template.less';
-
-const { Panel } = Collapse;
 
 interface PropertyMap {
   advancedProperties: ObjectFieldTemplatePropertyType[];
@@ -72,7 +77,12 @@ export const ObjectFieldTemplate: FunctionComponent<
 
   const fieldElement = (
     <Fragment>
-      <Space className="w-full justify-between header-title-wrapper m-t-sm">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-between header-title-wrapper m-t-sm"
+        gap={2}
+        itemClassName="layout-space-item">
         {/* eslint-disable-next-line jsx-a11y/label-has-for -- caption, not a control */}
         <label
           className={classNames('control-label', {
@@ -81,10 +91,15 @@ export const ObjectFieldTemplate: FunctionComponent<
           id={`${idSchema.$id}__title`}>
           {title}
         </label>
-      </Space>
+      </Box>
 
       {schema.additionalProperties && (
-        <Space className="w-full justify-between m-t-sm">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal w-full justify-between m-t-sm"
+          gap={2}
+          itemClassName="layout-space-item">
           {/* eslint-disable-next-line jsx-a11y/label-has-for -- caption, not a control */}
           <label
             className="font-medium text-base-color text-md"
@@ -93,11 +108,14 @@ export const ObjectFieldTemplate: FunctionComponent<
           </label>
 
           <Button
+            aria-label={t('label.add')}
+            color="primary"
             data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            iconLeading={
+              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+            }
             id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
+            size="xs"
             onClick={() => {
               onAddClick(schema)();
             }}
@@ -107,7 +125,7 @@ export const ObjectFieldTemplate: FunctionComponent<
               }
             }}
           />
-        </Space>
+        </Box>
       )}
 
       {AdditionalField &&
@@ -125,22 +143,26 @@ export const ObjectFieldTemplate: FunctionComponent<
         </div>
       ))}
       {!isEmpty(advancedProperties) && (
-        <Collapse
-          destroyInactivePanel
-          className="advanced-properties-collapse m-t-sm"
-          expandIconPosition="end">
-          <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
-            {advancedProperties.map((element) => (
-              <div
-                className={classNames('property-wrapper', {
-                  'additional-fields': schema.additionalProperties,
-                })}
-                key={element.content.key}>
-                {element.content}
-              </div>
-            ))}
-          </Panel>
-        </Collapse>
+        <Accordion
+          allowsMultipleExpanded
+          className="advanced-properties-collapse m-t-sm">
+          <AccordionItem id="1" key="1">
+            <AccordionHeader>{`${title} ${t(
+              'label.advanced-config'
+            )}`}</AccordionHeader>
+            <AccordionPanel unmountOnCollapse>
+              {advancedProperties.map((element) => (
+                <div
+                  className={classNames('property-wrapper', {
+                    'additional-fields': schema.additionalProperties,
+                  })}
+                  key={element.content.key}>
+                  {element.content}
+                </div>
+              ))}
+            </AccordionPanel>
+          </AccordionItem>
+        </Accordion>
       )}
     </Fragment>
   );
