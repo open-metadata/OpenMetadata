@@ -59,11 +59,13 @@ jest.mock(
             onTextChange,
             placeHolder,
             editAction,
+            defaultValue,
           }: {
             onSave?: (m: string) => void;
             onTextChange?: (m: string) => void;
             placeHolder?: string;
             editAction?: React.ReactNode;
+            defaultValue?: string;
           },
           ref: React.Ref<unknown>
         ) => {
@@ -100,6 +102,7 @@ jest.mock(
               </div>
               <button
                 aria-label="feed-editor"
+                data-default-value={defaultValue}
                 data-placeholder={placeHolder}
                 data-testid="feed-editor"
                 onClick={() => onSave?.('hello')}
@@ -123,14 +126,24 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Box: ({
+    children,
+    ...rest
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={rest['data-testid']}>{children}</div>,
   Button: ({
     onClick,
+    onPress,
     isDisabled,
+    children,
     ...rest
   }: {
     onClick?: () => void;
+    onPress?: () => void;
     isDisabled?: boolean;
+    children?: React.ReactNode;
     'aria-label'?: string;
     'data-testid'?: string;
   }) => (
@@ -138,12 +151,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       aria-label={rest['aria-label']}
       data-testid={rest['data-testid']}
       disabled={isDisabled}
-      onClick={onClick}
-    />
+      onClick={onClick ?? onPress}>
+      {children}
+    </button>
+  ),
+  Typography: ({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
   ),
 }));
 
-import InboxCommentComposer from './InboxCommentComposer';
+import InboxCommentComposer, { InboxCommentEdit } from './InboxCommentComposer';
 
 // Stands in for typing: the editor reports its markdown through onTextChange.
 const type = (text: string) =>
@@ -379,5 +396,57 @@ describe('InboxCommentComposer', () => {
 
       expect(picker.style.bottom).toBe('');
     });
+  });
+});
+
+// An edited comment opens in the same box a new one is written in.
+describe('InboxCommentEdit', () => {
+  const renderEdit = (onSave = jest.fn(), onCancel = jest.fn()) =>
+    render(
+      <InboxCommentEdit
+        message="**Looking** at this today."
+        testId="edit-comment"
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+
+  it("opens the comment in the composer's editor, ready to send", async () => {
+    renderEdit();
+
+    expect(screen.getByTestId('edit-comment-editor')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('feed-editor').getAttribute('data-default-value')
+    ).toContain('<strong>Looking</strong>');
+    expect(screen.getByTestId('send-button')).toBeEnabled();
+
+    await waitFor(() =>
+      expect(
+        screen
+          .getByTestId('bold-control')
+          .querySelector('svg.inbox-comment-composer__icon')
+      ).toBeTruthy()
+    );
+  });
+
+  it('shows the new-line hint beside Cancel', () => {
+    const onCancel = jest.fn();
+    renderEdit(jest.fn(), onCancel);
+
+    expect(screen.getByText(/message.to-add-new-line/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('cancel-edit-comment'));
+
+    expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('saves the edited text from the send button', () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    mockEditorContent = 'Looking at this tomorrow.';
+    renderEdit(onSave);
+
+    fireEvent.click(screen.getByTestId('send-button'));
+
+    expect(onSave).toHaveBeenCalledWith('Looking at this tomorrow.');
   });
 });

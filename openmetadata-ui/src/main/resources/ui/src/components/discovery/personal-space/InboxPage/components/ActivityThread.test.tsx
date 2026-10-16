@@ -65,18 +65,6 @@ jest.mock('components/common/DeleteModal/DeleteModal', () => ({
     ) : null,
 }));
 
-jest.mock(
-  'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew',
-  () => ({
-    __esModule: true,
-    default: ({ onSave }: { onSave: (m: string) => void }) => (
-      <button data-testid="save-edit" onClick={() => onSave('edited')}>
-        editor
-      </button>
-    ),
-  })
-);
-
 // Has its own suite; here it only passes the author through.
 jest.mock('./AuthorPopover', () => ({
   __esModule: true,
@@ -98,6 +86,24 @@ jest.mock('./InboxCommentComposer', () => ({
       onClick={() => onSave('hello')}>
       composer
     </button>
+  ),
+  InboxCommentEdit: ({
+    onSave,
+    onCancel,
+    testId,
+  }: {
+    onSave: (m: string) => void;
+    onCancel: () => void;
+    testId: string;
+  }) => (
+    <>
+      <button data-testid="save-edit" onClick={() => onSave('edited')}>
+        editor
+      </button>
+      <button data-testid={`cancel-${testId}`} onClick={onCancel}>
+        cancel
+      </button>
+    </>
   ),
 }));
 

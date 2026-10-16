@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import {
   ArrowRight,
   TextEditorBlockquote,
@@ -138,34 +138,33 @@ const useFormatBar = (hostRef: RefObject<HTMLElement>) => {
   return buttons;
 };
 
-export interface InboxCommentComposerProps {
+export interface InboxCommentEditorProps {
   // A rejected promise puts the draft back in the editor.
   onSave: (message: string) => void | Promise<unknown>;
   placeHolder?: string;
   focused?: boolean;
+  // The message being edited, as HTML; the send button starts enabled.
+  defaultValue?: string;
 }
 
 /**
- * Comment composer shared by the Inbox (activity card threads + Task detail). It
- * reuses the OSS {@link ActivityFeedEditorNew} verbatim — so mention (@),
- * hashtag (#), markdown, the send button and Enter-to-send all keep working —
- * and only restyles it via the scoped `inbox-comment-composer__editor` class:
- * the format bar over one white input line. The send button is the design's
- * arrow button in place of the editor's own, disabled until there is something
- * to send; Enter still sends through the editor. The current user's avatar
- * sits on the left.
+ * The Inbox's comment editor: the OSS {@link ActivityFeedEditorNew} verbatim —
+ * so mention (@), hashtag (#), markdown and Enter-to-send all keep working —
+ * restyled through the scoped `inbox-comment-composer__editor` class, with the
+ * design's format-bar icons and its arrow send button, disabled until there is
+ * something to send. A new comment and an edited one use the same box.
  */
-const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
+export const InboxCommentEditor: React.FC<InboxCommentEditorProps> = ({
   onSave,
   placeHolder,
   focused,
+  defaultValue,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
   const placeholderText = placeHolder ?? t('message.leave-a-comment');
   const editorRef = useRef<EditorContentRef>(null);
   const editorHostRef = useRef<HTMLDivElement>(null);
-  const [hasText, setHasText] = useState(false);
+  const [hasText, setHasText] = useState(Boolean(defaultValue));
   const formatBarButtons = useFormatBar(editorHostRef);
 
   // The editor reports its markdown on every change; whitespace alone is not a
@@ -199,6 +198,121 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
   };
 
   return (
+    // FeedEditor hard-codes its Quill placeholder, so feed it the figma copy
+    // through a CSS variable the scoped style reads.
+    <div
+      className="tw:min-w-0 tw:flex-1"
+      ref={editorHostRef}
+      style={
+        {
+          '--inbox-composer-placeholder': JSON.stringify(placeholderText),
+        } as React.CSSProperties
+      }>
+      <ActivityFeedEditorNew
+        className="inbox-comment-composer__editor tw:w-full"
+        defaultValue={defaultValue}
+        editAction={
+          <Button
+            aria-label={t('label.send')}
+            className="tw:absolute tw:right-2 tw:bottom-1.5"
+            color="primary"
+            data-testid="send-button"
+            iconLeading={<ArrowRight className="tw:size-4" />}
+            isDisabled={!hasText}
+            size="sm"
+            onClick={handleSend}
+          />
+        }
+        emptyMentionText={t('message.no-match-found')}
+        focused={focused}
+        placeHolder={placeholderText}
+        ref={editorRef}
+        onSave={submit}
+        onTextChange={handleTextChange}
+      />
+      {formatBarButtons.map((button, index) => {
+        const [selector, Icon] = FORMAT_BAR_ICONS[index];
+
+        return (
+          button &&
+          createPortal(
+            <Icon
+              className="inbox-comment-composer__icon"
+              height={20}
+              width={20}
+            />,
+            button,
+            selector
+          )
+        );
+      })}
+    </div>
+  );
+};
+
+export interface InboxCommentEditProps {
+  // The comment being edited, as stored (markdown).
+  message: string;
+  onSave: (message: string) => Promise<unknown>;
+  onCancel: () => void;
+  // Names the editor `<testId>-editor` and its cancel `cancel-<testId>`.
+  testId: string;
+}
+
+/**
+ * A comment opened for editing: the same editor a new comment is written in,
+ * over a row with the new-line hint on the left and Cancel on the right.
+ */
+export const InboxCommentEdit: React.FC<InboxCommentEditProps> = ({
+  message,
+  onSave,
+  onCancel,
+  testId,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box data-testid={`${testId}-editor`} direction="col" gap={2}>
+      <InboxCommentEditor
+        focused
+        defaultValue={MarkdownToHTMLConverter.makeHtml(
+          getFrontEndFormat(message)
+        )}
+        onSave={onSave}
+      />
+      <Box align="center" className="tw:justify-between" gap={2}>
+        <Typography className="tw:text-tertiary" size="text-xs">
+          <kbd>{t('label.shift')}</kbd>
+          {t('label.plus-symbol')} <kbd>{t('label.return')}</kbd>{' '}
+          {t('message.to-add-new-line')}
+        </Typography>
+        <Button
+          color="link-gray"
+          data-testid={`cancel-${testId}`}
+          size="sm"
+          onPress={onCancel}>
+          {t('label.cancel')}
+        </Button>
+      </Box>
+    </Box>
+  );
+};
+
+export interface InboxCommentComposerProps {
+  // A rejected promise puts the draft back in the editor.
+  onSave: (message: string) => void | Promise<unknown>;
+  placeHolder?: string;
+  focused?: boolean;
+}
+
+/**
+ * Comment composer shared by the Inbox (activity card threads + Task detail):
+ * the current user's avatar beside the {@link InboxCommentEditor}.
+ */
+const InboxCommentComposer: React.FC<InboxCommentComposerProps> = (props) => {
+  const { currentUser } = useApplicationStore();
+
+  return (
     <Box
       align="end"
       className="inbox-comment-composer"
@@ -212,54 +326,7 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
         name={currentUser?.name ?? ''}
         width="24"
       />
-      {/* FeedEditor hard-codes its Quill placeholder, so feed it the figma
-          copy through a CSS variable the scoped style reads. */}
-      <div
-        className="tw:min-w-0 tw:flex-1"
-        ref={editorHostRef}
-        style={
-          {
-            '--inbox-composer-placeholder': JSON.stringify(placeholderText),
-          } as React.CSSProperties
-        }>
-        <ActivityFeedEditorNew
-          className="inbox-comment-composer__editor tw:w-full"
-          editAction={
-            <Button
-              aria-label={t('label.send')}
-              className="tw:absolute tw:right-2 tw:bottom-1.5"
-              color="primary"
-              data-testid="send-button"
-              iconLeading={<ArrowRight className="tw:size-4" />}
-              isDisabled={!hasText}
-              size="sm"
-              onClick={handleSend}
-            />
-          }
-          emptyMentionText={t('message.no-match-found')}
-          focused={focused}
-          placeHolder={placeholderText}
-          ref={editorRef}
-          onSave={submit}
-          onTextChange={handleTextChange}
-        />
-        {formatBarButtons.map((button, index) => {
-          const [selector, Icon] = FORMAT_BAR_ICONS[index];
-
-          return (
-            button &&
-            createPortal(
-              <Icon
-                className="inbox-comment-composer__icon"
-                height={20}
-                width={20}
-              />,
-              button,
-              selector
-            )
-          );
-        })}
-      </div>
+      <InboxCommentEditor {...props} />
     </Box>
   );
 };
