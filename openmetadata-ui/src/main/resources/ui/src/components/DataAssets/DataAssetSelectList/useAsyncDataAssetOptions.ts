@@ -24,6 +24,7 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
+import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   DataAssetOption,
@@ -57,7 +58,9 @@ export const useAsyncDataAssetOptions = ({
       page: number
     ): Promise<FetchOptionsResponse> => {
       const response = await searchQuery({
-        query: searchQueryParam ? `*${searchQueryParam}*` : '*',
+        query: searchQueryParam
+          ? `*${escapeESReservedCharacters(searchQueryParam)}*`
+          : '*',
         pageNumber: page,
         pageSize: PAGE_SIZE,
         searchIndex,
