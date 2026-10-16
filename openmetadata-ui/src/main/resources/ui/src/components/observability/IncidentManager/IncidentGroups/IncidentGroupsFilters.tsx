@@ -13,11 +13,9 @@
 
 import {
   Box,
-  Button,
   Dot,
   FilterSelect,
   TriggerButton,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   keepPreviousData,
@@ -42,7 +40,6 @@ import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/U
 import { useIncidentFilterOptions } from '../../../IncidentManager/useIncidentFilterOptions';
 import DqDateRangeFilter from '../../DataQuality/Dashboard/DqDateRangeFilter';
 import {
-  CLEARED_INCIDENT_GROUP_FILTERS,
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
   INCIDENT_GROUP_STATUS_OPTIONS,
   INCIDENT_SEVERITY_DOT_CLASS,
@@ -54,7 +51,6 @@ import {
   IncidentListDateField,
   IncidentSeverityFilter,
 } from './IncidentGroups.types';
-import { hasActiveIncidentGroupFilters } from './IncidentGroups.utils';
 
 const STATUS_OPTIONS = INCIDENT_GROUP_STATUS_OPTIONS.map((status) => ({
   value: status,
@@ -92,8 +88,9 @@ const fetchAssignee = async (name: string): Promise<EntityReference> => {
 };
 
 /**
- * A captioned filter. The caption names the group its control sits in, so a
- * trigger showing only the picked value is still announced with its field.
+ * A filter named for screen readers only: the row has no room for visible
+ * captions, and a trigger showing only the picked value would otherwise be
+ * announced without its field.
  */
 const FilterField = ({
   label,
@@ -107,18 +104,14 @@ const FilterField = ({
   return (
     <Box
       aria-labelledby={captionId}
-      className="tw:min-w-40 tw:flex-1"
+      // Capped, so a filter wrapped onto a line of its own does not stretch
+      // across it, and a long picked value truncates.
+      className="tw:max-w-60 tw:min-w-32 tw:flex-auto"
       direction="col"
-      gap={2}
       role="group">
-      <Typography
-        as="span"
-        className="tw:text-secondary"
-        id={captionId}
-        size="text-sm"
-        weight="medium">
+      <span className="tw:sr-only" id={captionId}>
         {label}
-      </Typography>
+      </span>
       {children}
     </Box>
   );
@@ -201,10 +194,10 @@ const IncidentGroupsFilters = ({
     { value: 'updatedAt', label: t('label.updated-at') },
   ];
 
-  const hasActiveFilters = hasActiveIncidentGroupFilters(filters);
-
   return (
-    <Box align="start" gap={3} wrap="wrap">
+    // Shares one row with the dimension picker, wrapping only where a narrow
+    // screen leaves the filters too little room to stay readable.
+    <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2} wrap="wrap">
       <FilterField label={t('label.test-case')}>
         <FilterSelect
           searchable
@@ -301,16 +294,6 @@ const IncidentGroupsFilters = ({
           onApply={(range) => onChange(range)}
         />
       </FilterField>
-      {hasActiveFilters && (
-        <Button
-          className="tw:self-end"
-          color="link-gray"
-          data-testid="incident-groups-clear-filters"
-          size="sm"
-          onPress={() => onChange(CLEARED_INCIDENT_GROUP_FILTERS)}>
-          {t('label.clear-all')}
-        </Button>
-      )}
     </Box>
   );
 };
