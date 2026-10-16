@@ -12,9 +12,12 @@ Machine- and human-readable specifications for the OpenMetadata design system.
 
 **New work uses UntitledUI + Tailwind. Do not add new Antd components, new
 `.less` files, or new `assets/svg/` raw-SVG files/imports** — `yarn tw-guard` blocks new debt. Never hardcode a value in
-either stack: use a `tw:` token utility (or `var(--color-*)`) in TSX, and
-`var(--om-*)` in existing `.less`. The `--om-*` layer below documents the
-**deprecated** Antd/Less side (still maintained during the migration).
+either stack: use a `tw:` token utility in TSX. In existing `.less`, read colours from the Tailwind
+bridge vars the utilities compile to (`var(--tw-background-color-surface)`, `--tw-text-color-*`,
+`--tw-border-color-*`, which flip under `.dark-mode`) and every other value from `var(--om-*)`. Raw
+`var(--color-*)` is invalid in light (transparent). The `--om-*` layer below documents the
+**deprecated** Antd/Less side (still maintained during the migration); new code adds no
+`--om-color-*` references.
 
 ## How the (legacy) LESS system is layered
 
@@ -24,8 +27,9 @@ Layer 1  globals.css  Upstream primitives (--color-*, --radius-*, --text-*,
                       @openmetadata/ui-core-components. The source of truth.
 Layer 2  --om-*       Project aliases in tokens.css. Reference the matching
                       Layer 1 token with a raw fallback (off-scale / legacy
-                      values hold the raw value directly). Components use these.
-Components (.less/.css)  Reference Layer 2 via var(--om-*). Never raw hex / px.
+                      values hold the raw value directly). Existing LESS uses these.
+Components (.less/.css)  Colours: --tw-*-color-* bridge vars. Other values:
+                      var(--om-*). Never raw hex / px.
 ```
 
 The legacy LESS bridge — [`src/styles/variables.less`](../src/styles/variables.less)
@@ -73,9 +77,10 @@ shared semantic token or document them using the fixed-color and dark-override r
 ## Rules for contributors and AI agents
 
 1. Read the relevant `specs/` file before touching UI code.
-2. Use only tokens from `tokens.css` (`var(--om-*)`); never introduce a raw hex,
-   rgb/rgba, or px spacing value in a component style.
-3. Prefer semantic tokens (`--om-color-text-primary`, `--om-space-16`) over
+2. Use only tokens — never introduce a raw hex, rgb/rgba, or px spacing value in a component
+   style. In `.less`, colours come from the `--tw-*-color-*` bridge vars and everything else from
+   `tokens.css` (`var(--om-*)`); do not add `--om-color-*` references.
+3. Prefer semantic tokens (`--tw-text-color-primary`, `--om-space-16`) over
    palette/legacy tokens where one fits.
 4. Run `yarn token-audit` before committing. **Zero errors required.**
 5. If a needed value has no token, add it to `tokens.css` as an `--om-*` alias

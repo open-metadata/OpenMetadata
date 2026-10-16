@@ -507,9 +507,13 @@ exercised nothing.
 
 ## Code shape
 
-The language rules live in `.claude/rules/` (`java.md`, `frontend-react.md`, `component-library.md`,
-`frontend-styling.md`, `frontend-performance.md`, `python-ingestion.md`) and
-`docs/design-patterns.md`. These are what reviewers raise most:
+Authors write to the language rules: [`java.md`](.claude/rules/java.md),
+[`frontend-styling.md`](.claude/rules/frontend-styling.md),
+[`component-library.md`](.claude/rules/component-library.md),
+[`frontend-react.md`](.claude/rules/frontend-react.md),
+[`frontend-performance.md`](.claude/rules/frontend-performance.md),
+[`python-ingestion.md`](.claude/rules/python-ingestion.md), and
+[`docs/design-patterns.md`](docs/design-patterns.md). These are what reviewers raise most:
 
 - **Reuse instead of forking** (38 threads in one shard). Before adding a helper, hook, component,
   REST function or query, search for the existing one: `usePaging`, `getEntityName`,
@@ -534,6 +538,17 @@ The language rules live in `.claude/rules/` (`java.md`, `frontend-react.md`, `co
   raise a bundle budget, route `force` through a helper, or quarantine a test no job runs just to get
   green.
 - **Constants and generated enums over literals,** in the UI as well as Java.
+- **The design system** ([`frontend-styling.md`](.claude/rules/frontend-styling.md),
+  ADR:2026-10-11-migrated-antd-components-adopt-core-styling). Reviewers keep asking for the same
+  things:
+  - core components keep their own padding, border, surface and typography, with no caller
+    `className`, `!important` or descendant selector restyling them (`Card` padding comes from `size`
+    and `Card.Content`, `Typography` from its props);
+  - LESS colours read the `--tw-*-color-*` bridge vars, with no new `--om-color-*` references.
+
+  A colour that does not flip is a visible dark-mode bug, so it is 🔴 on an AI-mode surface: raw
+  palette, raw `var(--color-*)` in LESS (transparent in light), or a legacy `--om-grey-*`. The rest
+  are nits.
 - **One concern per PR.** Disclose behavior changes (a status code, a wire shape, an SPI rename, a
   default grant, a reindex requirement) in the description and the release note, and label
   `Backward-Incompatible-Change` where it applies. The description matches the diff.
@@ -571,7 +586,7 @@ Anything below is enforced by CI, or authors rejected it repeatedly in this wind
 - **Formatting and lint**: spotless, ESLint, Prettier and organize-imports (`ui-checkstyle`), the
   UI license header, ruff, basedpyright, `generate-types` drift, Playwright lint rules, i18n
   literals.
-- **Java micro-style quoted from `java.md` without a defect**: fully qualified names, `final` on
+- **Java micro-style quoted from [`java.md`](.claude/rules/java.md) without a defect**: fully qualified names, `final` on
   locals, method or class length, utility classes not `final`, literals in test assertions. These
   had zero acceptances across 18 bot threads. Authors still follow `java.md` while writing; a
   reviewer does not post a finding for it. `java.md` says to *prefer* one successful return:

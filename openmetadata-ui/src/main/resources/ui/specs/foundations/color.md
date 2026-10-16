@@ -1,8 +1,14 @@
 # Color
 
-Colors are tokenized in two layers. Components reference **Layer 2 semantic
+Colors are tokenized in two layers. Existing LESS references **Layer 2 semantic
 tokens** (`--om-color-*`); raw hex/rgb/rgba are not allowed in component styles
 and are flagged as **errors** by `yarn token-audit`.
+
+> **New or edited colour references in `.less` use the Tailwind bridge vars** —
+> `var(--tw-background-color-<token>)`, `var(--tw-text-color-<token>)`,
+> `var(--tw-border-color-<token>)` — the same variables the `tw:` utilities compile to,
+> remapped under `.dark-mode`. Do not add `--om-color-*` references; this page maps the
+> roles of the ones still in existing LESS (`.claude/rules/frontend-styling.md`).
 
 ## When to use which token
 
@@ -40,7 +46,7 @@ only to hold migrated one-off values until they can be re-expressed).
   (`--color-{scale}-{step}`) from `@openmetadata/ui-core-components`. Source of truth.
 - **Layer 2** `--om-color-*` — project aliases that reference the matching
   Layer 1 token with a raw fallback: semantic aliases + full palette passthrough +
-  `--om-legacy-color-*` (exact migrated values). **Components use these.**
+  `--om-legacy-color-*` (exact migrated values). **Existing LESS uses these.**
 - **Components** — `color: var(--om-color-text-primary);`
 
 ## Palette scales
