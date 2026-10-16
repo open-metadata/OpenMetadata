@@ -936,9 +936,11 @@ const ContextCenterMemoriesPage: FC = () => {
 
                   return (
                     <Card
+                      aria-pressed={isActive}
                       className={classNames(
                         'tw:group tw:relative tw:p-4 tw:flex tw:flex-col tw:gap-1',
                         'tw:cursor-pointer tw:transition-all tw:duration-150 tw:ease-out tw:hover:-translate-y-px',
+                        'tw:outline-brand tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
                         {
                           'tw:bg-brand-primary tw:border-utility-brand-200':
                             isActive,
@@ -946,13 +948,21 @@ const ContextCenterMemoriesPage: FC = () => {
                       )}
                       data-testid={`memory-count-card-${filterKey}`}
                       key={filterKey}
-                      onClick={() => handleFilterChange(filterKey)}>
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleFilterChange(filterKey)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleFilterChange(filterKey);
+                        }
+                      }}>
                       <ChevronRight
                         className={classNames(
                           'tw:absolute tw:top-3 tw:right-3 tw:text-fg-brand-secondary tw:transition-opacity tw:duration-150',
                           {
                             'tw:opacity-100': isActive,
-                            'tw:opacity-0 tw:group-hover:opacity-100':
+                            'tw:opacity-0 tw:group-hover:opacity-100 tw:group-focus-visible:opacity-100':
                               !isActive,
                           }
                         )}
