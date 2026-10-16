@@ -41,7 +41,7 @@ const ColumnBulkOperations = () => {
 
   const deprecatedBadge = (
     <Tooltip
-      containerClassName="tw:w-100 tw:max-w-[calc(100vw-2rem)] tw:gap-0 tw:bg-primary tw:p-0 tw:outline-1 tw:outline-secondary_alt"
+      containerClassName="tw:max-w-100 tw:bg-primary tw:p-0"
       placement="bottom start"
       title={
         <div className="tw:break-normal" data-testid="deprecated-popover">
@@ -82,7 +82,7 @@ const ColumnBulkOperations = () => {
           </Box>
         </div>
       }
-      triggerClassName="tw:rounded-full tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2">
+      triggerClassName="tw:rounded-full">
       <BadgeWithIcon color="warning" iconTrailing={InfoCircle} size="sm">
         {t('label.deprecated')}
       </BadgeWithIcon>
