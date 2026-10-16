@@ -1568,6 +1568,14 @@ export interface Pipeline {
      */
     verifyCerts?: boolean;
     /**
+     * Optional map from a database name in the dbt manifest to the database it is ingested
+     * under in OpenMetadata, for when the engine dbt runs on names it differently. For example,
+     * dbt-trino writes the Trino catalog name (bq_catalog) for tables that the BigQuery
+     * connector ingests under the GCP project id (my-gcp-project). Mapped tables are looked up
+     * in every database service.
+     */
+    catalogMapping?: { [key: string]: string };
+    /**
      * Custom OpenMetadata Classification name for dbt tags.
      */
     dbtClassificationName?: string;
