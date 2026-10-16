@@ -1725,7 +1725,9 @@ export const createAnnouncement = async (
   );
 
   await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
-  await page.reload();
+  // `load` waits on every asset and long-lived request, and on a loaded runner
+  // can outlast the 60s navigation timeout; the loaders are the real signal.
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId(announcementContainerTestId)).toBeVisible();
@@ -1804,7 +1806,8 @@ export const replyAnnouncement = async (page: Page) => {
     page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
   ).toHaveText('Reply message edited');
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const deleteAnnouncement = async (page: Page) => {
@@ -1844,7 +1847,8 @@ export const deleteAnnouncement = async (page: Page) => {
   await deleteConfirm.getByTestId('save-button').click();
   await deleteAnnouncementResponse;
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
@@ -2141,33 +2145,20 @@ export const checkForEditActions = async ({
 };
 
 export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
-  // Click the lineage tab
-  const lineageApi = page.waitForResponse('**/api/v1/lineage/scene?*');
+  const lineageApi = page.waitForResponse('/api/v1/lineage/getLineage?*');
   await page.click('[data-testid="lineage"]');
-
-  // Ensure the response has been received and check the status code
   await lineageApi;
 
   await waitForAllLoadersToDisappear(page);
 
-  const onboardingDialog = page.getByTestId('lineage-map-onboarding-dialog');
-  const hasSeenOnboarding = (await page.context().cookies()).some(
-    ({ name, value }) =>
-      name === 'lineageMapsOnboardingSeen' && value === 'true'
-  );
-  if (!hasSeenOnboarding) {
-    await expect(onboardingDialog).toBeVisible();
-    await onboardingDialog.getByRole('button').click();
-    await expect(onboardingDialog).not.toBeVisible();
-  }
-
-  // Check the presence or absence of the edit-lineage element based on the deleted flag
+  // Lineage is edited from each node's ⋮ menu, which a deleted entity hides.
+  const nodeMenus = page
+    .getByTestId('lineage-details')
+    .getByTestId('lineage-node-menu');
   if (deleted) {
-    await expect(
-      page.locator('[data-testid="edit-lineage"]')
-    ).not.toBeVisible();
+    await expect(nodeMenus).toHaveCount(0);
   } else {
-    await expect(page.locator('[data-testid="edit-lineage"]')).toBeVisible();
+    await expect(nodeMenus).not.toHaveCount(0);
   }
 };
 

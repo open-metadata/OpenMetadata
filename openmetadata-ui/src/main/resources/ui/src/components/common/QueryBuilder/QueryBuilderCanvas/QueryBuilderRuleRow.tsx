@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Button, Select } from '@openmetadata/ui-core-components';
-import { X } from '@openmetadata/ui-core-components/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import type { FieldProps } from '@react-awesome-query-builder/ui';
 import classNames from 'classnames';
 import { FC, useMemo } from 'react';
@@ -217,9 +217,9 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
           <Box align="center" className="tw:h-10">
             <Button
               aria-label={t('label.remove')}
-              color="link-destructive"
+              color={preset.delRuleColor ?? 'link-destructive'}
               data-testid={preset.testIds.delRule}
-              iconLeading={X}
+              iconLeading={XClose}
               size="sm"
               onClick={() => actions.removeRule(path)}
             />

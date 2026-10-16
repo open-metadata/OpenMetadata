@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
   Button,
@@ -225,7 +224,7 @@ function EmailConfigSettingsPage() {
                     data-testid="edit-email-configuration"
                     iconLeading={
                       !isUndefined(emailConfigValues) && (
-                        <Icon component={IconEdit} size={12} />
+                        <IconEdit className="tw:size-3.5 tw:shrink-0 tw:mr-2" />
                       )
                     }
                     onClick={handleEditClick}>

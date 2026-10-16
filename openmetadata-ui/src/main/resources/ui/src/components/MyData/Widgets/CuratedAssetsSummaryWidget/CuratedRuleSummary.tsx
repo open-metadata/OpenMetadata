@@ -33,7 +33,7 @@ const CuratedRuleSummary: React.FC<CuratedRuleSummaryProps> = ({ clauses }) => {
   }
 
   return (
-    <div className="tw:rounded-xl tw:bg-secondary tw:p-3.5">
+    <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-x-4 tw:gap-y-2 tw:rounded-xl tw:bg-utility-gray-blue-50 tw:p-3.5">
       <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
         {/* `!` on the colours throughout: Typography renders `.prose`, whose
           unlayered `color` rule is emitted after the Tailwind utilities. */}
@@ -50,13 +50,15 @@ const CuratedRuleSummary: React.FC<CuratedRuleSummaryProps> = ({ clauses }) => {
                 {t('label.and-lowercase')}
               </Typography>
             )}
-            <Badge color="gray" size="sm" type="color">
+            {/* `modern` is the white, outlined badge: it stands out from the
+              tinted rule box the way a grey one would not. */}
+            <Badge color="gray" size="sm" type="modern">
               {describeCuratedClause(clause, t)}
             </Badge>
           </React.Fragment>
         ))}
       </div>
-      <div className="tw:mt-2 tw:flex tw:items-center tw:gap-1.5">
+      <div className="tw:ml-auto tw:flex tw:items-center tw:gap-1.5">
         <Lock01
           aria-hidden
           className="tw:shrink-0 tw:text-text-tertiary"

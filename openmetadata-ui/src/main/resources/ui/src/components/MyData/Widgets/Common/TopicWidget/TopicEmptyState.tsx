@@ -51,13 +51,13 @@ const TopicEmptyState: React.FC<TopicEmptyStateProps> = ({
       silently win. */}
     <Typography
       className="tw:mt-5 tw:text-text-primary!"
-      size="text-md"
+      size="text-sm"
       weight="semibold">
       {title}
     </Typography>
     <Typography
       className="tw:mt-1 tw:max-w-90 tw:text-pretty tw:text-text-secondary!"
-      size="text-sm">
+      size="text-xs">
       {description}
     </Typography>
     {action && (
@@ -66,7 +66,7 @@ const TopicEmptyState: React.FC<TopicEmptyStateProps> = ({
         color="primary"
         data-testid={`topic-empty-action-${topicKey}`}
         iconLeading={Plus}
-        size="sm"
+        size="xs"
         onPress={action.onPress}>
         {action.label}
       </Button>

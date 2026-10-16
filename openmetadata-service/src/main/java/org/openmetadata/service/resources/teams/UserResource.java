@@ -197,7 +197,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final UserPreferencesRepository preferencesRepository;
   private final AuthenticatorHandler authHandler;
   static final String FIELDS =
-      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences,extension";
+      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,defaultDomain,personaPreferences,extension";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -579,7 +579,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // Sync the Roles from token to User
     if (usesRolesFromProvider() && !(user.getIsBot() != null && user.getIsBot())) {
       reSyncUserRolesFromToken(
-          uriInfo, user, getRolesFromAuthorizationToken(catalogSecurityContext));
+          uriInfo,
+          user,
+          getRolesFromAuthorizationToken(catalogSecurityContext),
+          SecurityConfigurationManager.getCurrentAuthzConfig());
     }
     return addHref(uriInfo, user);
   }
@@ -1135,6 +1138,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         continue;
       }
       String path = patchOpObject.getString("path");
+      if (path.startsWith("/defaultDomain") && !isSelf) {
+        throw new AuthorizationException("Users can only update their own default domain");
+      }
       if (isPrivilegedUserPatchPath(path)) {
         authorizer.authorizeAdmin(securityContext);
         continue;
@@ -1532,7 +1538,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssets(id, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    return Response.ok(
+            repository.getUserAssets(id, limit, offset, getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -1570,7 +1582,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssetsByName(name, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(name));
+    return Response.ok(
+            repository.getUserAssetsByName(name, limit, offset, getSubjectContext(securityContext)))
+        .build();
   }
 
   @POST

@@ -339,6 +339,18 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
+  protected String getInheritableFields() {
+    return "owners,domains";
+  }
+
+  @Override
+  protected void applyInheritance(
+      TestSuite entity, EntityUtil.Fields fields, EntityInterface<?> parent) {
+    inheritOwners(entity, fields, parent);
+    super.applyInheritance(entity, fields, parent);
+  }
+
+  @Override
   public EntityInterface<?> getParentEntity(TestSuite entity, String fields) {
     if (entity.getBasic() && entity.getBasicEntityReference() != null) {
       var filteredFields = EntityUtil.getFilteredFields(TABLE, fields);
@@ -536,16 +548,37 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return query;
   }
 
-  public TestSummary getTestSummary(List<ResultSummary> testCaseResults) {
-    Map<String, String> entityLinkMap = new HashMap<>();
-    for (ResultSummary result : testCaseResults) {
-      TestCase testCase = Entity.getEntityByName(TEST_CASE, result.getTestCaseName(), "", ALL);
-      MessageParser.EntityLink entityLink =
-          MessageParser.EntityLink.parse(testCase.getEntityLink());
-      String linkString = entityLink.getFieldName() == null ? "table" : entityLink.getLinkString();
-      entityLinkMap.put(result.getTestCaseName(), linkString);
-    }
-    return getTestSummary(testCaseResults, entityLinkMap);
+  public static TestSummary getTestSummary(List<ResultSummary> testCaseResults) {
+    Map<String, String> summaryLinkByTestCase = getSummaryLinksOfExistingTestCases(testCaseResults);
+    List<ResultSummary> resultsOfExistingTestCases =
+        testCaseResults.stream()
+            .filter(result -> summaryLinkByTestCase.containsKey(result.getTestCaseName()))
+            .toList();
+    return getTestSummary(resultsOfExistingTestCases, summaryLinkByTestCase);
+  }
+
+  /**
+   * Reads the listed test cases in one batch. A test case deleted after its results were listed is
+   * missing from the batch, so its results drop out of the summary instead of failing the whole
+   * read with a 404.
+   */
+  private static Map<String, String> getSummaryLinksOfExistingTestCases(
+      List<ResultSummary> testCaseResults) {
+    List<String> testCaseFqns =
+        testCaseResults.stream().map(ResultSummary::getTestCaseName).distinct().toList();
+    TestCaseRepository testCaseRepository =
+        (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+    return testCaseRepository.findByNames(testCaseFqns, ALL).stream()
+        .collect(
+            Collectors.toMap(
+                TestCase::getFullyQualifiedName,
+                TestSuiteRepository::getSummaryLink,
+                (first, duplicate) -> first));
+  }
+
+  private static String getSummaryLink(TestCase testCase) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+    return entityLink.getFieldName() == null ? "table" : entityLink.getLinkString();
   }
 
   private static TestSummary createTestSummary(Map<String, Integer> summaryMap) {
@@ -557,7 +590,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return summary;
   }
 
-  private ColumnTestSummaryDefinition createColumnSummary(Map<String, Integer> summaryMap) {
+  private static ColumnTestSummaryDefinition createColumnSummary(Map<String, Integer> summaryMap) {
     ColumnTestSummaryDefinition summary = new ColumnTestSummaryDefinition();
     summary.setSuccess(summaryMap.getOrDefault("Success", 0));
     summary.setFailed(summaryMap.getOrDefault("Failed", 0));
@@ -714,7 +747,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
                 CollectionDAO.EntityRelationshipCount::getCount));
   }
 
-  private TestSummary getTestSummary(
+  private static TestSummary getTestSummary(
       List<ResultSummary> testCaseResults, Map<String, String> entityLinkMap) {
     record ProcessedTestCaseResults(String entityLink, String status) {}
 

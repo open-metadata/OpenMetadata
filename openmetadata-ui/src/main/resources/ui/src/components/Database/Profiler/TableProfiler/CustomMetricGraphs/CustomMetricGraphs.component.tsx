@@ -10,28 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Dropdown,
-  SimpleModal,
-} from '@openmetadata/ui-core-components';
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import {
   AreaChart,
   type ChartTooltipRenderProps,
   type ChartYAxisProps,
 } from '@openmetadata/ui-core-components/charts';
 import { DotsVertical } from '@openmetadata/ui-core-components/icons';
-import { Form } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, last, omit, toPairs } from 'lodash';
+import { isEmpty, isUndefined, last, toPairs } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CustomMetric } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/policy';
-import {
-  deleteCustomMetric,
-  putCustomMetric,
-} from '../../../../../rest/customMetricAPI';
+import { deleteCustomMetric } from '../../../../../rest/customMetricAPI';
 import {
   axisTickFormatter,
   tooltipFormatter,
@@ -47,9 +39,7 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
-import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import CustomMetricForm from '../../../../DataQuality/CustomMetricForm/CustomMetricForm.component';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerStateWrapper from '../../ProfilerStateWrapper/ProfilerStateWrapper.component';
 import { useTableProfiler } from '../TableProfilerProvider';
@@ -86,11 +76,11 @@ const CustomMetricGraphs = ({
   customMetrics,
 }: CustomMetricGraphsProps) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<CustomMetric>();
   const {
     permissions,
     customMetric: tableDetails,
     onCustomMetricUpdate,
+    onCustomMetricDrawerOpen,
   } = useTableProfiler();
   const editPermission =
     permissions &&
@@ -99,7 +89,6 @@ const CustomMetricGraphs = ({
 
   const [selectedMetrics, setSelectedMetrics] = useState<CustomMetric>();
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
 
@@ -132,7 +121,6 @@ const CustomMetricGraphs = ({
 
   const handleModalCancel = () => {
     setIsDeleteModalVisible(false);
-    setIsEditModalVisible(false);
     setSelectedMetrics(undefined);
   };
 
@@ -160,43 +148,19 @@ const CustomMetricGraphs = ({
     }
   };
 
-  const handleEditFormSubmit = async (values: CustomMetric) => {
-    if (tableDetails) {
-      setIsActionLoading(true);
-      const updatedMetric = {
-        ...omit(selectedMetrics, ['id']),
-        ...values,
-      };
-
-      try {
-        const { data } = await putCustomMetric(tableDetails.id, updatedMetric);
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: selectedMetrics?.name,
-          })
-        );
-        onCustomMetricUpdate(data);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        handleModalCancel();
-        setIsActionLoading(false);
-      }
-    }
-  };
-
   const handleMenuClick = (key: string, metricName: string) => {
-    setSelectedMetrics(
-      customMetrics?.find((metric) => metric.name === metricName)
-    );
+    const metric = customMetrics?.find((metric) => metric.name === metricName);
     setOpenMenuKey(null);
 
     switch (key) {
       case MenuOptions.EDIT:
-        setIsEditModalVisible(true);
+        if (metric) {
+          onCustomMetricDrawerOpen(!isUndefined(metric.columnName), metric);
+        }
 
         break;
       case MenuOptions.DELETE:
+        setSelectedMetrics(metric);
         setIsDeleteModalVisible(true);
 
         break;
@@ -235,7 +199,6 @@ const CustomMetricGraphs = ({
                         setOpenMenuKey(isOpen ? key : null)
                       }>
                       <Button
-                        aria-label={t('label.more-action')}
                         color="secondary"
                         data-testid={`${key}-custom-metrics-menu`}
                         iconLeading={DotsVertical}
@@ -292,28 +255,6 @@ const CustomMetricGraphs = ({
         onCancel={handleModalCancel}
         onDelete={handleDeleteClick}
       />
-      {isEditModalVisible && !isUndefined(selectedMetrics) && (
-        <SimpleModal
-          isOpen
-          isDismissable={false}
-          isOkLoading={isActionLoading}
-          okText={t('label.save')}
-          title={t('label.edit-entity', { entity: selectedMetrics.name })}
-          width={650}
-          onCancel={handleModalCancel}
-          onOk={() => form.submit()}>
-          <DrawerPopupContainerProvider>
-            <CustomMetricForm
-              isEditMode
-              form={form}
-              initialValues={selectedMetrics}
-              isColumnMetric={!isUndefined(selectedMetrics.columnName)}
-              table={tableDetails}
-              onFinish={handleEditFormSubmit}
-            />
-          </DrawerPopupContainerProvider>
-        </SimpleModal>
-      )}
     </div>
   );
 };

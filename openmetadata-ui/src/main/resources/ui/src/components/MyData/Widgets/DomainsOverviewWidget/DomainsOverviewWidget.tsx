@@ -173,7 +173,7 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
                       className="tw:min-w-0 tw:text-text-primary!"
                       data-testid="domain-name"
                       ellipsis={{ rows: 1 }}
-                      size="text-sm"
+                      size="text-xs"
                       weight="medium">
                       {domain.name}
                     </Typography>
@@ -184,7 +184,7 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
                           : 'tw:min-w-0 tw:text-utility-warning-700!'
                       }
                       ellipsis={{ rows: 1 }}
-                      size="text-sm">
+                      size="text-xs">
                       {domain.ownerName ?? t('label.no-owner')}
                     </Typography>
                   </div>

@@ -27,7 +27,10 @@ import {
   DataProductSummary,
   useDataProducts,
 } from '../../../../hooks/useDataProducts';
-import { OverviewFilter } from '../../../../hooks/useDomainOverview';
+import {
+  OverviewFilter,
+  OverviewOrder,
+} from '../../../../hooks/useDomainOverview';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
@@ -102,7 +105,12 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
     isFetching,
     isLoading,
     refetch,
-  } = useDataProducts(filter);
+  } = useDataProducts(
+    filter,
+    sort === PRODUCT_SORTS.RECENTLY_UPDATED
+      ? OverviewOrder.RECENTLY_UPDATED
+      : OverviewOrder.NAME
+  );
   const { permissions } = usePermissionProvider();
   const { canCreate } = getDerivedPermissionFlags(
     permissions?.[ResourceEntity.DATA_PRODUCT] ?? DEFAULT_ENTITY_PERMISSION
@@ -248,7 +256,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
                       className="tw:min-w-0 tw:text-text-primary!"
                       data-testid="data-product-name"
                       ellipsis={{ rows: 1 }}
-                      size="text-sm"
+                      size="text-xs"
                       weight="medium">
                       {product.name}
                     </Typography>
@@ -264,7 +272,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
                             className="tw:min-w-0 tw:text-text-tertiary!"
                             data-testid="data-product-domain"
                             ellipsis={{ rows: 1 }}
-                            size="text-sm">
+                            size="text-xs">
                             {product.domainName}
                           </Typography>
                           {/* Drawn, not spliced into the owner's string. */}
@@ -282,7 +290,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
                         }
                         data-testid="data-product-owner"
                         ellipsis={{ rows: 1 }}
-                        size="text-sm">
+                        size="text-xs">
                         {product.ownerName ?? t(NO_OWNER_LABEL_KEY)}
                       </Typography>
                     </span>
