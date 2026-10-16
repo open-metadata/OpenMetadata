@@ -20,6 +20,7 @@ import { useApplicationStore } from '../../../../../../hooks/useApplicationStore
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import GlossarySettings from '../../../../../governance/glossary/GlossarySettings';
+import { ResourcePlayer } from '../../../../../Learning/ResourcePlayer/ResourcePlayerModal.component';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import AppModeSettings from './AppModeSettings';
@@ -84,7 +85,15 @@ const VIEW_PAGES: Partial<
   'brand-url': (props) => <BrandUrlSettings {...props} />,
   lineage: (props) => <LineageSettings {...props} />,
   'data-asset-rules': () => <DataAssetRulesSettings />,
-  'learning-resources': (props) => <LearningResourcesSettings {...props} />,
+  'learning-resources': (props) =>
+    props.itemId ? (
+      <ResourcePlayer
+        className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
+        resourceId={props.itemId}
+      />
+    ) : (
+      <LearningResourcesSettings {...props} />
+    ),
   'app-mode': (props) => <AppModeSettings {...props} />,
   'table-schema': (props) => <TableSchemaSettings {...props} />,
   'time-format': (props) => <TimeFormatSettings {...props} />,

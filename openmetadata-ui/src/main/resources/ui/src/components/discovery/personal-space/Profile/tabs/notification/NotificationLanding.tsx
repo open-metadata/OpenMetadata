@@ -31,6 +31,7 @@ import {
   buildSectionCards,
   getNotificationMenuItems,
 } from './Notification.utils';
+import { getLandingIconColor } from '../../components/LandingIcon.constants';
 
 const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
   const { t } = useTranslation();
@@ -69,7 +70,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
     <div
       className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:px-8 tw:pb-8"
       data-testid="notification-landing">
-      {cards.map((card) => {
+      {cards.map((card, index) => {
         const Icon = card.icon;
 
         return (
@@ -95,9 +96,11 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
                 gap={4}>
                 <Box
                   align="center"
-                  className="tw:shrink-0 tw:rounded-lg tw:bg-tertiary tw:h-10 tw:w-10"
+                  className={`tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
+                    index
+                  )}`}
                   justify="center">
-                  <Icon className="tw:size-6 tw:text-secondary" />
+                  <Icon className="tw:size-6" />
                 </Box>
                 <Box className="tw:min-w-0" direction="col" gap={1}>
                   <Box align="center" direction="row" gap={2}>

@@ -23,9 +23,13 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../../../../common/Table/TableV2', () => ({
   __esModule: true,
-  default: ({ 'data-testid': testId }: { 'data-testid': string }) => (
-    <div data-testid={testId} />
-  ),
+  default: ({
+    'data-testid': testId,
+    extraTableFilters,
+  }: {
+    'data-testid': string;
+    extraTableFilters?: React.ReactNode;
+  }) => <div data-testid={testId}>{extraTableFilters}</div>,
 }));
 
 const baseProps = {

@@ -27,6 +27,70 @@ const PATH_ROLES = 'roles';
 const PATH_POLICIES = 'policies';
 const PATH_PERMISSION_DEBUGGER = 'permission-debugger';
 const PATH_AUDIT_LOGS = 'audit-logs';
+const PATH_RULES = 'rules';
+const PATH_ADD = 'add';
+const PATH_EDIT = 'edit';
+
+const POLICIES_RULE = 'policies-rule' as const;
+
+/**
+ * `policies/<fqn>/rules/add` or `policies/<fqn>/rules/<rule>/edit`. Matched from
+ * the end because the detail route takes every remaining segment as the FQN.
+ */
+const parsePolicyRulePath = (
+  parts: string[]
+): AccessControlView | undefined => {
+  const rulesAt = parts.lastIndexOf(PATH_RULES);
+  if (rulesAt < 2) {
+    return undefined;
+  }
+
+  const fqn = parts.slice(1, rulesAt).join('/');
+  const [first, second, ...extra] = parts.slice(rulesAt + 1);
+  if (first === PATH_ADD && second === undefined) {
+    return { type: POLICIES_RULE, fqn, name: fqn };
+  }
+
+  if (first && second === PATH_EDIT && extra.length === 0) {
+    return {
+      type: POLICIES_RULE,
+      fqn,
+      name: fqn,
+      ruleName: decodeURIComponent(first),
+    };
+  }
+
+  return undefined;
+};
+
+const policyRuleSubPath = (view: AccessControlView): string | undefined => {
+  if (view.type !== POLICIES_RULE) {
+    return undefined;
+  }
+  const rulesPath = `${PATH_POLICIES}/${view.fqn}/${PATH_RULES}`;
+
+  return view.ruleName
+    ? `${rulesPath}/${encodeURIComponent(view.ruleName)}/${PATH_EDIT}`
+    : `${rulesPath}/${PATH_ADD}`;
+};
+
+const parsePoliciesPath = (parts: string[]): AccessControlView => {
+  if (!parts[1]) {
+    return { type: 'policies' };
+  }
+
+  if (parts[1] === PATH_ADD) {
+    return { type: 'policies-add' };
+  }
+
+  return (
+    parsePolicyRulePath(parts) ?? {
+      type: 'policies-detail',
+      fqn: parts.slice(1).join('/'),
+      name: parts[1],
+    }
+  );
+};
 
 export const buildConditionOptions = (fns: Function[]): SelectItemType[] =>
   uniqBy(
@@ -60,19 +124,7 @@ export function hashSubPathToView(subPath: string): AccessControlView {
   }
 
   if (parts[0] === PATH_POLICIES) {
-    if (!parts[1]) {
-      return { type: 'policies' };
-    }
-
-    if (parts[1] === 'add') {
-      return { type: 'policies-add' };
-    }
-
-    return {
-      type: 'policies-detail',
-      fqn: parts.slice(1).join('/'),
-      name: parts[1],
-    };
+    return parsePoliciesPath(parts);
   }
 
   if (parts[0] === PATH_PERMISSION_DEBUGGER) {
@@ -107,7 +159,7 @@ export function viewToSubPath(view: AccessControlView): string | undefined {
     case PATH_AUDIT_LOGS:
       return PATH_AUDIT_LOGS;
     default:
-      return undefined;
+      return policyRuleSubPath(view);
   }
 }
 

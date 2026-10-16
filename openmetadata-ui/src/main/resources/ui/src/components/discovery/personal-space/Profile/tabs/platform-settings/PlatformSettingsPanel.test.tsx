@@ -81,6 +81,17 @@ jest.mock('./DataAssetRulesSettings', () => () => (
 jest.mock('./LearningResourcesSettings', () => () => (
   <div data-testid="learning-resources-view" />
 ));
+jest.mock(
+  '../../../../../Learning/ResourcePlayer/ResourcePlayerModal.component',
+  () => ({
+    ResourcePlayer: ({ resourceId }: { resourceId: string }) => (
+      <div
+        data-resource-id={resourceId}
+        data-testid="learning-resource-player"
+      />
+    ),
+  })
+);
 const mockFormMounts = jest.fn();
 
 jest.mock('./LearningResourceSettingsForm', () => {
@@ -246,6 +257,25 @@ describe('PlatformSettingsPanel', () => {
     lastHeader().onBreadcrumbAction('search');
 
     expect(mockSetHash).toHaveBeenCalledWith('platform-settings', 'search');
+  });
+
+  it('opens a learning resource as a sub-page instead of a modal', () => {
+    mockSubPath = 'learning-resources/res-1';
+    renderPanel();
+
+    expect(screen.getByTestId('learning-resource-player')).toHaveAttribute(
+      'data-resource-id',
+      'res-1'
+    );
+    expect(screen.queryByTestId('learning-resources-view')).toBeNull();
+    expect(lastHeader().title).toBe('label.preview');
+
+    lastHeader().onBreadcrumbAction('learning-resources');
+
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'platform-settings',
+      'learning-resources'
+    );
   });
 
   it('renders the edit form with the show-hint toggle in the header', () => {

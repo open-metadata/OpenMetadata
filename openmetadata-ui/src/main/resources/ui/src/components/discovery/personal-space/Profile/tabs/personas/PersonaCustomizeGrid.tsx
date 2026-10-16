@@ -15,6 +15,7 @@ import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { getCustomizePageCategories } from '../../../../../../utils/Persona/PersonaUtils';
 import { PERSONA_CATEGORY_ICONS } from './personaCategoryIcons';
+import { getLandingIconColor } from '../../components/LandingIcon.constants';
 
 interface PersonaCustomizeGridProps {
   onSelectCategory: (category: string) => void;
@@ -29,7 +30,7 @@ const PersonaCustomizeGrid = ({
     <Box
       className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5"
       data-testid="persona-customize-grid">
-      {categories.map((category) => {
+      {categories.map((category, index) => {
         const Icon = PERSONA_CATEGORY_ICONS[category.key] ?? category.icon;
         const handler = onSelectCategory;
 
@@ -53,7 +54,9 @@ const PersonaCustomizeGrid = ({
               <Box align="start" direction="row" gap={4}>
                 <Box
                   align="center"
-                  className="tw:shrink-0 tw:rounded-lg tw:bg-tertiary tw:h-10 tw:w-10"
+                  className={`tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
+                    index
+                  )}`}
                   justify="center">
                   {Icon && <Icon className="tw:size-6" />}
                 </Box>

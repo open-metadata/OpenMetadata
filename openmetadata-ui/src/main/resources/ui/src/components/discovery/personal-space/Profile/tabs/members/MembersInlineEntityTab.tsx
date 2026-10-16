@@ -49,9 +49,9 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Box direction="col" gap={3}>
+    <Box direction="col">
       {isAdding && (
-        <Card variant="muted">
+        <Card className="tw:m-4" variant="muted">
           <Card.Content className="tw:flex tw:flex-col tw:gap-4">
             <Typography
               className="tw:text-primary"
@@ -98,21 +98,22 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
           </Card.Content>
         </Card>
       )}
-      {canEditAll && !isAdding && (
-        <Box align="center" className="tw:pb-3" direction="row" justify="end">
-          <Button
-            color="primary"
-            data-testid={addButtonTestId}
-            size="sm"
-            onPress={onStartAdd}>
-            {t('label.add-entity', { entity: entityLabel })}
-          </Button>
-        </Box>
-      )}
       <Table
         columns={columns}
+        containerClassName="tw:rounded-none tw:border-0"
         data-testid={tableTestId}
         dataSource={dataSource}
+        extraTableFilters={
+          canEditAll && !isAdding ? (
+            <Button
+              color="primary"
+              data-testid={addButtonTestId}
+              size="sm"
+              onPress={onStartAdd}>
+              {t('label.add-entity', { entity: entityLabel })}
+            </Button>
+          ) : undefined
+        }
         locale={{
           emptyText: (
             <Box

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, SelectItemType, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  SelectItemType,
+  TableCard,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { Reorder } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -144,6 +149,10 @@ const ReorderDragIcon: FC<{ className?: string }> = ({ className }) => (
 
 // The inline role/policy add flow is identical bar the team field it writes to.
 type InlineAddField = 'defaultRoles' | 'policies';
+
+// Tabs whose content is a borderless table drawn edge to edge in the card;
+// the rest get padding.
+const TABLE_TABS = new Set<string>(['teams', 'users', 'roles', 'policies']);
 type AddOption = {
   id: string;
   name: string;
@@ -1331,30 +1340,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
       {/* Tabs */}
       <Box className="tw:px-8 tw:flex-1 tw:min-h-0" direction="col">
-        <Tabs
-          selectedKey={activeTab}
-          onSelectionChange={(key: Key) => setActiveTab(String(key))}>
-          <Tabs.List size="sm" type="underline">
-            {allTabKeys.map((tab) => {
-              const plugin = pluginTabs.find((item) => item.key === tab);
-
-              return (
-                <Tabs.Item id={tab} key={tab}>
-                  {plugin
-                    ? plugin.label
-                    : getTabLabel(
-                        tab as TeamTab,
-                        t,
-                        team,
-                        childTeams.length,
-                        assetCount
-                      )}
-                </Tabs.Item>
-              );
-            })}
-          </Tabs.List>
-        </Tabs>
-
         {/* A plain block, NOT a `Box`: `Box` is display:flex, and inside a flex
             container the tab content becomes a flex item that shrinks to the
             container's height instead of overflowing it, so `overflow-auto`
@@ -1362,7 +1347,52 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             clientHeight). A block container lets the content keep its natural
             height and scroll. `min-h-0` keeps the flex parent from growing. */}
         <div className="tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-y-auto tw:py-4">
-          {renderActiveTab()}
+          <TableCard.Root
+            className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
+            size="compact">
+            <Tabs
+              selectedKey={activeTab}
+              onSelectionChange={(key: Key) => setActiveTab(String(key))}>
+              {/* -mb-px lays the tab underline over the row border so the divider
+                  also runs under the actions. */}
+              <Box
+                align="center"
+                className="tw:border-b tw:border-secondary tw:pr-4"
+                direction="row"
+                gap={4}
+                justify="between">
+                <Tabs.List
+                  className="tw:-mb-px tw:px-4 tw:pt-3"
+                  size="sm"
+                  type="underline">
+                  {allTabKeys.map((tab) => {
+                    const plugin = pluginTabs.find((item) => item.key === tab);
+
+                    return (
+                      <Tabs.Item id={tab} key={tab}>
+                        {plugin
+                          ? plugin.label
+                          : getTabLabel(
+                              tab as TeamTab,
+                              t,
+                              team,
+                              childTeams.length,
+                              assetCount
+                            )}
+                      </Tabs.Item>
+                    );
+                  })}
+                </Tabs.List>
+              </Box>
+            </Tabs>
+            {TABLE_TABS.has(activeTab) ? (
+              renderActiveTab()
+            ) : (
+              <Box className="tw:p-4" direction="col">
+                {renderActiveTab()}
+              </Box>
+            )}
+          </TableCard.Root>
         </div>
       </Box>
 

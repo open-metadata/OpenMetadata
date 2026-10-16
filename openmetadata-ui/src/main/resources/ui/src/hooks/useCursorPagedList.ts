@@ -29,6 +29,19 @@ export interface CursorPageParams {
  * lists) only adjacent pages are reachable by cursor. A new `fetchPage`
  * identity — e.g. a changed filter — restarts from page 1.
  */
+// Cursors are kept for this many pages at most; past it a jump walks again.
+const MAX_CACHED_PAGES = 100;
+
+const rememberPaging = (
+  cache: Map<number, Paging>,
+  pageNumber: number,
+  pagePaging: Paging
+) => {
+  if (cache.size < MAX_CACHED_PAGES) {
+    cache.set(pageNumber, pagePaging);
+  }
+};
+
 export const useCursorPagedList = <T>(
   fetchPage: (params: CursorPageParams) => Promise<{
     data: T[];
@@ -43,13 +56,20 @@ export const useCursorPagedList = <T>(
   // Only the latest request may write state: a slow earlier response (e.g. the
   // list before a filter flipped) must not overwrite the newer one.
   const latestRequest = useRef(0);
+  // The paging each loaded page returned, so any page can be reached later:
+  // page k's `after` opens page k+1 and its `before` opens page k-1.
+  const pagingByPage = useRef(new Map<number, Paging>());
 
   const load = useCallback(
-    async (cursor?: Pick<CursorPageParams, 'after' | 'before'>) => {
+    async (
+      cursor?: Pick<CursorPageParams, 'after' | 'before'>,
+      targetPage = 1
+    ) => {
       const requestId = ++latestRequest.current;
       setIsLoading(true);
       try {
         const response = await fetchPage({ ...cursor, limit: pageSize });
+        rememberPaging(pagingByPage.current, targetPage, response.paging);
         if (requestId === latestRequest.current) {
           setItems(response.data);
           setPaging(response.paging);
@@ -68,14 +88,53 @@ export const useCursorPagedList = <T>(
   );
 
   useEffect(() => {
+    pagingByPage.current.clear();
     setPage(1);
     void load();
   }, [load]);
 
-  const onPageChange = (nextPage: number) => {
-    const cursorType = nextPage > page ? 'after' : 'before';
+  // The `after` cursor that opens `target`, fetching any skipped pages in
+  // between so a jump (e.g. 1 -> 4) lands on the right page.
+  const resolveAfter = async (target: number) => {
+    let known = target - 1;
+    while (known > 1 && !pagingByPage.current.has(known)) {
+      known--;
+    }
+    let knownPaging = pagingByPage.current.get(known);
+    while (known < target - 1 && knownPaging?.after) {
+      const response = await fetchPage({
+        after: knownPaging.after,
+        limit: pageSize,
+      });
+      known++;
+      rememberPaging(pagingByPage.current, known, response.paging);
+      knownPaging = response.paging;
+    }
+
+    return knownPaging?.after;
+  };
+
+  const onPageChange = async (nextPage: number) => {
     setPage(nextPage);
-    void load({ [cursorType]: paging[cursorType] });
+    if (nextPage === 1) {
+      return load(undefined, 1);
+    }
+    const before =
+      nextPage < page
+        ? pagingByPage.current.get(nextPage + 1)?.before
+        : undefined;
+    if (before) {
+      return load({ before }, nextPage);
+    }
+    try {
+      const after = await resolveAfter(nextPage);
+
+      return load(after ? { after } : undefined, nextPage);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return undefined;
+    }
   };
 
   return {

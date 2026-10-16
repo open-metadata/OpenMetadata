@@ -38,7 +38,7 @@ describe('useCursorPagedList', () => {
     expect(result.current.showPagination).toBe(true);
   });
 
-  it('follows the after cursor forward and the before cursor back', async () => {
+  it('follows the after cursor forward and reloads the first page going back to 1', async () => {
     const { result } = renderHook(() => useCursorPagedList(fetchPage));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
@@ -48,7 +48,8 @@ describe('useCursorPagedList', () => {
 
     await act(async () => result.current.onPageChange(1));
 
-    expect(fetchPage).toHaveBeenLastCalledWith({ before: 'prev', limit: 15 });
+    // Page 1 needs no cursor: it is simply the first page again.
+    expect(fetchPage).toHaveBeenLastCalledWith({ limit: 15 });
   });
 
   it('restarts from page 1 when the page size changes', async () => {
@@ -87,5 +88,38 @@ describe('useCursorPagedList', () => {
     });
 
     expect(result.current.items).toEqual(['new']);
+  });
+
+  it('jumps to a page it has not loaded by walking the cursors in between', async () => {
+    fetchPage.mockImplementation(({ after }: { after?: string }) => {
+      const pageNumber = after ? Number(after.replace('p', '')) : 1;
+
+      return Promise.resolve({
+        data: [`item-${pageNumber}`],
+        paging: {
+          total: 60,
+          after: `p${pageNumber + 1}`,
+          before: `b${pageNumber}`,
+        },
+      });
+    });
+    const { result } = renderHook(() => useCursorPagedList(fetchPage));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.onPageChange(3);
+    });
+
+    expect(result.current.page).toBe(3);
+    expect(result.current.items).toEqual(['item-3']);
+
+    // Back to page 2 uses page 3's `before` cursor, no walking needed.
+    fetchPage.mockClear();
+    await act(async () => {
+      await result.current.onPageChange(2);
+    });
+
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    expect(fetchPage).toHaveBeenCalledWith({ before: 'b3', limit: 15 });
   });
 });
