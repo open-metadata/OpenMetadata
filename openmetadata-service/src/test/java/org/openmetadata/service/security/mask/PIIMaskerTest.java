@@ -231,7 +231,7 @@ class PIIMaskerTest {
 
     assertEquals(List.of("plain-document"), notMasked.getSampleData().getMessages());
 
-    // Null fields and null entity tags on a non-authorized path must not NPE or mask.
+    // Missing fields must not cause an exception or mask plain sample data.
     SearchIndex withNoFields =
         new SearchIndex()
             .withFullyQualifiedName("service.search.orders")
