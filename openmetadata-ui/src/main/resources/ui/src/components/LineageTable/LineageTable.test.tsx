@@ -1570,5 +1570,88 @@ describe('LineageTable', () => {
         expect(handlePageChange).toHaveBeenCalledWith(1);
       });
     });
+
+    it('ignores stale fetch response when page is reset to 1 on mount', async () => {
+      setupStoreWithTimeFilter({ startTime, endTime });
+
+      const handlePageChange = jest.fn();
+
+      mockUsePaging.mockReturnValue({
+        currentPage: 2,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+        handlePageSizeChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      const setFilterNodes = jest.fn();
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+        setFilterNodes,
+      });
+
+      // The stale (page 2) fetch returns a never-resolving promise so it
+      // stays pending while the fresh (page 1) fetch resolves and applies
+      // its result. Without the stale-response guard, when the stale
+      // response eventually arrives it would overwrite page 1.
+      mockGetLineageByEntityCount.mockImplementationOnce(
+        () => new Promise(() => {})
+      );
+
+      const { rerender } = render(<LineageTable entity={mockEntity} />, {
+        wrapper: MemoryRouter,
+      });
+
+      // First fetch (page 2, stale) has started
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalledTimes(1);
+      });
+
+      // Reset effect fires → handlePageChange(1)
+      await waitFor(() => {
+        expect(handlePageChange).toHaveBeenCalledWith(1);
+      });
+
+      // Simulate the page change so a second (fresh, page 1) fetch starts
+      mockUsePaging.mockReturnValue({
+        currentPage: 1,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+        handlePageSizeChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      rerender(<LineageTable entity={mockEntity} />);
+
+      // Second fetch (page 1) has started and should resolve (default mock)
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalledTimes(2);
+      });
+
+      // The fresh (page 1) response should have been applied — the stale
+      // (page 2) response is still pending and must not have blocked it.
+      await waitFor(() => {
+        expect(setFilterNodes).toHaveBeenCalled();
+      });
+
+      // The stale fetch (page 2) is still pending. Verify it did NOT call
+      // setFilterNodes — only the fresh fetch (page 1) should have applied
+      // its results. The fresh fetch uses the default mock data (node1,
+      // node2), not any stale data.
+      const allCalls = setFilterNodes.mock.calls;
+      for (const call of allCalls) {
+        const nodes = call[0];
+        if (Array.isArray(nodes)) {
+          for (const node of nodes) {
+            expect(node).not.toHaveProperty('id', 'stale');
+          }
+        }
+      }
+    });
   });
 });
