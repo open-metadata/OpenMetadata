@@ -15,8 +15,12 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -43,11 +47,15 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -62,7 +70,8 @@ import org.openmetadata.service.Entity;
  * stored entity, so {@code hasDomain()} saw the source domain — and saw nothing at all for an asset
  * that had no domain, where it deliberately returns true. {@code PUT /v1/domains/{name}/assets/add}
  * authorized the target domain but never the assets, so a domain's asset picker could pull assets
- * out of domains the caller had no rights over.
+ * out of domains the caller had no rights over. It now authorizes each asset as its own PATCH, so an
+ * asset the caller may not move comes back as a failed row while the others still move.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -70,7 +79,11 @@ public class DomainReassignmentAuthorizationIT {
 
   /** A user scoped to {@code heldDomain} by a hasDomain()-conditioned grant. */
   private record DomainScopedUser(
-      OpenMetadataClient client, Domain heldDomain, Domain heldSubDomain, Domain otherDomain) {}
+      User user,
+      OpenMetadataClient client,
+      Domain heldDomain,
+      Domain heldSubDomain,
+      Domain otherDomain) {}
 
   @Test
   void test_patchCannotMoveADomainlessAssetIntoAnUnheldDomain(TestNamespace ns) throws Exception {
@@ -112,25 +125,17 @@ public class DomainReassignmentAuthorizationIT {
   @Test
   void test_bulkAddAssetsCannotPullAnAssetOutOfAnUnheldDomain(TestNamespace ns) throws Exception {
     DomainScopedUser scoped = domainScopedUser(ns);
-    Table table = createTable(ns, scoped.otherDomain());
+    Table editable = createTable(ns, null);
+    Table unheld = createTable(ns, scoped.otherDomain());
 
-    assertThrows(
-        ForbiddenException.class,
-        () -> addAssetToDomain(scoped.client(), scoped.heldDomain(), table),
-        "Adding an asset to your own domain must still require rights over that asset");
-  }
+    BulkOperationResult result =
+        addAssetsToDomain(scoped.client(), scoped.heldDomain(), editable, unheld);
 
-  @Test
-  void test_bulkAddAssetsStillAcceptsAnAssetTheCallerMayEdit(TestNamespace ns) throws Exception {
-    DomainScopedUser scoped = domainScopedUser(ns);
-    Table table = createTable(ns, null);
-
-    BulkOperationResult result = addAssetToDomain(scoped.client(), scoped.heldDomain(), table);
-
+    assertOnlyFirstAccepted(scoped, result, editable, unheld);
     assertEquals(
-        1,
-        result.getNumberOfRowsPassed(),
-        "A domain-scoped user must still be able to claim an asset they may edit");
+        scoped.otherDomain().getId(),
+        domainOf(unheld),
+        "Adding an asset to your own domain must still require rights over that asset");
   }
 
   /**
@@ -143,18 +148,20 @@ public class DomainReassignmentAuthorizationIT {
   void test_bulkAddAssetsCannotPullAnAssetThatInheritsAnUnheldDomain(TestNamespace ns)
       throws Exception {
     DomainScopedUser scoped = domainScopedUser(ns);
+    Table editable = createTable(ns, null);
     Table inheriting = createTableInheritingDomain(ns, scoped.otherDomain());
-
-    Table reloaded =
-        SdkClients.adminClient().tables().get(inheriting.getId().toString(), "domains");
     assertEquals(
         scoped.otherDomain().getId(),
-        reloaded.getDomains().get(0).getId(),
+        domainOf(inheriting),
         "precondition: the table should inherit the unheld domain from its schema");
 
-    assertThrows(
-        ForbiddenException.class,
-        () -> addAssetToDomain(scoped.client(), scoped.heldDomain(), inheriting),
+    BulkOperationResult result =
+        addAssetsToDomain(scoped.client(), scoped.heldDomain(), editable, inheriting);
+
+    assertOnlyFirstAccepted(scoped, result, editable, inheriting);
+    assertEquals(
+        scoped.otherDomain().getId(),
+        domainOf(inheriting),
         "An asset that inherits a domain the caller does not hold must not be pullable into theirs");
   }
 
@@ -188,27 +195,19 @@ public class DomainReassignmentAuthorizationIT {
       throws Exception {
     DomainScopedUser scoped = domainScopedUser(ns);
     DataProduct dataProduct = createDataProduct(ns, scoped.heldDomain());
-    Table table = createTable(ns, scoped.otherDomain());
+    Table editable = createTable(ns, scoped.heldDomain());
+    Table unheld = createTable(ns, scoped.otherDomain());
 
-    assertThrows(
-        ForbiddenException.class,
-        () -> addAssetToDataProduct(scoped.client(), dataProduct, table),
+    BulkOperationResult result =
+        addAssetsToDataProduct(scoped.client(), dataProduct, editable, unheld);
+
+    assertOnlyFirstAccepted(scoped, result, editable, unheld);
+    Table reloaded =
+        SdkClients.adminClient().tables().get(unheld.getId().toString(), "dataProducts");
+    assertTrue(
+        listOrEmpty(reloaded.getDataProducts()).stream()
+            .noneMatch(product -> dataProduct.getId().equals(product.getId())),
         "Adding an asset from an unheld domain to a data product must be denied per asset");
-  }
-
-  @Test
-  void test_dataProductBulkAddStillAcceptsAnAssetTheCallerMayEdit(TestNamespace ns)
-      throws Exception {
-    DomainScopedUser scoped = domainScopedUser(ns);
-    DataProduct dataProduct = createDataProduct(ns, scoped.heldDomain());
-    Table table = createTable(ns, scoped.heldDomain());
-
-    BulkOperationResult result = addAssetToDataProduct(scoped.client(), dataProduct, table);
-
-    assertEquals(
-        1,
-        result.getNumberOfRowsPassed(),
-        "A data-product add must still accept an asset the caller may edit");
   }
 
   /**
@@ -287,7 +286,7 @@ public class DomainReassignmentAuthorizationIT {
     Role role = createRole(ns, policy);
     Team team = createTeam(ns, role, held);
     User user = createUser(ns, "scoped", team);
-    return new DomainScopedUser(clientFor(user), held, heldSub, other);
+    return new DomainScopedUser(user, clientFor(user), held, heldSub, other);
   }
 
   /**
@@ -433,17 +432,42 @@ public class DomainReassignmentAuthorizationIT {
             HttpMethod.PATCH, "/v1/tables/" + table.getId(), patch, jsonPatchOptions());
   }
 
-  private BulkOperationResult addAssetToDomain(
-      OpenMetadataClient client, Domain domain, Table table) {
-    BulkAssets request =
-        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(false);
-    return client
-        .getHttpClient()
-        .execute(
-            HttpMethod.PUT,
-            "/v1/domains/" + domain.getFullyQualifiedName() + "/assets/add",
-            request,
-            BulkOperationResult.class);
+  private BulkOperationResult addAssetsToDomain(
+      OpenMetadataClient client, Domain domain, Table... tables) {
+    return addAssets(
+        client, "/v1/domains/" + domain.getFullyQualifiedName() + "/assets/add", tables);
+  }
+
+  private BulkOperationResult addAssets(OpenMetadataClient client, String path, Table... tables) {
+    List<EntityReference> assets = new ArrayList<>();
+    for (Table table : tables) {
+      assets.add(table.getEntityReference());
+    }
+    BulkAssets request = new BulkAssets().withAssets(assets).withDryRun(false);
+    return client.getHttpClient().execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
+  }
+
+  /** The first table is accepted; the second comes back as a failed row naming the caller. */
+  private static void assertOnlyFirstAccepted(
+      DomainScopedUser scoped, BulkOperationResult result, Table accepted, Table refused) {
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus(), JsonUtils.pojoToJson(result));
+    assertEquals(List.of(accepted.getId()), requestIds(result.getSuccessRequest()));
+    assertEquals(List.of(refused.getId()), requestIds(result.getFailedRequest()));
+    String message = result.getFailedRequest().getFirst().getMessage();
+    assertTrue(message.contains(scoped.user().getName()), message);
+  }
+
+  private static List<UUID> requestIds(List<BulkResponse> responses) {
+    List<UUID> ids = new ArrayList<>();
+    for (BulkResponse response : listOrEmpty(responses)) {
+      ids.add(JsonUtils.convertValue(response.getRequest(), EntityReference.class).getId());
+    }
+    return ids;
+  }
+
+  private static UUID domainOf(Table table) {
+    Table reloaded = SdkClients.adminClient().tables().get(table.getId().toString(), "domains");
+    return reloaded.getDomains().getFirst().getId();
   }
 
   /** Reassigns the domain through the PUT create-or-update path rather than a JSON patch. */
@@ -469,17 +493,10 @@ public class DomainReassignmentAuthorizationIT {
                     .withDomains(List.of(domain.getFullyQualifiedName()))));
   }
 
-  private BulkOperationResult addAssetToDataProduct(
-      OpenMetadataClient client, DataProduct dataProduct, Table table) {
-    BulkAssets request =
-        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(false);
-    return client
-        .getHttpClient()
-        .execute(
-            HttpMethod.PUT,
-            "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add",
-            request,
-            BulkOperationResult.class);
+  private BulkOperationResult addAssetsToDataProduct(
+      OpenMetadataClient client, DataProduct dataProduct, Table... tables) {
+    return addAssets(
+        client, "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add", tables);
   }
 
   private static RequestOptions jsonPatchOptions() {

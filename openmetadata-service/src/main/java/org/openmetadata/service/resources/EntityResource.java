@@ -767,25 +767,6 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     return resolved;
   }
 
-  /**
-   * Authorizes {@code operation} against each asset's own policy context.
-   *
-   * <p>{@link #authorizeBulkAssetsPermission} checks the resource <i>type</i>, which cannot serve a
-   * domain-scoped grant: a conditional rule resolves to CONDITIONAL_ALLOW there, so the holder of a
-   * {@code hasDomain()} grant would be refused every asset, including the ones they may edit.
-   * Evaluating per asset also refuses an asset sitting in someone else's domain, which is the point
-   * — otherwise a domain's asset picker pulls assets out of domains the caller has no rights over.
-   */
-  protected void authorizeAssetsOperation(
-      SecurityContext securityContext, List<EntityReference> assets, MetadataOperation operation) {
-    for (EntityReference asset : listOrEmpty(assets)) {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(asset.getType(), operation),
-          new ResourceContext<>(asset.getType(), asset.getId(), asset.getFullyQualifiedName()));
-    }
-  }
-
   /** Names the domains the caller was reaching for, which the generic denial does not. */
   private static AuthorizationException domainChangeDenied(
       SecurityContext securityContext,

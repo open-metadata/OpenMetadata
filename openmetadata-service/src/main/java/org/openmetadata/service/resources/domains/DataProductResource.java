@@ -418,7 +418,6 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    authorizeAssetsOperation(securityContext, request.getAssets(), MetadataOperation.EDIT_ALL);
     return buildBulkAssetsResponse(
         repository.bulkAddAssets(
             name, request, PatchRequester.fromRequest(securityContext, authorizer)),
@@ -458,7 +457,6 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    authorizeAssetsOperation(securityContext, request.getAssets(), MetadataOperation.EDIT_ALL);
     return buildBulkAssetsResponse(
         repository.bulkRemoveAssets(
             name, request, PatchRequester.fromRequest(securityContext, authorizer)),
