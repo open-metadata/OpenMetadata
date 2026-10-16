@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Tooltip } from 'antd';
+import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -78,22 +78,20 @@ const PoliciesDetailsList = ({
         render: (_, record) => {
           return (
             <Tooltip
+              arrow
               title={
                 hasAccess
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
               }>
-              <Button
+              <ButtonUtility
+                color="tertiary"
                 data-testid={`remove-action-${getEntityName(record)}`}
-                disabled={!hasAccess}
-                type="text"
-                onClick={() => onDelete(record)}>
-                <Icon
-                  className="align-middle"
-                  component={IconRemove}
-                  style={{ fontSize: '16px' }}
-                />
-              </Button>
+                icon={IconRemove}
+                isDisabled={!hasAccess}
+                size="sm"
+                onClick={() => onDelete(record)}
+              />
             </Tooltip>
           );
         },

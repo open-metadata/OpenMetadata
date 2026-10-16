@@ -16,6 +16,7 @@ import {
   queryByText,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import { useParams } from 'react-router-dom';
 import { TagLabel, TestCase } from '../../../../generated/tests/testCase';
@@ -254,6 +255,36 @@ describe('TestCaseResultTab', () => {
     expect(screen.queryByText('TestSummary')).not.toBeInTheDocument();
   });
 
+  it('should keep the rail at a fixed width beside the results, and stack it in a narrow tab', async () => {
+    render(<TestCaseResultTab showSidePanel />);
+
+    const grid = await screen.findByTestId('test-case-result-tab-container');
+
+    expect(grid).toHaveClass(
+      'tw:grid-cols-1',
+      'tw:@3xl:grid-cols-[minmax(0,1fr)_clamp(260px,30%,320px)]'
+    );
+    expect(grid.parentElement).toHaveClass('tw:@container');
+    expect(screen.getByTestId('test-case-rail')).not.toHaveClass(
+      'tw:col-span-4'
+    );
+    // The mock's spacing: 22px between the columns, 16px between rail cards.
+    expect(grid).toHaveClass('tw:gap-5.5');
+    expect(screen.getByTestId('test-case-rail').firstElementChild).toHaveClass(
+      'tw:gap-4'
+    );
+  });
+
+  it('should give the results the whole tab when the rail is hidden', async () => {
+    render(<TestCaseResultTab showSidePanel={false} />);
+
+    const grid = await screen.findByTestId('test-case-result-tab-container');
+
+    expect(grid).toHaveClass('tw:grid-cols-1');
+    expect(grid.className).not.toContain('tw:@3xl:grid-cols');
+    expect(screen.queryByTestId('test-case-rail')).not.toBeInTheDocument();
+  });
+
   it('should frame the result history as a card outside AI mode', async () => {
     render(<TestCaseResultTab />);
 
@@ -405,7 +436,7 @@ describe('TestCaseResultTab', () => {
     expect(screen.queryByText('columnCount')).not.toBeInTheDocument();
   });
 
-  it('shows the test case data quality dimension in the configuration card', async () => {
+  it("names the test case's data quality dimension in the configuration card", async () => {
     mockUseTestCaseStore.testCase.dataQualityDimension = {
       id: 'dim-1',
       type: 'dataQualityDimension',
@@ -417,10 +448,31 @@ describe('TestCaseResultTab', () => {
 
     await screen.findByTestId('test-case-configuration-card');
 
+    // In the category line: a row would keep the empty state from ever showing.
+    expect(screen.getByTestId('configuration-category')).toHaveTextContent(
+      'Timeliness of data'
+    );
     expect(
-      screen.getByText('label.data-quality-dimension')
-    ).toBeInTheDocument();
-    expect(screen.getByText('Timeliness of data')).toBeInTheDocument();
+      screen.queryByText('label.data-quality-dimension')
+    ).not.toBeInTheDocument();
+  });
+
+  it("labels each parameter with its definition's display name", async () => {
+    mockGetTestDefinitionById.mockResolvedValue({
+      id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+      name: 'tableColumnCountToEqual',
+      parameterDefinition: [
+        { name: 'columnCount', displayName: 'Count', dataType: 'INT' },
+      ],
+    });
+
+    render(<TestCaseResultTab />);
+
+    const row = await screen.findByTestId(
+      'configuration-parameter-columnCount'
+    );
+
+    await waitFor(() => expect(row).toHaveTextContent('Count10'));
   });
 
   it('does not fall back to the test definition dimension', async () => {

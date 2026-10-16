@@ -160,28 +160,27 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
       <Box align="center" className="tw:min-w-0 tw:flex-wrap" gap={2}>
         {statusBadge && (
           <Badge
-            className="tw:font-medium"
             color={STATUS_BADGE_COLOR[statusBadge.tone]}
             data-color={statusBadge.tone}
             data-testid="task-status-badge"
-            size="md"
+            size="sm"
             type="color">
             {statusBadge.label}
           </Badge>
         )}
         <Typography
           className="tw:text-secondary"
-          size="text-sm"
+          size="text-xs"
           weight="medium">
           {task.taskId ?? ''}
         </Typography>
-        <span aria-hidden className="tw:text-sm tw:text-quaternary">
+        <span aria-hidden className="tw:text-xs tw:text-quaternary">
           ·
         </span>
         <Typography
           className="tw:text-tertiary"
           data-testid="task-type-badge"
-          size="text-sm">
+          size="text-xs">
           {typeBadge.label}
         </Typography>
       </Box>

@@ -106,6 +106,17 @@ export interface ColumnConfig<T> {
   customRenderer?: string;
 }
 
+/**
+ * A listing column contributed by a ClassBase override rather than by the
+ * listing hook itself, so a downstream build can add a column without the
+ * shared hook having to know about it.
+ */
+export interface ListingExtraColumn<T> {
+  id: string;
+  labelKey: string;
+  render: (entity: T) => ReactNode;
+}
+
 export interface CellRenderer<T> {
   [key: string]: (entity: T, column?: ColumnConfig<T>) => ReactNode;
 }

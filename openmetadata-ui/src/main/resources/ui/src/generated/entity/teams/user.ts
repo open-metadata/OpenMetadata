@@ -36,6 +36,12 @@ export interface User {
      */
     createdBy?: string;
     /**
+     * The domain the user selects in the navbar to scope list views. Persisted so the global
+     * (navbar) domain filter is applied from the start of the session; it narrows lists only
+     * and never restricts access.
+     */
+    defaultDomain?: EntityReference;
+    /**
      * Default Persona for the user from list of personas.
      */
     defaultPersona?: EntityReference;
@@ -59,6 +65,10 @@ export interface User {
      * Email address of the user.
      */
     email: string;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
     /**
      * External identifier from identity provider (used for SCIM).
      */
@@ -515,12 +525,16 @@ export interface FieldChange {
 }
 
 /**
- * Default Persona for the user from list of personas.
+ * The domain the user selects in the navbar to scope list views. Persisted so the global
+ * (navbar) domain filter is applied from the start of the session; it narrows lists only
+ * and never restricts access.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Default Persona for the user from list of personas.
  *
  * Domain the User belongs to. This is inherited by the team the user belongs to.
  *

@@ -17,6 +17,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from contextlib import closing
 from typing import Annotated, Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
@@ -89,6 +90,7 @@ class DataModelLink(BaseModel):
 
     table_entity: Table
     datamodel: DataModel
+    upstream_table_ids: dict[str, UUID] = Field(default_factory=dict)
 
 
 class DatabaseServiceTopology(ServiceTopology):
@@ -239,7 +241,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         cached = instance_dict.get("tags_registry")
         if cached is not None:
             return cached
-        return instance_dict.setdefault("tags_registry", TagRegistry())
+        return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
 
     @property
     def tag_canonicalizer(self) -> TagCanonicalizer:

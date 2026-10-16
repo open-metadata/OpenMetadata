@@ -14,6 +14,9 @@ Stored Procedures Utilities
 
 import re
 
+from sqlparse import tokens
+from sqlparse.lexer import tokenize
+
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -67,6 +70,19 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
 
     We'll return the lowered procedure name
     """
+
+    # Comments and literal values can mention invocations that never executed.
+    # Tokenize without grouping so large query-history statements stay linear,
+    # while quoted identifiers and whitespace between name segments survive.
+    if any(marker in query_text for marker in ("--", "/*", "'", "$")):
+        query_text = "".join(
+            " "
+            if token_type in tokens.Comment
+            or token_type in tokens.Literal.String.Single
+            or token_type == tokens.Literal
+            else value
+            for token_type, value in tokenize(query_text)
+        )
 
     res = re.search(NAME_PATTERN, query_text, re.IGNORECASE if not sensitive_match else 0)
     if not res:

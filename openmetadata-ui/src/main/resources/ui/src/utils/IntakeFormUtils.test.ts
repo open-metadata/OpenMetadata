@@ -144,6 +144,31 @@ describe('computeFieldRows', () => {
     ]);
   });
 
+  it('falls back to the property name when displayName is absent', () => {
+    const rows = computeFieldRows({
+      nativeFields: [],
+      customProperties: [customProperty('steward')], // no displayName
+      initialValue: null,
+      t: identityT,
+    });
+
+    expect(rows[0].label).toBe('steward');
+  });
+
+  it('falls back to the property name when displayName is an empty string', () => {
+    // A property edited through the custom-property edit form can end up with
+    // displayName: "" stored on the server. The label must fall back to the
+    // name instead of rendering blank (the `??` operator kept "" as the label).
+    const rows = computeFieldRows({
+      nativeFields: [],
+      customProperties: [customProperty('steward', '')],
+      initialValue: null,
+      t: identityT,
+    });
+
+    expect(rows[0].label).toBe('steward');
+  });
+
   it('surfaces a saved custom property missing from the entity as an orphan', () => {
     const rows = computeFieldRows({
       nativeFields: [],

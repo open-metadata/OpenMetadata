@@ -13,13 +13,19 @@
 
 import {
   ButtonUtility,
+  Dropdown,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { GitMerge, X } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  GitMerge,
+  Trash01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
-import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Edge, Node } from 'reactflow';
 import DescriptionSection from '../../../components/common/DescriptionSection/DescriptionSection';
@@ -188,6 +194,46 @@ const buildEdgeOverviewData = (
   ].filter((item): item is OverviewDataItem => Boolean(item));
 };
 
+const EdgeActionsMenu = ({
+  onEditPipeline,
+  onDelete,
+}: Pick<EdgeInfoDrawerInfo, 'onEditPipeline' | 'onDelete'>) => {
+  const { t } = useTranslation();
+
+  if (!onEditPipeline && !onDelete) {
+    return null;
+  }
+
+  return (
+    <Dropdown.Root>
+      <Dropdown.DotsButton
+        aria-label={t('label.action-plural')}
+        data-testid="edge-drawer-menu"
+      />
+      <Dropdown.Popover>
+        <Dropdown.Menu
+          aria-label={t('label.action-plural')}
+          disallowEmptySelection={false}
+          selectionMode="none"
+          onAction={(key) =>
+            key === 'edit-pipeline' ? onEditPipeline?.() : onDelete?.()
+          }>
+          {onEditPipeline ? (
+            <Dropdown.Item icon={Edit01} id="edit-pipeline">
+              {t('label.edit-entity', { entity: t('label.pipeline') })}
+            </Dropdown.Item>
+          ) : null}
+          {onDelete ? (
+            <Dropdown.Item icon={Trash01} id="delete">
+              {t('label.delete')}
+            </Dropdown.Item>
+          ) : null}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
+
 const EdgeInfoDrawer = ({
   edge,
   visible,
@@ -195,6 +241,8 @@ const EdgeInfoDrawer = ({
   nodes,
   hasEditAccess,
   onEdgeDetailsUpdate,
+  onEditPipeline,
+  onDelete,
 }: EdgeInfoDrawerInfo) => {
   const [edgeData, setEdgeData] = useState<
     Array<{
@@ -210,14 +258,8 @@ const EdgeInfoDrawer = ({
   const [showSqlQueryModal, setShowSqlQueryModal] = useState(false);
   const [showSqlFunctionModal, setShowSqlFunctionModal] = useState(false);
   const [sqlFunction, setSqlFunction] = useState('');
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const { t } = useTranslation();
-
-  const getModalContainer = useCallback(
-    () => containerRef.current ?? document.body,
-    []
-  );
 
   const edgeEntity = useMemo(() => {
     return edge.data.edge;
@@ -449,8 +491,7 @@ const EdgeInfoDrawer = ({
       {visible && (
         <div
           className="tw:flex tw:h-full tw:flex-col tw:bg-utility-gray-blue-50"
-          data-testid="edge-info-drawer-container"
-          ref={containerRef}>
+          data-testid="edge-info-drawer-container">
           <div className="tw:flex tw:items-center tw:justify-between">
             <div className="tw:sticky tw:top-0 tw:z-999 tw:flex-1 tw:p-1">
               <div className="tw:flex tw:h-[49px] tw:items-center tw:justify-between tw:rounded-lg tw:bg-utility-gray-blue-50 tw:px-3 tw:dark:bg-secondary_subtle">
@@ -473,12 +514,16 @@ const EdgeInfoDrawer = ({
                 </Tooltip>
               </div>
             </div>
+            <EdgeActionsMenu
+              onDelete={onDelete}
+              onEditPipeline={onEditPipeline}
+            />
             <ButtonUtility
               aria-label={t('label.close')}
               className="tw:mr-2 tw:size-9 tw:rounded-lg tw:p-0 tw:text-primary tw:hover:bg-transparent tw:hover:text-primary"
               color="tertiary"
               data-testid="drawer-close-icon"
-              icon={X}
+              icon={XClose}
               size="xs"
               onClick={onClose}
             />
@@ -521,7 +566,6 @@ const EdgeInfoDrawer = ({
       )}
       {showSqlQueryModal && (
         <ModalWithQueryEditor
-          getContainer={getModalContainer}
           header={t('label.edit-entity', {
             entity: t('label.sql-uppercase-query'),
           })}
@@ -533,7 +577,6 @@ const EdgeInfoDrawer = ({
       )}
       {showSqlFunctionModal && (
         <ModalWithFunctionEditor
-          getContainer={getModalContainer}
           header={t('label.edit-entity', {
             entity: t('label.sql-function'),
           })}

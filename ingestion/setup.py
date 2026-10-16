@@ -44,7 +44,7 @@ VERSIONS = {
     "grpc-tools": "grpcio-tools>=1.47.2",
     "ijson": "ijson~=3.4",
     "msal": "msal~=1.2",
-    "neo4j": "neo4j~=5.3",
+    "neo4j": "neo4j~=5.7",
     "pandas": "pandas>=2.2.2,<3",
     "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
     "pydantic": "pydantic>=2.12.5,<3",
@@ -130,7 +130,15 @@ COMMONS = {
     },
     "kafka": {
         VERSIONS["avro"],
-        "confluent_kafka>=2.1.1,<=2.6.1",
+        # CVE-2026-15911 (improper TLS certificate validation in the HashiCorp Vault KMS
+        # integration) is fixed in 2.15.0. The <=2.6.1 ceiling this replaces dated from
+        # Jan 2025 and pinned the client nine minor versions behind.
+        # The [schemaregistry] extra is required, not cosmetic: from 2.9 the schema registry
+        # client's dependencies (certifi, httpx, attrs, cachetools, authlib) moved behind it,
+        # and a bare install raises ModuleNotFoundError on `confluent_kafka.schema_registry`
+        # -- which messaging/common_broker_source.py, messaging/kafka/connection.py and
+        # sampler/messaging/kafka/sampler.py all import at module level.
+        "confluent_kafka[schemaregistry]>=2.15.0,<3",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
@@ -214,7 +222,7 @@ base_requirements = {
     "packaging",  # For version parsing
     "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.17",  # get_stats_dict(retain_rows=...), DataDiffDuplicateKeyError
+    "collate-data-diff>=0.11.18",  # get_stats_dict(sample_size=...) and UTC on every pooled connection
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
@@ -293,6 +301,10 @@ plugins: dict[str, set[str]] = {
         # Its SA-1.x call sites are adapted at runtime by
         # metadata.ingestion.source.database.db2.utils.patch_ibmi_dialect
     },
+    "databend": {
+        "databend-driver==0.33.7",
+        "databend-sqlalchemy==0.5.5",
+    },
     "databricks": {
         VERSIONS["databricks-sqlalchemy"],
         VERSIONS["databricks-sdk"],
@@ -320,15 +332,8 @@ plugins: dict[str, set[str]] = {
         VERSIONS["aiobotocore"],
         *COMMONS["datalake"],
     },
-    "deltalake": {
-        "delta-spark>=3.0.0,<4.0.0",
-        "deltalake>=0.19.0,<0.20",
-        "pyspark==3.5.9",
-    },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
     "s3": {*COMMONS["storage-archive"]},
     "gcs": {VERSIONS["google-cloud-storage"], *COMMONS["storage-archive"]},
-    "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
-    "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.9"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {VERSIONS["pydoris"]},
     "starrocks": {VERSIONS["pymysql"]},
@@ -354,6 +359,10 @@ plugins: dict[str, set[str]] = {
         # (data amplification): thrift <0.24.0 is vulnerable. impyla hard-pinned thrift==0.16.0
         # from 0.18.0 through 0.23.0 and only relaxed it to >=0.23.0 in 0.24.0, so the driver
         # has to move for this floor to be satisfiable.
+        # CVE-2026-66858 + CVE-2026-85494 need >=0.25.0 and are NOT fixed here: the latest
+        # databricks-sql-connector (4.6.0) requires thrift<0.25.0, and the "all" extra installs
+        # both, so raising this floor makes "all" unresolvable. Revisit when Databricks relaxes
+        # its ceiling.
         "thrift>=0.24.0,<1",
         # Replacing sasl with pure-sasl based on https://github.com/cloudera/python-sasl/issues/30 for py 3.11
         "pure-sasl",
@@ -368,7 +377,8 @@ plugins: dict[str, set[str]] = {
     "impala": {
         "presto-types-parser>=0.0.2",
         # See the hive extra: impyla <0.24.0 hard-pins thrift==0.16.0, which is what holds
-        # thrift below the fixed 0.24.0.
+        # thrift below the fixed 0.24.0, and why CVE-2026-66858 / CVE-2026-85494 cannot be
+        # cleared here either.
         "impyla[kerberos]~=0.24.0",
         "thrift>=0.24.0,<1",
         "pure-sasl",
@@ -409,6 +419,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["cloud-sql-python-connector-pymysql"],
         DATA_DIFF["mysql"],
     },
+    "neo4j": {VERSIONS["neo4j"]},
     "nifi": {},  # uses requests
     "openlineage": {*COMMONS["kafka"]},
     "oracle": {"oracledb>=3.4.2,<4", DATA_DIFF["oracle"]},
@@ -479,7 +490,7 @@ plugins: dict[str, set[str]] = {
 dev = {
     "ruff~=0.15.12",
     "uvloop==0.21.0",
-    "datamodel-code-generator==0.64.0",
+    "datamodel-code-generator==0.83.0",
     "boto3-stubs",
     "mypy-boto3-glue",
     "google-api-python-client-stubs",
@@ -571,10 +582,10 @@ test = {
     *plugins["pii-processor"],
     "requests>=2.32.4,<3",
     f"{DATA_DIFF['mysql']}",
-    *plugins["deltalake"],
     *plugins["datalake-gcs"],
     *plugins["pgspider"],
     *plugins["clickhouse"],
+    *plugins["databend"],
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
@@ -655,8 +666,6 @@ setup(
                 "airflow",
                 "db2",
                 "great-expectations",
-                "deltalake",
-                "deltalake-spark",
                 "sklearn",
             }
         ),

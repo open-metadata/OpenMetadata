@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -21,6 +22,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -38,12 +41,18 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.security.AuthorizationException;
 
 /**
  * ContextMemory is indexed whatever its {@code shareConfig.visibility}; privacy is enforced at
@@ -73,6 +82,116 @@ class ContextMemoryRepositoryTest {
   @AfterEach
   void tearDown() {
     Entity.cleanup();
+  }
+
+  @Test
+  void serverWritesWithoutAPrincipalAreRefused() {
+    assertThrows(
+        AuthorizationException.class,
+        () -> repository.prepare(new ContextMemory().withName("unstamped"), false));
+    assertThrows(
+        AuthorizationException.class,
+        () -> repository.prepare(new ContextMemory().withName("unstamped"), true));
+  }
+
+  /** The anchor edge getPrimaryEntity reads: APPLIED_TO from anything, the older HAS but from a domain. */
+  @Test
+  void findAnchors_readsTheEdgeThatMakesAnEntityAMemorysAnchor() {
+    UUID table = UUID.randomUUID();
+    UUID legacy = UUID.randomUUID();
+    UUID assignedDomain = UUID.randomUUID();
+    UUID anchoringDomain = UUID.randomUUID();
+    when(relationshipDAO.findMemoryAnchorEdges(anyList(), anyList()))
+        .thenReturn(
+            List.of(
+                edge(table, Entity.TABLE, Relationship.APPLIED_TO),
+                edge(table, Entity.TABLE, Relationship.HAS),
+                edge(legacy, Entity.DASHBOARD, Relationship.HAS),
+                edge(assignedDomain, Entity.DOMAIN, Relationship.HAS),
+                edge(anchoringDomain, Entity.DOMAIN, Relationship.APPLIED_TO)));
+
+    List<EntityReference> anchors =
+        repository.findAnchors(List.of(table, legacy, assignedDomain, anchoringDomain));
+
+    assertEquals(
+        List.of(
+            anchorRef(table, Entity.TABLE),
+            anchorRef(legacy, Entity.DASHBOARD),
+            anchorRef(anchoringDomain, Entity.DOMAIN)),
+        anchors);
+  }
+
+  @Test
+  void findAnchors_neverQueriesForNoCandidates() {
+    assertTrue(repository.findAnchors(List.of()).isEmpty());
+    verify(relationshipDAO, never()).findMemoryAnchorEdges(anyList(), anyList());
+  }
+
+  private static CollectionDAO.MemoryAnchorEdge edge(
+      UUID fromId, String fromEntity, Relationship relation) {
+    return new CollectionDAO.MemoryAnchorEdge(fromId, fromEntity, relation.ordinal());
+  }
+
+  private static EntityReference anchorRef(UUID id, String type) {
+    return new EntityReference().withId(id).withType(type);
+  }
+
+  @Test
+  void conditionalMemoryWritesPassBothVersionAndTimestampToTheDatabase() {
+    ContextMemory memory = memory(MemoryVisibility.ENTITY).withVersion(0.3).withUpdatedAt(102L);
+    CollectionDAO.ContextMemoryDAO memoryDao = daoCollection.contextMemoryDAO();
+    when(memoryDao.updateWithVersionAndTimestamp(any(), any(), any(), eq("0.2"), eq(101L)))
+        .thenReturn(0);
+
+    assertThrows(
+        PreconditionFailedException.class,
+        () -> repository.storeEntityWithVersion(memory, true, 0.2, 101L));
+    verify(memoryDao)
+        .updateWithVersionAndTimestamp(eq(memory.getId()), any(), any(), eq("0.2"), eq(101L));
+  }
+
+  @Test
+  void consolidatedEditsCannotReuseThePreviousModificationTimestamp() {
+    ContextMemory original =
+        memory(MemoryVisibility.ENTITY)
+            .withUpdatedBy("admin")
+            .withVersion(0.2)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED)
+            .withUpdatedAt(101L);
+    ContextMemory updated =
+        JsonUtils.deepCopy(original, ContextMemory.class).withAnswer("Corrected claim");
+
+    repository.getUpdater(original, updated, EntityRepository.Operation.PATCH, ChangeSource.MANUAL);
+
+    assertEquals(102L, updated.getUpdatedAt());
+    assertEquals(original.getVersion(), updated.getVersion());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = EntityRepository.Operation.class,
+      names = {"PATCH", "PUT"})
+  void aWriteReturnsAndIndexesTheStoredTelemetryNotTheValuesItSent(
+      EntityRepository.Operation operation) {
+    MemoryOutcomes stored = new MemoryOutcomes().withAppliedCount(4).withCountedAt(90L);
+    ContextMemory original =
+        memory(MemoryVisibility.ENTITY)
+            .withUpdatedBy("admin")
+            .withUpdatedAt(101L)
+            .withUsageCount(4)
+            .withLastUsedAt(80L)
+            .withOutcomes(stored);
+    ContextMemory updated =
+        JsonUtils.deepCopy(original, ContextMemory.class)
+            .withUsageCount(999999)
+            .withLastUsedAt(999L)
+            .withOutcomes(new MemoryOutcomes().withAppliedCount(999999).withCountedAt(999L));
+
+    repository.getUpdater(original, updated, operation, ChangeSource.MANUAL);
+
+    assertEquals(4, updated.getUsageCount());
+    assertEquals(80L, updated.getLastUsedAt());
+    assertEquals(stored, updated.getOutcomes());
   }
 
   @ParameterizedTest
@@ -118,7 +237,7 @@ class ContextMemoryRepositoryTest {
     // A type with no registered repository (index-only / time-series sub-entities such as
     // pipelineStatus) must default to indexable instead of throwing EntityNotFoundException, so the
     // live index paths keep working for it.
-    EntityInterface repoLess = mock(EntityInterface.class);
+    EntityInterface<?> repoLess = mock(EntityInterface.class);
     when(repoLess.getEntityReference())
         .thenReturn(new EntityReference().withType("typeWithoutRepository"));
 
@@ -143,7 +262,7 @@ class ContextMemoryRepositoryTest {
     repositories.put(entityType, mock(EntityTimeSeriesRepository.class));
 
     try {
-      EntityInterface timeSeriesEntity = mock(EntityInterface.class);
+      EntityInterface<?> timeSeriesEntity = mock(EntityInterface.class);
       when(timeSeriesEntity.getEntityReference())
           .thenReturn(new EntityReference().withType(entityType));
 

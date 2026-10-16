@@ -352,6 +352,7 @@ export enum TaskType {
     DomainUpdate = "DomainUpdate",
     GlossaryApproval = "GlossaryApproval",
     IncidentResolution = "IncidentResolution",
+    MemoryConflictReview = "MemoryConflictReview",
     OwnershipUpdate = "OwnershipUpdate",
     PipelineReview = "PipelineReview",
     RecognizerFeedbackApproval = "RecognizerFeedbackApproval",

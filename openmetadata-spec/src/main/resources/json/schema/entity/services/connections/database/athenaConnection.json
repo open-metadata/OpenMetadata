@@ -109,10 +109,6 @@
     "supportsDataDiff": {
         "title": "Supports Data Diff Extraction.",
         "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
-    },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,

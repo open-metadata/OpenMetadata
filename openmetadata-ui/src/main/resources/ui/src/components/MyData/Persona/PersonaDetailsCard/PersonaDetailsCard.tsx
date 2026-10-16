@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { Card, Space } from 'antd';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
+
 import { lazy, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -43,45 +43,51 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
 
   return (
     <Card
-      bodyStyle={{ height: '100%' }}
       className="h-full w-full cursor-pointer overflow-hidden"
       data-testid={`persona-details-card-${persona.name}`}
       onClick={handleCardClick}>
-      <Space className="justify-between w-full" direction="vertical">
-        <Card.Meta
-          description={
-            persona.description ? (
-              <RichTextEditorPreviewerV1
-                className="text-grey-muted max-two-lines"
-                markdown={persona.description ?? ''}
-              />
-            ) : (
-              <Typography color="secondary">
-                {t('label.no-description')}
+      <Card.Content style={{ height: '100%' }}>
+        <Box
+          inline
+          align="stretch"
+          className="layout-space justify-between w-full"
+          direction="col"
+          gap={2}
+          itemClassName="layout-space-item">
+          <div className="d-flex justify-between w-full">
+            <div>
+              <Typography
+                ellipsis={{
+                  tooltip: true,
+                  excludeTriggerFromTabOrder: true,
+                }}
+                weight="semibold">
+                {getEntityName(persona)}
               </Typography>
-            )
-          }
-          title={
-            <div className="d-flex justify-between w-full">
-              <div>
-                <Typography ellipsis={{ tooltip: true }}>
-                  {getEntityName(persona)}
-                </Typography>
-              </div>
-              {persona.default && (
-                <Badge
-                  className="tw:mr-2"
-                  color="blue"
-                  data-testid="default-persona-tag"
-                  size="sm"
-                  type="color">
-                  {t('label.default')}
-                </Badge>
-              )}
             </div>
-          }
-        />
-      </Space>
+            {persona.default && (
+              <Badge
+                className="tw:mr-2"
+                color="blue"
+                data-testid="default-persona-tag"
+                size="sm"
+                type="color">
+                {t('label.default')}
+              </Badge>
+            )}
+          </div>
+          {persona.description ? (
+            <RichTextEditorPreviewerV1
+              className="text-grey-muted max-two-lines"
+              markdown={persona.description ?? ''}
+            />
+          ) : (
+            <Typography color="secondary">
+              {t('label.no-description')}
+            </Typography>
+          )}
+        </Box>
+      </Card.Content>
     </Card>
   );
 };

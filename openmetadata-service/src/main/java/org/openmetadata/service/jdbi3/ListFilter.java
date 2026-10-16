@@ -7,8 +7,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -16,7 +18,6 @@ import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RegexMode;
 import org.openmetadata.schema.type.Relationship;
@@ -33,12 +34,15 @@ public class ListFilter extends Filter<ListFilter> {
   /** The severity filter value for incidents with no severity. */
   public static final String NO_INCIDENT_SEVERITY = "none";
 
+  private static final Pattern ENTITY_TYPE_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9]*");
+
   public static final String NULL_PARAM = "null";
 
   // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
   // holding these as fields keeps the sorted and unsorted listings on a single count-cache entry.
   private String sortField;
   private String sortOrder;
+  private String entityTableName;
 
   private static final String TASK_STATUS_GROUP_OPEN = "open";
   private static final String TASK_STATUS_GROUP_ACTIVE = "active";
@@ -64,6 +68,11 @@ public class ListFilter extends Filter<ListFilter> {
 
   public ListFilter(Include include) {
     this.include = include;
+  }
+
+  public String getConditionForEntity(String tableName) {
+    entityTableName = tableName;
+    return getCondition();
   }
 
   public String getSortField() {
@@ -137,6 +146,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getActiveCondition());
     conditions.add(getAnnouncementTypeCondition());
     conditions.add(getAnnouncementStatusCondition());
+    conditions.add(getSystemAnnouncementCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -540,6 +550,19 @@ public class ListFilter extends Filter<ListFilter> {
     return announcementType == null ? "" : "type = :announcementType";
   }
 
+  /** A system announcement is one with no entityLink; only AnnouncementResource sets this. */
+  private String getSystemAnnouncementCondition() {
+    String systemAnnouncement = queryParams.get("systemAnnouncement");
+    String condition = "";
+    if (systemAnnouncement != null) {
+      condition =
+          Boolean.parseBoolean(systemAnnouncement)
+              ? "entityLink IS NULL"
+              : "entityLink IS NOT NULL";
+    }
+    return condition;
+  }
+
   /**
    * An announcement's stored {@code status} is only a snapshot of its last write, so the generated
    * {@code status} column still reads {@code Active} once the window has closed. Deriving the
@@ -571,7 +594,16 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     Set<String> validStatuses =
-        Arrays.stream(EntityStatus.values()).map(EntityStatus::value).collect(Collectors.toSet());
+        Entity.getEntityTypesWithLifecycleStage().stream()
+            .map(Entity::getEntityRepository)
+            .filter(
+                repository ->
+                    repository
+                        .getDao()
+                        .getTableName()
+                        .equals(entityTableName == null ? tableName : entityTableName))
+            .flatMap(repository -> repository.getEntityLifecycle().stageCodes().stream())
+            .collect(Collectors.toSet());
     List<String> statusValues =
         Arrays.stream(entityStatus.split(","))
             .map(String::trim)
@@ -580,7 +612,7 @@ public class ListFilter extends Filter<ListFilter> {
             .toList();
 
     if (statusValues.isEmpty()) {
-      return "";
+      return "1 = 0";
     }
 
     List<String> bindParams = new ArrayList<>();
@@ -1049,19 +1081,68 @@ public class ListFilter extends Filter<ListFilter> {
           entityIdColumn, entityTypeCondition);
     }
 
-    String domainInClause = buildIndexedBindParams("domainId", domainId.replace("'", ""));
+    String domainInClause = domainIdList(domainId.replace("'", ""));
 
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {
-      return String.format(
-          "(NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain' AND er.toId = %s) OR "
-              + "%s IN (SELECT er2.toId FROM entity_relationship er2 WHERE er2.fromEntity='domain' AND er2.fromId IN (%s) AND er2.relation=10))",
-          entityIdColumn, entityIdColumn, domainInClause);
+      return domainAccessCondition(entityIdColumn, domainInClause);
     }
 
     return String.format(
-        "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
+        "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain'%s AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
-        entityIdColumn, domainInClause);
+        entityIdColumn, domainEntityTypeCondition("entity_relationship"), domainInClause);
+  }
+
+  // Keeps entities with no domain or with a listed one. Postgres hashes every domain link in the
+  // database for the OR form before returning a row, so it gets one anti-join; MySQL checks the
+  // OR per row and is faster with it (e.g. one index lookup less per table that has a domain).
+  private String domainAccessCondition(String entityIdColumn, String domainIds) {
+    String hasDomain =
+        "SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain'"
+            + domainEntityTypeCondition("er")
+            + " AND er.toId = "
+            + entityIdColumn;
+    String listedDomain =
+        "SELECT er2.toId FROM entity_relationship er2 WHERE er2.relation=10 AND er2.fromEntity='domain'"
+            + domainEntityTypeCondition("er2")
+            + " AND er2.fromId IN ("
+            + domainIds
+            + ")";
+    return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+        ? String.format("(NOT EXISTS (%s) OR %s IN (%s))", hasDomain, entityIdColumn, listedDomain)
+        : String.format(
+            "(NOT EXISTS (%s AND NOT EXISTS (%s AND er2.toId = er.toId)))",
+            hasDomain, listedDomain);
+  }
+
+  // Domain ids are inlined as canonical UUIDs rather than bound, so Postgres plans each statement
+  // with the selected domains' real asset counts; a generic plan guesses an average domain (e.g. it
+  // scans a whole schema for an empty domain, or probes every asset of a large one).
+  private String domainIdList(String domainIds) {
+    List<String> ids =
+        Arrays.stream(domainIds.split(",")).map(String::trim).filter(id -> !id.isEmpty()).toList();
+    List<String> uuids = ids.stream().map(ListFilter::canonicalUuid).toList();
+    return ids.isEmpty() || uuids.contains(null)
+        ? buildIndexedBindParams("domainId", domainIds)
+        : uuids.stream().map(id -> "'" + id + "'").collect(Collectors.joining(","));
+  }
+
+  private static String canonicalUuid(String value) {
+    try {
+      return UUID.fromString(value).toString();
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  // Keeps a domain's membership rows to the listed type, so a table list doesn't collect the
+  // domain's other assets (e.g. its dashboards) before matching ids. Inlined for the same planning
+  // reason as the ids; it is an entity type name (e.g. "table"), never user input.
+  private String domainEntityTypeCondition(String alias) {
+    String entityType = getQueryParam("domainEntityType");
+    return entityType == null || !ENTITY_TYPE_NAME.matcher(entityType).matches()
+        ? ""
+        : String.format(" AND %s.toEntity = '%s'", alias, entityType);
   }
 
   private String getDomainSelfCondition(String tableName) {
@@ -1801,8 +1882,8 @@ public class ListFilter extends Filter<ListFilter> {
 
   /**
    * Free-text search across task fields. Used by the {@code q} query param on the task list
-   * endpoints ({@code /v1/tasks/dataAccessRequests} and the user-scoped {@code /assigned},
-   * {@code /visible}, {@code /owned}, {@code /created} lists). Database-only — tasks are not
+   * endpoints ({@code /v1/tasks}, {@code /v1/tasks/dataAccessRequests} and the user-scoped
+   * {@code /assigned}, {@code /visible}, {@code /owned}, {@code /created} lists). Database-only — tasks are not
    * indexed into Elasticsearch. Matches against task name, displayName, the request reason in the
    * payload, and the about-entity FQN / displayName.
    */

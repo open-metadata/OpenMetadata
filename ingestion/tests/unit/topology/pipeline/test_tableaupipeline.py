@@ -446,7 +446,7 @@ class TestOwners:
 
 class TestTags:
     def test_yields_tag_classification(self, source):
-        results = list(source.yield_tag(PIPELINE_DETAILS))
+        results = list(source.yield_tag_details(PIPELINE_DETAILS))
         rights = [r.right for r in results if r.right is not None]
         assert rights, f"No tag results: {results}"
 
@@ -460,7 +460,7 @@ class TestTags:
         assert "daily" in tag_names, f"Expected 'daily' in {tag_names}"
 
     def test_no_tags_yields_nothing(self, source):
-        assert list(source.yield_tag(PIPELINE_DETAILS_MIN)) == []
+        assert list(source.yield_tag_details(PIPELINE_DETAILS_MIN)) == []
 
 
 class TestPipelineList:
@@ -668,7 +668,7 @@ class TestExceptionPaths:
     def test_yield_tag_respects_include_tags_off(self, source):
         source.source_config = MagicMock()
         source.source_config.includeTags = False
-        results = list(source.yield_tag(PIPELINE_DETAILS))
+        results = list(source.yield_tag_details(PIPELINE_DETAILS))
         assert results == []
 
     def test_tag_labels_respects_include_tags_off(self, source):

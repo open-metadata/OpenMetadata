@@ -25,6 +25,12 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -74,6 +80,7 @@ public class OntologyEditLockResourceIT {
   private static final int HTTP_FORBIDDEN = 403;
   private static final int HTTP_NOT_FOUND = 404;
   private static final int HTTP_CONFLICT = 409;
+  private static final int CONCURRENT_ACQUIRES = 8;
 
   @AfterEach
   void cleanup(TestNamespace ns) {
@@ -97,6 +104,32 @@ public class OntologyEditLockResourceIT {
     assertEquals("admin", lease.getHolder().getName());
     assertTrue(
         lease.getExpiresAt() > lease.getAcquiredAt(), "the lease must expire after it is acquired");
+  }
+
+  @Test
+  void concurrentFirstAcquiresOnDifferentResourcesAllSucceed(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    List<GlossaryTerm> terms =
+        IntStream.range(0, CONCURRENT_ACQUIRES)
+            .mapToObj(i -> GlossaryTermTestFactory.createWithName(ns, glossary, "lockRace" + i))
+            .toList();
+    CountDownLatch start = new CountDownLatch(1);
+    try (ExecutorService pool = Executors.newFixedThreadPool(CONCURRENT_ACQUIRES)) {
+      List<Future<HttpResponse<String>>> acquires =
+          terms.stream().map(term -> pool.submit(() -> acquireAfter(start, term))).toList();
+      start.countDown();
+
+      for (Future<HttpResponse<String>> acquire : acquires) {
+        HttpResponse<String> response = acquire.get(1, TimeUnit.MINUTES);
+        assertEquals(HTTP_OK, response.statusCode(), response.body());
+      }
+    }
+  }
+
+  private HttpResponse<String> acquireAfter(CountDownLatch start, GlossaryTerm term)
+      throws Exception {
+    start.await();
+    return acquire(SdkClients.getAdminToken(), leaseRequest(term.getId(), "race-" + term.getId()));
   }
 
   @Test

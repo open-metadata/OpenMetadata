@@ -29,18 +29,20 @@ import {
   authenticateAdminPage,
   createAdminApiContext,
 } from '../../utils/admin';
-import { toastNotification, uuid } from '../../utils/common';
+import {
+  selectOptionWithRetry,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const TASK_FORM_SETTINGS_ROUTE = '/settings/governance/task-forms';
 
-const selectAntOption = async (page: Page, testId: string, option: string) => {
-  await page.getByTestId(testId).click();
-  await page
-    .locator('.ant-select-dropdown .ant-select-item-option-content')
-    .filter({ hasText: option })
-    .first()
-    .click();
+const selectOption = async (page: Page, testId: string, option: string) => {
+  await selectOptionWithRetry(
+    page.getByTestId(testId).getByRole('button'),
+    page.getByRole('option', { name: option, exact: true })
+  );
 };
 
 test.describe.serial('Task Form Settings', () => {
@@ -89,7 +91,7 @@ test.describe.serial('Task Form Settings', () => {
       await page.getByTestId('task-form-add-button').click();
       await page.getByTestId('task-form-name-input').fill(schemaName);
       await page.getByTestId('task-form-type-input').fill(taskType);
-      await selectAntOption(page, 'task-form-category-input', 'Custom');
+      await selectOption(page, 'task-form-category-input', 'Custom');
 
       await page.getByRole('tab', { name: 'Create Form' }).click();
       await page.getByTestId('task-form-create-builder-add-field').click();
@@ -116,7 +118,7 @@ test.describe.serial('Task Form Settings', () => {
       await page.getByRole('tab', { name: 'Workflow Stages' }).click();
       await page.getByTestId('task-form-stage-mapping-add-button').click();
       await page.getByTestId('task-form-stage-id-0').fill('open');
-      await selectAntOption(page, 'task-form-stage-status-0', 'Open');
+      await selectOption(page, 'task-form-stage-status-0', 'Open');
 
       const createResponse = waitForResponseWithStatus(
         page,

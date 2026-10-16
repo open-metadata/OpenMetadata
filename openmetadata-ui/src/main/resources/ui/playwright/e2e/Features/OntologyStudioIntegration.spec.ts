@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
@@ -199,7 +200,7 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
   const spiralTable = new TableClass();
 
   test.beforeAll(async ({ browser }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const { page, apiContext } = await createApiContext(browser);
     await spiralGlossary.create(apiContext);
     await spiralTerm.create(apiContext);
@@ -315,6 +316,12 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
     await expect(
       cluster.getByText(new RegExp(`^${preview?.assetCount}\\s+assets?$`, 'i'))
     ).toBeVisible();
+    // A collapsed card shows three assets; the rest sit behind "Show N more".
+    if (assets.length > 3) {
+      await cluster
+        .getByTestId(`ontology-load-more-assets-${spiralTerm.responseData.id}`)
+        .click();
+    }
     // Tags also classify table columns, so a bounded preview can legitimately
     // contain four columns and exclude the parent table. Verify every card.
     const tableFqn = spiralTable.entityResponseData.fullyQualifiedName;

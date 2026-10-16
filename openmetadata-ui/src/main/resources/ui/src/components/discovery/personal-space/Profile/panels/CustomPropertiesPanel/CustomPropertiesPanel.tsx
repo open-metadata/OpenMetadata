@@ -19,7 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Hint, Settings02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import type { Key } from 'react';
+import type { Key, ReactNode } from 'react';
 import React, {
   useCallback,
   useEffect,
@@ -68,15 +68,22 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
   const { permissions } = usePermissionProvider();
   const { state: hashState, setHash } = useSettingsHash();
 
+  // Only interpret the sub-path when the hash tab is ours — a transient
+  // foreign sub-path (e.g. the Members tab's `teams/<fqn>` during a tab switch)
+  // must never drive a `getTypeByFQN` here. Mirrors BotsPanel's hash-tab guard.
   const parsedHash = useMemo(
-    () => parseCustomPropertiesHash(hashState.subPath),
-    [hashState.subPath]
+    () =>
+      parseCustomPropertiesHash(
+        hashState.tab === HASH_TAB ? hashState.subPath : ''
+      ),
+    [hashState.tab, hashState.subPath]
   );
 
   const [subView, setSubView] = useState<CustomPropertiesSubView>({
     type: 'landing',
   });
   const [showHint, setShowHint] = useState(false);
+  const [detailActions, setDetailActions] = useState<ReactNode>();
   const resolvedFqnRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -272,16 +279,18 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
         )
       );
 
-    const actions =
-      subView.type === 'add' || subView.type === 'edit' ? (
-        <Box align="center" direction="row" gap={2}>
-          <Hint className="tw:size-4.5 tw:text-secondary" />
-          <Typography size="text-sm" weight="medium">
-            {t('label.show-hint')}
-          </Typography>
-          <Toggle isSelected={showHint} onChange={setShowHint} />
-        </Box>
-      ) : undefined;
+    const isFormView = subView.type === 'add' || subView.type === 'edit';
+    const actions = isFormView ? (
+      <Box align="center" direction="row" gap={2}>
+        <Hint className="tw:size-4.5 tw:text-secondary" />
+        <Typography size="text-sm" weight="medium">
+          {t('label.show-hint')}
+        </Typography>
+        <Toggle isSelected={showHint} onChange={setShowHint} />
+      </Box>
+    ) : (
+      detailActions
+    );
 
     onHeaderChange?.({
       title: pageTitle,
@@ -298,6 +307,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
     pageTitle,
     pageDescription,
     showHint,
+    detailActions,
     t,
     onHeaderChange,
   ]);
@@ -322,6 +332,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
             entityType={subView.entityType}
             onAddProperty={handleAddProperty}
             onEditProperty={handleEditProperty}
+            onSetHeaderActions={setDetailActions}
           />
         )}
         {subView.type === 'add' && (

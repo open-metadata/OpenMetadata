@@ -4,8 +4,8 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.search.SearchRequest;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -58,10 +58,11 @@ public interface SearchManagementClient {
    * Search for entities by source URL.
    *
    * @param sourceUrl the source URL to search for
+   * @param subjectContext the caller; their search access policies narrow the matches
    * @return response containing matching entities
    * @throws IOException if search execution fails
    */
-  Response searchBySourceUrl(String sourceUrl) throws IOException;
+  Response searchBySourceUrl(String sourceUrl, SubjectContext subjectContext) throws IOException;
 
   /**
    * Search for entities by a specific field value.
@@ -72,11 +73,18 @@ public interface SearchManagementClient {
    * @param deleted whether to include deleted entities
    * @param from starting position for pagination
    * @param size maximum number of results to return
+   * @param subjectContext the caller; their search access policies narrow the matches
    * @return response containing matching entities
    * @throws IOException if search execution fails
    */
   Response searchByField(
-      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      SubjectContext subjectContext)
       throws IOException;
 
   Response searchByFieldWithOptions(
@@ -173,7 +181,7 @@ public interface SearchManagementClient {
       String q,
       String queryString,
       SubjectContext subjectContext,
-      List<EntityStatus> memoryStatuses)
+      List<ContextMemoryStatus> memoryStatuses)
       throws IOException;
 
   /**
