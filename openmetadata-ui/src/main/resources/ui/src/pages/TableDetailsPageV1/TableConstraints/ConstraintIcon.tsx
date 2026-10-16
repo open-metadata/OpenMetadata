@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Tooltip } from '@openmetadata/ui-core-components';
 import { ReactComponent as IconDistribution } from '../../../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKey } from '../../../assets/svg/icon-key.svg';
@@ -35,7 +34,7 @@ const ConstraintIcon = ({
 }: ConstraintIconProps) => {
   const { t } = useTranslation();
 
-  const { icon, title } = useMemo(() => {
+  const { icon: IconComponent, title } = useMemo(() => {
     switch (constraintType) {
       case ConstraintType.PrimaryKey:
         return {
@@ -87,10 +86,10 @@ const ConstraintIcon = ({
         />
       )}
       <Tooltip placement="bottom" title={title}>
-        <Icon
-          alt={constraintType}
-          className="primary-key-icon tw:bg-surface"
-          component={icon}
+        <IconComponent
+          aria-label={constraintType}
+          className="primary-key-icon tw:bg-surface tw:size-3.5 tw:shrink-0"
+          role="img"
         />
       </Tooltip>
     </div>

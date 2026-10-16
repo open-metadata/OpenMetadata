@@ -957,6 +957,12 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public ResultList<EntityReference> getUserAssets(UUID userId, int limit, int offset) {
+    return getUserAssets(userId, limit, offset, null);
+  }
+
+  /** The assets, left out where {@code caller}'s search access policies deny them. */
+  public ResultList<EntityReference> getUserAssets(
+      UUID userId, int limit, int offset, SubjectContext caller) {
     User user = get(null, userId, getFields("id,teams"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -971,7 +977,7 @@ public class UserRepository extends EntityRepository<User> {
             : new ArrayList<>();
 
     InheritedFieldQuery query =
-        InheritedFieldQuery.forUser(userId.toString(), teamIds, offset, limit);
+        InheritedFieldQuery.forUser(userId.toString(), teamIds, offset, limit).forCaller(caller);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -985,8 +991,13 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public ResultList<EntityReference> getUserAssetsByName(String userName, int limit, int offset) {
+    return getUserAssetsByName(userName, limit, offset, null);
+  }
+
+  public ResultList<EntityReference> getUserAssetsByName(
+      String userName, int limit, int offset, SubjectContext caller) {
     User user = getByName(null, userName, getFields("id"));
-    return getUserAssets(user.getId(), limit, offset);
+    return getUserAssets(user.getId(), limit, offset, caller);
   }
 
   // Bulk fetch methods for User-specific fields

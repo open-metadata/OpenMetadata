@@ -2061,7 +2061,7 @@ class SearchRepositoryBehaviorTest {
     Response aggregate;
     try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
       search = repo.search(new SearchRequest().withIndex(Entity.TABLE_COLUMN), null);
-      aggregate = repo.aggregate(aggregation);
+      aggregate = repo.aggregate(aggregation, null);
       repo.search(new SearchRequest().withIndex(Entity.TABLE), null);
     }
 
@@ -2073,7 +2073,7 @@ class SearchRepositoryBehaviorTest {
     }
     verify(searchClient, never())
         .search(eq(new SearchRequest().withIndex(Entity.TABLE_COLUMN)), any());
-    verify(searchClient, never()).aggregate(aggregation);
+    verify(searchClient, never()).aggregate(aggregation, null);
     verify(searchClient).search(eq(new SearchRequest().withIndex(Entity.TABLE)), any());
   }
 
@@ -3875,7 +3875,7 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.searchWithDirectQuery(request, subjectContext)).thenReturn(response);
     when(searchClient.getDocByID("idx", "00000000-0000-0000-0000-000000000123"))
         .thenReturn(response);
-    when(searchClient.searchBySourceUrl("https://src")).thenReturn(response);
+    when(searchClient.searchBySourceUrl("https://src", null)).thenReturn(response);
     when(searchClient.aggregate(aggregationRequest)).thenReturn(response);
     when(searchClient.aggregate(aggregationRequest, subjectContext)).thenReturn(response);
     when(searchClient.getEntityTypeCounts(request, "global")).thenReturn(response);
@@ -3888,7 +3888,7 @@ class SearchRepositoryBehaviorTest {
     assertSame(
         response,
         repository.getDocument("idx", UUID.fromString("00000000-0000-0000-0000-000000000123")));
-    assertSame(response, repository.searchBySourceUrl("https://src"));
+    assertSame(response, repository.searchBySourceUrl("https://src", null));
     assertSame(response, repository.aggregate(aggregationRequest));
     // The subject-aware overload is what SearchResource.aggregate calls, so the aggregation
     // buckets are computed only over documents the caller is permitted to see.
@@ -4238,7 +4238,8 @@ class SearchRepositoryBehaviorTest {
                 .SearchSchemaEntityRelationshipResult();
 
     when(filter.getCondition(Entity.TABLE)).thenReturn("deleted = false");
-    when(searchClient.searchByField("name", "orders", "table", false, 0, 10)).thenReturn(response);
+    when(searchClient.searchByField("name", "orders", "table", false, 0, 10, null))
+        .thenReturn(response);
     when(searchClient.aggregate("query", Entity.TABLE, searchAggregation, "deleted = false"))
         .thenReturn(aggregationResult);
     when(searchClient.genericAggregation("query", "table", searchAggregation)).thenReturn(report);
@@ -4258,7 +4259,7 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.getSchemaEntityRelationship("svc.db.schema", "{}", "*", 1, 2, 3, 4, false))
         .thenReturn(schemaResult);
 
-    assertSame(response, repository.searchByField("name", "orders", "table", false, 0, 10));
+    assertSame(response, repository.searchByField("name", "orders", "table", false, 0, 10, null));
     assertSame(
         aggregationResult, repository.aggregate("query", Entity.TABLE, searchAggregation, filter));
     assertSame(report, repository.genericAggregation("query", "table", searchAggregation));

@@ -19,7 +19,7 @@ import {
   Select,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { X } from '@openmetadata/ui-core-components/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isEqual, isUndefined, startCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
@@ -445,7 +445,7 @@ function DestinationSelectItem({
           color="tertiary"
           data-testid={`remove-destination-${id}`}
           onPress={() => remove(id)}>
-          <X />
+          <XClose className="tw:shrink-0" size={14} />
         </Button>
       )}
     </div>

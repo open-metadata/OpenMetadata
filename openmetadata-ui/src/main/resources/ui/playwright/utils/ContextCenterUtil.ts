@@ -1250,6 +1250,23 @@ export const patchMemory = async (
   return res.json();
 };
 
+/**
+ * Sets a memory's outcome counters through the admin-only outcome write, the only write that
+ * changes them: a PATCH keeps the stored counts.
+ */
+export const recordMemoryOutcomes = async (
+  apiContext: APIRequestContext,
+  id: string,
+  outcomes: { appliedCount: number; lastAppliedAt?: number }
+) => {
+  const res = await apiContext.put(`${MEMORIES_API}/${id}/outcomes`, {
+    data: { ...outcomes, countedAt: Date.now() },
+  });
+  expect(res.ok()).toBeTruthy();
+
+  return res.json();
+};
+
 export interface LoggedInUser {
   id: string;
   name: string;
