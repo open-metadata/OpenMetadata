@@ -318,7 +318,6 @@ class HiveUnitTest(TestCase):
             mock_hive_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.hive.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.thread_id = self.hive.context.get_current_thread_id()
         self.hive._inspector_map[self.thread_id] = types.SimpleNamespace()
 
@@ -326,18 +325,25 @@ class HiveUnitTest(TestCase):
         self.hive._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
         self.hive._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
 
+    def setUp(self):
+        context_patch = patch.dict(
+            self.hive.context.get().__dict__,
+            {
+                "database_service": MOCK_DATABASE_SERVICE.name.root,
+                "database": MOCK_DATABASE.name.root,
+                "database_schema": MOCK_DATABASE_SCHEMA.name.root,
+            },
+        )
+        context_patch.start()
+        self.addCleanup(context_patch.stop)
+
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [either.right for either in self.hive.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
-
-        self.hive.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-        self.hive.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_yield_schema(self):
         assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.hive.yield_database_schema(schema_name=MOCK_DATABASE_SCHEMA.name.root)
         ]
-
-        self.hive.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_table(self):
         self.hive.inspector.get_columns = lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
