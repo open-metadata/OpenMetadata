@@ -24,7 +24,6 @@ import data360 from '../assets/img/service-icon-data360.png';
 import databend from '../assets/img/service-icon-databend.webp';
 import databrick from '../assets/img/service-icon-databrick.webp';
 import datalake from '../assets/img/service-icon-datalake.webp';
-import deltalake from '../assets/img/service-icon-delta-lake.webp';
 import doris from '../assets/img/service-icon-doris.webp';
 import druid from '../assets/img/service-icon-druid.webp';
 import dynamodb from '../assets/img/service-icon-dynamodb.webp';
@@ -176,7 +175,6 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   data360: data360,
   saphana: saphana,
   saperp: saperp,
-  deltalake: deltalake,
   pinotdb: pinot,
   datalake: datalake,
   exasol: exasol,

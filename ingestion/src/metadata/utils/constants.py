@@ -50,9 +50,6 @@ from metadata.generated.schema.entity.services.connections.database.couchbaseCon
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeType,
 )
-from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
-    DeltaLakeType,
-)
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseType,
 )
@@ -198,7 +195,6 @@ NON_SQA_DATABASE_CONNECTIONS = (
     DatalakeType.Datalake.value,
     BigtableType.BigTable.value,
     CouchbaseType.Couchbase.value,
-    DeltaLakeType.DeltaLake.value,
     DomoDatabaseType.DomoDatabase.value,
     DynamoDBType.DynamoDB.value,
     GlueType.Glue.value,
