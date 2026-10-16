@@ -338,7 +338,15 @@ const SectionCard = ({
           />
         </>
       ) : (
-        <HiddenFields properties={section.properties.filter((p) => p.hidden)} />
+        // Collapsed section must keep ALL properties mounted (not just hidden
+        // ones): transformErrors in formPureUtils discards any validation
+        // error whose field element is absent from the DOM, so unmounting
+        // visible fields here would silently swallow constraint violations
+        // (e.g. minimum/maximum on confidence, sampleDataCount) and let
+        // invalid data submit. Matches the pattern in
+        // SSOGroupedFieldTemplate which keeps advanced fields mounted for the
+        // same reason.
+        <HiddenFields properties={section.properties} />
       )}
     </Card>
   );
