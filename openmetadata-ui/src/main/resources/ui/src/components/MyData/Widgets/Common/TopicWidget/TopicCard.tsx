@@ -104,9 +104,7 @@ const TopicSummary = ({
   ) : (
     // `!` on the colour: Typography renders `.prose`, whose unlayered `color`
     // rule is emitted after the Tailwind utilities and would otherwise win.
-    <Typography
-      className="tw:text-pretty tw:text-text-secondary!"
-      size="text-sm">
+    <Typography className="tw:text-pretty tw:text-quaternary!" size="text-xs">
       {summary}
     </Typography>
   );

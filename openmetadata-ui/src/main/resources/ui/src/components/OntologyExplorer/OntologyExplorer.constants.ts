@@ -572,3 +572,6 @@ export const METRIC_NODE_MUTED_COLOR_FALLBACK = '#535862';
 export const METRIC_NODE_LINE_DASH = [4, 3];
 export const NODE_SHADOW_COLOR_FALLBACK = 'rgba(0,0,0,0.12)';
 export const LABEL_TEXT_ALIGN_LEFT = 'left';
+
+// Concept drawers open full-height over the app chrome, like the Domain and Data Product forms.
+export const ONTOLOGY_DRAWER_WIDTH = 'max(420px, 40vw)';

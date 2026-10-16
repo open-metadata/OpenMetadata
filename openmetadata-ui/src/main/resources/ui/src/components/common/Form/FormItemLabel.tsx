@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
 import { Badge, Tooltip } from '@openmetadata/ui-core-components';
 
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { GRAYED_OUT_COLOR } from '../../../constants/constants';
 import { HelperTextType } from '../../../interface/FormUtils.interface';
 import { FormItemLabelProps } from './Form.interface';
 
@@ -48,10 +47,10 @@ const FormItemLabel = ({
             placement={placement}
             title={helperText}
             triggerClassName="tw:inline-flex">
-            <InfoCircleOutlined
-              className="m-l-xs"
+            <InfoCircle
+              className="tw:ml-2 tw:shrink-0 tw:text-quaternary"
               data-testid="helper-icon"
-              style={{ color: GRAYED_OUT_COLOR }}
+              size={14}
             />
           </Tooltip>
         )}
