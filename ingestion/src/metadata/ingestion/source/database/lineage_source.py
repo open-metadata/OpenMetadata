@@ -53,8 +53,8 @@ from metadata.ingestion.source.database.lineage_processors import (
 )
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
-from metadata.utils.db_utils import ViewLineageExtension
 from metadata.utils import fqn
+from metadata.utils.db_utils import ViewLineageExtension
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 

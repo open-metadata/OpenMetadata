@@ -446,7 +446,9 @@ class TestViewLineage(unittest.TestCase):
         self.mock_metadata.yield_es_view_def = Mock(return_value=iter(mock_views))
 
         views = list(self.lineage_source.view_lineage_producer())
-        self.assertEqual(len(views), 0, "View with quoted schema should be filtered out by an excludes pattern on the unquoted name")
+        self.assertEqual(
+            len(views), 0, "View with quoted schema should be filtered out by an excludes pattern on the unquoted name"
+        )
 
     def test_view_lineage_producer_unquoted_schema_unaffected(self):
         """
