@@ -108,15 +108,18 @@ export const visitTriage = async (page: Page) => {
 };
 
 /**
- * Open My Data through the sidebar brand: a direct `goto('/my-data')` races
- * the AI-mode route registration as `/inbox` does. The expanded panel and the
- * collapsed rail each draw a brand, so the visible one is used.
+ * Open My Data from the user menu, which shows it in the personal-space panel.
+ * A direct `goto('/my-data')` races the AI-mode route registration as `/inbox`
+ * does, and the sidebar brand leads Home, not here.
  */
 export const visitMyData = async (page: Page) => {
   await openAiHome(page);
-  const brand = page.getByTestId('ask-logo-btn').filter({ visible: true });
-  await expect(brand).toBeVisible({ timeout: AI_SHELL_TIMEOUT });
-  await brand.click();
+  const menuTrigger = page
+    .getByTestId('ask-ai-user-menu-trigger')
+    .filter({ visible: true });
+  await expect(menuTrigger).toBeVisible({ timeout: AI_SHELL_TIMEOUT });
+  await menuTrigger.click();
+  await page.getByTestId('ai-user-menu-my-data').click();
   await expect(page.getByTestId('my-data-page')).toBeVisible({
     timeout: AI_SHELL_TIMEOUT,
   });
