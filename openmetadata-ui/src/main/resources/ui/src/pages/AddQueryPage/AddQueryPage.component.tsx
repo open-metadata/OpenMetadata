@@ -11,20 +11,29 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Tooltip } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
+import {
+  Autocomplete,
+  Box,
+  Button,
+  FormField,
+  FormItemLabel,
+  HintText,
+  HookForm,
+  SelectItemType,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { filter, isEmpty } from 'lodash';
-import { lazy, useEffect, useMemo, useState } from 'react';
+import { debounce, isEmpty, uniqBy } from 'lodash';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
-import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import getEntityLabel from '../../components/Entity/EntityLabel/EntityLabel.component';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -41,14 +50,12 @@ import { Table } from '../../generated/entity/data/table';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
-import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { postQuery } from '../../rest/queryAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { getField } from '../../utils/formUtils';
 import { getPartialNameFromFQN } from '../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -57,18 +64,25 @@ const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../components/Database/SchemaEditor/SchemaEditor'))
 );
 
+interface QueryFormValues {
+  query: string;
+  queryUsedIn: string[];
+}
+
 const AddQueryPage = () => {
   const { currentUser } = useApplicationStore();
   const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const [form] = Form.useForm();
+  const form = useForm<QueryFormValues>({
+    defaultValues: { query: '', queryUsedIn: [] },
+  });
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [description, setDescription] = useState<string>('');
   const [table, setTable] = useState<Table>();
-  const [initialOptions, setInitialOptions] = useState<DefaultOptionType[]>();
+  const [tableItems, setTableItems] = useState<SelectItemType[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const navigate = useNavigate();
 
@@ -99,29 +113,43 @@ const AddQueryPage = () => {
     }
   };
 
-  const fetchTableEntity = async (
-    searchValue = ''
-  ): Promise<DefaultOptionType[]> => {
-    try {
-      const data = await searchQuery({
-        query: searchValue,
-        pageNumber: INITIAL_PAGING_VALUE,
-        pageSize: PAGE_SIZE_MEDIUM,
-        searchIndex: SearchIndex.TABLE,
-      });
-      const options = data.hits.hits.map((value) => ({
-        label: getEntityLabel(value._source),
-        value: value._source.id,
-        labelName: getEntityName(value._source),
-      }));
+  const fetchTableEntity = useCallback(
+    async (searchValue = '') => {
+      try {
+        const data = await searchQuery({
+          query: searchValue,
+          pageNumber: INITIAL_PAGING_VALUE,
+          pageSize: PAGE_SIZE_MEDIUM,
+          searchIndex: SearchIndex.TABLE,
+        });
+        const fetched = data.hits.hits
+          .filter(({ _source }) => _source.id !== table?.id)
+          .map(({ _source }) => ({
+            id: _source.id,
+            label: getEntityName(_source),
+          }));
+        // Keep the chosen tables so their chips keep a label after a new search.
+        const selected = form.getValues('queryUsedIn');
+        setTableItems((prev) =>
+          uniqBy(
+            [
+              ...prev.filter((item) => selected.includes(String(item.id))),
+              ...fetched,
+            ],
+            'id'
+          )
+        );
+      } catch {
+        // A failed search keeps the current options.
+      }
+    },
+    [table, form]
+  );
 
-      return table
-        ? filter(options, ({ value }) => value !== table.id)
-        : options;
-    } catch (error) {
-      return [];
-    }
-  };
+  const debouncedFetchTableEntity = useMemo(
+    () => debounce(fetchTableEntity, 300),
+    [fetchTableEntity]
+  );
 
   useEffect(() => {
     if (datasetFQN) {
@@ -129,29 +157,22 @@ const AddQueryPage = () => {
     }
   }, [datasetFQN]);
 
-  const getInitialOptions = async () => {
-    try {
-      const option = await fetchTableEntity();
-      setInitialOptions(option);
-    } catch (error) {
-      setInitialOptions([]);
-    }
-  };
-
   useEffect(() => {
     if (table) {
-      getInitialOptions();
+      fetchTableEntity();
     }
-  }, [table]);
+
+    return () => debouncedFetchTableEntity.cancel();
+  }, [table, fetchTableEntity, debouncedFetchTableEntity]);
 
   const handleCancelClick = () => {
     navigate(-1);
   };
 
-  const handleSubmit: FormProps['onFinish'] = async (values): Promise<void> => {
+  const handleSubmit = async (values: QueryFormValues): Promise<void> => {
     setIsSaving(true);
     const updatedValues: CreateQuery = {
-      ...values,
+      query: values.query,
       description: isEmpty(description) ? undefined : description,
       owners: [
         {
@@ -164,7 +185,7 @@ const AddQueryPage = () => {
           id: table?.id ?? '',
           type: EntityType.TABLE,
         },
-        ...(values.queryUsedIn || []).map((id: string) => ({
+        ...values.queryUsedIn.map((id) => ({
           id,
           type: EntityType.TABLE,
         })),
@@ -203,26 +224,6 @@ const AddQueryPage = () => {
     }
   };
 
-  const descriptionField: FieldProp = useMemo(
-    () => ({
-      name: 'description',
-      required: false,
-      label: `${t('label.description')}:`,
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: '',
-        style: {
-          margin: 0,
-        },
-        placeHolder: t('message.write-your-description'),
-        onTextChange: (value: string) => setDescription(value),
-      },
-    }),
-    []
-  );
-
   return (
     <ResizablePanels
       className="content-height-with-resizable-panel"
@@ -239,80 +240,117 @@ const AddQueryPage = () => {
                   entity: t('label.query'),
                 })}
               </Typography>
-              <Form
+              <HookForm
+                className="tw:mt-4 tw:flex tw:flex-col tw:gap-4"
                 data-testid="query-form"
                 form={form}
                 id="query-form"
-                initialValues={{
-                  queryUsedIn: table ? [table.id] : undefined,
-                }}
-                layout="vertical"
-                onFinish={handleSubmit}>
-                <Form.Item
-                  data-testid="sql-editor-container"
-                  label={t('label.sql-uppercase-query')}
+                onSubmit={form.handleSubmit(handleSubmit)}>
+                <FormField
+                  control={form.control}
                   name="query"
-                  rules={[
-                    {
-                      required: true,
-                      message: t('label.field-required', {
-                        field: t('label.sql-uppercase-query'),
-                      }),
-                    },
-                  ]}
-                  trigger="onChange">
-                  <SchemaEditor
-                    className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
-                    mode={{ name: CSMode.SQL }}
-                    showCopyButton={false}
+                  rules={{
+                    required: t('label.field-required', {
+                      field: t('label.sql-uppercase-query'),
+                    }),
+                  }}>
+                  {({ field, fieldState }) => (
+                    <Box
+                      data-testid="sql-editor-container"
+                      direction="col"
+                      gap={1}>
+                      <FormItemLabel
+                        required
+                        label={t('label.sql-uppercase-query')}
+                      />
+                      <SchemaEditor
+                        className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
+                        mode={{ name: CSMode.SQL }}
+                        showCopyButton={false}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                      {fieldState.error && (
+                        <HintText isInvalid>
+                          {fieldState.error.message}
+                        </HintText>
+                      )}
+                    </Box>
+                  )}
+                </FormField>
+                <Box direction="col" gap={1}>
+                  <FormItemLabel label={`${t('label.description')}:`} />
+                  <RichTextEditor
+                    data-testid="description"
+                    initialValue=""
+                    placeHolder={t('message.write-your-description')}
+                    onTextChange={setDescription}
                   />
-                </Form.Item>
-                {getField(descriptionField)}
-                <Form.Item
-                  label={`${t('label.query-used-in')}:`}
-                  name="queryUsedIn">
-                  <AsyncSelect
-                    api={fetchTableEntity}
-                    data-testid="query-used-in"
-                    mode="multiple"
-                    optionLabelProp="labelName"
-                    options={initialOptions}
-                    placeholder={t('label.please-select-entity', {
-                      entity: t('label.query-used-in'),
-                    })}
-                  />
-                </Form.Item>
-                <Form.Item>
-                  <Box
-                    inline
-                    align="center"
-                    className="layout-space layout-space-horizontal w-full justify-end"
-                    gap={4}
-                    itemClassName="layout-space-item">
+                </Box>
+                <FormField control={form.control} name="queryUsedIn">
+                  {({ field }) => (
+                    <Box direction="col" gap={1}>
+                      <FormItemLabel label={`${t('label.query-used-in')}:`} />
+                      <Autocomplete
+                        multiple
+                        aria-label={t('label.query-used-in')}
+                        data-testid="query-used-in"
+                        filterOption={() => true}
+                        items={tableItems}
+                        placeholder={t('label.please-select-entity', {
+                          entity: t('label.query-used-in'),
+                        })}
+                        selectedItems={field.value.map((id) => ({
+                          id,
+                          label:
+                            tableItems.find((item) => item.id === id)?.label ??
+                            id,
+                        }))}
+                        onItemCleared={(key) =>
+                          field.onChange(
+                            field.value.filter((id) => id !== String(key))
+                          )
+                        }
+                        onItemInserted={(key) =>
+                          field.onChange([...field.value, String(key)])
+                        }
+                        onSearchChange={debouncedFetchTableEntity}>
+                        {(item) => (
+                          <Autocomplete.Item id={item.id} label={item.label} />
+                        )}
+                      </Autocomplete>
+                    </Box>
+                  )}
+                </FormField>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal w-full justify-end"
+                  gap={4}
+                  itemClassName="layout-space-item">
+                  <Button
+                    color="secondary"
+                    data-testid="cancel-btn"
+                    onClick={handleCancelClick}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Tooltip
+                    arrow
+                    isDisabled={permissions.query?.Create}
+                    placement="top"
+                    title={t(NO_PERMISSION_FOR_ACTION)}>
                     <Button
-                      data-testid="cancel-btn"
-                      type="default"
-                      onClick={handleCancelClick}>
-                      {t('label.cancel')}
+                      color="primary"
+                      data-testid="save-btn"
+                      isDisabled={!permissions.query?.Create}
+                      isLoading={isSaving}
+                      size="sm"
+                      type="submit">
+                      {t('label.save')}
                     </Button>
-                    <Tooltip
-                      placement="top"
-                      title={
-                        !permissions.query?.Create &&
-                        t(NO_PERMISSION_FOR_ACTION)
-                      }>
-                      <Button
-                        data-testid="save-btn"
-                        disabled={!permissions.query?.Create}
-                        htmlType="submit"
-                        loading={isSaving}
-                        type="primary">
-                        {t('label.save')}
-                      </Button>
-                    </Tooltip>
-                  </Box>
-                </Form.Item>
-              </Form>
+                  </Tooltip>
+                </Box>
+              </HookForm>
             </div>
           </div>
         ),

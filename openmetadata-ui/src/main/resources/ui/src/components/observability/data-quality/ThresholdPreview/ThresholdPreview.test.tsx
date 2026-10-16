@@ -287,13 +287,9 @@ describe('ThresholdPreview', () => {
   });
 
   it('warns instead of promising a tolerance no validator applies', () => {
-    renderPreview(
-      definitionOf('columnValuesToBeBetween', [
-        { name: 'minValue' },
-        { name: 'maxValue' },
-      ]),
-      { minValue: 1, maxValue: 10, threshold: 5 }
-    );
+    renderPreview(definitionOf('columnValuesToBeAtExpectedLocation'), {
+      threshold: 5,
+    });
 
     expect(
       screen.queryByTestId('threshold-preview-sentence')

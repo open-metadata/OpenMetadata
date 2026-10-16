@@ -17,8 +17,10 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.ws.rs.BadRequestException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
@@ -31,6 +33,10 @@ public final class ContextMemoryLifecycle {
   static final String FIELD_SUPERSEDED_BY = "supersededBy";
   static final String FIELD_DISPUTES = "disputes";
 
+  static final String DISPUTE_NEEDS_DRAFT =
+      "A dispute holds a memory for review, so only a Draft memory can record one";
+  static final String DISPUTED_TWICE = "A memory can be disputed only once";
+
   @FunctionalInterface
   interface MemoryResolver {
     EntityReference resolve(EntityReference reference, String field);
@@ -41,12 +47,20 @@ public final class ContextMemoryLifecycle {
   static void applyUpdate(ContextMemory original, ContextMemory updated, MemoryResolver resolver) {
     applyStatusChange(original, updated);
     validateSupersession(updated);
+    requireDraftForNewDisputes(original, updated);
     resolveReferences(original, updated, resolver);
+    requireDistinctDisputes(updated);
   }
 
   static void applyCreate(ContextMemory memory, MemoryResolver resolver) {
     validateSupersession(memory);
+    requireDraftForNewDisputes(null, memory);
+    if (memory.getEntityStatus() == ContextMemoryStatus.APPROVED
+        && memory.getLastReviewedAt() == null) {
+      memory.setLastReviewedAt(memory.getUpdatedAt());
+    }
     resolveReferences(null, memory, resolver);
+    requireDistinctDisputes(memory);
   }
 
   private static void applyStatusChange(ContextMemory original, ContextMemory updated) {
@@ -54,8 +68,54 @@ public final class ContextMemoryLifecycle {
     if (statusChanged && isSuperseded(original.getEntityStatus())) {
       updated.setSupersededBy(null);
     }
-    if (statusChanged && Objects.equals(original.getStatusReason(), updated.getStatusReason())) {
+    if (statusChanged
+        && updated.getEntityStatus() != ContextMemoryStatus.DRAFT
+        && Objects.equals(original.getStatusReason(), updated.getStatusReason())) {
       updated.setStatusReason(null);
+    }
+    releaseDisputesOnLeavingDraft(original, updated, statusChanged);
+    stampReviewOnApproval(original, updated, statusChanged);
+  }
+
+  /**
+   * Disputes are the conflicts a Draft memory is held in review for, so leaving Draft releases the
+   * stored ones; any dispute the same write adds is kept and then refused outside Draft.
+   */
+  private static void releaseDisputesOnLeavingDraft(
+      ContextMemory original, ContextMemory updated, boolean statusChanged) {
+    if (statusChanged && original.getEntityStatus() == ContextMemoryStatus.DRAFT) {
+      List<MemoryDispute> added = addedDisputes(original, updated);
+      updated.setDisputes(added.isEmpty() ? null : added);
+    }
+  }
+
+  private static void requireDraftForNewDisputes(ContextMemory original, ContextMemory updated) {
+    if (updated.getEntityStatus() != ContextMemoryStatus.DRAFT
+        && !addedDisputes(original, updated).isEmpty()) {
+      throw new BadRequestException(DISPUTE_NEEDS_DRAFT);
+    }
+  }
+
+  private static void requireDistinctDisputes(ContextMemory memory) {
+    List<UUID> disputed =
+        listOrEmpty(memory.getDisputes()).stream()
+            .map(dispute -> dispute.getMemory().getId())
+            .toList();
+    if (new HashSet<>(disputed).size() < disputed.size()) {
+      throw new BadRequestException(DISPUTED_TWICE);
+    }
+  }
+
+  /**
+   * Becoming Approved is a review, whoever approves: a person through the API or Memory
+   * Reconciliation. A caller that supplies its own {@code lastReviewedAt} keeps it.
+   */
+  private static void stampReviewOnApproval(
+      ContextMemory original, ContextMemory updated, boolean statusChanged) {
+    boolean approvedNow =
+        statusChanged && updated.getEntityStatus() == ContextMemoryStatus.APPROVED;
+    if (approvedNow && Objects.equals(original.getLastReviewedAt(), updated.getLastReviewedAt())) {
+      updated.setLastReviewedAt(updated.getUpdatedAt());
     }
   }
 
@@ -79,7 +139,20 @@ public final class ContextMemoryLifecycle {
     for (MemoryDispute dispute : addedDisputes(original, updated)) {
       validateDispute(dispute);
       dispute.setMemory(resolveMemory(updated, dispute.getMemory(), FIELD_DISPUTES, resolver));
+      dispute.setDetectedAt(detectedNoLaterThan(dispute.getDetectedAt(), writeTime(updated)));
     }
+  }
+
+  /**
+   * A conflict cannot be detected after the write that records it. A later time would let an
+   * approval supersede a memory whose content changed after the conflict was found.
+   */
+  private static long detectedNoLaterThan(Long detectedAt, long writeTime) {
+    return detectedAt == null ? writeTime : Math.min(detectedAt, writeTime);
+  }
+
+  private static long writeTime(ContextMemory memory) {
+    return memory.getUpdatedAt() == null ? System.currentTimeMillis() : memory.getUpdatedAt();
   }
 
   private static void resolveSuccessor(

@@ -211,6 +211,7 @@ export enum PipelineType {
     Metadata = "metadata",
     PolicyAgent = "policyAgent",
     Profiler = "profiler",
+    ReverseMetadata = "reverseMetadata",
     TestSuite = "TestSuite",
     Usage = "usage",
 }
@@ -364,7 +365,9 @@ export interface Pipeline {
      * Any related entities such as test suites or lineage information that were associated with
      * those tables will also be deleted.
      */
-    markDeletedTables?: boolean;
+    markDeletedTables?:       boolean;
+    maxChildrenPerColumn?:    number;
+    maxSchemaInferenceDepth?: number;
     /**
      * Set the 'Override Metadata' toggle to control whether to override the existing metadata
      * in the OpenMetadata server with the metadata fetched from the source. If the toggle is
@@ -868,6 +871,14 @@ export interface Pipeline {
      */
     verifyCerts?: boolean;
     /**
+     * Optional map from a database name in the dbt manifest to the database it is ingested
+     * under in OpenMetadata, for when the engine dbt runs on names it differently. For example,
+     * dbt-trino writes the Trino catalog name (bq_catalog) for tables that the BigQuery
+     * connector ingests under the GCP project id (my-gcp-project). Mapped tables are looked up
+     * in every database service.
+     */
+    catalogMapping?: { [key: string]: string };
+    /**
      * Custom OpenMetadata Classification name for dbt tags.
      */
     dbtClassificationName?: string;
@@ -918,6 +929,11 @@ export interface Pipeline {
      */
     markDeletedApiCollections?: boolean;
     /**
+     * Reverse Metadata Agent: JSONLogic expression selecting the assets whose changes are
+     * propagated. Empty means all assets of the service.
+     */
+    filter?: string;
+    /**
      * Optional value of the ingestion runner name responsible for running the workflow
      */
     ingestionRunner?: string;
@@ -929,6 +945,27 @@ export interface Pipeline {
      * Service to be modified
      */
     service?: EntityReference;
+    /**
+     * Reverse Metadata Agent: name of the security service (e.g. Ranger) the changes are
+     * applied to instead of this service.
+     */
+    sinkService?: string;
+    /**
+     * Reverse Metadata Agent: templated SQL command used instead of the default operations.
+     */
+    SQLTemplate?: string;
+    /**
+     * Reverse Metadata Agent: propagate description changes to the source.
+     */
+    updateDescriptions?: boolean;
+    /**
+     * Reverse Metadata Agent: propagate owner changes to the source.
+     */
+    updateOwners?: boolean;
+    /**
+     * Reverse Metadata Agent: propagate tag changes to the source.
+     */
+    updateTags?: boolean;
     /**
      * Regex to only fetch MCP servers with names matching the pattern.
      */
@@ -1007,6 +1044,13 @@ export interface Pipeline {
  * Regex to only include or exclude matching schemas.
  *
  * Regex to only include or exclude matching tables.
+ *
+ * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+ * ingested.
+ *
+ * Regex to include or exclude Databend databases.
+ *
+ * Regex to include or exclude tables and views.
  *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
@@ -1250,7 +1294,7 @@ export interface CollateAIAppConfig {
     /**
      * Force cache warmup even if another instance is detected (use with caution).
      *
-     * Materialize every enabled rule even when its durable dirty flag is clear.
+     * Recompute every rule even when no rule is dirty.
      */
     force?: boolean;
     /**
@@ -1288,7 +1332,8 @@ export interface CollateAIAppConfig {
      */
     relationshipIsolationMaxFailures?: number;
     /**
-     * Optional rule name for an on-demand single-rule run.
+     * Optional rule that must exist. The run still computes every rule, because rules read each
+     * other's conclusions.
      */
     ruleName?: string;
     /**
@@ -2722,6 +2767,11 @@ export interface GCPCredentialsConfiguration {
      */
     type?: string;
     /**
+     * Google Cloud service domain, used to override the default `googleapis.com` domain for
+     * sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).
+     */
+    universeDomain?: string;
+    /**
      * Path of the file containing the GCP credentials info
      */
     path?: string;
@@ -3347,6 +3397,8 @@ export interface ServiceConnection {
  *
  * Databricks Connection Config
  *
+ * Databend Database Connection Config
+ *
  * Db2 Connection Config
  *
  * DeltaLake Database Connection Config
@@ -3789,6 +3841,8 @@ export interface Connection {
      *
      * Host and port of the Databricks service.
      *
+     * Host and port of the Databend HTTP query service. The default self-hosted port is 8000.
+     *
      * Host and port of the DB2 service.
      *
      * Host and port of the Druid service.
@@ -3930,6 +3984,8 @@ export interface Connection {
      *
      * Password to connect to Clickhouse.
      *
+     * Password to connect to Databend.
+     *
      * Password to connect to DB2.
      *
      * Password to connect to Druid.
@@ -4013,6 +4069,9 @@ export interface Connection {
      * metadata in Clickhouse.
      *
      * Username to connect to ClickZetta.
+     *
+     * Username to connect to Databend. The user must be able to read system and
+     * information_schema metadata.
      *
      * Username to connect to DB2. This user should have privileges to read all the metadata in
      * DB2.
@@ -4228,6 +4287,9 @@ export interface Connection {
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
+     * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
+     * Fabric SQL endpoint.
+     *
      * NATS authentication method. Leave empty for anonymous authentication.
      *
      * Types of methods used to authenticate to the alation instance
@@ -4281,7 +4343,12 @@ export interface Connection {
     /**
      * Mode Workspace Name
      */
-    workspaceName?:     string;
+    workspaceName?: string;
+    /**
+     * Additional options appended to the Databend SQLAlchemy connection URL. For a non-TLS HTTP
+     * endpoint, such as the default self-hosted port 8000, set sslmode to disable. For a TLS
+     * endpoint, set sslmode to enable.
+     */
     connectionOptions?: { [key: string]: string };
     /**
      * Source Python Class Name to instantiated by the ingestion workflow
@@ -4415,6 +4482,9 @@ export interface Connection {
      *
      * Regex to only include or exclude matching databases.
      *
+     * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+     * ingested.
+     *
      * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
      * Dremio Cloud, namespaces are mapped as databases.
      */
@@ -4427,6 +4497,8 @@ export interface Connection {
      * Regex to only include/exclude schemas that matches the pattern.
      *
      * Regex to only include or exclude matching schemas.
+     *
+     * Regex to include or exclude Databend databases.
      *
      * Regex to only include/exclude schemas that matches the pattern. System schemas
      * (information_schema, _statistics_, sys) are excluded by default.
@@ -4469,6 +4541,8 @@ export interface Connection {
      * Regex to only include/exclude tables that matches the pattern.
      *
      * Regex to only include or exclude matching tables.
+     *
+     * Regex to include or exclude tables and views.
      *
      * Regex to include/exclude FHIR resource types
      *
@@ -4600,6 +4674,10 @@ export interface Connection {
      * attempts to scan all the schemas.
      *
      * Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.
+     *
+     * Optional Databend database to ingest. It is also used as the initial database of the
+     * connection. When omitted, the connection starts in the `default` database and all
+     * accessible Databend databases are scanned as OpenMetadata schemas.
      *
      * databaseSchema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
@@ -5865,6 +5943,15 @@ export enum AuthProvider {
  * Authentication configuration for self-hosted Dremio Software using username and password.
  * Dremio Software is deployed on-premises or in your own cloud infrastructure.
  *
+ * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
+ * Fabric SQL endpoint.
+ *
+ * Authenticate the service principal with a client secret of its Microsoft Entra ID
+ * application.
+ *
+ * Authenticate the service principal with an X.509 certificate registered on its Microsoft
+ * Entra ID application.
+ *
  * NATS authentication method. Leave empty for anonymous authentication.
  *
  * Username and password authentication for NATS.
@@ -5970,6 +6057,9 @@ export interface AuthenticationType {
      *
      * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
      * secure OAuth2 authentication.
+     *
+     * Client secret value (not the secret ID) from the application's Certificates & secrets
+     * page in Microsoft Entra ID.
      */
     clientSecret?: string;
     /**
@@ -6033,6 +6123,26 @@ export interface AuthenticationType {
      * http://localhost:9047 or https://dremio.example.com:9047).
      */
     hostPort?: string;
+    /**
+     * PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page
+     * in Microsoft Entra ID. It may be followed by its issuing certificate chain.
+     */
+    certificate?: string;
+    /**
+     * PEM-encoded private key of the certificate, as PKCS#8 (`BEGIN PRIVATE KEY` or `BEGIN
+     * ENCRYPTED PRIVATE KEY`) or PKCS#1 (`BEGIN RSA PRIVATE KEY`). A single PEM file holding
+     * both the key and the certificate can be supplied in both fields.
+     *
+     * SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.
+     */
+    privateKey?: string;
+    /**
+     * Passphrase of an encrypted private key. Leave empty when the private key is not
+     * encrypted.
+     *
+     * Passphrase for the private key (if encrypted)
+     */
+    privateKeyPassphrase?: string;
     /**
      * NKey seed for NATS authentication.
      */
@@ -6110,14 +6220,6 @@ export interface AuthenticationType {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
-    /**
-     * SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.
-     */
-    privateKey?: string;
-    /**
-     * Passphrase for the private key (if encrypted)
-     */
-    privateKeyPassphrase?: string;
 }
 
 /**
@@ -7709,6 +7811,7 @@ export enum AirflowConnectionScheme {
     Clickzetta = "clickzetta",
     CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
+    Databend = "databend",
     Databricks = "databricks",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
@@ -8091,6 +8194,7 @@ export enum AirflowConnectionType {
     Data360 = "Data360",
     Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
+    Databend = "Databend",
     Databricks = "Databricks",
     DatabricksPipeline = "DatabricksPipeline",
     Datalake = "Datalake",

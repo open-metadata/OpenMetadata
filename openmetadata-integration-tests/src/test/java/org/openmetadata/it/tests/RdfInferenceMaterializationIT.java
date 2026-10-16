@@ -26,6 +26,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -41,6 +42,7 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
+import org.openmetadata.it.util.RdfInferenceRuns;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -65,6 +67,12 @@ public class RdfInferenceMaterializationIT {
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
   private static final String BELONGS_TO_GLOSSARY =
       "https://open-metadata.org/ontology/belongsToGlossary";
+  private static final String OM_TABLE = "https://open-metadata.org/ontology/Table";
+  private static final String BELONGS_TO_DOMAIN =
+      "https://open-metadata.org/ontology/belongsToDomain";
+  private static final String HAS_COLUMN = "https://open-metadata.org/ontology/hasColumn";
+  private static final String DOMAIN_MEMBERSHIP_RULE = "domain-membership-inheritance";
+  private static final String SPARQL_PATH = "/v1/rdf/sparql";
   private static final String TEST_RESOURCE_BASE = "urn:ontology-test:";
   private static final String SOURCE_PREDICATE = TEST_RESOURCE_BASE + "source";
   private static final String INVALIDATION_PREDICATE = TEST_RESOURCE_BASE + "source-2";
@@ -236,12 +244,19 @@ public class RdfInferenceMaterializationIT {
     rules.upsert(ruleName, rule(ruleName));
     try {
       insertScopedSource(glossary, subject, object);
-      rules.materialize(true, ruleName);
+      RdfInferenceRuns.materializeWhenIdle(true, ruleName);
 
+      // A scheduled run empties rule graphs before recomputing them, so wait for it to settle.
       final OntologyInferenceExplanation explanation =
-          SdkClients.adminClient()
-              .ontologyReasoning()
-              .explain(explanationRequest(glossary, subject, object));
+          Awaitility.await("materialized explanation")
+              .atMost(Duration.ofMinutes(3))
+              .pollInterval(Duration.ofSeconds(1))
+              .until(
+                  () ->
+                      SdkClients.adminClient()
+                          .ontologyReasoning()
+                          .explain(explanationRequest(glossary, subject, object)),
+                  candidate -> Boolean.TRUE.equals(candidate.getInferred()));
       final OntologyInferenceExplanation isolated =
           SdkClients.adminClient()
               .ontologyReasoning()
@@ -256,6 +271,49 @@ public class RdfInferenceMaterializationIT {
       cleanupRule(rules, ruleName);
       deleteScopedSource(subject);
     }
+  }
+
+  @Test
+  void inferenceLevelNoneLeavesOutMaterializedConclusions(final TestNamespace namespace)
+      throws Exception {
+    final String suffix = namespace.uniqueShortId();
+    final String table = TEST_RESOURCE_BASE + "table:" + suffix;
+    final String column = TEST_RESOURCE_BASE + "column:" + suffix;
+    final String domain = TEST_RESOURCE_BASE + "domain:" + suffix;
+    final String inherited = "ASK { <%s> <%s> <%s> }".formatted(column, BELONGS_TO_DOMAIN, domain);
+    final String asserted = "ASK { <%s> <%s> <%s> }".formatted(table, BELONGS_TO_DOMAIN, domain);
+    insertTableInDomain(table, column, domain);
+    try {
+      RdfInferenceRuns.materializeWhenIdle(true, DOMAIN_MEMBERSHIP_RULE);
+
+      // A scheduled run empties rule graphs before recomputing them, so wait for it to settle.
+      Awaitility.await("materialized domain membership of the column")
+          .atMost(Duration.ofMinutes(3))
+          .pollInterval(Duration.ofSeconds(1))
+          .until(() -> ask(inherited, SparqlQuery.Inference.CUSTOM));
+      assertFalse(ask(inherited, SparqlQuery.Inference.NONE));
+      assertTrue(ask(asserted, SparqlQuery.Inference.NONE));
+    } finally {
+      deleteScopedSource(table);
+    }
+  }
+
+  private static void insertTableInDomain(
+      final String table, final String column, final String domain) throws Exception {
+    update(
+        "INSERT DATA { GRAPH <%s> { <%s> a <%s> ; <%s> <%s> ; <%s> <%s> . } }"
+            .formatted(
+                KNOWLEDGE_GRAPH, table, OM_TABLE, BELONGS_TO_DOMAIN, domain, HAS_COLUMN, column));
+  }
+
+  private static boolean ask(final String query, final SparqlQuery.Inference inference)
+      throws Exception {
+    final String body =
+        OBJECT_MAPPER.writeValueAsString(
+            new SparqlQuery().withQuery(query).withInference(inference));
+    final HttpResponse<String> response = adminRequest("POST", SPARQL_PATH, body);
+    assertEquals(200, response.statusCode(), response.body());
+    return OBJECT_MAPPER.readTree(response.body()).path("boolean").asBoolean();
   }
 
   private static InferenceRule rule(final String name) {
@@ -344,17 +402,23 @@ public class RdfInferenceMaterializationIT {
     insertInvalidatingTriple(fixture);
     assertTrue(service.get(fixture.ruleName()).getDirty());
     service.delete(fixture.ruleName());
+    // A scheduled run in progress during the delete leaves the graph for the next run to empty.
+    RdfInferenceRuns.materializeWhenIdle(false, null);
     assertFalse(hasInferredTriple(fixture));
   }
 
   private static void assertSuccessfulMaterialization(
       final InferenceRuleService service, final MaterializationFixture fixture) {
     final InferenceRuleStatus dirty = service.get(fixture.ruleName());
-    final InferenceMaterializationResult result = service.materialize(false, fixture.ruleName());
+    final InferenceMaterializationResult result =
+        RdfInferenceRuns.materializeWhenIdle(true, fixture.ruleName());
     final InferenceRuleStatus materialized = service.get(fixture.ruleName());
 
     assertTrue(dirty.getDirty());
-    assertEquals(1, result.getSuccessfulRules());
+    assertEquals(0, result.getFailedRules(), () -> "Failed rules: " + result.getProcessedRules());
+    assertTrue(
+        result.getProcessedRules().stream()
+            .anyMatch(status -> fixture.ruleName().equals(status.getRule().getName())));
     assertFalse(materialized.getDirty());
     assertEquals(1, materialized.getTripleCount());
     assertTrue(hasInferredTriple(fixture));

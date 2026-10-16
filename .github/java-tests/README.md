@@ -16,9 +16,16 @@ IT failure, and an ejection there costs every PR queued behind it. The local run
 
 ```bash
 make java_affected                              # list the impacted tests + the exact commands
-make java_affected_run                          # run them, write target/java-tests/local-pr-results.md
-make java_affected_run ARGS="--update-pr"       # also upsert the results block in the PR body (needs gh)
+make java_affected_run                          # run them, write the summary and details to target/java-tests/
+make java_affected_run ARGS="--update-pr"       # also put them on the PR (needs gh)
 ```
+
+The PR description gets a summary: the verdict, a row per step, and what failed. The details
+(every class each step ran, why the plan chose it, the commands) go in one PR comment that the
+summary links to, and a re-run edits that comment
+(ADR:2026-10-12-local-java-test-details-go-in-a-pr-comment). Without `--update-pr`, paste
+`target/java-tests/local-pr-results.md` into the description and post the details with
+`gh pr comment --body-file target/java-tests/local-pr-results-details.md`.
 
 ## How tests are selected
 
@@ -107,9 +114,10 @@ generated file. When you run the steps by hand, `make java_affected` prints the 
 `--run` clears the report directories before each step and fails a step that ran zero tests or
 left a selected class without a report. It refuses to start the ITs while another Testcontainers
 stack is running (`--allow-concurrent` overrides), because two stacks rarely fit in Docker's
-memory. The block's step totals are Maven's own counts. Its per-class counts come from the test
-reports, which can credit a test to the wrong class when classes run concurrently, and keep only
-the last run of a nested class that several ITs inherit (`BaseEntityIT$…`).
+memory. The summary's step totals are Maven's own counts. The per-class counts in the details
+come from the test reports, which can credit a test to the wrong class when classes run
+concurrently, and keep only the last run of a nested class that several ITs inherit
+(`BaseEntityIT$…`).
 
 ## What the author adds
 
@@ -120,11 +128,34 @@ about and says why; nothing takes tests out:
 make java_affected_run ARGS='--add-area lineage --add-it TableResourceIT --reason "changes the edge payload lineage reads" --update-pr'
 ```
 
-`--reason` is required with any `--add-*`, and the PR block lists the additions under it. Pass
+`--reason` is required with any `--add-*`, and the details list the additions under it. Pass
 them to the run, not only the plan: nothing is saved between the two.
 `skills/java-affected-tests` has the ground rules for when to add.
 
 ## Changing the map
+
+Whoever adds code or tests owns them in the map, in the same change, before the PR. No CI job
+checks it; the author's tools do:
+
+- **`--check-owner <files>`** reports which files no area owns, the glob to add and the area
+  that likely owns them (that of the other ITs in an IT's package, or of the code a file
+  imports). A Claude Code hook (`.claude/settings.json`) runs it on every Java or schema file an
+  agent writes, so the agent fixes the map in the same turn.
+- **`--check-branch`** reports what the branch leaves wrong, against `--base`:
+  - code or ITs it adds or edits that no area owns;
+  - patterns its deletions emptied, or that it adds matching nothing;
+  - map rules its edits break.
+
+  Problems already on the base branch aren't the branch's. With `--head <ref>` it checks that
+  commit (its files, its map, its diff), which is what a push sends; without it, the working
+  tree. It runs on the pushed commit before `git push` and `gh pr create` in two places: a
+  Claude Code hook for agents, and the `java-impact-map` pre-push hook for anyone. Uncommitted
+  and untracked files don't count either way. `pre-commit install` installs the pre-push hook
+  next to the commit hooks; re-run it once if you installed before. `make java_affected` prints
+  the same list for the working tree.
+
+The hooks live in `.github/scripts/java_impact_map_hook.sh`. They only run a planner that has
+these checks, and step aside when `python3` is missing.
 
 - New code in an owned directory, and a new IT whose name matches an area's pattern, need no edit.
 - `make java_affected ARGS=--check-map` and the `java-impact-map` harness check report an IT or a

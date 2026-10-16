@@ -110,7 +110,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/Alerts/DestinationFormItem/DestinationFormItemFormBridge',
+  '../../components/Alerts/DestinationFormItem/DestinationFormItem.component',
   () =>
     jest
       .fn()
@@ -278,5 +278,32 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
     await screen.findByText('label.observability');
 
     expect(alertsClassBase.getAddAlertFormExtraButtons).toHaveBeenCalled();
+  });
+
+  it('should pass the current form values to extra form buttons', async () => {
+    const { default: alertsClassBase } = await import(
+      '../../utils/AlertsClassBase'
+    );
+    (alertsClassBase.getAddAlertFormExtraButtons as jest.Mock).mockReturnValue({
+      ExtraButton: ({ values }: { values?: { displayName?: string } }) => (
+        <span data-testid="extra-button">{values?.displayName}</span>
+      ),
+    });
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await act(async () => {
+      fireEvent.change(screen.getByPlaceholderText('label.name'), {
+        target: { value: 'typed-alert' },
+      });
+    });
+
+    expect(await screen.findByTestId('extra-button')).toHaveTextContent(
+      'typed-alert'
+    );
   });
 });

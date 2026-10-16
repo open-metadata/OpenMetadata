@@ -78,6 +78,12 @@
       "uiFieldType": "code",
       "format": "json",
       "default": null
+    },
+    "maxSchemaInferenceDepth": {
+      "$ref": "../type/schemaInferenceLimits.json#/definitions/maxSchemaInferenceDepth"
+    },
+    "maxChildrenPerColumn": {
+      "$ref": "../type/schemaInferenceLimits.json#/definitions/maxChildrenPerColumn"
     }
   },
   "additionalProperties": false

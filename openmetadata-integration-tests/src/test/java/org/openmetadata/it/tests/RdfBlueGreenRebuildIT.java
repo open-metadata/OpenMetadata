@@ -14,6 +14,8 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -27,6 +29,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -324,6 +327,53 @@ public class RdfBlueGreenRebuildIT {
 
   @ParameterizedTest
   @EnumSource(Database.class)
+  void everyPromotionAssignsANewGenerationEvenWhenADatasetNameRepeats(final Database database) {
+    try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
+      final Set<UUID> generations = new HashSet<>();
+      generations.add(fixture.primary.servingGeneration());
+      for (String expected : List.of("openmetadata_a", "openmetadata_b", "openmetadata_a")) {
+        final BuildTarget target = fixture.primary.begin();
+        write(fixture.primary.buildStorage(target), UUID.randomUUID(), expected);
+        fixture.primary.promote(target, "test");
+        assertEquals(expected, fixture.other.activeDataset());
+        generations.add(fixture.other.servingGeneration());
+      }
+      assertEquals(4, generations.size());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(Database.class)
+  void aRestartedServerSeesTheSameGeneration(final Database database) {
+    try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
+      final BuildTarget target = fixture.primary.begin();
+      write(fixture.primary.buildStorage(target), UUID.randomUUID(), "rebuilt");
+      fixture.primary.promote(target, "test");
+      final UUID promoted = fixture.primary.servingGeneration();
+
+      try (RdfDatasetManager restarted = fixture.manager(false)) {
+        assertEquals(promoted, restarted.servingGeneration());
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(Database.class)
+  void aPointerFromBeforeGenerationsGetsOneThatEveryServerShares(final Database database) {
+    try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
+      database.jdbi.useHandle(
+          handle -> handle.execute("UPDATE rdf_active_dataset SET generation = NULL"));
+
+      try (RdfDatasetManager upgraded = fixture.manager(false);
+          RdfDatasetManager peer = fixture.manager(false)) {
+        assertNotNull(upgraded.servingGeneration());
+        assertEquals(upgraded.servingGeneration(), peer.servingGeneration());
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(Database.class)
   void textSearchSurvivesPromotionLiveWritesAndTargetReuse(final Database database)
       throws Exception {
     try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
@@ -376,6 +426,34 @@ public class RdfBlueGreenRebuildIT {
                       .one());
       assertTrue(dirty);
     }
+  }
+
+  @ParameterizedTest
+  @EnumSource(Database.class)
+  void promotionInvalidatesTheDirtyVersionARunningMaterializationRead(final Database database) {
+    try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
+      database.jdbi.useHandle(
+          handle ->
+              handle.execute(
+                  "INSERT INTO rdf_inference_rule (name, json, updatedAt, dirty) VALUES ('clean-rule', '{}', 1, FALSE)"));
+      final long readByRun = dirtyVersion(database, "clean-rule");
+      final BuildTarget target = fixture.primary.begin();
+      write(fixture.primary.buildStorage(target), UUID.randomUUID(), "rebuilt source");
+
+      fixture.primary.promote(target, "test");
+
+      assertNotEquals(readByRun, dirtyVersion(database, "clean-rule"));
+    }
+  }
+
+  private static long dirtyVersion(final Database database, final String rule) {
+    return database.jdbi.withHandle(
+        handle ->
+            handle
+                .createQuery("SELECT dirtyVersion FROM rdf_inference_rule WHERE name = :name")
+                .bind("name", rule)
+                .mapTo(Long.class)
+                .one());
   }
 
   @ParameterizedTest

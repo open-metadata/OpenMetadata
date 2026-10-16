@@ -326,6 +326,7 @@ const defaultTableProfilerContext = {
   },
   isTestCaseDrawerOpen: false,
   onTestCaseDrawerOpen: jest.fn(),
+  onCustomMetricDrawerOpen: jest.fn(),
   testCaseSummary: {
     'db.schema.test_table.test_column': {
       success: 5,

@@ -19,6 +19,7 @@ interface MockItem {
   eventType?: string;
   timestamp?: number;
   actor?: { id: string; name: string; displayName?: string };
+  entity?: { id: string; type: string; name: string };
 }
 
 interface MockInboxItem {
@@ -69,6 +70,7 @@ jest.mock('../components/ActivityToolbar', () => ({
     <div>
       <button onClick={() => onFilterChange('following')}>following</button>
       <button onClick={() => onGroupingChange('user')}>by-user</button>
+      <button onClick={() => onGroupingChange('asset')}>by-asset</button>
       <button onClick={() => onTypeKeysChange(['label.tag-plural'])}>
         tags-only
       </button>
@@ -96,6 +98,25 @@ jest.mock('../components/ActivityFeedItem', () => ({
       {activity?.id ?? feed?.id}
     </div>
   ),
+}));
+
+jest.mock(
+  '../../../../../components/common/ProfilePicture/ProfilePicture',
+  () => ({
+    __esModule: true,
+    default: ({ name }: { name: string }) => (
+      <span data-testid={`group-avatar-${name}`} />
+    ),
+  })
+);
+
+jest.mock('../../../../../utils/SearchClassBase', () => ({
+  __esModule: true,
+  default: {
+    getEntityIcon: (type: string) => (
+      <span data-testid={`group-icon-${type}`} />
+    ),
+  },
 }));
 
 jest.mock('../components/ActivitySkeleton', () => ({
@@ -327,5 +348,39 @@ describe('ActivityTab', () => {
       'data-time-format',
       'MMM dd, yyyy, hh:mm a'
     );
+  });
+
+  // A User group leads with the person, an Asset group with the asset's icon;
+  // a day needs neither.
+  it("marks a User group with the person and an Asset group with the asset's icon", () => {
+    const table = { id: 't1', type: 'table', name: 'orders' };
+    activityState = {
+      items: [
+        {
+          activity: {
+            id: 'a1',
+            timestamp: 1,
+            actor: { id: 'u1', name: 'alice' },
+            entity: table,
+          },
+        },
+      ],
+      total: 1,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+
+    expect(screen.queryByTestId('group-avatar-alice')).toBeNull();
+    expect(screen.queryByTestId('group-icon-table')).toBeNull();
+
+    fireEvent.click(screen.getByText('by-user'));
+
+    expect(screen.getByTestId('group-avatar-alice')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('by-asset'));
+
+    expect(screen.getByTestId('activity-group')).toHaveTextContent('orders');
+    expect(screen.getByTestId('group-icon-table')).toBeInTheDocument();
   });
 });

@@ -422,7 +422,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
       direction="col">
       {detailKey === undefined ? (
         <>
-          <Box className="tw:items-center tw:justify-between tw:gap-2">
+          <Box className="tw:items-center tw:justify-between tw:gap-2 tw:py-2">
             {/* Kept when empty, so the dimension picker stays on the right. */}
             <Box align="center" gap={3}>
               {hasStats && (

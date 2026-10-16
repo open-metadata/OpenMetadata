@@ -16,11 +16,7 @@ import {
   ArrowRightOutlined,
   DownOutlined,
 } from '@ant-design/icons';
-import {
-  Button as CoreButton,
-  Dropdown,
-} from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -74,37 +70,33 @@ const NextPreviousWithOffset = ({
   return (
     <div className="flex-center gap-3" data-testid="pagination">
       <Button
-        ghost
-        className="hover-button text-sm flex-center"
+        color="secondary-brand"
         data-testid="previous"
-        disabled={currentPage === 1 || isLoading}
-        icon={<ArrowLeftOutlined />}
-        type="primary"
+        iconLeading={<ArrowLeftOutlined />}
+        isDisabled={currentPage === 1 || isLoading}
         onClick={onPreviousHandler}>
-        <span>{t('label.previous')}</span>
+        <Typography>{t('label.previous')}</Typography>
       </Button>
-      <span data-testid="page-indicator">{`${currentPage}/${totalPages} ${t(
+      <Typography data-testid="page-indicator">{`${currentPage}/${totalPages} ${t(
         'label.page'
-      )}`}</span>
+      )}`}</Typography>
       <Button
-        ghost
-        className="hover-button text-sm flex-center"
+        color="secondary-brand"
         data-testid="next"
-        disabled={nextButtonDisabled || isLoading}
-        type="primary"
+        isDisabled={nextButtonDisabled || isLoading}
         onClick={onNextHandler}>
-        <span> {t('label.next')}</span>
+        <Typography> {t('label.next')}</Typography>
         <ArrowRightOutlined />
       </Button>
       {onShowSizeChange && (
         <Dropdown.Root>
-          <CoreButton
+          <Button
             color="secondary"
             data-testid="page-size-change-button"
             iconTrailing={<DownOutlined />}
             isDisabled={isLoading}>
             {`${pageSize} / ${t('label.page')}`}
-          </CoreButton>
+          </Button>
           <Dropdown.Popover className="tw:w-auto">
             <Dropdown.Menu
               aria-label={t('label.size')}

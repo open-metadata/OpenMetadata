@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
 import FieldRow from './FieldRow';
 
@@ -19,6 +19,7 @@ interface ReadOnlyRowProps {
   title: string;
   description?: string;
   testId?: string;
+  isValueCompact?: boolean;
   children: React.ReactNode;
 }
 
@@ -26,10 +27,14 @@ export const ReadOnlyRow: React.FC<ReadOnlyRowProps> = ({
   title,
   description,
   testId,
+  isValueCompact,
   children,
 }) => (
   <div className="tw:px-5 tw:py-4" data-testid={testId}>
-    <FieldRow description={description} title={title}>
+    <FieldRow
+      description={description}
+      isValueCompact={isValueCompact}
+      title={title}>
       {children}
     </FieldRow>
   </div>
@@ -52,16 +57,16 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
 }) => (
   <Box data-testid={testId} direction="col" gap={3}>
     <Typography
-      className="tw:px-1 tw:text-primary-900 tw:uppercase"
+      className="tw:px-1 tw:text-primary tw:uppercase"
       size="text-xs"
       weight="medium">
       {title}
     </Typography>
-    <Box
-      className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
-      direction="col">
+    <Card
+      className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+      variant="muted">
       {children}
-    </Box>
+    </Card>
   </Box>
 );
 

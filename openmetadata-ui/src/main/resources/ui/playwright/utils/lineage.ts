@@ -879,7 +879,7 @@ export const applyPipelineFromModal = async (
   await page.click(`[data-testid="pipeline-entry-${pipelineFqn}"]`);
 
   const saveButton = page.getByTestId('save-button');
-  await expect(saveButton).not.toHaveClass(/ant-btn-loading/);
+  await expect(saveButton).not.toHaveAttribute('data-loading');
 
   const saveRes = page.waitForResponse('/api/v1/lineage');
   await saveButton.click();
@@ -1117,8 +1117,10 @@ export const fillLineageConfigForm = async (
   await page
     .getByTestId('field-downstream')
     .fill(config.downstreamDepth.toString());
-  await page.getByTestId('field-lineage-layer').click();
-  await page.locator(`.ant-select-item[title="${config.layer}"]`).click();
+  await selectOptionWithRetry(
+    page.getByTestId('field-lineage-layer').getByRole('button'),
+    page.getByRole('option', { name: config.layer, exact: true })
+  );
 
   const saveRes = page.waitForResponse('/api/v1/system/settings');
   await page.getByTestId('save-button').click();
@@ -1467,10 +1469,8 @@ export const verifyPlatformLineageForEntity = async (
 
   await page
     .getByTestId('search-entity-select')
-    .locator('div')
-    .filter({ hasText: /^Search entity to view lineage$/ })
-    .click();
-  await page.getByTestId('search-entity-select').locator('input').fill(fromFqn);
+    .getByRole('combobox')
+    .fill(fromFqn);
 
   const focusSceneResponse = page.waitForResponse(
     (response) =>
