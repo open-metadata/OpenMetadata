@@ -5720,6 +5720,7 @@
     "star-on-github-description": "سلام توسعه‌دهندگان، بیایید به صحنه متن‌باز {{brandName}} نیرو ببخشیم! 🚀 ستاره‌های شما می‌توانند ما را به قله‌های موفقیت برسانند و {{brandName}} را به عنوان پلتفرم اصلی متادیتا معرفی کنند. خبر را منتشر کنید، سر و صدا کنید و بیایید {{brandName}} را در رادار همه قرار دهیم! 🌟",
     "started-time": "شروع شد {{time}}",
     "starting-offset-description": "آفست اولیه اشتراک رویداد در زمان شروع پردازش.",
+    "status-changed-to": "وضعیت به {{status}} تغییر کرد.",
     "still-running-into-issue": "اگر هنوز با مشکلی مواجه هستید، لطفاً با ما در Slack تماس بگیرید.",
     "success-status-for-entity-deploy": "<0>{{entity}}</0> با موفقیت {{entityStatus}} و مستقر شد.",
     "successful-events-description": "تعداد رویدادهای موفق برای هشدار خاص.",

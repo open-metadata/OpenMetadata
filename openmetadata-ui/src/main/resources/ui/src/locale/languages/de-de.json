@@ -5720,6 +5720,7 @@
     "star-on-github-description": "Tragen Sie mit Sternen bei, um Datenenthusiasten zu helfen, {{brandName}} zu entdecken!",
     "started-time": "Gestartet {{time}}",
     "starting-offset-description": "Der anfängliche Offset des Ereignisabonnements beim Start der Verarbeitung.",
+    "status-changed-to": "Status geändert zu {{status}}.",
     "still-running-into-issue": "Wenn Sie immer noch auf Probleme stoßen, kontaktieren Sie uns bitte über Slack.",
     "success-status-for-entity-deploy": "<0>{{entity}}</0> wurde {{entityStatus}} und erfolgreich bereitgestellt",
     "successful-events-description": "Anzahl erfolgreicher Ereignisse für einen bestimmten Alert.",

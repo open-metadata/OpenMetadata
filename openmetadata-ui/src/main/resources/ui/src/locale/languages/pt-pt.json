@@ -5720,6 +5720,7 @@
     "star-on-github-description": "Gosta do {{brandName}}? As suas estrelas no GitHub ajudam a comunidade a crescer! Estrele-nos hoje, espalhe o amor e vamos construir o futuro dos metadados juntos! 🚀",
     "started-time": "Iniciado {{time}}",
     "starting-offset-description": "O offset inicial da subscrição do evento quando começou a ser processada.",
+    "status-changed-to": "Estado alterado para {{status}}.",
     "still-running-into-issue": "Se você ainda estiver enfrentando problemas, entre em contacto connosco no Slack.",
     "success-status-for-entity-deploy": "<0>{{entity}}</0> foi {{entityStatus}} e implantado com sucesso",
     "successful-events-description": "Contagem de eventos bem-sucedidos para alerta específico.",

@@ -5720,6 +5720,7 @@
     "star-on-github-description": "Draag bij met sterren om data-enthousiastelingen te helpen {{brandName}} te ontdekken!",
     "started-time": "Gestart {{time}}",
     "starting-offset-description": "De initiële offset van het evenementabonnement toen het begon met verwerken.",
+    "status-changed-to": "Status gewijzigd naar {{status}}.",
     "still-running-into-issue": "Als je nog steeds problemen ondervindt, neem dan contact met ons op via slack.",
     "success-status-for-entity-deploy": "<0>{{entity}}</0> is {{entityStatus}} en succesvol ingezet",
     "successful-events-description": "Aantal succesvolle gebeurtenissen voor specifieke alert.",

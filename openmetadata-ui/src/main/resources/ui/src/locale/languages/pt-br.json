@@ -5720,6 +5720,7 @@
     "star-on-github-description": "Contribua com Estrelas para ajudar entusiastas de dados a descobrir o {{brandName}}!",
     "started-time": "Iniciado {{time}}",
     "starting-offset-description": "A compensação inicial da assinatura do evento no momento em que o processamento foi iniciado.",
+    "status-changed-to": "Status alterado para {{status}}.",
     "still-running-into-issue": "Se você ainda estiver enfrentando problemas, entre em contato conosco no Slack.",
     "success-status-for-entity-deploy": "<0>{{entity}}</0> foi {{entityStatus}} e implantado com sucesso",
     "successful-events-description": "Contagem de eventos bem-sucedidos para um alerta específico.",

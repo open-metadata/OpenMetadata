@@ -5720,6 +5720,7 @@
     "star-on-github-description": "Внесите свой вклад с помощью Stars, чтобы помочь энтузиастам данных открыть для себя {{brandName}}!",
     "started-time": "Начато {{time}}",
     "starting-offset-description": "Начальное смещение подписки на событие при начале обработки.",
+    "status-changed-to": "Статус изменён на {{status}}.",
     "still-running-into-issue": "Если у вас по-прежнему возникают проблемы, свяжитесь с нами в Slack.",
     "success-status-for-entity-deploy": "Объект «<0>{{entity}}</0>» был {{entityStatus}} и успешно развернут",
     "successful-events-description": "Количество успешных событий для конкретного оповещения.",

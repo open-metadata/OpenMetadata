@@ -223,6 +223,17 @@ describe('DataProductsDetailsPage — Request Data Access delegation', () => {
     ).toHaveBeenCalled();
   });
 
+  it('reloads the data product once a task on it is decided', () => {
+    const onRefresh = jest.fn();
+    render(<DataProductsDetailsPage {...defaultProps} onRefresh={onRefresh} />);
+
+    expect(
+      getDataProductClassBase().getDataProductDetailPageTabs
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ onUpdateEntityDetails: onRefresh })
+    );
+  });
+
   it('delegates the DAR banner to dataProductClassBase', () => {
     render(<DataProductsDetailsPage {...defaultProps} />);
 

@@ -5720,6 +5720,7 @@
     "star-on-github-description": "{{brandName}}'dan hoşlanıyor musunuz? GitHub yıldızlarınız topluluğun daha da güçlenmesine yardımcı oluyor! Bugün bizi yıldızlayın, sevgiyi yayın ve metadatanın geleceğini birlikte inşa edelim! 🚀",
     "started-time": "Başlatıldı {{time}}",
     "starting-offset-description": "İşlemeye başladığında olay aboneliğinin ilk ofseti.",
+    "status-changed-to": "Durum {{status}} olarak değiştirildi.",
     "still-running-into-issue": "Hala sorun yaşıyorsanız, lütfen slack üzerinden bize ulaşın.",
     "success-status-for-entity-deploy": "<0>{{entity}}</0> {{entityStatus}} oldu ve başarıyla dağıtıldı",
     "successful-events-description": "Belirli bir uyarı için başarılı olay sayısı.",

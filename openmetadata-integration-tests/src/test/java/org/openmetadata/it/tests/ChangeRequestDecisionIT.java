@@ -101,7 +101,7 @@ class ChangeRequestDecisionIT {
             () ->
                 resolveAs(
                     SdkClients.adminClient(), task, "approve", TaskResolutionType.Approved, 1));
-    assertTrue(error.getMessage().contains("operations resolveTask not allowed"));
+    assertTrue(error.getMessage().contains("is not an assignee of this approval"));
     assertEquals(PUBLISHED, descriptionOf(glossary.getId()));
   }
 

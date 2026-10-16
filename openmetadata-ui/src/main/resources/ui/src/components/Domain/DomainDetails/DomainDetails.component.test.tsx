@@ -327,6 +327,20 @@ describe('DomainDetails lifecycle stage', () => {
     setMockPermissions(ENTITY_PERMISSIONS);
   });
 
+  it('reloads the domain once a task on it is decided', async () => {
+    const onRefresh = jest.fn();
+    const domainClassBase = jest.requireMock(
+      '../../../utils/Domain/DomainClassBase'
+    ).default;
+    renderComponent({ onRefresh });
+
+    await waitFor(() =>
+      expect(domainClassBase.getDomainDetailPageTabs).toHaveBeenCalledWith(
+        expect.objectContaining({ onUpdateEntityDetails: onRefresh })
+      )
+    );
+  });
+
   it('shows the domain stage next to its name where stages are shown', async () => {
     jest
       .spyOn(entityUtilClassBase, 'shouldShowEntityStatus')

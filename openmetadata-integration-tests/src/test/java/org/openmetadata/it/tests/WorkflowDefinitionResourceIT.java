@@ -15975,6 +15975,13 @@ public class WorkflowDefinitionResourceIT {
                 new CreateUser()
                     .withName("approver_" + suffix)
                     .withEmail("approver_" + suffix + "@example.com"));
+    User reviewer =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName("reviewer_" + suffix)
+                    .withEmail("reviewer_" + suffix + "@example.com"));
     Classification classification =
         client
             .classifications()
@@ -16001,6 +16008,13 @@ public class WorkflowDefinitionResourceIT {
               "nodes": [
                 {"name": "start", "type": "startEvent", "subType": "startEvent"},
                 {
+                  "name": "SetInReview",
+                  "type": "automatedTask",
+                  "subType": "setEntityAttributeTask",
+                  "config": {"fieldName": "entityStatus", "fieldValue": "In Review"},
+                  "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"}
+                },
+                {
                   "name": "Approve",
                   "type": "userTask",
                   "subType": "userApprovalTask",
@@ -16023,7 +16037,8 @@ public class WorkflowDefinitionResourceIT {
                 {"name": "end", "type": "endEvent", "subType": "endEvent"}
               ],
               "edges": [
-                {"from": "start", "to": "Approve"},
+                {"from": "start", "to": "SetInReview"},
+                {"from": "SetInReview", "to": "Approve"},
                 {"from": "Approve", "to": "end", "condition": "approve"},
                 {"from": "Approve", "to": "end", "condition": "reject"}
               ],
@@ -16050,7 +16065,8 @@ public class WorkflowDefinitionResourceIT {
                 new CreateTag()
                     .withName("NeedsApproval")
                     .withClassification(classification.getName())
-                    .withDescription("A tag with no reviewers"));
+                    .withDescription("A tag whose reviewer is not the approver")
+                    .withReviewers(List.of(reviewer.getEntityReference())));
     Task task =
         awaitOpenApprovalTaskAssignedTo(client, tag.getFullyQualifiedName(), approver.getId());
     org.openmetadata.schema.api.tasks.ResolveTask approve =
@@ -16062,7 +16078,10 @@ public class WorkflowDefinitionResourceIT {
             ForbiddenException.class,
             () -> client.tasks().resolve(task.getId().toString(), approve));
     assertEquals(403, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("is not an assignee of this approval"));
 
+    // The tag is In Review and has a reviewer, but the workflow named the approver: the assignee
+    // decides, whether or not they are also a reviewer.
     SdkClients.createClient(approver.getName(), approver.getEmail(), new String[] {})
         .tasks()
         .resolve(task.getId().toString(), approve);

@@ -5720,6 +5720,7 @@
     "star-on-github-description": "هل تستمتع بـ {{brandName}}؟ تساعد نجوم GitHub الخاصة بك المجتمع على النمو بقوة أكبر! نجمنا اليوم، انشر الحب، ولنبنِ مستقبل البيانات الوصفية معًا! 🚀",
     "started-time": "بدأ {{time}}",
     "starting-offset-description": "الإزاحة الأولية لاشتراك الحدث عندما بدأ المعالجة.",
+    "status-changed-to": "تغيرت الحالة إلى {{status}}.",
     "still-running-into-issue": "إذا كنت لا تزال تواجه مشكلات، يرجى التواصل معنا على slack.",
     "success-status-for-entity-deploy": "تم {{entityStatus}} ونشر <0>{{entity}}</0> بنجاح",
     "successful-events-description": "عدد الأحداث الناجحة لتنبيه معين.",

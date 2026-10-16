@@ -5720,6 +5720,7 @@
     "star-on-github-description": "สวัสดีนักพัฒนา มาร่วมสร้าง Open Source ของ {{brandName}} กันเถอะ! 🚀 ดาวของคุณสามารถเป็นพลังขับให้เราขึ้นสู่อันดับหนึ่งในฐานข้อมูลเมตาที่ผู้คนไว้วางใจ แจ้งให้ทราบให้ทั่วและช่วยให้ {{brandName}} เป็นที่รู้จักในทุกคน! 🌟",
     "started-time": "เริ่มเมื่อ {{time}}",
     "starting-offset-description": "ออฟเซ็ตเริ่มต้นของการสมัครสมาชิกเหตุการณ์เมื่อเริ่มประมวลผล",
+    "status-changed-to": "สถานะเปลี่ยนเป็น {{status}}",
     "still-running-into-issue": "หากคุณยังพบปัญหา กรุณาติดต่อเราทาง Slack",
     "success-status-for-entity-deploy": "<0>{{entity}}</0> มีสถานะ {{entityStatus}} และเรียกใช้งานสำเร็จ",
     "successful-events-description": "จำนวนเหตุการณ์ที่สำเร็จสำหรับการแจ้งเตือนเฉพาะ",

@@ -233,7 +233,9 @@ public final class CatalogExceptionMessage {
   }
 
   public static String notTaskAssignee(String name) {
-    return String.format("User '%s' is not an assignee of the pending approval task", name);
+    return String.format(
+        "User '%s' is not an assignee of this approval, so they cannot approve or reject it.",
+        name);
   }
 
   public static String pendingApprovalTaskExists(String entityFqn) {

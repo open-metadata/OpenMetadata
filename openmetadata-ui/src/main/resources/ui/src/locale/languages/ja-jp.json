@@ -5720,6 +5720,7 @@
     "star-on-github-description": "GitHubでスターを付けて、{{brandName}}をより多くのデータユーザーに広めましょう！",
     "started-time": "開始 {{time}}",
     "starting-offset-description": "イベントサブスクリプションが処理を開始した際の初期オフセット。",
+    "status-changed-to": "ステータスが{{status}}に変更されました。",
     "still-running-into-issue": "まだ問題が発生している場合は、Slackでご連絡ください。",
     "success-status-for-entity-deploy": "<0>{{entity}}</0> は{{entityStatus}}され、正常にデプロイされました",
     "successful-events-description": "特定のアラートに対する成功イベントの件数。",

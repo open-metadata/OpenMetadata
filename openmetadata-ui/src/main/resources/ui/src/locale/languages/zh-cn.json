@@ -5720,6 +5720,7 @@
     "star-on-github-description": "贡献星星，帮助数据爱好者发现 {{brandName}}!",
     "started-time": "开始于 {{time}}",
     "starting-offset-description": "事件订阅开始处理时的初始偏移量。",
+    "status-changed-to": "状态已更改为 {{status}}。",
     "still-running-into-issue": "如果您仍然遇到问题, 请在 Slack 上与我们联系",
     "success-status-for-entity-deploy": "<0>{{entity}}</0>已{{entityStatus}}并成功部署",
     "successful-events-description": "特定告警的成功事件计数。",

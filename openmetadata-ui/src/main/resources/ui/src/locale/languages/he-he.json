@@ -5720,6 +5720,7 @@
     "star-on-github-description": "פרסם את המילה כדי לעזור למערכת {{brandName}} להתגלות על ידי אהבות! הצג את התמיכה שלך על ידי תרומה לפרויקט הקוד הפתוח עם דירוג!",
     "started-time": "התחיל {{time}}",
     "starting-offset-description": "ה-offset הראשוני של מנוי האירוע כשהחל בעיבוד.",
+    "status-changed-to": "הסטטוס שונה ל{{status}}.",
     "still-running-into-issue": "אם עדיין יש לך בעיות, אנא פנה אלינו ב-Slack.",
     "success-status-for-entity-deploy": "<0>{{entity}}</0> הושקע בהצלחה והוצב בהצלחה",
     "successful-events-description": "ספירת אירועים מוצלחים עבור התראה ספציפית.",

@@ -1062,29 +1062,31 @@ public class TaskRepository extends EntityRepository<Task> {
       validateUnderlyingEntityPermission(authorizer, securityContext, task);
     }
 
-    if (!closeTask) {
+    if (!closeTask && isWorkflowApproval(task)) {
       requireAssigneeForWorkflowApproval(task, securityContext);
+    } else if (!closeTask) {
       enforceReviewerForApprovalStatusTask(task, securityContext);
     }
   }
 
+  /** A stage move or held change that a workflow asks its assignees to decide. */
+  private static boolean isWorkflowApproval(Task task) {
+    return task.getWorkflowInstanceId() != null
+        && (task.getType() == TaskEntityType.RequestApproval
+            || ChangeRequestTasks.reviewsChangeRequest(task));
+  }
+
   /**
-   * A workflow's approval — a stage move or a held change — is decided by its assignees: an admin
-   * or owner who is not assigned cannot decide it for them. Bots keep access; the workflow engine
-   * resolves tasks through its own path.
+   * A workflow's approval is decided by its assignees and only by them: an admin or owner who is not
+   * assigned cannot decide it, and an assignee can, whether or not the asset also has reviewers. The
+   * workflow already chose who decides (reviewers, owners or named users), and its own status write
+   * is exempt from the reviewer rule. Bots keep access; the engine resolves tasks on its own path.
    */
   private void requireAssigneeForWorkflowApproval(Task task, SecurityContext securityContext) {
-    final boolean workflowApproval =
-        task.getWorkflowInstanceId() != null
-            && (task.getType() == TaskEntityType.RequestApproval
-                || ChangeRequestTasks.reviewsChangeRequest(task));
     final String userName = securityContext.getUserPrincipal().getName();
-    if (workflowApproval) {
-      final SubjectContext subject = SubjectContext.getSubjectContext(userName);
-      if (!subject.isBot() && !subject.isOwner(task.getAssignees())) {
-        throw new AuthorizationException(
-            CatalogExceptionMessage.taskOperationNotAllowed(userName, "resolveTask"));
-      }
+    final SubjectContext subject = SubjectContext.getSubjectContext(userName);
+    if (!subject.isBot() && !subject.isOwner(task.getAssignees())) {
+      throw new AuthorizationException(CatalogExceptionMessage.notTaskAssignee(userName));
     }
   }
 

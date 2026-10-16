@@ -158,6 +158,7 @@ const DomainDetails = ({
   domainFqnOverride,
   onNavigate,
   refreshDomains,
+  onRefresh,
   isTreeView = false,
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
@@ -939,6 +940,7 @@ const DomainDetails = ({
       labelMap: tabLabelMap,
       feedCount,
       onFeedUpdate: getEntityFeedCount,
+      onUpdateEntityDetails: onRefresh,
     });
 
     return getDetailsTabWithNewLabel(
@@ -961,6 +963,7 @@ const DomainDetails = ({
     openAssetDrawer,
     fetchDomainAssets,
     handleTabChange,
+    onRefresh,
   ]);
 
   // Resolve to the first rendered tab when the selection is absent/not rendered.

@@ -5720,6 +5720,7 @@
     "star-on-github-description": "Gillar du {{brandName}}? Dina GitHub-stjärnor hjälper communityn att växa sig starkare! Stjärnmärk oss idag, sprid kärleken och låt oss bygga framtiden för metadata tillsammans! 🚀",
     "started-time": "Startad {{time}}",
     "starting-offset-description": "Den initiala offseten för händelseprenumerationen när den började bearbeta.",
+    "status-changed-to": "Status ändrad till {{status}}.",
     "still-running-into-issue": "Om du fortfarande stöter på problem, kontakta oss på slack.",
     "success-status-for-entity-deploy": "<0>{{entity}}</0>  har {{entityStatus}} och driftsatts",
     "successful-events-description": "Antal lyckade händelser för en specifik avisering.",
