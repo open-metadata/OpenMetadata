@@ -597,7 +597,7 @@ const ContextCenterMemoriesPage: FC = () => {
   }, [fetchPermission]);
 
   useEffect(() => {
-    fetchMemoryCounts();
+    void fetchMemoryCounts();
   }, [fetchMemoryCounts]);
 
   const totalPages = Math.max(1, Math.ceil(totalMemories / MEMORIES_PER_PAGE));
@@ -691,14 +691,14 @@ const ContextCenterMemoriesPage: FC = () => {
     setIsDeletingMemory(true);
     try {
       await deleteContextMemory(memoryToDelete.id);
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
       });
       showSuccessToast(
         t('server.entity-deleted-success', { entity: t('label.memory') })
       );
       setMemoryToDelete(undefined);
-      refreshMemoryReviews();
+      void refreshMemoryReviews();
       await fetchMemories();
       await fetchMemoryCounts();
     } catch (err) {
@@ -742,14 +742,14 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   const handleReviewResolved = useCallback(() => {
-    refreshMemoryReviews();
-    queryClient.invalidateQueries({
+    void refreshMemoryReviews();
+    void queryClient.invalidateQueries({
       queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
     });
-    queryClient.invalidateQueries({
+    void queryClient.invalidateQueries({
       queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
-    fetchMemoryCounts();
+    void fetchMemoryCounts();
   }, [fetchMemoryCounts]);
 
   const handleModalClose = useCallback(() => {
@@ -803,9 +803,9 @@ const ContextCenterMemoriesPage: FC = () => {
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
-    refreshMemoryReviews();
-    fetchMemories();
-    fetchMemoryCounts();
+    void refreshMemoryReviews();
+    void fetchMemories();
+    void fetchMemoryCounts();
   }, [handleModalClose, fetchMemories, fetchMemoryCounts]);
 
   const countCards = useMemo(
