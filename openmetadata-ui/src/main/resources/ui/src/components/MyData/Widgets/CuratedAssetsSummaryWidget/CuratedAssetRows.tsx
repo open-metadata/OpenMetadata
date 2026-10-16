@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { FeaturedIcon, Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -39,18 +39,28 @@ const CuratedAssetRows: React.FC<CuratedAssetRowsProps> = ({ assets }) => {
         {assets.map((asset) => (
           <li data-testid={`curated-asset-${asset.name}`} key={asset.id}>
             <Link
-              className="tw:flex tw:min-w-0 tw:items-center tw:gap-2.5 tw:rounded-lg tw:bg-secondary tw:px-3 tw:py-2.5"
+              className="tw:flex tw:min-w-0 tw:items-center tw:gap-2.5 tw:rounded-lg tw:bg-utility-gray-blue-50 tw:px-3 tw:py-2.5"
               to={entityUtilClassBase.getEntityLink(
                 asset.entityType,
                 asset.fullyQualifiedName
               )}>
+              {/* A white tile, so the logo reads against the tinted row. */}
               {asset.serviceType && (
-                <img
-                  alt=""
-                  className="tw:size-4 tw:shrink-0 tw:object-contain"
-                  height={16}
-                  src={serviceUtilClassBase.getServiceLogo(asset.serviceType)}
-                  width={16}
+                <FeaturedIcon
+                  color="gray"
+                  icon={
+                    <img
+                      alt=""
+                      className="tw:size-4 tw:object-contain"
+                      height={16}
+                      src={serviceUtilClassBase.getServiceLogo(
+                        asset.serviceType
+                      )}
+                      width={16}
+                    />
+                  }
+                  size="sm"
+                  theme="modern"
                 />
               )}
               <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
@@ -60,7 +70,7 @@ const CuratedAssetRows: React.FC<CuratedAssetRowsProps> = ({ assets }) => {
                 <Typography
                   className="tw:min-w-0 tw:text-text-primary!"
                   ellipsis={{ rows: 1 }}
-                  size="text-sm">
+                  size="text-xs">
                   {asset.name}
                 </Typography>
                 {asset.tier && (

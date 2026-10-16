@@ -1,12 +1,17 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class ListFilterTest {
@@ -181,6 +186,93 @@ class ListFilterTest {
     assertEquals(
         "11111111-1111-1111-1111-111111111111",
         filter.getQueryParams().get("primaryEntityIdParam"));
+  }
+
+  @Test
+  void getDomainCondition_appliedForDataAssetEntityType() {
+    // A data-asset list is scoped to the selected domain (navbar global domain filter).
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("entityType", "table");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains("'11111111-1111-1111-1111-111111111111'"),
+        "data-asset list should be scoped by the selected domain");
+  }
+
+  @Test
+  void getDomainCondition_matchesEveryGivenDomainId() {
+    // The navbar filter passes the selected domain and its sub-domains as resolved ids.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam(
+        "domainId", "11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains(
+            "fromId IN ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222')"));
+    assertFalse(condition.contains("domain_entity"));
+  }
+
+  @Test
+  void getDomainCondition_bindsAnIdThatIsNotAUuid() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "x') OR ('1'='1");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(condition.contains("fromId IN (:domainId_0)"));
+    assertEquals("x) OR (1=1", filter.getQueryParams().get("domainId_0"));
+  }
+
+  @Test
+  void getDomainCondition_restrictsMembershipRowsToTheListedType() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainEntityType", "table");
+    assertTrue(
+        filter.getCondition("table_entity").contains("entity_relationship.toEntity = 'table'"));
+
+    filter.addQueryParam("domainAccessControl", "true");
+    String accessCondition = filter.getCondition("table_entity");
+    assertTrue(accessCondition.contains("er.toEntity = 'table'"));
+    assertTrue(accessCondition.contains("er2.toEntity = 'table'"));
+  }
+
+  @Test
+  void getDomainCondition_accessCheckIsOneAntiJoinOnPostgresAndAnOrOnMySql() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainAccessControl", "true");
+    String postgres = filter.getCondition("table_entity");
+    assertTrue(postgres.contains("AND NOT EXISTS (SELECT er2.toId"));
+    assertTrue(postgres.contains("er2.toId = er.toId"));
+    assertFalse(postgres.contains(" OR "));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig mysqlConfig = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(mysqlConfig);
+      when(mysqlConfig.isMySQL()).thenReturn(true);
+      String mysql = filter.getCondition("table_entity");
+      assertTrue(mysql.contains(") OR table_entity.id IN (SELECT er2.toId"));
+      assertFalse(mysql.contains("er2.toId = er.toId"));
+    }
+  }
+
+  @Test
+  void getDomainCondition_ignoresAnEntityTypeThatIsNotAPlainName() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainEntityType", "table' OR '1'='1");
+    assertFalse(filter.getCondition("table_entity").contains("toEntity"));
+  }
+
+  @Test
+  void getDomainCondition_appliedWhenEntityTypeUnset_backwardCompatible() {
+    // Existing ?domain= callers do not set entityType; that path must keep working unchanged.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains("'11111111-1111-1111-1111-111111111111'"),
+        "explicit ?domain= without entityType must still apply (backward-compatible)");
   }
 
   @Test

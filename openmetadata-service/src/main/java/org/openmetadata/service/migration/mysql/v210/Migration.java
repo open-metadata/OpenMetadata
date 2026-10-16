@@ -20,6 +20,7 @@ import static org.openmetadata.service.migration.utils.v210.AuthenticationSecret
 import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.backfillCreationAudit;
 import static org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration.rebuildDataContractEntityReferences;
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
+import static org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration.retireDeltaLakeServices;
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
 import static org.openmetadata.service.migration.utils.v210.FlowableCharsetMigration.alignFlowableTableCharsets;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
@@ -37,6 +38,7 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
+import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
@@ -51,6 +53,9 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    // First, so no later step loads an entity still typed DeltaLake:
+    // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
+    retireDeltaLakeServices(handle, MYSQL, getPipelineServiceClient());
     alignFlowableTableCharsets(handle);
     ConversationMigration.migrate(handle, MYSQL);
     ConversationReferenceMigration.migrate(handle, MYSQL);
@@ -113,5 +118,11 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         AlertBacklogMigration.STEP_NAME,
         () -> skipBacklogOfAlertsThePreviousReleaseCouldNotSend(collectionDAO));
+    // Alerts name their consumer by its registered id, no longer by its Java class.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ConsumerIdMigration.STEP_NAME,
+        () -> ConsumerIdMigration.storeConsumerIds(collectionDAO));
   }
 }

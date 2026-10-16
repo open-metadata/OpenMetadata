@@ -28,7 +28,7 @@ import {
   MEMORIES_API,
   MEMORIES_URL,
   navigateToMemories,
-  patchMemory,
+  recordMemoryOutcomes,
   searchAndGetMemoryRow,
 } from '../../utils/ContextCenterUtil';
 import {
@@ -38,6 +38,11 @@ import {
 import { waitForSearchIndexed } from '../../utils/polling';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test as base } from '../fixtures/pages';
+
+// The asset search escapes Elasticsearch-reserved characters, so a name like
+// `pw-table-…` is sent as `pw\-table\-…`.
+const unescapeSearchQuery = (query: string | null) =>
+  (query ?? '').replace(/\\(.)/g, '$1');
 
 const test = base;
 
@@ -695,34 +700,6 @@ test.describe(
         ).toBeVisible();
       });
 
-      test('"Created by Me" tab shows admin\'s own memories and hides the second author\'s', async ({
-        page,
-      }) => {
-        test.slow();
-
-        await navigateToMemories(page);
-
-        const listResPromise = waitForResponseWithStatus(
-          page,
-          (res) =>
-            res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'GET',
-          200
-        );
-        await page.getByRole('tab', { name: /created by me/i }).click();
-        await listResPromise;
-        await waitForAllLoadersToDisappear(page);
-
-        // The list is paginated, so search for the title rather than
-        // assuming the memory is visible on the currently-loaded page.
-        await expect(
-          await searchAndGetMemoryRow(page, SHARED_MEMORY_TITLE, sharedMemoryId)
-        ).toBeVisible();
-        await expect(
-          page.getByTestId(`memory-row-${secondAuthorMemoryId}`)
-        ).not.toBeVisible();
-      });
-
       test('clicking "Total Memories" count card activates the All view', async ({
         page,
       }) => {
@@ -731,7 +708,7 @@ test.describe(
         await navigateToMemories(page);
 
         // Move away from All first
-        await page.getByRole('tab', { name: /created by me/i }).click();
+        await page.getByTestId('memory-count-card-created-by-me').click();
         await waitForAllLoadersToDisappear(page);
 
         const listResPromise = waitForResponseWithStatus(
@@ -898,49 +875,6 @@ test.describe(
         ).toBeVisible();
       });
 
-      test('clicking "All" tab after applying an author filter clears the filter', async ({
-        page,
-      }) => {
-        test.slow();
-
-        await navigateToMemories(page);
-
-        // Apply author filter
-        await page.getByRole('button', { name: /all.*author/i }).click();
-        const authorSearch = page.getByPlaceholder(/search.*author/i);
-        await expect(authorSearch).toBeVisible();
-        await authorSearch.fill(dataConsumerUser.name);
-        await waitForAllLoadersToDisappear(page);
-
-        const authorOption = page.getByRole('menuitemradio', {
-          name: dataConsumerUser.displayName,
-        });
-        await expect(authorOption).toBeVisible();
-        await authorOption.click();
-        await waitForAllLoadersToDisappear(page);
-
-        // "All" tab clears the author filter
-        const listResPromise = waitForResponseWithStatus(
-          page,
-          (res) =>
-            res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'GET',
-          200
-        );
-        await page.getByRole('tab', { name: /^all$/i }).click();
-        await listResPromise;
-        await waitForAllLoadersToDisappear(page);
-
-        await expect(
-          page.getByRole('button', { name: /clear all/i })
-        ).not.toBeVisible();
-        // The list is paginated, so search for the title rather than
-        // assuming the memory is visible on the currently-loaded page.
-        await expect(
-          await searchAndGetMemoryRow(page, SHARED_MEMORY_TITLE, sharedMemoryId)
-        ).toBeVisible();
-      });
-
       test('no results message is shown when search matches nothing', async ({
         page,
       }) => {
@@ -987,7 +921,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      test('selecting "Most Used" actually reorders rows by usageCount', async ({
+      test('selecting "Most Used" actually reorders rows by the answers a memory was applied to', async ({
         browser,
         page,
       }) => {
@@ -996,16 +930,10 @@ test.describe(
         const { apiContext, afterAction } = await createNewPage(browser);
         // Make the entity-visibility memory the clear most-used memory in
         // the whole fixture set, so it must render first once sorted.
-        // usageCount/lastUsedAt are excluded from ContextMemoryRepository's
-        // change tracking (server-side telemetry fields), so a patch that
-        // touches ONLY usageCount is silently dropped before it's persisted —
-        // also flipping `pinned` (a tracked field) forces the patch to
-        // persist, carrying usageCount along with it.
-        await patchMemory(apiContext, entityMemoryId, [
-          { op: 'add', path: '/usageCount', value: 999999 },
-          { op: 'add', path: '/lastUsedAt', value: Date.now() },
-          { op: 'add', path: '/pinned', value: true },
-        ]);
+        await recordMemoryOutcomes(apiContext, entityMemoryId, {
+          appliedCount: 999999,
+          lastAppliedAt: Date.now(),
+        });
         await afterAction();
 
         await navigateToMemories(page);
@@ -1015,7 +943,7 @@ test.describe(
           page,
           (res) =>
             res.url().includes(MEMORIES_API) &&
-            res.url().includes('sortBy=usageCount') &&
+            res.url().includes('sortBy=appliedCount') &&
             res.request().method() === 'GET',
           200
         );
@@ -1032,7 +960,7 @@ test.describe(
           rows.first().getByText('Cited 999999 times')
         ).toBeVisible();
 
-        // lastUsedAt is rendered next to the usage count as
+        // lastAppliedAt is rendered next to the count as
         // "Cited N times · Last {relative-time}" — assert the "Last" label
         // is present rather than a specific relative-time string, since the
         // exact rendered value depends on wall-clock time between the patch
@@ -1832,7 +1760,8 @@ test.describe(
             return (
               res.request().method() === 'GET' &&
               url.pathname === '/api/v1/search/query' &&
-              url.searchParams.get('q') === `*${table.name}*`
+              unescapeSearchQuery(url.searchParams.get('q')) ===
+                `*${table.name}*`
             );
           },
           200
@@ -1880,7 +1809,8 @@ test.describe(
             return (
               res.request().method() === 'GET' &&
               url.pathname === '/api/v1/search/query' &&
-              url.searchParams.get('q') === `*${table.name}*`
+              unescapeSearchQuery(url.searchParams.get('q')) ===
+                `*${table.name}*`
             );
           },
           200
@@ -2031,7 +1961,8 @@ test.describe(
               return (
                 res.request().method() === 'GET' &&
                 url.pathname === '/api/v1/search/query' &&
-                url.searchParams.get('q') === `*${table.name}*`
+                unescapeSearchQuery(url.searchParams.get('q')) ===
+                  `*${table.name}*`
               );
             },
             200,
