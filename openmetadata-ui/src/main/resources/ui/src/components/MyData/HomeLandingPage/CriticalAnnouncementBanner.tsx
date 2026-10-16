@@ -28,10 +28,6 @@ export interface CriticalAnnouncementBannerProps {
   onDismiss: () => void;
 }
 
-// FeaturedIcon's light theme fills solid red under `dark-mode`; the design
-// tints the circle instead, the way the Critical surface reads elsewhere.
-const ICON_CLASS = 'tw:dark:bg-utility-error-50 tw:dark:text-utility-error-500';
-
 // A global `h2` rule outranks Typography's size, so it is restated as
 // important to keep the heading at the banner's scale.
 const TITLE_CLASS =
@@ -59,7 +55,6 @@ const CriticalAnnouncementBanner = ({
       data-testid="critical-announcement-banner">
       <FeaturedIcon
         outlined
-        className={ICON_CLASS}
         color="error"
         icon={icon}
         size="md"

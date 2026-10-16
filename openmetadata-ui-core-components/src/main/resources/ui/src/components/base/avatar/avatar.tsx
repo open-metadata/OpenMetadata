@@ -6,6 +6,16 @@ import { getAvatarColorClasses } from './utils';
 
 type AvatarSize = 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
+export type AvatarIconColor = 'brand' | 'gray' | 'success' | 'warning' | 'error';
+
+const iconColors: Record<AvatarIconColor, string> = {
+  brand: 'tw:bg-utility-brand-50 tw:text-utility-brand-600',
+  gray: 'tw:bg-utility-gray-50 tw:text-utility-gray-600',
+  success: 'tw:bg-utility-success-50 tw:text-utility-success-600',
+  warning: 'tw:bg-utility-warning-50 tw:text-utility-warning-600',
+  error: 'tw:bg-utility-error-50 tw:text-utility-error-600',
+};
+
 export interface AvatarProps {
   size?: AvatarSize;
   className?: string;
@@ -49,6 +59,12 @@ export interface AvatarProps {
    * An icon to display if no image is available.
    */
   placeholderIcon?: FC<{ className?: string }>;
+  /**
+   * Tints the surface behind `placeholderIcon` with a theme-adapting
+   * `utility-*` color (the same tile treatment as tinted featured icons).
+   * Unset keeps the plain gray surface.
+   */
+  placeholderIconColor?: AvatarIconColor;
   /**
    * A placeholder to display if no image is available.
    */
@@ -112,6 +128,7 @@ export const Avatar = ({
   colorVariant = 'auto',
   placeholder,
   placeholderIcon: PlaceholderIcon,
+  placeholderIconColor,
   badge,
   status,
   verified,
@@ -139,6 +156,10 @@ export const Avatar = ({
           alt || initials || '',
           colorVariant === 'solid' ? 'solid' : 'outlined'
         )
+      : undefined;
+  const iconColor =
+    placeholderIconColor && PlaceholderIcon && !initials && !(src && !isFailed)
+      ? iconColors[placeholderIconColor]
       : undefined;
 
   const renderMainContent = () => {
@@ -210,7 +231,7 @@ export const Avatar = ({
         'tw:relative tw:inline-flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:outline-transparent',
         // Colored initials bring their own tinted surface (+ border for the
         // outlined variant); otherwise fall back to the neutral gray surface.
-        initialsColor ? initialsColor.container : 'tw:bg-tertiary',
+        initialsColor?.container ?? iconColor ?? 'tw:bg-tertiary',
         // Initials text color lives on the root (the span inherits it) so a
         // caller's `className` — applied last — can still override it.
         showingInitials && (initialsColor?.text ?? 'tw:text-quaternary'),
