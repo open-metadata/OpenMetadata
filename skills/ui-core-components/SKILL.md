@@ -98,7 +98,7 @@ Real usage, `openmetadata-ui/src/main/resources/ui/src/components/DomainListing/
 
 ## Card
 
-`variant`: `default | elevated | outlined | ghost`. `color`:
+`variant`: `default | elevated | outlined | ghost | muted`. `color`:
 `default | brand | brandOutlined | error | warning | success`. `size`:
 `sm | md | lg` (controls `Card.Header`/`Card.Content`/`Card.Footer` padding).
 `isClickable` / `isSelected` add interactive/selected styling.

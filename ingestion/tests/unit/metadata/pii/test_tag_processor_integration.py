@@ -21,6 +21,7 @@ from unittest.mock import Mock, create_autospec
 from uuid import uuid4
 
 import pytest
+from presidio_analyzer import RecognizerResult
 from presidio_analyzer.nlp_engine import NlpEngine
 
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.classification import (
@@ -59,6 +60,7 @@ from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import Recognizer, Target
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.pii.algorithms.presidio_utils import load_nlp_engine
 from metadata.pii.models import ScoredTag
 from metadata.pii.tag_analyzer import TagAnalyzer
@@ -80,7 +82,10 @@ def shipped_pii() -> dict[str, Any]:
 
 
 def _processor(
-    classification: Classification, tags: list[Tag], language: ClassificationLanguage = ClassificationLanguage.en
+    classification: Classification,
+    tags: list[Tag],
+    language: ClassificationLanguage = ClassificationLanguage.en,
+    **kwargs,
 ) -> TagProcessor:
     config = Mock(spec=OpenMetadataWorkflowConfig)
     config.source = Mock(spec=SourceConfig)
@@ -90,6 +95,7 @@ def _processor(
         config=config,
         metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
         classification_manager=FakeClassificationManager((classification, tags)),
+        **kwargs,
     )
 
 
@@ -1091,3 +1097,181 @@ class TestTagProcessorMultiClassification:
             f"classification already has Date tag applied), but got {len(second_run_labels)}: "
             f"{[l.tagFQN for l in second_run_labels]}"  # noqa: E741
         )
+
+
+@pytest.fixture(scope="module")
+def shipped_pii_tags() -> tuple[Classification, list[Tag]]:
+    seed = (
+        Path(__file__).resolve().parents[5]
+        / "openmetadata-service/src/main/resources/json/data/tags/piiTagsWithRecognizers.json"
+    )
+    config = json.loads(seed.read_text())
+    classification = ClassificationFactory.create(
+        fqn="PII",
+        mutuallyExclusive=config["createClassification"]["mutuallyExclusive"],
+        autoClassificationConfig__enabled=True,
+        autoClassificationConfig__conflictResolution=ConflictResolution.highest_priority,
+        autoClassificationConfig__minimumConfidence=0.6,
+        autoClassificationConfig__requireExplicitMatch=True,
+    )
+    tags = [
+        TagFactory.create(
+            tag_name=tag["name"],
+            tag_classification=classification,
+            autoClassificationEnabled=tag["autoClassificationEnabled"],
+            autoClassificationPriority=tag["autoClassificationPriority"],
+            recognizers=[Recognizer.model_validate(rec) for rec in tag["recognizers"]],
+        )
+        for tag in config["createTags"]
+    ]
+    return classification, tags
+
+
+# F2601815M is a synthetic FIN checksum fixture.
+@pytest.mark.parametrize(
+    "language,column_name,value",
+    [
+        (ClassificationLanguage.en, "iban", "gb82 west 1234 5698 7654 32"),
+        (ClassificationLanguage.es, "nif", "12345678z"),
+        (ClassificationLanguage.es, "nie", "x1234567l"),
+        (ClassificationLanguage.en, "uen", "t15lp0010d"),
+        (ClassificationLanguage.en, "abn", "51-824-753-556"),
+        (ClassificationLanguage.en, "acn", "004-085-616"),
+        (ClassificationLanguage.en, "sg_nric", "F2601815M"),
+    ],
+)
+@pytest.mark.parametrize("use_context", [False, True])
+def test_new_identifier_variants_require_column_context_for_sensitive_tag(
+    shipped_pii_tags, language, column_name, value, use_context
+):
+    classification, tags = shipped_pii_tags
+    original = [tag.model_copy(deep=True) for tag in tags]
+    name = column_name if use_context else "sku"
+    column = Column(name=name, fullyQualifiedName=f"database.schema.table.{name}", dataType=DataType.VARCHAR)
+    labels = _processor(classification, tags, language).create_column_tag_labels(column, [value])
+    assert [label.tagFQN.root for label in labels] == (["PII.Sensitive"] if use_context else [])
+    assert tags == original
+
+
+@pytest.mark.parametrize("column_name", ["sku", "ticket_id", "sg_nric"])
+def test_one_valid_fin_among_synthetic_codes_still_requires_column_context(shipped_pii_tags, column_name):
+    classification, tags = shipped_pii_tags
+    column = Column(
+        name=column_name, fullyQualifiedName=f"database.schema.table.{column_name}", dataType=DataType.VARCHAR
+    )
+    # These other FIN-shaped codes deliberately all have incorrect check letters.
+    sample = ["F2601815M", *(["F1234567M"] * 39)]
+    labels = _processor(classification, tags, ClassificationLanguage.en).create_column_tag_labels(column, sample)
+    assert [label.tagFQN.root for label in labels] == (["PII.Sensitive"] if column_name == "sg_nric" else [])
+
+
+@pytest.mark.parametrize(
+    "language,column_name,value,valid_value,recognizer_name",
+    [
+        (
+            ClassificationLanguage.en,
+            "iban",
+            "gb83 west 1234 5698 7654 32",
+            "gb82 west 1234 5698 7654 32",
+            Name.IbanRecognizer,
+        ),
+        (ClassificationLanguage.es, "nif", "12345678a", "12345678z", Name.EsNifRecognizer),
+        (ClassificationLanguage.es, "nie", "x1234567a", "x1234567l", Name.EsNieRecognizer),
+        (ClassificationLanguage.en, "uen", "t15lp0010x", "t15lp0010d", Name.SgUenRecognizer),
+        (ClassificationLanguage.en, "abn", "51-824-753-557", "51-824-753-556", Name.AuAbnRecognizer),
+        (ClassificationLanguage.en, "acn", "004-085-617", "004-085-616", Name.AuAcnRecognizer),
+        (ClassificationLanguage.it, "partita_iva", "IT12345678904", "IT12345678903", Name.ItVatCodeRecognizer),
+        (ClassificationLanguage.en, "sg_nric", "S1234567E", "S1234567D", Name.SgFinRecognizer),
+        (ClassificationLanguage.en, "sg_nric", "A1234567D", "S1234567D", Name.SgFinRecognizer),
+    ],
+)
+def test_invalid_identifiers_cannot_receive_tag_from_checksum_adapter(
+    shipped_pii_tags, language, column_name, value, valid_value, recognizer_name
+):
+    classification, tags = shipped_pii_tags
+    column = Column(
+        name=column_name, fullyQualifiedName=f"database.schema.table.{column_name}", dataType=DataType.VARCHAR
+    )
+    tag = next(tag for tag in tags if model_str(tag.fullyQualifiedName) == "PII.Sensitive")
+    analyzer = TagAnalyzer(tag, column, load_nlp_engine(classification_language=language), language)
+    positive = analyzer.analyze([valid_value]).recognizer_results
+    assert any(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer_name.value
+        and valid_value[result.start : result.end] == valid_value
+        for result in positive
+    )
+    negative = analyzer.analyze([value]).recognizer_results
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] != recognizer_name.value
+        for result in negative
+    )
+    processor = _processor(classification, tags, language)
+    expected_reason = f"Detected by `{recognizer_name.value}`"
+    assert any(
+        expected_reason in (label.reason or "") for label in processor.create_column_tag_labels(column, [valid_value])
+    )
+    assert all(
+        expected_reason not in (label.reason or "") for label in processor.create_column_tag_labels(column, [value])
+    )
+
+
+@pytest.mark.parametrize("column_name", ["sku", "partita_iva"])
+def test_attached_italian_vat_receives_sensitive_tag_without_column_context(shipped_pii_tags, column_name):
+    classification, tags = shipped_pii_tags
+    column = Column(
+        name=column_name, fullyQualifiedName=f"database.schema.table.{column_name}", dataType=DataType.VARCHAR
+    )
+    value = "IT12345678903"
+    tag = next(tag for tag in tags if model_str(tag.fullyQualifiedName) == "PII.Sensitive")
+    analyzer = TagAnalyzer(
+        tag, column, load_nlp_engine(classification_language=ClassificationLanguage.it), ClassificationLanguage.it
+    )
+    matches = [
+        result
+        for result in analyzer.analyze([value]).recognizer_results
+        if result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == Name.ItVatCodeRecognizer.value
+    ]
+    assert [(result.start, result.end, result.score) for result in matches] == [(0, len(value), 1.0)]
+    assert matches[0].analysis_explanation.pattern_name
+    labels = _processor(classification, tags, ClassificationLanguage.it).create_column_tag_labels(column, [value])
+    assert [label.tagFQN.root for label in labels] == ["PII.Sensitive"]
+    assert f"Detected by `{Name.ItVatCodeRecognizer.value}`" in (labels[0].reason or "")
+
+
+@pytest.mark.parametrize(
+    "family,column_name,value",
+    [
+        (Name.AuAbnRecognizer, "abn", "51-824-753-556"),
+        (Name.AuAcnRecognizer, "acn", "004-085-616"),
+        (Name.SgUenRecognizer, "uen", "t15lp0010d"),
+        (Name.SgFinRecognizer, "nric", "S1234567D"),
+    ],
+)
+@pytest.mark.parametrize("classification_name", ["Operations", "General"])
+def test_identifier_variants_keep_custom_tag_assignments_with_context(family, column_name, value, classification_name):
+    classification = ClassificationFactory.create(
+        fqn=classification_name,
+        mutuallyExclusive=False,
+        autoClassificationConfig__enabled=True,
+        autoClassificationConfig__minimumConfidence=0.8,
+    )
+    entry = Recognizer.model_validate(
+        {
+            "name": family.value,
+            "enabled": True,
+            "target": "content",
+            "confidenceThreshold": 0.6,
+            "recognizerConfig": {"type": "predefined", "name": family.value, "supportedLanguage": "en"},
+        }
+    )
+    tag = TagFactory.create(tag_name="Identifier", tag_classification=classification, recognizers=[entry])
+    processor = _processor(
+        classification, [tag], ClassificationLanguage.en, classification_filter=[classification_name]
+    )
+    neutral = Column(name="reference", fullyQualifiedName="database.schema.table.reference", dataType=DataType.VARCHAR)
+    assert processor.create_column_tag_labels(neutral, [value]) == []
+    column = Column(
+        name=column_name, fullyQualifiedName=f"database.schema.table.{column_name}", dataType=DataType.VARCHAR
+    )
+    labels = processor.create_column_tag_labels(column, [value])
+    assert [label.tagFQN.root for label in labels] == [f"{classification_name}.Identifier"]

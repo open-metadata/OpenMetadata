@@ -79,7 +79,10 @@ import {
   postKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
+import {
+  createArticleKnowledgePage,
+  getMemoryCitations,
+} from '../../../utils/ContextCenterPureUtils';
 import {
   CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
   CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
@@ -252,7 +255,7 @@ const ContextCenterDashboardPage: FC = () => {
     try {
       const response = await getListContextMemories({
         limit: MOST_CITED_MEMORIES_LIMIT,
-        sortBy: 'usageCount',
+        sortBy: 'appliedCount',
         sortOrder: 'desc',
       });
       setMostCitedMemories(response.data);
@@ -397,10 +400,14 @@ const ContextCenterDashboardPage: FC = () => {
     () =>
       memories.map((memory) => ({
         title: memory.title ?? getEntityName(memory),
-        meta: [`cited ${memory.usageCount}×`],
+        meta: [
+          t('label.cited-n-times', {
+            count: getMemoryCitations(memory).count ?? 0,
+          }),
+        ],
         onClick: () => handleOpenMemory(memory.name),
       })),
-    [memories, handleOpenMemory]
+    [memories, handleOpenMemory, t]
   );
 
   const mostCitedItems = useMemo(
@@ -408,7 +415,7 @@ const ContextCenterDashboardPage: FC = () => {
       mostCitedMemories.map((memory) => ({
         id: memory.id,
         title: memory.title ?? getEntityName(memory),
-        citedCount: memory.usageCount ?? 0,
+        citedCount: getMemoryCitations(memory).count ?? 0,
         onClick: () => handleOpenMemory(memory.name),
       })),
     [mostCitedMemories, handleOpenMemory]
