@@ -920,8 +920,8 @@ const SchemaTable = () => {
             entity: t('label.constraint'),
           }),
         })}
-        value={editConstraint ?? null}
-        onChange={(key) =>
+        selectedKey={editConstraint ?? null}
+        onSelectionChange={(key) =>
           setEditConstraint(
             key === NO_CONSTRAINT_KEY ? undefined : (key as Constraint)
           )

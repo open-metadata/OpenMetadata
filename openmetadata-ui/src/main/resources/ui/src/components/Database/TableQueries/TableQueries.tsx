@@ -630,7 +630,12 @@ const TableQueries: FC<TableQueriesProp> = ({
                         onGetInitialOptions={getInitialTagsOptions}
                         onSearch={handleTagsSearch}
                       />
-                      <span className="tw:inline-flex tw:items-center">
+                      <span
+                        className="tw:inline-flex tw:cursor-pointer tw:items-center"
+                        role="presentation"
+                        onClick={() => {
+                          setIsClickedCalendar(true);
+                        }}>
                         <span>
                           <Typography>{t('label.created-date')}</Typography>
                           <DatePicker.RangePicker

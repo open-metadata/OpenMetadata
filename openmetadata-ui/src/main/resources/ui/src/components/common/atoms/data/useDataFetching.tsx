@@ -66,7 +66,7 @@ export const useDataFetching = <T extends { id: string }>(
   // Default transform function
   const defaultTransform = useCallback(
     (data: SearchResponse<SearchIndex>) =>
-      (data.hits?.hits?.map((hit) => hit._source) ?? []) as unknown as T[],
+      data.hits?.hits?.map((hit) => hit._source) || [],
     []
   );
 

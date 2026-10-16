@@ -704,7 +704,7 @@ const ContextCenterMemoriesPage: FC = () => {
         t('server.entity-deleted-success', { entity: t('label.memory') })
       );
       setMemoryToDelete(undefined);
-      void refreshMemoryReviews();
+      refreshMemoryReviews();
       await fetchMemories();
       await fetchMemoryCounts();
     } catch (err) {
@@ -748,14 +748,14 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   const handleReviewResolved = useCallback(() => {
-    void refreshMemoryReviews();
-    void queryClient.invalidateQueries({
+    refreshMemoryReviews();
+    queryClient.invalidateQueries({
       queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
     });
-    void queryClient.invalidateQueries({
+    queryClient.invalidateQueries({
       queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
-    void fetchMemoryCounts();
+    fetchMemoryCounts();
   }, [fetchMemoryCounts]);
 
   const handleModalClose = useCallback(() => {
@@ -809,9 +809,9 @@ const ContextCenterMemoriesPage: FC = () => {
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
-    void refreshMemoryReviews();
-    void fetchMemories();
-    void fetchMemoryCounts();
+    refreshMemoryReviews();
+    fetchMemories();
+    fetchMemoryCounts();
   }, [handleModalClose, fetchMemories, fetchMemoryCounts]);
 
   const countCards = useMemo(
