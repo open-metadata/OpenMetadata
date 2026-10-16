@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Input, Typography } from '@openmetadata/ui-core-components';
 import { clamp } from 'lodash';
 import { useState } from 'react';
@@ -99,9 +98,8 @@ export const GlobalSettingItem = ({
             data-testid={`global-setting-value-${label}`}>
             {value}
           </span>
-          <Icon
-            className="m-l-sm flex-shrink"
-            component={EditIcon}
+          <EditIcon
+            className="tw:ml-3 tw:shrink-0 tw:size-3.5"
             data-testid={`global-setting-edit-icon-${label}`}
             onClick={() => setIsEditing(true)}
           />

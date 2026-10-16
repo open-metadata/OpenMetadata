@@ -22,7 +22,7 @@ import {
   navigateToArticle,
   navigateToDashboard,
   parseResponseJson,
-  patchMemory,
+  recordMemoryOutcomes,
   uploadDocument,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -236,7 +236,7 @@ test.describe('Context Center - Dashboard', () => {
   // ─── 3. Most Cited Memories Widget ───────────────────────────────────────
 
   test.describe('Most Cited Memories Widget', () => {
-    test('memory with highest usageCount appears at the top of the Most Cited Memories widget', async ({
+    test('memory applied to the most answers appears at the top of the Most Cited Memories widget', async ({
       browser,
       page,
     }) => {
@@ -265,21 +265,14 @@ test.describe('Context Center - Dashboard', () => {
       expect(pendingMemory.entityStatus).toBe('Unprocessed');
       contextMemoryIdsToCleanup.add(pendingMemory.id);
 
-      // usageCount is excluded from ContextMemoryRepository's change
-      // tracking (server-side telemetry field), so a patch touching only
-      // usageCount is silently dropped — flipping `pinned` (a tracked
-      // field) in the same patch forces persistence, carrying usageCount
-      // along with it. Same technique used in ContextCenterMemories.spec.ts.
-      await patchMemory(apiContext, memory.id, [
-        { op: 'add', path: '/usageCount', value: 999999 },
-        { op: 'add', path: '/lastUsedAt', value: Date.now() },
-        { op: 'add', path: '/pinned', value: true },
-      ]);
-      await patchMemory(apiContext, pendingMemory.id, [
-        { op: 'add', path: '/usageCount', value: 2000000 },
-        { op: 'add', path: '/lastUsedAt', value: Date.now() },
-        { op: 'add', path: '/pinned', value: true },
-      ]);
+      await recordMemoryOutcomes(apiContext, memory.id, {
+        appliedCount: 999999,
+        lastAppliedAt: Date.now(),
+      });
+      await recordMemoryOutcomes(apiContext, pendingMemory.id, {
+        appliedCount: 2000000,
+        lastAppliedAt: Date.now(),
+      });
       await afterAction();
 
       await navigateToDashboard(page);

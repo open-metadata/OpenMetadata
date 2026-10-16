@@ -106,7 +106,7 @@ test.describe(
       test.slow();
       await navigateToMemories(page);
       await expect(page.getByTestId('memory-status-filter')).toContainText(
-        '2 Statuses'
+        '3 Statuses'
       );
       await expect(
         await searchAndGetMemoryRow(page, successor.title, successor.id)
@@ -119,7 +119,7 @@ test.describe(
       await page.getByRole('menuitemcheckbox', { name: 'Superseded' }).click();
       await page.keyboard.press('Escape');
       await expect(page.getByTestId('memory-status-filter')).toContainText(
-        '3 Statuses'
+        '4 Statuses'
       );
       await expect(
         page.getByTestId(`memory-row-${superseded.id}`)
@@ -164,7 +164,7 @@ test.describe(
       await page.getByRole('menuitemcheckbox', { name: 'Unprocessed' }).click();
       await page.keyboard.press('Escape');
       await expect(page.getByTestId('memory-status-filter')).toContainText(
-        'Approved'
+        '2 Statuses'
       );
       await expect(row).not.toBeVisible();
     });
