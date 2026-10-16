@@ -1306,8 +1306,14 @@ test.describe('Glossary tests', () => {
     const glossary1 = new Glossary();
     try {
       await glossary1.create(apiContext);
-      await page.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
-      await selectActiveGlossary(page, glossary1.data.displayName);
+      // Open by FQN so the /glossary auto-select redirect cannot replace the request-tags navigation.
+      await page.goto(
+        `/glossary/${encodeURIComponent(
+          glossary1.responseData.fullyQualifiedName
+        )}`,
+        { waitUntil: 'domcontentloaded' }
+      );
+      await waitForAllLoadersToDisappear(page);
 
       const value: TaskDetails = {
         term: glossary1.data.name,

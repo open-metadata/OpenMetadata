@@ -30,7 +30,6 @@ import {
   fetchCompletedCsvAsyncJobResult,
   getApiContext,
   redirectToHomePage,
-  toastNotification,
   uuid,
 } from '../../utils/common';
 import {
@@ -45,6 +44,7 @@ import { selectActiveGlossary } from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
   fillGlossaryRowDetails,
+  saveBulkImport,
   startCsvPreviewAndWaitForGrid,
   validateImportStatus,
 } from '../../utils/importUtils';
@@ -254,13 +254,9 @@ test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
 
       await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-      await page.getByRole('button', { name: 'Update' }).click();
-      await page
-        .locator('.inovua-react-toolkit-load-mask__background-layer')
-        .waitFor({ state: 'detached' });
-
-      await toastNotification(
+      await saveBulkImport(
         page,
+        'glossaries',
         `Glossary ${glossary1.responseData.fullyQualifiedName} details updated successfully`
       );
     });
@@ -371,13 +367,9 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           failed: '0',
         });
 
-        await page.getByRole('button', { name: 'Update' }).click();
-        await page
-          .locator('.inovua-react-toolkit-load-mask__background-layer')
-          .waitFor({ state: 'detached' });
-
-        await toastNotification(
+        await saveBulkImport(
           page,
+          'glossaries',
           `Glossary ${circularRefGlossary.responseData.fullyQualifiedName} details updated successfully`
         );
       });
@@ -785,10 +777,9 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           failed: '0',
         });
 
-        await page.getByRole('button', { name: 'Update' }).click();
-        await loader.waitFor({ state: 'detached' });
-        await toastNotification(
+        await saveBulkImport(
           page,
+          'glossaries',
           `Glossary ${relGlossary.responseData.fullyQualifiedName} details updated successfully`
         );
       });

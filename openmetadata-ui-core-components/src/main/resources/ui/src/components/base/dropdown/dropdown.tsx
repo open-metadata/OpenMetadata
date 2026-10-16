@@ -5,6 +5,7 @@ import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { DotsVertical } from '../../../icons';
+import { forwardRef } from 'react';
 import type { FC, HTMLAttributes, RefAttributes } from 'react';
 import type {
   MenuItemProps as AriaMenuItemProps,
@@ -204,21 +205,26 @@ const DropdownSeparator = (props: AriaSeparatorProps) => {
   );
 };
 
-const DropdownDotsButton = ({
-  size = 'md',
-  ...props
-}: Omit<ButtonUtilityProps, 'icon'>) => {
+// forwardRef so callers can anchor popovers to the button; React 18 drops a
+// plain `ref` prop on function components.
+const DropdownDotsButton = forwardRef<
+  HTMLButtonElement,
+  Omit<ButtonUtilityProps, 'icon' | 'ref'>
+>(({ size = 'md', ...props }, ref) => {
   const { t } = useCoreTranslation();
 
   return (
     <ButtonUtility
       aria-label={t('label.open-menu', 'Open menu')}
       icon={DotsVertical}
+      ref={ref}
       size={size}
       {...props}
     />
   );
-};
+});
+
+DropdownDotsButton.displayName = 'DropdownDotsButton';
 
 export type DropdownSectionHeaderProps = HTMLAttributes<HTMLElement> &
   RefAttributes<HTMLElement>;

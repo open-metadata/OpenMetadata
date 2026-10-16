@@ -68,7 +68,7 @@ function ActivityEventFooter({
             <ButtonUtility
               aria-label={t('label.comment')}
               data-testid="comment-button"
-              icon={<ThreadIcon data-icon data-testid="comment-icon" />}
+              icon={ThreadIcon}
               size="lg"
               onPress={handleCommentPress}
             />
