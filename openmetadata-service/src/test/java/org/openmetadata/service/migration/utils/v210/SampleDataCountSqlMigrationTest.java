@@ -106,14 +106,14 @@ class SampleDataCountSqlMigrationTest {
 
   @ParameterizedTest
   @MethodSource("dialects")
-  void clampsAutoClassificationCountsAboveTheMaximum(String dialect) {
-    try (Handle handle = open(dialect)) {
-      Database db = seed(new Database(handle, dialect));
-      Map<String, JsonNode> before = configs(db);
+  void clampsAutoClassificationCountsAboveTheMaximum(final String dialect) {
+    try (final Handle handle = open(dialect)) {
+      final Database database = seed(new Database(handle, dialect));
+      final Map<String, JsonNode> before = configs(database);
 
-      runClampStatement(db);
+      runClampStatement(database);
 
-      Map<String, JsonNode> after = configs(db);
+      final Map<String, JsonNode> after = configs(database);
       assertEquals(MAXIMUM, after.get(ABOVE).path(SAMPLE_DATA_COUNT).asInt());
       assertEquals(MAXIMUM, after.get(JUST_ABOVE).path(SAMPLE_DATA_COUNT).asInt());
       assertTrue(after.get(JUST_ABOVE).path("enableAutoClassification").asBoolean());
@@ -123,14 +123,14 @@ class SampleDataCountSqlMigrationTest {
 
   @ParameterizedTest
   @MethodSource("dialects")
-  void leavesCountsWithinTheMaximumAndOtherPipelinesUntouched(String dialect) {
-    try (Handle handle = open(dialect)) {
-      Database db = seed(new Database(handle, dialect));
-      Map<String, JsonNode> before = configs(db);
+  void leavesCountsWithinTheMaximumAndOtherPipelinesUntouched(final String dialect) {
+    try (final Handle handle = open(dialect)) {
+      final Database database = seed(new Database(handle, dialect));
+      final Map<String, JsonNode> before = configs(database);
 
-      runClampStatement(db);
+      runClampStatement(database);
 
-      Map<String, JsonNode> after = configs(db);
+      final Map<String, JsonNode> after = configs(database);
       for (String name : List.of(AT_MAXIMUM, BELOW, UNSET, PROFILER)) {
         assertEquals(before.get(name), after.get(name), name);
       }
@@ -139,23 +139,23 @@ class SampleDataCountSqlMigrationTest {
 
   @ParameterizedTest
   @MethodSource("dialects")
-  void secondRunChangesNothing(String dialect) {
-    try (Handle handle = open(dialect)) {
-      Database db = seed(new Database(handle, dialect));
-      runClampStatement(db);
-      Map<String, JsonNode> afterFirstRun = configs(db);
+  void secondRunChangesNothing(final String dialect) {
+    try (final Handle handle = open(dialect)) {
+      final Database database = seed(new Database(handle, dialect));
+      runClampStatement(database);
+      final Map<String, JsonNode> afterFirstRun = configs(database);
 
-      runClampStatement(db);
+      runClampStatement(database);
 
-      assertEquals(afterFirstRun, configs(db));
+      assertEquals(afterFirstRun, configs(database));
     }
   }
 
-  private static String autoClassification(String extraFields) {
+  private static String autoClassification(final String extraFields) {
     return "{\"type\": \"AutoClassification\"%s}".formatted(extraFields);
   }
 
-  private static Handle open(String dialect) {
+  private static Handle open(final String dialect) {
     return MYSQL_DIALECT.equals(dialect)
         ? Jdbi.create(
                 "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
@@ -171,49 +171,52 @@ class SampleDataCountSqlMigrationTest {
             .open();
   }
 
-  private static Database seed(Database db) {
-    db.handle().execute("DROP TABLE IF EXISTS ingestion_pipeline_entity");
-    db.handle().execute(db.isPostgres() ? POSTGRES_PIPELINE_TABLE : MYSQL_PIPELINE_TABLE);
-    FIXTURES.forEach(fixture -> insert(db, fixture));
-    return db;
+  private static Database seed(final Database database) {
+    database.handle().execute("DROP TABLE IF EXISTS ingestion_pipeline_entity");
+    database
+        .handle()
+        .execute(database.isPostgres() ? POSTGRES_PIPELINE_TABLE : MYSQL_PIPELINE_TABLE);
+    FIXTURES.forEach(fixture -> insert(database, fixture));
+    return database;
   }
 
-  private static void insert(Database db, Fixture fixture) {
-    String json =
+  private static void insert(final Database database, final Fixture fixture) {
+    final String json =
         """
         {"id": "%s", "name": "%s", "sourceConfig": {"config": %s}}"""
             .formatted(UUID.randomUUID(), fixture.name(), fixture.config());
-    db.handle()
+    database
+        .handle()
         .createUpdate(
-            "INSERT INTO ingestion_pipeline_entity (json) VALUES (" + db.jsonValue() + ")")
+            "INSERT INTO ingestion_pipeline_entity (json) VALUES (" + database.jsonValue() + ")")
         .bind("json", json)
         .execute();
   }
 
-  /** Each pipeline's stored source config, keyed by pipeline name. */
-  private static Map<String, JsonNode> configs(Database db) {
-    Map<String, JsonNode> configs = new LinkedHashMap<>();
-    db.handle()
-        .createQuery("SELECT " + db.jsonText() + " FROM ingestion_pipeline_entity")
+  private static Map<String, JsonNode> configs(final Database database) {
+    final Map<String, JsonNode> configs = new LinkedHashMap<>();
+    database
+        .handle()
+        .createQuery("SELECT " + database.jsonText() + " FROM ingestion_pipeline_entity")
         .mapTo(String.class)
         .forEach(
             json -> {
-              JsonNode pipeline = JsonUtils.readTree(json);
+              final JsonNode pipeline = JsonUtils.readTree(json);
               configs.put(
                   pipeline.path("name").asText(), pipeline.path("sourceConfig").path("config"));
             });
     return configs;
   }
 
-  private static void runClampStatement(Database db) {
-    clampStatements(db.dialect()).forEach(statement -> db.handle().execute(statement));
+  private static void runClampStatement(final Database database) {
+    clampStatements(database.dialect()).forEach(statement -> database.handle().execute(statement));
   }
 
   /** Parsed with the migration framework's own splitter, so it is what an upgrade would execute. */
-  private static List<String> clampStatements(String dialect) {
-    ConnectionType connectionType =
+  private static List<String> clampStatements(final String dialect) {
+    final ConnectionType connectionType =
         MYSQL_DIALECT.equals(dialect) ? ConnectionType.MYSQL : ConnectionType.POSTGRES;
-    List<String> statements =
+    final List<String> statements =
         MigrationFile.parseSQLFile(migrationFile(dialect).toFile(), connectionType).stream()
             .filter(sql -> sql.contains(SAMPLE_DATA_COUNT))
             .toList();
@@ -221,7 +224,7 @@ class SampleDataCountSqlMigrationTest {
     return statements;
   }
 
-  private static Path migrationFile(String dialect) {
+  private static Path migrationFile(final String dialect) {
     Path current = Path.of("").toAbsolutePath();
     while (current != null && !Files.isDirectory(current.resolve("bootstrap/sql/migrations"))) {
       current = current.getParent();
