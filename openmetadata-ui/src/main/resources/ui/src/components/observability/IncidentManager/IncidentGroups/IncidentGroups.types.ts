@@ -81,6 +81,11 @@ export interface IncidentGroupsLoadErrorProps {
 export interface IncidentListProps {
   incidents: TestCaseResolutionStatus[];
   isLoading: boolean;
+  /**
+   * Scroll the rows inside the space the list is given, under a header that
+   * stays put, rather than growing the list to fit them.
+   */
+  isScrollable?: boolean;
   /** An incident's status or severity was changed from its row. */
   onIncidentChange?: () => void;
 }

@@ -122,6 +122,7 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
 const IncidentList = ({
   incidents,
   isLoading,
+  isScrollable = false,
   onIncidentChange,
 }: IncidentListProps) => {
   const { t } = useTranslation();
@@ -189,8 +190,12 @@ const IncidentList = ({
       className={
         isLoading && incidents.length > 0 ? 'tw:opacity-60' : undefined
       }
+      containerClassName={
+        isScrollable ? 'tw:min-h-0 tw:flex-1 tw:overflow-y-auto' : undefined
+      }
       data-testid="incident-list"
-      size="sm">
+      size="sm"
+      stickyHeader={isScrollable}>
       <Table.Header columns={columns}>
         {(column) => (
           <Table.Head

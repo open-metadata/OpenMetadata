@@ -156,9 +156,11 @@ const IncidentGroupDrawer = ({
                 </Box>
               </Box>
             </SlideoutMenu.Header>
-            <SlideoutMenu.Content>
-              <Box direction="col" gap={6}>
-                <Card className="tw:flex tw:divide-x tw:divide-secondary">
+            <SlideoutMenu.Content className="tw:pb-6">
+              {/* Fills the panel without overflowing it: only the incident
+                  rows scroll, so the summary and the pager stay in view. */}
+              <Box className="tw:h-full tw:min-h-0" direction="col" gap={6}>
+                <Card className="tw:flex tw:shrink-0 tw:divide-x tw:divide-secondary">
                   <IncidentGroupStat
                     icon={AlertTriangle}
                     label={t('label.incident-plural')}
@@ -186,7 +188,7 @@ const IncidentGroupDrawer = ({
                     }
                   />
                 </Card>
-                <Box direction="col" gap={3}>
+                <Box className="tw:min-h-0 tw:flex-1" direction="col" gap={3}>
                   <Box align="center" justify="between">
                     <Box align="center" gap={2}>
                       <Typography
@@ -213,7 +215,7 @@ const IncidentGroupDrawer = ({
                       {t('label.view-all')}
                     </Button>
                   </Box>
-                  <TableCard.Root>
+                  <TableCard.Root className="tw:flex tw:min-h-0 tw:flex-col">
                     {isError ? (
                       <IncidentGroupsLoadError
                         data-testid="incident-group-incidents-error"
@@ -221,6 +223,7 @@ const IncidentGroupDrawer = ({
                       />
                     ) : (
                       <IncidentList
+                        isScrollable
                         incidents={incidents}
                         isLoading={isLoading}
                         onIncidentChange={() => {
@@ -230,7 +233,7 @@ const IncidentGroupDrawer = ({
                       />
                     )}
                     <PaginationCardWithControls
-                      className="tw:border-0"
+                      className="tw:shrink-0 tw:border-0"
                       page={currentPage}
                       pageSize={pageSize}
                       pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
