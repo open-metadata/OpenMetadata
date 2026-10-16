@@ -592,8 +592,10 @@ test.describe('Bulk Edit Entity', () => {
         page.getByTestId('certification-Certification.Gold')
       ).toBeVisible();
 
+      // Columns inherit the table's glossary terms as DERIVED labels (#31834),
+      // so the schema grid repeats the term on every column row.
       await expect(
-        page.getByRole('link', {
+        page.getByTestId('KnowledgePanel.GlossaryTerms').getByRole('link', {
           name: glossaryTerm.data.displayName,
         })
       ).toBeVisible();
