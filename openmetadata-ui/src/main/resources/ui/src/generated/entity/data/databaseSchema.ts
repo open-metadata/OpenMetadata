@@ -680,7 +680,6 @@ export enum DatabaseServiceType {
     Datalake = "Datalake",
     Db2 = "Db2",
     Dbt = "Dbt",
-    DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
     Dremio = "Dremio",

@@ -14,39 +14,53 @@ import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO.TagLabel
 
 class TagLabelRowMapperWithTargetFqnHashTest {
 
-  @Test
-  void glossaryLabelWhoseTermRowIsGoneIsReturnedUnenriched() throws SQLException {
-    ResultSet row = tagUsageRow(TagLabel.TagSource.GLOSSARY, null);
-
-    Pair<String, TagLabel> mapped = new TagLabelRowMapperWithTargetFqnHash().map(row, null);
-
-    assertEquals("targetHash", mapped.getLeft());
-    assertEquals("Glossary.Term", mapped.getRight().getTagFQN());
-    assertNull(mapped.getRight().getName());
-  }
-
-  @Test
-  void glossaryLabelIsEnrichedFromTheTermJson() throws SQLException {
-    ResultSet row =
-        tagUsageRow(
-            TagLabel.TagSource.GLOSSARY,
-            "{\"name\":\"Term\",\"displayName\":\"Term Display\",\"description\":\"d\"}");
-
-    TagLabel label = new TagLabelRowMapperWithTargetFqnHash().map(row, null).getRight();
-
-    assertEquals("Term", label.getName());
-    assertEquals("Term Display", label.getDisplayName());
+  private static ResultSet orphanRow(TagLabel.TagSource source) throws SQLException {
+    return tagUsageRow(source, null);
   }
 
   private static ResultSet tagUsageRow(TagLabel.TagSource source, String json) throws SQLException {
-    ResultSet row = mock(ResultSet.class);
-    when(row.getInt("source")).thenReturn(source.ordinal());
-    when(row.getInt("labelType")).thenReturn(TagLabel.LabelType.MANUAL.ordinal());
-    when(row.getInt("state")).thenReturn(TagLabel.State.CONFIRMED.ordinal());
-    when(row.getString("tagFQN")).thenReturn("Glossary.Term");
-    when(row.getString("targetFQNHash")).thenReturn("targetHash");
-    when(row.getString("metadata")).thenReturn(null);
-    when(row.getString("json")).thenReturn(json);
-    return row;
+    ResultSet rs = mock(ResultSet.class);
+    when(rs.getInt("source")).thenReturn(source.ordinal());
+    when(rs.getInt("labelType")).thenReturn(TagLabel.LabelType.MANUAL.ordinal());
+    when(rs.getInt("state")).thenReturn(TagLabel.State.CONFIRMED.ordinal());
+    when(rs.getString("tagFQN")).thenReturn("g.deletedTerm");
+    when(rs.getString("targetFQNHash")).thenReturn("hash");
+    when(rs.getString("json")).thenReturn(json);
+    return rs;
+  }
+
+  @Test
+  void orphanGlossaryUsageMapsToUnenrichedLabel() throws SQLException {
+    Pair<String, TagLabel> row =
+        new TagLabelRowMapperWithTargetFqnHash().map(orphanRow(TagLabel.TagSource.GLOSSARY), null);
+
+    assertEquals("hash", row.getLeft());
+    assertEquals("g.deletedTerm", row.getRight().getTagFQN());
+    assertNull(row.getRight().getName());
+  }
+
+  @Test
+  void orphanClassificationUsageMapsToUnenrichedLabel() throws SQLException {
+    Pair<String, TagLabel> row =
+        new TagLabelRowMapperWithTargetFqnHash()
+            .map(orphanRow(TagLabel.TagSource.CLASSIFICATION), null);
+
+    assertEquals("g.deletedTerm", row.getRight().getTagFQN());
+    assertNull(row.getRight().getName());
+  }
+
+  @Test
+  void glossaryUsageIsEnrichedFromTheTermJson() throws SQLException {
+    TagLabel label =
+        new TagLabelRowMapperWithTargetFqnHash()
+            .map(
+                tagUsageRow(
+                    TagLabel.TagSource.GLOSSARY,
+                    "{\"name\":\"Term\",\"displayName\":\"Term Display\"}"),
+                null)
+            .getRight();
+
+    assertEquals("Term", label.getName());
+    assertEquals("Term Display", label.getDisplayName());
   }
 }
