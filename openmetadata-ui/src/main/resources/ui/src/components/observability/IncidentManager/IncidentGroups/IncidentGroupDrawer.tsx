@@ -36,6 +36,8 @@ import IncidentGroupRelatedBadge from './IncidentGroupRelatedBadge';
 import {
   INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
+  INCIDENT_TABLE_CARD_CLASS,
+  INCIDENT_TABLE_PAGER_CLASS,
 } from './IncidentGroups.constants';
 import {
   IncidentGroupDrawerProps,
@@ -221,9 +223,8 @@ const IncidentGroupDrawer = ({
                       {t('label.view-all')}
                     </Button>
                   </Box>
-                  {/* A full border, drawn as a border: the card's default
-                      outline is painted over by the sticky header. */}
-                  <TableCard.Root className="tw:flex tw:min-h-0 tw:flex-col tw:border tw:border-secondary tw:shadow-none tw:outline-0">
+                  <TableCard.Root
+                    className={`tw:flex tw:min-h-0 tw:flex-col ${INCIDENT_TABLE_CARD_CLASS}`}>
                     {isError ? (
                       <IncidentGroupsLoadError
                         data-testid="incident-group-incidents-error"
@@ -241,7 +242,7 @@ const IncidentGroupDrawer = ({
                       />
                     )}
                     <PaginationCardWithControls
-                      className="tw:shrink-0 tw:border-0 tw:border-t tw:border-secondary tw:shadow-none"
+                      className={INCIDENT_TABLE_PAGER_CLASS}
                       page={currentPage}
                       pageSize={pageSize}
                       pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}

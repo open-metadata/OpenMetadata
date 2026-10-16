@@ -190,9 +190,9 @@ const IncidentList = ({
       // as on its way out rather than as the result.
       className={classNames({
         'tw:opacity-60': isLoading && incidents.length > 0,
-        // The pager below a scrolling list draws the divider under the rows;
-        // the last row's own line would double it.
-        'tw:[&_tbody>tr:last-child>td]:after:hidden': isScrollable,
+        // The pager below the list draws the divider under the rows; the last
+        // row's own line would double it.
+        'tw:[&_tbody>tr:last-child>td]:after:hidden': true,
       })}
       containerClassName={
         isScrollable ? 'tw:min-h-0 tw:flex-1 tw:overflow-y-auto' : undefined

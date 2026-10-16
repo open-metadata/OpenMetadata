@@ -51,6 +51,8 @@ import IncidentGroupDrawer from './IncidentGroupDrawer';
 import {
   CLEARED_INCIDENT_GROUP_FILTERS,
   INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
+  INCIDENT_TABLE_CARD_CLASS,
+  INCIDENT_TABLE_PAGER_CLASS,
 } from './IncidentGroups.constants';
 import {
   BulkIncidentChange,
@@ -327,7 +329,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
             }
           />
         )}
-        <TableCard.Root>
+        <TableCard.Root className={INCIDENT_TABLE_CARD_CLASS}>
           <IncidentGroupsTable
             groupBy={groupBy}
             groups={incidentGroups}
@@ -341,7 +343,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
             onSortChange={handleSortChange}
           />
           <PaginationCardWithControls
-            className="tw:border-0"
+            className={INCIDENT_TABLE_PAGER_CLASS}
             page={currentPage}
             pageSize={pageSize}
             pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
