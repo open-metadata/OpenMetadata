@@ -131,49 +131,64 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
       align="start"
       data-testid={`query-builder-rule-${ruleIndexById[String(rule.id)] ?? 0}`}
       gap={4}>
-      <div
-        className="tw:grid tw:min-w-0 tw:flex-1 tw:gap-3.5"
-        style={{
-          gridTemplateColumns: getQueryBuilderColumnRatios(
-            fieldControls.length
-          ),
-        }}>
-        {/* Each level is a grid child of its own, so a row too narrow for all
+      {/* A container, so a rule in a narrow panel stacks its controls instead of squeezing them. */}
+      <div className="tw:@container tw:min-w-0 tw:flex-1">
+        <div
+          className={classNames('tw:grid tw:gap-3.5', {
+            'tw:grid-cols-1 tw:@md:grid-cols-[60fr_41fr_100fr]':
+              fieldControls.length === 1,
+          })}
+          style={
+            fieldControls.length > 1
+              ? {
+                  gridTemplateColumns: getQueryBuilderColumnRatios(
+                    fieldControls.length
+                  ),
+                }
+              : undefined
+          }>
+          {/* Each level is a grid child of its own, so a row too narrow for all
             of them wraps rather than overflowing. */}
-        {fieldControls.map((control) => (
-          <QueryBuilderCell
-            className={classNames({
-              // Narrowest a lone Field control may get before its name reads as ellipses.
-              'tw:min-w-[140px]': fieldControls.length === 1,
-            })}
-            key={control.key}
-            label={t('label.field')}>
-            {config.settings.renderField?.({
-              ...(control.dataTestId ? { dataTestId: control.dataTestId } : {}),
-              items: control.items,
-              placeholder: t('label.field'),
-              readonly,
-              selectedKey: control.selectedKey ?? undefined,
-              setField: (key: string) =>
-                actions.setField(
-                  control.path as never,
-                  resolveSelectedField(config, key) as never
-                ),
-            } as unknown as FieldProps)}
-          </QueryBuilderCell>
-        ))}
+          {fieldControls.map((control) => (
+            <QueryBuilderCell
+              className={classNames({
+                // Narrowest a lone Field control may get before its name reads as ellipses.
+                'tw:min-w-[140px]': fieldControls.length === 1,
+              })}
+              key={control.key}
+              label={t('label.field')}>
+              {config.settings.renderField?.({
+                ...(control.dataTestId
+                  ? { dataTestId: control.dataTestId }
+                  : {}),
+                items: control.items,
+                placeholder: t('label.field'),
+                readonly,
+                selectedKey: control.selectedKey ?? undefined,
+                setField: (key: string) =>
+                  actions.setField(
+                    control.path as never,
+                    resolveSelectedField(config, key) as never
+                  ),
+              } as unknown as FieldProps)}
+            </QueryBuilderCell>
+          ))}
 
-        <QueryBuilderControl
-          items={operatorItems}
-          label={t('label.operator')}
-          placeholder={t('label.operator')}
-          readonly={readonly || !field}
-          render={config.settings.renderOperator}
-          selectedKey={operator}
-          onChange={(key) => actions.setOperator(path, key)}
-        />
+          <QueryBuilderControl
+            items={operatorItems}
+            label={t('label.operator')}
+            placeholder={t('label.operator')}
+            readonly={readonly || !field}
+            render={config.settings.renderOperator}
+            selectedKey={operator}
+            onChange={(key) => actions.setOperator(path, key)}
+          />
 
-        <QueryBuilderValueCell cells={valueCells} takesNoValue={takesNoValue} />
+          <QueryBuilderValueCell
+            cells={valueCells}
+            takesNoValue={takesNoValue}
+          />
+        </div>
       </div>
 
       {canRemoveRule && !readonly && (

@@ -16,7 +16,6 @@ import {
   Box,
   ButtonGroup,
   ButtonGroupItem,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,9 +52,10 @@ const WorkflowListHeader = ({
   return (
     <Box align="center" className="tw:pb-3" gap={3} justify="between">
       <Box align="center" gap={2}>
-        <Typography as="h2" className="tw:m-0" size="text-md" weight="semibold">
+        {/* A plain heading: Typography styles h1 to h6 through its prose wrapper. */}
+        <h2 className="tw:m-0 tw:text-md tw:font-semibold tw:text-primary">
           {t('label.all-entity', { entity: t('label.workflow-plural') })}
-        </Typography>
+        </h2>
         <Badge data-testid="workflow-count" size="sm">
           {count}
         </Badge>
