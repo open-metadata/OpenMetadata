@@ -80,7 +80,10 @@ const OntologyDataAssetPicker = ({
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<AssetScope>('all');
   const [results, setResults] = useState<EntityReference[]>([]);
-  const [page, setPage] = useState(1);
+  // `attempt` re-runs a request for the same page after it failed.
+  const [request, setRequest] = useState({ attempt: 0, page: 1 });
+  const [loadedPage, setLoadedPage] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const [total, setTotal] = useState(0);
   // Why the server refused an asset, keyed by asset id.
   const [failures, setFailures] = useState<Map<string, string>>(
@@ -93,11 +96,13 @@ const OntologyDataAssetPicker = ({
   const termFqn = term.fullyQualifiedName ?? term.name;
 
   useEffect(() => {
-    setPage(1);
+    setRequest({ attempt: 0, page: 1 });
   }, [query, scope, termFqn]);
 
   useEffect(() => {
+    const { page } = request;
     let isCurrent = true;
+    setIsLoading(true);
     const timer = window.setTimeout(async () => {
       try {
         const response = await searchQuery({
@@ -116,11 +121,16 @@ const OntologyDataAssetPicker = ({
             )
           );
           setResults((current) => (page === 1 ? hits : [...current, ...hits]));
+          setLoadedPage(page);
           setTotal(response.hits.total.value ?? 0);
         }
       } catch (error) {
         if (isCurrent) {
           showErrorToast(error as AxiosError);
+        }
+      } finally {
+        if (isCurrent) {
+          setIsLoading(false);
         }
       }
     }, SEARCH_DEBOUNCE_MS);
@@ -129,7 +139,15 @@ const OntologyDataAssetPicker = ({
       isCurrent = false;
       window.clearTimeout(timer);
     };
-  }, [page, query, scope, termFqn]);
+  }, [request, query, scope, termFqn]);
+
+  // The next page follows the last one that loaded, so a failed page is asked
+  // for again rather than skipped.
+  const loadMore = () =>
+    setRequest(({ attempt }) => ({
+      attempt: attempt + 1,
+      page: loadedPage + 1,
+    }));
 
   const toggle = (asset: EntityReference, isSelected: boolean) =>
     setSelected((current) => {
@@ -291,8 +309,10 @@ const OntologyDataAssetPicker = ({
             <Button
               color="link-gray"
               data-testid="ontology-data-asset-load-more"
+              isDisabled={isLoading}
+              isLoading={isLoading}
               size="sm"
-              onPress={() => setPage((current) => current + 1)}>
+              onPress={loadMore}>
               {t('label.load-more')}
             </Button>
           </Box>

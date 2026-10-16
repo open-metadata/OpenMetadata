@@ -155,6 +155,45 @@ describe('OntologyDataAssetPicker', () => {
     ).not.toBeChecked();
   });
 
+  it('asks for each page once and retries a page that failed', async () => {
+    mockSearch
+      .mockResolvedValueOnce({
+        hits: { hits: [hit('t-1', 'customers', 'table')], total: { value: 2 } },
+      } as never)
+      .mockRejectedValueOnce(new Error('timeout'))
+      .mockResolvedValueOnce({
+        hits: { hits: [hit('t-2', 'orders', 'table')], total: { value: 2 } },
+      } as never);
+    render(
+      <OntologyDataAssetPicker
+        term={TERM}
+        onCancel={jest.fn()}
+        onPartialSave={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+    const loadMore = await screen.findByTestId('ontology-data-asset-load-more');
+
+    fireEvent.click(loadMore);
+    fireEvent.click(loadMore);
+
+    await waitFor(() => expect(mockSearch).toHaveBeenCalledTimes(2));
+
+    expect(mockSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pageNumber: 2 })
+    );
+
+    await waitFor(() => expect(loadMore).toBeEnabled());
+    fireEvent.click(loadMore);
+
+    expect(
+      await screen.findByTestId('ontology-data-asset-option-t-2')
+    ).toBeInTheDocument();
+    expect(
+      mockSearch.mock.calls.map(([request]) => request.pageNumber)
+    ).toEqual([1, 2, 2]);
+  });
+
   it('loads the next page of matches on demand', async () => {
     mockSearch.mockResolvedValueOnce({
       hits: {
