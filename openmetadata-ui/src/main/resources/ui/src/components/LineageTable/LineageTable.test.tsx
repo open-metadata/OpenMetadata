@@ -1401,7 +1401,6 @@ describe('LineageTable', () => {
     });
 
     it('re-fetches pagination info when the time filter changes (paginationInfoKey includes time)', async () => {
-      // First render with time range A
       setupStoreWithTimeFilter({ startTime, endTime });
 
       const setLineagePagingInfo = jest.fn();
@@ -1445,6 +1444,47 @@ describe('LineageTable', () => {
             include_pagination_info: true,
           })
         );
+      });
+    });
+
+    it('resets to page 1 when the time filter changes', async () => {
+      setupStoreWithTimeFilter({ startTime, endTime });
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+      });
+
+      const handlePageChange = jest.fn();
+      mockUsePaging.mockReturnValue({
+        currentPage: 2,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+        handlePageSizeChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      const { rerender } = render(<LineageTable entity={mockEntity} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalled();
+      });
+
+      handlePageChange.mockClear();
+
+      setupStoreWithTimeFilter({
+        startTime: startTime + 1000,
+        endTime: endTime + 1000,
+      });
+
+      rerender(<LineageTable entity={mockEntity} />);
+
+      await waitFor(() => {
+        expect(handlePageChange).toHaveBeenCalledWith(1);
       });
     });
   });
