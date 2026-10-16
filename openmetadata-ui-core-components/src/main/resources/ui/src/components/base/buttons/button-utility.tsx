@@ -199,21 +199,23 @@ export const ButtonUtility = forwardRef<
     button
   );
 
-  if (!softDisabled) {
+  if (!tooltip || href) {
     return content;
   }
 
   // A parent MenuTrigger / DialogTrigger presses through context, not props, so
   // a soft-disabled button stops the press events before they reach it. The
   // wrapper sits outside Tooltip, which would otherwise make it a second tab stop.
+  // It stays mounted while enabled too, so toggling isDisabled updates the button
+  // in place instead of remounting it and dropping keyboard focus.
   return (
     <span
       className="tw:contents"
-      onClickCapture={blockClick}
-      onKeyDownCapture={stopKeyPress}
-      onKeyUpCapture={stopKeyPress}
-      onMouseDownCapture={stopPress}
-      onPointerDownCapture={stopPress}>
+      onClickCapture={softDisabled ? blockClick : undefined}
+      onKeyDownCapture={softDisabled ? stopKeyPress : undefined}
+      onKeyUpCapture={softDisabled ? stopKeyPress : undefined}
+      onMouseDownCapture={softDisabled ? stopPress : undefined}
+      onPointerDownCapture={softDisabled ? stopPress : undefined}>
       {content}
     </span>
   );

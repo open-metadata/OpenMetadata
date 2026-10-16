@@ -394,6 +394,20 @@ describe('ButtonUtility — icon size and color', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it('keeps the same focused button when it becomes disabled with a tooltip', () => {
+    const { rerender } = render(
+      <ButtonUtility icon={Edit01} tooltip="Refresh" />
+    );
+    const button = screen.getByRole('button', { name: 'Refresh' });
+    button.focus();
+
+    rerender(<ButtonUtility isDisabled icon={Edit01} tooltip="Refresh" />);
+
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBe(button);
+    expect(button).toHaveFocus();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+  });
+
   it('disables a button without a tooltip natively', () => {
     render(<ButtonUtility isDisabled aria-label="Edit" icon={Edit01} />);
 
