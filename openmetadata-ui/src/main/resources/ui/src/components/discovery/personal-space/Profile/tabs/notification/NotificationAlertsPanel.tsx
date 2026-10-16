@@ -37,6 +37,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
@@ -83,7 +84,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
   const { savePageSize, resolvePageSize } = useSavedPageSize();
   const pageSize = resolvePageSize(hashPageSize);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);

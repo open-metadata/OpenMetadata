@@ -81,6 +81,13 @@ jest.mock('../../../../../../rest/alertsAPI', () => ({
 }));
 
 jest.mock('../../../../../../hooks/useSettingsHash', () => ({
+  useHashPagingParams: () => ({
+    page: 1,
+    pageSize: undefined,
+    cursor: undefined,
+    cursorType: undefined,
+    setPage: jest.fn(),
+  }),
   useSettingsHash: () => ({
     state: { params: {} },
     updateParams: jest.fn(),

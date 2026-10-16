@@ -32,6 +32,7 @@ import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterOffIcon } from '../../../../../../assets/svg/ic-filter-off.svg';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
@@ -46,7 +47,10 @@ import {
 import { EventSubscription } from '../../../../../../generated/events/eventSubscription';
 import { Paging } from '../../../../../../generated/type/paging';
 import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
-import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import {
+  useHashPagingParams,
+  useSettingsHash,
+} from '../../../../../../hooks/useSettingsHash';
 import { getAlertEventsFromId } from '../../../../../../rest/alertsAPI';
 import { getAlertStatusIcon } from '../../../../../../utils/Alerts/AlertsUtil';
 import {
@@ -87,10 +91,13 @@ function NotificationRecentEvents({
   const [filter, setFilter] = useState<AlertRecentEventFilters | Status>(
     AlertRecentEventFilters.ALL
   );
-  const { state: hashState, updateParams } = useSettingsHash();
-  const initialPage = Number(hashState.params.page) || 1;
+  const { updateParams } = useSettingsHash();
+  // Page and size from the hash, with a link's off-scale size (and the page counted at it) dropped.
+  const { page: initialPage, pageSize: hashPageSize } = useHashPagingParams(
+    LIST_PAGE_SIZE_OPTIONS
+  );
   const { savePageSize, resolvePageSize } = useSavedPageSize();
-  const initialPageSize = resolvePageSize(Number(hashState.params.pageSize));
+  const initialPageSize = resolvePageSize(hashPageSize);
 
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);

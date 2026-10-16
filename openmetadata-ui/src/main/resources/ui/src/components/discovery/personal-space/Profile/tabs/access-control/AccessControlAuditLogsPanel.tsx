@@ -46,6 +46,7 @@ import '../../../../../../components/common/atoms/filters/FilterSelection.less';
 import Banner from '../../../../../../components/common/Banner/Banner';
 import { CSVExportWebsocketResponse } from '../../../../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
@@ -145,7 +146,7 @@ const AccessControlAuditLogsPanel: React.FC<
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
   const { savePageSize, resolvePageSize } = useSavedPageSize();
   const pageSize = resolvePageSize(hashPageSize);
 
