@@ -14,13 +14,14 @@
     },
     "stage": {
       "javaType": "org.openmetadata.schema.system.TestLoginStage",
-      "description": "A step of the login round-trip. Not every protocol emits every stage: the browser-redirect stages apply to OIDC and SAML, CREDENTIALS_VERIFIED applies to LDAP and Basic, and the stages that do not apply are reported with status 'skipped'.",
+      "description": "A step of the login round-trip. Not every protocol emits every stage: the browser-redirect stages apply to OIDC and SAML, TOKEN_REFRESHED (renewing the session with the identity provider's refresh token) applies to confidential OIDC clients, CREDENTIALS_VERIFIED applies to LDAP and Basic, and the stages that do not apply are reported with status 'skipped'.",
       "type": "string",
       "enum": [
         "STARTED",
         "REDIRECTED",
         "TOKEN_RECEIVED",
         "TOKEN_VALIDATED",
+        "TOKEN_REFRESHED",
         "CREDENTIALS_VERIFIED",
         "CLAIMS_EXTRACTED",
         "IDENTITY_RESOLVED",

@@ -89,8 +89,10 @@ export enum Protocol {
  * Furthest stage reached.
  *
  * A step of the login round-trip. Not every protocol emits every stage: the
- * browser-redirect stages apply to OIDC and SAML, CREDENTIALS_VERIFIED applies to LDAP and
- * Basic, and the stages that do not apply are reported with status 'skipped'.
+ * browser-redirect stages apply to OIDC and SAML, TOKEN_REFRESHED (renewing the session
+ * with the identity provider's refresh token) applies to confidential OIDC clients,
+ * CREDENTIALS_VERIFIED applies to LDAP and Basic, and the stages that do not apply are
+ * reported with status 'skipped'.
  */
 export enum Stage {
     ClaimsExtracted = "CLAIMS_EXTRACTED",
@@ -101,6 +103,7 @@ export enum Stage {
     RolesMapped = "ROLES_MAPPED",
     Started = "STARTED",
     TokenReceived = "TOKEN_RECEIVED",
+    TokenRefreshed = "TOKEN_REFRESHED",
     TokenValidated = "TOKEN_VALIDATED",
 }
 
