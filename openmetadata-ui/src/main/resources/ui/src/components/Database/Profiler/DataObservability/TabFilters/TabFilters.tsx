@@ -32,16 +32,12 @@ import {
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { useTourProvider } from '../../../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
-import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { Operation } from '../../../../../generated/entity/policies/policy';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
-import {
-  getAddCustomMetricPath,
-  getEntityDetailsPath,
-} from '../../../../../utils/RouterUtils';
+import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
 import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
@@ -82,7 +78,7 @@ const TabFilters = () => {
       } as DateRangeObject,
     } as {
       activeColumnFqn: string;
-      formType: TestLevel | ProfilerDashboardType;
+      formType: TestLevel;
       dateRangeObject: DateRangeObject;
     };
   }, [location.search, activeTab, isTourOpen]);
@@ -94,6 +90,7 @@ const TabFilters = () => {
     isTableDeleted = false,
     onSettingButtonClick,
     onTestCaseDrawerOpen,
+    onCustomMetricDrawerOpen,
     table,
   } = useTableProfiler();
 
@@ -115,14 +112,12 @@ const TabFilters = () => {
   );
 
   const handleTestCaseClick = () => {
-    onTestCaseDrawerOpen(formType as TestLevel);
+    onTestCaseDrawerOpen(formType);
     setIsMenuOpen(false);
   };
 
   const handleCustomMetricClick = () => {
-    navigate(
-      getAddCustomMetricPath(formType as ProfilerDashboardType, datasetFQN)
-    );
+    onCustomMetricDrawerOpen(formType === TestLevel.COLUMN);
     setIsMenuOpen(false);
   };
 

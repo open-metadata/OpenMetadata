@@ -13,7 +13,6 @@
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RelationCategory } from '../../../interface/discovery/knowledge-graph-relations.interface';
 import {
   GraphData,
   KnowledgeGraphFilters,
@@ -32,9 +31,9 @@ import { addDeclaredOntologyProperties } from '../../../utils/discovery/knowledg
 import {
   annotateGraphCoverage,
   buildGraphPresentation,
-  filterGraphPresentation,
   getGraphDistances,
   getMappingCoverage,
+  relabelGraphNodes,
   restrictToEntityLevel,
   sentenceCaseGraphLabels,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
@@ -51,8 +50,6 @@ interface ExplorerOptions {
   mode: KnowledgeGraphMode;
   filters: KnowledgeGraphFilters;
   refresh: number;
-  excludedFamilies: RelationCategory[];
-  coverageMode: string;
   presentation: KnowledgeGraphPresentation;
   expanded: string[];
   focusedNodeId?: string;
@@ -85,8 +82,6 @@ export const useKnowledgeGraphExplorer = ({
   mode,
   filters,
   refresh,
-  excludedFamilies,
-  coverageMode,
   presentation,
   expanded,
   focusedNodeId,
@@ -199,15 +194,8 @@ export const useKnowledgeGraphExplorer = ({
     return getMappingCoverage(allData, inspectedIds);
   }, [allData, rootId, result.appliedQuery?.depth]);
   const displayData = useMemo(
-    () =>
-      filterGraphPresentation(
-        filteredData,
-        rootId,
-        excludedFamilies,
-        coverage,
-        coverageMode
-      ),
-    [filteredData, rootId, excludedFamilies, coverage, coverageMode]
+    () => relabelGraphNodes(filteredData),
+    [filteredData]
   );
   const presented = useMemo(() => {
     if (!displayData || !allData) {
@@ -223,18 +211,8 @@ export const useKnowledgeGraphExplorer = ({
     );
 
     return {
-      data: annotateGraphCoverage(
-        graph.data,
-        coverage,
-        rootId,
-        coverageMode === 'highlight'
-      ),
-      unfiltered: annotateGraphCoverage(
-        graph.unfiltered,
-        coverage,
-        rootId,
-        coverageMode === 'highlight'
-      ),
+      data: annotateGraphCoverage(graph.data, coverage, rootId),
+      unfiltered: annotateGraphCoverage(graph.unfiltered, coverage, rootId),
     };
   }, [
     displayData,
@@ -244,7 +222,6 @@ export const useKnowledgeGraphExplorer = ({
     expanded,
     focusedNodeId,
     coverage,
-    coverageMode,
   ]);
   const scene = useMemo(() => {
     const original = transformToG6Format(displayData);
@@ -267,10 +244,6 @@ export const useKnowledgeGraphExplorer = ({
   const counts = useMemo(
     () => countRelationCategories(displayData),
     [displayData]
-  );
-  const familyCounts = useMemo(
-    () => countRelationCategories(allData),
-    [allData]
   );
   const detailCounts = useMemo(
     () => ({
@@ -303,7 +276,6 @@ export const useKnowledgeGraphExplorer = ({
     coverage,
     scene,
     counts,
-    familyCounts,
     detailCounts,
   };
 };

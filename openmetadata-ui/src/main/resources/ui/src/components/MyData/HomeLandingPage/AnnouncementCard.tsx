@@ -47,12 +47,15 @@ export interface AnnouncementCardProps {
   /** Sizing/snap classes — the rail sits cards two-up, the dialog stacks them. */
   className?: string;
   onDismiss: (id: string) => void;
+  /** Runs when the card's link is followed — the dialog closes itself on it. */
+  onNavigate?: () => void;
 }
 
 const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
   announcement,
   className,
   onDismiss,
+  onNavigate,
 }) => {
   const { t } = useTranslation();
 
@@ -96,7 +99,7 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
   return (
     <div
       className={classNames(
-        'tw:relative tw:box-border tw:flex tw:flex-col tw:rounded-xl tw:p-3.5',
+        'tw:relative tw:box-border tw:flex tw:flex-col tw:rounded-xl tw:px-4 tw:py-3.5',
         // The type's surface carries its border as an `outline`, so the focus
         // ring re-colours that same outline rather than adding a second edge —
         // a `tw:border` here would double it up.
@@ -110,24 +113,18 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         className
       )}
       data-testid={`announcement-card-${announcement.id}`}>
-      {/* Type icon + badge on the left, lifecycle on the right — the same
-        header the drawer card and the banner use. An 18px frame beside the
-        label badge. */}
+      {/* Type icon + label on the left, lifecycle on the right. The label is
+        plain text in the type's colour, as in the design; the badge stays for
+        the lifecycle, which is the only thing here that reads as a status. */}
       <div className="tw:flex tw:items-center tw:gap-2">
         <TypeIcon
-          className={classNames(
-            'tw:size-4.5 tw:shrink-0 tw:p-[0.25px]',
-            surface.icon
-          )}
+          className={classNames('tw:shrink-0 tw:size-4', surface.icon)}
         />
-        <Badge
-          className="tw:bg-primary!"
-          color={color}
-          data-testid="announcement-type-badge"
-          size="sm"
-          type="color">
+        <span
+          className={classNames('tw:text-xs tw:font-semibold', surface.title)}
+          data-testid="announcement-type-badge">
           {getAnnouncementTypeLabel(typeConfig, t)}
-        </Badge>
+        </span>
 
         <div className="tw:ml-auto tw:flex tw:shrink-0 tw:items-center tw:gap-1">
           {/* A live announcement is self-evidently live — only the ones the
@@ -147,9 +144,15 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
           {isDismissible && (
             // z-10 keeps the dismiss target above the title's stretched ::after.
             <ButtonUtility
-              className={classNames('tw:z-10', surface.icon)}
+              // Bare glyph — no filled container. size-6 keeps the hit target at
+              // the 24px minimum even though the glyph itself is 14px.
+              className={classNames(
+                'tw:z-10 tw:size-6 tw:shrink-0 tw:rounded-md tw:p-0 tw:*:data-icon:size-3.5',
+                surface.icon
+              )}
+              color="tertiary"
               icon={XClose}
-              size="lg"
+              size="xs"
               tooltip={t('label.close')}
               onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
@@ -164,8 +167,9 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         // `after:inset-0` stretches the anchor over the whole card: one tab
         // stop, real link semantics (⌘/middle click), no nested interactives.
         <Link
-          className="tw:mt-2 tw:truncate tw:text-sm tw:font-semibold tw:text-primary tw:after:absolute tw:after:inset-0 tw:after:rounded-xl"
-          to={href}>
+          className="tw:mt-2 tw:truncate tw:text-xs tw:font-semibold tw:text-primary tw:after:absolute tw:after:inset-0 tw:after:rounded-xl"
+          to={href}
+          onClick={onNavigate}>
           {title}
         </Link>
       ) : (
@@ -175,7 +179,7 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         <Typography
           className="tw:mt-2 tw:text-primary!"
           ellipsis={{ rows: 1 }}
-          size="text-sm"
+          size="text-xs"
           weight="semibold">
           {title}
         </Typography>
@@ -184,7 +188,7 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
       {description && (
         <Tooltip title={description}>
           <Typography
-            className="tw:mt-1 tw:text-pretty tw:text-secondary!"
+            className="tw:mt-1 tw:text-pretty tw:text-tertiary!"
             ellipsis={{ rows: 2 }}
             size="text-xs">
             {description}
@@ -197,7 +201,7 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         {userName && (
           <UserChip
             avatarSize={16}
-            className="tw:text-xs tw:text-secondary"
+            className="tw:text-xs tw:text-quaternary"
             user={userName}
           />
         )}
@@ -207,11 +211,11 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
             <Dot className="tw:text-placeholder_subtle" size="xs" />
             <span
               aria-hidden
-              className="tw:flex tw:size-4.5 tw:shrink-0 tw:items-center tw:text-tertiary tw:[&_svg]:size-full">
+              className="tw:flex tw:size-3.5 tw:shrink-0 tw:items-center tw:text-tertiary tw:[&_svg]:size-full">
               {entityIcon}
             </span>
             <Typography
-              className="tw:min-w-0 tw:text-secondary!"
+              className="tw:min-w-0 tw:text-quaternary!"
               ellipsis={{ rows: 1 }}
               size="text-xs">
               {entityFQN}
@@ -221,7 +225,7 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
 
         {timestamp && (
           <time
-            className="tw:ml-auto tw:shrink-0 tw:text-xs tw:text-tertiary"
+            className="tw:ml-auto tw:shrink-0 tw:text-xs tw:text-quaternary"
             dateTime={new Date(timestamp).toISOString()}>
             {getRelativeTime(timestamp)}
           </time>

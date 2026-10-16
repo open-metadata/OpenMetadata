@@ -233,7 +233,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
       className="glossary-terms-section"
       data-testid="KnowledgePanel.GlossaryTerms">
       <div className="glossary-terms-header">
-        <Typography className="glossary-terms-title">
+        <Typography size="text-xs" weight="semibold">
           {t('label.glossary-term-plural')}
         </Typography>
         {editButton}

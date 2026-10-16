@@ -76,28 +76,41 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
           <Typography
             className="tw:min-w-0 tw:text-text-primary!"
             ellipsis={{ rows: 1 }}
-            size="text-md"
-            weight="semibold">
+            size="text-sm"
+            weight="medium">
             {title}
           </Typography>
-          {status && !isLoading && (
-            <Badge
-              className="tw:shrink-0"
-              color={status.color}
-              data-testid={`topic-status-${topicKey}`}
-              size="sm"
-              type="pill-color">
-              {status.label}
-            </Badge>
-          )}
         </div>
         {summarySlot}
       </div>
     </>
   );
 
+  // The status sits on the right, beside the chevron, so every card's title
+  // starts on the same line regardless of how long its badge is.
+  const trailing = (chevron?: React.ReactNode) => (
+    <div className="tw:mt-1 tw:flex tw:shrink-0 tw:items-center tw:gap-3">
+      {status && !isLoading && (
+        <Badge
+          className="tw:font-medium"
+          color={status.color}
+          data-testid={`topic-status-${topicKey}`}
+          size="sm"
+          type="pill-color">
+          {status.label}
+        </Badge>
+      )}
+      {chevron}
+    </div>
+  );
+
   if (!onToggle) {
-    return <div className={LAYOUT_CLASSES}>{content}</div>;
+    return (
+      <div className={LAYOUT_CLASSES}>
+        {content}
+        {trailing()}
+      </div>
+    );
   }
 
   return (
@@ -108,11 +121,9 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
       type="button"
       onClick={onToggle}>
       {content}
-      <Chevron
-        aria-hidden
-        className="tw:mt-2.5 tw:shrink-0 tw:text-fg-quaternary"
-        size={16}
-      />
+      {trailing(
+        <Chevron aria-hidden className="tw:size-4 tw:text-fg-tertiary" />
+      )}
     </button>
   );
 };

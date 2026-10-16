@@ -133,6 +133,7 @@ jest.mock('../../../../common/DatePickerMenu/DatePickerMenu.component', () => {
 const mockNavigate = jest.fn();
 const mockOnSettingButtonClick = jest.fn();
 const mockOnTestCaseDrawerOpen = jest.fn();
+const mockOnCustomMetricDrawerOpen = jest.fn();
 const mockUseParams = jest.fn(() => ({ subTab: 'table-profile' }));
 const mockUseCustomLocation = jest.fn(() => ({
   search: '?startTs=1711065600000&endTs=1711670399000&key=last7days',
@@ -172,6 +173,7 @@ const mockUseTableProfiler = jest.fn(() => ({
   isTableDeleted: false,
   onSettingButtonClick: mockOnSettingButtonClick,
   onTestCaseDrawerOpen: mockOnTestCaseDrawerOpen,
+  onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
   table: {
     columns: mockColumns,
   },
@@ -223,7 +225,6 @@ jest.mock('../../TableProfiler/ProfilerClassBase', () => ({
 }));
 
 jest.mock('../../../../../utils/RouterUtils', () => ({
-  getAddCustomMetricPath: jest.fn(() => '/custom-metric-path'),
   getEntityDetailsPath: jest.fn(() => '/entity-details-path'),
 }));
 
@@ -287,6 +288,7 @@ describe('TabFilters', () => {
       isTableDeleted: false,
       onSettingButtonClick: mockOnSettingButtonClick,
       onTestCaseDrawerOpen: mockOnTestCaseDrawerOpen,
+      onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
       table: {
         columns: mockColumns,
       },
@@ -456,6 +458,7 @@ describe('TabFilters', () => {
         isTableDeleted: false,
         onSettingButtonClick: mockOnSettingButtonClick,
         onTestCaseDrawerOpen: mockOnTestCaseDrawerOpen,
+        onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
         table: { columns: [] },
       });
 
@@ -475,6 +478,7 @@ describe('TabFilters', () => {
         isTableDeleted: false,
         onSettingButtonClick: mockOnSettingButtonClick,
         onTestCaseDrawerOpen: mockOnTestCaseDrawerOpen,
+        onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
         table: { columns: [] },
       });
 
@@ -494,6 +498,7 @@ describe('TabFilters', () => {
         isTableDeleted: true,
         onSettingButtonClick: mockOnSettingButtonClick,
         onTestCaseDrawerOpen: mockOnTestCaseDrawerOpen,
+        onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
         table: { columns: [] },
       });
 
@@ -619,6 +624,25 @@ describe('TabFilters', () => {
       fireEvent.click(screen.getByTestId('profiler-setting-btn'));
 
       expect(mockOnSettingButtonClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('opens the custom metric drawer for a table metric on the table profile tab', () => {
+      renderComponent();
+
+      fireEvent.click(screen.getByTestId('dropdown-item-custom-metric'));
+
+      expect(mockOnCustomMetricDrawerOpen).toHaveBeenCalledWith(false);
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('opens the custom metric drawer for a column metric on the column profile tab', () => {
+      mockUseParams.mockReturnValue({ subTab: 'column-profile' });
+
+      renderComponent();
+
+      fireEvent.click(screen.getByTestId('dropdown-item-custom-metric'));
+
+      expect(mockOnCustomMetricDrawerOpen).toHaveBeenCalledWith(true);
     });
   });
 

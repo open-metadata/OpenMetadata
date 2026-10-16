@@ -281,7 +281,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: 'Approved,Unprocessed',
+            statuses: 'Approved,Unprocessed,Draft',
             offset: 0,
           })
         );
@@ -293,13 +293,13 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             offset: 0,
           })
         );
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             limit: 0,
             offset: 0,
           })
@@ -310,7 +310,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             author: 'user-1',
           })
         );
@@ -323,7 +323,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             q: 'missing glossary fact',
             assets: 'asset-1',
             author: 'user-1',
@@ -336,11 +336,11 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             q: 'missing glossary fact',
             assets: 'asset-1',
             author: 'user-1',
-            sortBy: 'usageCount',
+            sortBy: 'appliedCount',
           })
         );
       });
@@ -372,7 +372,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Unprocessed,Rejected',
+          statuses: 'Approved,Unprocessed,Draft,Rejected',
           author: 'other-user',
         })
       );
