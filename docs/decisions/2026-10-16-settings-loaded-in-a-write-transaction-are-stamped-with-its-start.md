@@ -31,7 +31,8 @@ Reads outside a transaction, and transactions with no invalidation since they st
 exactly as before. A transaction that overlaps a settings update still reads its own snapshot, but
 the value it caches is stale-stamped, so the next read outside it reloads the update. On Postgres
 (READ COMMITTED) the stamp is merely conservative and costs at most one extra reload. A transaction
-opened on another handle inside one keeps its own start and gives the enclosing one its start back.
+opened on another handle inside one never raises the start: the loader's DAO reads through the
+handle bound to the thread, the enclosing one, so the enclosing start stays in force.
 Rejected: bypassing the cache inside transactions (settings read only by writes, such as the
 column-indexing flag on every table write, would never be cached and DB errors would escape
 unwrapped), loading settings on a second connection (pool starvation while the first is held),

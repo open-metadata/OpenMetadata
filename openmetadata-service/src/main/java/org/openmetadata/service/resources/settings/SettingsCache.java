@@ -591,12 +591,15 @@ public class SettingsCache {
   /**
    * Runs a transaction that starts now, so the settings it loads are stamped with the
    * invalidations its snapshot is certain to include. A transaction opened inside another on a
-   * separate handle keeps its own start, and the enclosing one gets its start back afterwards.
+   * separate handle keeps the enclosing start: the loader's DAO reads through the handle bound to
+   * the thread, which is the enclosing one, so its older snapshot is what a load sees.
    */
   public static <R, X extends Exception> R inTransaction(TransactionBody<R, X> transaction)
       throws X {
     Long enclosingStart = INVALIDATIONS_AT_TRANSACTION_START.get();
-    INVALIDATIONS_AT_TRANSACTION_START.set(INVALIDATIONS.get());
+    long invalidations = INVALIDATIONS.get();
+    INVALIDATIONS_AT_TRANSACTION_START.set(
+        enclosingStart == null ? invalidations : Math.min(enclosingStart, invalidations));
     try {
       return transaction.run();
     } finally {

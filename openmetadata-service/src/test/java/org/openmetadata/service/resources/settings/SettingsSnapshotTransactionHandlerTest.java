@@ -127,6 +127,22 @@ class SettingsSnapshotTransactionHandlerTest {
   }
 
   @Test
+  void aLoadInsideATransactionOnAnotherHandleKeepsTheEnclosingStart() {
+    transactions.inTransaction(
+        handle,
+        outer -> {
+          commitAnUpdateTheSnapshotCannotSee();
+          // The loader reads through the handle bound to the thread, the outer one, so a load
+          // inside the inner transaction still sees the outer snapshot.
+          return transactions.inTransaction(
+              mock(Handle.class), inner -> isMultiDomainRuleEnabled());
+        });
+    readingTheSnapshot.set(false);
+
+    assertFalse(isMultiDomainRuleEnabled(), "a read after the transaction must see the update");
+  }
+
+  @Test
   void rulesLoadedByATransactionWithoutAnUpdateAreServedFromTheCache() {
     transactions.inTransaction(
         handle,
