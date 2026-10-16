@@ -85,13 +85,11 @@ import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElement
 import { ColumnsType, TableProps } from '../../common/Table/Table.interface';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
+import { NO_URL_FILTERS } from './Services.constants';
 
 interface ServicesProps {
   serviceName: ServiceCategory;
 }
-
-// Only the setter is used, to clear paging params; a stable reference keeps the parsed filters memoized.
-const NO_URL_FILTERS = {};
 
 const Services = ({ serviceName }: ServicesProps) => {
   const { t } = useTranslation();

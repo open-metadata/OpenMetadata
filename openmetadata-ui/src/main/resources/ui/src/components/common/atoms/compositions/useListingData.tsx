@@ -92,10 +92,19 @@ export const useListingData = <
 
   // A size left in the URL by the other view's scale (25 from the table on the card view) is not
   // one this view offers, so it falls back to the view's own size.
-  const effectivePageSize =
+  const isOffScaleUrlSize = Boolean(
     pageSizeOptions && !pageSizeOptions.includes(urlState.pageSize)
-      ? pageSize
-      : urlState.pageSize || pageSize;
+  );
+  const effectivePageSize = isOffScaleUrlSize
+    ? pageSize
+    : urlState.pageSize || pageSize;
+  const effectivePage = isOffScaleUrlSize ? 1 : urlState.currentPage;
+
+  useEffect(() => {
+    if (isOffScaleUrlSize) {
+      resetPaging();
+    }
+  }, [isOffScaleUrlSize, resetPaging]);
 
   const dataFetching = useDataFetching<T>({
     searchIndex,
@@ -105,7 +114,7 @@ export const useListingData = <
   });
 
   const paginationState = usePaginationState({
-    currentPage: urlState.currentPage,
+    currentPage: effectivePage,
     totalEntities: dataFetching.totalEntities,
     pageSize: effectivePageSize,
     onPageChange: setCurrentPage,
@@ -137,7 +146,7 @@ export const useListingData = <
     // against what was actually last fetched rather than just reacting to the
     // visibility flip.
     const signature = JSON.stringify([
-      urlState.currentPage,
+      effectivePage,
       urlState.searchQuery,
       urlState.filters,
       effectivePageSize,
@@ -148,12 +157,12 @@ export const useListingData = <
     lastFetchedRef.current = signature;
 
     dataFetching.searchEntities(
-      urlState.currentPage,
+      effectivePage,
       urlState.searchQuery,
       urlState.filters
     );
   }, [
-    urlState.currentPage,
+    effectivePage,
     urlState.searchQuery,
     urlState.filters,
     effectivePageSize,
@@ -213,16 +222,11 @@ export const useListingData = <
   // Refetch function to reload data with current filters
   const refetch = useCallback(() => {
     dataFetching.searchEntities(
-      urlState.currentPage,
+      effectivePage,
       urlState.searchQuery,
       urlState.filters
     );
-  }, [
-    urlState.currentPage,
-    urlState.searchQuery,
-    urlState.filters,
-    dataFetching,
-  ]);
+  }, [effectivePage, urlState.searchQuery, urlState.filters, dataFetching]);
 
   return {
     entities: dataFetching.entities,

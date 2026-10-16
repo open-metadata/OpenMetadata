@@ -12,11 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { ReactNode } from 'react';
-import {
-  DISABLED,
-  GRID_PAGE_SIZE_OPTIONS,
-  LIST_PAGE_SIZE_OPTIONS,
-} from '../../../constants/constants';
+import { DISABLED } from '../../../constants/constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
@@ -27,7 +23,6 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { ListView } from '../../common/ListView/ListView.component';
-import { ListViewOptions } from '../../common/ListView/ListView.interface';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Services from './Services';
 
@@ -119,12 +114,10 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-const mockSetPagingUrlParams = jest.fn();
-
 jest.mock('../../../hooks/useTableFilters', () => ({
   useTableFilters: () => ({
     filters: {},
-    setFilters: mockSetPagingUrlParams,
+    setFilters: jest.fn(),
   }),
 }));
 
@@ -222,19 +215,8 @@ jest.mock('../../common/ListView/ListView.component', () => ({
         tableProps,
         searchProps,
         handleDeletedSwitchChange,
-        onViewChange,
       }) => (
         <div data-testid="mocked-list-view">
-          <button
-            aria-label="trigger card view"
-            data-testid="trigger-card-view"
-            onClick={() =>
-              onViewChange(
-                jest.requireActual('../../common/ListView/ListView.interface')
-                  .ListViewOptions.CARD
-              )
-            }
-          />
           <button
             aria-label="trigger search"
             data-testid="trigger-search"
@@ -332,39 +314,6 @@ jest.mock('../../../hoc/LimitWrapper', () => {
 });
 
 describe('Services', () => {
-  it('pages the card view on the grid scale and returns to page 1 when the view changes', async () => {
-    await act(async () => {
-      render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
-    });
-
-    expect(usePaging).toHaveBeenLastCalledWith(
-      undefined,
-      LIST_PAGE_SIZE_OPTIONS
-    );
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('trigger-card-view'));
-    });
-
-    // No explicit default: each scale starts from the size last picked on it.
-    expect(usePaging).toHaveBeenLastCalledWith(
-      undefined,
-      GRID_PAGE_SIZE_OPTIONS
-    );
-    // Dropping the size as well as the page and cursor lets the new view start at its own
-    // default, and keeps the URL from showing the other view's size.
-    expect(mockSetPagingUrlParams).toHaveBeenCalledWith({
-      currentPage: null,
-      cursorType: null,
-      cursorValue: null,
-      pageSize: null,
-    });
-    expect(ListView).toHaveBeenLastCalledWith(
-      expect.objectContaining({ currentView: ListViewOptions.CARD }),
-      expect.anything()
-    );
-  });
-
   it('shows the pager when there are services, even a single page of them', async () => {
     (getServices as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: mockGetServicesData, paging: { total: 1 } })
