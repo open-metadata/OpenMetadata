@@ -3,9 +3,12 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-08 (initial)
 - **Deciders:** Mohit Yadav, Teddy Crépineau, Adrià Manero
-- **Guard:** `SearchRepositoryBehaviorTest.propagateInheritedFieldsToChildrenKeepsTableTagsOffColumnEntries`;
-  `AssetsTabSearchEntriesIT.tableLabels_reachTestCasesNotColumns`
-- **Related:** collate #1526
+- **Guard:** `SearchRepositoryBehaviorTest` (`propagateInheritedFieldsToChildrenKeepsTableClassificationTagsOffColumnEntries`,
+  `propagateInheritedFieldsToChildrenSendsColumnEntriesOnlyTheTermsTheyInherit`);
+  `AssetsTabSearchEntriesIT` (`tableClassificationTags_reachTestCasesNotColumnEntries`,
+  `tableTerms_reachTestCases_andColumnEntriesOnlyAsInherited`)
+- **Related:** collate #1526;
+  ADR:2026-10-13-inherited-field-terms-are-derived-and-propagated-stays-lineage
 
 ## Context
 
@@ -18,18 +21,21 @@ glossary term they do not carry.
 
 ## Decision
 
-- A column entry carries only what `ColumnSearchIndex` builds: the column's own tags, and the
-  table's owners, domains, tier and certification.
-- A table's tags and data products stop at the table: their propagation skips `tableColumn`
-  (`PropagationDescriptor.skipping`). Child indexes a field skips are updated by a request of their
-  own, without that field.
+- A column entry carries only what `ColumnSearchIndex` builds: the column's own tags, the glossary
+  terms it inherits from its table (as `Derived` labels), and the table's owners, domains, tier and
+  certification.
+- A table's data products stop at the table, and of its tags only the glossary terms reach column
+  entries: the data products propagation skips `tableColumn` (`PropagationDescriptor.skipping`),
+  and the tags propagation carries it only the inherited terms
+  (`PropagationDescriptor.inheritedTermsOnlyFor`). Child indexes that take a change differently are
+  updated by requests of their own.
 - Test cases keep inheriting the table's tags. Their entries are built from the test case itself,
   never from column entries, so this record does not change them.
 
 ## Consequences
 
-- Searching a tag or glossary term returns the columns that carry it, not every column of a table
-  that does.
+- Searching a classification tag returns the columns that carry it, not every column of a table
+  that does. A glossary term also returns the columns that inherit it from their table.
 - Entries written before this change keep the leaked tags until they are rebuilt; every upgrade
   reindexes, which rebuilds them.
-- A new field that a table hands down must say which child indexes it skips, if any.
+- A new field that a table hands down must say which child indexes it skips or narrows, if any.

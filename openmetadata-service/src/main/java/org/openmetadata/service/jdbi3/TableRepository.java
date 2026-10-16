@@ -1821,13 +1821,13 @@ public class TableRepository extends EntityRepository<Table> {
   public List<PropagationDescriptor> getSearchPropagationDescriptors() {
     List<PropagationDescriptor> descriptors =
         new ArrayList<>(super.getSearchPropagationDescriptors());
-    // A column entry carries only its own tags and no data products: ColumnSearchIndex builds it,
-    // and propagation racing that build is how table tags leaked onto columns.
-    // ADR:2026-10-08-column-entries-carry-only-their-own-tags
+    // A column entry carries what ColumnSearchIndex builds: its own tags and the glossary terms it
+    // inherits from the table, and no data products. Propagating more is how table tags leaked onto
+    // columns. ADR:2026-10-08-column-entries-carry-only-their-own-tags
     descriptors.add(
         new PropagationDescriptor(
                 FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null)
-            .skipping(TABLE_COLUMN));
+            .inheritedTermsOnlyFor(TABLE_COLUMN));
     descriptors.add(
         new PropagationDescriptor(
                 FIELD_DATA_PRODUCTS,

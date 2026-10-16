@@ -2905,8 +2905,9 @@ public class SearchRepository {
     }
   }
 
-  // A child index gets only the fields whose descriptor reaches it, so the children a descriptor
-  // skips are updated by a request of their own. Time-series children get only the tag changes.
+  // A child index gets only the fields whose descriptor reaches it, and of a tag list only the
+  // inherited terms when its descriptor says so, so children that see the change differently are
+  // updated by requests of their own. Time-series children get only the tag changes.
   private void propagateToEntityChildren(
       String entityType,
       String entityId,
@@ -2916,15 +2917,15 @@ public class SearchRepository {
       throws IOException {
     Pair<String, String> parentMatch =
         new ImmutablePair<>(resolveParentFieldName(entityType), entityId);
-    for (Map.Entry<Set<String>, List<String>> group :
-        childAliasesBySkippedFields(entityType, indexMapping).entrySet()) {
-      Set<String> skippedFields = group.getKey();
+    for (Map.Entry<ChildView, List<String>> group :
+        childAliasesByView(entityType, indexMapping).entrySet()) {
+      ChildView view = group.getKey();
       Pair<String, Map<String, Object>> updates =
           getInheritedFieldChanges(
-              changeDescription,
+              withOnlyInheritedTerms(changeDescription, view.inheritedTermsOnlyFields()),
               entity,
               entityType,
-              descriptor -> !skippedFields.contains(descriptor.fieldName()));
+              descriptor -> !view.skippedFields().contains(descriptor.fieldName()));
       if (!nullOrEmpty(updates.getKey())) {
         searchClient.updateChildren(withClusterAlias(group.getValue()), parentMatch, updates);
       }
@@ -2936,23 +2937,70 @@ public class SearchRepository {
     }
   }
 
-  // The entity's non-time-series child aliases, grouped by the propagated fields that skip them.
-  private Map<Set<String>, List<String>> childAliasesBySkippedFields(
+  /** How one child index takes a change: the fields it skips, and the tag lists it narrows. */
+  private record ChildView(Set<String> skippedFields, Set<String> inheritedTermsOnlyFields) {}
+
+  // The entity's non-time-series child aliases, grouped by how they take the propagated fields.
+  private Map<ChildView, List<String>> childAliasesByView(
       String entityType, IndexMapping indexMapping) {
     List<PropagationDescriptor> descriptors =
         Entity.getEntityRepository(entityType).getSearchPropagationDescriptors();
-    Map<Set<String>, List<String>> groups = new LinkedHashMap<>();
+    Map<ChildView, List<String>> groups = new LinkedHashMap<>();
     for (String alias :
         childAliasesWithCapability(
             indexMapping, capability -> capability == null || !capability.isTimeSeries())) {
-      Set<String> skippedFields =
-          descriptors.stream()
-              .filter(descriptor -> !descriptor.reaches(alias))
-              .map(PropagationDescriptor::fieldName)
-              .collect(Collectors.toSet());
-      groups.computeIfAbsent(skippedFields, fields -> new ArrayList<>()).add(alias);
+      ChildView view =
+          new ChildView(
+              fieldNames(descriptors, descriptor -> !descriptor.reaches(alias)),
+              fieldNames(descriptors, descriptor -> descriptor.carriesOnlyInheritedTerms(alias)));
+      groups.computeIfAbsent(view, key -> new ArrayList<>()).add(alias);
     }
     return groups;
+  }
+
+  private static Set<String> fieldNames(
+      List<PropagationDescriptor> descriptors, Predicate<PropagationDescriptor> filter) {
+    return descriptors.stream()
+        .filter(filter)
+        .map(PropagationDescriptor::fieldName)
+        .collect(Collectors.toSet());
+  }
+
+  // The change as a child sees it when it takes, of the given tag lists, only the glossary terms a
+  // field inherits: their other labels are left out, and a list left with none is no change.
+  private static ChangeDescription withOnlyInheritedTerms(
+      ChangeDescription change, Set<String> tagFields) {
+    return tagFields.isEmpty()
+        ? change
+        : new ChangeDescription()
+            .withFieldsAdded(inheritedTermsOf(change.getFieldsAdded(), tagFields))
+            .withFieldsUpdated(inheritedTermsOf(change.getFieldsUpdated(), tagFields))
+            .withFieldsDeleted(inheritedTermsOf(change.getFieldsDeleted(), tagFields));
+  }
+
+  private static List<FieldChange> inheritedTermsOf(
+      List<FieldChange> changes, Set<String> tagFields) {
+    return listOrEmpty(changes).stream()
+        .map(
+            change ->
+                tagFields.contains(change.getName())
+                    ? inheritedTermsOf(change)
+                    : Optional.of(change))
+        .flatMap(Optional::stream)
+        .toList();
+  }
+
+  private static Optional<FieldChange> inheritedTermsOf(FieldChange change) {
+    List<TagLabel> added =
+        Entity.inheritedParentTerms(
+            JsonUtils.readOrConvertValues(change.getNewValue(), TagLabel.class));
+    List<TagLabel> deleted =
+        Entity.inheritedParentTerms(
+            JsonUtils.readOrConvertValues(change.getOldValue(), TagLabel.class));
+    return added.isEmpty() && deleted.isEmpty()
+        ? Optional.empty()
+        : Optional.of(
+            new FieldChange().withName(change.getName()).withNewValue(added).withOldValue(deleted));
   }
 
   /**

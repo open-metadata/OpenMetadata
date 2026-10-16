@@ -365,7 +365,7 @@ class SearchRepositoryBehaviorTest {
       descriptors.add(
           new PropagationDescriptor(
                   "tags", PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null)
-              .skipping(Entity.TABLE_COLUMN));
+              .inheritedTermsOnlyFor(Entity.TABLE_COLUMN));
       descriptors.add(
           new PropagationDescriptor(
                   Entity.FIELD_DATA_PRODUCTS,
@@ -1390,7 +1390,8 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void propagateInheritedFieldsToChildrenKeepsTableTagsOffColumnEntries() throws IOException {
+  void propagateInheritedFieldsToChildrenKeepsTableClassificationTagsOffColumnEntries()
+      throws IOException {
     IndexMapping tableWithTestCases =
         IndexMapping.builder()
             .indexName("table_search_index")
@@ -1437,6 +1438,60 @@ class SearchRepositoryBehaviorTest {
     assertTrue(testCaseParams.containsKey("updatedOwners"));
     assertFalse(columnParams.containsKey("tagAdded"));
     assertTrue(columnParams.containsKey("updatedOwners"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void propagateInheritedFieldsToChildrenSendsColumnEntriesOnlyTheTermsTheyInherit()
+      throws IOException {
+    IndexMapping tableWithTestCases =
+        IndexMapping.builder()
+            .indexName("table_search_index")
+            .alias("table")
+            .childAliases(List.of(Entity.TEST_CASE, Entity.TABLE_COLUMN))
+            .indexMappingFile("/elasticsearch/%s/table_index_mapping.json")
+            .build();
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    TagLabel classificationTag =
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel term =
+        new TagLabel()
+            .withTagFQN("Glossary.Revenue")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(classificationTag, term)))),
+            List.of(),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TABLE, table.getId().toString(), changeDescription, tableWithTestCases, table);
+
+    ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient, times(2))
+        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+    Map<List<String>, List<TagLabel>> addedByTargets = new HashMap<>();
+    for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
+      addedByTargets.put(
+          targetsCaptor.getAllValues().get(i),
+          (List<TagLabel>) updatesCaptor.getAllValues().get(i).getRight().get("tagAdded"));
+    }
+    assertEquals(
+        List.of("PII.Sensitive", "Glossary.Revenue"),
+        addedByTargets.get(List.of("cluster_testCase")).stream().map(TagLabel::getTagFQN).toList());
+    List<TagLabel> columnTags = addedByTargets.get(List.of("cluster_tableColumn"));
+    assertEquals(
+        List.of("Glossary.Revenue"), columnTags.stream().map(TagLabel::getTagFQN).toList());
+    assertEquals(TagLabel.LabelType.DERIVED, columnTags.getFirst().getLabelType());
   }
 
   @Test
