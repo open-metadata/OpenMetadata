@@ -155,7 +155,7 @@ describe('Default app mode set by the deployment', () => {
     await renderForm();
     await screen.findByTestId('settings-source-env-alert');
 
-    expect(screen.getByRole('radio', { name: 'label.classic' })).toBeDisabled();
+    expect(screen.getByRole('radio', { name: /label\.classic/ })).toBeDisabled();
     expect(screen.getByTestId('save-button')).toBeDisabled();
   });
 });
