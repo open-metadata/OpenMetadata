@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Accordion,
   AccordionHeader,
@@ -20,6 +19,7 @@ import {
   Box,
   Button,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
@@ -111,9 +111,7 @@ export const ObjectFieldTemplate: FunctionComponent<
             aria-label={t('label.add')}
             color="primary"
             data-testid={`add-item-${title}`}
-            iconLeading={
-              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-            }
+            iconLeading={Plus}
             id={`${idSchema.$id}`}
             size="xs"
             onClick={() => {

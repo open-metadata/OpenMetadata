@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon, { CloseCircleOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -20,6 +19,7 @@ import {
   Dropdown,
   Grid,
 } from '@openmetadata/ui-core-components';
+import { XCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isNaN, map } from 'lodash';
 import { Key, useCallback, useEffect, useState } from 'react';
@@ -198,10 +198,10 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                   allowClear
                   showNow
                   className="executions-date-picker"
-                  clearIcon={<CloseCircleOutlined />}
+                  clearIcon={<XCircle size={14} />}
                   data-testid="data-range-picker"
                   placeholder={[t('label.date-filter'), '']}
-                  suffixIcon={<Icon component={Calendar} size={12} />}
+                  suffixIcon={<Calendar className="tw:size-3 tw:shrink-0" />}
                   onChange={onDateChange}
                 />
               ) : null}
