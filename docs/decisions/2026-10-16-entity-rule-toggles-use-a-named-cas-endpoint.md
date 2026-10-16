@@ -31,7 +31,7 @@ The add, edit, and delete flows on the legacy Data Asset Rules page still use th
 `PUT /v1/system/settings` and are unchanged.
 
 ## Consequences
-A concurrent rule add, edit, or delete between the client's last read and the toggle can no longer be
-silently lost; the toggle caller gets a 412 and must retry. The endpoint is specific to the `enabled`
+A concurrent rule add, edit, or delete between the server's read and its write inside the toggle can no
+longer be silently lost; the toggle caller gets a 412 and must retry. The endpoint is specific to the `enabled`
 flag — toggling any other field still requires the whole-list PUT, which retains its existing race
 window. Adding a new toggle target means a new path on this endpoint or a new CAS method.
