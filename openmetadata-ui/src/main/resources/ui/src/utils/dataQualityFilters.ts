@@ -65,3 +65,90 @@ export const toSearchParams = (
         : filters.testCaseType,
   };
 };
+
+/** Who "mine" and "followed" resolve to, the way the test search resolves them. */
+export interface DataQualityViewer {
+  id: string;
+  /** Owned by one of the viewer's teams counts as the viewer's own. */
+  teamIds: string[];
+}
+
+export interface TableStatusCounts {
+  passed: number;
+  failed: number;
+  aborted: number;
+}
+
+/** Groups by the table a test runs on, so column tests count toward it. */
+export const TABLE_STATUS_AGGREGATION =
+  'bucketName=table:aggType=terms:field=originEntityFQN,' +
+  'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus';
+
+/**
+ * The search query for the per-table counts, with the same scope as the
+ * card's list: results in the selected window, owned or followed as the
+ * scope asks, and only on the tables the list shows.
+ */
+export const toTableCountsQuery = (
+  filters: DataQualityFilters,
+  tableFqns: string[],
+  viewer?: DataQualityViewer
+): string => {
+  const end = Date.now();
+  const must: Record<string, unknown>[] = [
+    { term: { deleted: false } },
+    { terms: { originEntityFQN: tableFqns } },
+    {
+      range: {
+        'testCaseResult.timestamp': {
+          gte: end - Number(filters.range) * DAY_MS,
+          lte: end,
+        },
+      },
+    },
+  ];
+
+  if (viewer && filters.scope === DataQualityScope.MINE) {
+    must.push({
+      nested: {
+        path: 'owners',
+        query: { terms: { 'owners.id': [viewer.id, ...viewer.teamIds] } },
+        ignore_unmapped: true,
+      },
+    });
+  }
+  if (viewer && filters.scope === DataQualityScope.FOLLOWED) {
+    must.push({ term: { 'followers.keyword': viewer.id } });
+  }
+
+  return JSON.stringify({ query: { bool: { must } } });
+};
+
+const STATUS_FIELD: Record<string, keyof TableStatusCounts> = {
+  success: 'passed',
+  failed: 'failed',
+  aborted: 'aborted',
+};
+
+/** The key `toTableStatusCounts` files a table's counts under. */
+export const toTableCountsKey = (tableFqn: string): string =>
+  tableFqn.toLowerCase();
+
+/**
+ * One entry per table, from the report's table × status rows, keyed by the
+ * lowercased FQN: `originEntityFQN` has a lowercase normalizer, so the report
+ * returns its buckets lowercased. Look an entry up with `toTableCountsKey`.
+ */
+export const toTableStatusCounts = (
+  rows: Record<string, string>[]
+): Record<string, TableStatusCounts> =>
+  rows.reduce<Record<string, TableStatusCounts>>((acc, row) => {
+    const table = row.originEntityFQN && toTableCountsKey(row.originEntityFQN);
+    const field = STATUS_FIELD[row['testCaseResult.testCaseStatus']];
+    if (table && field) {
+      acc[table] = acc[table] ?? { passed: 0, failed: 0, aborted: 0 };
+      acc[table][field] += Number(row.document_count) || 0;
+    }
+
+    return acc;
+  }, {});

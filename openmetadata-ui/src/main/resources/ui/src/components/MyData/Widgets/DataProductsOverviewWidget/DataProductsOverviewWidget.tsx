@@ -256,7 +256,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
                       className="tw:min-w-0 tw:text-text-primary!"
                       data-testid="data-product-name"
                       ellipsis={{ rows: 1 }}
-                      size="text-sm"
+                      size="text-xs"
                       weight="medium">
                       {product.name}
                     </Typography>
@@ -272,7 +272,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
                             className="tw:min-w-0 tw:text-text-tertiary!"
                             data-testid="data-product-domain"
                             ellipsis={{ rows: 1 }}
-                            size="text-sm">
+                            size="text-xs">
                             {product.domainName}
                           </Typography>
                           {/* Drawn, not spliced into the owner's string. */}
@@ -290,7 +290,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
                         }
                         data-testid="data-product-owner"
                         ellipsis={{ rows: 1 }}
-                        size="text-sm">
+                        size="text-xs">
                         {product.ownerName ?? t(NO_OWNER_LABEL_KEY)}
                       </Typography>
                     </span>

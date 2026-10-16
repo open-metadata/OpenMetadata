@@ -17,6 +17,8 @@ import React from 'react';
 interface FieldRowProps {
   title: string;
   description?: string;
+  // A short value (a word, a toggle) yields its width to the title and description.
+  isValueCompact?: boolean;
   children: React.ReactNode;
 }
 
@@ -29,12 +31,19 @@ interface FieldRowProps {
 const FieldRow: React.FC<FieldRowProps> = ({
   title,
   description,
+  isValueCompact = false,
   children,
 }) => (
   <Box
-    className="tw:grid tw:[grid-template-columns:minmax(220px,1fr)_2fr]"
+    className={
+      isValueCompact
+        ? 'tw:grid tw:[grid-template-columns:1fr_auto]'
+        : 'tw:grid tw:[grid-template-columns:minmax(220px,1fr)_2fr]'
+    }
     gap={8}>
-    <Box className="tw:max-w-[320px] tw:gap-0.5" direction="col">
+    <Box
+      className={isValueCompact ? 'tw:gap-0.5' : 'tw:max-w-[320px] tw:gap-0.5'}
+      direction="col">
       <Typography className="tw:text-primary" size="text-sm" weight="medium">
         {title}
       </Typography>
