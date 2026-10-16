@@ -168,7 +168,7 @@ class SystemRepositorySecurityConfigValidationTest {
 
   /** A server that cannot reach its own public URL fails the JWKS check whatever the admin edits. */
   @Test
-  void doesNotRejectAChangeForAnErrorTheStoredConfigurationAlreadyHas() {
+  void acceptsASelfSignupChangeWhenTheStoredConfigurationFailsValidation() {
     respond(OPENMETADATA_JWKS, 503, "");
     SecurityConfiguration updated = documentedAzurePublicClient();
     updated.getAuthenticationConfiguration().setEnableSelfSignup(false);
@@ -179,8 +179,25 @@ class SystemRepositorySecurityConfigValidationTest {
     assertEquals(Status.SUCCESS, response.getStatus());
   }
 
+  /**
+   * Validators stop at the first failure. This custom OIDC configuration reports only its empty
+   * providerName, before the update and after it, so the callback URL the update clears goes
+   * unreported; the update must still be rejected.
+   */
   @Test
-  void reportsOnlyTheErrorsAChangeIntroduces() {
+  void rejectsAChangeWhoseErrorAnOlderErrorHides() {
+    respond(AZURE_LOGIN + TENANT_ID + "/.well-known/openid-configuration", 404, "");
+    SecurityConfiguration stored = documentedAzurePublicClient();
+    stored.getAuthenticationConfiguration().setProvider(AuthProvider.CUSTOM_OIDC);
+    SecurityConfiguration updated = documentedAzurePublicClient();
+    updated.getAuthenticationConfiguration().setProvider(AuthProvider.CUSTOM_OIDC);
+    updated.getAuthenticationConfiguration().setCallbackUrl("");
+
+    assertEquals(Status.FAILED, validateChange(stored, updated).getStatus());
+  }
+
+  @Test
+  void reportsEveryErrorWhenItRejectsAChange() {
     respond(OPENMETADATA_JWKS, 503, "");
     SecurityConfiguration updated = documentedAzurePublicClient();
     updated.getAuthenticationConfiguration().setCallbackUrl("");
@@ -188,7 +205,9 @@ class SystemRepositorySecurityConfigValidationTest {
     SecurityValidationResponse response = validateChange(documentedAzurePublicClient(), updated);
 
     assertEquals(
-        List.of(fieldError(FieldPaths.AUTH_CALLBACK_URL, "Callback URL is required")),
+        List.of(
+            fieldError(FieldPaths.AUTH_CALLBACK_URL, "Callback URL is required"),
+            fieldError(FieldPaths.AUTH_PUBLIC_KEY_URLS, "Public key url not accessible")),
         response.getErrors());
     assertEquals(Status.FAILED, response.getStatus());
   }

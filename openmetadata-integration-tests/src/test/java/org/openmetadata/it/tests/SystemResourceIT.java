@@ -89,6 +89,7 @@ import org.openmetadata.schema.profiler.MetricType;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.TestLoginCredentialsRequest;
 import org.openmetadata.schema.system.TestLoginProtocol;
@@ -101,6 +102,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -2308,11 +2310,11 @@ public class SystemResourceIT {
   /**
    * The SSO page's self-signup switch sends exactly this one-operation patch (#28379). Like a
    * configuration seeded from the environment before field validation existed, the test server's
-   * stored configuration fails full validation, and a patch that leaves those fields alone must
+   * stored configuration fails full validation; no check reads enableSelfSignup, so the patch must
    * still be saved.
    */
   @Test
-  void test_patchSecurityConfig_savesAChangeDespiteErrorsTheStoredConfigAlreadyHas()
+  void test_patchSecurityConfig_savesSelfSignupDespiteErrorsTheStoredConfigAlreadyHas()
       throws Exception {
     SecurityConfiguration stored = getSecurityConfig();
     assertEquals(
@@ -2320,20 +2322,46 @@ public class SystemResourceIT {
         validateSecurityConfig(stored).getStatus(),
         "The stored configuration must already fail validation for this test to mean anything");
     boolean selfSignup = stored.getAuthenticationConfiguration().getEnableSelfSignup();
-    ArrayNode patch = MAPPER.createArrayNode();
-    patch
-        .addObject()
-        .put("op", "replace")
-        .put("path", "/authenticationConfiguration/enableSelfSignup")
-        .put("value", !selfSignup);
 
     try {
-      SdkClients.adminClient()
-          .getHttpClient()
-          .executeForString(HttpMethod.PATCH, "/v1/system/security/config", patch);
+      patchSecurityConfig("/authenticationConfiguration/enableSelfSignup", !selfSignup);
 
       assertEquals(
           !selfSignup, getSecurityConfig().getAuthenticationConfiguration().getEnableSelfSignup());
+    } finally {
+      putSecurityConfig(MAPPER.writeValueAsString(stored));
+    }
+  }
+
+  /**
+   * A patch to a setting validation reads is validated in full. Validators stop at the first
+   * failure, so an error the stored configuration already has could hide one the patch introduces:
+   * the rejection lists the older errors too.
+   */
+  @Test
+  void test_patchSecurityConfig_rejectsAChangeToACheckedSettingWithEveryError() throws Exception {
+    SecurityConfiguration stored = getSecurityConfig();
+    List<FieldError> storedErrors = validateSecurityConfig(stored).getErrors();
+
+    try {
+      InvalidRequestException rejection =
+          assertThrows(
+              InvalidRequestException.class,
+              () -> patchSecurityConfig("/authenticationConfiguration/callbackUrl", ""));
+
+      List<FieldError> reported =
+          MAPPER
+              .readValue(rejection.getResponseBody(), SecurityValidationResponse.class)
+              .getErrors();
+      assertTrue(
+          reported.stream()
+              .anyMatch(
+                  error -> "authenticationConfiguration.callbackUrl".equals(error.getField())),
+          "The rejection must report the callback URL the patch cleared: " + reported);
+      assertTrue(
+          reported.containsAll(CommonUtil.listOrEmpty(storedErrors)),
+          "The rejection must also report the errors the stored configuration already had: "
+              + reported);
     } finally {
       putSecurityConfig(MAPPER.writeValueAsString(stored));
     }
@@ -2420,6 +2448,18 @@ public class SystemResourceIT {
             "/v1/system/security/config",
             securityConfigJson,
             RequestOptions.builder().build());
+  }
+
+  private static void patchSecurityConfig(String path, Object value) {
+    ArrayNode patch = MAPPER.createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", path)
+        .set("value", MAPPER.valueToTree(value));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/system/security/config", patch);
   }
 
   private static SecurityValidationResponse validateSecurityConfig(

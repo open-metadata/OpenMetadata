@@ -8,6 +8,8 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Suppliers;
 import com.unboundid.ldap.sdk.LDAPConnection;
@@ -29,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -191,6 +194,13 @@ public class SystemRepository {
   }
 
   private static final String INDEX_NAME = "table_search_index";
+
+  /**
+   * Login switches that no validation check reads, so changing only these cannot make a security
+   * configuration fail validation. Add a setting here only if no check reads it.
+   */
+  private static final Set<String> UNCHECKED_LOGIN_SWITCHES =
+      Set.of("enableSelfSignup", "enableAutoRedirect", "forceSecureSessionCookie");
 
   public SystemRepository() {
     this.dao = Entity.getCollectionDAO().systemDAO();
@@ -1755,40 +1765,38 @@ public class SystemRepository {
   }
 
   /**
-   * Validates an update to the stored security configuration, failing it only for the errors it
-   * introduces. A configuration seeded from openmetadata.yaml before field validation existed can
-   * fail checks on fields an update leaves alone, and those must not block the update — turning on
-   * self-signup, for example.
+   * Validates an update to the stored security configuration. An update that changes nothing but
+   * {@link #UNCHECKED_LOGIN_SWITCHES} (the SSO page's self-signup switch, say) is not validated: no
+   * check reads what it changed, and a configuration stored before field validation existed can
+   * fail checks such an update never touches (#28379). Any other update is validated in full and
+   * rejected on any error, an older one included, because validators stop at the first failure and
+   * an older error can hide one the update introduces.
    */
   public SecurityValidationResponse validateSecurityConfigurationChange(
       SecurityConfiguration storedConfig,
       SecurityConfiguration updatedConfig,
       OpenMetadataApplicationConfig applicationConfig,
       String currentUsername) {
-    SecurityValidationResponse response =
-        validateSecurityConfiguration(updatedConfig, applicationConfig, currentUsername);
-    if (response.getStatus() == SecurityValidationResponse.Status.FAILED) {
-      List<FieldError> storedErrors =
-          listOrEmpty(
-              validateSecurityConfiguration(storedConfig, applicationConfig, currentUsername)
-                  .getErrors());
-      response = withoutStoredErrors(response.getErrors(), storedErrors);
-    }
-    return response;
+    return changesOnlyUncheckedLoginSwitches(storedConfig, updatedConfig)
+        ? new SecurityValidationResponse().withStatus(SecurityValidationResponse.Status.SUCCESS)
+        : validateSecurityConfiguration(updatedConfig, applicationConfig, currentUsername);
   }
 
-  private static SecurityValidationResponse withoutStoredErrors(
-      List<FieldError> errors, List<FieldError> storedErrors) {
-    List<FieldError> introducedErrors =
-        errors.stream().filter(error -> !storedErrors.contains(error)).toList();
-    SecurityValidationResponse response =
-        new SecurityValidationResponse().withStatus(SecurityValidationResponse.Status.SUCCESS);
-    if (introducedErrors.isEmpty()) {
-      LOG.warn("Saving security configuration despite errors it already had: {}", errors);
-    } else {
-      response.withStatus(SecurityValidationResponse.Status.FAILED).withErrors(introducedErrors);
+  private static boolean changesOnlyUncheckedLoginSwitches(
+      SecurityConfiguration storedConfig, SecurityConfiguration updatedConfig) {
+    return Objects.equals(
+            storedConfig.getAuthorizerConfiguration(), updatedConfig.getAuthorizerConfiguration())
+        && Objects.equals(
+            checkedAuthenticationSettings(storedConfig),
+            checkedAuthenticationSettings(updatedConfig));
+  }
+
+  private static JsonNode checkedAuthenticationSettings(SecurityConfiguration config) {
+    JsonNode settings = JsonUtils.valueToTree(config.getAuthenticationConfiguration());
+    if (settings instanceof ObjectNode fields) {
+      fields.remove(UNCHECKED_LOGIN_SWITCHES);
     }
-    return response;
+    return settings;
   }
 
   private FieldError validateAuthenticationConfigurationBaseFields(
