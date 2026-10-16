@@ -765,7 +765,6 @@ class AuthenticationCodeFlowHandlerTest {
     handler.handleLogin(request, response);
 
     assertTrue(capturedLoginRedirect().contains("client_id="));
-    verify(sessionService, never()).revokeSession(any(), any());
   }
 
   @Test

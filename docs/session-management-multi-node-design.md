@@ -173,7 +173,9 @@ deleted.
 SAML and confidential OIDC use pending sessions:
 
 1. Login creates a `PENDING` `AUTH` session containing redirect state, OIDC state, nonce, and PKCE
-   verifier when applicable.
+   verifier when applicable. Its cookie replaces the browser's `OM_SESSION`, so confidential OIDC
+   login first revokes the `ACTIVE` session that cookie named. Left active, that session would
+   count toward `maxActiveSessionsPerUser` until it expired.
 2. The callback loads the pending session from the shared store.
 3. The user is created or updated.
 4. The OpenMetadata refresh token is inserted.

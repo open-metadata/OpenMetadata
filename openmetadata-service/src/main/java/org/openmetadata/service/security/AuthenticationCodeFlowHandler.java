@@ -474,6 +474,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       if (isMcpFlow) {
         persistMcpPendingState(req, pendingLoginContext);
       }
+      revokeTheSessionThisLoginReplaces(req, resp);
       sessionService.createPendingSession(
           req,
           resp,
@@ -543,6 +544,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   private boolean isMcpRedirectUri(String redirectUri) {
     return (serverUrl + MCP_CALLBACK_PATH).equals(redirectUri);
+  }
+
+  /**
+   * The pending session's cookie replaces the browser's current one, and nothing reaches that
+   * session again. Left active, it would keep its refresh tokens until it expires and count toward
+   * maxActiveSessionsPerUser, so signing in again on one browser could evict another device.
+   */
+  private void revokeTheSessionThisLoginReplaces(HttpServletRequest req, HttpServletResponse resp) {
+    sessionService
+        .getActiveSession(req, resp)
+        .ifPresent(session -> sessionService.revokeSession(session.getId()));
   }
 
   private void persistMcpPendingState(HttpServletRequest req, PendingLoginContext context) {
