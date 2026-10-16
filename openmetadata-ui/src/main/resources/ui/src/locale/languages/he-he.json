@@ -5959,6 +5959,8 @@
     "version-released-try-now": "{{version}} שוחרר <0>ראה מה חדש!</0>",
     "video-playback-not-supported": "הדפדף שלך אינו תומך בהפעלת נגן סרטים.",
     "view-all-count-failing-services": "הצג את כל {{count}} השירותים הכושלים",
+    "view-all-count-healthy-services": "הצג את כל {{count}} השירותים התקינים",
+    "view-all-count-not-run-services": "הצג את כל {{count}} השירותים שטרם הורצו",
     "view-deleted-entity": "הצג את כל {{entity}} המחוקים, ששייכים ל{{parent}} זה.",
     "view-edit-and-schedule-announcements": "הצגה, עריכה ותזמון של הכרזות",
     "view-mode-description": "תצוגת הפתיחה של דפים שתומכים ביותר מפריסה אחת.",

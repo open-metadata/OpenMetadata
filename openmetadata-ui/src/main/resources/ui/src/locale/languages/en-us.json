@@ -5959,6 +5959,8 @@
     "version-released-try-now": "{{version}} Released <0>See What's New!</0>",
     "video-playback-not-supported": "Your browser does not support video playback.",
     "view-all-count-failing-services": "View all {{count}} failing services",
+    "view-all-count-healthy-services": "View all {{count}} healthy services",
+    "view-all-count-not-run-services": "View all {{count}} services not run yet",
     "view-deleted-entity": "View All the Deleted {{entity}}, which come under this {{parent}}.",
     "view-edit-and-schedule-announcements": "View, edit, and schedule announcements",
     "view-mode-description": "Starting view for pages that support more than one layout.",

@@ -63,6 +63,19 @@ export interface FailingService {
 // The health bucket a service belongs to, used to filter the Connections list.
 export type ServiceHealthFilter = 'failing' | 'healthy' | 'notRun';
 
+// A bucket other than failing lists services as they are: they have no
+// culprit run to read, so their rows need nothing beyond the summary.
+export type QuietHealthFilter = Exclude<ServiceHealthFilter, 'failing'>;
+
+/** One row of the healthy or not-run bucket. */
+export interface BucketService {
+  id: string;
+  displayName: string;
+  fqn: string;
+  serviceType: string;
+  serviceCategory: ServiceCategory;
+}
+
 export interface IngestionPipelineStats {
   connectedServices: number;
   healthyServices: number;
@@ -270,6 +283,52 @@ const fetchPipelineStats = async (): Promise<IngestionPipelineStatsData> => {
     healthyServices: sumHealth(overview, ServiceHealth.Success),
     pendingServices: sumHealth(overview, ServiceHealth.NotRun),
     warningServices: sumHealth(overview, ServiceHealth.PartialSuccess),
+  };
+};
+
+const QUIET_FILTER_TO_HEALTH: Record<QuietHealthFilter, ServiceHealth> = {
+  healthy: ServiceHealth.Success,
+  notRun: ServiceHealth.NotRun,
+};
+
+const toBucketService = (summary: ServiceSummary): BucketService => ({
+  displayName: summary.displayName || summary.name,
+  fqn: summary.fullyQualifiedName ?? summary.name,
+  id: summary.id,
+  serviceCategory: ENTITY_TYPE_TO_CATEGORY[summary.entityType],
+  serviceType: summary.serviceType ?? '',
+});
+
+/**
+ * The first services of a healthy or not-run bucket, read only once the card
+ * shows that bucket. Nested under the stats key, so whatever refreshes the
+ * counts refreshes these rows with them.
+ */
+export const useBucketServices = (
+  filter: QuietHealthFilter | undefined,
+  limit: number
+) => {
+  const { data, isError, isFetching, isPending } = useQuery({
+    enabled: filter !== undefined,
+    gcTime: PIPELINE_STATS_GC_TIME_MS,
+    queryFn: async (): Promise<BucketService[]> => {
+      const overview = await getServicesOverview({
+        ...OVERVIEW_PARAMS,
+        health: [QUIET_FILTER_TO_HEALTH[filter as QuietHealthFilter]],
+        limit,
+      });
+
+      return overview.data.map(toBucketService);
+    },
+    queryKey: [...PIPELINE_STATS_QUERY_KEY, 'bucket', filter, limit],
+    staleTime: PIPELINE_STATS_TTL_MS,
+  });
+
+  return {
+    isError,
+    isFetching,
+    isLoading: filter !== undefined && isPending,
+    services: data ?? [],
   };
 };
 

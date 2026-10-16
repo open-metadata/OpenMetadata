@@ -5959,6 +5959,8 @@
     "version-released-try-now": "Выпущена версия {{version}} <0>Посмотрите, что нового!</0>",
     "video-playback-not-supported": "Ваш браузер не поддерживает воспроизведение видео.",
     "view-all-count-failing-services": "Показать все сбойные сервисы ({{count}})",
+    "view-all-count-healthy-services": "Показать все исправные сервисы ({{count}})",
+    "view-all-count-not-run-services": "Показать все ещё не запускавшиеся сервисы ({{count}})",
     "view-deleted-entity": "Просмотреть удаленные объекты типа «{{entity}}», относящиеся к {{parent}}.",
     "view-edit-and-schedule-announcements": "Просмотр, редактирование и планирование объявлений",
     "view-mode-description": "Начальное представление страниц, поддерживающих несколько макетов.",

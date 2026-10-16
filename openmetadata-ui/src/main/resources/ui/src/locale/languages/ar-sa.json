@@ -5959,6 +5959,8 @@
     "version-released-try-now": "تم إصدار {{version}} <0>شاهد ما الجديد!</0>",
     "video-playback-not-supported": "لا يدعم متصفحك تشغيل الفيديو.",
     "view-all-count-failing-services": "عرض كل الخدمات المتعطلة ({{count}})",
+    "view-all-count-healthy-services": "عرض كل الخدمات السليمة ({{count}})",
+    "view-all-count-not-run-services": "عرض كل الخدمات التي لم تُشغَّل بعد ({{count}})",
     "view-deleted-entity": "عرض جميع {{entity}} المحذوفة، التي تندرج تحت {{parent}} هذا.",
     "view-edit-and-schedule-announcements": "عرض الإعلانات وتحريرها وجدولتها",
     "view-mode-description": "طريقة العرض الافتراضية للصفحات التي تدعم أكثر من تخطيط واحد.",

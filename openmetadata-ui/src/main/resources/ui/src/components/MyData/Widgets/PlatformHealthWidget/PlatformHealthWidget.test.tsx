@@ -17,8 +17,10 @@ import { PipelineType } from '../../../../generated/entity/services/ingestionPip
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import PlatformHealthWidget from './PlatformHealthWidget';
 import {
+  BucketService,
   FailingService,
   IngestionPipelineStats,
+  useBucketServices,
   useIngestionPipelineStats,
 } from './useIngestionPipelineStats';
 
@@ -70,7 +72,12 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('./useIngestionPipelineStats', () => ({
+  useBucketServices: jest.fn(),
   useIngestionPipelineStats: jest.fn(),
+}));
+
+jest.mock('../../../../utils/DataAssetServiceUtils', () => ({
+  getFormattedDataAssetServiceType: (type: string) => `fmt-${type}`,
 }));
 
 jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => ({
@@ -102,6 +109,17 @@ const mockStats = useIngestionPipelineStats as jest.MockedFunction<
   typeof useIngestionPipelineStats
 >;
 const mockPermissions = usePermissionProvider as jest.Mock;
+const mockBucketServices = useBucketServices as jest.MockedFunction<
+  typeof useBucketServices
+>;
+
+const bucketService = (id: string): BucketService => ({
+  displayName: id,
+  fqn: id,
+  id,
+  serviceCategory: ServiceCategory.DATABASE_SERVICES,
+  serviceType: 'Mysql',
+});
 
 const failing = (id: string): FailingService => ({
   displayName: id,
@@ -137,6 +155,14 @@ const renderWidget = (
 ) => {
   mockPermissions.mockReturnValue({ permissions: { ingestionPipeline } });
   mockStats.mockReturnValue({ ...STATS, ...stats });
+  mockBucketServices.mockImplementation((filter) => ({
+    isError: false,
+    isFetching: false,
+    isLoading: false,
+    services: filter
+      ? [bucketService(`${filter}-a`), bucketService(`${filter}-b`)]
+      : [],
+  }));
 
   return render(<PlatformHealthWidget widgetKey="KnowledgePanel.Health-1" />);
 };
@@ -198,13 +224,76 @@ describe('PlatformHealthWidget', () => {
     });
   });
 
+  describe('bucket chips', () => {
+    it('opens on the failing bucket without reading another one', () => {
+      renderWidget();
+
+      expect(screen.getByTestId('topic-stat-failing')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+      expect(mockBucketServices).toHaveBeenLastCalledWith(undefined, 3);
+    });
+
+    // The chips filter the card; they used to navigate to the services list.
+    it.each([
+      ['healthy', 'healthy'],
+      ['not-run', 'notRun'],
+    ])(
+      'shows the %s services in place when its chip is picked',
+      (chip, bucket) => {
+        renderWidget();
+
+        fireEvent.click(screen.getByTestId(`topic-stat-${chip}`));
+
+        expect(mockNavigate).not.toHaveBeenCalled();
+        expect(screen.getByTestId(`topic-stat-${chip}`)).toHaveAttribute(
+          'aria-pressed',
+          'true'
+        );
+        expect(mockBucketServices).toHaveBeenLastCalledWith(bucket, 3);
+        expect(
+          screen.getByTestId(`bucket-service-${bucket}-a`)
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId('view-all-failing-services')
+        ).not.toBeInTheDocument();
+      }
+    );
+
+    it('offers the rest of a bucket larger than the card shows', () => {
+      renderWidget();
+
+      fireEvent.click(screen.getByTestId('topic-stat-healthy'));
+
+      expect(screen.getByTestId('view-all-healthy-services')).toHaveTextContent(
+        'message.view-all-count-healthy-services {"count":8}'
+      );
+    });
+
+    it('opens a bucket row on its service', () => {
+      renderWidget();
+
+      fireEvent.click(screen.getByTestId('topic-stat-not-run'));
+      fireEvent.click(screen.getByTestId('bucket-service-notRun-a'));
+
+      expect(mockNavigate).toHaveBeenCalledWith('/service');
+    });
+
+    it('disables an empty bucket', () => {
+      renderWidget({ pendingServices: 0 });
+
+      expect(screen.getByTestId('topic-stat-not-run')).toBeDisabled();
+    });
+  });
+
   describe('health links', () => {
     // Settings > Services ignores `health`, so classic mode must not promise a
     // filter the destination drops.
     it('opens the unfiltered services list outside the connections surface', () => {
       renderWidget();
 
-      fireEvent.click(screen.getByTestId('topic-stat-failing'));
+      fireEvent.click(screen.getByTestId('view-all-failing-services'));
 
       expect(mockNavigate).toHaveBeenCalledWith('/settings/services');
     });
@@ -232,7 +321,12 @@ describe('PlatformHealthWidget', () => {
       'message.all-services-healthy {"count":25}'
     );
     expect(screen.queryByTestId('status')).toBeNull();
-    expect(screen.queryByTestId('platform-health-rows')).toBeNull();
+    // With nothing failing, the card opens on the healthy services instead.
+    expect(screen.getByTestId('topic-stat-healthy')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByTestId('bucket-service-healthy-a')).toBeInTheDocument();
   });
 
   // An error used to read as "Needs attention" over "0 of 0 services failing".

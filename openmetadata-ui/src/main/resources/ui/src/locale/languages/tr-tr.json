@@ -5959,6 +5959,8 @@
     "version-released-try-now": "{{version}} Yayınlandı <0>Yeniliklere Göz Atın!</0>",
     "video-playback-not-supported": "Tarayıcınız video oynatmayı desteklemiyor.",
     "view-all-count-failing-services": "Başarısız {{count}} hizmetin tümünü görüntüle",
+    "view-all-count-healthy-services": "Sağlıklı {{count}} hizmetin tümünü görüntüle",
+    "view-all-count-not-run-services": "Henüz çalıştırılmamış {{count}} hizmetin tümünü görüntüle",
     "view-deleted-entity": "Bu {{parent}} altına giren tüm Silinmiş {{entity}} Görüntüle.",
     "view-edit-and-schedule-announcements": "Duyuruları görüntüleyin, düzenleyin ve zamanlayın",
     "view-mode-description": "Birden fazla düzeni destekleyen sayfaların başlangıç görünümü.",

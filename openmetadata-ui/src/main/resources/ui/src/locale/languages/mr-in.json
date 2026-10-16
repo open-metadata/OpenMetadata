@@ -5959,6 +5959,8 @@
     "version-released-try-now": "{{version}} रिलीझ झाले <0>नवीन काय आहे ते पहा!</0>",
     "video-playback-not-supported": "तुमचा ब्राउझर विडिओ प्रदर्शनास समर्थित नाही.",
     "view-all-count-failing-services": "अयशस्वी {{count}} सेवा सर्व पहा",
+    "view-all-count-healthy-services": "निरोगी {{count}} सेवा सर्व पहा",
+    "view-all-count-not-run-services": "अद्याप न चाललेल्या {{count}} सेवा सर्व पहा",
     "view-deleted-entity": "या {{parent}} अंतर्गत येणारे सर्व मिटवलेले {{entity}} पहा.",
     "view-edit-and-schedule-announcements": "घोषणा पाहा, संपादित करा आणि वेळापत्रक ठरवा",
     "view-mode-description": "एकापेक्षा जास्त मांडणी असलेल्या पृष्ठांचे सुरुवातीचे दृश्य.",

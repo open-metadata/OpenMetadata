@@ -5959,6 +5959,8 @@
     "version-released-try-now": "{{version}} publié essayez maintenant !",
     "video-playback-not-supported": "Votre navigateur ne prend pas en charge la lecture vidéo.",
     "view-all-count-failing-services": "Voir les {{count}} services en échec",
+    "view-all-count-healthy-services": "Voir les {{count}} services en bon état",
+    "view-all-count-not-run-services": "Voir les {{count}} services pas encore exécutés",
     "view-deleted-entity": "Afficher toutes les {{entity}} supprimées qui relèvent de ce {{parent}}.",
     "view-edit-and-schedule-announcements": "Consulter, modifier et planifier les annonces",
     "view-mode-description": "Vue de départ des pages qui proposent plusieurs dispositions.",

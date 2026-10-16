@@ -5959,6 +5959,8 @@
     "version-released-try-now": "{{version}} がリリースされました <0>新機能を見る</0>",
     "video-playback-not-supported": "このブラウザーはビデオ再生をサポートしていません。",
     "view-all-count-failing-services": "失敗している {{count}} 件のサービスをすべて表示",
+    "view-all-count-healthy-services": "正常な {{count}} 件のサービスをすべて表示",
+    "view-all-count-not-run-services": "未実行の {{count}} 件のサービスをすべて表示",
     "view-deleted-entity": "この{{parent}}に関連するすべての削除済み{{entity}}を表示",
     "view-edit-and-schedule-announcements": "お知らせの表示、編集、スケジュール設定",
     "view-mode-description": "複数のレイアウトに対応したページの初期表示です。",

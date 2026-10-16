@@ -5959,6 +5959,8 @@
     "version-released-try-now": "{{version}} släppt <0>Se vad som är nytt!</0>",
     "video-playback-not-supported": "Din webbläsare stöder inte videouppspelning.",
     "view-all-count-failing-services": "Visa alla {{count}} tjänster med fel",
+    "view-all-count-healthy-services": "Visa alla {{count}} felfria tjänster",
+    "view-all-count-not-run-services": "Visa alla {{count}} tjänster som inte har körts än",
     "view-deleted-entity": "Visa alla borttagna {{entity}} som hör under detta {{parent}}.",
     "view-edit-and-schedule-announcements": "Visa, redigera och schemalägg meddelanden",
     "view-mode-description": "Startvy för sidor som har fler än en layout.",

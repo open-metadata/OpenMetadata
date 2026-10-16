@@ -5959,6 +5959,8 @@
     "version-released-try-now": "{{version}} Lançada <0>Vexa as Novidades!</0>",
     "video-playback-not-supported": "O teu navegador non soporta a reproducción de vídeo.",
     "view-all-count-failing-services": "Ver os {{count}} servizos con fallos",
+    "view-all-count-healthy-services": "Ver os {{count}} servizos en bo estado",
+    "view-all-count-not-run-services": "Ver os {{count}} servizos aínda sen executar",
     "view-deleted-entity": "Ver todas as {{entity}} eliminadas, que están baixo este {{parent}}.",
     "view-edit-and-schedule-announcements": "Ver, editar e programar anuncios",
     "view-mode-description": "Vista inicial das páxinas que admiten máis dun deseño.",

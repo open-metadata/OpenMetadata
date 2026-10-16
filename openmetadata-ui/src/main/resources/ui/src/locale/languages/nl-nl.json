@@ -5959,6 +5959,8 @@
     "version-released-try-now": "{{version}} vrijgegeven <0>Zie wat er veranderd is!</0>",
     "video-playback-not-supported": "Uw browser ondersteunt geen videoafspeelfunctie.",
     "view-all-count-failing-services": "Alle {{count}} mislukte services bekijken",
+    "view-all-count-healthy-services": "Alle {{count}} gezonde services bekijken",
+    "view-all-count-not-run-services": "Alle {{count}} nog niet uitgevoerde services bekijken",
     "view-deleted-entity": "Bekijk alle verwijderde {{entity}}, die vallen onder deze {{parent}}.",
     "view-edit-and-schedule-announcements": "Aankondigingen bekijken, bewerken en plannen",
     "view-mode-description": "Startweergave voor pagina's die meer dan één indeling ondersteunen.",

@@ -5959,6 +5959,8 @@
     "version-released-try-now": "{{version}} 출시됨 <0>새로운 기능 확인하기!</0>",
     "video-playback-not-supported": "사용 중인 브라우저는 비디오 재생을 지원하지 않습니다.",
     "view-all-count-failing-services": "실패한 서비스 {{count}}개 모두 보기",
+    "view-all-count-healthy-services": "정상 서비스 {{count}}개 모두 보기",
+    "view-all-count-not-run-services": "아직 실행되지 않은 서비스 {{count}}개 모두 보기",
     "view-deleted-entity": "이 {{parent}} 아래에 속하는 삭제된 모든 {{entity}}를 봅니다.",
     "view-edit-and-schedule-announcements": "공지사항 보기, 편집 및 예약",
     "view-mode-description": "레이아웃을 두 가지 이상 지원하는 페이지의 시작 보기입니다.",

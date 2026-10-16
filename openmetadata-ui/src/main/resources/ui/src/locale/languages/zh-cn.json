@@ -5959,6 +5959,8 @@
     "version-released-try-now": "查看新版本 {{version}} 的新特性！",
     "video-playback-not-supported": "您的浏览器不支持视频播放。",
     "view-all-count-failing-services": "查看全部 {{count}} 个失败的服务",
+    "view-all-count-healthy-services": "查看全部 {{count}} 个正常的服务",
+    "view-all-count-not-run-services": "查看全部 {{count}} 个尚未运行的服务",
     "view-deleted-entity": "查看所有被删除的{{entity}}, 隶属于该{{parent}}",
     "view-edit-and-schedule-announcements": "查看、编辑和安排公告",
     "view-mode-description": "支持多种布局的页面的初始视图。",

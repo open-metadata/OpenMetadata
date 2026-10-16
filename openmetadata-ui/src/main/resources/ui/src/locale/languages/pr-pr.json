@@ -5959,6 +5959,8 @@
     "version-released-try-now": "{{version}} منتشر شد <0>مشاهده کنید چه خبر است!</0>",
     "video-playback-not-supported": "مرورگر شما از پخش ویدیو پشتیبانی نمی‌کند.",
     "view-all-count-failing-services": "مشاهده همه {{count}} سرویس ناموفق",
+    "view-all-count-healthy-services": "مشاهده همه {{count}} سرویس سالم",
+    "view-all-count-not-run-services": "مشاهده همه {{count}} سرویسی که هنوز اجرا نشده‌اند",
     "view-deleted-entity": "مشاهده تمام {{entity}} حذف‌شده که تحت این {{parent}} هستند.",
     "view-edit-and-schedule-announcements": "مشاهده، ویرایش و زمان‌بندی اعلامیه‌ها",
     "view-mode-description": "نمای آغازین صفحه‌هایی که بیش از یک چیدمان دارند.",

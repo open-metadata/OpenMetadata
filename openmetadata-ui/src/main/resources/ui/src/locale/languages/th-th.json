@@ -5959,6 +5959,8 @@
     "version-released-try-now": "{{version}} ได้ออกแล้ว <0>ดูสิ่งใหม่!</0>",
     "video-playback-not-supported": "บราวเซอร์ของคุณไม่สนับสนุนการเล่นวิดีโอ",
     "view-all-count-failing-services": "ดูบริการที่ล้มเหลวทั้งหมด {{count}} รายการ",
+    "view-all-count-healthy-services": "ดูบริการที่ทำงานปกติทั้งหมด {{count}} รายการ",
+    "view-all-count-not-run-services": "ดูบริการที่ยังไม่เคยรันทั้งหมด {{count}} รายการ",
     "view-deleted-entity": "ดู {{entity}} ที่ถูกลบทั้งหมด ซึ่งอยู่ภายใต้ {{parent}} นี้",
     "view-edit-and-schedule-announcements": "ดู แก้ไข และกำหนดเวลาประกาศ",
     "view-mode-description": "มุมมองเริ่มต้นของหน้าที่รองรับเค้าโครงมากกว่าหนึ่งแบบ",

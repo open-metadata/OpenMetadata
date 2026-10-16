@@ -5959,6 +5959,8 @@
     "version-released-try-now": "{{version}} Veröffentlicht <0>Sehen Sie, was es Neues gibt!</0>",
     "video-playback-not-supported": "Videowiedergabe wird nicht unterstützt",
     "view-all-count-failing-services": "Alle {{count}} fehlgeschlagenen Dienste anzeigen",
+    "view-all-count-healthy-services": "Alle {{count}} fehlerfreien Dienste anzeigen",
+    "view-all-count-not-run-services": "Alle {{count}} noch nicht ausgeführten Dienste anzeigen",
     "view-deleted-entity": "Alle gelöschten {{entity}}, die zu diesem {{parent}} gehören, anzeigen.",
     "view-edit-and-schedule-announcements": "Ankündigungen anzeigen, bearbeiten und planen",
     "view-mode-description": "Startansicht für Seiten, die mehr als ein Layout unterstützen.",
