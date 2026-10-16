@@ -29,6 +29,7 @@ import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import { FqnPart } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -279,13 +280,21 @@ const IncidentList = ({
                 </span>
               </Table.Cell>
               <Table.Cell className="tw:whitespace-nowrap">
-                {assignee && (
+                {assignee ? (
                   <span data-testid="incident-assignee">
                     <OwnerChip
                       isCompactView={false}
                       owner={toOwnerRef(assignee)}
                     />
                   </span>
+                ) : (
+                  <Typography
+                    as="span"
+                    className="tw:text-tertiary"
+                    data-testid="incident-no-assignee"
+                    size="text-sm">
+                    {NO_DATA_PLACEHOLDER}
+                  </Typography>
                 )}
               </Table.Cell>
             </Table.Row>
