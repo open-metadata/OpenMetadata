@@ -21,6 +21,14 @@ import type {
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 
 const stopPress = (event: SyntheticEvent) => event.stopPropagation();
+// The soft-disabled button stays natively enabled, so its click still carries the
+// default action (a `type="submit"` button would submit its form). Enter and
+// Space activate a button through this same click. Pointer and mouse down are
+// left alone so the button can still take focus and show its tooltip.
+const blockClick = (event: SyntheticEvent) => {
+  event.preventDefault();
+  event.stopPropagation();
+};
 const stopKeyPress = (event: KeyboardEvent) => {
   if (event.key === 'Enter' || event.key === ' ') {
     event.stopPropagation();
@@ -201,7 +209,7 @@ export const ButtonUtility = forwardRef<
   return (
     <span
       className="tw:contents"
-      onClickCapture={stopPress}
+      onClickCapture={blockClick}
       onKeyDownCapture={stopKeyPress}
       onKeyUpCapture={stopKeyPress}
       onMouseDownCapture={stopPress}

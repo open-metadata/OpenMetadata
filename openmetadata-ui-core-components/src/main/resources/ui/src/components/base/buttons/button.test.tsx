@@ -377,6 +377,23 @@ describe('ButtonUtility — icon size and color', () => {
     expect(screen.queryByText('Menu body')).not.toBeInTheDocument();
   });
 
+  it('does not submit its form while disabled with a tooltip', async () => {
+    const onSubmit = vi.fn((event: SubmitEvent) => event.preventDefault());
+    render(
+      <form onSubmit={(event) => onSubmit(event.nativeEvent as SubmitEvent)}>
+        <ButtonUtility isDisabled icon={Edit01} tooltip="Save" type="submit" />
+      </form>
+    );
+    const button = screen.getByRole('button', { name: 'Save' });
+
+    await userEvent.click(button);
+    button.focus();
+    await userEvent.keyboard('{Enter}');
+    await userEvent.keyboard(' ');
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('disables a button without a tooltip natively', () => {
     render(<ButtonUtility isDisabled aria-label="Edit" icon={Edit01} />);
 
