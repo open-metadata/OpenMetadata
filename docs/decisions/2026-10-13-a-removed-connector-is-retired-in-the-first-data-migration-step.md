@@ -35,16 +35,16 @@ A removed connector is retired by a Java step that runs first in that release's
    the DAG left, as a service's cascade delete does, so the upgrade is never blocked.
 
 Every retype and delete statement is keyed on the old type value, so a second run changes nothing.
-The pipeline delete is the exception: its ids are read before the retype and the retype commits
-first, so they are gone from the database by the time the deletes run. A failing delete is
-therefore logged and skipped rather than propagated, so one unreachable pipeline cannot strand the
-ones behind it; a process killed inside the delete loop still leaves those DAGs for an operator.
+The pipeline delete cannot be keyed that way, because its ids are read before the retype and the
+retype has committed by the time the deletes run. Each id is instead written to `entity_extension`
+as `deltaLakeRetirement.pendingPipeline` before the retype and cleared once its delete has been
+attempted, so a killed run finds its leftovers on the next start. A delete that throws is logged
+and skipped, so one unreachable pipeline cannot strand the ones behind it.
 
 ## Consequences
 
 Catalog metadata on the retyped entities (descriptions, tags, owners, lineage, data quality,
-contracts) survives. Search shows the old type until the next reindex. A DAG is left behind when the
-pipeline service is unreachable during the upgrade, or when the upgrade is killed inside the delete
-loop; both are logged with the pipeline id. An upgrade that starts from an older
+contracts) survives. Search shows the old type until the next reindex. A DAG is left behind only when the
+pipeline service is unreachable during the upgrade, which is logged with the pipeline id. An upgrade that starts from an older
 release still runs that release's data migrations first; one of them that loads the removed type
 would need its own guard.

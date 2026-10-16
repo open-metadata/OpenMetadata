@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.type.Relationship;
@@ -41,16 +42,28 @@ import org.openmetadata.service.util.EntityUtil;
  * <p>Every retype and delete statement is keyed on {@code 'DeltaLake'} and walks its table in
  * {@link IdBatches}, so a run cut short resumes and a second run changes nothing.
  *
- * <p>The pipeline delete is the one step outside that guarantee. Its ids are read before the
- * retype, the only point a DeltaLake pipeline can be told apart, and the retype commits before the
- * deletes run, so the ids are gone from the database by then. A failing delete therefore only logs
- * rather than aborting the run; a process killed inside the delete loop leaves the remaining
- * pipelines and their DAGs behind for an operator to remove.
+ * <p>The pipeline delete cannot be keyed that way: its ids are read before the retype, the only
+ * point a DeltaLake pipeline can be told apart, and the handle autocommits, so the retype has
+ * landed by the time the deletes run. Each id is therefore written to {@code entity_extension} as
+ * {@value #PENDING_PIPELINE} before the retype and cleared once its delete has been attempted, so
+ * a killed run finds its leftovers. A delete that throws only logs, so one unreachable pipeline
+ * cannot strand the ones behind it.
  */
 @Slf4j
 public final class DeltaLakeRetirementMigration {
   private static final String DELTA_LAKE = "DeltaLake";
   private static final String IDS_BIND = "ids";
+  private static final String PENDING_BIND = "pending";
+
+  /**
+   * Marks an ingestion pipeline this step still has to delete. Written before the retype, while the
+   * pipelines can still be found, and cleared once each delete has been attempted, so a run killed
+   * inside the delete loop finds its leftovers again even though their services are by then
+   * CustomDatabase. {@code entity_extension} is keyed on the pipeline's own id, so a pipeline that
+   * is hard-deleted takes its marker with it.
+   */
+  private static final String PENDING_PIPELINE = "deltaLakeRetirement.pendingPipeline";
+
   private static final String VERSION_PREFIX_BIND = "versionPrefix";
 
   /** A table whose rows carry a databaseServiceType, with the entity type of its versions. */
@@ -102,10 +115,8 @@ public final class DeltaLakeRetirementMigration {
       final Handle handle,
       final ConnectionType connectionType,
       final Consumer<UUID> deletePipeline) {
-    final List<UUID> pipelines =
-        handle.createQuery(DELTA_LAKE_PIPELINES).mapTo(String.class).list().stream()
-            .map(UUID::fromString)
-            .toList();
+    final List<UUID> pipelines = pendingPipelines(handle);
+    persistPending(handle, connectionType, pipelines);
     for (final ServiceTyped serviceTyped : SERVICE_TYPED) {
       final int retyped =
           IdBatches.fold(
@@ -131,8 +142,56 @@ public final class DeltaLakeRetirementMigration {
                             + isDeltaLakeWorkflow(connectionType))
                     .bindList(IDS_BIND, batch)
                     .execute());
-    pipelines.forEach(pipeline -> deleteOrWarn(deletePipeline, pipeline));
+    for (final UUID pipeline : pipelines) {
+      deleteOrWarn(deletePipeline, pipeline);
+      clearPending(handle, pipeline);
+    }
     LOG.info("Deleted {} DeltaLake ingestion pipelines", pipelines.size());
+  }
+
+  /**
+   * A still-DeltaLake service names its pipelines; a marker names the ones a previous run was
+   * killed before it could delete, whose services it had already retyped.
+   */
+  private static List<UUID> pendingPipelines(final Handle handle) {
+    return Stream.concat(
+            handle.createQuery(DELTA_LAKE_PIPELINES).mapTo(String.class).list().stream(),
+            handle
+                .createQuery("SELECT id FROM entity_extension WHERE extension = :pending")
+                .bind(PENDING_BIND, PENDING_PIPELINE)
+                .mapTo(String.class)
+                .list()
+                .stream())
+        .distinct()
+        .map(UUID::fromString)
+        .toList();
+  }
+
+  /** Upserted one id at a time: a deployment has a handful of pipelines per service, not a table. */
+  private static void persistPending(
+      final Handle handle, final ConnectionType connectionType, final List<UUID> pipelines) {
+    final String sql =
+        connectionType == ConnectionType.MYSQL
+            ? "REPLACE INTO entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :pending, 'ingestionPipeline', '{}')"
+            : "INSERT INTO entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :pending, 'ingestionPipeline', '{}' :: jsonb) "
+                + "ON CONFLICT (id, extension) DO NOTHING";
+    for (final UUID pipeline : pipelines) {
+      handle
+          .createUpdate(sql)
+          .bind("id", pipeline.toString())
+          .bind(PENDING_BIND, PENDING_PIPELINE)
+          .execute();
+    }
+  }
+
+  private static void clearPending(final Handle handle, final UUID pipeline) {
+    handle
+        .createUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :pending")
+        .bind("id", pipeline.toString())
+        .bind(PENDING_BIND, PENDING_PIPELINE)
+        .execute();
   }
 
   /**

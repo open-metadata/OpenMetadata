@@ -15,6 +15,7 @@ package org.openmetadata.service.migration.utils.v210;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -171,6 +172,41 @@ class DeltaLakeRetirementMigrationTest {
           });
 
       assertEquals(List.of(UUID.fromString(DELTA_PIPELINE)), attempted);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  void aRunKilledInsideTheDeleteLoopDeletesThePipelineOnTheNextRun(String dialect) {
+    try (Handle handle = open(dialect)) {
+      Database db = seed(new Database(handle, dialect));
+
+      // An Error escapes the per-pipeline catch, so the step dies with its services already
+      // retyped and committed -- what a killed upgrade leaves behind.
+      assertThrows(
+          OutOfMemoryError.class,
+          () ->
+              DeltaLakeRetirementMigration.retire(
+                  handle,
+                  db.connectionType(),
+                  pipeline -> {
+                    throw new OutOfMemoryError("killed mid-delete");
+                  }));
+      assertEquals(
+          CUSTOM_DATABASE,
+          rows(db).get("dbservice_entity:" + DELTA_SERVICE).path("serviceType").asText(),
+          "the retype has to have landed, or this is not the case under test");
+
+      List<UUID> deletedBySecondRun = new ArrayList<>();
+      DeltaLakeRetirementMigration.retire(handle, db.connectionType(), deletedBySecondRun::add);
+
+      // No DeltaLake service is left to name it, so only the marker can have found it.
+      assertEquals(List.of(UUID.fromString(DELTA_PIPELINE)), deletedBySecondRun);
+      assertFalse(
+          rows(db)
+              .containsKey(
+                  "entity_extension:" + DELTA_PIPELINE + ":deltaLakeRetirement.pendingPipeline"),
+          "the marker is cleared once its delete has been attempted");
     }
   }
 
