@@ -476,6 +476,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       } else {
         requestBuilder.sort(searchSortFilter.getSortField(), sortOrder, "long");
       }
+      if (searchSortFilter.getThenSortField() != null) {
+        requestBuilder.sort(searchSortFilter.getThenSortField(), sortOrder, "long");
+      }
     }
 
     try {
@@ -780,6 +783,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             sortMode);
       } else {
         requestBuilder.sort(searchSortFilter.getSortField(), sortOrder, "long");
+      }
+      if (searchSortFilter.getThenSortField() != null) {
+        requestBuilder.sort(searchSortFilter.getThenSortField(), sortOrder, "long");
       }
     }
 

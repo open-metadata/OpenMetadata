@@ -130,6 +130,7 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
                 announcement={announcement}
                 className="tw:w-full"
                 onDismiss={onDismiss}
+                onNavigate={onClose}
               />
             </li>
           ))}
