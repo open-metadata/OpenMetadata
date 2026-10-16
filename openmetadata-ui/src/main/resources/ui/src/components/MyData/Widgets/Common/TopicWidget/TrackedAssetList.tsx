@@ -45,7 +45,7 @@ const TrackedAssetList: React.FC<TrackedAssetListProps> = ({
       </Typography>
 
       {assets.length === 0 ? (
-        <Typography className="tw:text-text-tertiary!" size="text-sm">
+        <Typography className="tw:text-text-tertiary!" size="text-xs">
           {t('message.no-data-available')}
         </Typography>
       ) : (

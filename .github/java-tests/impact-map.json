@@ -601,7 +601,8 @@
         "*Isolation*IT",
         "*Security*IT",
         "User*IT",
-        "*Sso*IT"
+        "*Sso*IT",
+        "*AdminOnly*IT"
       ]
     },
     {
