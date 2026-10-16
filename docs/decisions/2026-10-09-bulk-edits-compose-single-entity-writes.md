@@ -35,6 +35,9 @@ record the event.
 - An empty patch is skipped. An entity that fails (authorization, rule, validation or save) keeps no
   change and is reported with its message; the others go on. A dry run authorizes and prepares each
   patch and saves nothing.
+- An approval workflow that gates the edited field holds the PATCH exactly as it holds one made on
+  the entity's page: the entity keeps no change and records no event, and the batch reports it as
+  pending approval with its change request. A dry run asks the same gate and submits nothing.
 - Each saved entity gets the change event a PATCH gets, built by
   `ChangeEventHandler.entityChangeEvent`, the same builder the REST response filter uses. Only the
   side effects are grouped: the load and the event insert, once per group.
@@ -48,6 +51,9 @@ record the event.
 - The glossary term tab keeps one check of its own before the PATCH: an asset whose labels are
   mutually exclusive with the tags of the term's glossary is refused, because applying the term
   from the tab hands those tags to the term.
+- The tag tab saves in the background, so it edits the assets a workflow gates before it answers:
+  the response can then say how many change requests were submitted. The job reports them with the
+  rest.
 - Each entity costs a full PATCH. Grouping the search writes of a group is the next step and keeps
   this rule: the write stays the PATCH, only its side effects travel together.
 - Not yet on this rule: the ingestion bulk API, CSV import and the column bulk update (which already

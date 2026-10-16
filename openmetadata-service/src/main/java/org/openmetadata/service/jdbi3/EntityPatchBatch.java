@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -48,7 +49,9 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
  * loads and the event inserts are grouped.
  *
  * <p>An entity that fails (authorization, rule, validation or save) is reported with its message and
- * keeps no change; the others go on. A dry run authorizes and prepares each patch and saves nothing.
+ * keeps no change; the others go on. An entity whose PATCH an approval workflow holds is reported as
+ * held, as its change request. A dry run authorizes and prepares each patch, says which would be
+ * held, and saves nothing.
  * See ADR:2026-10-09-bulk-edits-compose-single-entity-writes and
  * ADR:2026-10-09-bulk-edits-authorize-each-entity-as-its-patch.
  */
@@ -61,10 +64,11 @@ final class EntityPatchBatch<T extends EntityInterface<?>> {
   record EntityEdit<E>(UUID id, Consumer<E> apply) {}
 
   /**
-   * The failure message of each entity that could not be edited, and the entities the batch changed
-   * (or, in a dry run, would change). An entity the edit leaves as it was is in neither.
+   * The failure message of each entity that could not be edited, the entities the batch changed
+   * (or, in a dry run, would change), and the pending-approval message of each entity whose edit was
+   * held. An entity the edit leaves as it was is in none of them.
    */
-  record PatchBatchResult(Map<UUID, String> failures, List<UUID> changed) {}
+  record PatchBatchResult(Map<UUID, String> failures, List<UUID> changed, Map<UUID, String> held) {}
 
   private final EntityRepository<T> repository;
   private final PatchRequester requester;
@@ -72,6 +76,7 @@ final class EntityPatchBatch<T extends EntityInterface<?>> {
   private final Fields loadFields;
   private final Map<UUID, String> failures = new LinkedHashMap<>();
   private final List<UUID> changed = new ArrayList<>();
+  private final Map<UUID, String> held = new LinkedHashMap<>();
 
   EntityPatchBatch(EntityRepository<T> repository, PatchRequester requester, boolean dryRun) {
     this.repository = repository;
@@ -82,11 +87,11 @@ final class EntityPatchBatch<T extends EntityInterface<?>> {
 
   PatchBatchResult apply(List<EntityEdit<T>> edits) {
     Lists.partition(edits, GROUP_SIZE).forEach(this::applyGroupOrFailIt);
-    return new PatchBatchResult(failures, changed);
+    return new PatchBatchResult(failures, changed, held);
   }
 
   // A group that cannot be loaded or recorded fails on its own. The groups before it, and the
-  // entities of this group already saved, stay reported as changed.
+  // entities of this group already saved or held, stay reported as they are.
   private void applyGroupOrFailIt(List<EntityEdit<T>> group) {
     try {
       applyGroup(group);
@@ -95,7 +100,7 @@ final class EntityPatchBatch<T extends EntityInterface<?>> {
       String message = messageOf(e);
       group.stream()
           .map(EntityEdit::id)
-          .filter(id -> !changed.contains(id))
+          .filter(id -> !changed.contains(id) && !held.containsKey(id))
           .forEach(id -> failures.putIfAbsent(id, message));
     }
   }
@@ -157,13 +162,19 @@ final class EntityPatchBatch<T extends EntityInterface<?>> {
   }
 
   private Optional<String> prepare(T original, JsonPatch patch) {
-    repository.preparePatch(original, patch, requester.actor());
-    changed.add(original.getId());
+    repository
+        .previewPatch(original, patch, requester.actor().userName())
+        .ifPresentOrElse(
+            staged -> held.put(original.getId(), ApprovalGate.pendingMessage(null)),
+            () -> changed.add(original.getId()));
     return Optional.empty();
   }
 
+  // A held PATCH saves nothing and records no event: its change request does.
   private Optional<String> save(T original, JsonPatch patch) {
     PatchResponse<T> response = repository.patch(original, patch, requester.actor());
+    Optional.ofNullable(response.pendingChangeRequestId())
+        .ifPresent(id -> held.put(original.getId(), ApprovalGate.pendingMessage(id)));
     Optional<String> event = Optional.empty();
     if (response.changeType() != EventType.ENTITY_NO_CHANGE) {
       changed.add(original.getId());

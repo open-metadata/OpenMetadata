@@ -82,6 +82,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -1022,11 +1023,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
-    return Response.ok()
-        .entity(
-            repository.bulkAddAndValidateGlossaryToAssets(
-                id, request, PatchRequester.fromRequest(securityContext, authorizer)))
-        .build();
+    return ApprovalGate.bulkResponse(
+        repository.bulkAddAndValidateGlossaryToAssets(
+            id, request, PatchRequester.fromRequest(securityContext, authorizer)),
+        Boolean.TRUE.equals(request.getDryRun()));
   }
 
   @PUT
@@ -1076,11 +1076,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
-    return Response.ok()
-        .entity(
-            repository.bulkRemoveGlossaryToAssets(
-                id, request, PatchRequester.fromRequest(securityContext, authorizer)))
-        .build();
+    return ApprovalGate.bulkResponse(
+        repository.bulkRemoveGlossaryToAssets(
+            id, request, PatchRequester.fromRequest(securityContext, authorizer)),
+        Boolean.TRUE.equals(request.getDryRun()));
   }
 
   @GET

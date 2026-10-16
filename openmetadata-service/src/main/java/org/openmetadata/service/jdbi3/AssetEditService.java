@@ -16,14 +16,17 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
@@ -31,7 +34,9 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.EntityPatchBatch.EntityEdit;
+import org.openmetadata.service.jdbi3.EntityPatchBatch.PatchBatchResult;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil;
@@ -43,6 +48,7 @@ import org.openmetadata.service.util.EntityUtil;
  *
  * <p>Items saved as the same entity (a table and its columns) are edited together and saved once. If
  * that save fails, each of its items is retried alone, so one bad item does not block the others.
+ * When an approval workflow holds that save, its items are reported as pending approval.
  */
 public final class AssetEditService {
 
@@ -63,6 +69,8 @@ public final class AssetEditService {
   private final Request request;
   private final AssetEdit edit;
   private final Map<EntityReference, String> failures = new IdentityHashMap<>();
+  private final Map<EntityReference, UUID> savedAs = new IdentityHashMap<>();
+  private final Map<UUID, String> held = new LinkedHashMap<>();
 
   private AssetEditService(Request request, AssetEdit edit) {
     this.request = request;
@@ -94,9 +102,10 @@ public final class AssetEditService {
     }
   }
 
-  /** The selected assets the change was applied to. */
+  /** The selected assets the change was applied to; the ones held for approval are not. */
   public static List<EntityReference> succeededAssets(BulkOperationResult result) {
     return listOrEmpty(result.getSuccessRequest()).stream()
+        .filter(response -> !ApprovalGate.isPending(response))
         .map(BulkResponse::getRequest)
         .filter(EntityReference.class::isInstance)
         .map(EntityReference.class::cast)
@@ -127,6 +136,7 @@ public final class AssetEditService {
     Optional<Selection> selection = Optional.empty();
     try {
       selection = Optional.of(resolve(ref));
+      savedAs.put(ref, selection.get().entityId());
     } catch (Exception e) {
       fail(ref, messageOf(e));
     }
@@ -167,9 +177,10 @@ public final class AssetEditService {
     List<EntityEdit<T>> edits = new ArrayList<>(bySavedEntity.size());
     bySavedEntity.forEach(
         (id, selections) -> edits.add(new EntityEdit<>(id, asset -> applyAll(asset, selections))));
-    return new EntityPatchBatch<>(repository, request.requester(), request.dryRun())
-        .apply(edits)
-        .failures();
+    PatchBatchResult result =
+        new EntityPatchBatch<>(repository, request.requester(), request.dryRun()).apply(edits);
+    held.putAll(result.held());
+    return result.failures();
   }
 
   // An item the change rejects fails on its own; the other items of the same entity still apply.
@@ -201,6 +212,7 @@ public final class AssetEditService {
         .ifPresent(message -> fail(selection.ref(), message));
   }
 
+  // A held item passes, as a submitted change request, and also counts as pending approval.
   private BulkOperationResult summarize(BulkOperationResult result) {
     List<BulkResponse> passed = new ArrayList<>();
     List<BulkResponse> failed = new ArrayList<>();
@@ -208,8 +220,43 @@ public final class AssetEditService {
       BulkResponse response = new BulkResponse().withRequest(ref);
       Optional.ofNullable(failures.get(ref))
           .ifPresentOrElse(
-              message -> failed.add(response.withMessage(message)), () -> passed.add(response));
+              message -> failed.add(response.withMessage(message)),
+              () -> passed.add(withHoldOf(ref, response)));
     }
+    int pending = (int) passed.stream().filter(ApprovalGate::isPending).count();
+    return withItems(result, passed, failed).withNumberOfRowsPendingApproval(pending);
+  }
+
+  private BulkResponse withHoldOf(EntityReference ref, BulkResponse response) {
+    return Optional.ofNullable(held.get(savedAs.get(ref)))
+        .map(
+            message -> response.withStatus(Response.Status.OK.getStatusCode()).withMessage(message))
+        .orElse(response);
+  }
+
+  /**
+   * One result for the items of two, as if their assets had been edited together. An item that is
+   * not an asset (the "nothing to validate" one an empty request reports) is left out.
+   */
+  public static BulkOperationResult combine(BulkOperationResult first, BulkOperationResult second) {
+    List<BulkResponse> passed = assetItems(first.getSuccessRequest(), second.getSuccessRequest());
+    List<BulkResponse> failed = assetItems(first.getFailedRequest(), second.getFailedRequest());
+    int pending =
+        Objects.requireNonNullElse(first.getNumberOfRowsPendingApproval(), 0)
+            + Objects.requireNonNullElse(second.getNumberOfRowsPendingApproval(), 0);
+    return withItems(new BulkOperationResult().withDryRun(first.getDryRun()), passed, failed)
+        .withNumberOfRowsPendingApproval(pending);
+  }
+
+  private static List<BulkResponse> assetItems(
+      List<BulkResponse> first, List<BulkResponse> second) {
+    return Stream.concat(listOrEmpty(first).stream(), listOrEmpty(second).stream())
+        .filter(item -> item.getRequest() != null)
+        .toList();
+  }
+
+  private static BulkOperationResult withItems(
+      BulkOperationResult result, List<BulkResponse> passed, List<BulkResponse> failed) {
     return result
         .withNumberOfRowsProcessed(passed.size() + failed.size())
         .withNumberOfRowsPassed(passed.size())

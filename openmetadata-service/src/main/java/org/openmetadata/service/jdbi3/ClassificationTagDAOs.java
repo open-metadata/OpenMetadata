@@ -1013,7 +1013,7 @@ public interface ClassificationTagDAOs {
 
         String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
         for (TagLabel tagLabel : tagLabels) {
-          if (tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+          if (TagLabelUtil.isSystemGenerated(tagLabel)) {
             continue;
           }
           rows.add(

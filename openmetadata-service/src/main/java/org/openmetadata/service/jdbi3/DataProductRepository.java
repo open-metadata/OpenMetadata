@@ -175,6 +175,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
+  public Set<String> getRelationsReplacedByImport() {
+    Set<String> replaced = new HashSet<>(super.getRelationsReplacedByImport());
+    replaced.add(Entity.FIELD_EXPERTS);
+    return Set.copyOf(replaced);
+  }
+
+  @Override
   protected void clearEntitySpecificRelationshipsForMany(List<DataProduct> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(DataProduct::getId).toList();

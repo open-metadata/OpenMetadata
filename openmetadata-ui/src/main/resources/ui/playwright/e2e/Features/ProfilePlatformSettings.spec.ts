@@ -228,6 +228,7 @@ test.describe(
         ['search', 'search-settings'],
         ['app-mode', 'default-app-mode-page'],
         ['table-schema', 'table-schema-settings'],
+        ['time-format', 'time-format-settings'],
         ['glossary', 'glossary-settings'],
       ];
 
@@ -495,6 +496,32 @@ test.describe(
       ]);
       await expect(page.getByTestId('default-app-mode-value')).toHaveText(
         'Classic'
+      );
+    });
+
+    test('default time format: saves the selected format', async ({ page }) => {
+      const settings = await stubSettingRoundTrip(page, 'appConfiguration', {
+        initial: { defaultTimeFormat: '12h' },
+      });
+      await openPlatformSettings(page);
+      await openCard(page, 'time-format');
+
+      await expect(page.getByTestId('default-time-format-value')).toHaveText(
+        '12-hour format'
+      );
+      await header(page).getByTestId('edit-button').click();
+
+      const save = page.getByTestId('save-button');
+      await expect(save).toBeDisabled();
+
+      await page.getByTestId('time-format-option-24h').click();
+      await saveAppConfiguration(page);
+
+      expect(settings.patches[0]).toEqual([
+        { op: 'add', path: '/defaultTimeFormat', value: '24h' },
+      ]);
+      await expect(page.getByTestId('default-time-format-value')).toHaveText(
+        '24-hour format'
       );
     });
     test('theme: saves colours and logo, and Reset clears them', async ({

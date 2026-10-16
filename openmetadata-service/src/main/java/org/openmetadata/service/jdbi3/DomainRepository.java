@@ -54,6 +54,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CachedRelationshipDao;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.AssetEditService.AssetEdit;
 import org.openmetadata.service.jdbi3.AssetEditService.Selection;
 import org.openmetadata.service.resources.domains.DomainResource;
@@ -298,7 +299,8 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   // Each asset moves through its own PATCH, as on the asset's own page. A dry run also reports the
-  // impact of each move it would make: a move from another domain and the data products it drops.
+  // impact of each move it would make: a move from another domain and the data products it drops. A
+  // move an approval workflow would hold is reported as pending instead.
   private BulkOperationResult editAssets(
       Domain domain, BulkAssets request, boolean isAdd, PatchRequester requester) {
     AssetEdit edit = isAdd ? assignTo(domain.getEntityReference()) : removeFrom(domain.getId());
@@ -313,7 +315,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private BulkResponse withImpact(UUID domainId, BulkResponse response, boolean isAdd) {
-    return response.getRequest() instanceof EntityReference ref
+    return response.getRequest() instanceof EntityReference ref && !ApprovalGate.isPending(response)
         ? buildDryRunImpactResponse(domainId, ref, Relationship.HAS, isAdd)
         : response;
   }

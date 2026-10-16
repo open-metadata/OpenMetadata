@@ -35,6 +35,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.jdbi3.EntityPatchBatch.EntityEdit;
 import org.openmetadata.service.jdbi3.EntityPatchBatch.PatchBatchResult;
 import org.openmetadata.service.security.AuthorizationException;
@@ -172,12 +174,72 @@ class EntityPatchBatchTest {
     PatchBatchResult result = batch(true).apply(describe(schemas, EDITED));
 
     assertEquals(ids(schemas), result.changed());
+    assertTrue(result.held().isEmpty());
     verify(authorizer, times(2))
         .authorize(any(SecurityContext.class), any(OperationContext.class), any());
     verify(repository, times(2))
-        .preparePatch(any(DatabaseSchema.class), any(JsonPatch.class), eq(ACTOR));
+        .previewPatch(any(DatabaseSchema.class), any(JsonPatch.class), eq(ACTOR.userName()));
     verify(repository, never()).patch(any(DatabaseSchema.class), any(JsonPatch.class), any());
     verify(repository).insertChangeEventsBatch(List.of());
+  }
+
+  @Test
+  void anEntityWhosePatchIsHeldIsReportedAsItsChangeRequestAndRecordsNoEvent() {
+    List<DatabaseSchema> schemas = schemas(2);
+    UUID gated = schemas.get(0).getId();
+    UUID changeRequest = UUID.randomUUID();
+    when(repository.patch(argThat(schema -> gated.equals(schema.getId())), any(), eq(ACTOR)))
+        .thenAnswer(
+            call ->
+                new PatchResponse<>(
+                    Status.ACCEPTED,
+                    call.getArgument(0),
+                    EventType.ENTITY_NO_CHANGE,
+                    changeRequest));
+
+    PatchBatchResult result = batch(false).apply(describe(schemas, EDITED));
+
+    assertEquals(Map.of(gated, "Pending approval: change request " + changeRequest), result.held());
+    assertEquals(List.of(schemas.get(1).getId()), result.changed());
+    assertTrue(result.failures().isEmpty());
+    verify(repository).insertChangeEventsBatch(argThat(events -> events.size() == 1));
+  }
+
+  @Test
+  void aDryRunReportsTheEntitiesAWorkflowWouldHoldWithoutSubmittingThem() {
+    List<DatabaseSchema> schemas = schemas(2);
+    UUID gated = schemas.get(0).getId();
+    when(repository.previewPatch(
+            argThat(schema -> gated.equals(schema.getId())), any(), eq(ACTOR.userName())))
+        .thenReturn(Optional.of(staged(gated)));
+
+    PatchBatchResult result = batch(true).apply(describe(schemas, EDITED));
+
+    assertEquals(Map.of(gated, "Pending approval"), result.held());
+    assertEquals(List.of(schemas.get(1).getId()), result.changed());
+    verify(repository, never()).patch(any(DatabaseSchema.class), any(JsonPatch.class), any());
+  }
+
+  @Test
+  void anEntityHeldBeforeItsGroupFailsStaysReportedAsHeld() {
+    List<DatabaseSchema> schemas = schemas(2);
+    UUID changeRequest = UUID.randomUUID();
+    when(repository.patch(any(DatabaseSchema.class), any(JsonPatch.class), eq(ACTOR)))
+        .thenAnswer(
+            call ->
+                new PatchResponse<>(
+                    Status.ACCEPTED,
+                    call.getArgument(0),
+                    EventType.ENTITY_NO_CHANGE,
+                    changeRequest));
+    doThrow(new IllegalStateException("events not recorded"))
+        .when(repository)
+        .insertChangeEventsBatch(anyList());
+
+    PatchBatchResult result = batch(false).apply(describe(schemas, EDITED));
+
+    assertEquals(Set.copyOf(ids(schemas)), result.held().keySet());
+    assertTrue(result.failures().isEmpty());
   }
 
   @Test
@@ -264,6 +326,18 @@ class EntityPatchBatchTest {
                 new EntityEdit<DatabaseSchema>(
                     schema.getId(), loaded -> loaded.setDescription(description)))
         .toList();
+  }
+
+  private static StagedChange staged(UUID id) {
+    return new StagedChange(
+        Entity.DATABASE_SCHEMA,
+        id,
+        "svc.db.schema",
+        0.1,
+        "steward",
+        null,
+        UUID.randomUUID(),
+        List.of());
   }
 
   private static List<UUID> ids(List<DatabaseSchema> schemas) {

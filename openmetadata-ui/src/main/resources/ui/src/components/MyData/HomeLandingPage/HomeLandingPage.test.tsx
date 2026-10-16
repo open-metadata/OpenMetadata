@@ -121,6 +121,25 @@ describe('HomeLandingPage', () => {
     expect(screen.getByTestId('announcements-rail')).toBeInTheDocument();
   });
 
+  it('renders no Needs you now section when the deployment supplies none', async () => {
+    renderHome();
+
+    await screen.findByTestId('react-grid-layout');
+
+    expect(screen.queryByTestId('needs-you-now-slot')).not.toBeInTheDocument();
+  });
+
+  it('renders the deployment-supplied Needs you now section', async () => {
+    const NeedsYouNowSection = () => <div data-testid="needs-you-now-slot" />;
+    mockCustomizePageClassBase.getNeedsYouNowSection = () => NeedsYouNowSection;
+
+    renderHome();
+
+    expect(await screen.findByTestId('needs-you-now-slot')).toBeInTheDocument();
+
+    mockCustomizePageClassBase.getNeedsYouNowSection = () => null;
+  });
+
   it('always offers the Customize entry point', async () => {
     renderHome();
 

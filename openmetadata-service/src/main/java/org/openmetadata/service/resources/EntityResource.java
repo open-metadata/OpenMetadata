@@ -47,6 +47,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -69,6 +70,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -82,6 +84,8 @@ import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate;
+import org.openmetadata.service.jdbi3.AssetEditService;
 import org.openmetadata.service.jdbi3.ChildFieldPageReader;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -1079,44 +1083,48 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   }
 
   /**
-   * Adds this entity (a tag) to the assets in the request, in the background. Each asset is
-   * authorized and saved as its own PATCH; an asset the caller may not edit is reported as a failed
-   * row.
+   * Adds this entity (a tag) to the assets in the request. Each asset is authorized and saved as its
+   * own PATCH; an asset the caller may not edit is reported as a failed row. See {@link
+   * #editAssetsAsync} for which assets are saved in the background.
    */
   public Response bulkAddToAssetsAsync(
       SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
-    PatchRequester requester = PatchRequester.fromRequest(securityContext, authorizer);
-    String jobId = UUID.randomUUID().toString();
-    AsyncService.getInstance()
-        .executeDatabaseTask(
-            DatabaseOperation.BULK_ASSET_OPERATION,
-            jobId,
-            RequestLatencyContext.wrapWithContext(
-                asRequester(
-                    requester,
-                    () -> {
-                      try {
-                        BulkOperationResult result =
-                            repository.bulkAddAndValidateTagsToAssets(entityId, request, requester);
-                        WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                            jobId, securityContext, result);
-                      } catch (Exception e) {
-                        WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                            jobId,
-                            securityContext,
-                            e.getMessage() == null ? e.toString() : e.getMessage());
-                      }
-                    })));
-    BulkAssetsOperationResponse response =
-        new BulkAssetsOperationResponse(
-            jobId, "Bulk Add tags to Asset operation initiated successfully.");
-    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+    return editAssetsAsync(
+        securityContext,
+        request,
+        (assets, requester) ->
+            repository.bulkAddAndValidateTagsToAssets(entityId, assets, requester),
+        "Bulk Add tags to Asset operation initiated successfully.");
   }
 
   /** Removes this entity (a tag) from the assets in the request, as {@link #bulkAddToAssetsAsync}. */
   public Response bulkRemoveFromAssetsAsync(
       SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+    return editAssetsAsync(
+        securityContext,
+        request,
+        (assets, requester) ->
+            repository.bulkRemoveAndValidateTagsToAssets(entityId, assets, requester),
+        "Bulk Remove tags to Asset operation initiated successfully.");
+  }
+
+  /** An Assets tab edit of the assets in a request, made as the requester. */
+  @FunctionalInterface
+  private interface AssetsEdit {
+    BulkOperationResult apply(BulkAssetsRequestInterface request, PatchRequester requester);
+  }
+
+  // The assets whose tags an approval workflow gates are edited before the response, so it can say
+  // how many change requests were submitted; the others are edited in the background. The job's
+  // outcome reports them all.
+  private Response editAssetsAsync(
+      SecurityContext securityContext,
+      BulkAssetsRequestInterface request,
+      AssetsEdit edit,
+      String startedMessage) {
     PatchRequester requester = PatchRequester.fromRequest(securityContext, authorizer);
+    Optional<BulkOperationResult> gated =
+        takeGatedAssets(request, requester).map(assets -> edit.apply(assets, requester));
     String jobId = UUID.randomUUID().toString();
     AsyncService.getInstance()
         .executeDatabaseTask(
@@ -1127,11 +1135,13 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
                     requester,
                     () -> {
                       try {
-                        BulkOperationResult result =
-                            repository.bulkRemoveAndValidateTagsToAssets(
-                                entityId, request, requester);
+                        BulkOperationResult result = edit.apply(request, requester);
                         WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                            jobId, securityContext, result);
+                            jobId,
+                            securityContext,
+                            gated
+                                .map(held -> AssetEditService.combine(held, result))
+                                .orElse(result));
                       } catch (Exception e) {
                         WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
                             jobId,
@@ -1139,10 +1149,46 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
                             e.getMessage() == null ? e.toString() : e.getMessage());
                       }
                     })));
-    BulkAssetsOperationResponse response =
-        new BulkAssetsOperationResponse(
-            jobId, "Bulk Remove tags to Asset operation initiated successfully.");
-    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+    BulkAssetsOperationResponse response = new BulkAssetsOperationResponse(jobId, startedMessage);
+    return jobStartedResponse(response, gated.map(EntityResource::submittedCount).orElse(0));
+  }
+
+  // Moves the assets whose tags an approval workflow gates for the requester out of the request,
+  // into
+  // a request of their own.
+  private static Optional<BulkAssetsRequestInterface> takeGatedAssets(
+      BulkAssetsRequestInterface request, PatchRequester requester) {
+    List<EntityReference> assets = listOrEmpty(request.getAssets());
+    Set<UUID> gatedIds =
+        ApprovalGate.gatedAssets(assets, Entity.FIELD_TAGS, requester.actor().userName());
+    Optional<BulkAssetsRequestInterface> gated = Optional.empty();
+    if (!gatedIds.isEmpty()) {
+      Map<Boolean, List<EntityReference>> split =
+          assets.stream().collect(Collectors.partitioningBy(a -> gatedIds.contains(a.getId())));
+      BulkAssetsRequestInterface gatedRequest =
+          JsonUtils.readValue(JsonUtils.pojoToJson(request), request.getClass());
+      gatedRequest.setAssets(new ArrayList<>(split.get(true)));
+      request.setAssets(new ArrayList<>(split.get(false)));
+      gated = Optional.of(gatedRequest);
+    }
+    return gated;
+  }
+
+  // A dry run submits nothing.
+  private static int submittedCount(BulkOperationResult result) {
+    return Boolean.TRUE.equals(result.getDryRun())
+        ? 0
+        : Objects.requireNonNullElse(result.getNumberOfRowsPendingApproval(), 0);
+  }
+
+  // The held assets already have change requests, so the response says how many.
+  private static Response jobStartedResponse(BulkAssetsOperationResponse response, int submitted) {
+    Response.ResponseBuilder builder =
+        Response.ok().entity(response).type(MediaType.APPLICATION_JSON);
+    if (submitted > 0) {
+      builder.header(RestUtil.PENDING_CHANGE_COUNT_HEADER, submitted);
+    }
+    return builder.build();
   }
 
   // The job runs on its own thread, and policy conditions such as isImpersonated() read the

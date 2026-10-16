@@ -34,4 +34,6 @@ evaluates the rules the way the entity's own page does.
   own, and a row a conditional rule allows, for example to the entity's owner, is saved.
 - Authorization runs once per entity: one policy evaluation each, with the group sharing the field
   loads.
+- An approval hold comes after authorization, as on the entity's page, so a caller can only submit
+  a change request for an entity it may edit.
 - A bulk feature that bypasses `EntityPatchBatch` must make the same per-entity check itself.
