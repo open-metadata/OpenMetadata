@@ -506,8 +506,16 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     t,
   ]);
 
+  // Prevents stale fetch responses from overwriting the table. When the page
+  // is reset to 1 (e.g. on mount or time-range change), the old-page request
+  // and the page-1 request can race; only the latest request's result should be
+  // applied.
+  const latestFetchIdRef = useRef(0);
+
   // Function to fetch nodes based on current filters and pagination
   const fetchNodes = useCallback(async () => {
+    const fetchId = ++latestFetchIdRef.current;
+
     const fetchColumnLevelNodes = async () => {
       const columnLevelConfig = {
         ...lineageConfig,
@@ -527,6 +535,10 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         startTime: timeFilter?.startTime,
         endTime: timeFilter?.endTime,
       });
+
+      if (fetchId !== latestFetchIdRef.current) {
+        return;
+      }
 
       const upstreamEdges = map(res.upstreamEdges ?? [], (edge) => edge);
       const downstreamEdges = map(res.downstreamEdges ?? [], (edge) => edge);
@@ -584,6 +596,10 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         endTime: timeFilter?.endTime,
       });
 
+      if (fetchId !== latestFetchIdRef.current) {
+        return;
+      }
+
       delete res.nodes[fqn];
       if (shouldIncludePaginationInfo) {
         setLineagePagingInfo(res.paginationInfo ?? null);
@@ -617,15 +633,19 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         await fetchTableLevelNodes();
       }
     } catch (error) {
-      showErrorToast(error as AxiosError);
-      setFilterNodes([]);
-      setColumnLineageNodes([], []);
-      if (impactLevel === EImpactLevel.TableLevel) {
-        paginationInfoKeyRef.current = null;
-        setLineagePagingInfo(null);
+      if (fetchId === latestFetchIdRef.current) {
+        showErrorToast(error as AxiosError);
+        setFilterNodes([]);
+        setColumnLineageNodes([], []);
+        if (impactLevel === EImpactLevel.TableLevel) {
+          paginationInfoKeyRef.current = null;
+          setLineagePagingInfo(null);
+        }
       }
     } finally {
-      setLoading(false);
+      if (fetchId === latestFetchIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [
     lineageConfig,
