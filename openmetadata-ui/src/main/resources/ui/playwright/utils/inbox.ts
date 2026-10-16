@@ -118,11 +118,22 @@ export const visitMyData = async (page: Page) => {
     .getByTestId('ask-ai-user-menu-trigger')
     .filter({ visible: true });
   await expect(menuTrigger).toBeVisible({ timeout: AI_SHELL_TIMEOUT });
-  await menuTrigger.click();
-  await page.getByTestId('ai-user-menu-my-data').click();
-  await expect(page.getByTestId('my-data-page')).toBeVisible({
-    timeout: AI_SHELL_TIMEOUT,
-  });
+
+  // The sidebar shows before the home page has finished rendering its widgets,
+  // and a re-render then can close the menu, or the My Data panel it just
+  // opened. Repeat the whole open until the panel holds.
+  const myDataItem = page.getByTestId('ai-user-menu-my-data');
+  const myDataPage = page.getByTestId('my-data-page');
+  await expect(async () => {
+    if (await myDataPage.isVisible()) {
+      return;
+    }
+    if (!(await myDataItem.isVisible())) {
+      await menuTrigger.click();
+    }
+    await myDataItem.click({ timeout: 2_000 });
+    await expect(myDataPage).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: AI_SHELL_TIMEOUT });
 };
 
 /** Pick one of the Activity feed's sub-tabs (All, Mentions, …). */
