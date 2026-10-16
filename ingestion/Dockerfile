@@ -12,7 +12,6 @@ RUN apt-get -qq update \
   && apt-get -qq install -y \
   build-essential \
   default-libmysqlclient-dev \
-  freetds-bin \
   freetds-dev \
   gcc \
   gnupg \
@@ -32,8 +31,6 @@ RUN apt-get -qq update \
   openssl \
   # To ensure compatibility with unixodbc package
   odbcinst=2.3.11-2+deb12u1 \
-  postgresql \
-  postgresql-contrib \
   tdsodbc \
   unixodbc=2.3.11-2+deb12u1 \
   unixodbc-dev=2.3.11-2+deb12u1 \
@@ -144,8 +141,10 @@ RUN pip install "py-spy>=0.3.14"
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
-# remove all airflow providers except for docker, cncf kubernetes, and standard (required in Airflow 3.x)
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard" | xargs pip uninstall -y
+# Keep SMTP and standard providers required by Airflow core, alongside our runtime providers.
+RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard|smtp" | xargs pip uninstall -y
+# The removed Amazon provider was the only consumer of this driver.
+RUN pip uninstall -y redshift-connector
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authenticating connection with the airflow, psycopg2 solves this error
@@ -173,6 +172,14 @@ RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture
 # spaCy strip -- after the final pip install, or a later install restores them.
 COPY --chown=airflow:0 ingestion/scripts/strip_teradatasql_arch_libs.sh /tmp/strip_teradatasql_arch_libs.sh
 RUN bash /tmp/strip_teradatasql_arch_libs.sh && rm -f /tmp/strip_teradatasql_arch_libs.sh
+
+# Native Python extensions still need their shared libraries after header/tool cleanup.
+USER root
+RUN apt-mark manual libpq5 libmariadb3 mariadb-common libgcc-s1 libstdc++6 libgomp1 xz-utils bzip2 make \
+  && apt-get -qq purge -y --autoremove build-essential gcc default-libmysqlclient-dev libpq-dev freetds-bin \
+  && rm -rf /var/lib/apt/lists/*
+USER airflow
+RUN python -c "import MySQLdb, psycopg2"
 
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
