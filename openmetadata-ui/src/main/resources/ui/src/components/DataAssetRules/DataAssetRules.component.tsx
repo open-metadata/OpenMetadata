@@ -41,6 +41,7 @@ import {
 } from '../../generated/settings/settings';
 import {
   getSettingsConfigFromConfigType,
+  toggleEntityRuleEnabled,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import i18n, { t } from '../../utils/i18next/LocalUtil';
@@ -119,12 +120,43 @@ export const useSemanticsRulesState = () => {
     []
   );
 
+  const toggleRuleEnabled = useCallback(
+    async (ruleName: string, enabled: boolean) => {
+      try {
+        setIsSaveLoading(true);
+        await toggleEntityRuleEnabled(ruleName, enabled);
+        fetchSemanticsRules();
+
+        showSuccessToast(
+          t('server.update-entity-success', {
+            entity: t('label.data-asset-rules'),
+          })
+        );
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.data-asset-rules').toLocaleLowerCase(
+              i18n.language
+            ),
+          })
+        );
+
+        throw error;
+      } finally {
+        setIsSaveLoading(false);
+      }
+    },
+    []
+  );
+
   return {
     semanticsRules,
     setSemanticsRules,
     isLoading,
     isSaveLoading,
     updateSemanticsRules,
+    toggleRuleEnabled,
   };
 };
 
@@ -297,6 +329,7 @@ export const DeleteSemanticsRuleConfirmationModal: React.FC<{
 export const useSemanticsRuleList = ({
   semanticsRules,
   onSemanticsRuleChange,
+  onToggleRuleEnabled,
   isSaveLoading,
   isLoading,
 }: {
@@ -304,6 +337,7 @@ export const useSemanticsRuleList = ({
   onSemanticsRuleChange: (
     updatedSemanticsRules: SemanticsRule[]
   ) => Promise<void>;
+  onToggleRuleEnabled: (ruleName: string, enabled: boolean) => Promise<void>;
   isSaveLoading?: boolean;
   isLoading?: boolean;
 }) => {
@@ -383,13 +417,13 @@ export const useSemanticsRuleList = ({
             isSelected={enabled}
             size="sm"
             onChange={() => {
-              handleSave({ ...record, enabled: !enabled });
+              onToggleRuleEnabled(record.name, !enabled);
             }}
           />
         ),
       },
     ],
-    [t, handleSave]
+    [t, onToggleRuleEnabled]
   );
 
   const dataAssetRuleList = useMemo(() => {
