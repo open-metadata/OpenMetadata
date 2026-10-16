@@ -810,8 +810,11 @@ test.describe('Bulk Edit Entity', { tag: '@quarantine' }, () => {
       }
     });
 
-    await glossary.delete(apiContext);
     await afterAction();
+    // Fresh context: the setup one idled past the server keep-alive and its DELETE hangs up.
+    const cleanup = await getApiContext(page);
+    await glossary.delete(cleanup.apiContext);
+    await cleanup.afterAction();
   });
 
   test('Glossary Term (Nested)', async ({ page }) => {

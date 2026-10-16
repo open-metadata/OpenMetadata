@@ -68,6 +68,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityHierarchyList;
 import org.openmetadata.service.util.EntityUtil;
@@ -480,7 +482,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return ApprovalGate.bulkResponse(
-        repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()),
+        repository.bulkAddAssets(
+            name, request, PatchRequester.fromRequest(securityContext, authorizer)),
         Boolean.TRUE.equals(request.getDryRun()));
   }
 
@@ -511,7 +514,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return ApprovalGate.bulkResponse(
-        repository.bulkRemoveAssets(name, request, securityContext.getUserPrincipal().getName()),
+        repository.bulkRemoveAssets(
+            name, request, PatchRequester.fromRequest(securityContext, authorizer)),
         Boolean.TRUE.equals(request.getDryRun()));
   }
 
@@ -594,9 +598,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid org.openmetadata.schema.api.VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE
@@ -793,7 +795,14 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @DefaultValue("0")
           @Min(0)
           int offset) {
-    return Response.ok(repository.getDomainAssets(id, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    return Response.ok(
+            repository.getDomainAssets(
+                id, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -834,7 +843,14 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @DefaultValue("0")
           @Min(0)
           int offset) {
-    return Response.ok(repository.getDomainAssetsByName(fqn, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(fqn));
+    return Response.ok(
+            repository.getDomainAssetsByName(
+                fqn, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -852,7 +868,12 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
       })
   public Response getAllDomainsWithAssetsCount(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    java.util.Map<String, Integer> result = repository.getAllDomainsWithAssetsCount();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContext());
+    java.util.Map<String, Integer> result =
+        repository.getAllDomainsWithAssetsCount(securityContext);
     return Response.ok(result).build();
   }
 }

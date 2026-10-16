@@ -826,8 +826,6 @@ export interface RequestConnection {
  *
  * Db2 Connection Config
  *
- * DeltaLake Database Connection Config
- *
  * Druid Connection Config
  *
  * DynamoDB Connection Config
@@ -1202,10 +1200,7 @@ export interface Connection {
     /**
      * Billing Project ID
      */
-    billingProjectId?: string;
-    /**
-     * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
-     */
+    billingProjectId?:    string;
     connectionArguments?: { [key: string]: any };
     /**
      * Additional options appended to the Databend SQLAlchemy connection URL. For a non-TLS HTTP
@@ -1945,14 +1940,6 @@ export interface Connection {
     sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
-     * Available sources to fetch the metadata.
-     *
-     * Available sources to fetch files.
-     *
-     * Available sources to fetch metadata.
-     */
-    configSource?: DeltaLakeConfigurationSource;
-    /**
      * Authentication mode to connect to hive.
      *
      * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
@@ -2268,6 +2255,12 @@ export interface Connection {
      * Bucket Name of the data source.
      */
     bucketName?: string;
+    /**
+     * Available sources to fetch files.
+     *
+     * Available sources to fetch metadata.
+     */
+    configSource?: DataLakeConfigurationSource;
     /**
      * Prefix of the data source.
      */
@@ -4138,12 +4131,6 @@ export enum CloudProvider {
 }
 
 /**
- * Available sources to fetch the metadata.
- *
- * Deltalake Metastore configuration.
- *
- * DeltaLake Storage Connection Config
- *
  * Available sources to fetch files.
  *
  * Local config source where no extra information needs to be sent.
@@ -4160,25 +4147,7 @@ export enum CloudProvider {
  *
  * Azure Credentials
  */
-export interface DeltaLakeConfigurationSource {
-    /**
-     * pySpark App Name.
-     */
-    appName?: string;
-    /**
-     * Metastore connection configuration, depending on your metastore type.
-     *
-     * Available sources to fetch files.
-     */
-    connection?: ConfigSourceConnection;
-    /**
-     * Bucket Name of the data source.
-     */
-    bucketName?: string;
-    /**
-     * Prefix of the data source.
-     */
-    prefix?:         string;
+export interface DataLakeConfigurationSource {
     securityConfig?: SecurityConfigClass;
     /**
      * Account Name of your storage account
@@ -4204,50 +4173,6 @@ export interface DeltaLakeConfigurationSource {
      * Key Vault Name
      */
     vaultName?: string;
-}
-
-/**
- * Metastore connection configuration, depending on your metastore type.
- *
- * Available sources to fetch files.
- *
- * DataLake S3 bucket will ingest metadata of files in bucket
- */
-export interface ConfigSourceConnection {
-    /**
-     * Thrift connection to the metastore service. E.g., localhost:9083
-     */
-    metastoreHostPort?: string;
-    /**
-     * Driver class name for JDBC metastore. The value will be mapped as
-     * spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g.,
-     * org.mariadb.jdbc.Driver
-     */
-    driverName?: string;
-    /**
-     * Class path to JDBC driver required for JDBC connection. The value will be mapped as
-     * spark.driver.extraClassPath sparks property.
-     */
-    jdbcDriverClassPath?: string;
-    /**
-     * JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive
-     */
-    metastoreDb?: string;
-    /**
-     * Password to use against metastore database. The value will be mapped as
-     * spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.
-     */
-    password?: string;
-    /**
-     * Username to use against metastore database. The value will be mapped as
-     * spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.
-     */
-    username?: string;
-    /**
-     * Local path for the local file with metastore data. E.g., /tmp/metastore.db
-     */
-    metastoreFilePath?: string;
-    securityConfig?:    AWSCredentials;
 }
 
 /**
@@ -5733,7 +5658,6 @@ export enum AirflowConnectionType {
     DatabricksPipeline = "DatabricksPipeline",
     Datalake = "Datalake",
     Db2 = "Db2",
-    DeltaLake = "DeltaLake",
     DomoDashboard = "DomoDashboard",
     DomoDatabase = "DomoDatabase",
     DomoPipeline = "DomoPipeline",
