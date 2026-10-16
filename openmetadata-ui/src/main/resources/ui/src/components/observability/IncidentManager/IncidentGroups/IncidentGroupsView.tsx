@@ -77,8 +77,8 @@ const STAT_COUNT_ELEMENT = (
 /**
  * Grouped incident listing: the header stats over the fetched groups, the
  * filter row with the `Group by` dimension picker at its end, and the paged
- * group table — plus
- * the loading/empty/error states of the fetch that feeds them.
+ * group table — plus the loading/empty/error states of the fetch that feeds
+ * them.
  */
 const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
   const { t } = useTranslation();
