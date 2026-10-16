@@ -22,6 +22,7 @@ import {
   NotificationSectionContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { getLandingIconColor } from '../../components/LandingIcon.constants';
 import { NATIVE_NOTIFICATION_SECTIONS } from './nativeNotificationSections';
 import type {
   NotificationLandingCard,
@@ -31,7 +32,6 @@ import {
   buildSectionCards,
   getNotificationMenuItems,
 } from './Notification.utils';
-import { getLandingIconColor } from '../../components/LandingIcon.constants';
 
 const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
   const { t } = useTranslation();

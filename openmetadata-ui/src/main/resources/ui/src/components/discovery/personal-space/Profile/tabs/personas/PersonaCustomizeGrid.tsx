@@ -14,8 +14,8 @@
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { getCustomizePageCategories } from '../../../../../../utils/Persona/PersonaUtils';
-import { PERSONA_CATEGORY_ICONS } from './personaCategoryIcons';
 import { getLandingIconColor } from '../../components/LandingIcon.constants';
+import { PERSONA_CATEGORY_ICONS } from './personaCategoryIcons';
 
 interface PersonaCustomizeGridProps {
   onSelectCategory: (category: string) => void;

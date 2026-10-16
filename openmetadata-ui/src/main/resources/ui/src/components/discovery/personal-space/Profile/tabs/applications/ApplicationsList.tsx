@@ -38,10 +38,10 @@ import {
 } from '../../../../../../hooks/useCursorPagedList';
 import { getApplicationList } from '../../../../../../rest/applicationAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { AppFooter } from './AppFooter';
 import ApplicationCard from './ApplicationCard';
 import type { ApplicationsViewProps } from './Applications.types';
 import { getRuntimeDisabledReasonKey } from './Applications.utils';
-import { AppFooter } from './AppFooter';
 
 /** Two cards per row: half of the 24-column core grid. */
 // Three cards per row on the 24-column grid.

@@ -82,20 +82,15 @@ import {
   isAppUnavailable,
   isRuntimeDisabled,
 } from './Applications.utils';
+import {
+  TAB_CONFIGURATION,
+  TAB_LABEL_KEYS,
+  TAB_LIVE_INDEXING,
+  TAB_RUNS,
+  TAB_SCHEDULE,
+} from './AppDetail.constants';
 
 type AppAction = 'restore' | 'disable' | 'uninstall';
-
-const TAB_SCHEDULE = 'schedule';
-const TAB_CONFIGURATION = 'configuration';
-const TAB_RUNS = 'recent-runs';
-const TAB_LIVE_INDEXING = 'live-indexing';
-
-const TAB_LABEL_KEYS: Record<string, string> = {
-  [TAB_SCHEDULE]: 'label.schedule',
-  [TAB_CONFIGURATION]: 'label.configuration',
-  [TAB_RUNS]: 'label.recent-run-plural',
-  [TAB_LIVE_INDEXING]: 'label.live-indexing',
-};
 
 interface AppDetailProps extends ApplicationsViewProps {
   fqn: string;

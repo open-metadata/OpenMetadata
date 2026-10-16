@@ -38,6 +38,18 @@ jest.mock('../../../../../../rest/rolesAPIV1', () => ({
   patchPolicy: jest.fn(),
 }));
 
+let mockCanEditAll = true;
+
+jest.mock(
+  '../../../../../../hooks/useEntityPermissions/useEntityPermissions',
+  () => ({
+    useEntityPermissions: () => ({
+      canEditAll: mockCanEditAll,
+      isLoading: false,
+    }),
+  })
+);
+
 jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -61,6 +73,7 @@ const onNavigate = jest.fn();
 describe('AccessControlRuleFormPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCanEditAll = true;
     (getPolicyByName as jest.Mock).mockResolvedValue(POLICY);
     (patchPolicy as jest.Mock).mockResolvedValue(POLICY);
   });
@@ -145,5 +158,28 @@ describe('AccessControlRuleFormPage', () => {
     // Nothing to save against: the page leaves, and Save stays disabled meanwhile.
     expect(screen.getByTestId('submit-btn')).toBeDisabled();
     expect(patchPolicy).not.toHaveBeenCalled();
+  });
+
+  it('sends a read-only user back to the policy instead of an editable form', async () => {
+    mockCanEditAll = false;
+    const { showErrorToast } = jest.requireMock(
+      '../../../../../../utils/ToastUtils'
+    );
+    render(
+      <AccessControlRuleFormPage
+        fqn="OrgPolicy"
+        ruleName="ViewRule"
+        onNavigate={onNavigate}
+      />
+    );
+
+    await waitFor(() =>
+      expect(onNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'policies-detail', fqn: 'OrgPolicy' })
+      )
+    );
+
+    expect(showErrorToast).toHaveBeenCalled();
+    expect(screen.getByTestId('submit-btn')).toBeDisabled();
   });
 });

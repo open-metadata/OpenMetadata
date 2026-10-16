@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import { Paging } from '../generated/type/paging';
+import { walkToAfterCursor } from '../utils/CursorPaging.utils';
 import { showErrorToast } from '../utils/ToastUtils';
 
 export interface CursorPageParams {
@@ -64,6 +65,8 @@ export const useCursorPagedList = <T>(
   // Bumped when the list restarts, so a walk or response that began against
   // the previous list never writes its cursors into the new cache.
   const listVersion = useRef(0);
+  // Bumped on every page change, so a slow jump never overrides a later one.
+  const latestNavigation = useRef(0);
 
   const load = useCallback(
     async (
@@ -99,33 +102,9 @@ export const useCursorPagedList = <T>(
     void load();
   }, [load]);
 
-  // The `after` cursor that opens `target`, fetching any skipped pages in
-  // between so a jump (e.g. 1 -> 4) lands on the right page. Undefined when
-  // the list ran out of pages or restarted mid-walk.
-  const resolveAfter = async (target: number) => {
-    const version = listVersion.current;
-    let known = target - 1;
-    while (known > 1 && !pagingByPage.current.has(known)) {
-      known--;
-    }
-    let knownPaging = pagingByPage.current.get(known);
-    while (known < target - 1 && knownPaging?.after) {
-      const response = await fetchPage({
-        after: knownPaging.after,
-        limit: pageSize,
-      });
-      if (version !== listVersion.current) {
-        return undefined;
-      }
-      known++;
-      rememberPaging(pagingByPage.current, known, response.paging);
-      knownPaging = response.paging;
-    }
-
-    return known === target - 1 ? knownPaging?.after : undefined;
-  };
-
   const onPageChange = async (nextPage: number) => {
+    // Each page change supersedes any earlier one still walking.
+    const navigation = ++latestNavigation.current;
     if (nextPage === 1) {
       setPage(1);
 
@@ -141,18 +120,40 @@ export const useCursorPagedList = <T>(
       return load({ before }, nextPage);
     }
     const version = listVersion.current;
+    const isStale = () =>
+      navigation !== latestNavigation.current ||
+      version !== listVersion.current;
+    setIsLoading(true);
     try {
-      const after = await resolveAfter(nextPage);
-      // No cursor, or the list restarted while walking: stay put rather than
-      // show the wrong rows under another page number.
-      if (!after || version !== listVersion.current) {
+      const after = await walkToAfterCursor({
+        target: nextPage,
+        pagingFor: (pageNumber) => pagingByPage.current.get(pageNumber),
+        remember: (pageNumber, pagePaging) =>
+          rememberPaging(pagingByPage.current, pageNumber, pagePaging),
+        fetchPaging: async (cursor) =>
+          (
+            await fetchPage({ after: cursor, limit: pageSize })
+          ).paging,
+        isStale,
+      });
+      if (isStale()) {
+        return undefined;
+      }
+      // No cursor: stay put rather than show the wrong rows under another
+      // page number.
+      if (!after) {
+        setIsLoading(false);
+
         return undefined;
       }
       setPage(nextPage);
 
       return load({ after }, nextPage);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (!isStale()) {
+        setIsLoading(false);
+        showErrorToast(error as AxiosError);
+      }
 
       return undefined;
     }

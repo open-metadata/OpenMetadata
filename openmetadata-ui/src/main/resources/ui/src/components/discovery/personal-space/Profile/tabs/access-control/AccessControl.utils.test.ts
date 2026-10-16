@@ -40,4 +40,25 @@ describe('access control rule routes', () => {
     });
     expect(hashSubPathToView('policies/add')).toEqual({ type: 'policies-add' });
   });
+
+  it('edits a rule named like a route segment, and survives a malformed link', () => {
+    const named = {
+      type: 'policies-rule',
+      fqn: 'OrgPolicy',
+      name: 'OrgPolicy',
+    };
+
+    expect(hashSubPathToView('policies/OrgPolicy/rules/rules/edit')).toEqual({
+      ...named,
+      ruleName: 'rules',
+    });
+    expect(hashSubPathToView('policies/OrgPolicy/rules/add/edit')).toEqual({
+      ...named,
+      ruleName: 'add',
+    });
+    expect(hashSubPathToView('policies/OrgPolicy/rules/My%ZZ/edit')).toEqual({
+      ...named,
+      ruleName: 'My%ZZ',
+    });
+  });
 });

@@ -46,6 +46,7 @@ import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { useAuth } from '../../../../../../hooks/authHooks';
+import { useClipboard } from '../../../../../../hooks/useClipBoard';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
   getPolicyByName,
@@ -70,18 +71,14 @@ import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import { useClipboard } from '../../../../../../hooks/useClipBoard';
 import { profileHash } from '../members/profileHash.utils';
 import type { AccessControlView } from './AccessControl.types';
 import AccessControlRulesTable from './AccessControlRulesTable';
+import { getCountLabel } from './AccessControl.utils';
 
 type PolicyTab = 'rules' | 'roles' | 'teams';
 type DetailColumnId = 'name' | 'description' | 'actions';
 type DetailColumn = { id: DetailColumnId; label: string; className?: string };
-
-/** A tab label with the number of entities it lists, e.g. "Policies (3)". */
-const getCountLabel = (label: string, refs?: unknown[]) =>
-  `${label} (${refs?.length ?? 0})`;
 
 // ─── Description cell ─────────────────────────────────────────────────────────
 

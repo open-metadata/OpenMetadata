@@ -23,8 +23,9 @@ import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SearchSectionTitle } from './SearchSection';
 import { FieldValueBoost } from '../../../../../../../generated/configuration/searchSettings';
+import { SearchSectionTitle } from './SearchSection';
+import { NUMERIC_COLUMNS } from './FieldValueBoostTable.constants';
 
 interface FieldValueBoostTableProps {
   boosts: FieldValueBoost[];
@@ -45,13 +46,6 @@ const RANGE_COLUMNS: { id: RangeKey; labelKey: string }[] = [
   { id: 'lt', labelKey: 'label.less-than' },
   { id: 'lte', labelKey: 'label.less-than-or-equal-to' },
 ];
-
-// Numbers line up on the right, so factors and bounds of different lengths compare at a glance.
-const NUMERIC_COLUMNS = new Set<string>([
-  'factor',
-  'missing',
-  ...RANGE_COLUMNS.map(({ id }) => id),
-]);
 
 const FieldValueBoostTable = ({
   boosts,

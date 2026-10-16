@@ -17,7 +17,10 @@ import { FC, useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Rule } from '../../../../../../generated/api/policies/createPolicy';
+import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
+import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Policy } from '../../../../../../generated/entity/policies/policy';
+import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   getPolicyByName,
   patchPolicy,
@@ -52,6 +55,11 @@ const AccessControlRuleFormPage: FC<AccessControlRuleFormPageProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const ruleForm = useForm<Rule>({ defaultValues: INITIAL_RULE });
+  // A rule link can be opened directly, past the detail page's edit gate.
+  const { canEditAll, isLoading: isPermissionLoading } = useEntityPermissions(
+    ResourceEntity.POLICY,
+    fqn
+  );
 
   useEffect(() => {
     const fetchPolicy = async () => {
@@ -125,7 +133,14 @@ const AccessControlRuleFormPage: FC<AccessControlRuleFormPageProps> = ({
     }
   };
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isPermissionLoading && !canEditAll) {
+      showErrorToast(t(NO_PERMISSION_FOR_ACTION));
+      goBack();
+    }
+  }, [canEditAll, goBack, isPermissionLoading, t]);
+
+  if (isLoading || isPermissionLoading) {
     return <Loader />;
   }
 
@@ -157,7 +172,7 @@ const AccessControlRuleFormPage: FC<AccessControlRuleFormPageProps> = ({
         <Button
           color="primary"
           data-testid="submit-btn"
-          isDisabled={!policy}
+          isDisabled={!policy || !canEditAll}
           isLoading={isSaving}
           onPress={() => void ruleForm.handleSubmit(handleSave)()}>
           {t('label.save')}

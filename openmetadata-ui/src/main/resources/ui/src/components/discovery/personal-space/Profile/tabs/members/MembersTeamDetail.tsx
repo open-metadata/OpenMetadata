@@ -124,6 +124,7 @@ import MembersTeamsTab from './MembersTeamsTab';
 import MembersUsersTab from './MembersUsersTab';
 import { profileHash } from './profileHash.utils';
 import { useMembersTeamHeader } from './useMembersTeamHeader';
+import { TABLE_TABS } from './Members.constants';
 
 const CUSTOM_PROPERTIES = 'custom-properties' as const;
 
@@ -151,9 +152,6 @@ const ReorderDragIcon: FC<{ className?: string }> = ({ className }) => (
 // The inline role/policy add flow is identical bar the team field it writes to.
 type InlineAddField = 'defaultRoles' | 'policies';
 
-// Tabs whose content is a borderless table drawn edge to edge in the card;
-// the rest get padding.
-const TABLE_TABS = new Set<string>(['teams', 'users', 'roles', 'policies']);
 type AddOption = {
   id: string;
   name: string;

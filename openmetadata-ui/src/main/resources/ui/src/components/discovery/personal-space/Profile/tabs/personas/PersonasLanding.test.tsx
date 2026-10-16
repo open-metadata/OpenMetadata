@@ -253,6 +253,27 @@ describe('PersonasLanding', () => {
     );
   });
 
+  it("goes back one page with the next page's before cursor", async () => {
+    (getAllPersonas as jest.Mock).mockResolvedValue({
+      data: PERSONAS,
+      paging: { total: 40, after: 'cursor-4', before: 'cursor-back-3' },
+    });
+    mockPagingParams({ page: 3, cursor: 'cursor-3', cursorType: 'after' });
+    render(<PersonasLanding onNavigate={mockOnNavigate} />);
+
+    expect(await screen.findByTestId('pagination')).toHaveTextContent('3/3');
+
+    fireEvent.click(screen.getByText('previous'));
+
+    // Page 3's `before` opens page 2 (page 2's own would open page 1).
+    expect(mockSetPage).toHaveBeenLastCalledWith(
+      2,
+      'before',
+      'cursor-back-3',
+      15
+    );
+  });
+
   it('resumes from a cursor in the hash on mount', async () => {
     mockPagingParams({
       page: 3,

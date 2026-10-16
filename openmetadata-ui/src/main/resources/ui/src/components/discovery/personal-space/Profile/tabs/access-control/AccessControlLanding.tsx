@@ -21,8 +21,8 @@ import {
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { AccessControlView, LandingCard } from './AccessControl.types';
 import { getLandingIconColor } from '../../components/LandingIcon.constants';
+import type { AccessControlView, LandingCard } from './AccessControl.types';
 
 const LANDING_CARDS: LandingCard[] = [
   {

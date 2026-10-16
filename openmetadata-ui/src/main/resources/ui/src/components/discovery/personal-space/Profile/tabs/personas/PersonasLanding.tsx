@@ -33,6 +33,7 @@ import { Persona } from '../../../../../../generated/entity/teams/persona';
 import { Paging } from '../../../../../../generated/type/paging';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getAllPersonas } from '../../../../../../rest/PersonaAPI';
+import { walkToAfterCursor } from '../../../../../../utils/CursorPaging.utils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -62,6 +63,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
     new Map()
   );
   const fetchRequestIdRef = useRef(0);
+  const navigationRef = useRef(0);
 
   const showPagination = useMemo(
     () => Boolean(paging.before || paging.after) || paging.total > pageSize,
@@ -115,35 +117,32 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
   // A page never visited has no cursor yet: walk the pages in between, keeping
   // each one's cursors, then open the target with the last `after`
   // (ADR:2026-10-16-cursor-paged-lists-jump-by-walking).
-  const jumpForward = async (targetPage: number) => {
-    // Any other load (page size change, another click) supersedes this walk.
+  const jumpForward = async (targetPage: number, navigation: number) => {
+    // Any other load or page change supersedes this walk.
     const startedAt = fetchRequestIdRef.current;
-    let known = targetPage - 1;
-    while (known > 1 && !cursorCache.has(known)) {
-      known--;
-    }
-    let knownPaging = cursorCache.get(known);
+    const isStale = () =>
+      startedAt !== fetchRequestIdRef.current ||
+      navigation !== navigationRef.current;
+    let after: string | undefined;
     try {
-      while (known < targetPage - 1 && knownPaging?.after) {
-        const { paging: nextPaging } = await getAllPersonas({
-          limit: pageSize,
-          after: knownPaging.after,
-        });
-        if (startedAt !== fetchRequestIdRef.current) {
-          return;
-        }
-        known++;
-        cacheCursor(known, nextPaging);
-        knownPaging = nextPaging;
-      }
+      after = await walkToAfterCursor({
+        target: targetPage,
+        pagingFor: (pageNumber) => cursorCache.get(pageNumber),
+        remember: cacheCursor,
+        fetchPaging: async (cursor) =>
+          (
+            await getAllPersonas({ limit: pageSize, after: cursor })
+          ).paging,
+        isStale,
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
 
       return;
     }
-    if (known === targetPage - 1 && knownPaging?.after) {
-      setHashPage(targetPage, 'after', knownPaging.after, pageSize);
-      void fetchPersonas({ after: knownPaging.after }, targetPage);
+    if (after && !isStale()) {
+      setHashPage(targetPage, 'after', after, pageSize);
+      void fetchPersonas({ after }, targetPage);
     }
   };
 
@@ -151,6 +150,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
     if (newPage === currentPage) {
       return;
     }
+    const navigation = ++navigationRef.current;
 
     if (newPage === 1) {
       setHashPage(1, undefined, undefined, pageSize);
@@ -160,10 +160,11 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
     }
 
     const prevPaging = cursorCache.get(newPage - 1);
-    const cursor =
-      newPage > currentPage
-        ? prevPaging?.after
-        : cursorCache.get(newPage)?.before;
+    // Page N opens from page N-1's `after`, or from page N+1's `before`.
+    const backCursor =
+      cursorCache.get(newPage + 1)?.before ??
+      (newPage === currentPage - 1 ? paging.before : undefined);
+    const cursor = newPage > currentPage ? prevPaging?.after : backCursor;
 
     if (newPage > currentPage && prevPaging?.after) {
       setHashPage(newPage, 'after', prevPaging.after, pageSize);
@@ -172,7 +173,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
       setHashPage(newPage, 'before', cursor, pageSize);
       void fetchPersonas({ before: cursor }, newPage);
     } else if (newPage > currentPage) {
-      void jumpForward(newPage);
+      void jumpForward(newPage, navigation);
     }
   };
 

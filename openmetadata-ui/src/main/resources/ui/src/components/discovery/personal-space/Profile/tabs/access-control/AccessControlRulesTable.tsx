@@ -32,6 +32,7 @@ type RuleColumnId =
   | 'resources'
   | 'operations'
   | 'effect'
+  | 'condition'
   | 'description'
   | 'actions';
 
@@ -44,6 +45,28 @@ interface AccessControlRulesTableProps {
 }
 
 const formatList = (items?: string[]) => items?.join(', ') || '--';
+
+const EffectCell = ({ effect }: { effect: Rule['effect'] }) => (
+  <Typography
+    className={
+      effect === Effect.Allow
+        ? 'tw:text-success-primary'
+        : 'tw:text-error-primary'
+    }
+    size="text-sm"
+    weight="medium">
+    {effect}
+  </Typography>
+);
+
+const ConditionCell = ({ condition }: { condition?: string }) =>
+  condition ? (
+    <code className="tw:rounded tw:bg-secondary tw:px-1 tw:text-xs tw:break-all">
+      {condition}
+    </code>
+  ) : (
+    <>--</>
+  );
 
 /** The rules of a policy, one row each; edit opens the rule's own page. */
 const AccessControlRulesTable: FC<AccessControlRulesTableProps> = ({
@@ -61,12 +84,14 @@ const AccessControlRulesTable: FC<AccessControlRulesTableProps> = ({
       { id: 'resources', label: t('label.resource-plural') },
       { id: 'operations', label: t('label.operation-plural') },
       { id: 'effect', label: t('label.effect'), className: 'tw:w-24' },
+      { id: 'condition', label: t('label.condition') },
       { id: 'description', label: t('label.description') },
       { id: 'actions', label: t('label.action-plural'), className: 'tw:w-20' },
     ],
     [t]
   );
 
+  const actionsDisabled = !canEdit || isDisabled;
   const actionTooltip = (label: string) =>
     String(canEdit ? label : t(NO_PERMISSION_FOR_ACTION));
 
@@ -86,18 +111,9 @@ const AccessControlRulesTable: FC<AccessControlRulesTableProps> = ({
       case 'operations':
         return formatList(rule.operations);
       case 'effect':
-        return (
-          <Typography
-            className={
-              rule.effect === Effect.Allow
-                ? 'tw:text-success-primary'
-                : 'tw:text-error-primary'
-            }
-            size="text-sm"
-            weight="medium">
-            {rule.effect}
-          </Typography>
-        );
+        return <EffectCell effect={rule.effect} />;
+      case 'condition':
+        return <ConditionCell condition={rule.condition} />;
       case 'description':
         return rule.description ? (
           <RichTextEditorPreviewerV1 markdown={rule.description} />
@@ -111,7 +127,7 @@ const AccessControlRulesTable: FC<AccessControlRulesTableProps> = ({
               color="tertiary"
               data-testid={`edit-rule-${rule.name}`}
               icon={Edit01}
-              isDisabled={!canEdit || isDisabled}
+              isDisabled={actionsDisabled}
               size="xs"
               tooltip={actionTooltip(t('label.edit'))}
               tooltipPlacement="left"
@@ -121,7 +137,7 @@ const AccessControlRulesTable: FC<AccessControlRulesTableProps> = ({
               color="tertiary"
               data-testid={`delete-rule-${rule.name}`}
               icon={Trash01}
-              isDisabled={!canEdit || isDisabled}
+              isDisabled={actionsDisabled}
               size="xs"
               tooltip={actionTooltip(t('label.delete'))}
               tooltipPlacement="left"

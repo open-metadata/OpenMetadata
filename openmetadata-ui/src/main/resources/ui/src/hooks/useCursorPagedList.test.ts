@@ -168,4 +168,44 @@ describe('useCursorPagedList', () => {
     expect(newList).not.toHaveBeenCalledWith({ after: 'old-3', limit: 15 });
     expect(result.current.items).toEqual(['new-new-3']);
   });
+
+  it('drops a slow jump when a newer page change happens before it lands', async () => {
+    let releaseWalk: ((value: unknown) => void) | undefined;
+    fetchPage.mockImplementation(({ after }: { after?: string }) => {
+      if (after === 'p2') {
+        // The walk's first skipped page is slow.
+        return new Promise((resolve) => {
+          releaseWalk = resolve;
+        });
+      }
+      const pageNumber = after ? Number(after.replace('p', '')) : 1;
+
+      return Promise.resolve({
+        data: [`item-${pageNumber}`],
+        paging: { total: 60, after: `p${pageNumber + 1}` },
+      });
+    });
+    const { result } = renderHook(() => useCursorPagedList(fetchPage));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Jump 1 -> 3 (walks through page 2), then pick page 1 again meanwhile.
+    let jump: Promise<unknown> | undefined;
+    act(() => {
+      jump = result.current.onPageChange(3);
+    });
+
+    expect(result.current.isLoading).toBe(true);
+
+    await act(async () => {
+      await result.current.onPageChange(1);
+    });
+    await act(async () => {
+      releaseWalk?.({ data: ['item-2'], paging: { total: 60, after: 'p3' } });
+      await jump;
+    });
+
+    expect(result.current.page).toBe(1);
+    expect(result.current.items).toEqual(['item-1']);
+    expect(fetchPage).not.toHaveBeenCalledWith({ after: 'p3', limit: 15 });
+  });
 });

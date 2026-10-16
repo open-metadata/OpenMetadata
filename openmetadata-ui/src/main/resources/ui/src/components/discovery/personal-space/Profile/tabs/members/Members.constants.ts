@@ -83,3 +83,12 @@ export const STAGE_ICON_CLASS: Record<StageState, string> = {
   active: 'tw:bg-utility-brand-50 tw:text-utility-brand-700',
   pending: 'tw:bg-tertiary tw:text-fg-quaternary',
 };
+
+// Team detail tabs whose content is a borderless table drawn edge to edge in
+// the tab card; the rest get padding.
+export const TABLE_TABS = new Set<string>([
+  'teams',
+  'users',
+  'roles',
+  'policies',
+]);

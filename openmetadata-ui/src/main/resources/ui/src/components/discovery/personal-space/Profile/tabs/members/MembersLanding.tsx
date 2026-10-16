@@ -19,9 +19,9 @@ import { useTranslation } from 'react-i18next';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { getLandingIconColor } from '../../components/LandingIcon.constants';
 import { LANDING_CARDS } from './Members.constants';
 import type { MembersLandingCard, MembersSubPanelProps } from './Members.types';
-import { getLandingIconColor } from '../../components/LandingIcon.constants';
 
 const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
   const { t } = useTranslation();

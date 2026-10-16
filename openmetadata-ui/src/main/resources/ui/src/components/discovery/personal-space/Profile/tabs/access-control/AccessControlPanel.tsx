@@ -39,8 +39,9 @@ import AccessControlLanding from './AccessControlLanding';
 import AccessControlPoliciesPanel from './AccessControlPoliciesPanel';
 import AccessControlPolicyDetail from './AccessControlPolicyDetail';
 import AccessControlRoleDetail from './AccessControlRoleDetail';
-import AccessControlRuleFormPage from './AccessControlRuleFormPage';
 import AccessControlRolesPanel from './AccessControlRolesPanel';
+import AccessControlRuleFormPage from './AccessControlRuleFormPage';
+import { getDetailHeaderNames } from './AccessControl.utils';
 
 export type { AccessControlView };
 
@@ -63,24 +64,6 @@ const SIMPLE_VIEWS: Partial<
   'roles-add': AccessControlAddRoleForm,
   policies: AccessControlPoliciesPanel,
   [POLICIES_ADD]: AccessControlAddPolicyForm,
-};
-
-// The entity a header names: a fetched display name wins over the URL's FQN.
-const getDetailHeaderNames = (
-  view: AccessControlView,
-  resolvedName: string
-) => {
-  const isDetailView =
-    view.type === ROLES_DETAIL || view.type === POLICIES_DETAIL;
-  const isPolicyView =
-    view.type === POLICIES_DETAIL || view.type === POLICIES_RULE;
-  const urlName = 'name' in view ? view.name : '';
-
-  return {
-    isDetailView,
-    roleName: view.type === ROLES_DETAIL ? resolvedName || urlName : '',
-    policyName: isPolicyView ? resolvedName || urlName : '',
-  };
 };
 
 interface AccessControlPanelProps {
