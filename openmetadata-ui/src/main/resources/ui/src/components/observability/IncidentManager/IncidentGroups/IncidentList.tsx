@@ -25,6 +25,7 @@ import {
   Database01,
   ShieldTick,
 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -187,9 +188,12 @@ const IncidentList = ({
       aria-label={t('label.incident-plural')}
       // The page being left stays until the next one lands; dimmed, it reads
       // as on its way out rather than as the result.
-      className={
-        isLoading && incidents.length > 0 ? 'tw:opacity-60' : undefined
-      }
+      className={classNames({
+        'tw:opacity-60': isLoading && incidents.length > 0,
+        // The pager below a scrolling list draws the divider under the rows;
+        // the last row's own line would double it.
+        'tw:[&_tbody>tr:last-child>td]:after:hidden': isScrollable,
+      })}
       containerClassName={
         isScrollable ? 'tw:min-h-0 tw:flex-1 tw:overflow-y-auto' : undefined
       }
