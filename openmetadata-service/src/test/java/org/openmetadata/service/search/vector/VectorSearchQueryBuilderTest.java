@@ -1423,6 +1423,77 @@ class VectorSearchQueryBuilderTest {
     assertFalse(memoryBranches.toString().contains(anchorId));
   }
 
+  @Test
+  void testRequestedPendingStagesAdmitTheSubjectsOwnMemoriesOnBothEngines() throws Exception {
+    for (SubjectContext subject : List.of(nonAdminSubject(), adminSubject())) {
+      for (JsonNode clause : memoryClausesOnEveryEngine(ownerPendingParameters(subject))) {
+        JsonNode branches = clause.path("bool").path("should");
+        JsonNode own = branches.get(3).path("bool").path("must");
+        assertEquals(4, branches.size(), "the owner's branch is added last");
+        assertTrue(termClauseExists(own, "entityType", Entity.CONTEXT_MEMORY));
+        JsonNode nested = own.get(1).path("nested");
+        assertEquals(
+            USER_ID.toString(), nested.path("query").path("term").path("owners.id").asText());
+        assertTrue(nested.path("ignore_unmapped").asBoolean(false));
+        assertEquals(
+            List.of("Unprocessed", "Draft"),
+            MAPPER.convertValue(own.get(2).path("terms").path("entityStatus"), List.class));
+        assertFalse(
+            branches.get(1).toString().contains("Unprocessed"),
+            "a pending memory never reaches the subject through visibility alone");
+        assertTrue(branches.get(1).toString().contains("\"entityStatus\":\"Approved\""));
+      }
+    }
+  }
+
+  @Test
+  void testPendingStagesAreNeverAdmittedWithoutASubjectOrARequest() throws Exception {
+    List<VectorSearchParameters> unwidened =
+        List.of(
+            ownerPendingParameters(null),
+            new VectorSearchParameters(
+                null,
+                Map.of("entityStatus", List.of(EntityStatus.APPROVED.value())),
+                5,
+                0,
+                5,
+                0.0,
+                null,
+                nonAdminSubject(),
+                null));
+    for (VectorSearchParameters parameters : unwidened) {
+      for (JsonNode clause : memoryClausesOnEveryEngine(parameters)) {
+        assertEquals(3, clause.path("bool").path("should").size());
+        assertFalse(clause.toString().contains("Unprocessed"));
+      }
+    }
+  }
+
+  private static VectorSearchParameters ownerPendingParameters(SubjectContext subject) {
+    return new VectorSearchParameters(
+        null,
+        Map.of("entityStatus", List.of("Approved", "Unprocessed", "Draft")),
+        5,
+        0,
+        5,
+        0.0,
+        null,
+        subject,
+        null);
+  }
+
+  private static List<JsonNode> memoryClausesOnEveryEngine(VectorSearchParameters parameters)
+      throws Exception {
+    float[] vector = {0.1f};
+    return List.of(
+        memoryVisibilityClause(
+            MAPPER.readTree(VectorSearchQueryBuilder.buildQuery(vector, parameters, Set.of()))),
+        memoryVisibilityClause(
+            MAPPER.readTree(VectorSearchQueryBuilder.build(vector, parameters)).path("query")),
+        memoryVisibilityClause(
+            MAPPER.readTree(VectorSearchQueryBuilder.buildNativeESQuery(vector, parameters, 2))));
+  }
+
   /** Elasticsearch is a separate public method; a miss here leaks on every ES deployment. */
   @Test
   void testNativeESQueryAlsoCarriesTheMemoryClause() throws Exception {
