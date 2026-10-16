@@ -66,7 +66,6 @@ import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { Style } from '../../../generated/type/schema';
-import ContractLatestResultBadge from '../../DataContract/ContractLatestResultBadge/ContractLatestResultBadge';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCustomPages } from '../../../hooks/useCustomPages';
@@ -110,6 +109,7 @@ import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadc
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
+import ContractLatestResultBadge from '../../DataContract/ContractLatestResultBadge/ContractLatestResultBadge';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
