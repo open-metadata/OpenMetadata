@@ -160,8 +160,11 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
         }
       }}>
       <Modal>
-        <Dialog showCloseButton width={720} onClose={onClose}>
-          <Dialog.Header>
+        <Dialog showCloseButton dividers="scroll" width={720} onClose={onClose}>
+          {/* Bottom padding keeps a gap under the heading while the list
+            scrolls beneath it; the content's own bottom padding keeps the
+            last card off the dialog's edge, since there is no footer. */}
+          <Dialog.Header className="tw:pb-4">
             <div className="tw:flex tw:items-center tw:gap-3">
               <div className="tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-utility-blue-50 tw:text-utility-blue-700">
                 <Announcement02 height={16} width={16} />
@@ -182,7 +185,7 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
             </div>
           </Dialog.Header>
 
-          <Dialog.Content className="tw:max-h-[60vh] tw:overflow-y-auto tw:overscroll-contain">
+          <Dialog.Content className="tw:max-h-[60vh] tw:overflow-y-auto tw:overscroll-contain tw:pb-6 tw:sm:pb-6">
             {renderBody()}
           </Dialog.Content>
         </Dialog>
