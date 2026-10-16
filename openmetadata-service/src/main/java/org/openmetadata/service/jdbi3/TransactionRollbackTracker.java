@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import java.sql.SQLException;
 import java.util.function.Supplier;
 import org.jdbi.v3.core.transaction.TransactionException;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 /**
  * Tells a unit of work that the database rolled back its transaction, even when the code in between
@@ -43,14 +44,15 @@ public final class TransactionRollbackTracker {
    * Runs one attempt of a unit of work inside its open transaction. An attempt started inside
    * another joins it, because nested boundaries share one database transaction: a rollback anywhere
    * fails the outermost attempt too. A body that throws is rolled back anyway, so its error reaches
-   * {@link DeadlockRetry} unchanged.
+   * {@link DeadlockRetry} unchanged. The outermost attempt is where its transaction starts, so it
+   * also tells {@link SettingsCache} which settings updates that transaction's reads can miss.
    */
   static <R> R runAttempt(final Supplier<R> body) {
     final Attempt enclosing = CURRENT.get();
     final Attempt attempt = enclosing == null ? new Attempt() : enclosing;
     CURRENT.set(attempt);
     try {
-      final R result = body.get();
+      final R result = enclosing == null ? SettingsCache.inTransactionAttempt(body) : body.get();
       attempt.failIfRolledBack();
       return result;
     } finally {
