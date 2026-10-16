@@ -13,7 +13,9 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
-import workflowClassBase from '../../../utils/WorkflowClassBase';
+import workflowClassBase, {
+  WORKFLOW_CARD_FLAG_ATTRIBUTE,
+} from '../../../utils/WorkflowClassBase';
 import WorkflowCard from './WorkflowCard.component';
 
 const WORKFLOW: WorkflowDefinition = {
@@ -58,6 +60,16 @@ describe('WorkflowCard', () => {
 
     expect(screen.getByTestId('downstream-footer')).toHaveTextContent(
       WORKFLOW.name
+    );
+  });
+
+  it('takes the error border from a footer element that flags the workflow', () => {
+    render(
+      <WorkflowCard data={DATA} workflow={WORKFLOW} onClick={jest.fn()} />
+    );
+
+    expect(screen.getByTestId(DATA.key).className).toContain(
+      `tw:has-[[${WORKFLOW_CARD_FLAG_ATTRIBUTE}]]:border-error-subtle`
     );
   });
 

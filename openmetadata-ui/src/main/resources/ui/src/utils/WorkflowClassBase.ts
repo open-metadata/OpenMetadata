@@ -42,6 +42,12 @@ export interface WorkflowCardFooterProps {
   workflow: WorkflowDefinition;
 }
 
+/**
+ * Set on an element inside a workflow card's footer to flag the workflow; the card then
+ * takes the error border.
+ */
+export const WORKFLOW_CARD_FLAG_ATTRIBUTE = 'data-workflow-card-flag';
+
 export class WorkflowClassBase {
   /** What the builder allows; `workflow` is the one open in it, when there is one. */
   public getCapabilities(_workflow?: WorkflowDefinition): WorkflowCapabilities {

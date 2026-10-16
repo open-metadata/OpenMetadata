@@ -53,6 +53,8 @@ const WorkflowCard = ({
         // Hover matches the AI Automations template card / entity cards.
         'tw:shadow-xs tw:transition-[box-shadow,transform,border-color] tw:duration-160 tw:ease-in-out',
         'tw:hover:border-brand-300 tw:hover:shadow-lg tw:hover:-translate-y-0.5',
+        // A footer that flags the workflow (WORKFLOW_CARD_FLAG_ATTRIBUTE) turns the border red.
+        'tw:has-[[data-workflow-card-flag]]:border-error-subtle tw:has-[[data-workflow-card-flag]]:hover:border-error',
         className
       )}
       data-testid={data.key}
