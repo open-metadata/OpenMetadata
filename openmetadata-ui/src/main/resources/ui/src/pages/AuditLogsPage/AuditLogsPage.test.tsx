@@ -74,19 +74,27 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     )),
   DateRangePicker: jest
     .fn()
-    .mockImplementation(({ onChange, 'data-testid': testId }) => {
+    .mockImplementation(({ onChange, onApply, 'data-testid': testId }) => {
       const day = {
         toDate: () => new Date(0),
         add: () => ({ toDate: () => new Date(86_400_000) }),
       };
 
       return (
-        <button
-          data-testid={testId}
-          type="button"
-          onClick={() => onChange({ start: day, end: day })}>
-          range
-        </button>
+        <>
+          <button
+            data-testid={testId}
+            type="button"
+            onClick={() => onChange({ start: day, end: day })}>
+            range
+          </button>
+          <button
+            data-testid={`${testId}-apply`}
+            type="button"
+            onClick={() => onApply?.()}>
+            apply
+          </button>
+        </>
       );
     }),
   Input: jest
@@ -815,6 +823,9 @@ describe('AuditLogsPage', () => {
       });
       await act(async () => {
         fireEvent.click(screen.getByTestId('export-date-range-picker'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('export-date-range-picker-apply'));
       });
       await act(async () => {
         fireEvent.click(

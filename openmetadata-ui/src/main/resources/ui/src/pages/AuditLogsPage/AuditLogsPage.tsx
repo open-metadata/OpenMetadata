@@ -50,6 +50,7 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
+import { useStagedPickerValue } from '../../hooks/useStagedPickerValue';
 import {
   exportAuditLogs,
   getAuditLogExportJob,
@@ -118,6 +119,10 @@ const AuditLogsPage = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportJob, setExportJob] = useState<ExportJob | null>(null);
   const exportJobRef = useRef<ExportJob | null>(null);
+  const exportRangePicker = useStagedPickerValue(
+    exportDateRange,
+    setExportDateRange
+  );
 
   const fetchAuditLogs = useCallback(
     async (
@@ -634,8 +639,7 @@ const AuditLogsPage = () => {
               data-testid="export-date-range-picker"
               isDisabled={isExporting}
               maxValue={millisToPickerDateValue(Date.now())}
-              value={exportDateRange}
-              onChange={setExportDateRange}
+              {...exportRangePicker}
             />
           </div>
           {renderExportProgress()}

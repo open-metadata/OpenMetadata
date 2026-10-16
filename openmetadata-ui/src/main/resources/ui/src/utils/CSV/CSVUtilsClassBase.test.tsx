@@ -1048,6 +1048,61 @@ describe('CSV utils ClassBase', () => {
       ).not.toBeInTheDocument();
     });
 
+    it('should replace a single-value enum with the newly picked option', async () => {
+      mockGetTypeByFQN.mockResolvedValueOnce({
+        customProperties: [
+          {
+            name: 'status',
+            displayName: 'Status',
+            description: '',
+            propertyType: { name: 'enum' },
+            customPropertyConfig: {
+              config: { multiSelect: false, values: ['Draft', 'Approved'] },
+            },
+          },
+        ],
+      });
+      const editor = csvUtils.getEditor(
+        'extension',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected extension editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: { extension: 'status:Draft' },
+              column: { key: 'extension' },
+              onRowChange,
+              onClose: jest.fn(),
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      fireEvent.click(
+        within(await screen.findByTestId('status-enum-select')).getByRole(
+          'button'
+        )
+      );
+      fireEvent.click(await screen.findByRole('option', { name: 'Approved' }));
+      fireEvent.click(screen.getByRole('button', { name: /update/i }));
+
+      await waitFor(() => {
+        expect(onRowChange).toHaveBeenCalledWith(
+          { extension: 'status:Approved' },
+          true
+        );
+      });
+    });
+
     it('should refetch metric custom properties after an empty response', async () => {
       const editor = csvUtils.getEditor(
         'extension',

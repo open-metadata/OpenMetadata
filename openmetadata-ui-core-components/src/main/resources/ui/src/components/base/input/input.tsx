@@ -142,7 +142,7 @@ export const InputBase = forwardRef<
   return (
     <AriaGroup
       {...{ isDisabled, isInvalid }}
-      className={({ isFocusWithin, isDisabled, isInvalid }) =>
+      className={({ isFocusWithin, isFocusVisible, isDisabled, isInvalid }) =>
         cx(
           // Border is drawn with outline, not a ring: WebKit does not pixel-snap
           // box-shadow, so a ring thins/vanishes in Safari when zoomed out.
@@ -168,7 +168,10 @@ export const InputBase = forwardRef<
           isFocusWithin &&
             'tw:group-invalid:outline-2 tw:group-invalid:-outline-offset-2 tw:group-invalid:outline-error',
 
-          borderless && 'tw:bg-transparent tw:shadow-none tw:outline-0',
+          // Like a borderless Select: no surface at rest, but keyboard focus
+          // keeps its outline so the field never loses its focus indicator.
+          borderless && 'tw:bg-transparent tw:shadow-none',
+          borderless && !isFocusVisible && 'tw:outline-0',
 
           context?.wrapperClassName,
           wrapperClassName

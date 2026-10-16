@@ -1479,13 +1479,32 @@ const InlineCustomPropertiesEditor = ({
     const isMultiSelect = isCustomPropertyEnumMultiSelect(customProperty);
     const items = enumValues.map((option) => ({ id: option, label: option }));
 
-    const handleInserted = (key: Key) =>
-      handleUpdateDraft(
-        customProperty.name,
-        isMultiSelect
-          ? [...new Set([...selectedValues, String(key)])]
-          : [String(key)]
+    // Single-value enums need to swap one value for another, which a chip
+    // Autocomplete refuses while it holds a value; a Select replaces natively.
+    if (!isMultiSelect) {
+      return (
+        <Select
+          aria-label={getEntityName(customProperty)}
+          className="bulk-edit-custom-property-enum-select"
+          data-testid={`${customProperty.name}-enum-select`}
+          items={items}
+          placeholder={t('label.enum-value-plural')}
+          value={selectedValues[0] ?? null}
+          onChange={(key) =>
+            handleUpdateDraft(
+              customProperty.name,
+              key === null ? [] : [String(key)]
+            )
+          }>
+          {(item) => <Select.Item id={item.id} label={item.label} />}
+        </Select>
       );
+    }
+
+    const handleInserted = (key: Key) =>
+      handleUpdateDraft(customProperty.name, [
+        ...new Set([...selectedValues, String(key)]),
+      ]);
 
     const handleCleared = (key: Key) =>
       handleUpdateDraft(
@@ -1495,11 +1514,11 @@ const InlineCustomPropertiesEditor = ({
 
     return (
       <Autocomplete
+        multiple
         aria-label={getEntityName(customProperty)}
         className="bulk-edit-custom-property-enum-select"
         data-testid={`${customProperty.name}-enum-select`}
         items={items}
-        multiple={isMultiSelect}
         placeholder={t('label.enum-value-plural')}
         selectedItems={items.filter((item) => selectedValues.includes(item.id))}
         onItemCleared={handleCleared}

@@ -26,6 +26,7 @@ import { DateTime } from 'luxon';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
+import { useStagedPickerValue } from '../../hooks/useStagedPickerValue';
 import {
   dateValueToMillis,
   millisToPickerDateValue,
@@ -78,6 +79,15 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
     }
     form.setValue('endDate', endDate, { shouldValidate: true });
   };
+
+  const startPicker = useStagedPickerValue(
+    toPickerValue(form.watch('startDate')),
+    (value) => handleStartDate(fromPickerValue(value))
+  );
+  const endPicker = useStagedPickerValue(
+    toPickerValue(form.watch('endDate')),
+    (value) => handleEndDate(fromPickerValue(value))
+  );
 
   return (
     <>
@@ -209,7 +219,7 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
             rules={{
               required: t('label.field-required', { field: startLabel }),
             }}>
-            {({ field, fieldState }) => (
+            {({ fieldState }) => (
               <Box className="tw:gap-1.5" direction="col">
                 <FormItemLabel required label={startLabel} />
                 <DatePicker
@@ -219,8 +229,7 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
                   isInvalid={Boolean(fieldState.error)}
                   minValue={todayValue}
                   triggerVariant="input"
-                  value={toPickerValue(field.value)}
-                  onChange={(value) => handleStartDate(fromPickerValue(value))}
+                  {...startPicker}
                 />
                 {fieldState.error && (
                   <HintText isInvalid>{fieldState.error.message}</HintText>
@@ -238,7 +247,7 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
                 field: t('label.end-date'),
               }),
             }}>
-            {({ field, fieldState }) => (
+            {({ fieldState }) => (
               <Box className="tw:gap-1.5" direction="col">
                 <FormItemLabel required label={t('label.end-date')} />
                 <DatePicker
@@ -248,8 +257,7 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
                   isInvalid={Boolean(fieldState.error)}
                   minValue={todayValue}
                   triggerVariant="input"
-                  value={toPickerValue(field.value)}
-                  onChange={(value) => handleEndDate(fromPickerValue(value))}
+                  {...endPicker}
                 />
                 {fieldState.error && (
                   <HintText isInvalid>{fieldState.error.message}</HintText>
