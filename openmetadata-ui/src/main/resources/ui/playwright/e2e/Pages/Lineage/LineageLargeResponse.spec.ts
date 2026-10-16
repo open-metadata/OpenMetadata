@@ -144,7 +144,8 @@ if (!isRepresentativeEntityRun(__filename)) {
         test.slow();
 
         const rootFqn = table.entityResponseData.fullyQualifiedName ?? '';
-        const body = JSON.stringify(buildBusyTableLineage(rootFqn));
+        const lineage = buildBusyTableLineage(rootFqn);
+        const body = JSON.stringify(lineage);
         await page.route('**/api/v1/lineage/getLineage?*', (route) =>
           route.fulfill({ status: 200, contentType: 'application/json', body })
         );
@@ -159,18 +160,23 @@ if (!isRepresentativeEntityRun(__filename)) {
         await page.getByTestId('lineage').click();
         await (await lineageResponse).finished();
 
-        const { ticks: ticksAtResponse } = await readHeartbeat(page);
+        // A response that fails to parse leaves the page idle, which would
+        // pass the gap check. The minimap draws every laid-out node, mounted
+        // or not, so its count shows the whole response reached the canvas.
+        await expect(page.locator('.react-flow__minimap-node')).toHaveCount(
+          Object.keys(lineage.nodes).length,
+          { timeout: 120_000 }
+        );
 
-        // Wait until the page has run two seconds of heartbeats after the
-        // response: by then the response has been parsed, and any long block
-        // while parsing it is recorded as the longest gap.
+        const { ticks: ticksAtRender } = await readHeartbeat(page);
+
+        // A long block is recorded only at the next heartbeat, so let two
+        // seconds of heartbeats run after the graph is drawn before reading
+        // the longest gap.
         await expect
-          .poll(
-            async () => (await readHeartbeat(page)).ticks - ticksAtResponse,
-            {
-              timeout: 120_000,
-            }
-          )
+          .poll(async () => (await readHeartbeat(page)).ticks - ticksAtRender, {
+            timeout: 120_000,
+          })
           .toBeGreaterThan(2_000 / HEARTBEAT_MS);
 
         const { longestGapMs } = await readHeartbeat(page);
