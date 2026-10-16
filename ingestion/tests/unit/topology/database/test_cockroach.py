@@ -271,6 +271,52 @@ def _make_partition_engine(rows):
     return engine, conn
 
 
+def _make_inspector(column_names):
+    """Build a mock inspector whose `get_columns` returns column dicts for the
+    given names, mirroring the SQLAlchemy inspector row shape (``{"name": ...}``)
+    used by `get_table_partition_details` to validate split partition tokens."""
+    inspector = MagicMock()
+    inspector.get_columns.return_value = [{"name": name} for name in column_names]
+    return inspector
+
+
+# ── set_schema_description_map: shared mock rows ──────────────────────────────
+# Each SimpleNamespace mirrors the SELECT list of COCKROACH_SCHEMA_COMMENTS:
+#   (database_name, schema_name, comment)
+# The query is a LEFT JOIN with the classoid/objsubid predicates in ON, so the
+# rows a *fixed* execution returns are exactly the namespace descriptions:
+# one row per schema, with ``comment=None`` when no namespace comment exists.
+#
+# ``database_name`` uses ``"default"`` to match the ``MOCK_DATABASE.name.root``
+# value the ``cockroachUnitTest.__init__`` wires into ``context.database``, so
+# ``get_schema_description`` lookups resolve against the live context without
+# needing to reassign it.
+SCHEMA_COMMENT_ROWS = [
+    # default.public: a real namespace comment was set
+    types.SimpleNamespace(database_name="default", schema_name="public", comment="my real schema comment"),
+    # default.pg_catalog: no namespace comment -> LEFT JOIN yields description NULL
+    types.SimpleNamespace(database_name="default", schema_name="pg_catalog", comment=None),
+]
+
+
+def _make_schema_comments_engine(rows):
+    """Build a mock engine/conn whose ``conn.execute(...).all()`` returns the
+    given row namespaces, simulating the rows the fixed
+    ``COCKROACH_SCHEMA_COMMENTS`` query would return against CockroachDB.
+
+    Rows are objects exposing ``.database_name``, ``.schema_name`` and
+    ``.comment`` attributes, typed to match what
+    ``set_schema_description_map`` reads off each result row.
+    """
+    conn = MagicMock()
+    result = MagicMock()
+    result.all.return_value = rows
+    conn.execute.return_value = result
+    engine = MagicMock()
+    engine.connect.return_value.__enter__.return_value = conn
+    return engine, conn
+
+
 class cockroachUnitTest(TestCase):  # noqa: N801
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(self, methodName, test_connection) -> None:  # noqa: N803
@@ -449,6 +495,28 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         self.assertIn("tables.name = :table_name", COCKROACH_GET_PARTITION_DETAILS)
         self.assertIn("tables.schema_name = :schema_name", COCKROACH_GET_PARTITION_DETAILS)
 
+    def test_partition_query_filters_by_current_database(self):
+        """The query must be scoped to the connected database. `crdb_internal.tables`
+        lists every database on some versions (v23.1), so without the filter a
+        same-named `<schema>.<table>` in another database could supply the
+        partition key when `ingestAllDatabases` is set."""
+        self.assertIn("tables.database_name = current_database()", COCKROACH_GET_PARTITION_DETAILS)
+
+    def test_partition_query_restricts_to_primary_index_and_top_level(self):
+        """The query must join `crdb_internal.table_indexes` and restrict to the
+        primary index (`index_type = 'primary'`) and top-level partitions
+        (`parent_name IS NULL`).
+
+        Without the primary-index filter, `result[0]` could sample a
+        secondary-index partition row with a different `column_names`, making the
+        fix non-deterministic. The top-level filter avoids sampling subpartition
+        rows whose `column_names` covers only the additional subpartition columns.
+        """
+        self.assertIn("crdb_internal.table_indexes", COCKROACH_GET_PARTITION_DETAILS)
+        self.assertIn("partitions.index_id = table_indexes.index_id", COCKROACH_GET_PARTITION_DETAILS)
+        self.assertIn("table_indexes.index_type = 'primary'", COCKROACH_GET_PARTITION_DETAILS)
+        self.assertIn("partitions.parent_name IS NULL", COCKROACH_GET_PARTITION_DETAILS)
+
     def test_get_table_partition_details_binds_schema_name_param(self):
         """The override must forward `schema_name` to the executed statement.
 
@@ -458,41 +526,52 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         engine, conn = _make_partition_engine(PARTITION_ROWS)
         self.cockroach_source.engine = engine
 
-        self.cockroach_source.get_table_partition_details("events", "public", MagicMock())
+        self.cockroach_source.get_table_partition_details("events", "public", _make_inspector(["region"]))
 
         self.assertEqual(conn.execute.call_count, 1)
         params = conn.execute.call_args.args[1]
         self.assertEqual(params, {"table_name": "events", "schema_name": "public"})
 
     def test_partition_details_public_events_excludes_analytics_columns(self):
-        """`public.events` must carry only `public`'s partition columns."""
+        """`public.events` must carry only `public`'s partition columns.
+
+        Two partitions exist on the same `region` column; the fix takes a single
+        representative row (`result[0]`) and splits it, so `region` is emitted
+        exactly once (no duplicates) rather than once per partition.
+        """
         engine, _ = _make_partition_engine(PARTITION_ROWS)
         self.cockroach_source.engine = engine
 
-        is_partitioned, partition = self.cockroach_source.get_table_partition_details("events", "public", MagicMock())
+        is_partitioned, partition = self.cockroach_source.get_table_partition_details(
+            "events", "public", _make_inspector(["region", "id"])
+        )
 
         self.assertTrue(is_partitioned)
         self.assertIsNotNone(partition)
         column_names = [col.columnName for col in partition.columns]
-        self.assertEqual(column_names, ["region", "region"])
+        self.assertEqual(column_names, ["region"])
         for col in partition.columns:
             self.assertEqual(col.intervalType, PartitionIntervalTypes.COLUMN_VALUE)
         # No leakage from analytics.events (partitioned by `id`, range)
         self.assertNotIn("id", column_names)
 
     def test_partition_details_analytics_events_excludes_public_columns(self):
-        """`analytics.events` must carry only `analytics`'s partition columns."""
+        """`analytics.events` must carry only `analytics`'s partition columns.
+
+        Two range partitions exist on the same `id` column; the fix deduplicates
+        them to a single `id` entry.
+        """
         engine, _ = _make_partition_engine(PARTITION_ROWS)
         self.cockroach_source.engine = engine
 
         is_partitioned, partition = self.cockroach_source.get_table_partition_details(
-            "events", "analytics", MagicMock()
+            "events", "analytics", _make_inspector(["id"])
         )
 
         self.assertTrue(is_partitioned)
         self.assertIsNotNone(partition)
         column_names = [col.columnName for col in partition.columns]
-        self.assertEqual(column_names, ["id", "id"])
+        self.assertEqual(column_names, ["id"])
         for col in partition.columns:
             self.assertEqual(col.intervalType, PartitionIntervalTypes.TIME_UNIT)
         # No leakage from public.events (partitioned by `region`, list)
@@ -535,22 +614,222 @@ class cockroachUnitTest(TestCase):  # noqa: N801
 
     def test_partition_details_interval_type_mapping_and_fallback(self):
         """Verify INTERVAL_TYPE_MAP mapping for ``list``/``range`` and the
-        ``COLUMN_VALUE`` fallback for unknown partition strategies."""
+        ``COLUMN_VALUE`` fallback for an unknown partition strategy.
+
+        A single table's partitions share one partition strategy, so the fix
+        takes the strategy from the representative first row. Each scenario
+        below is a separate table whose first (and only) row carries the
+        strategy under test.
+        """
+        for partition_type, expected in [
+            ("list", PartitionIntervalTypes.COLUMN_VALUE),
+            ("range", PartitionIntervalTypes.TIME_UNIT),
+            ("weird", PartitionIntervalTypes.COLUMN_VALUE),  # unknown -> fallback
+        ]:
+            rows = [("p", "region", partition_type, "t", "db", "public")]
+            engine, _ = _make_partition_engine(rows)
+            self.cockroach_source.engine = engine
+
+            _, partition = self.cockroach_source.get_table_partition_details("t", "public", _make_inspector(["region"]))
+
+            self.assertEqual([col.intervalType for col in partition.columns], [expected])
+
+    def test_partition_details_splits_multi_column_partition_key(self):
+        """A multi-column partition key is comma-joined in `column_names`
+        (e.g. "region, kind"); the fix must split it into one
+        `PartitionColumnDetails` per key column instead of emitting a single
+        malformed `"region, kind"` name.
+
+        Regression for the hard ingestion failure where `"region, kind"` was
+        rejected by the server as an invalid column name.
+        """
         rows = [
-            ("p_list", "region", "list", "t", "db", "public"),
-            ("p_range", "ts", "range", "t", "db", "public"),
-            ("p_unknown", "k", "weird", "t", "db", "public"),
+            ("us_east_a", "region, kind", "list", "events", "default", "public"),
+            ("us_west_b", "region, kind", "list", "events", "default", "public"),
         ]
         engine, _ = _make_partition_engine(rows)
         self.cockroach_source.engine = engine
 
-        _, partition = self.cockroach_source.get_table_partition_details("t", "public", MagicMock())
+        is_partitioned, partition = self.cockroach_source.get_table_partition_details(
+            "events", "public", _make_inspector(["region", "kind", "id"])
+        )
+
+        self.assertTrue(is_partitioned)
+        column_names = [col.columnName for col in partition.columns]
+        self.assertEqual(column_names, ["region", "kind"])
+        # The malformed comma-joined name must never be published
+        self.assertNotIn("region, kind", column_names)
+        # Multi-column partitions collapse to a single representative row, so
+        # each key column appears exactly once despite two partitions
+        self.assertEqual(len(column_names), len(set(column_names)))
+
+    def test_partition_details_trims_whitespace_around_split_tokens(self):
+        """Split tokens are trimmed so stray whitespace around the ", "
+        separator still yields names that match real columns."""
+        rows = [("p", " region , kind ", "list", "t", "db", "public")]
+        engine, _ = _make_partition_engine(rows)
+        self.cockroach_source.engine = engine
+
+        _, partition = self.cockroach_source.get_table_partition_details(
+            "t", "public", _make_inspector(["region", "kind"])
+        )
+
+        self.assertEqual([col.columnName for col in partition.columns], ["region", "kind"])
+
+    def test_partition_details_keeps_column_name_containing_comma(self):
+        """CockroachDB emits identifiers unquoted, so `PARTITION BY LIST
+        ("My Col", "a,b", "Upper")` yields `column_names = "My Col, a,b, Upper"`.
+        Splitting on the ", " separator must keep `a,b` whole; a bare ","
+        split would tear it into `a` and `b` and silently drop it."""
+        rows = [("p1", "My Col, a,b, Upper", "list", "t", "db", "public")]
+        engine, _ = _make_partition_engine(rows)
+        self.cockroach_source.engine = engine
+
+        _, partition = self.cockroach_source.get_table_partition_details(
+            "t", "public", _make_inspector(["My Col", "a,b", "Upper", "id"])
+        )
+
+        self.assertEqual([col.columnName for col in partition.columns], ["My Col", "a,b", "Upper"])
+
+    def test_partition_details_logs_dropped_tokens(self):
+        """A token that is not a table column is dropped with a debug log, so a
+        partition column that disappears from the published entity is traceable."""
+        rows = [("p", "region, ghost_col", "list", "t", "db", "public")]
+        engine, _ = _make_partition_engine(rows)
+        self.cockroach_source.engine = engine
+
+        with patch("metadata.ingestion.source.database.cockroach.metadata.logger") as logger:
+            self.cockroach_source.get_table_partition_details("t", "public", _make_inspector(["region"]))
+
+        logger.debug.assert_called_once()
+        self.assertIn(["ghost_col"], logger.debug.call_args.args)
+
+    def test_partition_details_drops_tokens_not_in_table_columns(self):
+        """Split tokens that are not real table columns are dropped, guarding
+        against publishing an invalid `columnName` the server would reject."""
+        rows = [("p", "region, ghost_col", "list", "t", "db", "public")]
+        engine, _ = _make_partition_engine(rows)
+        self.cockroach_source.engine = engine
+
+        _, partition = self.cockroach_source.get_table_partition_details(
+            "t", "public", _make_inspector(["region", "kind"])
+        )
+
+        # Only the real column survives; the phantom token is dropped
+        self.assertEqual([col.columnName for col in partition.columns], ["region"])
+
+    def test_partition_details_returns_false_none_when_all_tokens_invalid(self):
+        """If every split token fails validation against the table's columns,
+        no partition is published (graceful omission), avoiding a
+        `TablePartition` with an empty `columns` list."""
+        rows = [("p", "ghost_a, ghost_b", "list", "t", "db", "public")]
+        engine, _ = _make_partition_engine(rows)
+        self.cockroach_source.engine = engine
+
+        is_partitioned, partition = self.cockroach_source.get_table_partition_details(
+            "t", "public", _make_inspector(["region", "kind"])
+        )
+
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition)
+
+    # ── set_schema_description_map ─────────────────────────────────────────────
+
+    def test_set_schema_description_map_keeps_real_comment_not_function_comment(self):
+        """The map must hold the real namespace comment, not a bogus
+        ``pg_proc`` doc-comment from an OID collision.
+
+        With the fix the executed query filters on ``classoid =
+        'pg_namespace'``, so CockroachDB returns exactly one row for a schema
+        that has a real comment — the ``pg_proc`` collision is excluded. The
+        simulated result set here mirrors that post-fix output: only the
+        namespace comment row survives, never the function comment.
+        """
+        rows = [
+            # Only the namespace comment row is returned by the fixed query;
+            # the colliding pg_proc row (regr_intercept) is filtered out.
+            types.SimpleNamespace(
+                database_name="default",
+                schema_name="public",
+                comment="my real schema comment",
+            ),
+        ]
+        engine, _ = _make_schema_comments_engine(rows)
+        self.cockroach_source.engine = engine
+
+        self.cockroach_source.set_schema_description_map()
 
         self.assertEqual(
-            [col.intervalType for col in partition.columns],
-            [
-                PartitionIntervalTypes.COLUMN_VALUE,  # list
-                PartitionIntervalTypes.TIME_UNIT,  # range
-                PartitionIntervalTypes.COLUMN_VALUE,  # unknown -> fallback
-            ],
+            self.cockroach_source.schema_desc_map[("default", "public")],
+            "my real schema comment",
         )
+        # The fabricated function comment must never be published
+        self.assertNotIn(
+            "Calculates y-intercept of the least-squares-fit",
+            str(self.cockroach_source.schema_desc_map.values()),
+        )
+
+    def test_set_schema_description_map_uncommented_schema_yields_none(self):
+        """A schema with no namespace comment must map to ``None`` (the LEFT
+        JOIN returns a row with a NULL description), not a fabricated comment.
+
+        This locks the LEFT JOIN semantics restored by moving the
+        ``objsubid``/``classoid`` predicates into ``ON``: un-commented schemas
+        are still returned with a NULL description instead of being dropped or
+        filled with a colliding object's comment.
+        """
+        rows = [r for r in SCHEMA_COMMENT_ROWS if r.schema_name == "pg_catalog"]
+        engine, _ = _make_schema_comments_engine(rows)
+        self.cockroach_source.engine = engine
+
+        self.cockroach_source.set_schema_description_map()
+
+        self.assertIsNone(self.cockroach_source.schema_desc_map[("default", "pg_catalog")])
+        # No fabricated function doc-comment should be present
+        self.assertNotIn(
+            "Calculates the average of the dependent variable",
+            str(self.cockroach_source.schema_desc_map.values()),
+        )
+
+    def test_set_schema_description_map_get_schema_description_reads_map(self):
+        """``get_schema_description`` must return the mapped comment for the
+        current database/schema context, and ``None`` when none exists.
+
+        This exercises the consumption path
+        (``common_db_source.py`` -> ``get_schema_description``) that
+        previously had no coverage, guarding the end-to-end contract the
+        fixed query feeds. The context database is ``"default"`` as wired by
+        ``cockroachUnitTest.__init__`` from ``MOCK_DATABASE.name.root``.
+        """
+        engine, _ = _make_schema_comments_engine(SCHEMA_COMMENT_ROWS)
+        self.cockroach_source.engine = engine
+
+        self.cockroach_source.set_schema_description_map()
+
+        # context.database is "default" (set in __init__ from MOCK_DATABASE)
+        self.assertEqual(
+            self.cockroach_source.get_schema_description("public"),
+            "my real schema comment",
+        )
+        # A schema with no namespace comment (NULL description) resolves to None
+        self.assertIsNone(self.cockroach_source.get_schema_description("pg_catalog"))
+        # A schema that never appeared in the result set resolves to None
+        self.assertIsNone(self.cockroach_source.get_schema_description("missing_schema"))
+
+    def test_set_schema_description_map_executes_the_fixed_query(self):
+        """The map must be built by executing ``COCKROACH_SCHEMA_COMMENTS``
+        via ``text(...)``, so the fix in the constant is the query that
+        populates the map."""
+        engine, conn = _make_schema_comments_engine(SCHEMA_COMMENT_ROWS)
+        self.cockroach_source.engine = engine
+
+        self.cockroach_source.set_schema_description_map()
+
+        self.assertEqual(conn.execute.call_count, 1)
+        executed_stmt = conn.execute.call_args.args[0]
+        # text(...) wraps the SQL; assert the fixed predicates are present in
+        # whatever SQLAlchemy renders to text.
+        rendered = str(executed_stmt)
+        self.assertIn("d.classoid = 'pg_namespace'::regclass", rendered)
+        self.assertIn("d.objsubid = 0", rendered)
+        self.assertNotIn("WHERE", rendered.upper())

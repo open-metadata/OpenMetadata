@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect, Locator, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   getApiContext,
@@ -18,6 +19,7 @@ import {
   toastNotification,
   uuid,
 } from '../../../utils/common';
+import { expectFormHint } from '../../../utils/dataQuality';
 import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import { findSystemTestDefinition } from '../../../utils/testCases';
 
@@ -81,7 +83,7 @@ test.describe(
       // Wait for page to load
       await page.getByTestId('test-definition-table').waitFor({
         state: 'visible',
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
 
       // Verify URL
@@ -144,21 +146,17 @@ test.describe(
           .waitFor({ state: 'visible' });
         await testDefinitionFormDoc;
 
-        // The form body + doc panel confirm the drawer opened. We don't assert
-        // the "Add Test Definition" title text because it also matches the list
-        // page's Add button (strict-mode ambiguity).
-        await expect(
-          page.locator('.drawer-doc-panel.service-doc-panel')
-        ).toBeVisible();
+        // The form body + Show Hint toggle confirm the drawer opened. We don't
+        // assert the "Add Test Definition" title text because it also matches
+        // the list page's Add button (strict-mode ambiguity).
+        await expect(page.getByTestId('show-hint-toggle')).toBeChecked();
 
         // Fill in form fields
         await page
           .getByTestId('test-definition-name')
           .locator('input')
           .fill(TEST_DEFINITION_NAME);
-        await expect(
-          page.locator('.drawer-doc-panel.service-doc-panel')
-        ).toContainText('Name');
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('display-name')
           .locator('input')
@@ -222,11 +220,9 @@ test.describe(
           state: 'visible',
         });
 
-        // Find and click edit button on first row
-        const firstEditButton = page
+        await page
           .getByTestId(`edit-test-definition-${TEST_DEFINITION_NAME}`)
-          .first();
-        await firstEditButton.click();
+          .click();
 
         // Wait for drawer to open (form body confirms the edit drawer opened).
         await page
@@ -294,10 +290,7 @@ test.describe(
         await toastNotification(page, /updated successfully/i);
 
         // Verify switch state changed
-        await expect(firstSwitch).toHaveAttribute(
-          'aria-checked',
-          String('false')
-        );
+        await expect(firstSwitch.getByRole('switch')).not.toBeChecked();
       });
 
       await test.step('should delete a test definition', async () => {
@@ -476,11 +469,12 @@ test.describe(
         state: 'visible',
       });
 
-      // Verify test platform tags/badges are displayed
-      const platformTags = page.locator('.ant-tag, .ant-badge');
-      const tagCount = await platformTags.count();
+      // Verify the platform column lists test platforms
+      const platformCells = page
+        .getByTestId('test-definition-table')
+        .getByRole('gridcell', { name: /OpenMetadata/ });
 
-      expect(tagCount).toBeGreaterThan(0);
+      expect(await platformCells.count()).toBeGreaterThan(0);
     });
 
     test('should keep system test definitions editable but not deletable', async ({
@@ -551,10 +545,7 @@ test.describe(
       expect(disableResponse.status()).toBe(200);
 
       // Verify switch state changed
-      await expect(enabledSwitch).toHaveAttribute(
-        'aria-checked',
-        String('false')
-      );
+      await expect(enabledSwitch.getByRole('switch')).not.toBeChecked();
 
       const patchResponse2 = page.waitForResponse(
         (response) =>
@@ -591,7 +582,7 @@ test.describe(
           `enable-switch-${externalTest.name}`
         );
 
-        await expect(enableSwitch).toBeDisabled();
+        await expect(enableSwitch.getByRole('switch')).toBeDisabled();
 
         const switchParent = enableSwitch.locator('..');
         await switchParent.hover();
@@ -1227,7 +1218,7 @@ test.describe(
             response.request().method() === 'GET'
         );
         // Wait for dropdown to open and select 25
-        await page.locator('.ant-dropdown:visible').getByText('25').click();
+        await page.getByRole('menuitem', { name: /^25 \// }).click();
         await pageChangeResponse;
       });
 

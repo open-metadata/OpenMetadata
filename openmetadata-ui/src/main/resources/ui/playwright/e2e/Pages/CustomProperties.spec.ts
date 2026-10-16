@@ -87,6 +87,7 @@ import {
   getCustomPropertyEditButton,
   openCustomPropertiesTab,
   openCustomPropertyEditModal,
+  removeCustomPropertyViaApi,
   setValueForProperty,
   updateCustomPropertyInRightPanel,
   validateValueForProperty,
@@ -104,11 +105,13 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { createTable } from '../../utils/KnowledgeCenter';
 import {
   openMatchingFieldsPanel,
+  selectSettingOption,
   setSliderValue,
 } from '../../utils/searchSettingUtils';
 import {
@@ -118,8 +121,83 @@ import {
 } from '../../utils/sidebar';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
+import { disableAiAppMode, stubUserPreferencesAppMode } from '../Utils/appMode';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+for (const { type, label, suffixes } of [
+  {
+    type: CustomPropertyTypeByName.TIME_INTERVAL,
+    label: 'Time Interval',
+    suffixes: [' (Start)', ' (End)'],
+  },
+  {
+    type: CustomPropertyTypeByName.HYPERLINK_CP,
+    label: 'Hyperlink',
+    suffixes: [' URL', ' Display Text'],
+  },
+  {
+    type: CustomPropertyTypeByName.TABLE_CP,
+    label: 'Table',
+    suffixes: [' - pw-column1', ' - pw-column2'],
+  },
+]) {
+  test(`Advanced search selects successive long ${label} custom-property fields`, async ({
+    page,
+  }) => {
+    await disableAiAppMode(page);
+    await stubUserPreferencesAppMode(page, 'classic');
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    let propertyName: string | undefined;
+
+    try {
+      const { customProperties } = await createCustomPropertyForEntity(
+        apiContext,
+        EntityTypeEndpoint.Table,
+        [type]
+      );
+      propertyName = customProperties[type].property.name;
+      await page.goto('/explore');
+      await waitForAllLoadersToDisappear(page);
+      await showAdvancedSearchDialog(page);
+
+      const rule = page.getByTestId('query-builder-rule-0');
+      await selectOption(
+        page,
+        rule.getByTestId('advanced-search-field-select'),
+        'Custom Properties',
+        true
+      );
+      await selectOption(
+        page,
+        rule.getByTestId('advanced-search-field-select-1'),
+        'Table',
+        true
+      );
+
+      for (const suffix of suffixes) {
+        await test.step(`Select ${label}${suffix}`, async () => {
+          const field = rule.getByTestId('advanced-search-field-select-2');
+          const optionLabel = `${propertyName}${suffix}`;
+          await selectOption(page, field, optionLabel, true);
+          await expect(field.getByRole('combobox')).toHaveValue(optionLabel);
+        });
+      }
+
+      await page.getByTestId('cancel-btn').click();
+      await expect(rule).toBeHidden();
+    } finally {
+      try {
+        if (propertyName) {
+          await removeCustomPropertyViaApi(apiContext, 'table', propertyName);
+        }
+      } finally {
+        await afterAction();
+      }
+    }
+  });
+}
 
 type CustomPropertyEntity =
   (typeof CUSTOM_PROPERTIES_ENTITIES)[keyof typeof CUSTOM_PROPERTIES_ENTITIES];
@@ -259,7 +337,11 @@ const ALL_ENTITIES: CRUDEntity[] = [
   { key: 'entity_tableColumn', makeInstance: null },
 ];
 
-ALL_ENTITIES.forEach(({ key, makeInstance }) => {
+pickEntityMatrix(
+  __filename,
+  ALL_ENTITIES,
+  ALL_ENTITIES.filter(({ key }) => key === 'entity_table')
+).forEach(({ key, makeInstance }) => {
   const entity = CUSTOM_PROPERTIES_ENTITIES[key];
   const basicProperties =
     key === 'entity_table' ? BASIC_PROPERTIES : ['String'];
@@ -3360,7 +3442,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
           await expect(customPropertyBadge).toBeVisible();
 
-          await fieldPanel.click();
+          // A newly added field opens on its own; a second click on its
+          // header would close it again.
+          const collapsedFieldHeader = fieldPanel.locator(
+            'button[aria-expanded="false"]'
+          );
+          if (await collapsedFieldHeader.isVisible()) {
+            await collapsedFieldHeader.click();
+          }
           await setSliderValue(
             page,
             'field-weight-slider',
@@ -3371,13 +3460,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
 
           const matchTypeSelect = page.getByTestId('match-type-select');
-          await matchTypeSelect.click();
-          await page
-            .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
-            .waitFor({ state: 'visible' });
-          await page
-            .locator('.ant-select-item-option[title="Standard Match"]')
-            .click();
+          await selectSettingOption(page, matchTypeSelect, 'Standard Match');
 
           const searchSettingsSaveResponse = page.waitForResponse(
             '/api/v1/system/settings'
@@ -3505,7 +3588,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
           await expect(customPropertyBadge).toBeVisible();
 
-          await fieldPanel.click();
+          // A newly added field opens on its own; a second click on its
+          // header would close it again.
+          const collapsedFieldHeader = fieldPanel.locator(
+            'button[aria-expanded="false"]'
+          );
+          if (await collapsedFieldHeader.isVisible()) {
+            await collapsedFieldHeader.click();
+          }
           await setSliderValue(
             page,
             'field-weight-slider',
@@ -3516,10 +3606,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
 
           const matchTypeSelect = page.getByTestId('match-type-select');
-          await matchTypeSelect.click();
-          await page
-            .locator('.ant-select-item-option[title="Phrase Match"]')
-            .click();
+          await selectSettingOption(page, matchTypeSelect, 'Phrase Match');
 
           const searchSettingsSaveResponse = page.waitForResponse(
             '/api/v1/system/settings'

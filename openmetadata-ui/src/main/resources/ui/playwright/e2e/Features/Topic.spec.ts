@@ -68,6 +68,7 @@ test.describe('Topic entity specific tests ', () => {
       page,
       buttonTestId: 'copy-field-link-button',
       containerTestId: 'topic-schema-fields-table',
+      rowName: topic.children[0].name,
       expectedUrlPath: '/topic/',
       entityFqn: topic.entityResponseData?.['fullyQualifiedName'] ?? '',
     });
@@ -119,7 +120,11 @@ test.describe('Topic entity specific tests ', () => {
 
     await expect(page.getByTestId('topic-schema-fields-table')).toBeVisible();
 
-    const expandButtons = page.locator('[data-testid="expand-icon"]');
+    // Scope to rows: the toolbar's Expand All icon reuses the expand-icon test id.
+    const expandButtons = page
+      .getByTestId('topic-schema-fields-table')
+      .getByRole('row')
+      .getByTestId('expand-icon');
     const expandButtonCount = await expandButtons.count();
 
     if (expandButtonCount > 0) {

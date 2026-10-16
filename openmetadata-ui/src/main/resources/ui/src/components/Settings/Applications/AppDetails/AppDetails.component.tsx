@@ -11,17 +11,20 @@
  *  limitations under the License.
  */
 import {
-  ClockCircleOutlined,
-  LeftOutlined,
-  StopOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+  Box,
+  Button,
+  Tabs,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronLeft,
+  Clock,
+  SlashCircle01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import { Button, Dropdown, Space, Tooltip } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -31,8 +34,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -63,6 +64,10 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
@@ -196,7 +201,7 @@ const AppDetails = () => {
     try {
       setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
       if (action === AppAction.ENABLE) {
-        handleRestore();
+        await handleRestore();
       } else {
         await uninstallApp(
           appData?.fullyQualifiedName ?? '',
@@ -229,7 +234,7 @@ const AppDetails = () => {
     t,
   ]);
 
-  const manageButtonContent: ItemType[] = useMemo(
+  const manageButtonContent: ManageMenuItem[] = useMemo(
     () => [
       ...(appData?.deleted
         ? ([
@@ -252,7 +257,7 @@ const AppDetails = () => {
               },
               key: 'restore-button',
             },
-          ] as ItemType[])
+          ] as ManageMenuItem[])
         : [
             {
               label: (
@@ -260,7 +265,7 @@ const AppDetails = () => {
                   description={t('message.disable-app', {
                     app: getEntityName(appData),
                   })}
-                  icon={StopOutlined as SvgComponent}
+                  icon={SlashCircle01 as SvgComponent}
                   id="disable-button"
                   name={t('label.disable')}
                 />
@@ -592,11 +597,15 @@ const AppDetails = () => {
     }
 
     return (
-      <Tooltip title={runtimeDisabledReason}>
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={runtimeDisabledReason}
+        triggerClassName="tw:inline-flex">
         <div
           className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
           data-testid="runtime-disabled-badge">
-          <StopOutlined className="d-flex m-r-xss font-medium text-xs" />
+          <SlashCircle01 className="tw:flex tw:mr-1 tw:shrink-0" size={12} />
           {t('label.disabled')}
         </div>
       </Tooltip>
@@ -610,14 +619,21 @@ const AppDetails = () => {
 
     return (
       <div className="flex-center gap-2">
-        <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+        <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
         <Typography>
           <a
             className="text-xs"
             href={appData?.developerUrl}
             rel="noopener noreferrer"
             target="_blank">
-            <Space>{t('label.visit-developer-website')}</Space>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              {t('label.visit-developer-website')}
+            </Box>
           </a>
         </Typography>
       </div>
@@ -663,10 +679,9 @@ const AppDetails = () => {
       <Box>
         <div className="d-flex tw:min-w-0 tw:flex-auto">
           <Button
-            className="p-0"
-            icon={<LeftOutlined />}
-            size="small"
-            type="text"
+            color="tertiary"
+            iconLeading={ChevronLeft}
+            size="xs"
             onClick={onBrowseAppsClick}>
             <Typography className="font-medium">
               {t('label.browse-app-plural')}
@@ -675,39 +690,26 @@ const AppDetails = () => {
         </div>
         <div className="tw:flex-[0_0_360px]">
           <div className="d-flex gap-2 justify-end">
-            <Dropdown
-              align={{ targetOffset: [-12, 0] }}
-              className="m-l-xs"
-              menu={{
-                items: manageButtonContent,
-              }}
-              open={showActions}
-              overlayClassName="glossary-manage-dropdown-list-container"
-              overlayStyle={{ width: '350px' }}
-              placement="bottomRight"
-              trigger={['click']}
-              onOpenChange={setShowActions}>
-              <Tooltip
-                placement="topRight"
-                title={t('label.manage-entity', {
-                  entity: t('label.application'),
-                })}>
-                <Button
-                  className="glossary-manage-dropdown-button p-x-xs"
-                  data-testid="manage-button"
-                  icon={
-                    <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                  }
-                  onClick={() => setShowActions(true)}
-                />
-              </Tooltip>
-            </Dropdown>
+            <ManageMenu
+              isOpen={showActions}
+              items={manageButtonContent}
+              label={t('label.manage-entity', {
+                entity: t('label.application'),
+              })}
+              triggerClassName="m-l-xs"
+              onOpenChange={setShowActions}
+            />
           </div>
         </div>
       </Box>
       <Box direction="col">
         <div>
-          <Space className="app-details-header w-full" size={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal app-details-header w-full"
+            gap={6}
+            itemClassName="layout-space-item">
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
@@ -715,28 +717,38 @@ const AppDetails = () => {
               {renderRuntimeDisabledBadge()}
 
               <div className="d-flex items-center flex-wrap gap-6">
-                <Space size={8}>
-                  <ClockCircleOutlined />
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
+                  <Clock className="tw:shrink-0" size={14} />
                   <Typography className="text-xs" color="secondary">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
                     )}`}
                   </Typography>
-                </Space>
+                </Box>
 
-                <Space size={8}>
-                  <UserOutlined />
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
+                  <User01 className="tw:shrink-0" size={14} />
                   <Typography className="text-xs" color="secondary">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,
                     })}
                   </Typography>
-                </Space>
+                </Box>
 
                 {renderDeveloperUrl()}
               </div>
             </div>
-          </Space>
+          </Box>
         </div>
         <div>{renderAppDetailsBody()}</div>
       </Box>

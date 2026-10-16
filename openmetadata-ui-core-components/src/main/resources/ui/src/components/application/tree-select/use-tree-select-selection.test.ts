@@ -169,6 +169,38 @@ describe('useTreeSelectSelection', () => {
         't2',
       ]);
     });
+
+    // Mutually-exclusive (radio) siblings can never be co-selected: picking one
+    // clears the others under the same group parent. Select All mirrors this
+    // invariant, so guard the per-row behavior it depends on.
+    it('selecting a radio sibling deselects the others under its group parent', () => {
+      const email = {
+        ...term('pii.email', 'pii'),
+        isParentMutuallyExclusive: true,
+      };
+      const ssn = {
+        ...term('pii.ssn', 'pii'),
+        isParentMutuallyExclusive: true,
+      };
+      const pii: TreeSelectNode = {
+        id: 'pii',
+        label: 'pii',
+        value: 'pii',
+        hasExclusiveChildren: true,
+        children: [email, ssn],
+      };
+      const { result } = renderHook(() =>
+        useTreeSelectSelection({ multiple: true, treeData: [pii] })
+      );
+
+      act(() => result.current.toggleNodeSelection(email, pii));
+      expect(result.current.selectedData.map((n) => n.id)).toEqual([
+        'pii.email',
+      ]);
+
+      act(() => result.current.toggleNodeSelection(ssn, pii));
+      expect(result.current.selectedData.map((n) => n.id)).toEqual(['pii.ssn']);
+    });
   });
 
   describe('getNodeSelectionState', () => {

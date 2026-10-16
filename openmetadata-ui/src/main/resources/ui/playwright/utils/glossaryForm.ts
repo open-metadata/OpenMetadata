@@ -15,7 +15,12 @@
 import { expect, Locator, Page, Response } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { INVALID_NAMES, NAME_VALIDATION_ERROR } from '../constant/common';
-import { dismissToasts, fillDescriptionBox, getDescriptionBox } from './common';
+import {
+  dismissToasts,
+  fillDescriptionBox,
+  getDescriptionBox,
+  scrollIntoViewAndSettle,
+} from './common';
 import { GlossaryTermRef, pickGlossaryTermInField } from './glossaryPicker';
 
 export type GlossaryFormKind = 'glossary' | 'glossaryTerm';
@@ -225,8 +230,10 @@ export const selectTagInGlossaryForm = async (
   tagFqn: string
 ) => {
   const menu = page.getByTestId('drop-down-menu');
+  const trigger = form.getByTestId('tags-container');
 
-  await form.getByTestId('tags-container').click();
+  await scrollIntoViewAndSettle(trigger);
+  await trigger.click();
   await expect(menu).toBeVisible();
 
   const tagSearchResponse = page.waitForResponse(
@@ -316,7 +323,7 @@ export const selectRelatedTermsInGlossaryTermForm = async (
   }
 };
 
-/** Picks an icon; re-clicking the trigger closes the popover so it can't cover Save. */
+/** Picks an icon; selecting one closes the popover so it can't cover Save. */
 export const selectStyleIcon = async (
   page: Page,
   form: Locator,
@@ -331,15 +338,14 @@ export const fillStyleIconUrl = async (
   form: Locator,
   iconUrl: string
 ) => {
-  const trigger = form.getByTestId('icon-picker-btn');
-
-  await trigger.click();
+  await form.getByTestId('icon-picker-btn').click();
   await page.getByRole('tab', { name: 'URL' }).click();
 
   const urlInput = page.getByRole('textbox', { name: 'Icon URL' });
   await urlInput.fill(iconUrl);
 
-  await trigger.click();
+  // The popover's underlay covers the trigger, so dismiss with Escape.
+  await page.keyboard.press('Escape');
   await expect(urlInput).not.toBeVisible();
 };
 

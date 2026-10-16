@@ -49,9 +49,14 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.TaskStateConflictException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.approval.ApprovalDecisionService;
+import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
+import org.openmetadata.service.governance.approval.ChangeRequestReview;
+import org.openmetadata.service.governance.approval.ChangeRequestTasks;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -138,6 +143,31 @@ public class TaskWorkflowHandler {
       Object resolvedPayload,
       String comment,
       String user) {
+    return resolveTask(
+        task,
+        transitionId,
+        requestedResolutionType,
+        newValue,
+        resolvedPayload,
+        comment,
+        user,
+        null);
+  }
+
+  /**
+   * Resolve a task, first recording the resolver's decision in the catalog when the task reviews a
+   * change request. {@code review} names the revision the resolver reviewed and, when they decided
+   * change by change, their decision on each.
+   */
+  public Task resolveTask(
+      Task task,
+      String transitionId,
+      TaskResolutionType requestedResolutionType,
+      String newValue,
+      Object resolvedPayload,
+      String comment,
+      String user,
+      ChangeRequestReview review) {
     UUID taskId = task.getId();
     TaskAvailableTransition selectedTransition =
         TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
@@ -150,6 +180,23 @@ public class TaskWorkflowHandler {
         effectiveResolutionType,
         user);
 
+    ReviewOutcome outcome =
+        ApprovalDecisionService.recordForTask(task, effectiveResolutionType, review, comment, user);
+    if (outcome == ReviewOutcome.WAIT) {
+      LOG.info(
+          "[TaskWorkflowHandler] Recorded {}'s decision on task '{}'; no change is agreed yet",
+          user,
+          taskId);
+      return refreshTask(taskId);
+    }
+    // A review decided change by change routes the workflow by what the reviewers agreed on: a
+    // partial outcome is settled inside the approval step without resolving the task, which stays
+    // open with the changes still pending.
+    String routedTransition = outcome == ReviewOutcome.NONE ? transitionId : outcome.transition();
+    TaskResolutionType routedResolution = routedResolution(outcome, effectiveResolutionType);
+    TaskAvailableTransition routedSelection =
+        outcome == ReviewOutcome.NONE ? selectedTransition : null;
+
     // During migration cutover, legacy workflow tasks can be converted to Task entities before
     // workflowInstanceId is backfilled. Runtime-task presence is the source of truth in that case.
     boolean isWorkflowManaged = isWorkflowManaged(task);
@@ -157,9 +204,9 @@ public class TaskWorkflowHandler {
     if (isWorkflowManaged) {
       return resolveWorkflowTask(
           task,
-          transitionId,
-          effectiveResolutionType,
-          selectedTransition,
+          routedTransition,
+          routedResolution,
+          routedSelection,
           newValue,
           resolvedPayload,
           comment,
@@ -409,8 +456,11 @@ public class TaskWorkflowHandler {
       addResolutionComment(task, taskRepository, newValue, user);
     }
 
-    // Only positive resolutions should mutate the target entity.
-    if (approved && task.getAbout() != null) {
+    // A memory conflict review decides on rejection too, and a refused decision must fail the
+    // resolution. Other types mutate the target entity only on positive resolutions.
+    if (MemoryConflictResolution.decides(task)) {
+      MemoryConflictResolution.decide(task, resolutionType, comment, user, resolvedPayload);
+    } else if (approved && task.getAbout() != null) {
       applyEntityChanges(task, approved, newValue, resolvedPayload, user);
     } else {
       LOG.info(
@@ -573,8 +623,17 @@ public class TaskWorkflowHandler {
       return;
     }
 
+    // A change request's task publishes through its workflow's commit step, which applies exactly
+    // the reviewed change, so the task form's own entity actions do not run.
+    if (ChangeRequestTasks.reviewsChangeRequest(task)) {
+      LOG.debug(
+          "[TaskWorkflowHandler] Task '{}' reviews a change request, skipping entity changes",
+          task.getId());
+      return;
+    }
+
     try {
-      EntityInterface entity = Entity.getEntity(aboutRef, "*", Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(aboutRef, "*", Include.ALL);
       EntityRepository<?> repository = Entity.getEntityRepository(aboutRef.getType());
 
       List<TaskExecutionAction> actions =
@@ -599,7 +658,7 @@ public class TaskWorkflowHandler {
   private void executeConfiguredActions(
       List<TaskExecutionAction> actions,
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -624,7 +683,7 @@ public class TaskWorkflowHandler {
 
   private void applyDescriptionAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String newValue,
@@ -682,7 +741,7 @@ public class TaskWorkflowHandler {
 
   private void applyMergeTagsAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String newValue,
@@ -742,7 +801,7 @@ public class TaskWorkflowHandler {
   }
 
   private void patchEntityTags(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       List<TagLabel> tagsToAdd,
@@ -751,7 +810,7 @@ public class TaskWorkflowHandler {
   }
 
   private void patchEntityTags(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       List<TagLabel> updatedTags) {
@@ -766,7 +825,7 @@ public class TaskWorkflowHandler {
 
   @SuppressWarnings("unchecked")
   private boolean patchFieldTags(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String fieldPath,
@@ -813,12 +872,12 @@ public class TaskWorkflowHandler {
       return;
     }
     Object patchedEntity = response.entity();
-    if (!(patchedEntity instanceof EntityInterface entityInterface)) {
+    if (!(patchedEntity instanceof EntityInterface<?> entityInterface)) {
       return;
     }
     try {
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(user, changeType, entityInterface);
+          ChangeEvents.createChangeEventForEntity(user, changeType, entityInterface);
       Object entityForEvent = changeEvent.getEntity();
       changeEvent = ChangeEventHandler.copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entityForEvent));
@@ -851,7 +910,7 @@ public class TaskWorkflowHandler {
     return merged;
   }
 
-  private String resolveTagTargetFqn(EntityInterface entity, String fieldPath) {
+  private String resolveTagTargetFqn(EntityInterface<?> entity, String fieldPath) {
     if (fieldPath == null || fieldPath.isEmpty() || "tags".equals(fieldPath)) {
       return entity.getFullyQualifiedName();
     }
@@ -944,7 +1003,7 @@ public class TaskWorkflowHandler {
 
   private void applyReplaceOwnersAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -981,7 +1040,7 @@ public class TaskWorkflowHandler {
 
   private void applyApplyTierAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -1012,7 +1071,7 @@ public class TaskWorkflowHandler {
 
   private void applyReplaceDomainsAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -1048,7 +1107,11 @@ public class TaskWorkflowHandler {
   }
 
   private void applyPatchEntityFieldAction(
-      Task task, EntityInterface entity, String user, Object payload, TaskExecutionAction action) {
+      Task task,
+      EntityInterface<?> entity,
+      String user,
+      Object payload,
+      TaskExecutionAction action) {
     if (action.entityField() == null) {
       LOG.warn(
           "[TaskWorkflowHandler] Missing entity field binding for patchEntityField action on task '{}'",
@@ -1066,7 +1129,7 @@ public class TaskWorkflowHandler {
           entity.getEntityReference().getType(),
           user,
           action.entityField(),
-          value == null ? null : String.valueOf(value),
+          value == null || value instanceof String ? (String) value : JsonUtils.pojoToJson(value),
           true,
           WorkflowEventConsumer.GOVERNANCE_BOT);
     } catch (Exception e) {
@@ -1099,7 +1162,7 @@ public class TaskWorkflowHandler {
   private void applySuggestion(
       Task task,
       Object payload,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user) {
     if (payload == null) return;
@@ -1169,7 +1232,7 @@ public class TaskWorkflowHandler {
   }
 
   private void applyEntityLevelTags(
-      EntityInterface entity, EntityRepository<?> repository, String user, List<TagLabel> tags) {
+      EntityInterface<?> entity, EntityRepository<?> repository, String user, List<TagLabel> tags) {
     String originalJson = JsonUtils.pojoToJson(entity);
     List<TagLabel> mergedTags =
         org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence(
@@ -1352,6 +1415,16 @@ public class TaskWorkflowHandler {
       case Revoked -> "revoke";
       case TimedOut -> "timeout";
       case Expired -> "expired";
+    };
+  }
+
+  private static TaskResolutionType routedResolution(
+      ReviewOutcome outcome, TaskResolutionType requested) {
+    return switch (outcome) {
+      case NONE -> requested;
+      case APPROVE -> TaskResolutionType.Approved;
+      case REJECT -> TaskResolutionType.Rejected;
+      case WAIT, PARTIAL_APPROVE, PARTIAL_REJECT -> null;
     };
   }
 

@@ -42,6 +42,7 @@ import {
   visitOwnProfilePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { visitClassificationPage } from '../../utils/tag';
 import {
@@ -277,9 +278,7 @@ test.describe('User with Admin Roles', () => {
   }) => {
     await redirectToHomePage(adminPage);
     await settingClick(adminPage, GlobalSettingOptions.USERS);
-    await adminPage.locator('.user-list-table [data-testid="loader"]').waitFor({
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(adminPage.locator('.user-list-table'));
     await softDeleteUserProfilePage(
       adminPage,
       user.responseData.name,
@@ -659,7 +658,7 @@ test.describe('User Profile Feed Interactions', () => {
       .first();
 
     await avatar.hover();
-    const popover = page.locator('.ant-popover-card');
+    const popover = page.getByTestId('user-popover-card');
     await popover.waitFor({ state: 'visible' });
 
     // Get the expected username from the popover BEFORE clicking. The popover
@@ -815,8 +814,8 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     ).not.toBeVisible();
 
     await expect(
-      removedDefaultPersonaLabel.locator('input[type="radio"]')
-    ).not.toBeChecked();
+      removedDefaultPersonaLabel.getByText('Selected', { exact: true })
+    ).toHaveCount(0);
   });
 
   test('Should switch personas correctly', async ({ adminPage }) => {
@@ -859,10 +858,12 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
         state: 'visible',
       });
 
-      // Verify the selected persona is checked
-      const checkedRadio = adminPage.locator('input[type="radio"]:checked');
-
-      await expect(checkedRadio).toBeVisible();
+      // Verify the selected persona is marked as selected
+      await expect(
+        adminPage
+          .getByTestId('persona-label')
+          .getByText('Selected', { exact: true })
+      ).toHaveCount(1);
     }
   });
 
@@ -924,8 +925,8 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       personaLabels.first().locator('[data-testid="default-persona-tag"]')
     ).toBeVisible();
     await expect(
-      personaLabels.first().locator('input[type="radio"]')
-    ).toBeChecked();
+      personaLabels.first().getByText('Selected', { exact: true })
+    ).toHaveCount(1);
 
     // Get the current default persona name for later verification
     const originalDefaultPersonaText = await personaLabels
@@ -946,12 +947,21 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .click();
     await adminPage.getByTestId('default-persona-select-list').waitFor();
 
-    await adminPage.locator('.ant-select-dropdown').waitFor({
-      state: 'visible',
-    });
+    await adminPage
+      .getByTestId('default-persona-select-list')
+      .getByTestId('autocomplete-selected-item')
+      .getByRole('button')
+      .click();
+    await adminPage
+      .getByTestId('default-persona-select-list')
+      .getByRole('combobox')
+      .click();
+    await adminPage.getByRole('listbox').waitFor({ state: 'visible' });
 
     // Select the second persona as default
-    await adminPage.getByTitle(persona2.data.displayName).click();
+    await adminPage
+      .getByRole('option', { name: persona2.data.displayName })
+      .click();
 
     const defaultPersonaChangeResponse =
       adminPage.waitForResponse('/api/v1/users/*');
@@ -996,8 +1006,8 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
         .locator('[data-testid="default-persona-tag"]')
     ).toBeVisible();
     await expect(
-      updatedPersonaLabels.first().locator('input[type="radio"]')
-    ).toBeChecked();
+      updatedPersonaLabels.first().getByText('Selected', { exact: true })
+    ).toHaveCount(1);
 
     // Close dropdown
     await adminPage.keyboard.press('Escape');
@@ -1012,8 +1022,16 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .click();
     await adminPage.getByTestId('default-persona-select-list').waitFor();
     await adminPage
-      .locator('[data-testid="default-persona-select-list"] .ant-select-clear')
+      .getByTestId('default-persona-select-list')
+      .getByTestId('autocomplete-selected-item')
+      .getByRole('button')
       .click();
+
+    // Removing the chip refocuses the field, which reopens the list over Save.
+    await adminPage
+      .getByTestId('default-persona-select-list')
+      .getByRole('combobox')
+      .press('Escape');
 
     const removePersonaResponse = adminPage.waitForResponse('/api/v1/users/*');
     await adminPage
@@ -1060,8 +1078,8 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       ).not.toBeVisible();
 
       await expect(
-        userPersonaLabel.locator('input[type="radio"]')
-      ).not.toBeChecked();
+        userPersonaLabel.getByText('Selected', { exact: true })
+      ).toHaveCount(0);
     }
   });
 });
@@ -1150,9 +1168,25 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage.getByTestId('persona-select-list').waitFor();
 
       // Clear all selected personas
-      await adminPage
-        .locator('[data-testid="persona-select-list"] .ant-select-clear')
-        .click();
+      const personaSelect = adminPage.getByTestId('persona-select-list');
+      const selectedPersonaChips = personaSelect.getByTestId(
+        'autocomplete-selected-item'
+      );
+      // The open list hides the chips from the accessibility tree, and each
+      // removal refocuses the field and reopens it.
+      const closePersonaList = () =>
+        personaSelect.getByRole('combobox').press('Escape');
+      await closePersonaList();
+      // Only the first few chips render at once, so re-read after each removal.
+      let [chipName] = await selectedPersonaChips.allTextContents();
+      while (chipName) {
+        await selectedPersonaChips
+          .filter({ hasText: chipName })
+          .getByRole('button')
+          .click();
+        await closePersonaList();
+        [chipName] = await selectedPersonaChips.allTextContents();
+      }
 
       const updateUserPromise = adminPage.waitForResponse(
         (response) =>
@@ -1198,16 +1232,11 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage.getByTestId('default-persona-select-list').waitFor();
 
       // Wait for dropdown to open and options to load
-      await adminPage.locator('.ant-select-dropdown').waitFor({
-        state: 'visible',
-      });
+      await adminPage.getByRole('listbox').waitFor({ state: 'visible' });
 
-      // Select specific persona for default - try test ID first, fallback to role selector
-      const defaultPersonaOptionTestId = adminPage.getByTitle(
-        persona1.responseData.displayName
-      );
-
-      await defaultPersonaOptionTestId.click();
+      await adminPage
+        .getByRole('option', { name: persona1.responseData.displayName })
+        .click();
 
       // Save the changes
       const savePersonaResponse = adminPage.waitForResponse('/api/v1/users/*');
@@ -1276,10 +1305,16 @@ test.describe('User Profile Persona Interactions', () => {
 
       // Clear the selected default persona
       await adminPage
-        .locator(
-          '[data-testid="default-persona-select-list"] .ant-select-clear'
-        )
+        .getByTestId('default-persona-select-list')
+        .getByTestId('autocomplete-selected-item')
+        .getByRole('button')
         .click();
+
+      // Removing the chip refocuses the field, which reopens the list over Save.
+      await adminPage
+        .getByTestId('default-persona-select-list')
+        .getByRole('combobox')
+        .press('Escape');
 
       const defaultPersonaChangeResponse =
         adminPage.waitForResponse('/api/v1/users/*');
@@ -1382,7 +1417,9 @@ base.describe(
       await afterAction();
     });
 
-    for (const entity of userPerformanceEntities) {
+    for (const entity of pickEntityMatrix(__filename, userPerformanceEntities, [
+      EntityDataClass.table1,
+    ])) {
       base(
         `User Performance across different entities pages - ${entity.getType()}`,
         async ({ browser }) => {
@@ -1417,7 +1454,7 @@ base.describe(
             ).toBeVisible();
 
             const lineageResponse = page.waitForResponse(
-              `**/api/v1/lineage/scene?*focusFqn=${entity.entityResponseData.fullyQualifiedName}*`
+              `/api/v1/lineage/getLineage?fqn=${entity.entityResponseData.fullyQualifiedName}&type=**`
             );
 
             await page.getByTestId('lineage').click();

@@ -11,15 +11,13 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
-import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
@@ -117,15 +115,16 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         key: 'name',
         render: (text, record) => (
           <Link target="_blank" to={text}>
-            <Space>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <span>{getEntityName(record)}</span>
 
-              <Icon
-                className="m-l-xs flex-none align-middle"
-                component={IconExternalLink}
-                style={DATA_ASSET_ICON_DIMENSION}
-              />
-            </Space>
+              <IconExternalLink className="tw:ml-2 tw:shrink-0 tw:align-middle tw:size-3.5" />
+            </Box>
           </Link>
         ),
       },
@@ -208,7 +207,13 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             <div
               className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
               data-testid="entity-right-panel">
-              <Space className="w-full" direction="vertical" size="large">
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={6}
+                itemClassName="layout-space-item">
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
@@ -225,7 +230,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                     tagType={TagSource[tagType as TagSource]}
                   />
                 ))}
-              </Space>
+              </Box>
             </div>
           </Box>
         ),

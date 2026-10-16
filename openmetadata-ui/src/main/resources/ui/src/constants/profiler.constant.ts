@@ -35,7 +35,6 @@ import {
   getStartOfDayInMillis,
 } from '../utils/date-time/DateTimeUtils';
 import { t } from '../utils/i18next/LocalUtil';
-import { BLUE_50, BLUE_500, BLUE_800, YELLOW_3 } from './Color.constants';
 
 const OPERATION_METRICS = 'operation-metrics';
 
@@ -137,28 +136,24 @@ export const INITIAL_COUNT_METRIC_VALUE = {
         entity: t('label.distinct'),
       }),
       dataKey: 'distinctCount',
-      color: '#467DDC',
     },
     {
       title: t('label.entity-count', {
         entity: t('label.null'),
       }),
       dataKey: 'nullCount',
-      color: '#3488B5',
     },
     {
       title: t('label.entity-count', {
         entity: t('label.unique'),
       }),
       dataKey: 'uniqueCount',
-      color: '#685997',
     },
     {
       title: t('label.entity-count', {
         entity: t('label.value-plural'),
       }),
       dataKey: 'valuesCount',
-      color: '#464A52',
     },
   ],
   data: [],
@@ -171,21 +166,18 @@ export const INITIAL_PROPORTION_METRIC_VALUE = {
         entity: t('label.distinct'),
       }),
       dataKey: 'distinctProportion',
-      color: '#6B97E3',
     },
     {
       title: t('label.entity-proportion', {
         entity: t('label.null'),
       }),
       dataKey: 'nullProportion',
-      color: '#867AAC',
     },
     {
       title: t('label.entity-proportion', {
         entity: t('label.unique'),
       }),
       dataKey: 'uniqueProportion',
-      color: '#6B6E75',
     },
   ],
   data: [],
@@ -196,17 +188,14 @@ export const INITIAL_MATH_METRIC_VALUE = {
     {
       title: t('label.max'),
       dataKey: 'max',
-      color: '#6B97E3',
     },
     {
       title: t('label.mean'),
       dataKey: 'mean',
-      color: '#6B6E75',
     },
     {
       title: t('label.min'),
       dataKey: 'min',
-      color: '#867AAC',
     },
   ],
   data: [],
@@ -217,8 +206,6 @@ export const INITIAL_SUM_METRIC_VALUE = {
     {
       title: t('label.sum'),
       dataKey: 'sum',
-      color: BLUE_500,
-      fill: BLUE_50,
     },
   ],
   data: [],
@@ -228,22 +215,18 @@ export const INITIAL_QUARTILE_METRIC_VALUE = {
     {
       title: t('label.first-quartile'),
       dataKey: 'firstQuartile',
-      color: '#467DDC',
     },
     {
       title: t('label.median'),
       dataKey: 'median',
-      color: '#3488B5',
     },
     {
       title: t('label.inter-quartile-range'),
       dataKey: 'interQuartileRange',
-      color: '#685997',
     },
     {
       title: t('label.third-quartile'),
       dataKey: 'thirdQuartile',
-      color: '#464A52',
     },
   ],
   data: [],
@@ -256,8 +239,6 @@ export const INITIAL_ROW_METRIC_VALUE = {
         entity: t('label.row'),
       }),
       dataKey: 'rowCount',
-      color: BLUE_500,
-      fill: BLUE_50,
     },
   ],
   data: [],
@@ -268,19 +249,17 @@ export const INITIAL_OPERATION_METRIC_VALUE = {
     {
       title: t('label.insert'),
       dataKey: DMLOperationType.Insert,
-      color: BLUE_800,
       stackId: OPERATION_METRICS,
     },
     {
       title: t('label.update'),
       dataKey: DMLOperationType.Update,
-      color: BLUE_500,
       stackId: OPERATION_METRICS,
     },
     {
       title: t('label.delete'),
       dataKey: DMLOperationType.Delete,
-      color: YELLOW_3,
+      status: 'warning' as const,
       stackId: OPERATION_METRICS,
     },
   ],

@@ -320,7 +320,9 @@ test.describe('Task Comments - @Mention', () => {
 
     const mentionItem = page.locator(`[data-value="@${mentionTarget}"]`);
 
-    await expect(mentionItem.first()).toBeVisible({ timeout: 15_000 });
+    await expect(mentionItem.filter({ visible: true })).not.toHaveCount(0, {
+      timeout: 15_000,
+    });
     await mentionItem.first().click();
 
     await page.keyboard.type(' please review this task');

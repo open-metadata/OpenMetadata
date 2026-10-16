@@ -70,6 +70,7 @@
     "latestResult",
     "lifecycleStage",
     "location",
+    "models",
     "modifiedTime",
     "namespaces",
     "numberOfFiles",
@@ -466,6 +467,52 @@
       "documentation",
       "lifeCycle"
     ],
+    "promptTemplate": [
+      "templateContent",
+      "systemPrompt",
+      "variables",
+      "examples",
+      "templateType",
+      "templateVersion",
+      "parentTemplate",
+      "metrics",
+      "lifeCycle"
+    ],
+    "aiGovernancePolicy": [
+      "policyType",
+      "rules",
+      "biasThresholds",
+      "dataAccessControls",
+      "costControls",
+      "complianceRequirements",
+      "performanceStandards",
+      "appliesTo",
+      "enforcementLevel",
+      "enabled",
+      "effectiveDate",
+      "expirationDate",
+      "approvedBy",
+      "violations",
+      "lifeCycle"
+    ],
+    "aiGovernanceFramework": [
+      "reference",
+      "region",
+      "source",
+      "forkedFrom",
+      "enabled",
+      "stewards",
+      "assessmentCadence",
+      "autoApply",
+      "nextDeadline",
+      "lifeCycle"
+    ],
+    "aiFrameworkControl": [
+      "framework",
+      "category",
+      "evidenceRequirements",
+      "lifeCycle"
+    ],
     "databaseService": [
       "connection",
       "serviceAttributes",
@@ -522,6 +569,21 @@
       "connection",
       "serviceAttributes",
       "style",
+      "ingestionRunner"
+    ],
+    "llmService": [
+      "connection",
+      "serviceAttributes",
+      "ingestionRunner"
+    ],
+    "mcpService": [
+      "connection",
+      "serviceAttributes",
+      "ingestionRunner"
+    ],
+    "securityService": [
+      "serviceAttributes",
+      "connection",
       "ingestionRunner"
     ],
     "page": []

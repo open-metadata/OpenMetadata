@@ -61,9 +61,13 @@ const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
 // under every co-scheduled worker: an owner change made mid-reindex is missing from the
 // rebuilt index (Teams.spec.ts "Team assets should" read 0 assets). It runs in the
 // single-worker Reindex lane alongside the other reindexing specs.
+// ChangeRequestReviewLifecycle.spec.ts deploys an Enforce-mode glossary workflow, which makes
+// glossary a gated entity type server-wide while it runs, so it shares the single-worker
+// GlobalSettings lane instead of racing the glossary specs on chromium.
 const dedicatedStateTestIgnore = hasDedicatedIngestionLane
   ? [
       '**/SearchSettings.spec.ts',
+      '**/ChangeRequestReviewLifecycle.spec.ts',
       '**/SearchSeparation/**',
       '**/*AfterReindex.spec.ts',
       '**/SearchIndexApplication.spec.ts',
@@ -331,6 +335,7 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/IntakeForm.spec.ts',
+        '**/ProfileGovernance.spec.ts',
         '**/AdvancedSearch.spec.ts',
         ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
@@ -519,9 +524,9 @@ export default defineConfig({
       fullyParallel: false,
       workers: 1,
     },
-    // Domain isolation E2E suite (issue #24180). Runs in its own shard because several specs
-    // toggle the global `enableAccessControl` search setting; serial execution (workers: 1)
-    // prevents cross-file races on that shared setting.
+    // Domain isolation E2E suite (issue #24180). Runs in the single-worker global-state lane
+    // because several specs toggle the global `enableAccessControl` search setting; each file
+    // restores it in afterAll, and serial execution (workers: 1) prevents cross-file races.
     {
       name: 'DomainIsolation',
       testMatch: '**/DomainIsolation/**',
@@ -548,7 +553,10 @@ export default defineConfig({
           },
           {
             name: 'GlobalSettings',
-            testMatch: '**/SearchSettings.spec.ts',
+            testMatch: [
+              '**/SearchSettings.spec.ts',
+              '**/ChangeRequestReviewLifecycle.spec.ts',
+            ],
             grep: shardGrep,
             use: { ...devices['Desktop Chrome'] },
             dependencies: authDependencies,
@@ -570,11 +578,15 @@ export default defineConfig({
     },
     {
       name: 'IntakeForm',
-      testMatch: '**/IntakeForm.spec.ts',
+      // ADR:2026-10-14-intake-form-specs-run-in-the-single-worker-intakeform-project
+      // Intake forms are one-per-entityType and global: a required field on the
+      // dataProduct form makes every parallel DataProduct.create() fail with 400.
+      testMatch: ['**/IntakeForm.spec.ts', '**/ProfileGovernance.spec.ts'],
       use: { ...devices['Desktop Chrome'] },
       dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
       grep: shardGrep,
       fullyParallel: false,
+      workers: 1,
     },
     // AdvancedSearch runs in its own dedicated lane so its timing-sensitive
     // waitForResponse/debounce flow is not interleaved with other chromium shards.

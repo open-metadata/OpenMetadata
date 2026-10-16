@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.feeds;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -61,6 +63,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 @Path("/v1/announcements")
@@ -114,6 +117,12 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Parameter(description = "Filter active announcements") @QueryParam("active") Boolean active,
       @Parameter(description = "Filter by announcement type") @QueryParam("type")
           AnnouncementType type,
+      @Parameter(
+              description =
+                  "true lists only system announcements (no entityLink), false only"
+                      + " entity announcements")
+          @QueryParam("system")
+          Boolean system,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Limit the number results")
           @DefaultValue("10")
@@ -135,13 +144,16 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       filter.addQueryParam("entityLink", entityLink);
     }
     if (status != null) {
-      filter.addQueryParam("status", status.value());
+      filter.addQueryParam("announcementStatus", status.value());
     }
     if (active != null) {
       filter.addQueryParam("active", String.valueOf(active));
     }
     if (type != null) {
       filter.addQueryParam("announcementType", type.value());
+    }
+    if (system != null) {
+      filter.addQueryParam("systemAnnouncement", String.valueOf(system));
     }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -241,6 +253,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Valid CreateAnnouncement create) {
     Announcement announcement =
         getAnnouncement(create, securityContext.getUserPrincipal().getName());
+    authorizeSystemAnnouncementWrite(securityContext, announcement);
     return create(uriInfo, securityContext, announcement);
   }
 
@@ -263,6 +276,11 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Valid CreateAnnouncement create) {
     Announcement announcement =
         getAnnouncement(create, securityContext.getUserPrincipal().getName());
+    authorizeSystemAnnouncementWrite(securityContext, announcement);
+    authorizeSystemAnnouncementWrite(
+        securityContext,
+        repository.findByNameOrNull(
+            FullyQualifiedName.quoteName(announcement.getName()), Include.ALL));
     return createOrUpdate(uriInfo, securityContext, announcement);
   }
 
@@ -281,6 +299,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       JsonPatch patch) {
+    authorizeSystemAnnouncementWrite(securityContext, repository.find(id, Include.NON_DELETED));
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -295,6 +314,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       @QueryParam("hardDelete") @DefaultValue("false") boolean hardDelete) {
+    authorizeSystemAnnouncementWrite(securityContext, repository.find(id, Include.ALL));
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -305,7 +325,21 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
+    authorizeSystemAnnouncementWrite(
+        securityContext, repository.find(restore.getId(), Include.ALL));
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  /**
+   * An announcement with no entityLink is a system announcement: it is shown to every user rather than on one
+   * asset, so writing one is limited to admins and bots on top of the usual policy check. The repository keeps
+   * entityLink fixed after creation, so an update can't turn an entity announcement into one.
+   */
+  private void authorizeSystemAnnouncementWrite(
+      SecurityContext securityContext, Announcement announcement) {
+    if (announcement != null && nullOrEmpty(announcement.getEntityLink())) {
+      authorizer.authorizeAdminOrBot(securityContext);
+    }
   }
 
   private Announcement getAnnouncement(CreateAnnouncement create, String userName) {
@@ -315,6 +349,8 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
         .withDisplayName(create.getDisplayName())
         .withDescription(create.getDescription())
         .withType(create.getType())
+        .withColor(create.getColor())
+        .withCustomTypeName(create.getCustomTypeName())
         .withEntityLink(create.getEntityLink())
         .withStartTime(create.getStartTime())
         .withEndTime(create.getEndTime())

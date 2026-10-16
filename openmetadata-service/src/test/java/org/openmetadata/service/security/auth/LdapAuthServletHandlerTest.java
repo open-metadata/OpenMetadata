@@ -171,4 +171,11 @@ class LdapAuthServletHandlerTest {
     verify(sessionService).revokeSession(request, response);
     verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
   }
+
+  @Test
+  void close_releasesTheAuthenticatorConnectionPool() {
+    handler.close();
+
+    verify(authenticator).close();
+  }
 }

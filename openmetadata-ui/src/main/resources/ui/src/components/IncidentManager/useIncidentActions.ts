@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import { Dispatch, SetStateAction, useCallback } from 'react';
 import { EntityReference } from '../../generated/tests/testCase';
 import {
@@ -23,18 +22,12 @@ import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/Incident
 import {
   getListTestCaseIncidentByStateId,
   transitionIncident,
-  updateTestCaseIncidentById,
 } from '../../rest/incidentManagerAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { submitIncidentSeverity } from './IncidentManager.utils';
 
 export interface UseIncidentActionsProps {
   setTestCaseListData: Dispatch<SetStateAction<TestCaseIncidentStatusData>>;
-  /**
-   * Called once an incident has actually changed. Each handler swallows its own
-   * errors, so a caller wrapping them cannot tell a change from a failure —
-   * the signal has to come from in here, after the call that went through.
-   */
-  onIncidentChange?: () => void;
 }
 
 /**
@@ -44,35 +37,20 @@ export interface UseIncidentActionsProps {
  */
 export const useIncidentActions = ({
   setTestCaseListData,
-  onIncidentChange,
 }: UseIncidentActionsProps) => {
   const handleSeveritySubmit = async (
     record: TestCaseResolutionStatus,
     severity?: Severities
   ) => {
-    const updatedData = { ...record, severity };
-    const patch = compare(record, updatedData);
-    try {
-      await updateTestCaseIncidentById(record.id ?? '', patch);
-
-      setTestCaseListData((prev) => {
-        const testCaseList = prev.data.map((item) => {
-          if (item.id === updatedData.id) {
-            return updatedData;
-          }
-
-          return item;
-        });
-
-        return {
-          ...prev,
-          data: testCaseList,
-        };
-      });
-      onIncidentChange?.();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+    if (!(await submitIncidentSeverity(record, severity))) {
+      return;
     }
+    setTestCaseListData((prev) => ({
+      ...prev,
+      data: prev.data.map((item) =>
+        item.id === record.id ? { ...record, severity } : item
+      ),
+    }));
   };
 
   const handleAssigneeUpdate = useCallback(
@@ -128,14 +106,11 @@ export const useIncidentActions = ({
             data: testCaseList,
           };
         });
-        // The transition also moves the incident to Assigned, so this changes
-        // its status as well as its assignee.
-        onIncidentChange?.();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [setTestCaseListData, onIncidentChange]
+    [setTestCaseListData]
   );
 
   const handleStatusSubmit = useCallback(
@@ -157,9 +132,8 @@ export const useIncidentActions = ({
           data: testCaseList,
         };
       });
-      onIncidentChange?.();
     },
-    [setTestCaseListData, onIncidentChange]
+    [setTestCaseListData]
   );
 
   return {

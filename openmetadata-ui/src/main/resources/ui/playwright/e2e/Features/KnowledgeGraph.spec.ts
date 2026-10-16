@@ -14,6 +14,7 @@
 import test, { expect, Page, Route } from '@playwright/test';
 import { readFile } from 'fs/promises';
 import { parse } from 'papaparse';
+import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
@@ -356,7 +357,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
           },
           {
             message: 'Table relationships must reach the RDF projection',
-            timeout: 120_000,
+            timeout: LONG_ACTION_TIMEOUT,
           }
         )
         .toMatchObject({ status: 200, body: { boolean: true } });
@@ -548,9 +549,8 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       await expect(
         page.getByTestId('graph-level-rings').locator('rect')
       ).toHaveCount(2);
-      await page.getByTestId('graph-filters-toggle').click();
-      // Baseline after the filter row opens: it resizes the canvas, and reading
-      // across that reflow compares two different canvas sizes.
+      // Entity Type is now inline in the toolbar — the Filters tray is gone,
+      // so there is no popover to open before clicking it.
       const outer = await nodePosition(page, 'Extended table');
       const framingBeforeFilter = await graphFraming(page);
       await page
@@ -603,12 +603,12 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await root.press('Enter');
     const inspector = page.getByTestId('graph-inspector');
     await expect(inspector.getByRole('heading')).toBeFocused();
-    // Each row names the other endpoint and carries the predicate with its
-    // direction, so the three distinct statements to the schema stay apart.
+    // Each row renders the full subject → predicate → object triple; the arrow
+    // glyphs are aria-hidden icons, so the accessible name is space-separated.
     for (const label of [
-      'Sales schema → Belongs to',
-      'Sales schema ← Contains',
-      'Sales schema → Custom predicate',
+      'Orders Belongs to Sales schema',
+      'Sales schema Contains Orders',
+      'Orders Custom predicate Sales schema',
     ]) {
       await expect(
         inspector.getByRole('button', { name: label, exact: true })
@@ -616,7 +616,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     }
     await inspector
       .getByRole('button', {
-        name: 'Sales schema → Custom predicate',
+        name: 'Orders Custom predicate Sales schema',
         exact: true,
       })
       .click();
@@ -900,12 +900,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
           )
       )
       .toBe(true);
-    for (const id of [
-      'graph-mode-chooser',
-      'level-chooser',
-      'graph-filters-toggle',
-      'graph-view-menu',
-    ])
+    for (const id of ['graph-mode-chooser', 'level-chooser', 'graph-view-menu'])
       await expect(page.getByTestId(id)).toBeVisible();
     await page.getByTestId('level-chooser').getByRole('button').focus();
     await page.keyboard.press('Enter');
@@ -921,7 +916,12 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     ).toBeFocused();
     await page.keyboard.press('Enter');
     await page.keyboard.press('Escape');
-    await expect(page.locator('html')).toHaveClass(/dark-mode/);
+    // Dark mode is now gated on AI app mode (theme-provider line 88 forces
+    // 'light' in classic mode). The ui-theme + colorScheme preseed stays as
+    // behavioural coverage for the theme-provider, but the html.dark-mode
+    // class assertion is dropped because classic mode is deliberately
+    // light-only; keeping the colorScheme emulation here still catches
+    // reduced-motion / canvas-tint regressions.
     await expect(page.getByTestId('node-Orders')).toHaveCSS(
       'transition-duration',
       '0s'
@@ -1252,7 +1252,10 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       .getByRole('button', { name: 'Close', exact: true })
       .click();
     await bundleInspector
-      .getByRole('button', { name: 'column_000 → Has column', exact: true })
+      .getByRole('button', {
+        name: 'Orders Has column column_000',
+        exact: true,
+      })
       .click();
     await expect(
       bundleInspector.getByTestId('relationship-predicate')
@@ -1317,25 +1320,15 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       .getByRole('button', { name: 'Close', exact: true })
       .click();
     await details.getByRole('tab', { name: 'Gaps', exact: true }).click();
-    const coverage = details.getByRole('button', {
-      name: /Show on canvas/,
-    });
-    await coverage.click();
-    await page
-      .getByRole('option', { name: 'Highlight mapping gaps', exact: true })
-      .click();
-    await expect(page.locator('.kg-node-group.kg-node-gap')).toHaveCount(1);
-    await expect(page.locator('[data-edge-id]')).toHaveCount(324);
-    await coverage.click();
-    await page.getByRole('option', { name: 'Not mapped', exact: true }).click();
-    await expect(page.getByTestId('graph-status')).toContainText(
-      '316 entities'
-    );
+    // Post-R7 Gaps rework: the details table filters to unmapped-only rows and
+    // the former coverage-mode toggle (Show on canvas → Highlight mapping gaps
+    // / Not mapped) is gone — the Gaps tab is self-sufficient now. Just assert
+    // the drawer still has rows, then close it.
+    await expect(details.getByRole('row')).not.toHaveCount(0);
     await details.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.getByTestId('graph-filters-toggle').click();
-    await page
-      .getByRole('button', { name: 'Clear Filters', exact: true })
-      .click();
+    // Filters tray + Clear-Filters button are gone with the toolbar refactor;
+    // the preceding coverage-mode toggles never persist, so level/entity
+    // counts are already at their default here.
     await expect(page.getByTestId('level-chooser')).toContainText(
       '3 · Extended'
     );
@@ -1345,10 +1338,12 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await page.getByRole('option', { name: 'column_299', exact: true }).click();
     await expect(page.getByTestId('node-column_299')).toBeFocused();
     await expect(page.getByTestId('node-column_299')).toBeInViewport();
+    // R9 drawer redesign renamed the footer CTA 'Open entity page' → 'Open
+    // asset page' (label.kg-open-asset-page); the href shape is unchanged.
     await expect(
       page
         .getByTestId('graph-inspector')
-        .getByRole('link', { name: 'Open entity page', exact: true })
+        .getByRole('link', { name: 'Open asset page', exact: true })
     ).toHaveAttribute('href', /\/table\//);
     await expect(page.locator('[data-node-id]')).toHaveCount(20);
     await expect(page.locator('[data-edge-id]')).toHaveCount(324);
@@ -1492,9 +1487,9 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(inspector.getByRole('heading')).toHaveText(
       'Has glossary term'
     );
-    await expect(inspector).toContainText(
-      '6 individual relationships · bundled'
-    );
+    // Bundle header subtitle is `Grouped · <count> relationships · <family>`
+    // post-R9 (previously 'N individual relationships · bundled').
+    await expect(inspector).toContainText('Grouped · 6 relationships');
     await expect(inspector.getByTestId('relationship-predicate')).toHaveText(
       'hasGlossaryTerm'
     );
@@ -1512,10 +1507,10 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       'owns'
     );
     await expect(
-      inspector.getByRole('button', { name: 'Finance team ← Owns' })
+      inspector.getByRole('button', { name: 'Finance team Owns Orders' })
     ).toBeVisible();
     await expect(
-      inspector.getByRole('button', { name: 'Pere Miquel Brull ← Owns' })
+      inspector.getByRole('button', { name: 'Pere Miquel Brull Owns Orders' })
     ).toBeVisible();
     await inspector
       .getByRole('button', { name: 'Expand all 2 in graph', exact: true })

@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  Card,
   Input,
   Select,
   Typography,
@@ -137,9 +138,7 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
   }, [jwtTokenExpiresAt, isTokenExpired, tokenExpiryDate, t]);
 
   return (
-    <div
-      className="tw:border tw:border-subtle tw:rounded-xl"
-      data-testid="token-section">
+    <Card data-testid="token-section" variant="muted">
       {/* Header */}
       <Box
         align="center"
@@ -278,7 +277,7 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
           </Box>
         )}
       </div>
-    </div>
+    </Card>
   );
 };
 

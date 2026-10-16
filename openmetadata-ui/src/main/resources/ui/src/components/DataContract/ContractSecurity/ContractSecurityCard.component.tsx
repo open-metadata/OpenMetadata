@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Divider, Typography } from '@openmetadata/ui-core-components';
-import { Col, Row, Tag } from 'antd';
+import {
+  Badge,
+  Card,
+  Divider,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -87,12 +94,16 @@ const ContractSecurityCard: React.FC<{
             {isEmpty(policy.identities)
               ? NO_DATA_PLACEHOLDER
               : policy.identities?.map((identity) => (
-                  <Tag
-                    className="custom-tag"
+                  <Badge
+                    bordered={false}
+                    className="tw:mr-2.5 tw:mb-2.5 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+                    color="gray"
                     data-testid={`contract-security-identities-${index}-${identity}`}
-                    key={identity}>
+                    key={identity}
+                    size="sm"
+                    type="color">
                     {identity}
-                  </Tag>
+                  </Badge>
                 ))}
           </div>
 
@@ -107,17 +118,21 @@ const ContractSecurityCard: React.FC<{
 
                 {policy.rowFilters?.map((filter, filterIndex) => {
                   return (
-                    <Tag
-                      className="custom-tag"
+                    <Badge
+                      bordered={false}
+                      className="tw:mr-2.5 tw:mb-2.5 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+                      color="gray"
                       data-testid={`contract-security-rowFilter-${index}-${filterIndex}`}
-                      key={filter.columnName}>
+                      key={filter.columnName}
+                      size="sm"
+                      type="color">
                       {`${
                         tableColumnNameMap?.get(filter.columnName ?? '') ??
                         filter.columnName ??
                         NO_DATA_PLACEHOLDER
                       } = `}
                       {renderRowFilterValues(filter)}
-                    </Tag>
+                    </Badge>
                   );
                 })}
               </div>
@@ -129,8 +144,10 @@ const ContractSecurityCard: React.FC<{
   }, [security?.policies]);
 
   return (
-    <Row className="contract-security-component-container" gutter={[0, 26]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid contract-security-component-container"
+      style={{ ...getLayoutGutter(0, 26) }}>
+      <Grid.Item className="layout-column" span={24}>
         <Card
           className="contract-security-classification-container tw:overflow-visible tw:px-5 tw:py-4 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums"
           data-testid="contract-security-classification">
@@ -141,23 +158,33 @@ const ContractSecurityCard: React.FC<{
           {isEmpty(security?.dataClassification)
             ? NO_DATA_PLACEHOLDER
             : security?.dataClassification?.split(',').map((item) => (
-                <Tag className="custom-tag" color="pink">
+                <Badge
+                  bordered={false}
+                  className="tw:mr-2 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+                  color="pink"
+                  data-testid="contract-security-classification-tag"
+                  key={item}
+                  size="sm"
+                  type="color">
                   {item}
-                </Tag>
+                </Badge>
               ))}
         </Card>
-      </Col>
+      </Grid.Item>
 
       {!isEmpty(security?.policies) && (
-        <Col data-testid="contract-security-policy-container" span={24}>
+        <Grid.Item
+          className="layout-column"
+          data-testid="contract-security-policy-container"
+          span={24}>
           <Typography className="contract-security-policy-label">
             {t('label.policy-plural')}
           </Typography>
 
           {renderSecurityPolicies}
-        </Col>
+        </Grid.Item>
       )}
-    </Row>
+    </Grid>
   );
 };
 

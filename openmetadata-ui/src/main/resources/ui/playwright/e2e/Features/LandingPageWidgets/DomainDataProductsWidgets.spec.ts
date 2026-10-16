@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
@@ -141,14 +141,9 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await verifyWidgetCountOnCurrentPage(
       page,
       'KnowledgePanel.Domains',
-      [
-        `[data-testid="domain-card-${
-          domain.responseData.id ?? ''
-        }"] .domain-card-count`,
-        `[data-testid="domain-card-${
-          domain.responseData.id ?? ''
-        }"] .domain-card-full-count`,
-      ].join(', '),
+      `[data-testid="domain-card-${
+        domain.responseData.id ?? ''
+      }"] [data-testid="domain-asset-count"]`,
       0
     );
     await verifyWidgetCountOnCurrentPage(
@@ -235,7 +230,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await page
       .locator(`[data-testid="table-data-card_${topicFqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
     // Clear so delete-all's post-flow sees the domain-wide state, not
     // a filtered subset (delete-all acts on selectedItems, but the
     // dry-run modal preview shows the visible list).
@@ -303,15 +298,14 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
 
     // Remove every asset currently attached to the data product. The card
     // list paints asynchronously after the assets response resolves, and
-    // count() does not auto-wait — so wait for the first card to render
-    // before counting, otherwise the loop reads 0 and removes nothing.
+    // all() does not auto-wait — so wait for at least one card to render
+    // before enumerating, otherwise the loop reads 0 and removes nothing.
     await waitForAllLoadersToDisappear(page);
     const assetCard = page.locator('[data-testid^="table-data-card_"]');
-    await assetCard.first().waitFor({ state: 'visible' });
+    await expect(assetCard).not.toHaveCount(0);
 
-    const attachedCount = await assetCard.count();
-    for (let i = 0; i < attachedCount; i++) {
-      await assetCard.nth(i).getByTestId('asset-checkbox').check();
+    for (const card of await assetCard.all()) {
+      await card.getByTestId('asset-checkbox').click();
     }
 
     const removeRes = page.waitForResponse('**/assets/remove');

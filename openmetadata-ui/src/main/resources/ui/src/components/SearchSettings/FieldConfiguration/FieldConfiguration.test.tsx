@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import {
   FieldValueBoost,
   SearchFieldMatchType as MatchType,
@@ -64,6 +64,18 @@ describe('FieldConfiguration', () => {
     );
   });
 
+  it('Should mount the field controls only while the panel is expanded', () => {
+    render(<FieldConfiguration {...mockProps} />);
+
+    expect(
+      screen.queryByTestId('highlight-field-switch')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('field-container-header'));
+
+    expect(screen.getByTestId('highlight-field-switch')).toBeInTheDocument();
+  });
+
   it('Should handle highlight fields toggle', () => {
     render(<FieldConfiguration {...mockProps} />);
 
@@ -97,7 +109,7 @@ describe('FieldConfiguration', () => {
 
     const highlightSwitch = screen.getByTestId('highlight-field-switch');
 
-    expect(highlightSwitch).toBeDisabled();
+    expect(within(highlightSwitch).getByRole('switch')).toBeDisabled();
 
     fireEvent.click(highlightSwitch);
 

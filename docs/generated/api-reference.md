@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1908 endpoints** across 75 resource packages · 1898 carry a summary.
+**1922 endpoints** across 75 resource packages · 1912 carry a summary.
 
 ## (root)
 
@@ -35,6 +35,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/activity/entity/{entityType}/name/{fqn}` | Get activity for a specific entity by fully qualified name |
 | `GET` | `/v1/activity/entity/{entityType}/{entityId}` | Get activity for a specific entity by ID |
 | `GET` | `/v1/activity/following` | Get activity feed for entities the current user follows |
+| `GET` | `/v1/activity/mentions` | Get activity whose replies mention the current user |
 | `GET` | `/v1/activity/my-feed` | Get personalized activity feed for current user |
 | `GET` | `/v1/activity/user/{userId}` | Get activity by a specific user |
 | `DELETE` | `/v1/activity/{id}/reaction/{reactionType}` | Remove a reaction from an activity event |
@@ -981,6 +982,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `POST` | `/v1/events/subscriptions` | Create a new Event Subscription |
 | `PUT` | `/v1/events/subscriptions` | Updated an existing or create a new Event Subscription |
 | `DELETE` | `/v1/events/subscriptions/async/{id}` | Asynchronously delete an Event Subscription by Id |
+| `POST` | `/v1/events/subscriptions/capabilities` | Get what a selection of sources supports |
 | `GET` | `/v1/events/subscriptions/history` |  |
 | `GET` | `/v1/events/subscriptions/id/{eventSubscriptionId}/destinations` | Get the destinations for a specific Event Subscription |
 | `GET` | `/v1/events/subscriptions/id/{id}/failedEvents` | Get failed events for a subscription by id |
@@ -988,6 +990,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/events/subscriptions/id/{id}/listSuccessfullySentChangeEvents` | Get successfully sent change events for an alert |
 | `GET` | `/v1/events/subscriptions/id/{subscriptionId}/diagnosticInfo` | Get event subscription diagnostic info |
 | `GET` | `/v1/events/subscriptions/id/{subscriptionId}/eventsRecord` | Get event subscription events record |
+| `GET` | `/v1/events/subscriptions/id/{subscriptionId}/scheduling` | Get how an event subscription is scheduled |
 | `GET` | `/v1/events/subscriptions/listAllFailedEvents` | Get all failed events |
 | `GET` | `/v1/events/subscriptions/name/{eventSubscriptionName}` | Get an Event Subscription by name |
 | `GET` | `/v1/events/subscriptions/name/{eventSubscriptionName}/destinations` | Get the destinations for a specific Event Subscription by its name |
@@ -1147,6 +1150,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/governance/workflowInstanceStates/{id}` | Get a Workflow Instance State by id |
 | `GET` | `/v1/governance/workflowInstanceStates/{workflowDefinitionName}/{workflowInstanceId}` | Get all the Workflow Instance States for a Workflow Instance id |
 | `GET` | `/v1/governance/workflowInstances` | List the Workflow Instances |
+| `POST` | `/v1/governance/workflowInstances/{id}/terminate` | Terminate a Workflow Instance |
 
 ## knowledge
 
@@ -1332,6 +1336,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 |---|---|---|
 | `POST` | `/v1/ontology/ai/drafts` | Generate a reviewable ontology change-set Draft |
 | `POST` | `/v1/ontology/ai/mappings/suggestions` | Propose reviewable external concept mappings |
+| `POST` | `/v1/ontology/ai/memories/jobs` | Queue a reviewable glossary draft from published memories |
+| `GET` | `/v1/ontology/ai/memories/jobs/{jobId}` | Get a memory derivation job |
+| `GET` | `/v1/ontology/ai/memories/{memoryId}/proposals` | List active ontology drafts proposed from a memory |
 | `POST` | `/v1/ontology/ai/relationships/suggestions` | Propose reviewable ontology relationships |
 | `POST` | `/v1/ontology/ai/sparql` | Generate a visible read-only SPARQL query |
 | `POST` | `/v1/ontology/bulk` | Validate or create a Draft from a typed ontology bulk operation |
@@ -1493,6 +1500,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/v1/lod/entity/{entityType}/{id}` | Dereference an OpenMetadata entity IRI |
+| `POST` | `/v1/rdf` | Execute a permissioned read-only SPARQL SELECT for agent tools |
 | `GET` | `/v1/rdf/debug/glossary-relations` | Debug glossary term relations in RDF |
 | `GET` | `/v1/rdf/entity/{entityType}/{id}` | Get entity as RDF |
 | `GET` | `/v1/rdf/entity/{entityType}/{id}/diff` | Diff two RDF entity versions |
@@ -1521,7 +1529,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/rdf/queries/templates` | List administrator-managed installation query templates |
 | `GET` | `/v1/rdf/reindex/failures` | Get RDF reindex failures |
 | `GET` | `/v1/rdf/rules` | List durable inference rules and materialization state |
-| `POST` | `/v1/rdf/rules/materialize` | Materialize dirty inference rules inside Fuseki |
+| `POST` | `/v1/rdf/rules/materialize` | Materialize inference rules to a fixed point inside Fuseki |
 | `POST` | `/v1/rdf/rules/validate` | Validate a candidate inference rule without persisting it |
 | `DELETE` | `/v1/rdf/rules/{name}` | Delete a custom inference rule and its materialized graph |
 | `GET` | `/v1/rdf/rules/{name}` | Get a single inference rule by name |
@@ -1531,7 +1539,6 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/rdf/search/similar/{entityType}/{id}` | Find similar entities |
 | `GET` | `/v1/rdf/sparql` | Execute SPARQL query via GET |
 | `POST` | `/v1/rdf/sparql` | Execute SPARQL query via POST |
-| `POST` | `/v1/rdf/sparql/agent` | Execute a permissioned read-only SPARQL SELECT for agent tools |
 | `POST` | `/v1/rdf/sparql/update` | Execute SPARQL UPDATE |
 | `POST` | `/v1/rdf/sql/query` | Execute SQL query over RDF data |
 | `POST` | `/v1/rdf/sql/translate` | Translate SQL to SPARQL |
@@ -2015,6 +2022,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/system/security/config` | Get complete security configuration |
 | `PATCH` | `/v1/system/security/config` | Patch security configuration |
 | `PUT` | `/v1/system/security/config` | Update complete security configuration |
+| `POST` | `/v1/system/security/test-login/credentials` | Complete an LDAP or Basic Test Login with credentials |
+| `GET` | `/v1/system/security/test-login/result/{testSessionId}` | Get the outcome of a Test Login |
+| `POST` | `/v1/system/security/test-login/start` | Start an interactive Test Login against a candidate security configuration |
 | `POST` | `/v1/system/security/test-login/validate-token` | Validate an OIDC id_token against a candidate security configuration |
 | `POST` | `/v1/system/security/validate` | Validate security configuration |
 | `GET` | `/v1/system/services/count` | List all services counts |
@@ -2028,6 +2038,8 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/system/settings/glossaryTermRelationSettings/relationTypes/{name}` | Update a glossary term relation type |
 | `GET` | `/v1/system/settings/profilerConfiguration` | Get profiler configuration setting |
 | `PUT` | `/v1/system/settings/reset/{name}` | Reset a setting to default |
+| `GET` | `/v1/system/settings/source` | Where settings take their values from |
+| `POST` | `/v1/system/settings/source/{configType}/adopt` | Use the deployment configuration for stored settings |
 | `GET` | `/v1/system/settings/{name}` | Get a setting |
 | `PATCH` | `/v1/system/settings/{settingName}` | Patch a setting |
 | `GET` | `/v1/system/status` | Validate the OpenMetadata deployment |
@@ -2112,6 +2124,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/personas` | List personas |
 | `POST` | `/v1/personas` | Create a Persona |
 | `PUT` | `/v1/personas` | Update Persona |
+| `GET` | `/v1/personas/aiContext/status` | List the compiled AI context state of personas |
 | `DELETE` | `/v1/personas/async/{id}` | Asynchronously delete a Persona by id |
 | `GET` | `/v1/personas/me/context` | Get the materialized AI context for the caller's active persona |
 | `PATCH` | `/v1/personas/name/{fqn}` | Update a Persona using name. |
@@ -2269,6 +2282,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/metadata/types/customProperties` |  |
 | `GET` | `/v1/metadata/types/fields/workflowTriggerFields` | Get workflow trigger fields |
 | `GET` | `/v1/metadata/types/fields/{entityType}` |  |
+| `GET` | `/v1/metadata/types/lifecycleStages` | Get entity lifecycle stages |
 | `GET` | `/v1/metadata/types/name/{entityType}/customProperties` | Get custom properties for an entity type |
 | `PATCH` | `/v1/metadata/types/name/{fqn}` | Update a type using name. |
 | `DELETE` | `/v1/metadata/types/name/{name}` | Delete a type by name |

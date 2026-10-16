@@ -53,13 +53,13 @@ import org.openmetadata.schema.services.connections.database.CockroachConnection
 import org.openmetadata.schema.services.connections.database.DatabricksConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.Db2Connection;
-import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
 import org.openmetadata.schema.services.connections.database.DorisConnection;
 import org.openmetadata.schema.services.connections.database.DremioConnection;
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
 import org.openmetadata.schema.services.connections.database.HiveConnection;
 import org.openmetadata.schema.services.connections.database.InformixConnection;
 import org.openmetadata.schema.services.connections.database.MicrosoftAccessConnection;
+import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
 import org.openmetadata.schema.services.connections.database.MongoDBConnection;
 import org.openmetadata.schema.services.connections.database.MssqlConnection;
 import org.openmetadata.schema.services.connections.database.MyDbConnection;
@@ -80,7 +80,6 @@ import org.openmetadata.schema.services.connections.database.databricks.AzureADS
 import org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth;
 import org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
-import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
@@ -300,7 +299,6 @@ public final class ClassConverterFactory {
                 Map.entry(BigQueryConnection.class, new BigQueryConnectionClassConverter()),
                 Map.entry(BigTableConnection.class, new BigTableConnectionClassConverter()),
                 Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
-                Map.entry(DeltaLakeConnection.class, new DeltaLakeConnectionClassConverter()),
                 Map.entry(DremioConnection.class, new DremioConnectionClassConverter()),
                 Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
                 Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
@@ -321,7 +319,6 @@ public final class ClassConverterFactory {
                 Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
                 Map.entry(SapHanaConnection.class, new SapHanaConnectionClassConverter()),
                 Map.entry(StarRocksConnection.class, new StarRocksConnectionClassConverter()),
-                Map.entry(StorageConfig.class, new StorageConfigClassConverter()),
                 Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),
                 Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
                 Map.entry(TableauConnection.class, new TableauConnectionClassConverter()),
@@ -345,6 +342,8 @@ public final class ClassConverterFactory {
                 Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),
                 Map.entry(RangerConnection.class, new RangerConnectionClassConverter()),
                 Map.entry(DatabricksConnection.class, new DatabricksConnectionClassConverter()),
+                Map.entry(
+                    MicrosoftFabricConnection.class, new MicrosoftFabricConnectionClassConverter()),
                 Map.entry(UnityCatalogConnection.class, new UnityCatalogConnectionClassConverter()),
                 Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter()),
                 Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),
