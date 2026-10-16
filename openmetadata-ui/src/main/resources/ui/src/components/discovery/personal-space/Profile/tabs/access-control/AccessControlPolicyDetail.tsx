@@ -73,8 +73,8 @@ import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextE
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { profileHash } from '../members/profileHash.utils';
 import type { AccessControlView } from './AccessControl.types';
-import AccessControlRulesTable from './AccessControlRulesTable';
 import { getCountLabel } from './AccessControl.utils';
+import AccessControlRulesTable from './AccessControlRulesTable';
 
 type PolicyTab = 'rules' | 'roles' | 'teams';
 type DetailColumnId = 'name' | 'description' | 'actions';

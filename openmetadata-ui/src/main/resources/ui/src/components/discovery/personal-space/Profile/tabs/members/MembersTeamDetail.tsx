@@ -97,6 +97,7 @@ import type { ExpandableConfig } from '../../../../../common/Table/Table.interfa
 import { useEntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import type { EntityDetailsObjectInterface } from '../../../../../Explore/ExplorePage.interface';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { TABLE_TABS } from './Members.constants';
 import type { MembersTeamDetailProps } from './Members.types';
 import MembersAssetsTab from './MembersAssetsTab';
 import MembersInlineEntityTab from './MembersInlineEntityTab';
@@ -124,7 +125,6 @@ import MembersTeamsTab from './MembersTeamsTab';
 import MembersUsersTab from './MembersUsersTab';
 import { profileHash } from './profileHash.utils';
 import { useMembersTeamHeader } from './useMembersTeamHeader';
-import { TABLE_TABS } from './Members.constants';
 
 const CUSTOM_PROPERTIES = 'custom-properties' as const;
 

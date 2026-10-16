@@ -16,9 +16,9 @@ import { compare } from 'fast-json-patch';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Rule } from '../../../../../../generated/api/policies/createPolicy';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
+import { Rule } from '../../../../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {

@@ -30,7 +30,11 @@ import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { AccessControlView } from './AccessControl.types';
-import { hashSubPathToView, viewToSubPath } from './AccessControl.utils';
+import {
+  getDetailHeaderNames,
+  hashSubPathToView,
+  viewToSubPath,
+} from './AccessControl.utils';
 import AccessControlAddPolicyForm from './AccessControlAddPolicyForm';
 import AccessControlAddRoleForm from './AccessControlAddRoleForm';
 import AccessControlAuditLogsPanel from './AccessControlAuditLogsPanel';
@@ -41,7 +45,6 @@ import AccessControlPolicyDetail from './AccessControlPolicyDetail';
 import AccessControlRoleDetail from './AccessControlRoleDetail';
 import AccessControlRolesPanel from './AccessControlRolesPanel';
 import AccessControlRuleFormPage from './AccessControlRuleFormPage';
-import { getDetailHeaderNames } from './AccessControl.utils';
 
 export type { AccessControlView };
 

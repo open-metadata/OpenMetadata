@@ -75,13 +75,6 @@ import McpApplicationConfiguration from '../../../../../Settings/Applications/Mc
 import type { AppPlugin } from '../../../../../Settings/Applications/plugins/AppPlugin';
 import ConfirmDialog from '../platform-settings/ConfirmDialog';
 import { HintToggle } from './AppConfigForm';
-import type { ApplicationsViewProps } from './Applications.types';
-import {
-  getConfigTabKind,
-  hasScheduleTab,
-  isAppUnavailable,
-  isRuntimeDisabled,
-} from './Applications.utils';
 import {
   TAB_CONFIGURATION,
   TAB_LABEL_KEYS,
@@ -89,6 +82,13 @@ import {
   TAB_RUNS,
   TAB_SCHEDULE,
 } from './AppDetail.constants';
+import type { ApplicationsViewProps } from './Applications.types';
+import {
+  getConfigTabKind,
+  hasScheduleTab,
+  isAppUnavailable,
+  isRuntimeDisabled,
+} from './Applications.utils';
 
 type AppAction = 'restore' | 'disable' | 'uninstall';
 

@@ -24,8 +24,8 @@ import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldValueBoost } from '../../../../../../../generated/configuration/searchSettings';
-import { SearchSectionTitle } from './SearchSection';
 import { NUMERIC_COLUMNS } from './FieldValueBoostTable.constants';
+import { SearchSectionTitle } from './SearchSection';
 
 interface FieldValueBoostTableProps {
   boosts: FieldValueBoost[];
