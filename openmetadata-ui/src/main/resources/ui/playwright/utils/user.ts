@@ -597,7 +597,8 @@ export const checkDataConsumerPermissions = async (page: Page) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
+  await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
+  await expect(page.getByTestId('lineage-node-menu')).toHaveCount(0);
 };
 
 export const checkStewardServicesPermissions = async (page: Page) => {
@@ -693,8 +694,8 @@ export const checkStewardPermissions = async (page: Page) => {
   await page.click('[data-testid="lineage"]');
   await waitForAllLoadersToDisappear(page);
 
-  // Check if edit lineage option is available
-  await expect(page.getByTestId('edit-lineage')).toBeVisible();
+  // Editors get the lineage node menu instead of an edit-mode toggle
+  await expect(page.getByTestId('lineage-node-menu')).not.toHaveCount(0);
 };
 
 export const addUser = async (
