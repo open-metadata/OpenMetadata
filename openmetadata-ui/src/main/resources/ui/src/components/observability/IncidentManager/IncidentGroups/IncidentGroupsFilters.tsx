@@ -12,15 +12,15 @@
  */
 
 import {
-    Box,
-    Dot,
-    FilterSelect,
-    TriggerButton
+  Box,
+  Dot,
+  FilterSelect,
+  TriggerButton,
 } from '@openmetadata/ui-core-components';
 import {
-    keepPreviousData,
-    useQuery,
-    useQueryClient
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
 } from '@tanstack/react-query';
 import { startCase } from 'lodash';
 import { ReactNode, useId, useMemo, useState } from 'react';
@@ -40,16 +40,16 @@ import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/U
 import { useIncidentFilterOptions } from '../../../IncidentManager/useIncidentFilterOptions';
 import DqDateRangeFilter from '../../DataQuality/Dashboard/DqDateRangeFilter';
 import {
-    DEFAULT_INCIDENT_LIST_DATE_FIELD,
-    INCIDENT_GROUP_STATUS_OPTIONS,
-    INCIDENT_SEVERITY_DOT_CLASS,
-    INCIDENT_SEVERITY_FILTER_OPTIONS,
-    NO_SEVERITY_FILTER
+  DEFAULT_INCIDENT_LIST_DATE_FIELD,
+  INCIDENT_GROUP_STATUS_OPTIONS,
+  INCIDENT_SEVERITY_DOT_CLASS,
+  INCIDENT_SEVERITY_FILTER_OPTIONS,
+  NO_SEVERITY_FILTER,
 } from './IncidentGroups.constants';
 import {
-    IncidentGroupsFiltersProps,
-    IncidentListDateField,
-    IncidentSeverityFilter
+  IncidentGroupsFiltersProps,
+  IncidentListDateField,
+  IncidentSeverityFilter,
 } from './IncidentGroups.types';
 
 const STATUS_OPTIONS = INCIDENT_GROUP_STATUS_OPTIONS.map((status) => ({
