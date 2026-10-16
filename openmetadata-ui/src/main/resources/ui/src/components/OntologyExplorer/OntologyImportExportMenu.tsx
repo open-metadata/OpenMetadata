@@ -42,7 +42,7 @@ const OntologyImportExportMenu = ({
         color="secondary"
         data-testid="ontology-import-export-trigger"
         iconLeading={Download01}
-        size="sm"
+        size="xs"
         onPress={() => setIsOpen(true)}>
         {t('label.import-export')}
       </Button>

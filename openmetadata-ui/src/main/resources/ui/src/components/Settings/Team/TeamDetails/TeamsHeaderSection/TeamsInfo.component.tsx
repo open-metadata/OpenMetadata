@@ -11,11 +11,6 @@
  *  limitations under the License.
  */
 import {
-  CheckOutlined,
-  CloseOutlined,
-  InfoCircleOutlined,
-} from '@ant-design/icons';
-import {
   Box,
   Button,
   Divider,
@@ -26,16 +21,18 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  Check,
+  InfoCircle,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import {
-  GRAYED_OUT_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../generated/entity/teams/team';
@@ -258,7 +255,7 @@ const TeamsInfo = ({
                     isDisabled={isLoading}
                     size="xs"
                     onClick={() => setIsEmailEdit(false)}>
-                    <CloseOutlined />
+                    <XClose size={14} />
                   </Button>
                   <Button
                     color="primary"
@@ -266,7 +263,7 @@ const TeamsInfo = ({
                     isLoading={isLoading}
                     size="xs"
                     type="submit">
-                    <CheckOutlined />
+                    <Check size={14} />
                   </Button>
                 </Box>
               </Box>
@@ -482,10 +479,10 @@ const TeamsInfo = ({
             excludeTriggerFromTabOrder
             title={t('message.team-distinct-user-description')}
             triggerClassName="tw:inline-flex">
-            <InfoCircleOutlined
-              className="m-x-xss"
+            <InfoCircle
+              className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
               data-testid="helper-icon"
-              style={{ color: GRAYED_OUT_COLOR }}
+              size={14}
             />
           </Tooltip>
         </Typography>

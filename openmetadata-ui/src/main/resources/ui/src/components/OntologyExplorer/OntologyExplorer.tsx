@@ -78,6 +78,7 @@ import { OntologyNodeRelationsContent } from './OntologyNodeRelationsContent';
 import { OntologyRelationDetailsPanel } from './OntologyRelationDetailsPanel';
 import {
   buildOntologyTreeGroups,
+  buildOntologyTreeMetrics,
   getOntologyHealthSummary,
   resolveOntologyTermLabel,
 } from './OntologyStudio.utils';
@@ -415,7 +416,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     return {
       showConceptInspector:
         scope === 'global' &&
-        surface === 'graph' &&
+        surface !== 'term' &&
         isTermConcept &&
         !selectedEdge,
       showEntityPanel: Boolean(
@@ -649,6 +650,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       ),
     [combinedGraphData, filters, glossaries, relationTypes]
   );
+  const treeMetrics = useMemo(
+    () => buildOntologyTreeMetrics(combinedGraphData, filters),
+    [combinedGraphData, filters]
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -777,7 +782,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   );
 
   const handleRelationDelete = useCallback(
-    async (edge: MergedEdge) => {
+    async (edge: Pick<MergedEdge, 'from' | 'id'>) => {
       if (edge.id) {
         setIsSavingRelation(true);
         try {
@@ -1094,8 +1099,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const renderDataModeEdgeLegend = () => (
     <Card
       className={classNames(
-        scope === 'global' ? 'tw:left-4 tw:top-4' : 'tw:right-4 tw:top-4',
-        'tw:absolute tw:flex tw:items-center tw:gap-4 tw:px-3 tw:py-2',
+        'tw:absolute tw:right-4 tw:top-4 tw:flex tw:items-center tw:gap-4 tw:px-3 tw:py-2',
         ONTOLOGY_TOOLBAR_CARD_CLASS
       )}
       data-testid="ontology-data-edge-legend">
@@ -1257,7 +1261,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   const renderGraphToolbar = () => (
     <Fragment>
-      {explorationMode === 'data' ? renderDataModeEdgeLegend() : null}
+      {explorationMode === 'data' && scope !== 'global'
+        ? renderDataModeEdgeLegend()
+        : null}
       {scope === 'global'
         ? renderGlobalScopeToolbar()
         : renderTermScopeToolbar()}
@@ -1391,7 +1397,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           handleGraphPaneClick();
         }}
         onCreateRelation={handleCreateRelation}
+        onDeleteRelation={handleRelationDelete}
         onRequestEdit={isEditMode ? undefined : onRequestEdit}
+        onSelectNode={(relatedNode) => {
+          setSelectedEdge(null);
+          setSelectedNode(relatedNode);
+        }}
         onShowFullDetails={() => {
           if (selectedNode) {
             handleGraphNodeDoubleClick(selectedNode);
@@ -1401,6 +1412,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     );
   };
 
+  const handleConnectTerm = (node: OntologyNode) => {
+    setSelectedNode(node);
+    onRequestEdit?.();
+  };
+
   const renderHealthPanel = () => {
     if (!showHealth) {
       return null;
@@ -1408,14 +1424,17 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
     // Hidden rather than unmounted so the panel keeps its minimized/expanded state.
     return (
-      <div hidden={showConceptInspector || Boolean(selectedEdge)}>
+      <div
+        hidden={
+          showConceptInspector ||
+          Boolean(selectedEdge) ||
+          explorationMode === 'data' ||
+          surface === 'tree'
+        }>
         <OntologyHealthPanel
           health={healthSummary}
           isolatedTermCount={isolatedTermCount}
-          onConnect={(node) => {
-            setSelectedNode(node);
-            onRequestEdit?.();
-          }}
+          onConnect={handleConnectTerm}
         />
       </div>
     );
@@ -1430,7 +1449,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       return (
         <OntologyTreeView
           groups={treeGroups}
-          selectedNodeId={selectedNode?.id}
+          metrics={treeMetrics}
+          onConnect={handleConnectTerm}
           onSelect={setSelectedNode}
         />
       );

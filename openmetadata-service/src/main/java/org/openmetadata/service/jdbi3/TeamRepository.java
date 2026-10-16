@@ -45,6 +45,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.invalid
 import static org.openmetadata.service.util.EntityUtil.*;
 
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -101,6 +102,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.QueryFilterBuilder;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -637,6 +639,12 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   public ResultList<EntityReference> getTeamAssets(UUID teamId, int limit, int offset) {
+    return getTeamAssets(teamId, limit, offset, null);
+  }
+
+  /** The assets, left out where {@code caller}'s search access policies deny them. */
+  public ResultList<EntityReference> getTeamAssets(
+      UUID teamId, int limit, int offset, SubjectContext caller) {
     Team team = get(null, teamId, getFields("id,fullyQualifiedName"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -644,7 +652,8 @@ public class TeamRepository extends EntityRepository<Team> {
       return new ResultList<>(new ArrayList<>(), null, null, 0);
     }
 
-    InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), offset, limit);
+    InheritedFieldQuery query =
+        InheritedFieldQuery.forTeam(team.getId().toString(), offset, limit).forCaller(caller);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -660,17 +669,28 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   public ResultList<EntityReference> getTeamAssetsByName(String teamName, int limit, int offset) {
-    Team team = getByName(null, teamName, getFields("id,fullyQualifiedName"));
-    return getTeamAssets(team.getId(), limit, offset);
+    return getTeamAssetsByName(teamName, limit, offset, null);
   }
 
-  public Map<String, Integer> getAllTeamsWithAssetsCount() {
+  public ResultList<EntityReference> getTeamAssetsByName(
+      String teamName, int limit, int offset, SubjectContext caller) {
+    Team team = getByName(null, teamName, getFields("id,fullyQualifiedName"));
+    return getTeamAssets(team.getId(), limit, offset, caller);
+  }
+
+  /**
+   * Asset counts for the teams the caller may list, counting only assets the caller's search access
+   * policies allow.
+   */
+  public Map<String, Integer> getAllTeamsWithAssetsCount(SecurityContext securityContext) {
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search unavailable for team asset counts");
       return new HashMap<>();
     }
 
-    List<Team> allTeams = listAll(getFields("id,fullyQualifiedName"), new ListFilter(null));
+    ListFilter listable = new ListFilter(null);
+    EntityUtil.addDomainQueryParam(securityContext, listable, Entity.TEAM);
+    List<Team> allTeams = listAll(getFields("id,fullyQualifiedName"), listable);
 
     // Build team ID -> FQN mapping
     Map<String, String> teamIdToFqn = new HashMap<>();
@@ -682,7 +702,10 @@ public class TeamRepository extends EntityRepository<Team> {
     String queryFilter = QueryFilterBuilder.buildTeamAssetsCountFilter();
     Map<String, Integer> ownerIdCounts =
         inheritedFieldEntitySearch.getAggregatedCountsByField(
-            "owners.id", queryFilter, EntityBuilderConstant.MAX_AGGREGATE_SIZE);
+            "owners.id",
+            queryFilter,
+            EntityBuilderConstant.MAX_AGGREGATE_SIZE,
+            DefaultAuthorizer.getSubjectContext(securityContext));
 
     // Map team IDs to FQNs
     Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
