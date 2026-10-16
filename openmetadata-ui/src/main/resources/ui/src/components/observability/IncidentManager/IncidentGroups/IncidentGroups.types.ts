@@ -105,6 +105,7 @@ export interface IncidentGroupDetailProps {
 }
 
 export interface IncidentGroupStatProps {
+  icon: FC<{ className?: string }>;
   label: string;
   value: ReactNode;
   testId: string;

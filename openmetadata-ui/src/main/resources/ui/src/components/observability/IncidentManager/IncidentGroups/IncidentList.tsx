@@ -97,15 +97,14 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
       </Box>
       {incident.failureSummary && (
         // Not the core Alert: it is a live region, and every row of the list
-        // would be announced as one. Same error tokens, in the design's
-        // compact callout.
+        // would be announced as one. Inline, as the design shows it.
         <Box
           align="start"
-          className="tw:rounded-lg tw:border tw:border-error-subtle tw:bg-error-primary tw:px-3 tw:py-2"
+          className="tw:text-error-primary"
           data-testid="incident-failure-summary"
-          gap={2}>
-          <AlertTriangle className="tw:mt-0.5 tw:size-4 tw:shrink-0 tw:text-fg-error-primary" />
-          <Typography as="span" className="tw:text-secondary" size="text-sm">
+          gap={1}>
+          <AlertTriangle className="tw:mt-0.5 tw:size-3.5 tw:shrink-0 tw:text-fg-error-primary" />
+          <Typography as="span" size="text-xs">
             {incident.failureSummary}
           </Typography>
         </Box>

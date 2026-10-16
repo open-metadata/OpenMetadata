@@ -64,9 +64,7 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
     const groups = await openGroups(page, seed, {});
 
     await expect(groups).toBeVisible({ timeout: GROUPS_TIMEOUT });
-    await expect(page.getByTestId('incident-groups-count')).toHaveText(
-      '2 groups'
-    );
+    await expect(groups.getByRole('rowheader')).toHaveCount(2);
     await expect(
       groups.getByRole('rowheader', { name: ROW_COUNT_TYPE })
     ).toBeVisible();
@@ -93,9 +91,7 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
     });
 
     await expect(tableGroup).toBeVisible({ timeout: GROUPS_TIMEOUT });
-    await expect(page.getByTestId('incident-groups-count')).toHaveText(
-      '1 group'
-    );
+    await expect(groups.getByRole('rowheader')).toHaveCount(1);
 
     await tableGroup.click();
 
@@ -137,9 +133,7 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
     await expect(
       groups.getByRole('rowheader', { name: COLUMN_COUNT_TYPE })
     ).toBeHidden();
-    await expect(page.getByTestId('incident-groups-count')).toHaveText(
-      '1 group'
-    );
+    await expect(groups.getByRole('rowheader')).toHaveCount(1);
 
     await openGroups(page, seed, {
       groupBy: 'testDefinition',

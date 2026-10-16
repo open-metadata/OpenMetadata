@@ -469,18 +469,16 @@ describe('IncidentGroupsView', () => {
     expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
   });
 
-  it('should render the header stats and the table once loaded', async () => {
+  it('should render the table with no group or recurring summary above it', async () => {
     await act(async () => {
       renderView();
     });
 
-    expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      'label.group-count:5'
-    );
-    expect(
-      screen.getByTestId('incident-groups-recurring-count')
-    ).toHaveTextContent('label.recurring-count:2');
     expect(screen.getByTestId('table-group-count')).toHaveTextContent('3');
+    expect(screen.queryByText(/label\.group-count/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/label\.recurring-count/)
+    ).not.toBeInTheDocument();
   });
 
   it('should refire the fetch with the ordering the table hands back', async () => {
@@ -586,9 +584,6 @@ describe('IncidentGroupsView', () => {
     });
 
     expect(screen.getByTestId('incident-groups-error')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('incident-groups-count')
-    ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('incident-groups-table')
     ).not.toBeInTheDocument();
@@ -755,9 +750,6 @@ describe('IncidentGroupsView', () => {
       screen.queryByTestId('incident-groups-loader')
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
-    expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      'label.group-count:5'
-    );
 
     await act(async () => {
       resolveRefresh({ data: mockGroups.slice(0, 2), paging: { total: 2 } });
@@ -805,14 +797,11 @@ describe('IncidentGroupsView', () => {
     });
 
     // Kept, they would render test-definition groups under the owner column
-    // header, and the stats would count the dimension the user just left.
+    // header.
     expect(
       screen.queryByTestId('incident-groups-table')
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('incident-groups-loader')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('incident-groups-count')
-    ).not.toBeInTheDocument();
 
     await act(async () => {
       resolveSwitched({ data: mockGroups.slice(0, 1), paging: { total: 1 } });
@@ -1260,9 +1249,6 @@ describe('IncidentGroupsView filters and paging', () => {
       renderView();
     });
 
-    expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      'label.group-count:3'
-    );
     expect(currentPageInput()).toHaveAttribute('max', '1');
   });
 
@@ -1288,21 +1274,6 @@ describe('IncidentGroupsView filters and paging', () => {
     });
 
     expect(screen.getByTestId('table-group-count')).toHaveTextContent('1');
-  });
-
-  it('should read a single group in the singular', async () => {
-    mockListIncidentGroups.mockResolvedValue({
-      data: [mockGroups[0]],
-      paging: { total: 1 },
-    });
-
-    await act(async () => {
-      renderView();
-    });
-
-    expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      'label.group-count:1'
-    );
   });
 
   it('should scope the groups to the active domain', async () => {

@@ -12,12 +12,22 @@
  */
 
 import {
+  Badge,
   Box,
   Button,
+  Card,
+  FeaturedIcon,
   PaginationCardWithControls,
   SlideoutMenu,
+  TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  AlertTriangle,
+  ArrowRight,
+  Calendar,
+  Clock,
+} from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
@@ -31,7 +41,10 @@ import {
   IncidentGroupDrawerProps,
   IncidentGroupStatProps,
 } from './IncidentGroups.types';
-import { getIncidentGroupName } from './IncidentGroups.utils';
+import {
+  getIncidentGroupByOption,
+  getIncidentGroupName,
+} from './IncidentGroups.utils';
 import IncidentGroupsLoadError from './IncidentGroupsLoadError';
 import IncidentList from './IncidentList';
 import IncidentSeverityBadge from './IncidentSeverityBadge';
@@ -39,26 +52,19 @@ import { useIncidentGroupIncidents } from './useIncidentGroupIncidents';
 
 const DRAWER_WIDTH = 1040;
 
-const Overline = ({ children }: { children: string }) => (
-  <Typography
-    as="span"
-    className="tw:uppercase tw:text-tertiary"
-    size="text-xs"
-    weight="semibold">
-    {children}
-  </Typography>
-);
-
 const IncidentGroupStat = ({
+  icon: Icon,
   label,
   value,
   testId,
 }: IncidentGroupStatProps) => (
-  <Box
-    className="tw:flex-1 tw:rounded-lg tw:bg-secondary tw:p-3"
-    direction="col"
-    gap={1}>
-    <Overline>{label}</Overline>
+  <Box className="tw:flex-1 tw:px-4 tw:py-3" direction="col" gap={1}>
+    <Box align="center" className="tw:text-secondary" gap={2}>
+      <Icon className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
+      <Typography as="span" size="text-sm" weight="medium">
+        {label}
+      </Typography>
+    </Box>
     <Typography
       as="span"
       className="tw:text-primary"
@@ -109,23 +115,40 @@ const IncidentGroupDrawer = ({
       {({ close }) =>
         group && (
           <>
-            <SlideoutMenu.Header onClose={close}>
-              <Box direction="col" gap={2}>
-                <Overline>{t('label.incident-group')}</Overline>
-                {/* not-prose: Typography wraps a heading in .prose, whose h2
-                    style would replace the size given here. */}
-                <Typography
-                  as="h2"
-                  className="not-prose tw:text-primary"
-                  data-testid="incident-group-drawer-name"
-                  size="text-lg"
-                  weight="semibold">
-                  {getIncidentGroupName(
-                    group,
-                    t('label.no-entity', { entity: t('label.owner') })
-                  )}
-                </Typography>
-                <Box align="center" gap={2}>
+            <SlideoutMenu.Header
+              className="tw:border-b tw:border-secondary tw:pb-4"
+              onClose={close}>
+              <Box align="center" gap={3}>
+                <FeaturedIcon
+                  color="brand"
+                  icon={getIncidentGroupByOption(group.groupBy).icon}
+                  shape="square"
+                  size="lg"
+                  theme="light">
+                  <Badge
+                    // Lifted off the icon in both themes, whose fill is brand in dark.
+                    className="tw:absolute tw:-right-2 tw:-bottom-1.5 tw:bg-primary"
+                    color="brand"
+                    data-testid="incident-group-drawer-count"
+                    size="sm"
+                    type="pill-color">
+                    {group.incidentCount}
+                  </Badge>
+                </FeaturedIcon>
+                <Box align="center" className="tw:min-w-0" gap={2} wrap="wrap">
+                  {/* not-prose: Typography wraps a heading in .prose, whose h2
+                      style would replace the size given here. */}
+                  <Typography
+                    as="h2"
+                    className="not-prose tw:text-primary"
+                    data-testid="incident-group-drawer-name"
+                    size="text-lg"
+                    weight="semibold">
+                    {getIncidentGroupName(
+                      group,
+                      t('label.no-entity', { entity: t('label.owner') })
+                    )}
+                  </Typography>
                   <IncidentGroupRelatedBadge group={group} />
                   <span data-testid="group-severity">
                     <IncidentSeverityBadge severity={group.severity} />
@@ -135,13 +158,15 @@ const IncidentGroupDrawer = ({
             </SlideoutMenu.Header>
             <SlideoutMenu.Content>
               <Box direction="col" gap={6}>
-                <Box gap={3}>
+                <Card className="tw:flex tw:divide-x tw:divide-secondary">
                   <IncidentGroupStat
+                    icon={AlertTriangle}
                     label={t('label.incident-plural')}
                     testId="incident-group-stat-count"
                     value={group.incidentCount}
                   />
                   <IncidentGroupStat
+                    icon={Calendar}
                     label={t('label.first-seen')}
                     testId="incident-group-stat-first-seen"
                     value={
@@ -151,6 +176,7 @@ const IncidentGroupDrawer = ({
                     }
                   />
                   <IncidentGroupStat
+                    icon={Clock}
                     label={t('label.last-seen')}
                     testId="incident-group-stat-last-seen"
                     value={
@@ -159,50 +185,69 @@ const IncidentGroupDrawer = ({
                         : NO_DATA_PLACEHOLDER
                     }
                   />
-                </Box>
-                <Box direction="col" gap={2}>
+                </Card>
+                <Box direction="col" gap={3}>
                   <Box align="center" justify="between">
-                    <Overline>{t('label.individual-incident-plural')}</Overline>
+                    <Box align="center" gap={2}>
+                      <Typography
+                        as="span"
+                        className="tw:text-primary"
+                        size="text-md"
+                        weight="semibold">
+                        {t('label.individual-incident-plural')}
+                      </Typography>
+                      <Badge
+                        color="gray"
+                        data-testid="incident-group-incident-count"
+                        size="sm"
+                        type="pill-color">
+                        {paging?.total ?? group.incidentCount}
+                      </Badge>
+                    </Box>
                     <Button
                       color="link-color"
                       data-testid="incident-group-view-all"
+                      iconTrailing={ArrowRight}
                       size="sm"
                       onPress={() => onViewAll(group)}>
                       {t('label.view-all')}
                     </Button>
                   </Box>
-                  {isError ? (
-                    <IncidentGroupsLoadError
-                      data-testid="incident-group-incidents-error"
-                      onRetry={refresh}
+                  <TableCard.Root>
+                    {isError ? (
+                      <IncidentGroupsLoadError
+                        data-testid="incident-group-incidents-error"
+                        onRetry={refresh}
+                      />
+                    ) : (
+                      <IncidentList
+                        incidents={incidents}
+                        isLoading={isLoading}
+                        onIncidentChange={() => {
+                          refresh();
+                          onIncidentChange();
+                        }}
+                      />
+                    )}
+                    <PaginationCardWithControls
+                      className="tw:border-0"
+                      page={currentPage}
+                      pageSize={pageSize}
+                      pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
+                      total={Math.max(
+                        1,
+                        computeTotalPages(
+                          pageSize,
+                          paging?.total ?? incidents.length
+                        )
+                      )}
+                      onPageChange={handlePageChange}
+                      onPageSizeChange={handlePageSizeChange}
                     />
-                  ) : (
-                    <IncidentList
-                      incidents={incidents}
-                      isLoading={isLoading}
-                      onIncidentChange={() => {
-                        refresh();
-                        onIncidentChange();
-                      }}
-                    />
-                  )}
+                  </TableCard.Root>
                 </Box>
               </Box>
             </SlideoutMenu.Content>
-            <SlideoutMenu.Footer>
-              <PaginationCardWithControls
-                className="tw:border-0 tw:p-0 tw:shadow-none"
-                page={currentPage}
-                pageSize={pageSize}
-                pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
-                total={Math.max(
-                  1,
-                  computeTotalPages(pageSize, paging?.total ?? incidents.length)
-                )}
-                onPageChange={handlePageChange}
-                onPageSizeChange={handlePageSizeChange}
-              />
-            </SlideoutMenu.Footer>
           </>
         )
       }
