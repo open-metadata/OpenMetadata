@@ -390,7 +390,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 schema_text = merge_and_clean_protobuf_schema(self._get_schema_text_with_references(writer_schema))
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to fetch writer schema [{writer_id}], reading with the topic schema: {exc}")
+                logger.warning("Failed to fetch writer schema [%s], reading with the topic schema: %s", writer_id, exc)
             self._protobuf_writer_schemas[writer_id] = schema_text
         return self._protobuf_writer_schemas[writer_id]
 
