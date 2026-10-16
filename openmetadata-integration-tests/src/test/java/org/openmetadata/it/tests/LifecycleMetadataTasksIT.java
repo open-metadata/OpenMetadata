@@ -89,6 +89,52 @@ class LifecycleMetadataTasksIT {
   }
 
   @Test
+  void twoStepsOfOneStageEachAskTheirOwnAssigneesForTheirOwnFields(TestNamespace namespace) {
+    final Domain domain = createDomain(namespace);
+    final String workflow = createWorkflow(namespace);
+    try {
+      final MetadataCollectionConfiguration description =
+          draftFields().withFields(List.of(draftFields().getFields().get(0)));
+      final MetadataCollectionConfiguration experts =
+          draftFields()
+              .withFields(List.of(draftFields().getFields().get(1)))
+              .withTaskAssignees(TaskAssignees.OWNERS);
+      service().reconcile(domain, description, workflow, DRAFT_NODE);
+      service().reconcile(domain, experts, workflow, DRAFT_NODE + "x1");
+
+      final JsonNode tasks = tasks(domain);
+      assertEquals(2, tasks.size());
+      final Map<List<String>, List<String>> askedBy = new java.util.HashMap<>();
+      tasks.forEach(task -> askedBy.put(missingFields(task), assigneeNames(task)));
+      assertEquals(List.of(sharedUser().getName()), askedBy.get(List.of("description")));
+      assertTrue(askedBy.get(List.of("experts")).contains("admin"));
+    } finally {
+      cleanup(domain, workflow);
+    }
+  }
+
+  @Test
+  void aStepWithNoFieldsClosesTheTaskOfTheStageTheAssetLeft(TestNamespace namespace) {
+    final Domain domain = createDomain(namespace);
+    final String workflow = createWorkflow(namespace);
+    try {
+      service().reconcile(domain, draftFields(), workflow, DRAFT_NODE);
+      final MetadataCollectionConfiguration nothingToAsk = inReviewFields().withFields(List.of());
+
+      service()
+          .reconcile(
+              updateStage(domain, EntityStatus.IN_REVIEW),
+              nothingToAsk,
+              workflow,
+              "CollectInReview");
+
+      assertEquals("Cancelled", onlyTask(domain).get("status").asText());
+    } finally {
+      cleanup(domain, workflow);
+    }
+  }
+
+  @Test
   void asksTheAdminsUntilTheAssetHasOwnersAndThenAsksThem(TestNamespace namespace) {
     final Domain domain = createDomain(namespace);
     final String workflow = createWorkflow(namespace);
