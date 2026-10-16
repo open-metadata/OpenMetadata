@@ -37,6 +37,7 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
+  useActiveTimeFormat,
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -146,6 +147,7 @@ const ActivityFeedCardNew = ({
   onActivityClick,
 }: ActivityFeedCardNewProps) => {
   const isActivityEvent = !isUndefined(activity);
+  const timeFormat = useActiveTimeFormat();
 
   const { entityFQN, entityType } = useMemo(() => {
     const aboutValue = feed?.about ?? activity?.about ?? '';
@@ -293,8 +295,12 @@ const ActivityFeedCardNew = ({
 
   const timestampValue =
     post?.createdAt ?? feed?.createdAt ?? activity?.timestamp;
+
   const timestamp = timestampValue ? (
-    <Tooltip excludeTriggerFromTabOrder title={formatDateTime(timestampValue)}>
+    <Tooltip
+      excludeTriggerFromTabOrder
+      containerClassName="timestamp-tooltip"
+      title={formatDateTime(timestampValue, timeFormat)}>
       <Typography
         className="feed-card-header-v2-timestamp"
         color="secondary"
@@ -436,15 +442,20 @@ const ActivityFeedCardNew = ({
       data-testid="feed-card-v2-sidebar">
       <Card.Content className="activity-feed-card-new-body tw:p-0">
         <Box className="w-full" gap={2}>
-          <Box align="center" direction="col" justify="center">
+          <Box align="center" direction="col" justify="start">
             <UserPopOverCard
               className="m-r-0"
               profileWidth={24}
               userName={createdBy}
             />
 
+            {/* flex-1 + min-h-0 so the 100%-height line fills only what the
+                avatar leaves; otherwise the column overflows and the card
+                body's overflow:hidden clips the avatar. mx-auto centres the
+                line under the avatar, as the vertical Divider's self-stretch
+                otherwise pins it to the column's left edge. */}
             <Divider
-              className="divider tw:bg-transparent"
+              className="divider tw:mx-auto tw:min-h-0 tw:flex-1 tw:bg-transparent"
               orientation="vertical"
             />
           </Box>

@@ -458,13 +458,9 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigCollapse = page.locator(
-        '.sso-advanced-properties-collapse'
-      );
-
-      await expect(advancedConfigCollapse).toBeVisible();
-
-      const advancedConfigHeader = page.getByText(/advanced config/i);
+      const advancedConfigHeader = page.getByRole('button', {
+        name: /advanced config/i,
+      });
 
       await expect(advancedConfigHeader).toBeVisible();
     });
@@ -654,12 +650,13 @@ test.describe('SSO Configuration Tests', () => {
     test('should collapse advanced config by default', async ({ page }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigPanel = page.locator(
-        '.sso-advanced-properties-collapse .ant-collapse-item'
-      );
+      const advancedConfigHeader = page.getByRole('button', {
+        name: /advanced config/i,
+      });
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'false'
       );
     });
 
@@ -668,23 +665,27 @@ test.describe('SSO Configuration Tests', () => {
     }) => {
       await selectSSOProvider(page, 'google');
 
-      const advancedConfigHeader = page.getByText(/advanced config/i);
-      const advancedConfigPanel = page.locator(
-        '.sso-advanced-properties-collapse .ant-collapse-item'
-      );
+      const advancedConfigHeader = page.getByRole('button', {
+        name: /advanced config/i,
+      });
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'false'
       );
 
       await advancedConfigHeader.click();
 
-      await expect(advancedConfigPanel).toHaveClass(/ant-collapse-item-active/);
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
 
       await advancedConfigHeader.click();
 
-      await expect(advancedConfigPanel).not.toHaveClass(
-        /ant-collapse-item-active/
+      await expect(advancedConfigHeader).toHaveAttribute(
+        'aria-expanded',
+        'false'
       );
     });
 
@@ -738,17 +739,17 @@ test.describe('SSO Configuration Tests', () => {
 
       // Open the roles dropdown — options are loaded from the API
       const roleInput = adminsMapping.rolesSelect.getByRole('combobox');
-      await roleInput.focus();
-      await roleInput.press('ArrowDown');
-      const roleOption = page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Data Consumer', { exact: true });
+      await roleInput.click();
+      const roleOption = page.getByRole('option', {
+        name: 'Data Consumer',
+        exact: true,
+      });
       await expect(roleOption).toBeVisible();
       await roleOption.click();
       await roleInput.press('Escape');
       await expect(
-        adminsMapping.rolesSelect.getByTitle('Data Consumer', { exact: true })
-      ).toBeVisible();
+        adminsMapping.rolesSelect.getByTestId('autocomplete-selected-item')
+      ).toHaveText('Data Consumer');
 
       // Add a second mapping with a duplicate DN — both rows show an error
       const duplicateMapping = await addMapping();
@@ -792,49 +793,50 @@ test.describe('SSO Configuration Tests', () => {
       const field = page.getByTestId(
         'sso-configuration-form-array-field-template-authReassignRoles'
       );
-      const dropdown = page.locator('.ant-select-dropdown:visible');
+      const dropdown = page.getByRole('listbox');
+      const selectedRoles = field.getByTestId('autocomplete-selected-item');
 
       // Field renders as a combobox (not a plain tags input)
       await expect(field).toBeVisible();
       await expect(field.getByRole('combobox')).toBeVisible();
 
       // Opening the dropdown shows API-fetched role options
-      await field.click();
+      await field.getByRole('combobox').click();
       await expect(dropdown).toBeVisible();
-      await expect(dropdown.locator('.ant-select-item-option')).not.toHaveCount(
-        0
-      );
+      await expect(dropdown.getByRole('option')).not.toHaveCount(0);
 
       // Select a named role — it appears as a selection tag
-      await dropdown.getByTitle('Data Consumer', { exact: true }).click();
-      await expect(field.locator('.ant-select-selection-item')).toHaveCount(1);
+      await dropdown
+        .getByRole('option', { name: 'Data Consumer', exact: true })
+        .click();
+      await expect(selectedRoles).toHaveCount(1);
 
-      // Remove the selected role via its remove button
-      await field.locator('.ant-select-selection-item-remove').click();
-      await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
+      // Remove the selected role via its remove button; the open list hides
+      // the chips from the accessibility tree, so close it first.
+      await field.getByRole('combobox').press('Escape');
+      await selectedRoles.getByRole('button').click();
+      await expect(selectedRoles).toHaveCount(0);
 
       // Typing filters the visible options
-      await field.click();
+      await field.getByRole('combobox').click();
       const dataRoleSearchResponse = page.waitForResponse(
         '/api/v1/roles/search?*'
       );
-      await field.locator('input').fill('Data');
+      await field.getByRole('combobox').fill('Data');
       await dataRoleSearchResponse;
-      await expect(
-        dropdown.locator(
-          '.ant-select-item-option:not(.ant-select-item-option-disabled)'
-        )
-      ).not.toHaveCount(0, { timeout: 15000 });
+      await expect(dropdown.getByRole('option')).not.toHaveCount(0, {
+        timeout: 15000,
+      });
 
       // Pressing Enter on a non-existent value does not create an arbitrary tag
-      await field.locator('input').clear();
+      await field.getByRole('combobox').clear();
       const missingRoleSearchResponse = page.waitForResponse(
         '/api/v1/roles/search?*'
       );
-      await field.locator('input').fill('NonExistentRoleXYZ123');
+      await field.getByRole('combobox').fill('NonExistentRoleXYZ123');
       await missingRoleSearchResponse;
-      await field.locator('input').press('Enter');
-      await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
+      await field.getByRole('combobox').press('Enter');
+      await expect(selectedRoles).toHaveCount(0);
     });
 
     test('should not display role mapping widget for non-LDAP providers', async ({
@@ -853,7 +855,7 @@ test.describe('SAML Metadata XML Upload', () => {
     await enableSSOEditMode(page);
     await selectSSOProvider(page, 'saml');
 
-    const dropZone = page.getByTestId('file-upload-drop-zone');
+    const dropZone = page.getByTestId('file-uploader');
 
     await expect(dropZone).toBeVisible();
     await expect(
@@ -874,8 +876,8 @@ test.describe('SAML Metadata XML Upload', () => {
     await selectSSOProvider(page, 'saml');
 
     await test.step('Wait for drop zone and upload valid SAML metadata XML', async () => {
-      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
-      const fileInput = page.getByTestId('file-uploader');
+      await expect(page.getByTestId('file-uploader')).toBeVisible();
+      const fileInput = page.getByTestId('file-upload-input');
 
       await fileInput.setInputFiles(VALID_SAML_XML);
     });
@@ -913,9 +915,9 @@ test.describe('SAML Metadata XML Upload', () => {
 
     await test.step('Click change file and upload invalid SAML metadata XML', async () => {
       await page.getByTestId('change-metadata-xml-btn').click();
-      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
+      await expect(page.getByTestId('file-uploader')).toBeVisible();
 
-      const fileInput = page.getByTestId('file-uploader');
+      const fileInput = page.getByTestId('file-upload-input');
 
       await fileInput.setInputFiles(INVALID_SAML_XML);
     });
@@ -969,9 +971,9 @@ test.describe('SAML Metadata XML Upload', () => {
     await selectSSOProvider(page, 'saml');
 
     await test.step('Upload Okta SAML metadata XML', async () => {
-      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
+      await expect(page.getByTestId('file-uploader')).toBeVisible();
 
-      await page.getByTestId('file-uploader').setInputFiles(OKTA_SAML_XML);
+      await page.getByTestId('file-upload-input').setInputFiles(OKTA_SAML_XML);
 
       await expect(page.getByTestId('change-metadata-xml-btn')).toBeVisible();
       await expect(

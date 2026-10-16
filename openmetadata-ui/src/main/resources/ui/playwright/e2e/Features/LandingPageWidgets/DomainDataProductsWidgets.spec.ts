@@ -141,14 +141,9 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await verifyWidgetCountOnCurrentPage(
       page,
       'KnowledgePanel.Domains',
-      [
-        `[data-testid="domain-card-${
-          domain.responseData.id ?? ''
-        }"] .domain-card-count`,
-        `[data-testid="domain-card-${
-          domain.responseData.id ?? ''
-        }"] .domain-card-full-count`,
-      ].join(', '),
+      `[data-testid="domain-card-${
+        domain.responseData.id ?? ''
+      }"] [data-testid="domain-asset-count"]`,
       0
     );
     await verifyWidgetCountOnCurrentPage(

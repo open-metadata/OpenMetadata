@@ -507,10 +507,11 @@ describe('ColumnDetailPanel', () => {
 
   describe('Component Rendering', () => {
     it('should render drawer when isOpen is true', async () => {
-      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
+      const { getByTestId, getByRole } = render(
+        <ColumnDetailPanel {...mockProps} />
+      );
 
-      expect(getByTestId('drawer')).toBeInTheDocument();
-      expect(getByTestId('drawer')).toHaveAttribute('data-open', 'true');
+      expect(getByRole('dialog')).toBeInTheDocument();
 
       await waitFor(() => {
         expect(getByTestId('description-section')).toBeInTheDocument();
@@ -518,11 +519,11 @@ describe('ColumnDetailPanel', () => {
     });
 
     it('should not render drawer when isOpen is false', () => {
-      const { getByTestId } = render(
+      const { queryByRole } = render(
         <ColumnDetailPanel {...mockProps} isOpen={false} />
       );
 
-      expect(getByTestId('drawer')).toHaveAttribute('data-open', 'false');
+      expect(queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('should render all sections in overview tab', async () => {

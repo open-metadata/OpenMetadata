@@ -185,7 +185,7 @@ const SearchSettingsView = ({
         data-testid="reset-search-settings-btn"
         iconLeading={RefreshCcw01}
         isDisabled={isUpdating}
-        size="sm"
+        size="xs"
         onPress={() => setConfirm('reset')}>
         {t('label.reset')}
       </Button>
