@@ -325,3 +325,21 @@ describe('WorkflowHeader — editor link', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe('WorkflowHeader — actions variant', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders only the controls, for a host page that shows the title', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(<WorkflowHeader {...defaultProps} variant="actions" />);
+
+    expect(screen.getByTestId('workflow-header-actions')).toBeInTheDocument();
+    expect(screen.getByTestId('workflow-controls')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-workflow-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('workflow-title')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('workflow-header')).not.toBeInTheDocument();
+  });
+});

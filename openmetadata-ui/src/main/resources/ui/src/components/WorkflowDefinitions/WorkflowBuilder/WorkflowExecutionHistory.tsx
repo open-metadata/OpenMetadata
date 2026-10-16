@@ -48,9 +48,17 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 
 const GLOBAL_RELATED_ENTITY_VARIABLE = 'global_relatedEntity';
 
-export const WorkflowExecutionHistory: React.FC = () => {
+interface WorkflowExecutionHistoryProps {
+  /** The workflow whose runs are listed; the route's workflow when unset. */
+  workflowFqn?: string;
+}
+
+export const WorkflowExecutionHistory: React.FC<
+  WorkflowExecutionHistoryProps
+> = ({ workflowFqn: workflowFqnProp }) => {
   const { t } = useTranslation();
-  const { fqn: workflowFqn } = useFqn();
+  const { fqn: routeFqn } = useFqn();
+  const workflowFqn = workflowFqnProp ?? routeFqn;
   const [instances, setInstances] = useState<WorkflowInstance[]>([]);
   const [loading, setLoading] = useState(false);
   const [paging, setPaging] = useState<Paging>({ total: 0 });

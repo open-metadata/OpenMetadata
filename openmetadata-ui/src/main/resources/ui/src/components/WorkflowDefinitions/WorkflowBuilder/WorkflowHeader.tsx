@@ -49,6 +49,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   handleRunWorkflow,
   isRunLoading = false,
   onUpdateDisplayName,
+  variant = 'page',
 }) => {
   const { t } = useTranslation();
   const {
@@ -188,6 +189,18 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
       <WorkflowIcon className="tw:size-4 tw:text-white" />
     </div>
   );
+
+  // The host page shows the title, so only the controls that act on the workflow remain.
+  if (variant === 'actions') {
+    return (
+      <div
+        className="tw:flex tw:gap-3 tw:items-center"
+        data-testid="workflow-header-actions">
+        {workflowControls}
+        {editWorkflowButton}
+      </div>
+    );
+  }
 
   return (
     <>

@@ -311,6 +311,11 @@ export interface WorkflowHeaderProps {
   isRunLoading?: boolean;
   focusedConnection?: { sourceId: string; targetId: string } | null;
   onUpdateDisplayName?: (displayName: string) => void;
+  /**
+   * `actions` renders only the run, test, save, cancel and edit controls, for a host page that
+   * shows the workflow's title itself.
+   */
+  variant?: 'page' | 'actions';
 }
 
 export interface TaskItemProps {
