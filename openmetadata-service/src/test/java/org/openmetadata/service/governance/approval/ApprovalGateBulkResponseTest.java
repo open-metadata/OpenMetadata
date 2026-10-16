@@ -14,7 +14,9 @@
 package org.openmetadata.service.governance.approval;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.ws.rs.core.Response;
 import java.util.List;
@@ -31,7 +33,7 @@ class ApprovalGateBulkResponseTest {
 
   @Test
   void everyAssetHeldAnswersAcceptedWithTheCount() {
-    BulkOperationResult result = ApprovalGate.withHeld(emptyResult(), List.of(held(), held()));
+    BulkOperationResult result = result(List.of(held(), held()));
 
     Response response = ApprovalGate.bulkResponse(result, false);
 
@@ -41,11 +43,7 @@ class ApprovalGateBulkResponseTest {
 
   @Test
   void partlyHeldAnswersOkWithTheCount() {
-    BulkOperationResult applied =
-        emptyResult()
-            .withSuccessRequest(List.of(new BulkResponse().withRequest(asset()).withStatus(OK)))
-            .withNumberOfRowsPassed(1);
-    BulkOperationResult result = ApprovalGate.withHeld(applied, List.of(held()));
+    BulkOperationResult result = result(List.of(new BulkResponse().withRequest(asset()), held()));
 
     Response response = ApprovalGate.bulkResponse(result, false);
 
@@ -55,7 +53,7 @@ class ApprovalGateBulkResponseTest {
 
   @Test
   void dryRunAnswersOkWithoutTheCount() {
-    BulkOperationResult result = ApprovalGate.withHeld(emptyResult(), List.of(held()));
+    BulkOperationResult result = result(List.of(heldInDryRun()));
 
     Response response = ApprovalGate.bulkResponse(result, true);
 
@@ -72,14 +70,26 @@ class ApprovalGateBulkResponseTest {
   }
 
   @Test
-  void submittedCountIgnoresAssetsThatCouldNotBeSubmitted() {
-    BulkResponse rejected =
-        new BulkResponse()
-            .withRequest(asset())
-            .withStatus(Response.Status.CONFLICT.getStatusCode());
+  void aHeldItemNamesItsChangeRequestAndIsToldApartFromAnAppliedOne() {
+    UUID changeRequestId = UUID.randomUUID();
 
-    assertEquals(1, ApprovalGate.submittedCount(List.of(held(), rejected), false));
-    assertEquals(0, ApprovalGate.submittedCount(List.of(held()), true));
+    assertEquals(
+        "Pending approval: change request " + changeRequestId,
+        ApprovalGate.pendingMessage(changeRequestId));
+    assertEquals("Pending approval", ApprovalGate.pendingMessage(null));
+    assertTrue(ApprovalGate.isPending(held()));
+    assertTrue(ApprovalGate.isPending(heldInDryRun()));
+    assertFalse(ApprovalGate.isPending(new BulkResponse().withRequest(asset())));
+  }
+
+  // As AssetEditService reports them: a held item passes and also counts as pending approval.
+  private static BulkOperationResult result(List<BulkResponse> passed) {
+    int pending = (int) passed.stream().filter(ApprovalGate::isPending).count();
+    return emptyResult()
+        .withSuccessRequest(passed)
+        .withNumberOfRowsProcessed(passed.size())
+        .withNumberOfRowsPassed(passed.size())
+        .withNumberOfRowsPendingApproval(pending);
   }
 
   private static BulkOperationResult emptyResult() {
@@ -87,7 +97,17 @@ class ApprovalGateBulkResponseTest {
   }
 
   private static BulkResponse held() {
-    return new BulkResponse().withRequest(asset()).withStatus(OK);
+    return new BulkResponse()
+        .withRequest(asset())
+        .withStatus(OK)
+        .withMessage(ApprovalGate.pendingMessage(UUID.randomUUID()));
+  }
+
+  private static BulkResponse heldInDryRun() {
+    return new BulkResponse()
+        .withRequest(asset())
+        .withStatus(OK)
+        .withMessage(ApprovalGate.pendingMessage(null));
   }
 
   private static EntityReference asset() {

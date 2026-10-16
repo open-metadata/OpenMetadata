@@ -615,3 +615,11 @@ SET json = jsonb_set(
 WHERE name = 'tableDiff'
   AND jsonb_typeof(json->'parameterDefinition') = 'array'
   AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "parallelQueries"}]'::jsonb);
+
+-- Auto-classification sampleDataCount gained a schema maximum of 1000, the most rows a run reads.
+-- Clamp saved pipelines above it so they still validate after upgrade instead of failing on edit.
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(json::jsonb, '{sourceConfig,config,sampleDataCount}', '1000'::jsonb)::json
+WHERE json::jsonb -> 'sourceConfig' -> 'config' ->> 'type' = 'AutoClassification'
+  AND jsonb_typeof(json::jsonb -> 'sourceConfig' -> 'config' -> 'sampleDataCount') = 'number'
+  AND (json::jsonb -> 'sourceConfig' -> 'config' ->> 'sampleDataCount')::numeric > 1000;
