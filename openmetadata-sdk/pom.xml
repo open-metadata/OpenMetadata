@@ -21,7 +21,7 @@
         <slf4j.version>2.0.9</slf4j.version>
         <lombok.version>1.18.30</lombok.version>
         <testcontainers.version>1.21.4</testcontainers.version>
-        <jwt.version>4.4.0</jwt.version>
+        <jwt.version>4.6.2</jwt.version>
         <flyway.version>9.22.3</flyway.version>
         <json.version>20240303</json.version>
     </properties>
