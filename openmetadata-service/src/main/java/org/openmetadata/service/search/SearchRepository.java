@@ -65,7 +65,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.collect.Lists;
-import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -187,7 +186,6 @@ import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
-import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
 @Slf4j
 public class SearchRepository {
@@ -459,6 +457,7 @@ public class SearchRepository {
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
   private Map<String, IndexMapping> aliasIndexMap;
+  private Set<String> knownIndexNames = Set.of();
 
   /**
    * Staged index names being populated by an in-flight reindex, keyed by the canonical index name
@@ -592,6 +591,7 @@ public class SearchRepository {
     IndexMappingLoader mappingLoader = IndexMappingLoader.getInstance();
     entityIndexMap = mappingLoader.getIndexMapping();
     aliasIndexMap = buildAliasIndexMap(entityIndexMap);
+    knownIndexNames = SearchIndexUtils.knownIndexNames(entityIndexMap);
   }
 
   private static Map<String, IndexMapping> buildAliasIndexMap(
@@ -1220,6 +1220,11 @@ public class SearchRepository {
   /** @see SearchIndexUtils#getIndexOrAliasName(String, Map, Map, String) */
   public String getIndexOrAliasName(String name) {
     return SearchIndexUtils.getIndexOrAliasName(name, entityIndexMap, aliasIndexMap, clusterAlias);
+  }
+
+  /** @see SearchIndexUtils#unknownIndexNames(String, Set, String) */
+  public List<String> unknownIndexNames(String resolvedIndex) {
+    return SearchIndexUtils.unknownIndexNames(resolvedIndex, knownIndexNames, clusterAlias);
   }
 
   /**
@@ -2888,24 +2893,114 @@ public class SearchRepository {
       EntityInterface<?> entity)
       throws IOException {
     if (changeDescription != null && !nullOrEmpty(indexMapping.getChildAliases())) {
-      Pair<String, Map<String, Object>> updates =
-          getInheritedFieldChanges(changeDescription, entity, entityType);
-      if (updates.getKey() != null && !updates.getKey().isEmpty()) {
-        if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
+      if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
+        Pair<String, Map<String, Object>> updates =
+            getInheritedFieldChanges(changeDescription, entity, entityType, descriptor -> true);
+        if (!nullOrEmpty(updates.getKey())) {
           propagateToDomainChildren(entityId, indexMapping, updates);
-        } else {
-          String parentFieldName = resolveParentFieldName(entityType);
-          Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
-          List<String> entityChildren =
-              filterChildAliasesByCapability(
-                  indexMapping, capability -> capability == null || !capability.isTimeSeries());
-          if (!nullOrEmpty(entityChildren)) {
-            searchClient.updateChildren(entityChildren, parentMatch, updates);
-          }
-          propagateTagChangesToTimeSeriesChildren(indexMapping, parentMatch, updates);
         }
+      } else {
+        propagateToEntityChildren(entityType, entityId, changeDescription, indexMapping, entity);
       }
     }
+  }
+
+  // A child index gets only the fields whose descriptor reaches it, and of a tag list only the
+  // inherited terms when its descriptor says so, so children that see the change differently are
+  // updated by requests of their own. Time-series children get only the tag changes.
+  private void propagateToEntityChildren(
+      String entityType,
+      String entityId,
+      ChangeDescription changeDescription,
+      IndexMapping indexMapping,
+      EntityInterface<?> entity)
+      throws IOException {
+    Pair<String, String> parentMatch =
+        new ImmutablePair<>(resolveParentFieldName(entityType), entityId);
+    for (Map.Entry<ChildView, List<String>> group :
+        childAliasesByView(entityType, indexMapping).entrySet()) {
+      ChildView view = group.getKey();
+      Pair<String, Map<String, Object>> updates =
+          getInheritedFieldChanges(
+              withOnlyInheritedTerms(changeDescription, view.inheritedTermsOnlyFields()),
+              entity,
+              entityType,
+              descriptor -> !view.skippedFields().contains(descriptor.fieldName()));
+      if (!nullOrEmpty(updates.getKey())) {
+        searchClient.updateChildren(withClusterAlias(group.getValue()), parentMatch, updates);
+      }
+    }
+    Pair<String, Map<String, Object>> updates =
+        getInheritedFieldChanges(changeDescription, entity, entityType, descriptor -> true);
+    if (!nullOrEmpty(updates.getKey())) {
+      propagateTagChangesToTimeSeriesChildren(indexMapping, parentMatch, updates);
+    }
+  }
+
+  /** How one child index takes a change: the fields it skips, and the tag lists it narrows. */
+  private record ChildView(Set<String> skippedFields, Set<String> inheritedTermsOnlyFields) {}
+
+  // The entity's non-time-series child aliases, grouped by how they take the propagated fields.
+  private Map<ChildView, List<String>> childAliasesByView(
+      String entityType, IndexMapping indexMapping) {
+    List<PropagationDescriptor> descriptors =
+        Entity.getEntityRepository(entityType).getSearchPropagationDescriptors();
+    Map<ChildView, List<String>> groups = new LinkedHashMap<>();
+    for (String alias :
+        childAliasesWithCapability(
+            indexMapping, capability -> capability == null || !capability.isTimeSeries())) {
+      ChildView view =
+          new ChildView(
+              fieldNames(descriptors, descriptor -> !descriptor.reaches(alias)),
+              fieldNames(descriptors, descriptor -> descriptor.carriesOnlyInheritedTerms(alias)));
+      groups.computeIfAbsent(view, key -> new ArrayList<>()).add(alias);
+    }
+    return groups;
+  }
+
+  private static Set<String> fieldNames(
+      List<PropagationDescriptor> descriptors, Predicate<PropagationDescriptor> filter) {
+    return descriptors.stream()
+        .filter(filter)
+        .map(PropagationDescriptor::fieldName)
+        .collect(Collectors.toSet());
+  }
+
+  // The change as a child sees it when it takes, of the given tag lists, only the glossary terms a
+  // field inherits: their other labels are left out, and a list left with none is no change.
+  private static ChangeDescription withOnlyInheritedTerms(
+      ChangeDescription change, Set<String> tagFields) {
+    return tagFields.isEmpty()
+        ? change
+        : new ChangeDescription()
+            .withFieldsAdded(inheritedTermsOf(change.getFieldsAdded(), tagFields))
+            .withFieldsUpdated(inheritedTermsOf(change.getFieldsUpdated(), tagFields))
+            .withFieldsDeleted(inheritedTermsOf(change.getFieldsDeleted(), tagFields));
+  }
+
+  private static List<FieldChange> inheritedTermsOf(
+      List<FieldChange> changes, Set<String> tagFields) {
+    return listOrEmpty(changes).stream()
+        .map(
+            change ->
+                tagFields.contains(change.getName())
+                    ? inheritedTermsOf(change)
+                    : Optional.of(change))
+        .flatMap(Optional::stream)
+        .toList();
+  }
+
+  private static Optional<FieldChange> inheritedTermsOf(FieldChange change) {
+    List<TagLabel> added =
+        Entity.inheritedParentTerms(
+            JsonUtils.readOrConvertValues(change.getNewValue(), TagLabel.class));
+    List<TagLabel> deleted =
+        Entity.inheritedParentTerms(
+            JsonUtils.readOrConvertValues(change.getOldValue(), TagLabel.class));
+    return added.isEmpty() && deleted.isEmpty()
+        ? Optional.empty()
+        : Optional.of(
+            new FieldChange().withName(change.getName()).withNewValue(added).withOldValue(deleted));
   }
 
   /**
@@ -2948,59 +3043,6 @@ public class SearchRepository {
   }
 
   /**
-   * Cascades a tag add/remove from the bulk asset APIs onto the asset's child search docs.
-   *
-   * <p>Those APIs write {@code tag_usage} directly and then re-index the asset through {@link
-   * #updateEntity(EntityReference)}, which deliberately clears the change description — so {@code
-   * requiresPropagation} closes the gate and the descriptor-driven fan-out never runs. Children that
-   * are entities rather than fields (test cases, test suites) are only reachable this way: unlike
-   * columns, nothing rebuilds their docs from the parent, so a term removed through the glossary
-   * Assets tab used to linger on them and keep them listed under the term.
-   *
-   * <p>Search failures are queued for retry rather than thrown: the caller has already committed
-   * the {@code tag_usage} change, so the search index is what needs to catch up. Any other failure
-   * is a bug in building the update, which a retry would only repeat, so it propagates.
-   */
-  public void propagateTagChangeToChildren(
-      EntityInterface<?> entity, List<TagLabel> addedTags, List<TagLabel> deletedTags) {
-    if (entity == null || entity.getId() == null || nullOrEmpty(entity.getEntityReference())) {
-      return;
-    }
-    String entityType = entity.getEntityReference().getType();
-    if (!checkIfIndexingIsSupported(entityType) || nullOrEmpty(entityIndexMap.get(entityType))) {
-      return;
-    }
-    ChangeDescription changeDescription = tagChangeDescription(addedTags, deletedTags);
-    try {
-      propagateInheritedFieldsToChildren(
-          entityType,
-          entity.getId().toString(),
-          changeDescription,
-          entityIndexMap.get(entityType),
-          entity);
-    } catch (IOException | ElasticsearchException | OpenSearchException e) {
-      SearchIndexRetryQueue.enqueueWithPropagation(
-          entity, changeDescription, "propagateTagChangeToChildren", e);
-    }
-  }
-
-  private static ChangeDescription tagChangeDescription(
-      List<TagLabel> addedTags, List<TagLabel> deletedTags) {
-    ChangeDescription changeDescription = new ChangeDescription();
-    if (!nullOrEmpty(addedTags)) {
-      changeDescription
-          .getFieldsAdded()
-          .add(new FieldChange().withName(Entity.FIELD_TAGS).withNewValue(addedTags));
-    }
-    if (!nullOrEmpty(deletedTags)) {
-      changeDescription
-          .getFieldsDeleted()
-          .add(new FieldChange().withName(Entity.FIELD_TAGS).withOldValue(deletedTags));
-    }
-    return changeDescription;
-  }
-
-  /**
    * The mapping's child aliases, minus {@code tableColumn} while column indexing is turned off.
    * Child updates go out as one multi-index request, which fails as a whole on a missing index.
    */
@@ -3013,21 +3055,24 @@ public class SearchRepository {
   }
 
   private List<String> clusterChildAliasesOf(IndexMapping indexMapping) {
-    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
-    return childAliasesOf(indexMapping).stream()
-        .map(alias -> hasClusterAlias ? clusterAlias + INDEX_NAME_SEPARATOR + alias : alias)
-        .toList();
+    return withClusterAlias(childAliasesOf(indexMapping));
   }
 
   private List<String> filterChildAliasesByCapability(
       IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
-    List<String> childAliases = childAliasesOf(indexMapping);
-    if (nullOrEmpty(childAliases)) {
-      return List.of();
-    }
-    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
-    return childAliases.stream()
+    return withClusterAlias(childAliasesWithCapability(indexMapping, includeCapability));
+  }
+
+  private List<String> childAliasesWithCapability(
+      IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
+    return childAliasesOf(indexMapping).stream()
         .filter(alias -> includeCapability.test(EntityIndexCapabilityRegistry.get(alias)))
+        .toList();
+  }
+
+  private List<String> withClusterAlias(List<String> aliases) {
+    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
+    return aliases.stream()
         .map(alias -> hasClusterAlias ? clusterAlias + INDEX_NAME_SEPARATOR + alias : alias)
         .toList();
   }
@@ -3481,7 +3526,10 @@ public class SearchRepository {
   }
 
   private Pair<String, Map<String, Object>> getInheritedFieldChanges(
-      ChangeDescription changeDescription, EntityInterface<?> entity, String entityType) {
+      ChangeDescription changeDescription,
+      EntityInterface<?> entity,
+      String entityType,
+      Predicate<PropagationDescriptor> reachesChildren) {
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldData = new HashMap<>();
 
@@ -3489,6 +3537,7 @@ public class SearchRepository {
       EntityRepository<?> repo = Entity.getEntityRepository(entityType);
       Map<String, PropagationDescriptor> descriptorMap =
           repo.getSearchPropagationDescriptors().stream()
+              .filter(reachesChildren)
               .collect(Collectors.toMap(PropagationDescriptor::fieldName, Function.identity()));
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         PropagationDescriptor desc = descriptorMap.get(field.getName());
@@ -4672,8 +4721,9 @@ public class SearchRepository {
         searchAfter);
   }
 
-  public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    return searchClient.searchBySourceUrl(sourceUrl);
+  public Response searchBySourceUrl(String sourceUrl, SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchBySourceUrl(sourceUrl, subjectContext);
   }
 
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
@@ -4707,6 +4757,10 @@ public class SearchRepository {
       SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
     SearchLineageResult result = searchClient.searchLineageWithDirection(lineageRequest);
     return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
+  }
+
+  public Optional<EntityReference> getLineageRoot(String fqn) throws IOException {
+    return searchClient.getLineageRoot(fqn);
   }
 
   public LineagePaginationInfo getLineagePaginationInfo(
@@ -4817,9 +4871,16 @@ public class SearchRepository {
   }
 
   public Response searchByField(
-      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      SubjectContext subjectContext)
       throws IOException {
-    return searchClient.searchByField(fieldName, fieldValue, index, deleted, from, size);
+    return searchClient.searchByField(
+        fieldName, fieldValue, index, deleted, from, size, subjectContext);
   }
 
   public Response searchByFieldWithOptions(

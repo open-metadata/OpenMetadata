@@ -24,7 +24,6 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Alert,
   Box,
@@ -38,6 +37,7 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -250,7 +250,7 @@ const TransitionFormsPane: FC<{
       <Button
         color="secondary"
         data-testid="task-form-transition-add-button"
-        iconLeading={<PlusOutlined />}
+        iconLeading={Plus}
         onClick={() =>
           syncTransitionDesigner([
             ...transitionBuilders,
@@ -395,7 +395,7 @@ const WorkflowStagesPane: FC<{
       <Button
         color="secondary"
         data-testid="task-form-stage-mapping-add-button"
-        iconLeading={<PlusOutlined />}
+        iconLeading={Plus}
         onClick={() =>
           syncStageMappings([...stageMappings, createEmptyStageMapping()])
         }>

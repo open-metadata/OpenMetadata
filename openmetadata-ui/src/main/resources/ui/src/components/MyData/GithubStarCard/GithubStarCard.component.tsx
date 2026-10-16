@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
   Button,
@@ -158,7 +157,9 @@ const GithubStarCard = () => {
               <Button
                 color="secondary"
                 href={OMD_REPOSITORY_LINK}
-                iconLeading={<Icon component={StarGithubIcon} size={12} />}
+                iconLeading={
+                  <StarGithubIcon className="tw:size-3 tw:shrink-0" />
+                }
                 rel="noopener noreferrer"
                 target="_blank">
                 {t('label.star')}

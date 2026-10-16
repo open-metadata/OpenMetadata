@@ -156,22 +156,7 @@ const setColumnsInCurrentPagesMock = jest.fn((updater) => {
 });
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Input: ({
-    inputDataTestId,
-    value,
-    onChange,
-  }: {
-    inputDataTestId?: string;
-    value?: string;
-    onChange?: (value: string) => void;
-  }) => (
-    <input
-      aria-label="search"
-      data-testid={inputDataTestId}
-      value={value}
-      onChange={(e) => onChange?.(e.target.value)}
-    />
-  ),
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   ButtonUtility: jest
     .fn()
     .mockImplementation(
@@ -230,6 +215,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       );
     }),
   Button: jest.requireActual('@openmetadata/ui-core-components').Button,
+  Dropdown: jest.requireActual('@openmetadata/ui-core-components').Dropdown,
   Skeleton: jest.requireActual('@openmetadata/ui-core-components').Skeleton,
   Tooltip: jest.requireActual('@openmetadata/ui-core-components').Tooltip,
   Typography: jest
@@ -274,7 +260,6 @@ const mockDefaultLineageState = {
   tracedNodes: new Set(),
   tracedColumns: new Set(),
   columnsHavingLineage: new Map([['id', new Set()]]),
-  isEditMode: false,
   updateColumnsInCurrentPages: jest.fn(),
   setSelectedColumn: mockSetSelectedColumn,
   nodeFilterState: new Map(),
@@ -330,7 +315,6 @@ describe('CustomNodeV1', () => {
         tracedColumns: new Set(),
         tracedNodes: new Set(),
         columnsHavingLineage: new Map([['id', new Set()]]),
-        isEditMode: false,
         nodeFilterState: new Map(),
         setNodeFilterState: mockSetNodeFilterState,
       })
@@ -540,7 +524,6 @@ describe('CustomNodeV1', () => {
         tracedColumns: new Set(),
         tracedNodes: new Set(),
         columnsHavingLineage: new Map([['id', new Set()]]),
-        isEditMode: false,
         nodeFilterState: new Map(),
         setNodeFilterState: mockSetNodeFilterState,
       })
@@ -565,7 +548,6 @@ describe('CustomNodeV1', () => {
         tracedColumns: new Set(),
         tracedNodes: new Set(),
         columnsHavingLineage: new Map([['id', new Set()]]),
-        isEditMode: false,
         nodeFilterState: new Map(),
         setNodeFilterState: mockSetNodeFilterState,
       })
@@ -601,7 +583,6 @@ describe('CustomNodeV1', () => {
         tracedNodes: new Set(),
         updateColumnsInCurrentPages: jest.fn(),
         columnsHavingLineage: new Map([['id', new Set()]]),
-        isEditMode: false,
         nodeFilterState: new Map(),
         setNodeFilterState: mockSetNodeFilterState,
       })
@@ -627,7 +608,6 @@ describe('CustomNodeV1', () => {
         tracedNodes: new Set(),
         updateColumnsInCurrentPages: jest.fn(),
         columnsHavingLineage: new Map([['id', new Set()]]),
-        isEditMode: false,
         nodeFilterState: new Map(),
         setNodeFilterState: mockSetNodeFilterState,
       })
@@ -657,7 +637,6 @@ describe('CustomNodeV1', () => {
         tracedNodes: new Set(),
         updateColumnsInCurrentPages: jest.fn(),
         columnsHavingLineage: new Map([['id', new Set()]]),
-        isEditMode: false,
         nodeFilterState: new Map(),
         setNodeFilterState: mockSetNodeFilterState,
       })
@@ -681,7 +660,6 @@ describe('CustomNodeV1', () => {
         tracedNodes: new Set(),
         updateColumnsInCurrentPages: jest.fn(),
         columnsHavingLineage: new Map([['id', new Set()]]),
-        isEditMode: false,
         nodeFilterState: new Map(),
         setNodeFilterState: mockSetNodeFilterState,
       })
@@ -714,7 +692,6 @@ describe('CustomNodeV1', () => {
         tracedColumns: new Set(),
         tracedNodes: new Set(),
         columnsHavingLineage: new Map(),
-        isEditMode: false,
         nodeFilterState: new Map(),
         setNodeFilterState: mockSetNodeFilterState,
         updateColumnsInCurrentPages: jest.fn(),
@@ -756,7 +733,6 @@ describe('CustomNodeV1', () => {
         tracedColumns: new Set(),
         tracedNodes: new Set(),
         columnsHavingLineage: new Map([['id', new Set()]]),
-        isEditMode: false,
         nodeFilterState: new Map(),
         setNodeFilterState: mockSetNodeFilterState,
       })
@@ -816,7 +792,6 @@ describe('CustomNodeV1', () => {
         tracedNodes: new Set(),
         updateColumnsInCurrentPages: jest.fn(),
         columnsHavingLineage: new Map([['id', new Set()]]),
-        isEditMode: false,
         nodeFilterState: new Map(),
         setNodeFilterState: mockSetNodeFilterState,
       })
@@ -853,7 +828,6 @@ describe('CustomNodeV1', () => {
           columnsHavingLineage: new Map([
             ['id', new Set(['col0', 'col2', 'col5', 'col7', 'col10'])],
           ]),
-          isEditMode: false,
           updateColumnsInCurrentPages: jest.fn(),
           nodeFilterState: new Map(),
           setNodeFilterState: mockSetNodeFilterState,
@@ -937,7 +911,6 @@ describe('CustomNodeV1', () => {
           columnsHavingLineage: new Map([
             ['id', new Set(['col0', 'col2', 'col5', 'col7', 'col10'])],
           ]),
-          isEditMode: false,
           updateColumnsInCurrentPages: jest.fn(),
           setSelectedColumn: mockSetSelectedColumn,
           nodeFilterState: new Map(),
@@ -989,7 +962,6 @@ describe('CustomNodeV1', () => {
               ]),
             ],
           ]),
-          isEditMode: false,
           updateColumnsInCurrentPages: jest.fn(),
           setSelectedColumn: mockSetSelectedColumn,
           nodeFilterState: new Map(),
@@ -1044,7 +1016,6 @@ describe('CustomNodeV1', () => {
           columnsHavingLineage: new Map([
             ['id', new Set(['col0', 'col2', 'col5'])],
           ]),
-          isEditMode: false,
           updateColumnsInCurrentPages: jest.fn(),
           setSelectedColumn: mockSetSelectedColumn,
           nodeFilterState: new Map(),
@@ -1086,7 +1057,6 @@ describe('CustomNodeV1', () => {
             columnsHavingLineage: new Map([
               ['khjahjfja', new Set(['col0', 'col2', 'col5', 'col7', 'col10'])],
             ]),
-            isEditMode: false,
             updateColumnsInCurrentPages: jest.fn(),
             setSelectedColumn: mockSetSelectedColumn,
             nodeFilterState: nodeFilterStateMap,
@@ -1146,7 +1116,6 @@ describe('CustomNodeV1', () => {
             columnsHavingLineage: new Map([
               ['khjahjfja', new Set(['col0', 'col2', 'col5'])],
             ]),
-            isEditMode: false,
             updateColumnsInCurrentPages: jest.fn(),
             setSelectedColumn: mockSetSelectedColumn,
             nodeFilterState: nodeFilterStateMap,
@@ -1182,7 +1151,6 @@ describe('CustomNodeV1', () => {
             columnsHavingLineage: new Map([
               ['khjahjfja', new Set(['col0', 'col2', 'col5'])],
             ]),
-            isEditMode: false,
             updateColumnsInCurrentPages: jest.fn(),
             setSelectedColumn: mockSetSelectedColumn,
             nodeFilterState: nodeFilterStateMap,
@@ -1211,37 +1179,6 @@ describe('CustomNodeV1', () => {
         );
 
         expect(filterButtonAfterRerender).toHaveClass('active');
-      });
-
-      it('should disable turn off and disable the filter in edit mode', () => {
-        const nodeFilterStateMap = new Map([['khjahjfja', false]]);
-        (useLineageStore as unknown as jest.Mock).mockImplementation(
-          withSelector({
-            isColumnLevelLineage: false,
-            isDQEnabled: false,
-            tracedColumns: new Set(),
-            tracedNodes: new Set(),
-            columnsHavingLineage: new Map([
-              ['khjahjfja', new Set(['col0', 'col2', 'col5'])],
-            ]),
-            isEditMode: true,
-            updateColumnsInCurrentPages: jest.fn(),
-            setSelectedColumn: mockSetSelectedColumn,
-            nodeFilterState: nodeFilterStateMap,
-            setNodeFilterState: mockSetNodeFilterState,
-          })
-        );
-
-        render(
-          <ReactFlowProvider>
-            <CustomNodeV1Component {...mockNodeDataProps} />
-          </ReactFlowProvider>
-        );
-
-        const filterButton = screen.getByTestId('lineage-filter-button');
-
-        expect(filterButton).not.toHaveClass('active');
-        expect(filterButton).toBeDisabled();
       });
     });
 
@@ -1304,7 +1241,6 @@ describe('CustomNodeV1', () => {
             tracedColumns: new Set(),
             tracedNodes: new Set(),
             columnsHavingLineage: columnsLineageMap,
-            isEditMode: false,
             updateColumnsInCurrentPages: jest.fn(),
             setSelectedColumn: mockSetSelectedColumn,
             nodeFilterState: nodeFilterStateMap,
@@ -1349,7 +1285,6 @@ describe('CustomNodeV1', () => {
             columnsHavingLineage: new Map([
               ['khjahjfja', new Set(['col0', 'col2', 'col5', 'col7', 'col10'])],
             ]),
-            isEditMode: false,
             updateColumnsInCurrentPages: jest.fn(),
             setSelectedColumn: mockSetSelectedColumn,
             nodeFilterState: nodeFilterStateMap,
@@ -1389,6 +1324,83 @@ describe('CustomNodeV1', () => {
         expect(visibleColumns).not.toContain('col1');
         expect(visibleColumns).not.toContain('col11');
       });
+    });
+  });
+
+  describe('LineageNodeMenu', () => {
+    const nodeProps = (dataOverrides: Record<string, unknown>) => ({
+      ...mockNodeDataProps,
+      data: {
+        ...mockNodeDataProps.data,
+        ...dataOverrides,
+      },
+    });
+
+    it('shows the node menu only when editable', () => {
+      const { rerender } = render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component
+            {...nodeProps({
+              isNodeEditable: true,
+              onSceneLineageEdit: jest.fn(),
+            })}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(screen.getByTestId('lineage-node-menu')).toBeInTheDocument();
+
+      rerender(
+        <ReactFlowProvider>
+          <CustomNodeV1Component
+            {...nodeProps({
+              isNodeEditable: false,
+              onSceneLineageEdit: jest.fn(),
+            })}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(screen.queryByTestId('lineage-node-menu')).not.toBeInTheDocument();
+    });
+
+    it('keeps the drill button clear of the node menu via a modifier class', () => {
+      const { container, rerender } = render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component
+            {...nodeProps({
+              isNodeEditable: true,
+              onSceneLineageEdit: jest.fn(),
+              sceneNode: { isExpandable: true },
+              onSceneDrill: jest.fn(),
+            })}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(container.querySelector('.lineage-node-content')).toHaveClass(
+        'has-lineage-node-menu'
+      );
+      expect(screen.getByTestId('lineage-node-menu')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'label.zoom-in' })
+      ).toBeInTheDocument();
+
+      rerender(
+        <ReactFlowProvider>
+          <CustomNodeV1Component
+            {...nodeProps({
+              isNodeEditable: false,
+              sceneNode: { isExpandable: true },
+              onSceneDrill: jest.fn(),
+            })}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(container.querySelector('.lineage-node-content')).not.toHaveClass(
+        'has-lineage-node-menu'
+      );
     });
   });
 });

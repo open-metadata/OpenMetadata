@@ -31,7 +31,7 @@ const TopicFooterMeta = ({
     <Typography
       className="tw:min-w-0 tw:text-text-tertiary!"
       ellipsis={{ rows: 1 }}
-      size="text-sm">
+      size="text-xs">
       {meta}
     </Typography>
   ) : null;
@@ -60,7 +60,7 @@ const TopicCardFooter: React.FC<TopicCardFooterProps> = ({
           className="tw:ml-auto tw:shrink-0"
           color="link-color"
           data-testid={`topic-action-${topicKey}`}
-          size="sm"
+          size="xs"
           onPress={action.onPress}>
           {action.label}
         </Button>
