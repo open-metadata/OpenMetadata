@@ -58,7 +58,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
-import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -502,7 +501,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       return new SearchResultListMapper(results, totalHits);
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw buildSearchException(e);
       }
@@ -711,7 +710,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           results, totalHits, lastHitSortValues, lastDocumentsInBatch);
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw buildSearchException(e);
       }
@@ -1395,8 +1394,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to find index %s", request.getIndex()));
+        throw SearchEngineErrors.indexNotFound(request.getIndex());
       } else {
         throw buildSearchException(e);
       }
@@ -1588,8 +1586,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       return new SearchResultListMapper(results, totalHits, lastHitSortValues);
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to find index %s", request.getIndex()));
+        throw SearchEngineErrors.indexNotFound(request.getIndex());
       } else {
         throw buildSearchException(e);
       }

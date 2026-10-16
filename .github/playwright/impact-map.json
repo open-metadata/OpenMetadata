@@ -436,6 +436,16 @@
       ]
     },
     {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataMarketplace/AnnouncementsWidgetV2/**"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/DataMarketplace.spec.ts",
+        "playwright/e2e/Pages/DataMarketplaceAnnouncements.spec.ts"
+      ]
+    },
+    {
       "_comment": "FilterSelect replaced SearchDropdown as the quick-filter renderer, so the generated map (which only walks openmetadata-ui spec imports) no longer routes filter dropdown changes to the former SearchDropdown consumer specs. Mirror that consumer set for the core component and its Dropdown base so a FilterSelect change selects the Explore/lineage/Test Definition/bulk-operation coverage on the PR instead of the merge queue.",
       "sources": [
         "openmetadata-ui-core-components/src/main/resources/ui/src/components/application/filter-select/**",
@@ -731,16 +741,19 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterClassBase.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/PersonaAIContextUtils.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/aicontext/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/PersonaRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/teams/PersonaResource.java",
         "openmetadata-spec/src/main/resources/json/schema/type/personaContext.json",
-        "openmetadata-spec/src/main/resources/json/schema/type/personaContextDefinition.json"
+        "openmetadata-spec/src/main/resources/json/schema/type/personaContextDefinition.json",
+        "openmetadata-spec/src/main/resources/json/schema/type/personaContextStatus.json"
       ],
       "projects": ["chromium"],
       "specs": [
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextPermissions.spec.ts"
+        "playwright/e2e/Features/PersonaAIContextPermissions.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextList.spec.ts"
       ]
     },
     {
