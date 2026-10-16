@@ -234,10 +234,7 @@ export const ContractQualityFormTab: React.FC<{
           dataSource={allTestCases}
           extraTableFilters={
             <Dropdown.Root>
-              <Button
-                color="secondary"
-                iconTrailing={<ChevronDown size={14} />}
-                size="sm">
+              <Button color="secondary" iconTrailing={ChevronDown} size="sm">
                 {t('label.filter-plural')}
               </Button>
               <Dropdown.Popover className="tw:w-auto">

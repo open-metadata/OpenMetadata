@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Box,
   ButtonGroup,
@@ -54,12 +53,16 @@ export const ListView = <T extends object = Record<string, unknown>>({
 
   const listViewOptions = [
     {
-      label: <Icon component={GridIcon} data-testid="grid" />,
+      label: (
+        <GridIcon className="tw:size-3.5 tw:shrink-0" data-testid="grid" />
+      ),
       value: ListViewOptions.CARD,
       ariaLabel: t('label.card'),
     },
     {
-      label: <Icon component={ListIcon} data-testid="list" />,
+      label: (
+        <ListIcon className="tw:size-3.5 tw:shrink-0" data-testid="list" />
+      ),
       value: ListViewOptions.TABLE,
       ariaLabel: t('label.table'),
     },

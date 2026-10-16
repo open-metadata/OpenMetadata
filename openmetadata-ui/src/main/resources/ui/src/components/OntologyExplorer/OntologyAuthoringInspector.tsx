@@ -126,7 +126,6 @@ const SECTION_ADD_TEST_IDS: Record<SectionKey, string> = {
 };
 
 const EXTERNAL_SCHEME_SUGGESTIONS = ['schema', 'wikidata', 'fibo', 'snomed'];
-
 // Hierarchy edges are derived from the term's parent, so no relationship type declares their inverse.
 const HIERARCHY_INVERSES: Record<string, string> = {
   childOf: 'parentOf',

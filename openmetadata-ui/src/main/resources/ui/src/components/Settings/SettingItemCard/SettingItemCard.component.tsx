@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 
 import classNames from 'classnames';
@@ -45,6 +44,8 @@ const SettingItemCard = ({
     [onClick, data.key]
   );
 
+  const SettingIcon = data.icon;
+
   return (
     <Card
       className={classNames('setting-card-item', className)}
@@ -60,10 +61,14 @@ const SettingItemCard = ({
                 ICON_TILE_COLORS[data.iconColor]
               )}
               justify="center">
-              <data.icon className="tw:size-8" />
+              <SettingIcon className="tw:size-8" />
             </Box>
           ) : (
-            <Icon component={data.icon} />
+            /* antd's <Icon> wrapper carried `vertical-align: -0.125em` from
+               `.anticon`. A bare <svg> is baseline-aligned inline, which makes
+               the icon box 2px taller and shifts every settings card down the
+               page, so keep that alignment here. */
+            <SettingIcon className="tw:size-[90px] tw:shrink-0 tw:align-[-0.125em]" />
           )}
           {Boolean(data?.isBeta) && (
             <Badge className="service-beta-tag" color="brand" size="sm">
