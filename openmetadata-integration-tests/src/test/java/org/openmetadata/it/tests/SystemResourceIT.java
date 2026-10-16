@@ -66,6 +66,7 @@ import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -99,6 +100,7 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
@@ -140,8 +142,10 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.TestLoginCallbackPage;
@@ -3024,6 +3028,125 @@ public class SystemResourceIT {
     assertTrue(
         teamRules.stream()
             .anyMatch(rule -> rule.getName().equals("Multiple Users or Single Team Ownership")));
+  }
+
+  @Test
+  void test_toggleEntityRuleEnabled_togglesOneRuleAndPreservesOthers() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Save the original settings so the test is isolated.
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+    EntityRulesSettings originalRules =
+        MAPPER.convertValue(original.getConfigValue(), EntityRulesSettings.class);
+    assertNotNull(originalRules.getEntitySemantics());
+    assertFalse(
+        originalRules.getEntitySemantics().isEmpty(),
+        "Pre-condition: seed entity rules must exist");
+
+    try {
+      SemanticsRule ruleToToggle = originalRules.getEntitySemantics().get(0);
+      String ruleName = ruleToToggle.getName();
+      boolean wasEnabled = Boolean.TRUE.equals(ruleToToggle.getEnabled());
+
+      // Toggle via the new CAS-protected endpoint. Path params decode "%" escapes but keep
+      // "+" literal (form encoding), so spaces must be sent as %20 — encodeURIComponent's
+      // behaviour — not URLEncoder's "+".
+      String encodedName = URLEncoder.encode(ruleName, StandardCharsets.UTF_8).replace("+", "%20");
+      String responseJson =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.PUT,
+                  "/v1/system/settings/entityRulesSettings/rules/" + encodedName + "/enabled",
+                  String.valueOf(!wasEnabled),
+                  RequestOptions.builder().header("Content-Type", "application/json").build());
+
+      Settings responseSettings = MAPPER.readValue(responseJson, Settings.class);
+      EntityRulesSettings responseRules =
+          MAPPER.convertValue(responseSettings.getConfigValue(), EntityRulesSettings.class);
+
+      // The toggled rule has the new enabled state.
+      SemanticsRule toggled =
+          responseRules.getEntitySemantics().stream()
+              .filter(r -> ruleName.equals(r.getName()))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Toggled rule missing from response"));
+      assertEquals(!wasEnabled, toggled.getEnabled(), "Rule should be toggled");
+
+      // No rules were lost — the list size is unchanged.
+      assertEquals(
+          originalRules.getEntitySemantics().size(),
+          responseRules.getEntitySemantics().size(),
+          "Toggling one rule must not delete other rules");
+
+      // The change is visible on a fresh read.
+      assertTrue(
+          EntityRulesUtil.isRuleEnabled(client, ruleName) == !wasEnabled,
+          "Rule should be toggled in the stored settings");
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
+  }
+
+  @Test
+  void test_toggleEntityRuleEnabled_unknownRuleReturns404() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/system/settings/entityRulesSettings/rules/no-such-rule-name/enabled",
+                        "true",
+                        RequestOptions.builder()
+                            .header("Content-Type", "application/json")
+                            .build()));
+    assertEquals(404, error.getStatusCode(), "An unknown rule name must return 404");
+  }
+
+  /**
+   * The toggle endpoint uses compare-and-set: a write that was computed from a stale snapshot must
+   * fail with 412 instead of silently overwriting the newer value. We simulate the race at the
+   * repository level by reading the expected JSON, then mutating the stored row before the CAS
+   * write — the same mechanism {@code toggleEntityRuleEnabled} relies on.
+   */
+  @Test
+  void test_toggleEntityRuleEnabled_rejectsStaleWriteWith412() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SystemDAO dao = Entity.getCollectionDAO().systemDAO();
+
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+
+    try {
+      // Read the stored JSON — this is the "expected" snapshot for CAS.
+      String expectedJson = dao.getConfigJsonWithKey(SettingsType.ENTITY_RULES_SETTINGS.value());
+      assertNotNull(expectedJson, "Pre-condition: entity rules settings must exist");
+
+      // Simulate a concurrent writer by directly replacing the stored blob.
+      EntityRulesSettings settings = JsonUtils.readValue(expectedJson, EntityRulesSettings.class);
+      assertNotNull(settings.getEntitySemantics());
+      assertFalse(settings.getEntitySemantics().isEmpty());
+      SemanticsRule firstRule = settings.getEntitySemantics().get(0);
+      firstRule.setEnabled(!Boolean.TRUE.equals(firstRule.getEnabled()));
+      dao.insertSettings(
+          SettingsType.ENTITY_RULES_SETTINGS.value(), JsonUtils.pojoToJson(settings));
+
+      // A CAS write using the now-stale expectedJson must fail with 412.
+      Settings staleSettings =
+          new Settings()
+              .withConfigType(SettingsType.ENTITY_RULES_SETTINGS)
+              .withConfigValue(settings);
+      assertThrows(
+          PreconditionFailedException.class,
+          () -> Entity.getSystemRepository().replaceSettingIfCurrent(staleSettings, expectedJson),
+          "A stale CAS write must be rejected with 412, not silently applied");
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
   }
 
   @Test
