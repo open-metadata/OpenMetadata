@@ -30,11 +30,11 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import {
   ClassicDeprecatedLabel,
   ClassicDeprecationHint,
 } from '../../../../../AppModeSwitcher/ClassicDeprecationNotice';
+import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import { APP_MODE_OPTIONS, NO_DEFAULT_VALUE } from './AppModeSettings';
 import { APP_MODE_FIELDS } from './PlatformSettings.constants';
 import type { PlatformSettingsFormProps } from './PlatformSettings.types';

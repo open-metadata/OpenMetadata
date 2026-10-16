@@ -69,7 +69,10 @@ const InterfaceModeMenuItem = () => {
           <AppModeClassicIcon height={18} width={18} />
           <span className="tw:flex tw:flex-1 tw:items-center tw:gap-2">
             {t('label.classic')}
-            <Badge color="warning" data-testid="classic-deprecated-badge" size="sm">
+            <Badge
+              color="warning"
+              data-testid="classic-deprecated-badge"
+              size="sm">
               {t('label.deprecated')}
             </Badge>
           </span>

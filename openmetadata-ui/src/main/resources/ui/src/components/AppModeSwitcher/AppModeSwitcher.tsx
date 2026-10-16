@@ -220,7 +220,9 @@ const AppModeSwitcher: React.FC<{
                 </Badge>
               </Box>
               {!isAiMode && (
-                <span className={BADGE_CLASS} data-testid="classic-current-badge">
+                <span
+                  className={BADGE_CLASS}
+                  data-testid="classic-current-badge">
                   <Check height={12} width={12} />
                   {t('label.current')}
                 </span>

@@ -20,12 +20,12 @@ import {
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
-import SettingsSourceBanner from '../../../components/platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import {
   ClassicDeprecatedLabel,
   ClassicDeprecationHint,
 } from '../../../components/AppModeSwitcher/ClassicDeprecationNotice';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import SettingsSourceBanner from '../../../components/platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import { DefaultAppMode } from '../../../generated/api/configuration/appConfiguration';
 import { SettingType } from '../../../generated/settings/settings';
 import { useSettingsSource } from '../../../hooks/platform/useSettingsSource';
