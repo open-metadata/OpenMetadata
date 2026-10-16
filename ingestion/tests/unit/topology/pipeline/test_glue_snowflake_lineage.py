@@ -240,6 +240,19 @@ glueContext.create_dynamic_frame.from_options(connection_type="snowflake", conne
         ]
         assert result.snowflake_targets == [SnowflakeRef(table="ORDERS_DAILY", database="SALES_DB", schema="CURATED")]
 
+    def test_reassigned_options_dict_is_not_trusted(self):
+        """sf_options is rebound before the write: neither call may take dbtable from the first dict."""
+        script = """
+sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW", "dbtable": "ORDERS"}
+orders = spark.read.format("snowflake").options(**sf_options).load()
+sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "CURATED", "dbtable": "ORDERS_DAILY"}
+orders.write.format("snowflake").options(**sf_options).save()
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_sources == []
+        assert result.snowflake_targets == []
+
     def test_quoted_name_with_a_dot_is_one_identifier(self):
         script = """
 sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW"}
@@ -332,7 +345,6 @@ class TestResolveSnowflakeEntities:
             glue_source._resolve_snowflake_entities([SnowflakeRef(table="ORDERS")], lineage_details, "sources")
 
         assert lineage_details["sources"] == []
-        glue_source.metadata.get_entity_reference.assert_not_called()
 
     def test_known_schema_never_falls_back_to_bare_name(self, glue_source):
         """ORDERS is not ingested in RAW yet: a same-named table in another schema must not be linked."""
@@ -373,7 +385,23 @@ class TestResolveSnowflakeEntities:
 
         assert lineage_details["sources"] == []
         assert [call.kwargs["service_name"] for call in build.call_args_list] == ["snowflake_prod", "snowflake_dr"] * 2
-        glue_source.metadata.get_entity_reference.assert_not_called()
+
+    def test_unmatched_service_does_not_make_an_exact_match_ambiguous(self, glue_source):
+        """A search miss in one service returns a name built from the parts; it is not a second match."""
+        glue_source.get_db_service_names = MagicMock(return_value=["snowflake_prod", "redshift_dw"])
+        glue_source.metadata.get_entity_reference.side_effect = lambda entity, fqn: (
+            ORDERS_REF if fqn == "snowflake_prod.SALES_DB.RAW.ORDERS" else None
+        )
+        lineage_details = {"sources": [], "targets": []}
+
+        with patch("metadata.ingestion.source.pipeline.gluepipeline.metadata.fqn.build") as build:
+            build.side_effect = lambda **kwargs: [f"{kwargs['service_name']}.SALES_DB.RAW.ORDERS"]
+            glue_source._resolve_snowflake_entities(
+                [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")], lineage_details, "sources"
+            )
+
+        assert lineage_details["sources"] == [ORDERS_REF]
+        assert len(build.call_args_list) == 2
 
     def test_not_found(self, glue_source):
         lineage_details = {"sources": [], "targets": []}

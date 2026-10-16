@@ -469,13 +469,15 @@ def _shared_options_dict(block: str, source_code: str) -> str:
     """
     Body of the dict the block passes as .options(**name) / connection_options=name,
     so keys kept there (dbtable, sfDatabase, sfSchema) are read from the right dict
-    instead of from the first one in the script. Empty when there is none.
+    instead of from the first one in the script. Empty when there is none, or when
+    the name is assigned more than once: the block cannot tell which dict applies,
+    and taking the first one could link a write to the table the script read.
     """
     match = SHARED_OPTIONS_NAME_PATTERN.search(block)
     if not match:
         return ""
-    literal = re.search(rf"^\s*{match.group(1)}\s*=\s*\{{([^{{}}]*)\}}", source_code, re.MULTILINE | re.DOTALL)
-    return literal.group(1) if literal else ""
+    literals = re.findall(rf"^\s*{match.group(1)}\s*=\s*\{{([^{{}}]*)\}}", source_code, re.MULTILINE | re.DOTALL)
+    return literals[0] if len(literals) == 1 else ""
 
 
 def _split_qualified_name(name: str) -> list[str]:

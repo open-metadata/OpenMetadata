@@ -421,7 +421,9 @@ class GluepipelineSource(PipelineServiceSource):
         """
         The matches of every configured service are collected before deciding, so the
         same table ingested from two Snowflake services is ambiguous rather than
-        resolved to whichever service is listed first.
+        resolved to whichever service is listed first. Each name is confirmed to
+        exist: when the search misses, fqn.build returns a name built from the
+        parts, which must not count as a second match.
         """
         table_fqns: set[str] = set()
         for db_service_name in self.get_db_service_names() or ["*"]:
@@ -439,14 +441,15 @@ class GluepipelineSource(PipelineServiceSource):
                 logger.debug("Failed to search table %s in service %s: %s", table_name, db_service_name, exc)
                 continue
             table_fqns.update(found or [])
-        if not table_fqns:
+        matches = {}
+        for table_fqn in sorted(table_fqns):
+            table_entity = self.metadata.get_entity_reference(entity=Table, fqn=table_fqn)
+            if table_entity:
+                matches[table_fqn] = table_entity
+        if len(matches) > 1:
+            logger.warning("Snowflake table %s matches several tables %s; skipping lineage", table_name, list(matches))
             return None
-        if len(table_fqns) > 1:
-            logger.warning(
-                "Snowflake table %s matches several tables %s; skipping lineage", table_name, sorted(table_fqns)
-            )
-            return None
-        return self.metadata.get_entity_reference(entity=Table, fqn=table_fqns.pop())
+        return next(iter(matches.values()), None)
 
     def _resolve_glue_connection(self, connection_name: str) -> dict | None:
         if connection_name in self._glue_connection_cache:
