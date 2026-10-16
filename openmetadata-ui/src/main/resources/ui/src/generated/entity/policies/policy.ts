@@ -326,6 +326,7 @@ export enum Operation {
     EditKnowledgePanel = "EditKnowledgePanel",
     EditLifeCycle = "EditLifeCycle",
     EditLineage = "EditLineage",
+    EditOntologyConcepts = "EditOntologyConcepts",
     EditOwners = "EditOwners",
     EditPage = "EditPage",
     EditPolicy = "EditPolicy",

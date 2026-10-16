@@ -20,6 +20,8 @@ import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.schema.api.data.OntologyIriPreview;
 import org.openmetadata.schema.api.data.OntologyIriPreviewRequest;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -28,6 +30,19 @@ import org.openmetadata.schema.type.OntologyConfiguration;
 class OntologyIriMinterTest {
   private static final UUID GLOSSARY_ID = UUID.fromString("209fd87f-1e64-4197-9264-3d9a8bd42a62");
   private static final UUID CANDIDATE_ID = UUID.fromString("78ba2f96-3584-4429-850f-cef7d4f5d876");
+
+  @ParameterizedTest
+  @CsvSource({
+    "https://example.org/sales, https://example.org/sales/",
+    "https://example.org/sales/, https://example.org/sales/",
+    "https://example.org/sales#, https://example.org/sales#",
+    "urn:example:sales:, urn:example:sales:"
+  })
+  void mintsNativeIdentityFromTheNamespaceAndStableId(String namespace, String prefix) {
+    assertEquals(
+        prefix + CANDIDATE_ID,
+        OntologyIriMinter.mint(URI.create(namespace), CANDIDATE_ID).toString());
+  }
 
   @Test
   void expandsEverySupportedPlaceholderAndEncodesSegments() {

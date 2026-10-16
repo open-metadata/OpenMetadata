@@ -1,0 +1,75 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createOntologyProperty.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CreateOntologyPropertyRequest",
+  "description": "Create or update an independent ontologyProperty. Approval is managed through existing approval workflows.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateOntologyProperty",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "name": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/name"
+    },
+    "displayName": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/displayName"
+    },
+    "description": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/description"
+    },
+    "owners": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/owners"
+    },
+    "reviewers": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/reviewers"
+    },
+    "provider": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/provider"
+    },
+    "iri": {
+      "description": "Semantic IRI preserved for imported definitions. If omitted, creation mints an IRI from the ontology namespace and entity UUID; updates preserve the stored IRI.",
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/iri"
+    },
+    "kind": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/kind"
+    },
+    "domain": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/domain"
+    },
+    "range": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/range"
+    },
+    "enumValues": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/enumValues"
+    },
+    "unit": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/unit"
+    },
+    "isIdentifier": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/isIdentifier"
+    },
+    "inverse": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/inverse"
+    },
+    "characteristics": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/characteristics"
+    },
+    "propertyChain": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/propertyChain"
+    },
+    "disjointWith": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/disjointWith"
+    },
+    "ontology": {
+      "description": "Fully qualified name of the owning ontology.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    }
+  },
+  "required": [
+    "name",
+    "ontology",
+    "kind"
+  ],
+  "additionalProperties": false
+}

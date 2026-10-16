@@ -30,7 +30,6 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFParser;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
@@ -96,7 +95,7 @@ public final class GlossaryOntologyExporter {
     final RelationshipTypeResolver resolver =
         new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
     return new GlossaryOntologySource(
-        glossary, terms, axioms(glossaryId), resolver.list(), externalTermIris);
+        glossary, terms, List.of(), resolver.list(), externalTermIris);
   }
 
   private Glossary glossary(final UUID glossaryId) {
@@ -136,15 +135,6 @@ public final class GlossaryOntologyExporter {
     final GlossaryTerm term =
         Entity.getEntity(Entity.GLOSSARY_TERM, termId, "", Include.NON_DELETED);
     return GlossaryTermClassIri.of(term, publicBaseUri);
-  }
-
-  @SuppressWarnings("unchecked")
-  private List<OntologyAxiom> axioms(final UUID glossaryId) {
-    final EntityRepository<OntologyAxiom> repository =
-        (EntityRepository<OntologyAxiom>) Entity.getEntityRepository(Entity.ONTOLOGY_AXIOM);
-    final ListFilter filter = new ListFilter(Include.NON_DELETED);
-    filter.addQueryParam("glossaryId", glossaryId.toString());
-    return repository.listAll(repository.getFields(""), filter);
   }
 
   private void mergeAnnex(final Model model, final UUID glossaryId) {

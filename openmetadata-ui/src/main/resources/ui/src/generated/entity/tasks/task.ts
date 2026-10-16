@@ -108,6 +108,10 @@ export interface Task {
     id:   string;
     name: string;
     /**
+     * Immutable, server-managed review target for ontology approval tasks.
+     */
+    ontologyReview?: OntologyReviewTarget;
+    /**
      * Task-specific payload validated at runtime by the resolved TaskFormSchema for the task
      * type and category.
      */
@@ -484,6 +488,34 @@ export enum SyncStatus {
     Error = "error",
     Pending = "pending",
     Synced = "synced",
+}
+
+/**
+ * Immutable, server-managed review target for ontology approval tasks.
+ *
+ * Server-captured immutable ontology release reviewed by an existing approval workflow task.
+ */
+export interface OntologyReviewTarget {
+    author: string;
+    /**
+     * SHA-256 of ontology-review-v2 canonical content.
+     */
+    contentDigest: string;
+    entityId:      string;
+    /**
+     * Entity-history version submitted for review; reviewers read this frozen release header.
+     */
+    entityVersion: number;
+    /**
+     * Owning ontology ID used to serialize release review decisions.
+     */
+    ontologyId:     string;
+    reviewRevision: number;
+    /**
+     * SHA-256 of the workflow definition, including its approval policy.
+     */
+    workflowDefinitionDigest:  string;
+    workflowDefinitionVersion: number;
 }
 
 /**

@@ -2,7 +2,6 @@ package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -162,15 +161,12 @@ public class EventSubscriptionResourceIT
     Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
     destination.withConfig(webhook.withEndpoint(LOOPBACK_ENDPOINT));
 
-    // The SDK wraps a patch failure, so the server's status is on the cause.
-    OpenMetadataException rejected =
+    InvalidRequestException rejected =
         assertThrows(
-            OpenMetadataException.class,
+            InvalidRequestException.class,
             () -> patchEntity(subscription.getId().toString(), subscription),
             "Patching an endpoint to a loopback address should be rejected");
-    InvalidRequestException cause =
-        assertInstanceOf(InvalidRequestException.class, rejected.getCause());
-    assertEquals(400, cause.getStatusCode());
+    assertEquals(400, rejected.getStatusCode());
   }
 
   private List<SubscriptionDestination> getWebhookDestination(TestNamespace ns) {
@@ -1003,7 +999,6 @@ public class EventSubscriptionResourceIT
     }
   }
 
-  /** The SDK wraps the transport failure, so the real status sits on a cause rather than the top. */
   private static int statusCodeOf(Throwable failure) {
     for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
       if (cause instanceof OpenMetadataException reported && reported.getStatusCode() > 0) {

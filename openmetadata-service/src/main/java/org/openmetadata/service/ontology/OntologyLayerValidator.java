@@ -184,13 +184,13 @@ public final class OntologyLayerValidator {
     return rank;
   }
 
-  private static void validatePrefixes(final List<OntologyPrefix> prefixes) {
+  public static void validatePrefixes(final List<OntologyPrefix> prefixes) {
     final Set<String> names = new HashSet<>();
-    final Set<URI> namespaces = new HashSet<>();
-    for (final OntologyPrefix prefix : prefixes) {
+    final Set<String> namespaces = new HashSet<>();
+    for (final OntologyPrefix prefix : listOrEmpty(prefixes)) {
       requireValidPrefix(prefix);
       final String normalizedName = prefix.getPrefix().toLowerCase(Locale.ROOT);
-      if (!names.add(normalizedName) || !namespaces.add(prefix.getNamespace().normalize())) {
+      if (!names.add(normalizedName) || !namespaces.add(prefix.getNamespace().toString())) {
         throw new BadRequestException("Ontology prefixes and namespaces must be unique");
       }
     }

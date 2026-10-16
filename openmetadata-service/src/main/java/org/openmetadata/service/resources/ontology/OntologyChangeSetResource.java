@@ -58,7 +58,6 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.ontology.OntologyChangeApplicationService;
@@ -94,7 +93,6 @@ public class OntologyChangeSetResource
         new OntologyChangeApplicationService(
             repository,
             (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM),
-            (OntologyAxiomRepository) Entity.getEntityRepository(Entity.ONTOLOGY_AXIOM),
             clock);
     lockService =
         new OntologyEditLockService(Entity.getJdbi(), clock, new OntologyEditLeasePolicy());

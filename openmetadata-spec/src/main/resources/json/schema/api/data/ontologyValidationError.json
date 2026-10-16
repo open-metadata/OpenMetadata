@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyValidationError.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyValidationError",
+  "description": "An invalid working model or release capture, with bounded findings identifying the affected definitions.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyValidationError",
+  "properties": {
+    "code": { "type": "integer", "minimum": 400, "maximum": 400 },
+    "message": { "type": "string" },
+    "violationCount": { "type": "integer", "minimum": 1 },
+    "violations": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": { "$ref": "ontologyReleaseStructureReport.json#/definitions/issue" }
+    }
+  },
+  "required": ["code", "message", "violationCount", "violations"],
+  "additionalProperties": false
+}

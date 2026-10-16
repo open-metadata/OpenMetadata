@@ -1,0 +1,118 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/ontologyConcept.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyConcept",
+  "description": "A formal class, SKOS concept, or both, owned by an ontology independently of glossary terms.",
+  "$comment": "@om-entity-type",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.OntologyConcept",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
+    "org.openmetadata.schema.OntologyEntityInterface"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "version": {
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
+    "href": {
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "ontology": {
+      "description": "Owning ontology entity. Glossaries do not own ontology definitions.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "iri": {
+      "description": "Persisted semantic IRI. Renaming the catalog entity must preserve this identity.",
+      "$ref": "../../type/ontologyIri.json"
+    },
+    "conceptType": {
+      "$ref": "../../type/ontologyConceptType.json"
+    },
+    "synonyms": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "conceptMappings": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/conceptMapping.json"
+      },
+      "default": []
+    },
+    "superClasses": {
+      "description": "Direct named superclasses, derived from non-deleted ontology-owned SUBCLASS_OF axioms. Not stored or independently editable.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyIri.json"
+      },
+      "existingJavaType": "java.util.List<java.net.URI>",
+      "readOnly": true
+    },
+    "subClasses": {
+      "description": "Direct named subclasses, derived from non-deleted ontology-owned SUBCLASS_OF axioms. Not stored or independently editable.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyIri.json"
+      },
+      "existingJavaType": "java.util.List<java.net.URI>",
+      "readOnly": true
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "fullyQualifiedName",
+    "iri",
+    "ontology",
+    "conceptType"
+  ],
+  "additionalProperties": false
+}

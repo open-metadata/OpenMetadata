@@ -172,8 +172,10 @@ public class BulkChangeEventIT {
    * deleted} field change — so this now emits ENTITY_UPDATED where before the fix it emitted
    * nothing. New behaviour, matching the single-PUT path, pinned here so it cannot regress silently.
    */
-  @Test
-  void test_bulkUndeleteViaBulkPut_emitsEvent(TestNamespace ns) throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void test_bulkUndeleteViaBulkPut_emitsEvent(boolean addColumn, TestNamespace ns)
+      throws Exception {
     String schemaFqn = setupSchema(ns);
     CreateTable create = table(ns, schemaFqn, "evt_undel", null);
     BulkApi.upsert("tables", List.of(create), false, BulkApi.botToken());
@@ -183,13 +185,28 @@ public class BulkChangeEventIT {
     softDelete(created.getId().toString());
     long since = System.currentTimeMillis();
 
-    BulkApi.upsert("tables", List.of(create), false, BulkApi.botToken());
+    BulkApi.upsert(
+        "tables",
+        List.of(addColumn ? withExtraColumn(create, "restored_col") : create),
+        false,
+        BulkApi.botToken());
 
     ChangeEvent event = awaitUpdatedEvent(created.getId(), since);
     assertNotNull(event.getChangeDescription(), "un-delete event must carry a change description");
     assertTrue(
         allFieldNames(event).contains("deleted"),
         "bulk un-delete must record the 'deleted' field change, got: " + allFieldNames(event));
+    final var deletedChange =
+        event.getChangeDescription().getFieldsUpdated().stream()
+            .filter(change -> "deleted".equals(change.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(true, deletedChange.getOldValue());
+    assertEquals(false, deletedChange.getNewValue());
+    assertEquals(false, getTable(fqn).getDeleted());
+    if (addColumn) {
+      assertTrue(allFieldNames(event).contains("columns"));
+    }
   }
 
   /**

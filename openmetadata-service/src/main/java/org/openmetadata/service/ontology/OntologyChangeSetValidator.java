@@ -170,7 +170,6 @@ public final class OntologyChangeSetValidator {
           case RELATIONSHIP -> operation.getRelationship() != null;
           case ATTRIBUTE -> operation.getAttribute() != null;
           case MAPPING -> operation.getMapping() != null;
-          case AXIOM -> operation.getAxiom() != null;
         };
     return isPresent;
   }
@@ -179,9 +178,7 @@ public final class OntologyChangeSetValidator {
       final OntologyChangeOperation operation, final Set<UUID> plannedTermIds) {
     final boolean isCreate =
         operation.getOperationType() == OntologyChangeOperationType.CREATE_TERM
-            || operation.getOperationType() == OntologyChangeOperationType.CREATE_GLOSSARY
-            || (operation.getOperationType() == OntologyChangeOperationType.UPSERT_AXIOM
-                && operation.getTargetId() == null);
+            || operation.getOperationType() == OntologyChangeOperationType.CREATE_GLOSSARY;
     final boolean targetsPlannedTerm =
         operation.getTargetId() != null && plannedTermIds.contains(operation.getTargetId());
     if (isCreate && (operation.getTargetId() != null || operation.getBaseVersion() != null)) {
@@ -251,7 +248,7 @@ public final class OntologyChangeSetValidator {
       case UPDATE_TERM -> requireTarget(operation, operation.getTerm().getId(), "updated term");
       case ADD_RELATIONSHIP, UPDATE_RELATIONSHIP, DELETE_RELATIONSHIP -> requireTarget(
           operation, operation.getRelationship().getFromTerm().getId(), "relationship source");
-      case UPSERT_AXIOM -> validateAxiomTarget(operation);
+      case UPSERT_AXIOM -> throw invalid(operation, "axioms require an ontology");
       case DELETE_TERM,
           UPSERT_ATTRIBUTE,
           DELETE_ATTRIBUTE,
@@ -269,13 +266,6 @@ public final class OntologyChangeSetValidator {
         || operation.getGlossary().getDescription() == null
         || operation.getGlossary().getDescription().isBlank()) {
       throw invalid(operation, "glossary name, fullyQualifiedName, and description are required");
-    }
-  }
-
-  private static void validateAxiomTarget(final OntologyChangeOperation operation) {
-    requireEntityId(operation, operation.getAxiom().getId(), "axiom");
-    if (operation.getTargetId() != null) {
-      requireTarget(operation, operation.getAxiom().getId(), "updated axiom");
     }
   }
 
@@ -299,12 +289,13 @@ public final class OntologyChangeSetValidator {
         switch (operationType) {
           case CREATE_GLOSSARY -> PayloadKind.GLOSSARY;
           case CREATE_TERM, UPDATE_TERM -> PayloadKind.TERM;
-          case DELETE_TERM, DELETE_AXIOM -> PayloadKind.NONE;
+          case DELETE_TERM -> PayloadKind.NONE;
           case ADD_RELATIONSHIP, UPDATE_RELATIONSHIP, DELETE_RELATIONSHIP -> PayloadKind
               .RELATIONSHIP;
           case UPSERT_ATTRIBUTE, DELETE_ATTRIBUTE -> PayloadKind.ATTRIBUTE;
           case UPSERT_MAPPING, DELETE_MAPPING -> PayloadKind.MAPPING;
-          case UPSERT_AXIOM -> PayloadKind.AXIOM;
+          case UPSERT_AXIOM, DELETE_AXIOM -> throw new BadRequestException(
+              "Axioms must be authored in an ontology, not a glossary change set");
         };
     return payloadKind;
   }
@@ -321,7 +312,6 @@ public final class OntologyChangeSetValidator {
     TERM,
     RELATIONSHIP,
     ATTRIBUTE,
-    MAPPING,
-    AXIOM
+    MAPPING
   }
 }

@@ -1,5 +1,18 @@
 [
   {
+    "type": "task",
+    "fields": {
+      "ontologyReview": {
+        "entityId": "00000000-0000-0000-0000-000000000001",
+        "reviewRevision": 1,
+        "contentDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "author": "author",
+        "workflowDefinitionVersion": 0.1,
+        "workflowDefinitionDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
     "type": "table",
     "fields": {
       "name": "orders",
@@ -14,7 +27,8 @@
       "tags": [
         {"tagFQN": "PII.Sensitive", "source": "Classification", "labelType": "Manual", "state": "Confirmed", "description": "Personal data"},
         {"tagFQN": "Business.Customer", "source": "Glossary", "labelType": "Derived", "state": "Suggested"},
-        {"tagFQN": "Tier.Tier1", "source": "Classification"}
+        {"tagFQN": "Tier.Tier1", "source": "Classification"},
+        {"tagFQN": "Sales.Customer", "source": "Ontology", "metadata": {"ontology": {"ontologyId": "00000000-0000-0000-0000-000000000004", "conceptId": "00000000-0000-0000-0000-000000000005"}}}
       ],
       "certification": {"tagLabel": {"tagFQN": "Certification.Gold", "source": "Classification"}, "appliedDate": 1000, "expiryDate": 2000},
       "lifeCycle": {

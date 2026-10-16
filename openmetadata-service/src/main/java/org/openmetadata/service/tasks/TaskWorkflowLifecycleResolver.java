@@ -36,6 +36,7 @@ import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -608,7 +609,9 @@ public final class TaskWorkflowLifecycleResolver {
       variables.put(TASK_DESCRIPTION, task.getDescription());
       variables.put(TASK_TYPE, task.getType() != null ? task.getType().value() : null);
       variables.put(TASK_CATEGORY, task.getCategory() != null ? task.getCategory().value() : null);
-      variables.put(TASK_PRIORITY, task.getPriority() != null ? task.getPriority().value() : null);
+      variables.put(
+          TASK_PRIORITY,
+          task.getPriority() != null ? task.getPriority().value() : TaskPriority.Medium.value());
       variables.put(TASK_PAYLOAD, serializeWorkflowVariable(task.getPayload()));
       variables.put(TASK_DUE_DATE, task.getDueDate());
       variables.put(

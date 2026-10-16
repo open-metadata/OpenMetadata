@@ -56,12 +56,16 @@ import org.openmetadata.sdk.services.ontology.OntologyAiService;
 import org.openmetadata.sdk.services.ontology.OntologyAxiomService;
 import org.openmetadata.sdk.services.ontology.OntologyBulkService;
 import org.openmetadata.sdk.services.ontology.OntologyChangeSetService;
+import org.openmetadata.sdk.services.ontology.OntologyConceptService;
 import org.openmetadata.sdk.services.ontology.OntologyEditLockService;
 import org.openmetadata.sdk.services.ontology.OntologyImpactService;
 import org.openmetadata.sdk.services.ontology.OntologyModelingService;
 import org.openmetadata.sdk.services.ontology.OntologyPackService;
 import org.openmetadata.sdk.services.ontology.OntologyPatternService;
+import org.openmetadata.sdk.services.ontology.OntologyPropertyService;
 import org.openmetadata.sdk.services.ontology.OntologyReasoningService;
+import org.openmetadata.sdk.services.ontology.OntologyReleaseService;
+import org.openmetadata.sdk.services.ontology.OntologyService;
 import org.openmetadata.sdk.services.ontology.OntologyStructureService;
 import org.openmetadata.sdk.services.ontology.OntologySubsetService;
 import org.openmetadata.sdk.services.ontology.RelationshipTypeService;
@@ -144,6 +148,10 @@ public class OpenMetadataClient {
   // Ontology
   private final RelationshipTypeService relationshipTypes;
   private final OntologyAxiomService ontologyAxioms;
+  private final OntologyService ontologies;
+  private final OntologyConceptService ontologyConcepts;
+  private final OntologyPropertyService ontologyProperties;
+  private final OntologyReleaseService ontologyReleases;
   private final OntologyAiService ontologyAi;
   private final OntologyBulkService ontologyBulk;
   private final OntologyChangeSetService ontologyChangeSets;
@@ -287,6 +295,10 @@ public class OpenMetadataClient {
     // Initialize Ontology services
     this.relationshipTypes = new RelationshipTypeService(httpClient);
     this.ontologyAxioms = new OntologyAxiomService(httpClient);
+    this.ontologies = new OntologyService(httpClient);
+    this.ontologyConcepts = new OntologyConceptService(httpClient);
+    this.ontologyProperties = new OntologyPropertyService(httpClient);
+    this.ontologyReleases = new OntologyReleaseService(httpClient);
     this.ontologyAi = new OntologyAiService(httpClient);
     this.ontologyBulk = new OntologyBulkService(httpClient);
     this.ontologyChangeSets = new OntologyChangeSetService(httpClient);
@@ -504,6 +516,22 @@ public class OpenMetadataClient {
 
   public OntologyAxiomService ontologyAxioms() {
     return ontologyAxioms;
+  }
+
+  public OntologyService ontologies() {
+    return ontologies;
+  }
+
+  public OntologyReleaseService ontologyReleases() {
+    return ontologyReleases;
+  }
+
+  public OntologyConceptService ontologyConcepts() {
+    return ontologyConcepts;
+  }
+
+  public OntologyPropertyService ontologyProperties() {
+    return ontologyProperties;
   }
 
   public OntologyAiService ontologyAi() {

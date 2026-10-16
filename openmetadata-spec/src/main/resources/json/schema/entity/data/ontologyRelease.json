@@ -1,0 +1,159 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/ontologyRelease.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyRelease",
+  "description": "Sealed ontology content, stored as immutable SQL members and reviewed through the existing approval workflow.",
+  "$comment": "@om-entity-type",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.OntologyRelease",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
+    "org.openmetadata.schema.OntologyDefinition"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "ontology.json#/properties/id"
+    },
+    "name": {
+      "$ref": "ontology.json#/properties/name"
+    },
+    "displayName": {
+      "$ref": "ontology.json#/properties/displayName"
+    },
+    "fullyQualifiedName": {
+      "$ref": "ontology.json#/properties/fullyQualifiedName"
+    },
+    "description": {
+      "$ref": "ontology.json#/properties/description"
+    },
+    "ontology": {
+      "$ref": "ontologyConcept.json#/properties/ontology"
+    },
+    "owners": {
+      "$ref": "ontology.json#/properties/owners"
+    },
+    "reviewers": {
+      "$ref": "ontology.json#/properties/reviewers"
+    },
+    "version": {
+      "$ref": "ontology.json#/properties/version"
+    },
+    "updatedAt": {
+      "$ref": "ontology.json#/properties/updatedAt"
+    },
+    "updatedBy": {
+      "$ref": "ontology.json#/properties/updatedBy"
+    },
+    "impersonatedBy": {
+      "$ref": "ontology.json#/properties/impersonatedBy"
+    },
+    "href": {
+      "$ref": "ontology.json#/properties/href"
+    },
+    "changeDescription": {
+      "$ref": "ontology.json#/properties/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "$ref": "ontology.json#/properties/incrementalChangeDescription"
+    },
+    "deleted": {
+      "$ref": "ontology.json#/properties/deleted"
+    },
+    "provider": {
+      "$ref": "ontology.json#/properties/provider"
+    },
+    "entityStatus": {
+      "$ref": "../../type/status.json"
+    },
+    "reviewRevision": {
+      "description": "Server-managed content revision. Every governed edit invalidates the previous review.",
+      "type": "integer",
+      "minimum": 1,
+      "existingJavaType": "java.lang.Long"
+    },
+    "reviewAuthor": {
+      "description": "Author of the current governed content revision; assigned by the server.",
+      "type": "string"
+    },
+    "reviewTask": {
+      "description": "Current approval task, assigned by the existing workflow infrastructure. Clients cannot set this field.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "releaseRevision": {
+      "description": "Monotonic release number allocated under the owning ontology state lock.",
+      "type": "integer",
+      "minimum": 1,
+      "existingJavaType": "java.lang.Long"
+    },
+    "sourceWorkingRevision": {
+      "$ref": "../../type/ontologyState.json#/properties/workingRevision"
+    },
+    "ontologyIri": {
+      "$ref": "../../type/ontologyIri.json"
+    },
+    "versionIri": {
+      "$ref": "../../type/ontologyIri.json"
+    },
+    "encodingVersion": {
+      "description": "Canonical manifest and member encoding used to reproduce the digest.",
+      "type": "string",
+      "enum": [
+        "ontology-release-v1"
+      ]
+    },
+    "contentDigest": {
+      "description": "SHA-256 of the sealed manifest, including ordered member identities, payload digests, and the pinned import closure.",
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "memberCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "totalBytes": {
+      "description": "Total UTF-8 size of canonical member payloads.",
+      "type": "integer",
+      "minimum": 1,
+      "existingJavaType": "java.lang.Long"
+    },
+    "sealedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "sealedBy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "logicalCheck": {
+      "description": "Logical consistency has not been checked. Structural and OWL 2 DL profile checks do not establish consistency.",
+      "type": "string",
+      "enum": [
+        "NOT_RUN"
+      ],
+      "default": "NOT_RUN",
+      "readOnly": true
+    },
+    "baseReleaseId": {
+      "description": "Active release at capture, retained as the immutable review comparison baseline.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "fullyQualifiedName",
+    "ontology",
+    "entityStatus",
+    "releaseRevision",
+    "sourceWorkingRevision",
+    "ontologyIri",
+    "versionIri",
+    "encodingVersion",
+    "contentDigest",
+    "memberCount",
+    "totalBytes",
+    "sealedAt",
+    "sealedBy",
+    "logicalCheck"
+  ],
+  "additionalProperties": false
+}

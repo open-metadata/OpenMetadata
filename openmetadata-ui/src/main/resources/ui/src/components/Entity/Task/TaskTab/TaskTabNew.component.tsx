@@ -138,6 +138,10 @@ import {
   isTaskTerminalStatus,
 } from '../../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
+import {
+  getTaskResolveBody,
+  isOntologyReviewTask,
+} from '../../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component';
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
@@ -152,6 +156,7 @@ import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
 import { getLifecycleMove } from '../LifecycleApprovalCard/LifecycleApprovalCard.utils';
+import OntologyReviewPanel from '../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import TaskActionSplitButton, {
@@ -402,10 +407,17 @@ export const TaskTabNew = ({
     () => getTaskFormHandlerConfig(task, taskFormSchema?.uiSchema),
     [task, taskFormSchema?.uiSchema]
   );
-  const isWorkflowDrivenTask = useMemo(
-    () => Boolean(task.availableTransitions?.length),
-    [task.availableTransitions]
+  const [readyReviewTask, setReadyReviewTask] = useState<string>();
+  const handleReviewReady = useCallback(
+    (ready: boolean) => {
+      setReadyReviewTask(ready ? task.id : undefined);
+    },
+    [task.id]
   );
+  const reviewReady =
+    !isOntologyReviewTask(task) || readyReviewTask === task.id;
+  const isWorkflowDrivenTask =
+    isOntologyReviewTask(task) || Boolean(task.availableTransitions?.length);
   const [selectedTransitionId, setSelectedTransitionId] = useState<
     string | undefined
   >(task.availableTransitions?.[0]?.id);
@@ -742,13 +754,16 @@ export const TaskTabNew = ({
       return;
     }
     try {
-      const updatedTask = await resolveTaskAPI(task.id, {
-        transitionId,
-        resolutionType,
-        comment: data.comment,
-        newValue: data.newValue,
-        payload: data.payload,
-      });
+      const updatedTask = await resolveTaskAPI(
+        task.id,
+        getTaskResolveBody(task, {
+          transitionId,
+          resolutionType,
+          comment: data.comment,
+          newValue: data.newValue,
+          payload: data.payload,
+        })
+      );
       const taskRemainsOpen = isTaskPendingFurtherApproval(updatedTask);
       showSuccessToast(
         taskRemainsOpen
@@ -914,7 +929,9 @@ export const TaskTabNew = ({
       const requiredFields = activeTaskFormSchema?.formSchema?.required;
       if (
         Array.isArray(requiredFields) &&
-        requiredFields.some((field) => !payload?.[field])
+        requiredFields.some(
+          (field) => typeof field !== 'string' || !payload?.[field]
+        )
       ) {
         showErrorToast(
           t('message.field-text-is-required', {
@@ -1171,7 +1188,7 @@ export const TaskTabNew = ({
     }
   };
 
-  const { hasWorkflowAccess, showsWorkflowActions } = computeWorkflowTaskAccess(
+  const { hasWorkflowAccess: canResolveWorkflow, showsWorkflowActions } = computeWorkflowTaskAccess(
     {
       isRequestApproval: task.type === TaskEntityType.RequestApproval,
       hasChangeRequest: Boolean(changeRequestId),
@@ -1181,6 +1198,8 @@ export const TaskTabNew = ({
       isCreator,
     }
   );
+
+  const hasWorkflowAccess = reviewReady && canResolveWorkflow;
 
   const workflowTransitionActions = useMemo(() => {
     if (
@@ -1269,6 +1288,7 @@ export const TaskTabNew = ({
     isActionLoading,
     isWorkflowDrivenTask,
     runWorkflowTransition,
+    reviewReady,
     selectedTransition,
     shouldOpenWorkflowTransitionModal,
     task.availableTransitions,
@@ -1778,7 +1798,7 @@ export const TaskTabNew = ({
         </div>
       );
     }
-    if (proposedChanges === null) {
+    if (isOntologyReviewTask(task) || proposedChanges === null) {
       return null;
     }
 
@@ -1843,6 +1863,12 @@ export const TaskTabNew = ({
   };
 
   const renderFeedbackOrTaskPayload = () => {
+    if (isOntologyReviewTask(task)) {
+      return (
+        <OntologyReviewPanel task={task} onReadyChange={handleReviewReady} />
+      );
+    }
+
     if (isTaskRecognizerFeedbackApproval) {
       return task.payload ? (
         <div className="feedback-details-container">

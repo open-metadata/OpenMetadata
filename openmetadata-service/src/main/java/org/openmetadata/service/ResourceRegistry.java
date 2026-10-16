@@ -41,6 +41,7 @@ public class ResourceRegistry {
               MetadataOperation.EDIT_DESCRIPTION,
               MetadataOperation.EDIT_DISPLAY_NAME,
               MetadataOperation.EDIT_GLOSSARY_TERMS,
+              MetadataOperation.EDIT_ONTOLOGY_CONCEPTS,
               MetadataOperation.EDIT_TIER,
               MetadataOperation.CREATE_TASK,
               MetadataOperation.EDIT_TASK));
