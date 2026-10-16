@@ -30,6 +30,10 @@ export interface CriticalAnnouncementBannerProps {
 
 // FeaturedIcon's light theme fills solid red under `dark-mode`; the design
 // tints the circle instead, the way the Critical surface reads elsewhere.
+const BANNER_CLASS =
+  'dark-mode tw:relative tw:flex tw:items-start tw:gap-4 tw:rounded-xl tw:bg-secondary tw:py-4 tw:pr-12 tw:pl-5 ' +
+  'tw:[.dark-mode_&]:border tw:[.dark-mode_&]:border-secondary tw:[.dark-mode_&]:bg-primary tw:[.dark-mode_&]:shadow-xs';
+
 const ICON_CLASS = 'tw:dark:bg-utility-error-50 tw:dark:text-utility-error-500';
 
 // A global `h2` rule outranks Typography's size, so it is restated as
@@ -43,6 +47,11 @@ const TITLE_CLASS =
  * `dark-mode` makes the banner a dark island in either theme, as the design
  * draws it: every token and core component inside resolves to its dark value,
  * so the surface, text, badge and icon need no colour of their own.
+ *
+ * On a page that is itself dark the island would stand out as a lighter slab,
+ * so there it takes the topic cards' surface and edge instead. `[.dark-mode_&]`
+ * matches only a `dark-mode` *ancestor*: the `dark:` variant also matches the
+ * banner's own class and so could not tell the two cases apart.
  */
 const CriticalAnnouncementBanner = ({
   announcement,
@@ -54,9 +63,7 @@ const CriticalAnnouncementBanner = ({
   const description = stripMarkdown(announcement.description ?? '').trim();
 
   return (
-    <div
-      className="dark-mode tw:relative tw:flex tw:items-start tw:gap-4 tw:rounded-xl tw:bg-secondary tw:py-4 tw:pr-12 tw:pl-5"
-      data-testid="critical-announcement-banner">
+    <div className={BANNER_CLASS} data-testid="critical-announcement-banner">
       <FeaturedIcon
         outlined
         className={ICON_CLASS}
