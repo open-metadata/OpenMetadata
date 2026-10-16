@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
@@ -20,7 +19,6 @@ import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import { ReactComponent as DragIconDotted } from '../../../assets/svg/dots-six-bold.svg';
 import { entityData } from '../../../constants/Lineage.constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import searchClassBase from '../../../utils/SearchClassBase';
 import './entity-lineage-sidebar.less';
 
@@ -39,7 +37,6 @@ const EntityNodeInternal: FC<EntityNodeProps> = ({
   label,
   draggable,
 }) => {
-  const { theme } = useApplicationStore();
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.effectAllowed = 'move';
@@ -51,10 +48,10 @@ const EntityNodeInternal: FC<EntityNodeProps> = ({
       <div
         className={classNames('sidebar-icon-container', {
           'cursor-not-allowed opacity-50': !draggable,
+          'tw:cursor-grab': draggable,
         })}
         data-testid={`${type}-draggable-icon`}
         draggable={draggable}
-        style={{ ...(draggable && { cursor: 'grab' }) }}
         onDragStart={(event) => onDragStart(event, type)}>
         {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- nested drag source */}
         <span
@@ -66,13 +63,7 @@ const EntityNodeInternal: FC<EntityNodeProps> = ({
           {searchClassBase.getEntityIcon(type ?? '')}
         </span>
         <span className="d-flex m-l-xs">
-          <Icon
-            component={DragIconDotted}
-            rotate={90}
-            style={{
-              color: theme.primaryColor,
-            }}
-          />
+          <DragIconDotted className="tw:size-3.5 tw:shrink-0 tw:rotate-90 tw:text-fg-brand-primary" />
         </span>
       </div>
       <Typography className="text-grey-body text-xs p-t-xs">{label}</Typography>
