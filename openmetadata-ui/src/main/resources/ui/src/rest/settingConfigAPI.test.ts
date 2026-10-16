@@ -80,7 +80,8 @@ describe('toggleEntityRuleEnabled', () => {
 
     expect(mockClient.put).toHaveBeenCalledWith(
       '/system/settings/entityRulesSettings/rules/Single%20Domain/enabled',
-      false
+      false,
+      { headers: { 'Content-Type': 'application/json' } }
     );
   });
 
@@ -91,7 +92,8 @@ describe('toggleEntityRuleEnabled', () => {
 
     expect(mockClient.put).toHaveBeenCalledWith(
       '/system/settings/entityRulesSettings/rules/Multiple%20Domains%20are%20not%20allowed/enabled',
-      true
+      true,
+      { headers: { 'Content-Type': 'application/json' } }
     );
   });
 });

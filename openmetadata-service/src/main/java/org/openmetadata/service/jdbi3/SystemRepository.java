@@ -559,32 +559,34 @@ public class SystemRepository implements DeploymentSettingPreparer {
    * @throws EntityNotFoundException when the setting or the named rule does not exist
    * @throws PreconditionFailedException when the stored setting changed since it was read
    */
-  public Response toggleEntityRuleEnabled(String ruleName, boolean enabled) {
-    String expectedJson = dao.getConfigJsonWithKey(SettingsType.ENTITY_RULES_SETTINGS.value());
+  public Response toggleEntityRuleEnabled(final String ruleName, final boolean enabled) {
+    final String expectedJson =
+        dao.getConfigJsonWithKey(SettingsType.ENTITY_RULES_SETTINGS.value());
     if (expectedJson == null) {
       throw EntityNotFoundException.byName(SettingsType.ENTITY_RULES_SETTINGS.value());
     }
-    EntityRulesSettings settings = JsonUtils.readValue(expectedJson, EntityRulesSettings.class);
-    List<SemanticsRule> rules = settings.getEntitySemantics();
-    if (rules == null || rules.isEmpty()) {
-      throw EntityNotFoundException.byName(ruleName);
-    }
-    boolean found = false;
-    for (SemanticsRule rule : rules) {
-      if (ruleName.equals(rule.getName())) {
-        rule.setEnabled(enabled);
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      throw EntityNotFoundException.byName(ruleName);
-    }
-    Settings updated =
+    final EntityRulesSettings settings =
+        JsonUtils.readValue(expectedJson, EntityRulesSettings.class);
+    final SemanticsRule rule = findRuleByName(settings, ruleName);
+    rule.setEnabled(enabled);
+    final Settings updated =
         new Settings().withConfigType(SettingsType.ENTITY_RULES_SETTINGS).withConfigValue(settings);
     replaceSettingIfCurrent(updated, expectedJson);
     prepareFetchedSettings(updated);
     return (new RestUtil.PutResponse<>(Response.Status.OK, updated, ENTITY_UPDATED)).toResponse();
+  }
+
+  private SemanticsRule findRuleByName(final EntityRulesSettings settings, final String ruleName) {
+    final List<SemanticsRule> rules = settings.getEntitySemantics();
+    if (nullOrEmpty(rules)) {
+      throw EntityNotFoundException.byName(ruleName);
+    }
+    for (final SemanticsRule rule : rules) {
+      if (ruleName.equals(rule.getName())) {
+        return rule;
+      }
+    }
+    throw EntityNotFoundException.byName(ruleName);
   }
 
   private void preserveEmailSettings(Settings updated, Settings stored) {
