@@ -394,8 +394,11 @@ class GluepipelineSource(PipelineServiceSource):
                 lineage_details[direction].append(table_entity)
             else:
                 logger.warning(
-                    f"Could not find table entity for Snowflake reference "
-                    f"{ref.database}.{ref.schema}.{ref.table}. Ensure the Snowflake service has been ingested."
+                    "Could not find table entity for Snowflake reference %s.%s.%s. "
+                    "Ensure the Snowflake service has been ingested.",
+                    ref.database,
+                    ref.schema,
+                    ref.table,
                 )
 
     @staticmethod
@@ -427,12 +430,12 @@ class GluepipelineSource(PipelineServiceSource):
                     fetch_multiple_entities=True,
                 )
             except Exception as exc:
-                logger.debug(f"Failed to search table {table_name} in service {db_service_name}: {exc}")
+                logger.debug("Failed to search table %s in service %s: %s", table_name, db_service_name, exc)
                 continue
             if not table_fqns:
                 continue
             if len(table_fqns) > 1:
-                logger.warning(f"Snowflake table {table_name} matches several tables {table_fqns}; skipping lineage")
+                logger.warning("Snowflake table %s matches several tables %s; skipping lineage", table_name, table_fqns)
                 return None
             table_entity = self.metadata.get_entity_reference(entity=Table, fqn=table_fqns[0])
             if table_entity:

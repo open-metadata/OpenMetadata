@@ -253,14 +253,16 @@ def parse_glue_script(source_code: str) -> ScriptLineageResult:
     _parse_spark_snowflake(source_code, result)
 
     logger.debug(
-        f"Script lineage result: "
-        f"s3_sources={result.s3_sources}, s3_targets={result.s3_targets}, "
-        f"catalog_sources={len(result.catalog_sources)}, "
-        f"catalog_targets={len(result.catalog_targets)}, "
-        f"jdbc_sources={len(result.jdbc_sources)}, "
-        f"jdbc_targets={len(result.jdbc_targets)}, "
-        f"snowflake_sources={len(result.snowflake_sources)}, "
-        f"snowflake_targets={len(result.snowflake_targets)}"
+        "Script lineage result: s3_sources=%s, s3_targets=%s, catalog_sources=%d, catalog_targets=%d, "
+        "jdbc_sources=%d, jdbc_targets=%d, snowflake_sources=%d, snowflake_targets=%d",
+        result.s3_sources,
+        result.s3_targets,
+        len(result.catalog_sources),
+        len(result.catalog_targets),
+        len(result.jdbc_sources),
+        len(result.jdbc_targets),
+        len(result.snowflake_sources),
+        len(result.snowflake_targets),
     )
 
     return result
@@ -291,7 +293,7 @@ def _parse_glue_context_sources(source_code: str, result: ScriptLineageResult):
                 ref = _snowflake_ref(block, source_code)
                 if ref:
                     result.snowflake_sources.append(ref)
-                    logger.debug(f"Found Snowflake source: {ref}")
+                    logger.debug("Found Snowflake source: %s", ref)
             elif conn_type and conn_type.lower() in (
                 "jdbc",
                 "mysql",
@@ -341,7 +343,7 @@ def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult): 
                 ref = _snowflake_ref(block, source_code)
                 if ref:
                     result.snowflake_targets.append(ref)
-                    logger.debug(f"Found Snowflake target: {ref}")
+                    logger.debug("Found Snowflake target: %s", ref)
             elif conn_type:
                 table = _extract_dict_value(block, "dbtable")
                 connection_name = _extract_kwarg(block, "catalog_connection")
@@ -491,10 +493,10 @@ def _parse_spark_snowflake(source_code: str, result: ScriptLineageResult):
         ref = _snowflake_ref(match.group(3), source_code) if _is_snowflake_format(match, source_code) else None
         if ref:
             result.snowflake_sources.append(ref)
-            logger.debug(f"Found Spark read.format('snowflake') source: {ref}")
+            logger.debug("Found Spark read.format('snowflake') source: %s", ref)
 
     for match in SPARK_WRITE_SNOWFLAKE_PATTERN.finditer(source_code):
         ref = _snowflake_ref(match.group(3), source_code) if _is_snowflake_format(match, source_code) else None
         if ref:
             result.snowflake_targets.append(ref)
-            logger.debug(f"Found Spark write.format('snowflake') target: {ref}")
+            logger.debug("Found Spark write.format('snowflake') target: %s", ref)
