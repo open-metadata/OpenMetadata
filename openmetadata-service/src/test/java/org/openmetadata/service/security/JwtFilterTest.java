@@ -14,6 +14,7 @@
 package org.openmetadata.service.security;
 
 import static java.lang.String.format;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -45,6 +46,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -342,6 +344,20 @@ class JwtFilterTest {
   @Test
   void testInvalidToken() {
     ContainerRequestContext context = createRequestContextWithJwt("invalid-token");
+
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    assertTrue(
+        exception.getMessage().toLowerCase(Locale.ROOT).contains("Invalid token.".toLowerCase()));
+  }
+
+  @Test
+  void testOutOfRangeExpiryClaimIsAnInvalidToken() {
+    Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
+    String header = encoder.encodeToString("{\"alg\":\"RS256\",\"typ\":\"JWT\"}".getBytes(UTF_8));
+    String payload =
+        encoder.encodeToString("{\"sub\":\"sam\",\"exp\":9223372036854775807}".getBytes(UTF_8));
+    ContainerRequestContext context = createRequestContextWithJwt(header + "." + payload + ".c2ln");
 
     Exception exception =
         assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
