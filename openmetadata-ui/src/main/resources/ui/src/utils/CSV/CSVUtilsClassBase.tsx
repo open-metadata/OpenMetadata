@@ -34,6 +34,7 @@ import {
   Sliders02,
   Tag01,
   Type01,
+  XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, startCase, toString } from 'lodash';
 import {
@@ -1482,22 +1483,36 @@ const InlineCustomPropertiesEditor = ({
     // Single-value enums need to swap one value for another, which a chip
     // Autocomplete refuses while it holds a value; a Select replaces natively.
     if (!isMultiSelect) {
+      const selectedValue = selectedValues[0] ?? null;
+
       return (
-        <Select
-          aria-label={getEntityName(customProperty)}
-          className="bulk-edit-custom-property-enum-select"
-          data-testid={`${customProperty.name}-enum-select`}
-          items={items}
-          placeholder={t('label.enum-value-plural')}
-          value={selectedValues[0] ?? null}
-          onChange={(key) =>
-            handleUpdateDraft(
-              customProperty.name,
-              key === null ? [] : [String(key)]
-            )
-          }>
-          {(item) => <Select.Item id={item.id} label={item.label} />}
-        </Select>
+        <Box align="center" gap={1}>
+          <Select
+            aria-label={getEntityName(customProperty)}
+            className="bulk-edit-custom-property-enum-select tw:flex-1"
+            data-testid={`${customProperty.name}-enum-select`}
+            items={items}
+            placeholder={t('label.enum-value-plural')}
+            popoverClassName="bulk-edit-custom-property-select-dropdown"
+            value={selectedValue}
+            onChange={(key) =>
+              handleUpdateDraft(
+                customProperty.name,
+                key === null ? [] : [String(key)]
+              )
+            }>
+            {(item) => <Select.Item id={item.id} label={item.label} />}
+          </Select>
+          {selectedValue && (
+            <ButtonUtility
+              aria-label={t('label.clear')}
+              color="tertiary"
+              data-testid={`${customProperty.name}-enum-clear`}
+              icon={<XClose size={14} />}
+              onClick={() => handleUpdateDraft(customProperty.name, [])}
+            />
+          )}
+        </Box>
       );
     }
 
@@ -1520,6 +1535,7 @@ const InlineCustomPropertiesEditor = ({
         data-testid={`${customProperty.name}-enum-select`}
         items={items}
         placeholder={t('label.enum-value-plural')}
+        popoverClassName="bulk-edit-custom-property-select-dropdown"
         selectedItems={items.filter((item) => selectedValues.includes(item.id))}
         onItemCleared={handleCleared}
         onItemInserted={handleInserted}>

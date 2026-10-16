@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { FC } from 'react';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import { DataAssetOption } from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
@@ -1069,6 +1070,7 @@ describe('CSV utils ClassBase', () => {
         { usePlainTextEditor: true }
       );
       const onRowChange = jest.fn();
+      const onClose = jest.fn();
 
       if (!editor) {
         throw new Error('Expected extension editor to be defined');
@@ -1081,23 +1083,90 @@ describe('CSV utils ClassBase', () => {
               row: { extension: 'status:Draft' },
               column: { key: 'extension' },
               onRowChange,
+              onClose,
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      // userEvent sends the mousedown that the editor's outside-press guard
+      // listens for; fireEvent.click would skip it.
+      await user.click(
+        within(await screen.findByTestId('status-enum-select')).getByRole(
+          'button'
+        )
+      );
+      await user.click(await screen.findByRole('option', { name: 'Approved' }));
+
+      // Picking inside the portalled list must not count as an outside press.
+      expect(onClose).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole('button', { name: /update/i }));
+
+      await waitFor(() => {
+        expect(onRowChange).toHaveBeenCalledWith(
+          { extension: 'status:Approved' },
+          true
+        );
+      });
+    });
+
+    it('should clear a single-value enum on its own', async () => {
+      mockGetTypeByFQN.mockResolvedValueOnce({
+        customProperties: [
+          {
+            name: 'status',
+            displayName: 'Status',
+            description: '',
+            propertyType: { name: 'enum' },
+            customPropertyConfig: {
+              config: { multiSelect: false, values: ['Draft', 'Approved'] },
+            },
+          },
+          {
+            name: 'priority',
+            displayName: 'Priority',
+            description: '',
+            propertyType: { name: 'string' },
+          },
+        ],
+      });
+      const editor = csvUtils.getEditor(
+        'extension',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected extension editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: { extension: 'status:Draft;priority:High' },
+              column: { key: 'extension' },
+              onRowChange,
               onClose: jest.fn(),
             } as unknown as Parameters<typeof editor>[0])}
           </>
         );
       });
 
-      fireEvent.click(
-        within(await screen.findByTestId('status-enum-select')).getByRole(
-          'button'
-        )
-      );
-      fireEvent.click(await screen.findByRole('option', { name: 'Approved' }));
-      fireEvent.click(screen.getByRole('button', { name: /update/i }));
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      await user.click(await screen.findByTestId('status-enum-clear'));
+
+      expect(screen.queryByTestId('status-enum-clear')).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /update/i }));
 
       await waitFor(() => {
         expect(onRowChange).toHaveBeenCalledWith(
-          { extension: 'status:Approved' },
+          { extension: 'priority:High' },
           true
         );
       });
