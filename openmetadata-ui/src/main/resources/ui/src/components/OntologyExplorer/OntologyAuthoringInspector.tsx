@@ -864,13 +864,9 @@ const OntologyAuthoringInspector = ({
             : undefined
         }
       />
-      {relations.length === 0 ? (
-        <InspectorEmptyText>
-          {t('message.no-concept-relationships')}
-        </InspectorEmptyText>
-      ) : (
+      {relations.length > 0 ? (
         <InspectorList>{relations.map(renderRelationRow)}</InspectorList>
-      )}
+      ) : null}
       {isEditable && openSection === 'relationships'
         ? renderRelationshipForm()
         : null}
@@ -889,11 +885,7 @@ const OntologyAuthoringInspector = ({
             : undefined
         }
       />
-      {conceptMappings.length === 0 ? (
-        <InspectorEmptyText>
-          {t('message.no-concept-mappings')}
-        </InspectorEmptyText>
-      ) : (
+      {conceptMappings.length > 0 ? (
         <InspectorList>
           {conceptMappings.map((mapping, index) => {
             const scheme = getMappingScheme(mapping.conceptIri);
@@ -935,7 +927,7 @@ const OntologyAuthoringInspector = ({
             );
           })}
         </InspectorList>
-      )}
+      ) : null}
       {isEditable && openSection === 'mappings' ? renderMappingForm() : null}
     </InspectorSection>
   );
