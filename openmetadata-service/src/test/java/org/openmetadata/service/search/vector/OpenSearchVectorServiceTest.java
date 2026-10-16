@@ -11,10 +11,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,14 +32,20 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
+import org.slf4j.LoggerFactory;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
+import os.org.opensearch.client.opensearch.generic.Request;
 import os.org.opensearch.client.opensearch.generic.Response;
 
 class OpenSearchVectorServiceTest {
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   @Test
   void contentChangesReembedWhileFilterAndMappingChangesRestampStoredVectors() {
@@ -128,6 +139,145 @@ class OpenSearchVectorServiceTest {
             .anyMatch(body -> body.contains("\"_index\":\"staged_chunk_generation\"")));
   }
 
+  /**
+   * On a participant JVM (stagedChunkIndex is null — only the coordinator sets it), the run-scoped
+   * staged chunk index latched from ReindexContext into participantStagedTarget is what the
+   * live-edit mirror writes to, instead of lossy cluster-state discovery. This is the fix for the
+   * multi-node bug where a stale cached null silently dropped the mirror write.
+   */
+  @Test
+  void liveUpdateOnAParticipantMirrorsIntoTheLatchedStagedTarget() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    // Participant: stagedChunkIndex (coordinator-only) stays null; the run-scoped target is
+    // latched.
+    vectorService.latchParticipantStagedTarget("participant_chunk_generation");
+    // Stale null discovery cache, fresh within TTL — must NOT win over the latch.
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
+
+    List<String> bulkTargets = capturedBulkTargets();
+    String live = vectorService.getChunkIndexName();
+    assertTrue(bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"" + live + "\"")));
+    assertTrue(
+        bulkTargets.stream()
+            .anyMatch(body -> body.contains("\"_index\":\"participant_chunk_generation\"")));
+  }
+
+  /**
+   * The participant latch shadows the stale-null discovery cache: when both the latch and a
+   * different cached discovery value are present, the latch wins. Without the latch being
+   * consulted first, "discovered_gen" would have been used; confirming the latch wins proves
+   * resolveChunkSinkTarget's resolution order (stagedChunkIndex, then participant latch, then
+   * discovery).
+   */
+  @Test
+  void participantLatchShadowsTheStaleDiscoveryCache() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    vectorService.latchParticipantStagedTarget("latched_gen");
+    // A discovery cache holding a different value that would win if the latch weren't first.
+    setField("cachedSinkTarget", "discovered_gen");
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
+
+    List<String> bulkTargets = capturedBulkTargets();
+    assertTrue(
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"latched_gen\"")),
+        "mirror must target the latched generation");
+    assertFalse(
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"discovered_gen\"")),
+        "mirror must not target the stale discovery cache value");
+  }
+
+  /**
+   * Reproduces the original bug: on a participant JVM with no latch and a stale null discovery
+   * cache within TTL, the mirror is skipped (no staged bulk write). The live write still lands in
+   * the live alias target. The skip is logged at DEBUG because no recreate may be running, but the
+   * data outcome when the latch is absent remains: only the live index receives the chunks.
+   */
+  @Test
+  void liveUpdateSkipsTheMirrorWhenNoStagedTargetResolvesOnAParticipant() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    // No stagedChunkIndex (participant), no participantStagedTarget (not yet latched), and a
+    // discovery cache holding a stale null within TTL — the exact window the bug lives in.
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
+
+    List<String> bulkTargets = capturedBulkTargets();
+    String live = vectorService.getChunkIndexName();
+    // The live write still happens — it just lands in the soon-to-be-removed old generation.
+    assertTrue(bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"" + live + "\"")));
+    // No mirror write: the only bulk target is the live index.
+    assertEquals(1, bulkTargets.size(), "only the live chunk write; the mirror is skipped");
+  }
+
+  /**
+   * clearParticipantStagedTarget drops the latch so a finished run cannot steer subsequent edits
+   * into its generation. After clearing, the participant falls back to discovery (here a stale
+   * null within TTL), and the mirror is skipped — the same behavior as an unlatched participant.
+   */
+  @Test
+  void clearParticipantStagedTargetRemovesTheLatch() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    vectorService.latchParticipantStagedTarget("stale_latched_gen");
+    vectorService.clearParticipantStagedTarget();
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
+
+    List<String> bulkTargets = capturedBulkTargets();
+    assertFalse(
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"stale_latched_gen\"")),
+        "a cleared latch must not steer the mirror into its generation");
+  }
+
+  /**
+   * The coordinator's stagedChunkIndex takes precedence over the participant latch, so a node
+   * that is both coordinating and would carry a participant latch still mirrors into its own
+   * run-scoped generation (and promotion gating stays anchored on stagedChunkIndex).
+   */
+  @Test
+  void coordinatorStagedChunkIndexTakesPrecedenceOverTheParticipantLatch() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    setField("stagedChunkIndex", "coordinator_gen");
+    vectorService.latchParticipantStagedTarget("participant_gen");
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
+
+    List<String> bulkTargets = capturedBulkTargets();
+    assertTrue(
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"coordinator_gen\"")),
+        "coordinator's stagedChunkIndex wins");
+    assertFalse(
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"participant_gen\"")),
+        "participant latch must not override the coordinator");
+  }
+
   private static ContextMemory refreshableMemory() {
     return new ContextMemory()
         .withId(UUID.randomUUID())
@@ -136,6 +286,35 @@ class OpenSearchVectorServiceTest {
         .withQuestion("Should keywords be upper case?")
         .withAnswer("Yes, use upper case keywords.")
         .withEntityStatus(ContextMemoryStatus.APPROVED);
+  }
+
+  @Test
+  void liveUpdateWithoutARecreateDoesNotWarnAboutMissingStagedChunks() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    Logger logger = (Logger) LoggerFactory.getLogger(OpenSearchVectorService.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      vectorService.updateEntityEmbeddings(refreshableMemory(), "entityIndex");
+
+      assertEquals(1, capturedBulkTargets().size(), "the live chunk update must still be written");
+      assertTrue(
+          appender.list.stream()
+              .noneMatch(
+                  event ->
+                      event.getLevel().isGreaterOrEqual(Level.WARN)
+                          && event.getFormattedMessage().contains("staged")),
+          "an ordinary live update has no staged generation and must not warn about data loss");
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
   }
 
   private static OpenSearchVectorService.ChunkRefresh refresh(
@@ -179,6 +358,16 @@ class OpenSearchVectorServiceTest {
         .getBody()
         .map(body -> new String(body.bodyAsBytes(), java.nio.charset.StandardCharsets.UTF_8))
         .orElse("");
+  }
+
+  private List<String> capturedBulkTargets() throws IOException {
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, atLeastOnce()).execute(captor.capture());
+    return captor.getAllValues().stream()
+        .filter(request -> "/_bulk".equals(request.getEndpoint()))
+        .map(OpenSearchVectorServiceTest::bodyOf)
+        .toList();
   }
 
   @Test
@@ -704,43 +893,67 @@ class OpenSearchVectorServiceTest {
   }
 
   @Test
-  void testCheckHybridSearchPipelineReturnsEmptyWhenAvailable() throws IOException {
-    mockOpenSearchResponse("{\"hybrid-rrf\":{}}");
+  void testCheckHybridSearchPipelineRunsAHybridQueryWithTheInlinePipeline() throws IOException {
+    mockOpenSearchResponse("{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}");
+    ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
 
-    assertTrue(
-        vectorService.checkHybridSearchPipeline().isEmpty(),
-        "Pipeline should be available when OpenSearch returns 200");
+    Optional<String> result = vectorService.checkHybridSearchPipeline(0.6, 0.4);
+
+    verify(mockGenericClient).execute(captor.capture());
+    Request probe = captor.getValue();
+    assertTrue(result.isEmpty(), "A query OpenSearch accepts means hybrid search can run");
+    assertEquals("POST", probe.getMethod());
+    assertEquals("/" + vectorService.getChunkIndexName() + "/_search", probe.getEndpoint());
+    assertEquals("true", probe.getParameters().get("ignore_unavailable"));
+    JsonNode body = MAPPER.readTree(probe.getBody().get().bodyAsString());
+    assertEquals(2, body.path("query").path("hybrid").path("queries").size());
+    assertEquals(
+        MAPPER.readTree(OpenSearchVectorService.buildHybridRrfPipelineDefinition(0.6, 0.4)),
+        body.path("search_pipeline"));
   }
 
   @Test
-  void testCheckHybridSearchPipelineReturnsErrorOn404() throws IOException {
-    Response mockResponse = mock(Response.class);
-    when(mockResponse.getStatus()).thenReturn(404);
-    when(mockResponse.getBody()).thenReturn(Optional.empty());
-    when(mockGenericClient.execute(any())).thenReturn(mockResponse);
+  void testCheckHybridSearchPipelineStaysInsideTheClusterAliasPrefix() throws IOException {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.getClusterAlias()).thenReturn("bi4all-pt");
+    Entity.setSearchRepository(searchRepository);
+    mockOpenSearchResponse("{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}");
+    ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+    try {
+      vectorService.checkHybridSearchPipeline(0.6, 0.4);
+    } finally {
+      Entity.setSearchRepository(null);
+    }
 
-    Optional<String> result = vectorService.checkHybridSearchPipeline();
-    assertTrue(result.isPresent(), "Should return error when pipeline not found");
-    assertTrue(result.get().contains("not found"), "Error should mention pipeline not found");
+    verify(mockGenericClient).execute(captor.capture());
+    assertEquals(
+        "/bi4all-pt_data_asset_embeddings_chunks/_search", captor.getValue().getEndpoint());
   }
 
   @Test
-  void testCheckHybridSearchPipelineReturnsErrorOn5xx() throws IOException {
+  void testCheckHybridSearchPipelineReportsWhyOpenSearchRejectedTheQuery() throws IOException {
+    String rejection =
+        "{\"error\":{\"type\":\"illegal_argument_exception\",\"reason\":\"sum of weights for"
+            + " combination must be equal to 1.0\"},\"status\":400}";
     Response mockResponse = mock(Response.class);
-    when(mockResponse.getStatus()).thenReturn(500);
-    when(mockResponse.getBody()).thenReturn(Optional.empty());
+    when(mockResponse.getStatus()).thenReturn(400);
+    when(mockResponse.getBody())
+        .thenReturn(
+            Optional.of(Body.from(rejection.getBytes(StandardCharsets.UTF_8), "application/json")));
     when(mockGenericClient.execute(any())).thenReturn(mockResponse);
 
-    Optional<String> result = vectorService.checkHybridSearchPipeline();
-    assertTrue(result.isPresent(), "Should return error on server error");
-    assertTrue(result.get().contains("Unexpected status 500"), "Error should mention status code");
+    Optional<String> result = vectorService.checkHybridSearchPipeline(0.7, 0.7);
+
+    assertTrue(result.isPresent(), "A rejected query means hybrid search cannot run");
+    assertTrue(result.get().contains("status 400"), "Error should mention the status code");
+    assertTrue(result.get().contains("sum of weights"), "Error should carry OpenSearch's reason");
   }
 
   @Test
   void testCheckHybridSearchPipelineReturnsErrorOnException() throws IOException {
     when(mockGenericClient.execute(any())).thenThrow(new IOException("Connection refused"));
 
-    Optional<String> result = vectorService.checkHybridSearchPipeline();
+    Optional<String> result = vectorService.checkHybridSearchPipeline(0.6, 0.4);
     assertTrue(result.isPresent(), "Should return error when exception occurs");
     assertTrue(
         result.get().contains("Connection refused"), "Error should include exception message");

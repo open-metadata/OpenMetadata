@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { InfoCircleOutlined } from '@ant-design/icons';
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,11 +28,7 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import {
-  GRAYED_OUT_COLOR,
-  NO_DATA_PLACEHOLDER,
-  ROUTES,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER, ROUTES } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
@@ -103,8 +104,9 @@ const LoginConfigurationPage = () => {
             </Box>
             <Box className="layout-column tw:block">
               <Button
+                color="secondary"
                 data-testid="edit-button"
-                icon={<Icon component={IconEdit} size={12} />}
+                iconLeading={<IconEdit className="tw:size-3 tw:shrink-0" />}
                 onClick={handleEditClick}>
                 {t('label.edit')}
               </Button>
@@ -117,13 +119,15 @@ const LoginConfigurationPage = () => {
               <Typography className="m-0" color="secondary">
                 {t('label.max-login-fail-attempt-plural')}
                 <Tooltip
+                  arrow
+                  excludeTriggerFromTabOrder
                   placement="top"
                   title={t('message.login-fail-attempt-message')}
-                  trigger="hover">
-                  <InfoCircleOutlined
-                    className="m-x-xss"
+                  triggerClassName="tw:inline-flex">
+                  <InfoCircle
+                    className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
                     data-testid="max-login-fail-attampts-url-info"
-                    style={{ color: GRAYED_OUT_COLOR }}
+                    size={14}
                   />
                 </Tooltip>
               </Typography>
@@ -141,13 +145,15 @@ const LoginConfigurationPage = () => {
               <Typography className="m-0" color="secondary">
                 {t('label.access-block-time')}
                 <Tooltip
+                  arrow
+                  excludeTriggerFromTabOrder
                   placement="top"
                   title={t('message.access-block-time-message')}
-                  trigger="hover">
-                  <InfoCircleOutlined
-                    className="m-x-xss"
+                  triggerClassName="tw:inline-flex">
+                  <InfoCircle
+                    className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
                     data-testid="access-block-time-info"
-                    style={{ color: GRAYED_OUT_COLOR }}
+                    size={14}
                   />
                 </Tooltip>
               </Typography>
@@ -165,13 +171,15 @@ const LoginConfigurationPage = () => {
               <Typography className="m-0" color="secondary">
                 {t('label.jwt-token-expiry-time')}
                 <Tooltip
+                  arrow
+                  excludeTriggerFromTabOrder
                   placement="top"
                   title={t('message.jwt-token-expiry-time-message')}
-                  trigger="hover">
-                  <InfoCircleOutlined
-                    className="m-x-xss"
+                  triggerClassName="tw:inline-flex">
+                  <InfoCircle
+                    className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
                     data-testid="jwt-token-expiry-time-info"
-                    style={{ color: GRAYED_OUT_COLOR }}
+                    size={14}
                   />
                 </Tooltip>
               </Typography>

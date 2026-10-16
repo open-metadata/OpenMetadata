@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Box, Button, Tabs, Tooltip } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase, toString } from 'lodash';
@@ -356,13 +356,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     () => serviceUtilClassBase.getAgentsTabWidgets(),
     []
   );
-  const isDBService = useMemo(
-    () => serviceCategory === ServiceCategory.DATABASE_SERVICES,
-    [serviceCategory]
-  );
+  // AutoPilot creates AI Automations for services of every type, so the widget is not limited
+  // to database services.
   const isCollateAIWidgetSupported = useMemo(
-    () => !isUndefined(CollateAIAgentsWidget) && isDBService,
-    [CollateAIAgentsWidget, isDBService]
+    () => !isUndefined(CollateAIAgentsWidget),
+    [CollateAIAgentsWidget]
   );
 
   const { searchValue, fileSearchValue, spreadSheetSearchValue } =
@@ -592,7 +590,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsCollateAgentLoading(true);
         // AutoPilot creates at most one automation per template, so the list is
         // bounded and served in a single unpaginated fetch.
-        const { data } = await getAiAutomationsByService(decodedServiceFQN);
+        const { data } = await getAiAutomationsByService(
+          decodedServiceFQN,
+          getEntityTypeFromServiceCategory(serviceCategory)
+        );
 
         setCollateAgentsList(data);
         handleCollateAgentPagingChange({ total: data.length });
@@ -602,7 +603,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsCollateAgentLoading(false);
       }
     },
-    [decodedServiceFQN, handleCollateAgentPagingChange, deleted]
+    [
+      decodedServiceFQN,
+      serviceCategory,
+      handleCollateAgentPagingChange,
+      deleted,
+    ]
   );
 
   const getAllIngestionWorkflows = useCallback(
@@ -1801,6 +1807,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           actions={
             <>
               <Tooltip
+                arrow
                 title={
                   flags.canEditAll
                     ? t('label.edit-entity', {
@@ -1809,11 +1816,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
                     : t('message.no-permission-for-action')
                 }>
                 <Button
-                  ghost
+                  color="secondary"
                   data-testid="edit-connection-button"
-                  disabled={!flags.canEditAll}
-                  type="primary"
-                  onClick={goToEditConnection}>
+                  isDisabled={!flags.canEditAll}
+                  size="sm"
+                  onPress={goToEditConnection}>
                   {t('label.edit-entity', {
                     entity: t('label.connection'),
                   })}

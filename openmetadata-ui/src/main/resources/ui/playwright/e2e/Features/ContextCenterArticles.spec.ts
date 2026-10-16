@@ -53,6 +53,7 @@ import {
   waitForArticleInFollows,
   waitForArticleSearchResponse,
   waitForDraftPersisted,
+  waitForDraftSyncedIntoEditor,
   waitForRecentlyViewed,
 } from '../../utils/ContextCenterUtil';
 import {
@@ -93,6 +94,9 @@ let DRAFT_ARTICLE_A_DISPLAY_NAME: string;
 let DRAFT_ARTICLE_B_DISPLAY_NAME: string;
 
 let articleEntity: KnowledgeCenterClass;
+// Unique part of the article's title: searching the whole title also matches
+// every newer "CC Article" from other workers (see verifyArticleSearch).
+let articleSearchTerm: string;
 let articleTagClassification: ClassificationClass;
 let articleTags: TagClass[] = [];
 let quickLinkTitle = '';
@@ -118,8 +122,9 @@ test.describe('Context Center Articles', () => {
     DRAFT_ARTICLE_A_DISPLAY_NAME = `Draft Persist A ${uuid()}`;
     DRAFT_ARTICLE_B_DISPLAY_NAME = `Draft Persist B ${uuid()}`;
 
+    articleSearchTerm = uuid();
     articleEntity = new KnowledgeCenterClass({
-      displayName: `CC Article ${uuid()}`,
+      displayName: `CC Article ${articleSearchTerm}`,
       name: `cc_article_${uuid()}`,
       description: ARTICLE_DESCRIPTION,
     });
@@ -322,7 +327,8 @@ test.describe('Context Center Articles', () => {
 
     const searchInput = await verifyArticleSearch(
       page,
-      articleEntity.responseData.displayName
+      articleEntity.responseData.displayName,
+      articleSearchTerm
     );
     await scrollListingToCard(page, articleEntity.responseData.displayName);
 
@@ -697,12 +703,11 @@ test.describe('Context Center Articles', () => {
         await addBtn.click();
         await searchResponse;
 
-        await expect(
-          dpContainer.getByTestId('data-product-selector')
-        ).toBeVisible();
+        const picker = page.getByTestId('drop-down-menu');
+        await expect(picker).toBeVisible();
 
-        await page
-          .getByTestId(`tag-${dataProduct.responseData.fullyQualifiedName}`)
+        await picker
+          .getByTestId(dataProduct.responseData.fullyQualifiedName ?? '')
           .click();
 
         const savePatch = page.waitForResponse(
@@ -710,7 +715,7 @@ test.describe('Context Center Articles', () => {
             response.url().includes('/api/v1/contextCenter/pages/') &&
             response.request().method() === 'PATCH'
         );
-        await page.getByTestId('saveAssociatedTag').click();
+        await picker.getByTestId('update-btn').click();
         await savePatch;
         await waitForAllLoadersToDisappear(page);
 
@@ -808,7 +813,11 @@ test.describe('Context Center Articles', () => {
     await navigateToArticles(page);
     await page.waitForLoadState('domcontentloaded');
 
-    await verifyArticleSearch(page, articleEntity.responseData.displayName);
+    await verifyArticleSearch(
+      page,
+      articleEntity.responseData.displayName,
+      articleSearchTerm
+    );
     const viewedCard = page
       .getByTestId('knowledge-page-listing')
       .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);
@@ -1210,7 +1219,13 @@ test.describe('Context Center Articles', () => {
     await navigateToArticle(page, article.fullyQualifiedName);
     const titleInput = page.getByTestId('entity-header-display-name');
     await titleInput.fill(`${updatedTitle} Unsaved`);
-    await page.goBack();
+    // The unsaved title raises the page's beforeunload prompt. Accept it explicitly, and wait on
+    // the document rather than `load`, which can go unreported after the prompt and hang goBack.
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.goBack({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+    await expect(
+      page.getByTestId('context-center-articles-page')
+    ).toBeVisible();
     await waitForAllLoadersToDisappear(page);
     await verifyArticleSearch(page, updatedTitle);
     await expect(
@@ -1772,13 +1787,7 @@ test.describe('Context Center Articles', () => {
       await test.step('Navigate back to Article A — should show updated description', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await waitForAllLoadersToDisappear(page);
-
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
-
-        await expect(editor).toContainText(newDescription);
-        await assertArticleEditorSaved(page);
+        await waitForDraftSyncedIntoEditor(page, newDescription);
       });
 
       await test.step('Article list card should reflect updated description', async () => {
@@ -1890,12 +1899,7 @@ test.describe('Context Center Articles', () => {
       });
 
       await test.step('Content should be synced and badge shows Saved', async () => {
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
-
-        await expect(editor).toContainText(reloadDescription);
-        await assertArticleEditorSaved(page);
+        await waitForDraftSyncedIntoEditor(page, reloadDescription);
       });
     });
 
@@ -2026,35 +2030,14 @@ test.describe('Context Center Articles', () => {
         await page.reload();
         await waitForAllLoadersToDisappear(page);
 
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
-
-        await editor.waitFor({ state: 'visible' });
-        // Draft restore from localStorage is async after the API response renders;
-        // toPass retries until the draft content appears in the editor
-        await expect(async () => {
-          await expect(editor).toContainText(contentB);
-        }).toPass({ timeout: 20000 });
-        await assertArticleEditorSaved(page);
+        await waitForDraftSyncedIntoEditor(page, contentB);
       });
 
       await test.step('Navigate to Article A — its independent draft should also be synced', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await waitForAllLoadersToDisappear(page);
 
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
-
-        await editor.waitFor({ state: 'visible' });
-        // Same async draft restore as the Article B leg above: the draft is applied
-        // after the API response has already rendered the server's content, so the
-        // assertion has to retry rather than sample once.
-        await expect(async () => {
-          await expect(editor).toContainText(contentA);
-        }).toPass({ timeout: 20000 });
-        await assertArticleEditorSaved(page);
+        await waitForDraftSyncedIntoEditor(page, contentA);
       });
     });
   });

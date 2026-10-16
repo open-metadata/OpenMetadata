@@ -31,6 +31,15 @@ const mockFormatFormDataForRender = jest.fn(
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn(
+    ({
+      children,
+      className,
+    }: {
+      children: React.ReactNode;
+      className?: string;
+    }) => <div className={className}>{children}</div>
+  ),
   Button: jest.fn(
     ({
       children,
@@ -190,6 +199,32 @@ describe('FormBuilderV1', () => {
     expect(onSubmit).toHaveBeenCalledWith({
       formData: submittedFormData,
     });
+  });
+
+  it('routes custom-field focus to the form-level onFocus', () => {
+    const onFocus = jest.fn();
+    render(<FormBuilderV1 schema={schema} onFocus={onFocus} />);
+
+    mockForm.mock.calls.at(-1)?.[0].formContext.handleFocus('root/autoTune');
+
+    expect(onFocus).toHaveBeenCalledWith('root/autoTune', undefined);
+  });
+
+  it('keeps a consumer-provided formContext.handleFocus', () => {
+    const onFocus = jest.fn();
+    const handleFocus = jest.fn();
+    render(
+      <FormBuilderV1
+        formContext={{ handleFocus }}
+        schema={schema}
+        onFocus={onFocus}
+      />
+    );
+
+    mockForm.mock.calls.at(-1)?.[0].formContext.handleFocus('root/name');
+
+    expect(handleFocus).toHaveBeenCalledWith('root/name');
+    expect(onFocus).not.toHaveBeenCalled();
   });
 
   it('supports custom labels and submit button states', () => {

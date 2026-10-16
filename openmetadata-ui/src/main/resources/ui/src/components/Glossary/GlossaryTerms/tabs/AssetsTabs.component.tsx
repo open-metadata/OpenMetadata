@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 import {
+  Alert,
   Box,
+  Button,
   ButtonUtility,
+  Checkbox,
   Dropdown,
   Grid,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Alert, Button, Checkbox, MenuProps, notification } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isObject } from 'lodash';
@@ -37,10 +39,10 @@ import { ReactComponent as EmptyAssetIcon } from '../../../../assets/svg/action-
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
-import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
+import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
-import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
@@ -114,6 +116,7 @@ import {
 } from '../../../SearchedData/SearchedData.interface';
 import './assets-tabs.less';
 import { AssetsTabsProps } from './AssetsTabs.interface';
+import { removeAndReportRefusals } from './AssetsTabs.utils';
 
 type AssetsTabEntity = Domain | DataProduct | GlossaryTerm | Tag | Metric;
 
@@ -142,13 +145,12 @@ const removePortsHandler =
       | AssetsOfEntity.DATA_PRODUCT_INPUT_PORT
       | AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
   ) =>
-  async (activeEntity: AssetsTabEntity, entities: EntityReference[]) => {
-    await removePortsFromDataProduct(
+  async (activeEntity: AssetsTabEntity, entities: EntityReference[]) =>
+    removePortsFromDataProduct(
       activeEntity.fullyQualifiedName ?? '',
       entities,
       portType
     );
-  };
 
 const removeAssetsHandlers: Partial<
   Record<
@@ -156,41 +158,36 @@ const removeAssetsHandlers: Partial<
     (
       activeEntity: AssetsTabEntity,
       entities: EntityReference[]
-    ) => Promise<void>
+    ) => Promise<unknown>
   >
 > = {
-  [AssetsOfEntity.DATA_PRODUCT]: async (activeEntity, entities) => {
-    await removeAssetsFromDataProduct(
+  [AssetsOfEntity.DATA_PRODUCT]: async (activeEntity, entities) =>
+    removeAssetsFromDataProduct(
       activeEntity.fullyQualifiedName ?? '',
       entities
-    );
-  },
+    ),
   [AssetsOfEntity.DATA_PRODUCT_INPUT_PORT]: removePortsHandler(
     AssetsOfEntity.DATA_PRODUCT_INPUT_PORT
   ),
   [AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT]: removePortsHandler(
     AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
   ),
-  [AssetsOfEntity.GLOSSARY]: async (activeEntity, entities) => {
-    await removeAssetsFromGlossaryTerm(activeEntity as GlossaryTerm, entities);
-  },
-  [AssetsOfEntity.TAG]: async (activeEntity, entities) => {
-    await removeAssetsFromTags(activeEntity.id ?? '', entities);
-  },
-  [AssetsOfEntity.METRIC]: async (activeEntity, entities) => {
-    await removeMetricTabAssets(
-      activeEntity.fullyQualifiedName ?? '',
-      entities
-    );
-  },
+  [AssetsOfEntity.GLOSSARY]: async (activeEntity, entities) =>
+    removeAssetsFromGlossaryTerm(activeEntity as GlossaryTerm, entities),
+  [AssetsOfEntity.TAG]: async (activeEntity, entities) =>
+    removeAssetsFromTags(activeEntity.id ?? '', entities),
+  [AssetsOfEntity.METRIC]: async (activeEntity, entities) =>
+    removeMetricTabAssets(activeEntity.fullyQualifiedName ?? '', entities),
   [AssetsOfEntity.DOMAIN]: async (activeEntity, entities) => {
-    await removeAssetsFromDomain(
+    const response = await removeAssetsFromDomain(
       activeEntity.fullyQualifiedName ?? '',
       entities
     );
     queryClient.invalidateQueries({
       queryKey: domainAssetsCountQueryKey,
     });
+
+    return response;
   },
 };
 
@@ -198,9 +195,7 @@ const removeAssetsByType = async (
   type: AssetsOfEntity,
   activeEntity: AssetsTabEntity,
   entities: EntityReference[]
-) => {
-  await removeAssetsHandlers[type]?.(activeEntity, entities);
-};
+) => removeAssetsHandlers[type]?.(activeEntity, entities);
 
 type AssetsQueryFilter = AssetsTabsProps['queryFilter'];
 
@@ -391,11 +386,11 @@ const BulkDeleteNotification = ({
           {selectedItemsCount} {t('label.items-selected-lowercase')}
         </Typography>
         <Button
-          danger
+          showTextWhileLoading
+          color="primary-destructive"
           data-testid="delete-all-button"
-          loading={assetRemoving}
-          type="primary"
-          onClick={onBulkDeleteClick}>
+          isLoading={assetRemoving}
+          onPress={onBulkDeleteClick}>
           {t('label.delete')}
         </Button>
       </div>
@@ -429,6 +424,7 @@ const AssetsTabs = forwardRef(
     const [quickFilterQuery, setQuickFilterQuery] =
       useState<QueryFilterInterface>();
     const { t } = useTranslation();
+    const { socket } = useWebSocketConnector();
     const [totalAssetCount, setTotalAssetCount] = useState<number>(
       assetCount ?? 0
     );
@@ -457,8 +453,6 @@ const AssetsTabs = forwardRef(
     );
 
     const [selectedCard, setSelectedCard] = useState<SourceType>();
-    const [visible, setVisible] = useState<boolean>(false);
-    const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [assetToDelete, setAssetToDelete] = useState<SourceType>();
     const [activeEntity, setActiveEntity] = useState<AssetsTabEntity>();
@@ -592,24 +586,6 @@ const AssetsTabs = forwardRef(
       ]
     );
 
-    const hideNotification = () => {
-      notification.close('asset-tab-notification-key');
-    };
-
-    const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
-      const latestOpenKey = keys.find(
-        (key) => !openKeys.includes(key as EntityType)
-      );
-      if (ASSET_MENU_KEYS.includes(latestOpenKey as EntityType)) {
-        setOpenKeys(latestOpenKey ? [latestOpenKey as EntityType] : []);
-      } else {
-        setOpenKeys(keys as EntityType[]);
-      }
-    };
-
-    const handleAssetButtonVisibleChange = (newVisible: boolean) =>
-      setVisible(newVisible);
-
     const fetchCurrentEntity = useCallback(async () => {
       let data;
       const fqn = entityFqn ?? '';
@@ -714,23 +690,22 @@ const AssetsTabs = forwardRef(
             <Typography>{baseMessage}</Typography>
             <Alert
               showIcon
-              className="m-t-sm"
-              description={
-                assetsInOutputPorts.length > 1 || assetsToRemove.length > 1 ? (
-                  <ul className="m-b-0 p-l-md">
-                    {assetsInOutputPorts.map((asset) => (
-                      <li key={asset.id}>{getEntityName(asset)}</li>
-                    ))}
-                  </ul>
-                ) : undefined
-              }
-              message={
+              className="tw:mt-2"
+              data-testid="output-port-removal-warning"
+              title={
                 assetsInOutputPorts.length === 1 && assetsToRemove.length === 1
                   ? t('message.remove-asset-will-also-remove-from-output-ports')
                   : t('message.remove-asset-output-port-warning')
               }
-              type="warning"
-            />
+              variant="warning">
+              {assetsInOutputPorts.length > 1 || assetsToRemove.length > 1 ? (
+                <ul className="tw:mb-0 tw:list-disc tw:pl-4">
+                  {assetsInOutputPorts.map((asset) => (
+                    <li key={asset.id}>{getEntityName(asset)}</li>
+                  ))}
+                </ul>
+              ) : undefined}
+            </Alert>
           </>
         );
       },
@@ -810,7 +785,10 @@ const AssetsTabs = forwardRef(
             }
           }
 
-          await removeAssetsByType(type, activeEntity, entities);
+          await removeAndReportRefusals(
+            () => removeAssetsByType(type, activeEntity, entities),
+            socket
+          );
 
           await new Promise((resolve) => {
             setTimeout(() => {
@@ -825,7 +803,6 @@ const AssetsTabs = forwardRef(
           setAssetRemoving(false);
           if (!dryRunImpactDetected) {
             onRemoveAsset?.();
-            hideNotification();
             setSelectedItems(new Map()); // Reset selected items
             if (type === AssetsOfEntity.DATA_PRODUCT) {
               fetchOutputPorts();
@@ -833,7 +810,7 @@ const AssetsTabs = forwardRef(
           }
         }
       },
-      [type, activeEntity, entityFqn, fetchOutputPorts]
+      [type, activeEntity, entityFqn, fetchOutputPorts, socket]
     );
 
     const confirmDomainAssetRemove = useCallback(async () => {
@@ -842,9 +819,11 @@ const AssetsTabs = forwardRef(
       }
       setAssetRemoving(true);
       try {
-        await removeAssetsFromDomain(
-          activeEntity.fullyQualifiedName ?? '',
-          pendingRemoveEntities
+        await removeAndReportRefusals(() =>
+          removeAssetsFromDomain(
+            activeEntity.fullyQualifiedName ?? '',
+            pendingRemoveEntities
+          )
         );
         queryClient.invalidateQueries({ queryKey: domainAssetsCountQueryKey });
         setRemoveDryRunWarnings(undefined);
@@ -855,7 +834,6 @@ const AssetsTabs = forwardRef(
           }, ES_UPDATE_DELAY);
         });
         onRemoveAsset?.();
-        hideNotification();
         setSelectedItems(new Map());
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -902,7 +880,6 @@ const AssetsTabs = forwardRef(
     useEffect(() => {
       return () => {
         onAssetClick?.(undefined);
-        hideNotification();
       };
     }, []);
 
@@ -1104,26 +1081,17 @@ const AssetsTabs = forwardRef(
         data.length > 0 && (
           <div className="w-full d-flex justify-between items-center m-b-sm">
             <Checkbox
-              className="assets-checkbox p-x-sm"
-              onChange={(e) => onSelectAll(e.target.checked)}>
-              {t('label.select-field', {
+              className="tw:px-2"
+              data-testid="select-all-assets"
+              label={t('label.select-field', {
                 field: t('label.all'),
               })}
-            </Checkbox>
+              onChange={onSelectAll}
+            />
           </div>
         )
       );
-    }, [
-      activeEntity,
-      isLoading,
-      data,
-      openKeys,
-      visible,
-      currentPage,
-      onOpenChange,
-      handleAssetButtonVisibleChange,
-      onSelectAll,
-    ]);
+    }, [activeEntity, isLoading, data, currentPage, onSelectAll]);
 
     const layout = useMemo(() => {
       return (

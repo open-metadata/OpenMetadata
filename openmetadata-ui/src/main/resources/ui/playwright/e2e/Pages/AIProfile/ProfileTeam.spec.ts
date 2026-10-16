@@ -48,8 +48,24 @@ const makeTeam = (
 test.describe('AI Profile Team Detail', () => {
   test.beforeAll(async ({ browser }) => {
     createdTeams = [];
-    policy = new PolicyClass();
-    role = new RolesClass();
+    // The add-role/add-policy picker fetches one unsearched page of 100 and
+    // filters it in the browser (MembersTeamDetail.handleStartAdd), and the
+    // API returns them sorted ascending by name. On an instance with 100+
+    // roles/policies a default `PW%...` fixture sorts past that window and the
+    // option never renders, so prefix with '0' — digits sort before letters,
+    // putting these fixtures on the first page whatever else exists.
+    const policyId = uuid();
+    const roleId = uuid();
+    policy = new PolicyClass({
+      name: `0PW%Policy-${policyId}`,
+      displayName: `0PW Policy ${policyId}`,
+      description: 'playwright for policy description',
+    });
+    role = new RolesClass({
+      name: `0PW%Roles-${roleId}`,
+      displayName: `0PW Roles ${roleId}`,
+      description: 'playwright for roles description',
+    });
     member = new UserClass();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await member.create(apiContext);
@@ -299,11 +315,30 @@ test.describe('AI Profile Team Detail', () => {
       await page.getByTestId(entityCase.addTestId).click();
       await optionsList;
 
-      await page
-        .getByTestId(entityCase.selectTestId)
-        .getByRole('combobox')
-        .fill(name);
-      await page.getByRole('option', { name }).click();
+      const select = page.getByTestId(entityCase.selectTestId);
+      const combobox = select.getByRole('combobox');
+      await combobox.fill(name);
+
+      // Commit with Enter on the focused option rather than clicking it.
+      // Autocomplete drops a selection whenever `isLeavingRef` is set, and
+      // that ref is armed by `onBlurCapture` for a microtask — so a click
+      // whose actionability scroll blurs the input lands inside that window
+      // and `onSelectionChange` returns early. The option looks clicked, but
+      // no chip is added and Save stays disabled. Enter never leaves the
+      // input, so it cannot trip the guard.
+      // ArrowDown highlights the list's *first* option, so wait for the list
+      // to have narrowed to the typed name before pressing it, rather than
+      // acting on the unfiltered list still on screen.
+      const options = page.getByRole('option');
+      await expect(options.filter({ hasText: name })).toHaveCount(1);
+      await expect(options).toHaveCount(1);
+      await combobox.press('ArrowDown');
+      await combobox.press('Enter');
+
+      // Prove the value actually committed before relying on Save: a dropped
+      // selection is otherwise only visible 60s later as a disabled button.
+      await expect(select.getByText(name, { exact: true })).toBeVisible();
+
       // Close the autocomplete dropdown so it doesn't intercept the Save click.
       await page.keyboard.press('Escape');
 

@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Badge, Tooltip } from 'antd';
+import { Badge, Tooltip } from '@openmetadata/ui-core-components';
+
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { GRAYED_OUT_COLOR } from '../../../constants/constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { HelperTextType } from '../../../interface/FormUtils.interface';
 import { FormItemLabelProps } from './Form.interface';
 
@@ -25,16 +24,12 @@ const FormItemLabel = ({
   helperText,
   helperTextType = HelperTextType.Tooltip,
   showHelperText = true,
-  align,
-  overlayInnerStyle,
-  overlayClassName,
   placement = 'top',
   isBeta = false,
   labelClassName,
   betaBadgeClassName,
 }: FormItemLabelProps) => {
   const { t } = useTranslation();
-  const { theme } = useApplicationStore();
 
   return (
     <>
@@ -47,26 +42,25 @@ const FormItemLabel = ({
         helperText &&
         showHelperText && (
           <Tooltip
-            destroyTooltipOnHide
-            align={align}
-            overlayClassName={overlayClassName}
-            overlayInnerStyle={overlayInnerStyle}
+            arrow
+            excludeTriggerFromTabOrder
             placement={placement}
-            title={helperText}>
-            <InfoCircleOutlined
-              className="m-l-xs"
+            title={helperText}
+            triggerClassName="tw:inline-flex">
+            <InfoCircle
+              className="tw:ml-2 tw:shrink-0 tw:text-quaternary"
               data-testid="helper-icon"
-              style={{ color: GRAYED_OUT_COLOR }}
+              size={14}
             />
           </Tooltip>
         )}
       {isBeta && (
         <Badge
           className={classNames('m-l-xs', betaBadgeClassName)}
-          color={theme.primaryColor}
-          count={t('label.beta')}
-          size="small"
-        />
+          color="brand"
+          size="sm">
+          {t('label.beta')}
+        </Badge>
       )}
     </>
   );

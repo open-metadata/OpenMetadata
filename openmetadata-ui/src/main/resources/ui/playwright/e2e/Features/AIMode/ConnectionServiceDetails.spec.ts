@@ -17,7 +17,18 @@
  *
  * Its data-assets table lists each asset's owners and tags, pages that move the rows, the Deleted
  * switch, a soft-deleted service's children, the list after a restore and after a search is
- * cleared, only the top level of nesting assets, and drive directories.
+ * cleared, only the top level of nesting assets, and drive directories. It also offers classic's
+ * other asset tabs (a dashboard service's data models, a drive service's files and spreadsheets),
+ * each counted in its label before it is opened, and the service's data products in metadata
+ * details that open expanded. A service name too long for the header ends in an ellipsis, with
+ * the full name on hover.
+ *
+ * Its header carries the current version, which opens the version history as Context Center
+ * articles do, and, for a database service, Follow; the service's active announcement shows under
+ * the header on every tab; and deleting the service lands on its list.
+ *
+ * Metadata and security services, which have no child assets, get no data-assets tab, as in
+ * classic.
  *
  * It gates what classic gates: the Connection tab, which shows the connection config, only for
  * users who may edit the service; and no domain / owner / tier edits on a soft-deleted service.
@@ -29,6 +40,8 @@
 import { expect } from '@playwright/test';
 import { EXTENDED_TEST_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
+import { DataProduct } from '../../../support/domain/DataProduct';
+import { DashboardServiceClass } from '../../../support/entity/service/DashboardServiceClass';
 import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { DriveServiceClass } from '../../../support/entity/service/DriveServiceClass';
 import { StorageServiceClass } from '../../../support/entity/service/StorageServiceClass';
@@ -40,6 +53,7 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForSearchIndexed } from '../../../utils/polling';
 import { getRowByName } from '../../../utils/scopedLocators';
 import {
+  openAiModeServiceAssetTab,
   visitAiModeServiceDetailsPage,
   waitForServiceChildList,
 } from '../../../utils/service';
@@ -67,6 +81,7 @@ test.describe(
       // Three live databases, so a two-row page has a second page, and one soft-deleted one.
       let databases: string[] = [];
       let deletedDatabase = '';
+      const announcementTitle = `pw-ai-announcement-${uuid()}`;
 
       test.beforeAll(async ({ browser }) => {
         test.setTimeout(EXTENDED_TEST_TIMEOUT);
@@ -112,6 +127,24 @@ test.describe(
           'database_search_index'
         );
 
+        // A second version for the version history, and an active announcement for the banner.
+        await service.patch(apiContext, [
+          { op: 'add', path: '/description', value: 'Orders and payments' },
+        ]);
+        const now = Date.now();
+        await okJson(
+          await apiContext.post('/api/v1/announcements', {
+            data: {
+              displayName: announcementTitle,
+              description: 'Read-only during the migration',
+              entityLink: `<#E::databaseService::${serviceFqn}>`,
+              startTime: now - 60_000,
+              endTime: now + 24 * 60 * 60 * 1000,
+            },
+          }),
+          'Create announcement'
+        );
+
         await afterAction();
       });
 
@@ -135,6 +168,94 @@ test.describe(
 
         await expect(ownedRow).toContainText(owner.getUserDisplayName());
         await expect(ownedRow).toContainText('Personal');
+      });
+
+      test('opens the version history from the current version in the header', async ({
+        page,
+      }) => {
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: serviceFqn,
+        });
+        const history = page.getByTestId('versions-list-container');
+        const versions = waitForResponseWithStatus(
+          page,
+          (response) =>
+            response.url().includes('/services/databaseServices/') &&
+            response.url().endsWith('/versions'),
+          'ok'
+        );
+
+        await page.getByTestId('version-btn').click();
+        await versions;
+
+        // As Context Center articles: the version's own route, beside the version history.
+        await expect(page).toHaveURL(
+          new RegExp(`/service/databaseServices/${serviceFqn}/versions/0\\.2$`)
+        );
+        await expect(history).toContainText('v0.2');
+        await expect(history).toContainText('v0.1');
+      });
+
+      test('follows the service, and unfollows it', async ({ page }) => {
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: serviceFqn,
+        });
+
+        await test.step('follow', async () => {
+          const followed = waitForResponseWithStatus(
+            page,
+            (response) =>
+              response.url().includes('/followers') &&
+              response.request().method() === 'PUT',
+            'ok'
+          );
+          await page
+            .getByRole('button', { name: 'Follow', exact: true })
+            .click();
+          await followed;
+
+          await expect(
+            page.getByRole('button', { name: 'Unfollow', exact: true })
+          ).toBeVisible();
+        });
+
+        await test.step('unfollow', async () => {
+          const unfollowed = waitForResponseWithStatus(
+            page,
+            (response) =>
+              response.url().includes('/followers') &&
+              response.request().method() === 'DELETE',
+            'ok'
+          );
+          await page
+            .getByRole('button', { name: 'Unfollow', exact: true })
+            .click();
+          await unfollowed;
+
+          await expect(
+            page.getByRole('button', { name: 'Follow', exact: true })
+          ).toBeVisible();
+        });
+      });
+
+      test('shows its active announcement under the header on every tab', async ({
+        page,
+      }) => {
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: serviceFqn,
+        });
+        const banner = page.getByTestId('entity-header-announcements');
+
+        await expect(banner).toContainText(announcementTitle);
+
+        await page
+          .getByRole('tab', { name: 'Connection', exact: true })
+          .click();
+
+        await expect(banner).toContainText(announcementTitle);
       });
 
       test('pages through the databases and keeps the page across a reload', async ({
@@ -340,6 +461,68 @@ test.describe(
       });
     });
 
+    test.describe('deleting a service', () => {
+      let service: DatabaseServiceClass;
+
+      test.beforeAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        service = new DatabaseServiceClass();
+        await service.create(apiContext);
+        await afterAction();
+      });
+
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await service.delete(apiContext);
+        await afterAction();
+      });
+
+      test("lands on the service's list once it is deleted", async ({
+        page,
+      }) => {
+        const serviceFqn = service.entityResponseData.fullyQualifiedName;
+        await enableAiAppMode(page);
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: serviceFqn,
+        });
+
+        await page.getByRole('button', { name: 'Settings' }).click();
+        await page.getByRole('menuitemradio', { name: 'Delete' }).click();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
+
+        const deleted = waitForResponseWithStatus(
+          page,
+          (response) =>
+            response.url().includes('/services/databaseServices/async/') &&
+            response.request().method() === 'DELETE',
+          'ok'
+        );
+        await page.getByTestId('confirm-button').click();
+        await deleted;
+
+        await expect(page).toHaveURL(
+          /\/connections\?category=databaseServices$/
+        );
+      });
+    });
+
+    // As classic: a metadata service has no child assets, so no data-assets tab. Every install
+    // has the `OpenMetadata` metadata service, so nothing needs seeding.
+    test('a metadata service offers no data-assets tab', async ({ page }) => {
+      await enableAiAppMode(page);
+      await visitAiModeServiceDetailsPage(page, {
+        category: 'metadataServices',
+        fqn: 'OpenMetadata',
+        tab: 'connection',
+      });
+
+      await expect(
+        page.getByRole('tab', { name: 'Connection', exact: true })
+      ).toHaveAttribute('aria-selected', 'true');
+      await expect(page.getByTestId('dataAssets-tab')).toHaveCount(0);
+    });
+
     test.describe('storage service', () => {
       let service: StorageServiceClass;
       let serviceFqn = '';
@@ -393,23 +576,107 @@ test.describe(
       });
     });
 
+    test.describe('dashboard service', () => {
+      let service: DashboardServiceClass;
+      let serviceFqn = '';
+      let dataModel = '';
+
+      test.beforeAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        service = new DashboardServiceClass();
+        await service.create(apiContext);
+        serviceFqn = service.entityResponseData.fullyQualifiedName;
+        dataModel = `pw-ai-data-model-${uuid()}`;
+
+        await okJson(
+          await apiContext.post('/api/v1/dashboard/datamodels', {
+            data: {
+              name: dataModel,
+              service: serviceFqn,
+              dataModelType: 'SupersetDataModel',
+              columns: [
+                { name: 'country', dataType: 'VARCHAR', dataLength: 64 },
+              ],
+              tags: [PERSONAL_TAG],
+            },
+          }),
+          'Create data model'
+        );
+
+        await afterAction();
+      });
+
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await service.delete(apiContext);
+        await afterAction();
+      });
+
+      test('lists its data models, with their tags, under a Data Model tab', async ({
+        page,
+      }) => {
+        await enableAiAppMode(page);
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'dashboardServices',
+          fqn: serviceFqn,
+        });
+
+        // Counted before the tab is opened, as its list loads only then.
+        await expect(
+          page.getByRole('tab', { name: 'Data Model 1', exact: true })
+        ).toBeVisible();
+
+        await openAiModeServiceAssetTab(page, {
+          tabName: 'Data Model',
+          listPath: 'dashboard/datamodels',
+          serviceFqn,
+        });
+
+        const row = getRowByName(page, dataModel);
+
+        await expect(row).toBeVisible();
+        await expect(row).toContainText('Personal');
+      });
+    });
+
     test.describe('drive service', () => {
       let service: DriveServiceClass;
       let serviceFqn = '';
       let directory = '';
+      let file = '';
+      let secondFile = '';
+      let spreadsheet = '';
+      // Long enough to overflow the header at any viewport the suite runs at.
+      const longName = `pw-drive-service-with-a-name-far-too-long-for-the-header-${'x'.repeat(
+        120
+      )}-${uuid()}`;
 
       test.beforeAll(async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
-        service = new DriveServiceClass();
+        service = new DriveServiceClass(longName);
         await service.create(apiContext);
         serviceFqn = service.entityResponseData.fullyQualifiedName;
-        directory = `pw-ai-directory-${uuid()}`;
+        const suffix = uuid();
+        directory = `pw-ai-directory-${suffix}`;
+        file = `pw-ai-file-${suffix}`;
+        secondFile = `pw-ai-file-2-${suffix}`;
+        spreadsheet = `pw-ai-spreadsheet-${suffix}`;
 
-        await okJson(
-          await apiContext.post('/api/v1/drives/directories', {
-            data: { name: directory, service: serviceFqn },
-          }),
-          'Create directory'
+        // Top-level, as the Files and Spreadsheets tabs list only the service's root.
+        await settleAll(
+          [
+            ['drives/directories', directory],
+            ['drives/files', file],
+            ['drives/files', secondFile],
+            ['drives/spreadsheets', spreadsheet],
+          ].map(async ([path, name]) =>
+            okJson(
+              await apiContext.post(`/api/v1/${path}`, {
+                data: { name, service: serviceFqn },
+              }),
+              `Create ${path} ${name}`
+            )
+          )
         );
 
         await afterAction();
@@ -429,6 +696,171 @@ test.describe(
         });
 
         await expect(getRowByName(page, directory)).toBeVisible();
+      });
+
+      test('lists its files and its spreadsheets under their own tabs', async ({
+        page,
+      }) => {
+        await enableAiAppMode(page);
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'driveServices',
+          fqn: serviceFqn,
+        });
+
+        // Each tab counts its own assets — a directory, two files and a spreadsheet — before any
+        // of their lists has loaded.
+        await test.step('Counts', async () => {
+          for (const name of ['Directories 1', 'Files 2', 'Spreadsheets 1']) {
+            await expect(
+              page.getByRole('tab', { name, exact: true })
+            ).toBeVisible();
+          }
+        });
+
+        await test.step('Files', async () => {
+          await openAiModeServiceAssetTab(page, {
+            tabName: 'Files',
+            listPath: 'drives/files',
+            serviceFqn,
+          });
+
+          await expect(getRowByName(page, file)).toBeVisible();
+          await expect(getRowByName(page, secondFile)).toBeVisible();
+          await expect(getRowByName(page, spreadsheet)).toBeHidden();
+        });
+
+        await test.step('Spreadsheets', async () => {
+          await openAiModeServiceAssetTab(page, {
+            tabName: 'Spreadsheets',
+            listPath: 'drives/spreadsheets',
+            serviceFqn,
+          });
+
+          await expect(getRowByName(page, spreadsheet)).toBeVisible();
+          await expect(getRowByName(page, file)).toBeHidden();
+        });
+      });
+
+      test('keeps a long service name to one line, with the full name on hover', async ({
+        page,
+      }) => {
+        await enableAiAppMode(page);
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'driveServices',
+          fqn: serviceFqn,
+        });
+        const title = page.getByTestId('entity-header-display-name');
+
+        await expect(title).toHaveText(longName);
+        // The header actions stay in reach rather than being pushed off by the name.
+        await expect(
+          page.getByRole('button', { name: 'Settings' })
+        ).toBeInViewport();
+
+        // react-aria opens a hover tooltip only once the page has seen a pointer press, as it
+        // has for any user who got here by clicking.
+        await openAiModeServiceAssetTab(page, {
+          tabName: 'Files',
+          listPath: 'drives/files',
+          serviceFqn,
+        });
+        await title.hover();
+
+        await expect(page.getByRole('tooltip')).toHaveText(longName);
+      });
+    });
+
+    test.describe('data products', () => {
+      let service: DatabaseServiceClass;
+      let dataProduct: DataProduct;
+
+      test.beforeAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        service = new DatabaseServiceClass();
+        dataProduct = new DataProduct();
+        await settleAll([
+          service.create(apiContext),
+          dataProduct.create(apiContext),
+        ]);
+        // A data product can only be assigned within its domain; the test assigns it in the UI.
+        await service.patch(apiContext, [
+          {
+            op: 'add',
+            path: '/domains',
+            value: dataProduct.responseData.domains,
+          },
+        ]);
+        // The picker searches for data products.
+        await waitForSearchIndexed(
+          apiContext,
+          dataProduct.responseData.fullyQualifiedName,
+          'data_product_search_index'
+        );
+        await afterAction();
+      });
+
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await service.delete(apiContext);
+        await dataProduct.delete(apiContext);
+        await afterAction();
+      });
+
+      test('assigns a data product to the service from its metadata details', async ({
+        page,
+      }) => {
+        const serviceFqn = service.entityResponseData.fullyQualifiedName;
+        const dataProductFqn =
+          dataProduct.responseData.fullyQualifiedName ?? '';
+        const section = page.getByTestId('service-data-products');
+        expect(dataProductFqn).not.toBe('');
+        await enableAiAppMode(page);
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: serviceFqn,
+        });
+        // Open from the start; clicking it here would close it.
+        await expect(
+          page.getByRole('button', { name: 'Metadata Details' })
+        ).toHaveAttribute('aria-expanded', 'true');
+
+        await test.step('pick it and apply', async () => {
+          await section.getByTestId('edit-data-products').click();
+          const picker = page.getByTestId('drop-down-menu');
+          const option = picker.getByTestId(dataProductFqn);
+          await expect(option).toBeVisible();
+          await option.click();
+
+          const save = waitForResponseWithStatus(
+            page,
+            (response) =>
+              response.request().method() === 'PATCH' &&
+              response
+                .url()
+                .includes(
+                  `/api/v1/services/databaseServices/${service.entityResponseData.id}`
+                ),
+            200
+          );
+          await picker.getByTestId('update-btn').click();
+          await save;
+
+          await expect(section).toContainText(
+            dataProduct.responseData.displayName
+          );
+        });
+
+        await test.step('it is still there after a reload', async () => {
+          await visitAiModeServiceDetailsPage(page, {
+            category: 'databaseServices',
+            fqn: serviceFqn,
+          });
+          await page.getByRole('button', { name: 'Metadata Details' }).click();
+
+          await expect(section).toContainText(
+            dataProduct.responseData.displayName
+          );
+        });
       });
     });
 

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -336,10 +336,9 @@ const DataProductsPage = () => {
             })}
           </p>
           <Button
-            ghost
-            className="m-t-sm"
-            type="primary"
-            onClick={() => navigate(getDomainPath())}>
+            className="tw:mt-2"
+            color="secondary"
+            onPress={() => navigate(getDomainPath())}>
             {t('label.go-back')}
           </Button>
         </div>

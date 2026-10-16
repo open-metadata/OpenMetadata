@@ -290,6 +290,9 @@ public class SamlValidator {
   }
 
   private FieldError validateIdpConnectivity(SamlSSOClientConfig samlConfig) {
+    if (!isProbeAllowed(samlConfig.getIdp().getSsoLoginUrl())) {
+      return null;
+    }
     HttpURLConnection conn = null;
     try {
       String ssoUrl = samlConfig.getIdp().getSsoLoginUrl();
@@ -355,6 +358,22 @@ public class SamlValidator {
         conn.disconnect();
       }
     }
+  }
+
+  /**
+   * The connectivity probe runs from the server, so it only goes where the outbound URL policy
+   * allows. A refused URL is a warning like any other probe failure: at login it is the browser, not
+   * the server, that follows it.
+   */
+  private static boolean isProbeAllowed(String ssoUrl) {
+    boolean allowed = true;
+    try {
+      ValidationHttpUtil.validateUrl(ssoUrl);
+    } catch (IllegalArgumentException e) {
+      LOG.warn("Not probing the SAML SSO Login URL: {}", e.getMessage());
+      allowed = false;
+    }
+    return allowed;
   }
 
   HttpURLConnection openConnection(URL url) throws IOException {

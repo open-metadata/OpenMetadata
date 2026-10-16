@@ -48,7 +48,7 @@ describe('DraggableMenuItem', () => {
   it('should show eye icon when item is selected', () => {
     renderComponent();
 
-    expect(screen.getByLabelText('eye')).toBeInTheDocument();
+    expect(screen.getByTestId('eye-icon')).toBeInTheDocument();
   });
 
   it('should show eye-invisible icon when item is not selected', () => {
@@ -57,7 +57,7 @@ describe('DraggableMenuItem', () => {
       selectedOptions: [],
     });
 
-    expect(screen.getByLabelText('eye-invisible')).toBeInTheDocument();
+    expect(screen.getByTestId('eye-invisible-icon')).toBeInTheDocument();
   });
 
   it('should call onSelect with correct arguments when clicked', async () => {
@@ -98,14 +98,6 @@ describe('DraggableMenuItem', () => {
     const dragIcon = screen.getByTestId('draggable-menu-item-drag-icon');
 
     expect(dragIcon).toBeInTheDocument();
-  });
-
-  it('should render button with correct class', () => {
-    renderComponent();
-
-    const button = screen.getByRole('button');
-
-    expect(button).toHaveClass('draggable-menu-item-button');
   });
 
   it('should render label with correct class', () => {

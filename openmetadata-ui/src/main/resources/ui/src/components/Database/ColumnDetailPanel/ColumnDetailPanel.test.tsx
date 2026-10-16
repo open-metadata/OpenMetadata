@@ -105,10 +105,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
-}));
-
-jest.mock('@ant-design/icons', () => ({
-  CloseOutlined: () => <div data-testid="close-icon">CloseIcon</div>,
+  Tooltip: ({ children }: React.PropsWithChildren) => children,
 }));
 
 jest.mock('../../../assets/svg/down-arrow-icon.svg', () => ({
@@ -506,10 +503,11 @@ describe('ColumnDetailPanel', () => {
 
   describe('Component Rendering', () => {
     it('should render drawer when isOpen is true', async () => {
-      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
+      const { getByTestId, getByRole } = render(
+        <ColumnDetailPanel {...mockProps} />
+      );
 
-      expect(getByTestId('drawer')).toBeInTheDocument();
-      expect(getByTestId('drawer')).toHaveAttribute('data-open', 'true');
+      expect(getByRole('dialog')).toBeInTheDocument();
 
       await waitFor(() => {
         expect(getByTestId('description-section')).toBeInTheDocument();
@@ -517,11 +515,11 @@ describe('ColumnDetailPanel', () => {
     });
 
     it('should not render drawer when isOpen is false', () => {
-      const { getByTestId } = render(
+      const { queryByRole } = render(
         <ColumnDetailPanel {...mockProps} isOpen={false} />
       );
 
-      expect(getByTestId('drawer')).toHaveAttribute('data-open', 'false');
+      expect(queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('should render all sections in overview tab', async () => {

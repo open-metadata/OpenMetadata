@@ -11,18 +11,16 @@
  *  limitations under the License.
  */
 
-import Icon, { CloseCircleOutlined } from '@ant-design/icons';
 import {
   Box,
-  Button as CoreButton,
+  Button,
   ButtonGroup,
   ButtonGroupItem,
   Dropdown,
   Grid,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { XCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
 import { Key, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -67,7 +65,6 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
   );
   const [endTime, setEndTime] = useState(() => getCurrentMillis());
-  const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [status, setStatus] = useState(MenuOptions.all);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -175,14 +172,14 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               gap={2}
               itemClassName="layout-space-item">
               <Dropdown.Root>
-                <CoreButton
+                <Button
                   className="tw:text-brand-secondary tw:after:outline-brand"
                   color="secondary"
                   data-testid="status-button"
                   iconLeading={<FilterIcon height={12} width={12} />}
                   size="sm">
                   {status === MenuOptions.all ? t('label.status') : status}
-                </CoreButton>
+                </Button>
                 <Dropdown.Popover className="tw:w-auto" placement="bottom">
                   <Dropdown.Menu
                     aria-label={t('label.status')}
@@ -197,37 +194,16 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                 </Dropdown.Popover>
               </Dropdown.Root>
               {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
-                <>
-                  <Button
-                    ghost
-                    className={classNames('range-picker-button delay-100', {
-                      'range-picker-button-width delay-100':
-                        !datesSelected && !isClickedCalendar,
-                    })}
-                    data-testid="data-range-picker-button"
-                    icon={<Icon component={Calendar} size={12} />}
-                    type="primary"
-                    onClick={() => {
-                      setIsClickedCalendar(true);
-                    }}>
-                    <span className="date-container">
-                      {!datesSelected && <span>{t('label.date-filter')}</span>}
-                      <DatePicker.RangePicker
-                        allowClear
-                        showNow
-                        bordered={false}
-                        className="executions-date-picker"
-                        clearIcon={<CloseCircleOutlined />}
-                        data-testid="data-range-picker"
-                        open={isClickedCalendar}
-                        placeholder={['', '']}
-                        suffixIcon={null}
-                        onChange={onDateChange}
-                        onOpenChange={setIsClickedCalendar}
-                      />
-                    </span>
-                  </Button>
-                </>
+                <DatePicker.RangePicker
+                  allowClear
+                  showNow
+                  className="executions-date-picker"
+                  clearIcon={<XCircle size={14} />}
+                  data-testid="data-range-picker"
+                  placeholder={[t('label.date-filter'), '']}
+                  suffixIcon={<Calendar className="tw:size-3 tw:shrink-0" />}
+                  onChange={onDateChange}
+                />
               ) : null}
             </Box>
           </Box>

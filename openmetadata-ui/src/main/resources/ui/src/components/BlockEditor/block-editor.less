@@ -363,15 +363,6 @@
   word-break: break-word;
 }
 
-.block-editor-link-modal,
-.block-editor-image-modal {
-  .ant-modal-content {
-    .ant-modal-body {
-      padding: var(--om-space-16);
-    }
-  }
-}
-
 .link-popup {
   align-items: center;
   padding: var(--om-space-4);
@@ -524,10 +515,11 @@ body .om-image-node-embed-link-btn-col {
   display: flex;
   flex-direction: column;
   align-items: baseline;
-  .ant-btn {
+  button {
     width: 100%;
     display: inline-flex;
     gap: var(--om-space-4);
+    justify-content: flex-start;
     text-align: left;
     padding: var(--om-space-8) var(--om-space-16);
     height: auto;
@@ -552,4 +544,12 @@ body .om-image-node-embed-link-btn-col {
   .tiptap.ProseMirror-focused .is-node-empty.has-focus::before {
     float: right;
   }
+}
+
+// The trailing-node extension keeps an empty paragraph after a final list,
+// table or code block so the caret has somewhere to go. Read-only, there is no
+// caret, and the empty line only adds a gap below the content.
+.om-block-editor[contenteditable='false']
+  > p:last-child:has(> .ProseMirror-trailingBreak:only-child) {
+  display: none;
 }

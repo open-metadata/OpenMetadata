@@ -42,7 +42,7 @@ import {
   Lock01,
   Plus,
   Share07,
-  X,
+  XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { ConfigProvider } from 'antd';
 import { AxiosError } from 'axios';
@@ -187,7 +187,7 @@ const LinkedAssetCard: FC<{
             <ButtonUtility
               color="tertiary"
               data-testid="remove-linked-asset-btn"
-              icon={<X size={18} strokeWidth={2} />}
+              icon={<XClose size={18} strokeWidth={2} />}
               onClick={() => onRemove(fqn)}
             />
           )}
@@ -1147,7 +1147,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       style={{ zIndex: 999 }}
       onOpenChange={(open) => !open && handleClose()}>
       <Modal>
-        <Dialog showCloseButton title="" width={600} onClose={handleClose}>
+        <Dialog
+          showCloseButton
+          data-testid="memory-modal"
+          title=""
+          width={600}
+          onClose={handleClose}>
           <Dialog.Content className="tw:p-0! tw:min-h-[92vh]">
             <div ref={modalContainerRef}>
               <ConfigProvider
@@ -1155,7 +1160,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   modalContainerRef.current ?? document.body
                 }>
                 <HookForm
-                  className="tw:flex tw:flex-col tw:max-h-[92vh]"
+                  className="tw:flex tw:flex-col tw:h-[92vh]"
                   form={form}
                   onSubmit={form.handleSubmit(handleSubmit)}>
                   {/* Sticky header */}

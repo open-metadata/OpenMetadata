@@ -27,10 +27,21 @@ coverage, a retried one looks green.
 
 ## Entries
 
-No entries. The threshold for quarantining is **2 or more** failures, counted per
-generated variant rather than per source line. The 11 merge_group runs sampled
-on 2026-09-04 that seeded this list are all released now, as is the DataContracts
-entry that was tagged separately on 2026-09-11 (see *Released from quarantine*).
+The live set is whatever the specs currently `@quarantine`-tag —
+`git grep '@quarantine' -- '*.spec.ts'` lists it; each tag should also have a row
+here with its evidence and owner. The threshold for quarantining is **2 or
+more** failures, counted per generated variant rather than per source line. The
+11 merge_group runs sampled on 2026-09-04 that seeded this list are all released
+now, as is the DataContracts entry that was tagged separately on 2026-09-11
+(see *Released from quarantine*).
+
+| Spec | Test | Tagged | Status |
+|---|---|---|---|
+| `e2e/Features/KnowledgeGraph.spec.ts` | re-fits each level around the subject and keeps the viewport when filtering | 2026-09-28 | Not yet diagnosed. Tagged without an entry when #34094 ported the spec from #33088; no failure evidence was recorded. |
+| `e2e/Features/KnowledgeGraph.spec.ts` | label modes and family highlights preserve all real canvas relationships | 2026-09-28 | Not yet diagnosed. Tagged in the same #34094 port, also without recorded evidence. |
+| `e2e/Features/AIMode/PersonaSettings.spec.ts` | all three describes (personal-space modal, management actions, customize saves) | 2026-10-14 | Re-quarantined. First tagged 2026-10-12 (#35244), released by #35234, and still failing afterwards: `Data Assets → Table: a new tab is saved` keeps ejecting PRs from the merge queue. Not yet diagnosed. The spec landed with #34916 (persona settings moved into the AI-mode profile modal). |
+| `e2e/Flow/Tour.spec.ts` | the whole describe (3 tests): Tour should work from help section; from welcome screen; from URL directly | 2026-10-09 | **Not a flake** — a known break, quarantined 2026-10-09 while the tour page is redesigned. The new landing page (`HomeLandingPage`) no longer mounts `FeedWidget`, so the tour's first step anchor `#feedWidgetData` never appears, and `TourPage.waitForTourFeedWidget` waits for its bounding rect *before* `updateIsTourOpen(true)` — so the whole tour hangs on a blank page instead of skipping one step. Steps 2 and 3 anchor on `#searchBox`, which came from `CustomiseSearchBar` in the old landing header; that header is gone and `NavBar` hides `GlobalSearchBar` on `/tour`, so there is no search box on the tour page at all. Known fix if the redesign does not supersede it: anchor step 1 on the activity card's grid cell (`[data-testid="KnowledgePanel.ActivityFeed"]`, present before the deferred widget mounts) and drop `!isTourPage` from NavBar's `GlobalSearchBar` guard (`GlobalSearchBar` already routes input through `useTourProvider` when the tour is open); keep the domain selector hidden on `/tour`. Release: Landing-page owner. Remove the tag when the redesigned tour page lands and all three tests pass with `PLAYWRIGHT_RUN_QUARANTINED=true`. |
+| `e2e/Features/BulkEditEntity.spec.ts` | the whole describe (6 tests): Database service; Database; Database Schema; Table; Glossary; Glossary Term (Nested) | 2026-10-16 | Not yet diagnosed. `Table` was tagged alone in #34296 and released by #34238; the spec is still flaky, so the whole describe is quarantined. |
 
 ### Triage, 2026-09-09
 

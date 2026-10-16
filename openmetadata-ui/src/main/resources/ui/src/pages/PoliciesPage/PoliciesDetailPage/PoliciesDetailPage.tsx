@@ -11,17 +11,18 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button,
   ButtonUtility,
+  Card,
   Dropdown,
   Grid,
+  SimpleModal,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { DotsVertical } from '@openmetadata/ui-core-components/icons';
-import { Button, Card, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -302,13 +303,17 @@ const PoliciesDetailPage = () => {
                 icon={EditIcon}
                 id="edit-button"
                 textValue={t('label.edit')}>
-                <span data-testid="edit-rule">{t('label.edit')}</span>
+                <Typography data-testid="edit-rule">
+                  {t('label.edit')}
+                </Typography>
               </Dropdown.Item>
               <Dropdown.Item
                 icon={IconDelete}
                 id="delete-button"
                 textValue={t('label.delete')}>
-                <span data-testid="delete-rule">{t('label.delete')}</span>
+                <Typography data-testid="delete-rule">
+                  {t('label.delete')}
+                </Typography>
               </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown.Popover>
@@ -321,133 +326,137 @@ const PoliciesDetailPage = () => {
   const rulesTab = useMemo(() => {
     return (
       <Card>
-        {isEmpty(policy.rules) ? (
-          <ErrorPlaceHolder className="border-none" />
-        ) : (
-          <>
-            <div className="flex justify-end m-b-md">
-              <Button
-                data-testid="add-rule"
-                type="primary"
-                onClick={() => navigate(getAddPolicyRulePath(fqn))}>
-                {t('label.add-entity', {
-                  entity: t('label.rule'),
-                })}
-              </Button>
-            </div>
+        <Card.Content>
+          {isEmpty(policy.rules) ? (
+            <ErrorPlaceHolder className="border-none" />
+          ) : (
+            <>
+              <div className="flex justify-end m-b-md">
+                <Button
+                  color="primary"
+                  data-testid="add-rule"
+                  onClick={() => navigate(getAddPolicyRulePath(fqn))}>
+                  {t('label.add-entity', {
+                    entity: t('label.rule'),
+                  })}
+                </Button>
+              </div>
 
-            <Box
-              inline
-              align="stretch"
-              className="layout-space w-full"
-              direction="col"
-              gap={5}
-              itemClassName="layout-space-item">
-              {policy.rules.map((rule) => (
-                <Card data-testid="rule-card" key={rule.name || 'rule'}>
-                  <Box
-                    inline
-                    align="baseline"
-                    className="layout-space layout-space-horizontal w-full justify-between p-b-lg"
-                    gap={2}
-                    itemClassName="layout-space-item">
-                    <Typography
-                      className="font-medium text-base text-grey-body"
-                      data-testid="rule-name">
-                      {rule.name}
-                    </Typography>
-                    {getRuleActionElement(rule)}
-                  </Box>
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={5}
+                itemClassName="layout-space-item">
+                {policy.rules.map((rule) => (
+                  <Card data-testid="rule-card" key={rule.name || 'rule'}>
+                    <Card.Content>
+                      <Box
+                        inline
+                        align="baseline"
+                        className="layout-space layout-space-horizontal w-full justify-between p-b-lg"
+                        gap={2}
+                        itemClassName="layout-space-item">
+                        <Typography
+                          className="font-medium text-base text-grey-body"
+                          data-testid="rule-name">
+                          {rule.name}
+                        </Typography>
+                        {getRuleActionElement(rule)}
+                      </Box>
 
-                  <Box
-                    inline
-                    align="stretch"
-                    className="layout-space w-full"
-                    direction="col"
-                    gap={3}
-                    itemClassName="layout-space-item">
-                    {rule.description && (
-                      <Grid
-                        className="layout-row layout-grid"
-                        data-testid="description">
-                        <Grid.Item className="layout-column" span={2}>
-                          <Typography color="secondary">
-                            {`${t('label.description')}:`}
-                          </Typography>
-                        </Grid.Item>
-                        <Grid.Item className="layout-column" span={22}>
-                          <RichTextEditorPreviewerV1
-                            markdown={rule.description || ''}
-                          />
-                        </Grid.Item>
-                      </Grid>
-                    )}
+                      <Box
+                        inline
+                        align="stretch"
+                        className="layout-space w-full"
+                        direction="col"
+                        gap={3}
+                        itemClassName="layout-space-item">
+                        {rule.description && (
+                          <Grid
+                            className="layout-row layout-grid"
+                            data-testid="description">
+                            <Grid.Item className="layout-column" span={2}>
+                              <Typography color="secondary">
+                                {`${t('label.description')}:`}
+                              </Typography>
+                            </Grid.Item>
+                            <Grid.Item className="layout-column" span={22}>
+                              <RichTextEditorPreviewerV1
+                                markdown={rule.description || ''}
+                              />
+                            </Grid.Item>
+                          </Grid>
+                        )}
 
-                    <Grid
-                      className="layout-row layout-grid"
-                      data-testid="resources">
-                      <Grid.Item className="layout-column" span={2}>
-                        <Typography className="m-b-0" color="secondary">
-                          {`${t('label.resource-plural')}:`}
-                        </Typography>
-                      </Grid.Item>
-                      <Grid.Item className="layout-column" span={22}>
-                        <Typography className="text-grey-body">
-                          {rule.resources
-                            ?.map((resource) => startCase(resource))
-                            ?.join(', ')}
-                        </Typography>
-                      </Grid.Item>
-                    </Grid>
+                        <Grid
+                          className="layout-row layout-grid"
+                          data-testid="resources">
+                          <Grid.Item className="layout-column" span={2}>
+                            <Typography className="m-b-0" color="secondary">
+                              {`${t('label.resource-plural')}:`}
+                            </Typography>
+                          </Grid.Item>
+                          <Grid.Item className="layout-column" span={22}>
+                            <Typography className="text-grey-body">
+                              {rule.resources
+                                ?.map((resource) => startCase(resource))
+                                ?.join(', ')}
+                            </Typography>
+                          </Grid.Item>
+                        </Grid>
 
-                    <Grid
-                      className="layout-row layout-grid"
-                      data-testid="operations">
-                      <Grid.Item className="layout-column" span={2}>
-                        <Typography color="secondary">
-                          {`${t('label.operation-plural')}:`}
-                        </Typography>
-                      </Grid.Item>
-                      <Grid.Item className="layout-column" span={22}>
-                        <Typography className="text-grey-body">
-                          {rule.operations?.join(', ')}
-                        </Typography>
-                      </Grid.Item>
-                    </Grid>
-                    <Grid
-                      className="layout-row layout-grid"
-                      data-testid="effect">
-                      <Grid.Item className="layout-column" span={2}>
-                        <Typography color="secondary">
-                          {`${t('label.effect')}:`}
-                        </Typography>
-                      </Grid.Item>
-                      <Grid.Item className="layout-column" span={22}>
-                        <Typography className="text-grey-body">
-                          {startCase(rule.effect)}
-                        </Typography>
-                      </Grid.Item>
-                    </Grid>
-                    {rule.condition && (
-                      <Grid
-                        className="layout-row layout-grid"
-                        data-testid="condition">
-                        <Grid.Item className="layout-column" span={2}>
-                          <Typography color="secondary">
-                            {`${t('label.condition')}:`}
-                          </Typography>
-                        </Grid.Item>
-                        <Grid.Item className="layout-column" span={22}>
-                          <code>{rule.condition}</code>
-                        </Grid.Item>
-                      </Grid>
-                    )}
-                  </Box>
-                </Card>
-              ))}
-            </Box>
-          </>
-        )}
+                        <Grid
+                          className="layout-row layout-grid"
+                          data-testid="operations">
+                          <Grid.Item className="layout-column" span={2}>
+                            <Typography color="secondary">
+                              {`${t('label.operation-plural')}:`}
+                            </Typography>
+                          </Grid.Item>
+                          <Grid.Item className="layout-column" span={22}>
+                            <Typography className="text-grey-body">
+                              {rule.operations?.join(', ')}
+                            </Typography>
+                          </Grid.Item>
+                        </Grid>
+                        <Grid
+                          className="layout-row layout-grid"
+                          data-testid="effect">
+                          <Grid.Item className="layout-column" span={2}>
+                            <Typography color="secondary">
+                              {`${t('label.effect')}:`}
+                            </Typography>
+                          </Grid.Item>
+                          <Grid.Item className="layout-column" span={22}>
+                            <Typography className="text-grey-body">
+                              {startCase(rule.effect)}
+                            </Typography>
+                          </Grid.Item>
+                        </Grid>
+                        {rule.condition && (
+                          <Grid
+                            className="layout-row layout-grid"
+                            data-testid="condition">
+                            <Grid.Item className="layout-column" span={2}>
+                              <Typography color="secondary">
+                                {`${t('label.condition')}:`}
+                              </Typography>
+                            </Grid.Item>
+                            <Grid.Item className="layout-column" span={22}>
+                              <code>{rule.condition}</code>
+                            </Grid.Item>
+                          </Grid>
+                        )}
+                      </Box>
+                    </Card.Content>
+                  </Card>
+                ))}
+              </Box>
+            </>
+          )}
+        </Card.Content>
       </Card>
     );
   }, [policy]);
@@ -523,8 +532,8 @@ const PoliciesDetailPage = () => {
                   })}
                 </p>
                 <Button
-                  size="small"
-                  type="primary"
+                  color="primary"
+                  size="xs"
                   onClick={() => navigate(policiesPath)}>
                   {t('label.go-back')}
                 </Button>
@@ -538,11 +547,7 @@ const PoliciesDetailPage = () => {
                     className="w-max-full"
                     displayName={policy.displayName}
                     icon={
-                      <Icon
-                        className="align-middle p-y-xss"
-                        component={PolicyIcon}
-                        style={{ fontSize: '50px' }}
-                      />
+                      <PolicyIcon className="tw:align-middle tw:py-1 tw:size-[50px] tw:shrink-0" />
                     }
                     name={policy?.name ?? ''}
                     serviceName="policy"
@@ -596,13 +601,11 @@ const PoliciesDetailPage = () => {
         </>
 
         {selectedEntity && (
-          <Modal
-            centered
-            closable={false}
-            confirmLoading={isloadingOnSave}
-            maskClosable={false}
+          <SimpleModal
+            isDismissable={false}
+            isOkLoading={isloadingOnSave}
+            isOpen={!isUndefined(selectedEntity.record)}
             okText={t('label.confirm')}
-            open={!isUndefined(selectedEntity.record)}
             title={`${t('label.remove-entity', {
               entity: getEntityName(selectedEntity.record),
             })} ${t('label.from-lowercase')} ${policyName}`}
@@ -620,7 +623,7 @@ const PoliciesDetailPage = () => {
                 parent: policyName,
               })}
             </Typography>
-          </Modal>
+          </SimpleModal>
         )}
       </div>
     </PageLayoutV1>
