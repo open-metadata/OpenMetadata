@@ -60,9 +60,9 @@ const IncidentGroupStat = ({
   testId,
 }: IncidentGroupStatProps) => (
   <Box className="tw:flex-1 tw:px-4 tw:py-3" direction="col" gap={1}>
-    <Box align="center" className="tw:text-secondary" gap={2}>
+    <Box align="center" className="tw:text-tertiary" gap={2}>
       <Icon className={`tw:size-4 tw:shrink-0 ${iconClassName}`} />
-      <Typography as="span" size="text-sm" weight="medium">
+      <Typography as="span" size="text-xs" weight="medium">
         {label}
       </Typography>
     </Box>
@@ -70,8 +70,8 @@ const IncidentGroupStat = ({
       as="span"
       className="tw:text-primary"
       data-testid={testId}
-      size="text-md"
-      weight="semibold">
+      size="text-sm"
+      weight="medium">
       {value}
     </Typography>
   </Box>
@@ -143,8 +143,8 @@ const IncidentGroupDrawer = ({
                     as="h2"
                     className="not-prose tw:text-primary"
                     data-testid="incident-group-drawer-name"
-                    size="text-lg"
-                    weight="semibold">
+                    size="text-md"
+                    weight="medium">
                     {getIncidentGroupName(
                       group,
                       t('label.no-entity', { entity: t('label.owner') })
@@ -200,8 +200,8 @@ const IncidentGroupDrawer = ({
                       <Typography
                         as="span"
                         className="tw:text-primary"
-                        size="text-md"
-                        weight="semibold">
+                        size="text-sm"
+                        weight="medium">
                         {t('label.individual-incident-plural')}
                       </Typography>
                       <Badge
