@@ -30,6 +30,7 @@ import {
   Box,
   Button,
   Card,
+  Checkbox,
   EmptyPlaceholder,
   Input,
   Select,
@@ -37,7 +38,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { List } from '@openmetadata/ui-core-components/icons';
-import { Checkbox } from 'antd';
 import { Key, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
@@ -331,27 +331,27 @@ const TaskFormBuilderSection = ({
                         gap={6}
                         itemClassName="layout-space-item">
                         <Checkbox
-                          checked={field.required}
                           data-testid={`${testIdPrefix}-field-required-${index}`}
+                          isSelected={field.required}
+                          label={<>{t('label.required')}</>}
                           onChange={(event) =>
                             updateField(index, (currentField) => ({
                               ...currentField,
-                              required: event.target.checked,
+                              required: event,
                             }))
-                          }>
-                          {t('label.required')}
-                        </Checkbox>
+                          }
+                        />
                         <Checkbox
-                          checked={field.hidden}
                           data-testid={`${testIdPrefix}-field-hidden-${index}`}
+                          isSelected={field.hidden}
+                          label={<>{t('label.hidden')}</>}
                           onChange={(event) =>
                             updateField(index, (currentField) => ({
                               ...currentField,
-                              hidden: event.target.checked,
+                              hidden: event,
                             }))
-                          }>
-                          {t('label.hidden')}
-                        </Checkbox>
+                          }
+                        />
                       </Box>
                     </div>
                   </Card.Content>

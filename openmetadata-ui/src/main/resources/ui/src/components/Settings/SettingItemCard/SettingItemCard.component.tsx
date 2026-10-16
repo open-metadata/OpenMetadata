@@ -12,13 +12,21 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Card, Typography } from '@openmetadata/ui-core-components';
-import { Badge } from 'antd';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
 import './setting-item-card.style.less';
+
+// Sized and tinted to match the 90px tiles baked into the legacy colored SVGs.
+const ICON_TILE_COLORS: Record<
+  NonNullable<SettingMenuItem['iconColor']>,
+  string
+> = {
+  blue: 'tw:bg-utility-blue-50 tw:text-utility-blue-700',
+};
 
 interface SettingMenuItemProps {
   data: SettingMenuItem;
@@ -44,9 +52,23 @@ const SettingItemCard = ({
       onClick={handleOnClick}>
       <Card.Content className="tw:flex tw:items-center tw:gap-4">
         <div className="setting-card-icon">
-          <Icon component={data.icon} />
+          {data.iconColor ? (
+            <Box
+              align="center"
+              className={classNames(
+                'tw:size-22.5 tw:rounded-[28px]',
+                ICON_TILE_COLORS[data.iconColor]
+              )}
+              justify="center">
+              <data.icon className="tw:size-8" />
+            </Box>
+          ) : (
+            <Icon component={data.icon} />
+          )}
           {Boolean(data?.isBeta) && (
-            <Badge className="service-beta-tag" count={t('label.beta')} />
+            <Badge className="service-beta-tag" color="brand" size="sm">
+              {t('label.beta')}
+            </Badge>
           )}
         </div>
         <div className="setting-card-content">

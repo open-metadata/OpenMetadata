@@ -828,6 +828,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const fetchExpadedTree = async (loadMore = false) => {
+    // Shares fetchAllTerms' sequence so a first-level page still in flight
+    // (e.g. the tab's mount fetch) cannot land after this and re-collapse
+    // the tree while the button already reads "Collapse All".
+    const requestSeq = ++fetchRequestSeqRef.current;
     if (loadMore) {
       setIsLoadingMoreTree(true);
     } else {
@@ -849,6 +853,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           TabSpecificField.CHILDREN_COUNT,
         ],
       });
+
+      if (requestSeq !== fetchRequestSeqRef.current) {
+        return;
+      }
 
       // Accumulate the flat term list across pages and rebuild the tree from
       // it; nesting fills in progressively as parents/children load.
@@ -890,7 +898,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsTableLoading(false);
+      if (requestSeq === fetchRequestSeqRef.current) {
+        setIsTableLoading(false);
+      }
       setIsExpandingAll(false);
       setIsLoadingMoreTree(false);
     }

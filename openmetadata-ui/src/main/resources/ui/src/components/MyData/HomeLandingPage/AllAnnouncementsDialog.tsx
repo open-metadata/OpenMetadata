@@ -45,7 +45,11 @@ const ALL_ANNOUNCEMENTS_TTL_MS = 60_000;
 export const ALL_ANNOUNCEMENTS_PAGE_SIZE = 50;
 
 const fetchAnnouncementsPage = ({ pageParam }: { pageParam?: string }) =>
-  listAnnouncements({ limit: ALL_ANNOUNCEMENTS_PAGE_SIZE, after: pageParam });
+  listAnnouncements({
+    limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
+    after: pageParam,
+    system: false,
+  });
 
 interface AllAnnouncementsDialogProps {
   open: boolean;
@@ -126,6 +130,7 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
                 announcement={announcement}
                 className="tw:w-full"
                 onDismiss={onDismiss}
+                onNavigate={onClose}
               />
             </li>
           ))}

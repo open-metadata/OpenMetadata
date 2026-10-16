@@ -29,7 +29,8 @@ export type PlatformSettingsPageId =
   | 'search'
   | 'table-schema'
   | 'app-mode'
-  | 'glossary';
+  | 'glossary'
+  | 'time-format';
 
 export type PlatformSettingsView =
   | { type: 'landing' }

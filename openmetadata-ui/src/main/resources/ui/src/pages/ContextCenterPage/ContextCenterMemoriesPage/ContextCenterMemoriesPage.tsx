@@ -56,7 +56,7 @@ import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectL
 import MemoryConflictReviews from '../../../components/discovery/context-center/MemoryConflictReviews/MemoryConflictReviews';
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../../components/discovery/personal-space/inbox.constants';
 import {
-  DEFAULT_MEMORY_STATUSES,
+  DEFAULT_MEMORY_LIST_STATUSES,
   FILTER_TABS,
   MEMORY_FIELDS,
   MEMORY_STATUS_LABEL_KEYS,
@@ -107,9 +107,9 @@ const getSortLabel = (
 ): string => options.find((option) => option.id === sortBy)?.label ?? '';
 
 const MEMORY_STATUSES = [
-  ...DEFAULT_MEMORY_STATUSES,
+  ...DEFAULT_MEMORY_LIST_STATUSES,
   ...Object.values(ContextMemoryStatus).filter(
-    (status) => !DEFAULT_MEMORY_STATUSES.includes(status)
+    (status) => !DEFAULT_MEMORY_LIST_STATUSES.includes(status)
   ),
 ];
 const CREATED_BY_ME_FILTER = 'created-by-me' as const;
@@ -188,8 +188,8 @@ const getMemoriesViewFlags = ({
   const hasActiveFilters = Boolean(
     selectedAsset ||
       selectedAuthor ||
-      selectedStatuses.length !== DEFAULT_MEMORY_STATUSES.length ||
-      DEFAULT_MEMORY_STATUSES.some(
+      selectedStatuses.length !== DEFAULT_MEMORY_LIST_STATUSES.length ||
+      DEFAULT_MEMORY_LIST_STATUSES.some(
         (status) => !selectedStatuses.includes(status)
       )
   );
@@ -337,7 +337,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const [activeFilter, setActiveFilter] = useState<MemoryFilterTab>('all');
   const [selectedStatuses, setSelectedStatuses] = useState<
     ContextMemoryStatus[]
-  >(DEFAULT_MEMORY_STATUSES);
+  >(DEFAULT_MEMORY_LIST_STATUSES);
   const [currentPage, setCurrentPage] = useState(1);
   const { savedPageSize: memoriesPerPage } = useSavedPageSize();
   const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
@@ -628,7 +628,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const handleClearFilters = useCallback(() => {
     setSelectedAsset(undefined);
     setSelectedAuthor(undefined);
-    setSelectedStatuses(DEFAULT_MEMORY_STATUSES);
+    setSelectedStatuses(DEFAULT_MEMORY_LIST_STATUSES);
     setActiveFilter('all');
     setCurrentPage(1);
   }, []);
@@ -860,7 +860,7 @@ const ContextCenterMemoriesPage: FC = () => {
 
   return (
     <Box
-      className={`tw:w-full tw:h-full tw:bg-canvas tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:w-full tw:h-full tw:overflow-scroll ${contextCenterClassBase.getPageContainerClassName()}`}
       data-testid="context-center-memories-page"
       direction="col">
       <DocumentTitle title={t('label.memory-plural')} />

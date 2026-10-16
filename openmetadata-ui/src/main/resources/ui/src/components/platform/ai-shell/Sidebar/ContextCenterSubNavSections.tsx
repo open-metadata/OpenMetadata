@@ -175,7 +175,7 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
 
       return (
         <li key={page.fullyQualifiedName ?? testId}>
-          <Tooltip title={label}>
+          <Tooltip title={label} triggerClassName="tw:w-full">
             <button
               aria-label={label}
               className="ask-sub-panel__item"

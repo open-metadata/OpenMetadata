@@ -140,6 +140,12 @@ export const DEFAULT_MEMORY_STATUSES = [
   ContextMemoryStatus.Unprocessed,
 ];
 
+// Draft holds a memory for a person: one whose supporting query was deleted has no review task.
+export const DEFAULT_MEMORY_LIST_STATUSES = [
+  ...DEFAULT_MEMORY_STATUSES,
+  ContextMemoryStatus.Draft,
+];
+
 export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
   [ContextMemoryStatus.Unprocessed]: 'label.unprocessed',
   [ContextMemoryStatus.Approved]: 'label.approved',

@@ -17,11 +17,11 @@ import {
   ButtonUtility,
   Card,
   Input,
+  ProgressBar,
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Search, XClose } from '@openmetadata/ui-core-components/icons';
-import { Progress } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
@@ -427,14 +427,13 @@ const AuditLogsPage = () => {
   const renderExportProgress = () =>
     exportJob?.status === 'IN_PROGRESS' ? (
       <div className="export-progress-container">
-        <Progress
-          percent={
+        <ProgressBar
+          className="tw:h-1.5"
+          value={
             exportJob.total && exportJob.total > 0
               ? Math.round(((exportJob.progress ?? 0) / exportJob.total) * 100)
               : 0
           }
-          size="small"
-          status="active"
         />
         <Typography as="p" className="tw:mt-2!" size="text-md">
           {exportJob.message ?? t('message.exporting')}
@@ -526,7 +525,7 @@ const AuditLogsPage = () => {
                 <div className="tw:flex tw:gap-2 tw:flex-wrap tw:flex-1">
                   {activeFilters.map((filter) => (
                     <Badge
-                      className="tw:outline-0 tw:gap-1"
+                      className="tw:gap-1"
                       color="brand"
                       key={filter.category}
                       size="lg"

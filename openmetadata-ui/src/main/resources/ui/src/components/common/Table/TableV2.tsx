@@ -741,6 +741,8 @@ const ExpandControl = <T extends object>({
   rowKey,
   onToggle,
 }: ExpandControlProps<T>) => {
+  const { t } = useTranslation();
+
   if (hasChildren) {
     if (ExpandIcon) {
       return (
@@ -760,6 +762,7 @@ const ExpandControl = <T extends object>({
     return (
       <button
         aria-expanded={isExpanded}
+        aria-label={isExpanded ? t('label.collapse') : t('label.expand')}
         className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
         data-testid="expand-icon"
         onClick={(e) => {

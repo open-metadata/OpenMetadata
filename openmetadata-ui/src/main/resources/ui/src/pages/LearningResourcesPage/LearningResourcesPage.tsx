@@ -388,6 +388,7 @@ export const LearningResourcesPage: React.FC = () => {
                   {(col) => (
                     <Table.Head
                       id={col.id}
+                      isRowHeader={col.id === 'name'}
                       key={col.id}
                       label={col.label}
                       width={col.width}
