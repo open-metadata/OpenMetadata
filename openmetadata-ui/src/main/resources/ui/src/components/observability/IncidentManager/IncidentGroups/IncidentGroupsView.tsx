@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Button,
   Divider,
   EmptyPlaceholder,
   PaginationCardWithControls,
@@ -413,7 +414,62 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
   };
 
   const hasStats = !isInitialLoading && !isError;
+  const hasActiveFilters = hasActiveIncidentGroupFilters(filters);
   const groupCount = paging?.total ?? incidentGroups.length;
+
+  // The clear action sits apart from the filters, so the filter row keeps
+  // its width as filters are picked.
+  const renderSummary = () =>
+    (hasStats || hasActiveFilters) && (
+      <Box align="center" gap={3}>
+        {hasStats && (
+          <Box align="center" gap={3}>
+            <Typography
+              as="span"
+              className="tw:text-secondary"
+              data-testid="incident-groups-count"
+              size="text-sm">
+              <Transi18next
+                i18nKey="label.group-count"
+                renderElement={STAT_COUNT_ELEMENT}
+                values={{ count: groupCount }}
+              />
+            </Typography>
+            <Divider className="tw:h-4" orientation="vertical" />
+            <Tooltip
+              placement="top"
+              title={t('message.recurring-groups-loaded')}>
+              <TooltipTrigger>
+                <Box align="center" gap={1}>
+                  <TrendUp01 className="tw:size-4 tw:text-fg-error-primary" />
+                  <Typography
+                    as="span"
+                    className="tw:text-secondary"
+                    data-testid="incident-groups-recurring-count"
+                    size="text-sm">
+                    <Transi18next
+                      i18nKey="label.recurring-count"
+                      renderElement={STAT_COUNT_ELEMENT}
+                      values={{ count: recurringCount }}
+                    />
+                  </Typography>
+                </Box>
+              </TooltipTrigger>
+            </Tooltip>
+          </Box>
+        )}
+        {hasActiveFilters && (
+          <Button
+            className="tw:ml-auto"
+            color="link-gray"
+            data-testid="incident-groups-clear-filters"
+            size="sm"
+            onPress={() => handleFiltersChange(CLEARED_INCIDENT_GROUP_FILTERS)}>
+            {t('label.clear-all')}
+          </Button>
+        )}
+      </Box>
+    );
 
   return (
     <Box
@@ -423,42 +479,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
       direction="col">
       {detailKey === undefined ? (
         <>
-          {hasStats && (
-            <Box align="center" gap={3}>
-              <Typography
-                as="span"
-                className="tw:text-secondary"
-                data-testid="incident-groups-count"
-                size="text-sm">
-                <Transi18next
-                  i18nKey="label.group-count"
-                  renderElement={STAT_COUNT_ELEMENT}
-                  values={{ count: groupCount }}
-                />
-              </Typography>
-              <Divider className="tw:h-4" orientation="vertical" />
-              <Tooltip
-                placement="top"
-                title={t('message.recurring-groups-loaded')}>
-                <TooltipTrigger>
-                  <Box align="center" gap={1}>
-                    <TrendUp01 className="tw:size-4 tw:text-fg-error-primary" />
-                    <Typography
-                      as="span"
-                      className="tw:text-secondary"
-                      data-testid="incident-groups-recurring-count"
-                      size="text-sm">
-                      <Transi18next
-                        i18nKey="label.recurring-count"
-                        renderElement={STAT_COUNT_ELEMENT}
-                        values={{ count: recurringCount }}
-                      />
-                    </Typography>
-                  </Box>
-                </TooltipTrigger>
-              </Tooltip>
-            </Box>
-          )}
+          {renderSummary()}
           <Box align="start" gap={2}>
             <IncidentGroupsFilters
               filters={filters}

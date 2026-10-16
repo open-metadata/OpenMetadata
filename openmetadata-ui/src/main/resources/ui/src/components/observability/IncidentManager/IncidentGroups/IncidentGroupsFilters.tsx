@@ -12,16 +12,15 @@
  */
 
 import {
-  Box,
-  Button,
-  Dot,
-  FilterSelect,
-  TriggerButton,
+    Box,
+    Dot,
+    FilterSelect,
+    TriggerButton
 } from '@openmetadata/ui-core-components';
 import {
-  keepPreviousData,
-  useQuery,
-  useQueryClient,
+    keepPreviousData,
+    useQuery,
+    useQueryClient
 } from '@tanstack/react-query';
 import { startCase } from 'lodash';
 import { ReactNode, useId, useMemo, useState } from 'react';
@@ -41,19 +40,17 @@ import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/U
 import { useIncidentFilterOptions } from '../../../IncidentManager/useIncidentFilterOptions';
 import DqDateRangeFilter from '../../DataQuality/Dashboard/DqDateRangeFilter';
 import {
-  CLEARED_INCIDENT_GROUP_FILTERS,
-  DEFAULT_INCIDENT_LIST_DATE_FIELD,
-  INCIDENT_GROUP_STATUS_OPTIONS,
-  INCIDENT_SEVERITY_DOT_CLASS,
-  INCIDENT_SEVERITY_FILTER_OPTIONS,
-  NO_SEVERITY_FILTER,
+    DEFAULT_INCIDENT_LIST_DATE_FIELD,
+    INCIDENT_GROUP_STATUS_OPTIONS,
+    INCIDENT_SEVERITY_DOT_CLASS,
+    INCIDENT_SEVERITY_FILTER_OPTIONS,
+    NO_SEVERITY_FILTER
 } from './IncidentGroups.constants';
 import {
-  IncidentGroupsFiltersProps,
-  IncidentListDateField,
-  IncidentSeverityFilter,
+    IncidentGroupsFiltersProps,
+    IncidentListDateField,
+    IncidentSeverityFilter
 } from './IncidentGroups.types';
-import { hasActiveIncidentGroupFilters } from './IncidentGroups.utils';
 
 const STATUS_OPTIONS = INCIDENT_GROUP_STATUS_OPTIONS.map((status) => ({
   value: status,
@@ -197,8 +194,6 @@ const IncidentGroupsFilters = ({
     { value: 'updatedAt', label: t('label.updated-at') },
   ];
 
-  const hasActiveFilters = hasActiveIncidentGroupFilters(filters);
-
   return (
     // Shares one row with the dimension picker, wrapping only where a narrow
     // screen leaves the filters too little room to stay readable.
@@ -299,16 +294,6 @@ const IncidentGroupsFilters = ({
           onApply={(range) => onChange(range)}
         />
       </FilterField>
-      {hasActiveFilters && (
-        <Button
-          className="tw:shrink-0"
-          color="link-gray"
-          data-testid="incident-groups-clear-filters"
-          size="sm"
-          onPress={() => onChange(CLEARED_INCIDENT_GROUP_FILTERS)}>
-          {t('label.clear-all')}
-        </Button>
-      )}
     </Box>
   );
 };
