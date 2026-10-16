@@ -26,15 +26,18 @@
  *                         --om-color-text: var(--color-text-primary, #181d27).
  *                         Colour roles in new LESS read the Tailwind bridge
  *                         vars instead (--tw-background-color-*,
- *                         --tw-text-color-*, --tw-border-color-*), which flip
- *                         under .dark-mode; the --om-color-* aliases stay for
- *                         existing references. Off-scale/legacy
+ *                         --tw-text-color-*, --tw-border-color-*,
+ *                         --tw-color-fg-*, --tw-color-utility-*), which flip
+ *                         under .dark-mode; --om-color-* aliases stay for
+ *                         existing references only. New colour roles belong
+ *                         in core globals.css. Off-scale/legacy
  *                         values (spacing, z-index, legacy colors with no
  *                         upstream home) hold the raw value directly here —
  *                         this is the one place raw values may live.
  *
  *   Components (the .less / .css files) never hold raw values: colours read
- *   the Tailwind bridge vars, every other value var(--om-*).
+ *   the Tailwind bridge vars (also in canvas token strings), every other value
+ *   var(--om-*). Never add --om-color-* tokens or references.
  *
  * Docs: ./specs/tokens/token-reference.md and ./specs/foundations/*.md
  * Lint: node scripts/token-audit.js   (CI: zero errors required)

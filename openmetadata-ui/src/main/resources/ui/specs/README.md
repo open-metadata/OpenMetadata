@@ -8,16 +8,18 @@ Machine- and human-readable specifications for the OpenMetadata design system.
 | | Stack | Style with | Tokens | Audit |
 | --- | --- | --- | --- | --- |
 | **Go-forward** ✅ | UntitledUI + Tailwind | `tw:` utility classes | `globals.css` `@theme` → [tokens/tailwind-utility-reference.md](tokens/tailwind-utility-reference.md) | `yarn tw-audit` |
-| **Legacy** ⚠️ (deprecated) | Ant Design + Less | `.less` + `var(--om-*)` | [tokens/token-reference.md](tokens/token-reference.md) | `yarn token-audit` |
+| **Legacy** ⚠️ (deprecated) | Ant Design + Less | Existing `.less`: `--tw-*` colours, `--om-*` non-colour tokens | [foundations/color.md](foundations/color.md), [tokens/token-reference.md](tokens/token-reference.md) | `yarn token-audit` |
 
 **New work uses UntitledUI + Tailwind. Do not add new Antd components, new
 `.less` files, or new `assets/svg/` raw-SVG files/imports** — `yarn tw-guard` blocks new debt. Never hardcode a value in
-either stack: use a `tw:` token utility in TSX. In existing `.less`, read colours from the Tailwind
+either stack: use a `tw:` token utility in TSX. In existing `.less`/`.css` and canvas token strings,
+read colours from the Tailwind
 bridge vars the utilities compile to (`var(--tw-background-color-surface)`, `--tw-text-color-*`,
-`--tw-border-color-*`, which flip under `.dark-mode`) and every other value from `var(--om-*)`. Raw
-`var(--color-*)` is invalid in light (transparent). The `--om-*` layer below documents the
-**deprecated** Antd/Less side (still maintained during the migration); new code adds no
-`--om-color-*` references.
+`--tw-border-color-*`, `--tw-color-fg-*`, `--tw-color-utility-*`, which flip under `.dark-mode`)
+and every other value from `var(--om-*)`. Raw `--color-*` / `--background-color-*` /
+`--text-color-*` / `--border-color-*` variables are invalid in light (transparent). The `--om-*`
+layer below documents the **deprecated** Antd/Less side (still maintained during the migration);
+never add `--om-color-*` tokens or references.
 
 ## How the (legacy) LESS system is layered
 
@@ -28,13 +30,14 @@ Layer 1  globals.css  Upstream primitives (--color-*, --radius-*, --text-*,
 Layer 2  --om-*       Project aliases in tokens.css. Reference the matching
                       Layer 1 token with a raw fallback (off-scale / legacy
                       values hold the raw value directly). Existing LESS uses these.
-Components (.less/.css)  Colours: --tw-*-color-* bridge vars. Other values:
-                      var(--om-*). Never raw hex / px.
+Components (.less/.css)  Colours: --tw-background-color-*, --tw-text-color-*,
+                      --tw-border-color-*, --tw-color-fg-*, --tw-color-utility-*.
+                      Other values: var(--om-*). Never raw hex / px.
 ```
 
 The legacy LESS bridge — [`src/styles/variables.less`](../src/styles/variables.less)
-— is also a token-definition file. Existing `@variable` usage is not
-a violation; new work should prefer `var(--om-*)`.
+— is also a token-definition file. Existing `@variable` usage stays for Antd theming;
+new component styles use the colour bridge vars or non-colour `var(--om-*)` tokens.
 
 ## Contents
 
@@ -77,12 +80,15 @@ shared semantic token or document them using the fixed-color and dark-override r
 ## Rules for contributors and AI agents
 
 1. Read the relevant `specs/` file before touching UI code.
-2. Use only tokens — never introduce a raw hex, rgb/rgba, or px spacing value in a component
-   style. In `.less`, colours come from the `--tw-*-color-*` bridge vars and everything else from
-   `tokens.css` (`var(--om-*)`); do not add `--om-color-*` references.
+2. Colours come from core `globals.css` only: use `tw:` utilities in TSX and their generated
+   `--tw-*` bridge vars in `.less`/`.css` and canvas token strings (`--tw-text-color-primary`,
+   `--tw-background-color-surface`, `--tw-border-color-secondary`, `--tw-color-fg-brand-primary`).
+   Never add `--om-color-*` tokens or references, or use raw `--color-*` / `--background-color-*`
+   variables (invalid in light mode). Non-colour values use `tokens.css` (`var(--om-space-16)`,
+   `--om-radius-*`, `--om-z-*`). Never introduce a raw hex, rgb/rgba, or px spacing value in a
+   component style.
 3. Prefer semantic tokens (`--tw-text-color-primary`, `--om-space-16`) over
    palette/legacy tokens where one fits.
 4. Run `yarn token-audit` before committing. **Zero errors required.**
-5. If a needed value has no token, add it to `tokens.css` as an `--om-*` alias
-   (referencing the upstream `globals.css` token, or holding the raw value when
-   there is no upstream equivalent), not to the component.
+5. If a needed non-colour value has no token, add it to `tokens.css` as an `--om-*`
+   alias, not to the component. A missing colour role belongs in core `globals.css`.

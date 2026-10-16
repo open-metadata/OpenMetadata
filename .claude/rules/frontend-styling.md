@@ -17,21 +17,21 @@ Applies to UI `*.{ts,tsx,less,css}`; component choice is in `component-library.m
 - **Use design tokens, never hardcoded colour or spacing.** Full token reference, dark-mode guide and
   anti-patterns: [`docs/colors.md`](../../openmetadata-ui/src/main/resources/ui/docs/colors.md) —
   consult it before choosing any colour class.
-- **Colours in `.less`/`.css` read the Tailwind bridge vars**: the variables the `tw:` utilities
-  compile to (`tw:bg-surface` → `var(--tw-background-color-surface)`). They hold real values in light
-  and are remapped under `.dark-mode`, so they flip per theme:
+- **Colours come from core `globals.css`.** In `.less`/`.css` and canvas token strings, read the
+  Tailwind bridge vars the `tw:` utilities compile to (`tw:bg-surface` →
+  `var(--tw-background-color-surface)`). They hold light values and flip under `.dark-mode`:
   - background: `var(--tw-background-color-<token>)` (`surface`, `primary`, `secondary`, `page`, `canvas`, `overlay-surface`);
   - text: `var(--tw-text-color-<token>)`; border, outline, divider: `var(--tw-border-color-<token>)`;
-  - status and palette: `var(--tw-color-utility-<colour>-<step>)`.
-- **Do not add `var(--om-color-*)` references.** Reviewers drop that alias layer for colours (#33626,
-  `--om-color-link` retired in #35290); switch an existing one when you edit its line. Never raw
-  `var(--color-*)`: it is self-referential in `@theme static`, so it is invalid, and transparent, in light.
+  - icons/foreground: `var(--tw-color-fg-<token>)`; status/palette: `var(--tw-color-utility-<colour>-<step>)`.
+- **Never add `--om-color-*` tokens or references**; switch existing references when editing their line.
+  Raw `--color-*` / `--background-color-*` / `--text-color-*` / `--border-color-*` are self-referential
+  in `@theme static`, so they are invalid, and transparent, in light.
   Never raw hex, `rgb()`, `@white`/`@black`, legacy palette vars (`--om-grey-*`) that never flip, or
   `--tw-color-bg-*`/`--tw-color-text-*`, which `.dark-mode` does not remap.
 - **Non-colour values keep the `--om-*` tokens**: `var(--om-space-*)`, `var(--om-z-*)`, radius, shadow,
   font and motion tokens. `yarn token-audit` rejects raw px spacing, radius, z-index and durations. If a
-  value has no token, add it to `tokens.css`, not to the component. Existing `variables.less`
-  `@variable`s stay for antd theming.
+  non-colour value has no token, add it to `tokens.css`; a missing colour role belongs in `globals.css`.
+  Existing `variables.less` `@variable`s stay for antd theming; new component styles use tokens.
 
 ## Core components keep their own styling (ADR:2026-10-11-migrated-antd-components-adopt-core-styling)
 
