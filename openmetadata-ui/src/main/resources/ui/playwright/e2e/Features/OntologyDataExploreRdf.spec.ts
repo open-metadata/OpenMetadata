@@ -31,12 +31,12 @@ import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
-import { assetIdsWithColumns, countAssetsWithColumns } from '../../utils/table';
 import {
   navigateToOntologyStudio,
   readSearchHighlightIds,
   waitForGraphLoaded,
 } from '../../utils/ontologyStudio';
+import { assetIdsWithColumns, countAssetsWithColumns } from '../../utils/table';
 
 const suffix = uuid().replaceAll('-', '');
 const fixture = new OntologyRdfFixture(`pw_data_${suffix}`);
