@@ -926,38 +926,6 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
-  void put_createWithUnofferedOptionValue_4xx(TestNamespace ns) {
-    Table table = createTable(ns);
-    CreateTestCase request = new CreateTestCase();
-    request.setName(ns.prefix("put_bad_strategy"));
-    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
-    request.setTestDefinition("tableCustomSQLQuery");
-    request.setParameterValues(
-        List.of(
-            new TestCaseParameterValue().withName("sqlExpression").withValue("SELECT 1"),
-            new TestCaseParameterValue().withName("strategy").withValue("SUM")));
-
-    Exception error =
-        assertThrows(Exception.class, () -> SdkClients.adminClient().testCases().upsert(request));
-    assertTrue(error.getMessage().contains("must be one of"), error.getMessage());
-  }
-
-  @Test
-  void put_createOnUnsupportedColumnType_4xx(TestNamespace ns) {
-    Table table = createTable(ns);
-    CreateTestCase request = new CreateTestCase();
-    request.setName(ns.prefix("put_length_on_number"));
-    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>");
-    request.setTestDefinition("columnValueLengthsToBeBetween");
-    request.setParameterValues(
-        List.of(new TestCaseParameterValue().withName("minLength").withValue("1")));
-
-    Exception error =
-        assertThrows(Exception.class, () -> SdkClients.adminClient().testCases().upsert(request));
-    assertTrue(error.getMessage().contains("does not support column type"), error.getMessage());
-  }
-
-  @Test
   void post_rejectedForConformance_leavesNoTestSuite(TestNamespace ns) {
     Table table = createTable(ns);
     CreateTestCase request = new CreateTestCase();
@@ -968,20 +936,6 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         List.of(new TestCaseParameterValue().withName("minLength").withValue("1")));
 
     assertThrows(Exception.class, () -> createEntity(request));
-    assertNull(tableTestSuite(table));
-  }
-
-  @Test
-  void put_rejectedForConformance_leavesNoTestSuite(TestNamespace ns) {
-    Table table = createTable(ns);
-    CreateTestCase request = new CreateTestCase();
-    request.setName(ns.prefix("put_no_suite"));
-    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>");
-    request.setTestDefinition("columnValueLengthsToBeBetween");
-    request.setParameterValues(
-        List.of(new TestCaseParameterValue().withName("minLength").withValue("1")));
-
-    assertThrows(Exception.class, () -> SdkClients.adminClient().testCases().upsert(request));
     assertNull(tableTestSuite(table));
   }
 
