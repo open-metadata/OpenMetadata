@@ -165,28 +165,11 @@ const InnerAutocomplete = ({
     context.allowsCreation &&
     (context.hideDropdown || context.visibleItemCount === 0);
 
-  // While a react-aria combobox is open it aria-hides the rest of the page,
-  // including nodes added afterwards, so it may only stay open while its input
-  // has focus. react-stately reopens the menu from a passive effect that
-  // renders in a later task, so fast input (type, then move to the next field)
-  // can land an open after the blur that would have closed it.
-  useEffect(() => {
-    if (comboBoxStateContext?.isOpen && !comboBoxStateContext.isFocused) {
-      comboBoxStateContext.close();
-    }
-  }, [comboBoxStateContext]);
-
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     const inputValue = event.currentTarget.value;
     const isCaretAtStart =
       event.currentTarget.selectionStart === 0 &&
       event.currentTarget.selectionEnd === 0;
-
-    // Enter in a tag field adds a tag. With no menu open react-aria no longer
-    // swallows it, so stop it from submitting the surrounding form.
-    if (event.key === 'Enter' && context.hideDropdown) {
-      event.preventDefault();
-    }
 
     if (event.key === 'Enter' && canCreateItem && inputValue.trim() !== '') {
       event.preventDefault();
@@ -218,14 +201,8 @@ const InnerAutocomplete = ({
     }
   };
 
-  // Reopens a focused input whose menu was closed (e.g. by Escape); an
-  // unfocused input opens on the focus this press is about to cause.
   const handleInputMouseDown = (_event: React.MouseEvent<HTMLInputElement>) => {
-    if (
-      comboBoxStateContext &&
-      comboBoxStateContext.isFocused &&
-      !comboBoxStateContext.isOpen
-    ) {
+    if (comboBoxStateContext && !comboBoxStateContext.isOpen) {
       comboBoxStateContext.open();
     }
   };
@@ -682,12 +659,9 @@ export const AutocompleteBase = ({
     <SelectContext.Provider value={selectContextValue}>
       <AutocompleteContext.Provider value={autocompleteContextValue}>
         <AriaComboBox
-          // A field without a dropdown passes no items and disallows an empty
-          // collection, so react-stately refuses every open (focus, typing,
-          // arrow keys, touch) instead of aria-hiding the page with no list.
-          allowsEmptyCollection={!hideDropdown}
+          allowsEmptyCollection
           inputValue={filterText}
-          items={hideDropdown ? undefined : visibleItems}
+          items={visibleItems}
           menuTrigger="focus"
           selectedKey={null}
           onInputChange={onInputChange}

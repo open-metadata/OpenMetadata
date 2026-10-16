@@ -40,6 +40,7 @@ import { List } from '@openmetadata/ui-core-components/icons';
 import { Checkbox } from 'antd';
 import { Key, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TAG_INPUT_COMBOBOX_PROPS } from '../../../constants/Form.constants';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import {
   buildDesignerSchema,
@@ -278,6 +279,7 @@ const TaskFormBuilderSection = ({
 
                       {supportsOptions ? (
                         <Autocomplete
+                          {...TAG_INPUT_COMBOBOX_PROPS}
                           allowsCreation
                           hideDropdown
                           multiple

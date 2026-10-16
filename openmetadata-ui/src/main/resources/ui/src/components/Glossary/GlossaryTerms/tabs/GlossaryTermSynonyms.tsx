@@ -31,6 +31,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
+import { TAG_INPUT_COMBOBOX_PROPS } from '../../../../constants/Form.constants';
 import { MAX_VISIBLE_SYNONYMS } from '../../../../constants/Glossary.contant';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../../generated/entity/type';
@@ -304,6 +305,7 @@ const GlossaryTermSynonyms = () => {
       ref={editorRef}
       onKeyDownCapture={handleEditorKeyDownCapture}>
       <Autocomplete
+        {...TAG_INPUT_COMBOBOX_PROPS}
         allowsCreation
         hideDropdown
         multiple

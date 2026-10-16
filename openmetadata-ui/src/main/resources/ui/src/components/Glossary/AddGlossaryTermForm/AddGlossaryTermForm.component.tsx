@@ -27,6 +27,7 @@ import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { Control, useFieldArray, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { TAG_INPUT_COMBOBOX_PROPS } from '../../../constants/Form.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { validateReferenceURL } from '../../../utils/GlossaryPureUtils';
@@ -118,6 +119,7 @@ const AddGlossaryTermForm = ({
     name: 'synonyms',
     placeholder: t('message.synonym-placeholder'),
     props: {
+      ...TAG_INPUT_COMBOBOX_PROPS,
       'data-testid': 'synonyms',
       allowsCreation: true,
       hideDropdown: true,

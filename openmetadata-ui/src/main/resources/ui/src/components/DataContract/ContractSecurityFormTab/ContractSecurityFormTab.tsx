@@ -38,6 +38,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { SUPPORTED_ROW_FILTER_ENTITIES } from '../../../constants/DataContract.constants';
+import { TAG_INPUT_COMBOBOX_PROPS } from '../../../constants/Form.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   ContractSecurity,
@@ -130,6 +131,7 @@ const tagField = (
   name,
   placeholder,
   props: {
+    ...TAG_INPUT_COMBOBOX_PROPS,
     allowsCreation: true,
     'data-testid': testId,
     hideDropdown: true,

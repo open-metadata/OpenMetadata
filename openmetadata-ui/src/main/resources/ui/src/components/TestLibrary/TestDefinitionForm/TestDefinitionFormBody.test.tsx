@@ -18,7 +18,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { FC } from 'react';
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
@@ -196,8 +195,8 @@ describe('TestDefinitionFormBody', () => {
 
     expect(input).toBeInTheDocument();
 
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    await user.click(input);
+    fireEvent.mouseDown(input);
+    fireEvent.focus(input);
     fireEvent.change(input, { target: { value: 'NUMBER' } });
     fireEvent.click(await screen.findByRole('option', { name: 'NUMBER' }));
 
@@ -251,8 +250,8 @@ describe('TestDefinitionFormBody', () => {
 
     expect(input).toBeInTheDocument();
 
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    await user.click(input);
+    fireEvent.mouseDown(input);
+    fireEvent.focus(input);
 
     fireEvent.change(input, { target: { value: DatabaseServiceType.Dbt } });
 
@@ -293,8 +292,8 @@ describe('TestDefinitionFormBody', () => {
 
     expect(input).toBeInTheDocument();
 
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    await user.click(input);
+    fireEvent.mouseDown(input);
+    fireEvent.focus(input);
     fireEvent.change(input, { target: { value: DatabaseServiceType.Dremio } });
     fireEvent.click(
       await screen.findByRole('option', { name: DatabaseServiceType.Dremio })
