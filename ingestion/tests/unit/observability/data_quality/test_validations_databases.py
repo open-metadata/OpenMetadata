@@ -413,6 +413,13 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             None,
         ),
         (
+            "test_case_column_to_match_set_ordered_false",
+            "tableColumnToMatchSet",
+            "TABLE",
+            (TestCaseResult, "1", None, TestCaseStatus.Success, None, None, None, None),
+            None,
+        ),
+        (
             "test_case_table_custom_sql_query",
             "tableCustomSQLQuery",
             "TABLE",
