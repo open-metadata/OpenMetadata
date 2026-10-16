@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Button,
   Divider,
   EmptyPlaceholder,
   PaginationCardWithControls,
@@ -50,6 +51,8 @@ import IncidentGroupDrawer from './IncidentGroupDrawer';
 import {
   CLEARED_INCIDENT_GROUP_FILTERS,
   INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
+  INCIDENT_TABLE_CARD_CLASS,
+  INCIDENT_TABLE_PAGER_CLASS,
 } from './IncidentGroups.constants';
 import {
   BulkIncidentChange,
@@ -75,9 +78,10 @@ const STAT_COUNT_ELEMENT = (
 );
 
 /**
- * Grouped incident listing: the `Group by` dimension picker, the header stats
- * over the fetched groups, the filter row, and the paged group table — plus
- * the loading/empty/error states of the fetch that feeds them.
+ * Grouped incident listing: the header stats over the fetched groups, the
+ * filter row with the `Group by` dimension picker at its end, and the paged
+ * group table — plus the loading/empty/error states of the fetch that feeds
+ * them.
  */
 const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
   const { t } = useTranslation();
@@ -325,7 +329,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
             }
           />
         )}
-        <TableCard.Root>
+        <TableCard.Root className={INCIDENT_TABLE_CARD_CLASS}>
           <IncidentGroupsTable
             groupBy={groupBy}
             groups={incidentGroups}
@@ -339,7 +343,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
             onSortChange={handleSortChange}
           />
           <PaginationCardWithControls
-            className="tw:border-0"
+            className={INCIDENT_TABLE_PAGER_CLASS}
             page={currentPage}
             pageSize={pageSize}
             pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
@@ -412,7 +416,62 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
   };
 
   const hasStats = !isInitialLoading && !isError;
+  const hasActiveFilters = hasActiveIncidentGroupFilters(filters);
   const groupCount = paging?.total ?? incidentGroups.length;
+
+  // The clear action sits apart from the filters, so the filter row keeps
+  // its width as filters are picked.
+  const renderSummary = () =>
+    (hasStats || hasActiveFilters) && (
+      <Box align="center" gap={3}>
+        {hasStats && (
+          <Box align="center" gap={3}>
+            <Typography
+              as="span"
+              className="tw:text-secondary"
+              data-testid="incident-groups-count"
+              size="text-sm">
+              <Transi18next
+                i18nKey="label.group-count"
+                renderElement={STAT_COUNT_ELEMENT}
+                values={{ count: groupCount }}
+              />
+            </Typography>
+            <Divider className="tw:h-4" orientation="vertical" />
+            <Tooltip
+              placement="top"
+              title={t('message.recurring-groups-loaded')}>
+              <TooltipTrigger>
+                <Box align="center" gap={1}>
+                  <TrendUp01 className="tw:size-4 tw:text-fg-error-primary" />
+                  <Typography
+                    as="span"
+                    className="tw:text-secondary"
+                    data-testid="incident-groups-recurring-count"
+                    size="text-sm">
+                    <Transi18next
+                      i18nKey="label.recurring-count"
+                      renderElement={STAT_COUNT_ELEMENT}
+                      values={{ count: recurringCount }}
+                    />
+                  </Typography>
+                </Box>
+              </TooltipTrigger>
+            </Tooltip>
+          </Box>
+        )}
+        {hasActiveFilters && (
+          <Button
+            className="tw:ml-auto"
+            color="link-gray"
+            data-testid="incident-groups-clear-filters"
+            size="sm"
+            onPress={() => handleFiltersChange(CLEARED_INCIDENT_GROUP_FILTERS)}>
+            {t('label.clear-all')}
+          </Button>
+        )}
+      </Box>
+    );
 
   return (
     <Box
@@ -422,55 +481,17 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
       direction="col">
       {detailKey === undefined ? (
         <>
-          <Box className="tw:items-center tw:justify-between tw:gap-2 tw:py-2">
-            {/* Kept when empty, so the dimension picker stays on the right. */}
-            <Box align="center" gap={3}>
-              {hasStats && (
-                <>
-                  <Typography
-                    as="span"
-                    className="tw:text-secondary"
-                    data-testid="incident-groups-count"
-                    size="text-sm">
-                    <Transi18next
-                      i18nKey="label.group-count"
-                      renderElement={STAT_COUNT_ELEMENT}
-                      values={{ count: groupCount }}
-                    />
-                  </Typography>
-                  <Divider className="tw:h-4" orientation="vertical" />
-                  <Tooltip
-                    placement="top"
-                    title={t('message.recurring-groups-loaded')}>
-                    <TooltipTrigger>
-                      <Box align="center" gap={1}>
-                        <TrendUp01 className="tw:size-4 tw:text-fg-error-primary" />
-                        <Typography
-                          as="span"
-                          className="tw:text-secondary"
-                          data-testid="incident-groups-recurring-count"
-                          size="text-sm">
-                          <Transi18next
-                            i18nKey="label.recurring-count"
-                            renderElement={STAT_COUNT_ELEMENT}
-                            values={{ count: recurringCount }}
-                          />
-                        </Typography>
-                      </Box>
-                    </TooltipTrigger>
-                  </Tooltip>
-                </>
-              )}
-            </Box>
+          {renderSummary()}
+          <Box align="start" gap={2}>
+            <IncidentGroupsFilters
+              filters={filters}
+              onChange={handleFiltersChange}
+            />
             <IncidentGroupByDropdown
               value={groupBy}
               onChange={handleGroupByChange}
             />
           </Box>
-          <IncidentGroupsFilters
-            filters={filters}
-            onChange={handleFiltersChange}
-          />
           {renderContent()}
         </>
       ) : (

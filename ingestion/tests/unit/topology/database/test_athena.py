@@ -358,7 +358,6 @@ class TestAthenaUsageYieldTableQueries:
         source.dialect.value = "athena"
         source.config.serviceName = "test_athena"
         source.start = datetime(2024, 1, 1)
-        source.is_not_dbt_or_om_query.return_value = True
         return source
 
     def _make_query_list(self, status):
@@ -366,9 +365,7 @@ class TestAthenaUsageYieldTableQueries:
         query.Query = "SELECT 1"
         query.Status = status
         query.Statistics = None
-        query_list = MagicMock()
-        query_list.QueryExecutions = [query]
-        return query_list
+        return [query]
 
     def test_end_time_uses_completion_datetime_when_present(self):
         status = MagicMock()
