@@ -25,12 +25,17 @@ import {
   ChevronUp,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { useId } from 'react';
-
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/entity/column.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';

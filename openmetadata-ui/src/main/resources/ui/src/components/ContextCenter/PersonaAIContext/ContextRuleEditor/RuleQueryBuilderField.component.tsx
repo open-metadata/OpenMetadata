@@ -108,27 +108,25 @@ export const RuleQueryBuilderField = ({
   );
 
   return (
-    <>
-      <div className="persona-context-rule-builder tw:rounded-lg tw:border tw:border-secondary tw:p-3">
-        {/* Mounting before the fields arrive lets RAQB's sanitizer field-null any saved extension.<cp> rule. */}
-        {enrichedFields ? (
-          <QueryBuilder
-            buttonPreset={PERSONA_BUTTON_PRESET}
-            entityType={entityType as EntityType}
-            fields={enrichedFields}
-            groupMode="flat"
-            outputType={SearchOutputType.ElasticSearch}
-            readonly={readonly}
-            showCountPreview={false}
-            tree={tree}
-            value={queryFilter ?? ''}
-            onChange={handleChange}
-            onValidityChange={onValidityChange}
-          />
-        ) : (
-          <Loader size="small" />
-        )}
-      </div>
-    </>
+    <div className="persona-context-rule-builder tw:rounded-lg tw:border tw:border-secondary tw:p-3">
+      {/* Mounting before the fields arrive lets RAQB's sanitizer field-null any saved extension.<cp> rule. */}
+      {enrichedFields ? (
+        <QueryBuilder
+          buttonPreset={PERSONA_BUTTON_PRESET}
+          entityType={entityType as EntityType}
+          fields={enrichedFields}
+          groupMode="flat"
+          outputType={SearchOutputType.ElasticSearch}
+          readonly={readonly}
+          showCountPreview={false}
+          tree={tree}
+          value={queryFilter ?? ''}
+          onChange={handleChange}
+          onValidityChange={onValidityChange}
+        />
+      ) : (
+        <Loader size="small" />
+      )}
+    </div>
   );
 };

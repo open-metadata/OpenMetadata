@@ -131,9 +131,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
           {isLoading ? (
             <SkeletonParagraph rows={4} />
           ) : (
-            <>
-              <EmptyGraphPlaceholder />
-            </>
+            <EmptyGraphPlaceholder />
           )}
         </Card.Content>
       </Card>
@@ -149,48 +147,44 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
         {isLoading ? (
           <SkeletonParagraph rows={4} />
         ) : (
-          <>
-            <Grid
-              className="layout-row layout-grid"
-              style={getLayoutGutter(32)}>
-              <Grid.Item
-                className="layout-column"
-                span={DI_STRUCTURE.leftContainerSpan}>
-                <PageHeader
-                  data={{
-                    header: t('label.page-views-by-data-asset-plural'),
-                    subHeader: t('message.data-insight-page-views'),
-                  }}
-                />
-                <LineChart<PageViewsRow>
-                  ariaLabel={t('label.page-views-by-data-asset-plural')}
-                  data={data}
-                  height={GRAPH_HEIGHT}
-                  legend={HIDDEN_CHART_LEGEND}
-                  series={series}
-                  tooltip={tooltip}
-                  xKey="timestamp"
-                />
-              </Grid.Item>
-              <Grid.Item
-                className="layout-column"
-                span={DI_STRUCTURE.rightContainerSpan}>
-                <TotalEntityInsightSummary
-                  allowFilter
-                  activeKeys={activeKeys}
-                  entities={sortedEntitiesByValue}
-                  latestData={latestData}
-                  relativePercentage={relativePercentage}
-                  selectedDays={selectedDays}
-                  total={total}
-                  onActiveKeyMouseHover={(entity) =>
-                    setActiveMouseHoverKey(entity)
-                  }
-                  onActiveKeysUpdate={(entities) => setActiveKeys(entities)}
-                />
-              </Grid.Item>
-            </Grid>
-          </>
+          <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
+            <Grid.Item
+              className="layout-column"
+              span={DI_STRUCTURE.leftContainerSpan}>
+              <PageHeader
+                data={{
+                  header: t('label.page-views-by-data-asset-plural'),
+                  subHeader: t('message.data-insight-page-views'),
+                }}
+              />
+              <LineChart<PageViewsRow>
+                ariaLabel={t('label.page-views-by-data-asset-plural')}
+                data={data}
+                height={GRAPH_HEIGHT}
+                legend={HIDDEN_CHART_LEGEND}
+                series={series}
+                tooltip={tooltip}
+                xKey="timestamp"
+              />
+            </Grid.Item>
+            <Grid.Item
+              className="layout-column"
+              span={DI_STRUCTURE.rightContainerSpan}>
+              <TotalEntityInsightSummary
+                allowFilter
+                activeKeys={activeKeys}
+                entities={sortedEntitiesByValue}
+                latestData={latestData}
+                relativePercentage={relativePercentage}
+                selectedDays={selectedDays}
+                total={total}
+                onActiveKeyMouseHover={(entity) =>
+                  setActiveMouseHoverKey(entity)
+                }
+                onActiveKeysUpdate={(entities) => setActiveKeys(entities)}
+              />
+            </Grid.Item>
+          </Grid>
         )}
       </Card.Content>
     </Card>

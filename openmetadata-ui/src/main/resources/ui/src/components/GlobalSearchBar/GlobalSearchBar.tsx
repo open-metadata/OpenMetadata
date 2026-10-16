@@ -106,8 +106,8 @@ export const GlobalSearchBar = () => {
         aria-label={t('label.search-index')}
         data-testid="global-search-selector"
         popoverClassName="tw:w-50"
-        selectedKey={searchCriteria || ALL_SEARCH_CRITERIA_KEY}
-        onSelectionChange={(key) =>
+        value={searchCriteria || ALL_SEARCH_CRITERIA_KEY}
+        onChange={(key) =>
           key !== null &&
           updateSearchCriteria(
             key === ALL_SEARCH_CRITERIA_KEY

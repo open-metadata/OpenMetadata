@@ -134,67 +134,67 @@ export const AddEditPersonaForm = ({
       width={750}
       onCancel={onCancel}
       onOk={form.handleSubmit(handleSubmit)}>
-      <>
-        <HookForm
-          className="tw:flex tw:flex-col tw:gap-4"
-          form={form}
-          onSubmit={form.handleSubmit(handleSubmit)}>
-          {renderTextField('name', t('label.name'), NAME_FIELD_REGISTER_RULES)}
-          {renderTextField(
-            'displayName',
-            t('label.display-name'),
-            DISPLAY_NAME_FIELD_REGISTER_RULES
-          )}
-          <Box direction="col" gap={1}>
-            <FormItemLabel label={t('label.description')} />
-            <RichTextEditor
-              data-testid="description"
-              initialValue=""
-              onTextChange={setDescription}
-            />
-          </Box>
-          <FormField control={form.control} name="users">
-            {({ field }) => (
-              <Box direction="col" gap={1}>
-                <Box align="center" gap={2}>
-                  <FormItemLabel label={t('label.user-plural')} />
-                  <UserSelectableList
-                    hasPermission
-                    multiSelect
-                    selectedUsers={field.value}
-                    onUpdate={async (users) => field.onChange(users ?? [])}>
-                    <Button
-                      aria-label={t('label.add-entity', {
-                        entity: t('label.user-plural'),
-                      })}
-                      color="primary"
-                      data-testid="add-users"
-                      iconLeading={Plus}
-                      size="xs"
-                    />
-                  </UserSelectableList>
-                </Box>
-                {usersList.length > 0 && (
-                  <Box
-                    align="center"
-                    data-testid="users-container"
-                    gap={2}
-                    wrap="wrap">
-                    {usersList.map((user) => (
-                      <UserTag
-                        id={user.name ?? user.id}
-                        key={user.id}
-                        name={getEntityName(user)}
-                        size={UserTagSize.small}
-                      />
-                    ))}
-                  </Box>
-                )}
+      <HookForm
+        className="tw:flex tw:flex-col tw:gap-4"
+        form={form}
+        onSubmit={form.handleSubmit(handleSubmit)}>
+        {renderTextField('name', t('label.name'), NAME_FIELD_REGISTER_RULES)}
+        {renderTextField(
+          'displayName',
+          t('label.display-name'),
+          DISPLAY_NAME_FIELD_REGISTER_RULES
+        )}
+        <Box direction="col" gap={1}>
+          <FormItemLabel label={t('label.description')} />
+          <RichTextEditor
+            data-testid="description"
+            initialValue=""
+            onTextChange={setDescription}
+          />
+        </Box>
+        <FormField control={form.control} name="users">
+          {({ field }) => (
+            <Box direction="col" gap={1}>
+              <Box align="center" gap={2}>
+                <FormItemLabel label={t('label.user-plural')} />
+                <UserSelectableList
+                  hasPermission
+                  multiSelect
+                  selectedUsers={field.value}
+                  onUpdate={(users) =>
+                    Promise.resolve(field.onChange(users ?? []))
+                  }>
+                  <Button
+                    aria-label={t('label.add-entity', {
+                      entity: t('label.user-plural'),
+                    })}
+                    color="primary"
+                    data-testid="add-users"
+                    iconLeading={Plus}
+                    size="xs"
+                  />
+                </UserSelectableList>
               </Box>
-            )}
-          </FormField>
-        </HookForm>
-      </>
+              {usersList.length > 0 && (
+                <Box
+                  align="center"
+                  data-testid="users-container"
+                  gap={2}
+                  wrap="wrap">
+                  {usersList.map((user) => (
+                    <UserTag
+                      id={user.name ?? user.id}
+                      key={user.id}
+                      name={getEntityName(user)}
+                      size={UserTagSize.small}
+                    />
+                  ))}
+                </Box>
+              )}
+            </Box>
+          )}
+        </FormField>
+      </HookForm>
     </SimpleModal>
   );
 };

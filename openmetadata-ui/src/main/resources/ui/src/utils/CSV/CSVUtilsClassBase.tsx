@@ -35,7 +35,7 @@ import {
   Tag01,
   Type01,
 } from '@openmetadata/ui-core-components/icons';
-import { isEmpty, startCase, toString, uniq } from 'lodash';
+import { isEmpty, startCase, toString } from 'lodash';
 import {
   CSSProperties,
   FocusEvent,
@@ -1482,7 +1482,9 @@ const InlineCustomPropertiesEditor = ({
     const handleInserted = (key: Key) =>
       handleUpdateDraft(
         customProperty.name,
-        isMultiSelect ? uniq([...selectedValues, String(key)]) : [String(key)]
+        isMultiSelect
+          ? [...new Set([...selectedValues, String(key)])]
+          : [String(key)]
       );
 
     const handleCleared = (key: Key) =>
@@ -2055,11 +2057,11 @@ const renderGridEnumSelect = ({
     data-testid={testId}
     items={options.map((option) => ({ id: option.value, label: option.label }))}
     popoverClassName="react-grid-select-dropdown"
-    selectedKey={value || null}
     size="sm"
-    onOpenChange={(isOpen) => !isOpen && onDismiss()}
+    value={value || null}
     // A cleared selection reports null; keep the cell empty rather than "null".
-    onSelectionChange={(key) => onChange(key === null ? '' : String(key))}>
+    onChange={(key) => onChange(key === null ? '' : String(key))}
+    onOpenChange={(isOpen) => !isOpen && onDismiss()}>
     {(item) => <Select.Item id={item.id} label={item.label} />}
   </Select>
 );
@@ -2681,7 +2683,7 @@ const getCsvEntityTypeEditor: CSVEditorFactory =
           ariaLabel: startCase(column.key),
           options: translatedEntityTypeOptions(),
           testId: 'entity-type-select',
-          value: String(value ?? ''),
+          value: toString(value),
           onChange: handleChange,
           onDismiss: () => onClose(false),
         })}
@@ -2741,7 +2743,7 @@ const getCsvMultiSelectEditor: CSVEditorFactory = ({
             onItemInserted={(key) => {
               const value = String(key).trim();
               if (value) {
-                handleChange(uniq([...selected, value]));
+                handleChange([...new Set([...selected, value])]);
               }
             }}>
             {null}
@@ -2809,7 +2811,7 @@ const getCsvEnumEditor: CSVEditorFactory =
               column.key
             ],
           testId: `${column.key}-select`,
-          value: String(value ?? ''),
+          value: toString(value),
           onChange: handleChange,
           onDismiss: () => onClose(false),
         })}

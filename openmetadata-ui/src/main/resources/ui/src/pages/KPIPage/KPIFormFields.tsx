@@ -99,10 +99,8 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
             items={chartItems}
             label={t('label.select-a-chart')}
             placeholder={t('label.select-a-chart')}
-            selectedKey={field.value}
-            onSelectionChange={(key) =>
-              key !== null && field.onChange(String(key))
-            }>
+            value={field.value}
+            onChange={(key) => key !== null && field.onChange(String(key))}>
             {(item) => <Select.Item id={item.id} label={item.label} />}
           </Select>
         )}
@@ -128,8 +126,8 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
             isDisabled={isEditing}
             items={METRIC_TYPE_ITEMS}
             label={t('label.metric-type')}
-            selectedKey={field.value}
-            onSelectionChange={(key) =>
+            value={field.value}
+            onChange={(key) =>
               key !== null && field.onChange(key as KpiTargetType)
             }>
             {(item) => <Select.Item id={item.id} label={item.label} />}
@@ -170,7 +168,7 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
               type="number"
               value={String(field.value ?? '')}
               onChange={(value) =>
-                field.onChange(value === '' ? NaN : Number(value))
+                field.onChange(value === '' ? Number.NaN : Number(value))
               }
             />
           );

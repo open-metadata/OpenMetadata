@@ -429,7 +429,7 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   const onDateChange = (timeRange?: { startTs: number; endTs: number }) => {
     setQueryDateFilter(timeRange);
-    fetchFilteredQueries({ tags: tagsFilter.selected, timeRange });
+    void fetchFilteredQueries({ tags: tagsFilter.selected, timeRange });
   };
 
   const pagingHandler = (currentPage: number, pageSize: number) => {

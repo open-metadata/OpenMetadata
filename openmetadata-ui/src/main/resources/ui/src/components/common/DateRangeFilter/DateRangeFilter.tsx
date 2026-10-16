@@ -43,6 +43,13 @@ export interface DateRangeFilterProps {
   onClear?: () => void;
 }
 
+const toPickerRange = (startTs?: number, endTs?: number): PickerRange => {
+  const start = millisToPickerDateValue(startTs);
+  const end = millisToPickerDateValue(endTs);
+
+  return start && end ? { start, end } : null;
+};
+
 /**
  * Adapts the core (untitled-ui) `DateRangePicker`, which speaks
  * `@internationalized/date` values, to the dashboard's epoch-millis
@@ -59,20 +66,13 @@ export const DateRangeFilter = ({
   onClear,
 }: DateRangeFilterProps) => {
   const { t } = useTranslation();
-  const buildValue = (): PickerRange => {
-    const start = millisToPickerDateValue(startTs);
-    const end = millisToPickerDateValue(endTs);
-
-    return start && end ? { start, end } : null;
-  };
-
-  const [value, setValue] = useState<PickerRange>(buildValue);
+  const [value, setValue] = useState<PickerRange>(() =>
+    toPickerRange(startTs, endTs)
+  );
 
   // Re-sync the staged value when the committed range changes upstream.
   useEffect(() => {
-    const start = millisToPickerDateValue(startTs);
-    const end = millisToPickerDateValue(endTs);
-    setValue(start && end ? { start, end } : null);
+    setValue(toPickerRange(startTs, endTs));
   }, [startTs, endTs]);
 
   // Discard any uncommitted (staged) selection when single-open coordination
@@ -82,9 +82,9 @@ export const DateRangeFilter = ({
   // Apply / Cancel) are handled by `handleOpenChange` instead (see below).
   useEffect(() => {
     if (isOpen === false) {
-      setValue(buildValue());
+      setValue(toPickerRange(startTs, endTs));
     }
-  }, [isOpen]);
+  }, [isOpen, startTs, endTs]);
 
   // Intercept every close event — including uncontrolled usage where the
   // caller passes no `isOpen`/`onOpenChange` — so an abandoned (never-applied)
@@ -93,7 +93,7 @@ export const DateRangeFilter = ({
   // report here; together they cover both close origins.
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      setValue(buildValue());
+      setValue(toPickerRange(startTs, endTs));
     }
     onOpenChange?.(open);
   };
@@ -108,7 +108,7 @@ export const DateRangeFilter = ({
   };
 
   const handleCancel = () => {
-    setValue(buildValue());
+    setValue(toPickerRange(startTs, endTs));
   };
 
   const picker = (
