@@ -15,6 +15,8 @@ import {
   type CartesianChartProps,
 } from '@openmetadata/ui-core-components/charts';
 import { queryByAttribute, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { ReactNode } from 'react';
 import { useTableProfiler } from '../TableProfilerProvider';
 import CustomMetricGraphs from './CustomMetricGraphs.component';
 
@@ -65,14 +67,13 @@ jest.mock('../../../../../utils/DataInsightUtils', () => {
     return <div>CustomTooltip</div>;
   });
 });
-jest.mock(
-  '../../../../DataQuality/CustomMetricForm/CustomMetricForm.component',
-  () => {
-    return jest.fn().mockImplementation(() => <div>CustomMetricForm</div>);
-  }
-);
 jest.mock('../../../Profiler/ProfilerLatestValue/ProfilerLatestValue', () => {
-  return jest.fn().mockImplementation(() => <div>ProfilerLatestValue</div>);
+  return jest.fn().mockImplementation(({ extra }: { extra?: ReactNode }) => (
+    <div>
+      ProfilerLatestValue
+      {extra}
+    </div>
+  ));
 });
 jest.mock('../../../../common/DeleteWidget/DeleteEntityModal', () => {
   return jest.fn().mockImplementation(() => <div>DeleteEntityModal</div>);
@@ -80,11 +81,13 @@ jest.mock('../../../../common/DeleteWidget/DeleteEntityModal', () => {
 jest.mock('../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
 });
+const mockOnCustomMetricDrawerOpen = jest.fn();
 jest.mock('../TableProfilerProvider', () => {
   return {
     useTableProfiler: jest.fn().mockImplementation(() => ({
       permissions: { EditAll: true, Delete: true },
       onCustomMetricUpdate: jest.fn(),
+      onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
     })),
   };
 });
@@ -166,12 +169,19 @@ describe('CustomMetricGraphs', () => {
     expect(await screen.findByText(name)).toBeInTheDocument();
   });
 
-  it('Edit action', async () => {
+  it('Edit action opens the shared custom metric drawer with the metric', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const [metric] = mockProps.customMetrics;
     render(<CustomMetricGraphs {...mockProps} />);
 
-    expect(
-      await screen.findByTestId('custom-metric-graph-container')
-    ).toBeInTheDocument();
+    await user.click(
+      await screen.findByTestId(`${metric.name}-custom-metrics-menu`)
+    );
+    await user.click(
+      await screen.findByRole('menuitemradio', { name: 'label.edit' })
+    );
+
+    expect(mockOnCustomMetricDrawerOpen).toHaveBeenCalledWith(false, metric);
   });
 
   it('Delete action', async () => {
