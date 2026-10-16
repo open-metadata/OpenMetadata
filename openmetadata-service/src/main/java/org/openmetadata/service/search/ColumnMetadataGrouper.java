@@ -18,8 +18,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
@@ -48,6 +50,8 @@ public class ColumnMetadataGrouper {
       List<ColumnWithContext> occurrences = entry.getValue();
 
       Map<String, ColumnMetadataGroup> groups = new HashMap<>();
+      Map<String, String> structureByGroup = new HashMap<>();
+      Set<String> mixedStructureGroups = new HashSet<>();
 
       for (ColumnWithContext columnCtx : occurrences) {
         String groupId = generateMetadataHash(columnCtx.column);
@@ -61,10 +65,7 @@ public class ColumnMetadataGrouper {
                   newGroup.setDisplayName(columnCtx.column.getDisplayName());
                   newGroup.setDescription(columnCtx.column.getDescription());
                   newGroup.setTags(columnCtx.column.getTags());
-                  newGroup.setDataType(
-                      columnCtx.column.getDataType() != null
-                          ? columnCtx.column.getDataType().toString()
-                          : null);
+                  newGroup.setDataType(dataTypeName(columnCtx.column));
                   newGroup.setOccurrenceCount(0);
                   newGroup.setOccurrences(new ArrayList<>());
                   // Set children for STRUCT, MAP, or UNION types
@@ -83,9 +84,11 @@ public class ColumnMetadataGrouper {
         occurrence.setServiceName(columnCtx.serviceName);
         occurrence.setDatabaseName(columnCtx.databaseName);
         occurrence.setSchemaName(columnCtx.schemaName);
+        occurrence.setDataType(dataTypeName(columnCtx.column));
 
         group.getOccurrences().add(occurrence);
         group.setOccurrenceCount(group.getOccurrenceCount() + 1);
+        trackStructure(groupId, columnCtx.column, structureByGroup, mixedStructureGroups);
       }
 
       List<ColumnMetadataGroup> groupList = new ArrayList<>(groups.values());
@@ -93,6 +96,7 @@ public class ColumnMetadataGrouper {
       // Calculate metadata status for each group
       for (ColumnMetadataGroup group : groupList) {
         group.setMetadataStatus(calculateGroupStatus(group));
+        clearDivergentShape(group, mixedStructureGroups.contains(group.getGroupId()));
       }
 
       ColumnGridItem gridItem = new ColumnGridItem();
@@ -119,6 +123,51 @@ public class ColumnMetadataGrouper {
                 ColumnGridItem::getColumnName, Comparator.nullsLast(Comparator.naturalOrder())));
 
     return gridItems;
+  }
+
+  private static String dataTypeName(Column column) {
+    return column.getDataType() != null ? column.getDataType().toString() : null;
+  }
+
+  // Groups are keyed on editable metadata only, so one group can span occurrences whose data type
+  // or nested structure differ; report those at group level only when every occurrence shares them.
+  private static void clearDivergentShape(ColumnMetadataGroup group, boolean mixedStructure) {
+    long distinctTypes =
+        group.getOccurrences().stream().map(ColumnOccurrenceRef::getDataType).distinct().count();
+    if (distinctTypes > 1) {
+      group.setDataType(null);
+    }
+    if (mixedStructure) {
+      group.setChildren(null);
+    }
+  }
+
+  private static void trackStructure(
+      String groupId,
+      Column column,
+      Map<String, String> structureByGroup,
+      Set<String> mixedStructureGroups) {
+    String signature = structureSignature(column.getChildren());
+    String first = structureByGroup.putIfAbsent(groupId, signature);
+    if (first != null && !first.equals(signature)) {
+      mixedStructureGroups.add(groupId);
+    }
+  }
+
+  private static String structureSignature(List<Column> children) {
+    if (children == null || children.isEmpty()) {
+      return "";
+    }
+    return children.stream()
+        .map(
+            child ->
+                child.getName()
+                    + ":"
+                    + dataTypeName(child)
+                    + "("
+                    + structureSignature(child.getChildren())
+                    + ")")
+        .collect(Collectors.joining(","));
   }
 
   private static List<ColumnChild> convertToColumnChildren(List<Column> columns) {

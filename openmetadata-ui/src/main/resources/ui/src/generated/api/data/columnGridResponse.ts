@@ -66,11 +66,13 @@ export interface ColumnGridItem {
  */
 export interface ColumnMetadataGroup {
     /**
-     * Nested columns for STRUCT, MAP, or UNION data types.
+     * Nested columns for STRUCT, MAP, or UNION data types. Absent when the occurrences in this
+     * group have different nested structures.
      */
     children?: ColumnChild[];
     /**
-     * Data type (common across all columns in this group).
+     * Data type shared by every column in this group. Absent when the occurrences have
+     * different data types; each occurrence then carries its own.
      */
     dataType?: string;
     /**
@@ -364,6 +366,10 @@ export interface ColumnOccurrenceRef {
      * Name of the database (if applicable).
      */
     databaseName?: string;
+    /**
+     * Data type of this column occurrence.
+     */
+    dataType?: string;
     /**
      * Display name of the parent entity.
      */

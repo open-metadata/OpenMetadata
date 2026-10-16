@@ -111,3 +111,43 @@ describe('ColumnGrid loading and empty states', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe('ColumnGrid data type', () => {
+  it('lists each distinct type when a group spans occurrences of different types', async () => {
+    mockGetColumnGrid.mockResolvedValue({
+      columns: [
+        {
+          columnName: 'customer_id',
+          hasVariations: false,
+          totalOccurrences: 2,
+          groups: [
+            {
+              groupId: 'customer_id-group',
+              occurrenceCount: 2,
+              occurrences: [
+                {
+                  columnFQN: 'svc.db.schema.orders.customer_id',
+                  entityFQN: 'svc.db.schema.orders',
+                  entityType: 'table',
+                  dataType: 'BIGINT',
+                },
+                {
+                  columnFQN: 'svc.db.schema.customers.customer_id',
+                  entityFQN: 'svc.db.schema.customers',
+                  entityType: 'table',
+                  dataType: 'INT',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      totalOccurrences: 2,
+      totalUniqueColumns: 1,
+    });
+
+    renderGrid();
+
+    expect(await screen.findByText('BIGINT, INT')).toBeInTheDocument();
+  });
+});
