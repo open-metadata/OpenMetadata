@@ -40,7 +40,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -110,8 +109,8 @@ public class SettingsCache {
   /**
    * The invalidation count when this thread's open transaction started. Under MySQL's REPEATABLE
    * READ the transaction reads from a snapshot taken no earlier than that, so a setting it loads can
-   * miss an invalidation that ran before the load started. Transactions opened outside a repository
-   * unit of work are not tracked and stamp their loads with the count at load time.
+   * miss an invalidation that ran before the load started. Set by {@link
+   * SettingsSnapshotTransactionHandler} for every transaction on the server's Jdbi.
    */
   private static final ThreadLocal<Long> INVALIDATIONS_AT_TRANSACTION_START = new ThreadLocal<>();
 
@@ -583,16 +582,33 @@ public class SettingsCache {
     return settings == null || !Boolean.FALSE.equals(settings.getEnableTagPropagation());
   }
 
+  /** A transaction body, which may throw what the transaction callback it runs throws. */
+  @FunctionalInterface
+  public interface TransactionBody<R, X extends Exception> {
+    R run() throws X;
+  }
+
   /**
-   * Runs the outermost attempt of a repository transaction, so the settings it loads are stamped
-   * with the invalidations its snapshot is certain to include.
+   * Runs a transaction that starts now, so the settings it loads are stamped with the
+   * invalidations its snapshot is certain to include. A transaction opened inside another on a
+   * separate handle keeps its own start, and the enclosing one gets its start back afterwards.
    */
-  public static <R> R inTransactionAttempt(Supplier<R> attempt) {
+  public static <R, X extends Exception> R inTransaction(TransactionBody<R, X> transaction)
+      throws X {
+    Long enclosingStart = INVALIDATIONS_AT_TRANSACTION_START.get();
     INVALIDATIONS_AT_TRANSACTION_START.set(INVALIDATIONS.get());
     try {
-      return attempt.get();
+      return transaction.run();
     } finally {
+      restoreTransactionStart(enclosingStart);
+    }
+  }
+
+  private static void restoreTransactionStart(Long enclosingStart) {
+    if (enclosingStart == null) {
       INVALIDATIONS_AT_TRANSACTION_START.remove();
+    } else {
+      INVALIDATIONS_AT_TRANSACTION_START.set(enclosingStart);
     }
   }
 

@@ -21,6 +21,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -37,8 +39,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
 /**
- * A settings update must reach the next read even when an entity write that started before the
- * update reloads the setting from inside its transaction. On MySQL that transaction reads from a
+ * A settings update must reach the next read even when a transaction that started before the
+ * update reloads the setting from inside it, whether a repository unit of work or a transaction
+ * opened directly on Jdbi. On MySQL that transaction reads from a
  * REPEATABLE READ snapshot taken before the update committed, so its reload sees the old value.
  *
  * <p>Other tests read the entity rules too. One of them can reload the rules after the update and
@@ -51,7 +54,22 @@ class SettingsCacheTransactionIT {
 
   @Test
   @ResourceLock("MULTI_DOMAIN_RULE")
-  void anUpdateIsServedAfterATransactionWithAnOlderSnapshotReloadsTheSetting() throws Exception {
+  void anUpdateIsServedAfterARepositoryTransactionWithAnOlderSnapshotReloadsTheSetting()
+      throws Exception {
+    assertAnUpdateIsServedAfter(
+        transaction -> Entity.getEntityRepository(Entity.TABLE).executeInTransaction(transaction));
+  }
+
+  @Test
+  @ResourceLock("MULTI_DOMAIN_RULE")
+  void anUpdateIsServedAfterAJdbiTransactionWithAnOlderSnapshotReloadsTheSetting()
+      throws Exception {
+    assertAnUpdateIsServedAfter(
+        transaction -> Entity.getJdbi().inTransaction(handle -> transaction.get()));
+  }
+
+  private static void assertAnUpdateIsServedAfter(Consumer<Supplier<EntityRulesSettings>> boundary)
+      throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     Settings original = EntityRulesUtil.getEntityRulesSettings(client);
     String marker = "settings-cache-snapshot-%s".formatted(UUID.randomUUID());
@@ -61,7 +79,10 @@ class SettingsCacheTransactionIT {
     try {
       CompletableFuture<Void> transaction =
           CompletableFuture.runAsync(
-              () -> reloadTheRulesFromAnOlderSnapshot(snapshotTaken, updateCommitted), writer);
+              () ->
+                  boundary.accept(
+                      () -> reloadTheRulesFromAnOlderSnapshot(snapshotTaken, updateCommitted)),
+              writer);
       assertTrue(snapshotTaken.await(1, MINUTES), "the transaction must take its snapshot");
 
       EntityRulesUtil.updateSettings(client, withFirstRuleDescription(original, marker));
@@ -77,16 +98,13 @@ class SettingsCacheTransactionIT {
     }
   }
 
-  private static void reloadTheRulesFromAnOlderSnapshot(
+  /** Runs inside the transaction: the first read pins its snapshot before the update commits. */
+  private static EntityRulesSettings reloadTheRulesFromAnOlderSnapshot(
       CountDownLatch snapshotTaken, CountDownLatch updateCommitted) {
-    Entity.getEntityRepository(Entity.TABLE)
-        .executeInTransaction(
-            () -> {
-              Entity.getSystemRepository().getConfigWithKey(RULES_KEY);
-              snapshotTaken.countDown();
-              awaitQuietly(updateCommitted);
-              return cachedRules();
-            });
+    Entity.getSystemRepository().getConfigWithKey(RULES_KEY);
+    snapshotTaken.countDown();
+    awaitQuietly(updateCommitted);
+    return cachedRules();
   }
 
   private static void awaitQuietly(CountDownLatch latch) {

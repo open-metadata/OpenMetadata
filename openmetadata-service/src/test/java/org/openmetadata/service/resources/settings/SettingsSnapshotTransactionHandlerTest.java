@@ -10,19 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.service.resources.settings;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.HandleCallback;
+import org.jdbi.v3.core.transaction.TransactionHandler;
+import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,14 +42,14 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.jdbi3.SystemRepository;
 
 /**
- * A repository transaction reads settings from a snapshot taken no earlier than its start. Under
- * MySQL's REPEATABLE READ that snapshot can predate an update that commits while the transaction
- * runs, so the rules the transaction loads must not be served to reads that come after it.
+ * A transaction reads settings from a snapshot taken no earlier than its start. Under MySQL's
+ * REPEATABLE READ that snapshot can predate an update that commits while the transaction runs, so
+ * the rules the transaction loads must not be served to reads that come after it.
  */
-class TransactionSettingsSnapshotTest {
+class SettingsSnapshotTransactionHandlerTest {
   private static final String RULES_KEY = SettingsType.ENTITY_RULES_SETTINGS.toString();
   private static final String SEARCH_KEY = SettingsType.SEARCH_SETTINGS.toString();
   private static final String MULTI_DOMAIN_RULE = "Multiple Domains are not allowed";
@@ -49,6 +57,9 @@ class TransactionSettingsSnapshotTest {
   private final AtomicReference<Settings> committedRules = new AtomicReference<>(rules(true));
   private final AtomicReference<Settings> snapshotRules = new AtomicReference<>();
   private final AtomicBoolean readingTheSnapshot = new AtomicBoolean();
+  private final Handle handle = mock(Handle.class);
+  private final SettingsSnapshotTransactionHandler transactions =
+      new SettingsSnapshotTransactionHandler(runsTheCallback());
   private SystemRepository systemRepository;
   private MockedStatic<Entity> entity;
 
@@ -73,8 +84,9 @@ class TransactionSettingsSnapshotTest {
 
   @Test
   void anUpdateCommittedDuringATransactionIsServedToTheReadsAfterIt() {
-    TransactionRollbackTracker.runAttempt(
-        () -> {
+    transactions.inTransaction(
+        handle,
+        transaction -> {
           commitAnUpdateTheSnapshotCannotSee();
           assertTrue(isMultiDomainRuleEnabled(), "the transaction reads its snapshot");
           assertTrue(isMultiDomainRuleEnabled(), "the transaction reads its snapshot");
@@ -87,14 +99,27 @@ class TransactionSettingsSnapshotTest {
   }
 
   @Test
-  void aNestedAttemptKeepsTheStartOfTheTransactionItJoined() {
-    TransactionRollbackTracker.runAttempt(
-        () -> {
-          // The update lands between the two starts, so a nested attempt that recorded its own
-          // start would stamp the snapshot's rules as current.
+  void aTransactionWithAnIsolationLevelIsTrackedToo() {
+    transactions.inTransaction(
+        handle,
+        TransactionIsolationLevel.READ_COMMITTED,
+        transaction -> {
           commitAnUpdateTheSnapshotCannotSee();
-          return TransactionRollbackTracker.runAttempt(
-              TransactionSettingsSnapshotTest::isMultiDomainRuleEnabled);
+          return isMultiDomainRuleEnabled();
+        });
+    readingTheSnapshot.set(false);
+
+    assertFalse(isMultiDomainRuleEnabled(), "a read after the transaction must see the update");
+  }
+
+  @Test
+  void aTransactionOnAnotherHandleInsideOneGivesTheOuterItsStartBack() {
+    transactions.inTransaction(
+        handle,
+        outer -> {
+          commitAnUpdateTheSnapshotCannotSee();
+          transactions.inTransaction(mock(Handle.class), inner -> null);
+          return isMultiDomainRuleEnabled();
         });
     readingTheSnapshot.set(false);
 
@@ -103,8 +128,9 @@ class TransactionSettingsSnapshotTest {
 
   @Test
   void rulesLoadedByATransactionWithoutAnUpdateAreServedFromTheCache() {
-    TransactionRollbackTracker.runAttempt(
-        () -> {
+    transactions.inTransaction(
+        handle,
+        transaction -> {
           assertTrue(isMultiDomainRuleEnabled());
           assertTrue(isMultiDomainRuleEnabled());
           return null;
@@ -118,8 +144,9 @@ class TransactionSettingsSnapshotTest {
   void theColumnIndexingFlagReadByATableWriteIsServedFromTheCache() {
     when(systemRepository.getConfigWithKey(SEARCH_KEY)).thenReturn(columnIndexing(false));
 
-    TransactionRollbackTracker.runAttempt(
-        () -> {
+    transactions.inTransaction(
+        handle,
+        transaction -> {
           assertFalse(SettingsCache.isColumnIndexingEnabled());
           assertFalse(SettingsCache.isColumnIndexingEnabled());
           return null;
@@ -129,12 +156,48 @@ class TransactionSettingsSnapshotTest {
     verify(systemRepository, times(1)).getConfigWithKey(SEARCH_KEY);
   }
 
+  @Test
+  void eachHandleRunsItsTransactionsThroughTheHandlerSpecializedForIt() throws SQLException {
+    TransactionHandler forThisHandle = runsTheCallback();
+    TransactionHandler unspecialized = mock(TransactionHandler.class);
+    when(unspecialized.specialize(handle)).thenReturn(forThisHandle);
+
+    TransactionHandler specialized =
+        new SettingsSnapshotTransactionHandler(unspecialized).specialize(handle);
+
+    assertEquals("committed", specialized.inTransaction(handle, transaction -> "committed"));
+  }
+
   /** From here on the transaction reads the rules as they were before the update. */
   private void commitAnUpdateTheSnapshotCannotSee() {
     snapshotRules.set(committedRules.get());
     readingTheSnapshot.set(true);
     committedRules.set(rules(false));
     SettingsCache.invalidateSettings(RULES_KEY);
+  }
+
+  /** Stands in for Jdbi's handler: begins, runs the callback and commits around it. */
+  @SuppressWarnings("unchecked")
+  private static TransactionHandler runsTheCallback() {
+    TransactionHandler delegate = mock(TransactionHandler.class);
+    try {
+      when(delegate.inTransaction(any(Handle.class), any(HandleCallback.class)))
+          .thenAnswer(
+              invocation ->
+                  invocation
+                      .<HandleCallback<Object, Exception>>getArgument(1)
+                      .withHandle(invocation.getArgument(0)));
+      when(delegate.inTransaction(
+              any(Handle.class), eq(TransactionIsolationLevel.READ_COMMITTED), any()))
+          .thenAnswer(
+              invocation ->
+                  invocation
+                      .<HandleCallback<Object, Exception>>getArgument(2)
+                      .withHandle(invocation.getArgument(0)));
+    } catch (Exception e) {
+      throw new IllegalStateException("Stubbing a transaction handler cannot fail", e);
+    }
+    return delegate;
   }
 
   private static boolean isMultiDomainRuleEnabled() {
