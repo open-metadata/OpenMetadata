@@ -92,6 +92,11 @@ export const defaultHandlers = [
   http.get('/api/v1/changeSummary/*', () =>
     HttpResponse.json({ changeSummary: {} })
   ),
+  // Approval workflows: none enforced, no open change requests.
+  http.get('/api/v1/metadata/types/workflows/approvalEnforcedEntityTypes', () =>
+    HttpResponse.json([])
+  ),
+  http.get('/api/v1/changeRequests', () => HttpResponse.json(EMPTY_LIST)),
   http.get('/api/v1/metadata/types/name/:name', ({ params }) =>
     HttpResponse.json({ name: params.name, customProperties: [] })
   ),
