@@ -85,7 +85,8 @@ export const toggleEntityRuleEnabled = async (
     `/system/settings/entityRulesSettings/rules/${encodeURIComponent(
       ruleName
     )}/enabled`,
-    enabled
+    enabled,
+    { headers: { 'Content-Type': 'application/json' } }
   );
 
   return response;
