@@ -65,30 +65,33 @@ const KPIList = () => {
   const [selectedKpi, setSelectedKpi] = useState<Kpi>();
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchKpiList = async (param?: Record<string, string>) => {
-    try {
-      setIsLoading(true);
-      const response = await getListKPIs({
-        fields: [
-          TabSpecificField.START_DATE,
-          TabSpecificField.END_DATE,
-          TabSpecificField.TARGET_VALUE,
-          TabSpecificField.DATA_INSIGHT_CHART,
-          TabSpecificField.METRIC_TYPE,
-        ],
-        limit: kpiPageSize,
-        before: param && param.before,
-        after: param && param.after,
-      });
-      setKpiList(response.data);
-      setKpiPaging(response.paging);
-    } catch {
-      setKpiList([]);
-      setKpiPaging(pagingObject);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchKpiList = useCallback(
+    async (param?: Record<string, string>) => {
+      try {
+        setIsLoading(true);
+        const response = await getListKPIs({
+          fields: [
+            TabSpecificField.START_DATE,
+            TabSpecificField.END_DATE,
+            TabSpecificField.TARGET_VALUE,
+            TabSpecificField.DATA_INSIGHT_CHART,
+            TabSpecificField.METRIC_TYPE,
+          ],
+          limit: kpiPageSize,
+          before: param && param.before,
+          after: param && param.after,
+        });
+        setKpiList(response.data);
+        setKpiPaging(response.paging);
+      } catch {
+        setKpiList([]);
+        setKpiPaging(pagingObject);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [kpiPageSize]
+  );
 
   const columns = useMemo(() => {
     const col: ColumnsType<Kpi> = [
@@ -206,11 +209,12 @@ const KPIList = () => {
     }
   };
 
-  // Refetches from page 1 when the saved page size changes; the page can stay mounted in app mode.
+  // fetchKpiList changes with the saved page size, so this refetches from page 1 when it changes;
+  // the page can stay mounted in app mode.
   useEffect(() => {
     setKpiPage(INITIAL_PAGING_VALUE);
     fetchKpiList();
-  }, [kpiPageSize]);
+  }, [fetchKpiList]);
 
   const handleAfterDeleteAction = useCallback(() => {
     fetchKpiList();
