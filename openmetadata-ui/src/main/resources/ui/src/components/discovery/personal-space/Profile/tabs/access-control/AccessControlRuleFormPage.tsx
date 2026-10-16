@@ -58,9 +58,23 @@ const AccessControlRuleFormPage: FC<AccessControlRuleFormPageProps> = ({
       setIsLoading(true);
       try {
         const data = await getPolicyByName(fqn, 'owners');
+        const rule = data.rules?.find((r) => r.name === ruleName);
+        // The rule was renamed or deleted since the link was made: saving would
+        // send an empty patch and drop the user's input, so go back instead.
+        if (ruleName && !rule) {
+          showErrorToast(
+            t('label.no-entity-found', { entity: t('label.rule') })
+          );
+          onNavigate({
+            type: 'policies-detail',
+            fqn,
+            name: getEntityName(data),
+          });
+
+          return;
+        }
         setPolicy(data);
         onRename?.(getEntityName(data));
-        const rule = data.rules?.find((r) => r.name === ruleName);
         if (rule) {
           ruleForm.reset(rule);
         }
@@ -71,7 +85,7 @@ const AccessControlRuleFormPage: FC<AccessControlRuleFormPageProps> = ({
       }
     };
     void fetchPolicy();
-  }, [fqn, ruleName, onRename, ruleForm]);
+  }, [fqn, ruleName, onNavigate, onRename, ruleForm, t]);
 
   const goBack = useCallback(
     () =>

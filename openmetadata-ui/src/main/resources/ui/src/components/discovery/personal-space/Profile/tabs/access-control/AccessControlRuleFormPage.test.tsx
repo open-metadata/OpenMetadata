@@ -120,4 +120,30 @@ describe('AccessControlRuleFormPage', () => {
       expect.objectContaining({ type: 'policies-detail', fqn: 'OrgPolicy' })
     );
   });
+
+  it('goes back to the policy when the rule to edit no longer exists', async () => {
+    const { showErrorToast } = jest.requireMock(
+      '../../../../../../utils/ToastUtils'
+    );
+    render(
+      <AccessControlRuleFormPage
+        fqn="OrgPolicy"
+        ruleName="DeletedRule"
+        onNavigate={onNavigate}
+      />
+    );
+
+    await waitFor(() =>
+      expect(onNavigate).toHaveBeenCalledWith({
+        type: 'policies-detail',
+        fqn: 'OrgPolicy',
+        name: 'Org Policy',
+      })
+    );
+
+    expect(showErrorToast).toHaveBeenCalled();
+    // Nothing to save against: the page leaves, and Save stays disabled meanwhile.
+    expect(screen.getByTestId('submit-btn')).toBeDisabled();
+    expect(patchPolicy).not.toHaveBeenCalled();
+  });
 });

@@ -23,13 +23,8 @@ export interface CursorPageParams {
   limit: number;
 }
 
-/**
- * Page-number pagination over a cursor-paged list endpoint. Moving forward
- * follows `after`, moving back follows `before`, so (like the other settings
- * lists) only adjacent pages are reachable by cursor. A new `fetchPage`
- * identity — e.g. a changed filter — restarts from page 1.
- */
-// Cursors are kept for this many pages at most; past it a jump walks again.
+// Cursors are kept for this many pages at most; past it a jump walks again
+// (ADR:2026-10-16-cursor-paged-lists-jump-by-walking).
 const MAX_CACHED_PAGES = 100;
 
 const rememberPaging = (
@@ -42,6 +37,13 @@ const rememberPaging = (
   }
 };
 
+/**
+ * Page-number pagination over a cursor-paged list endpoint. Each loaded page's
+ * paging is cached, so any page is reachable: forward uses page N-1's `after`
+ * (fetching unvisited pages in between first), back uses page N+1's `before`,
+ * and page 1 needs no cursor. A new `fetchPage` identity — e.g. a changed
+ * filter — clears the cache and restarts from page 1.
+ */
 export const useCursorPagedList = <T>(
   fetchPage: (params: CursorPageParams) => Promise<{
     data: T[];
@@ -59,6 +61,9 @@ export const useCursorPagedList = <T>(
   // The paging each loaded page returned, so any page can be reached later:
   // page k's `after` opens page k+1 and its `before` opens page k-1.
   const pagingByPage = useRef(new Map<number, Paging>());
+  // Bumped when the list restarts, so a walk or response that began against
+  // the previous list never writes its cursors into the new cache.
+  const listVersion = useRef(0);
 
   const load = useCallback(
     async (
@@ -69,8 +74,8 @@ export const useCursorPagedList = <T>(
       setIsLoading(true);
       try {
         const response = await fetchPage({ ...cursor, limit: pageSize });
-        rememberPaging(pagingByPage.current, targetPage, response.paging);
         if (requestId === latestRequest.current) {
+          rememberPaging(pagingByPage.current, targetPage, response.paging);
           setItems(response.data);
           setPaging(response.paging);
         }
@@ -88,14 +93,17 @@ export const useCursorPagedList = <T>(
   );
 
   useEffect(() => {
+    listVersion.current++;
     pagingByPage.current.clear();
     setPage(1);
     void load();
   }, [load]);
 
   // The `after` cursor that opens `target`, fetching any skipped pages in
-  // between so a jump (e.g. 1 -> 4) lands on the right page.
+  // between so a jump (e.g. 1 -> 4) lands on the right page. Undefined when
+  // the list ran out of pages or restarted mid-walk.
   const resolveAfter = async (target: number) => {
+    const version = listVersion.current;
     let known = target - 1;
     while (known > 1 && !pagingByPage.current.has(known)) {
       known--;
@@ -106,17 +114,21 @@ export const useCursorPagedList = <T>(
         after: knownPaging.after,
         limit: pageSize,
       });
+      if (version !== listVersion.current) {
+        return undefined;
+      }
       known++;
       rememberPaging(pagingByPage.current, known, response.paging);
       knownPaging = response.paging;
     }
 
-    return knownPaging?.after;
+    return known === target - 1 ? knownPaging?.after : undefined;
   };
 
   const onPageChange = async (nextPage: number) => {
-    setPage(nextPage);
     if (nextPage === 1) {
+      setPage(1);
+
       return load(undefined, 1);
     }
     const before =
@@ -124,12 +136,21 @@ export const useCursorPagedList = <T>(
         ? pagingByPage.current.get(nextPage + 1)?.before
         : undefined;
     if (before) {
+      setPage(nextPage);
+
       return load({ before }, nextPage);
     }
+    const version = listVersion.current;
     try {
       const after = await resolveAfter(nextPage);
+      // No cursor, or the list restarted while walking: stay put rather than
+      // show the wrong rows under another page number.
+      if (!after || version !== listVersion.current) {
+        return undefined;
+      }
+      setPage(nextPage);
 
-      return load(after ? { after } : undefined, nextPage);
+      return load({ after }, nextPage);
     } catch (error) {
       showErrorToast(error as AxiosError);
 

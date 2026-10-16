@@ -16,6 +16,7 @@ import {
   Box,
   ButtonUtility,
   Dialog,
+  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Skeleton,
@@ -26,6 +27,7 @@ import {
   Minimize01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { DateTime } from 'luxon';
@@ -35,6 +37,7 @@ import { PAGE_IDS, ResourceType } from '../../../constants/Learning.constants';
 import type { LearningResource } from '../../../rest/learningResourceAPI';
 import { getLearningResourceById } from '../../../rest/learningResourceAPI';
 import { getDurationUnitLabelKey } from '../../../utils/platform/learning.utils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   CATEGORY_BADGE_COLORS,
   LEARNING_CATEGORIES,
@@ -246,11 +249,34 @@ export const ResourcePlayer: FC<ResourcePlayerProps> = ({
   const [fetchedResource, setFetchedResource] =
     useState<LearningResource | null>(null);
 
+  const [hasFetchFailed, setHasFetchFailed] = useState(false);
+  const hasFallback = Boolean(resource);
+
+  // Only the current id's response may land, and a failure matters only when
+  // there is no list row to fall back on (the settings sub-page).
   useEffect(() => {
+    let isCurrent = true;
+    setFetchedResource(null);
+    setHasFetchFailed(false);
     getLearningResourceById(resourceId)
-      .then(setFetchedResource)
-      .catch(() => setFetchedResource(null));
-  }, [resourceId]);
+      .then((data) => {
+        if (isCurrent) {
+          setFetchedResource(data);
+        }
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setHasFetchFailed(true);
+          if (!hasFallback) {
+            showErrorToast(error as AxiosError);
+          }
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [resourceId, hasFallback]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -269,7 +295,18 @@ export const ResourcePlayer: FC<ResourcePlayerProps> = ({
   const displayResource = fetchedResource ?? resource;
 
   if (!displayResource) {
-    return <Skeleton height={400} variant="rounded" width="100%" />;
+    return hasFetchFailed ? (
+      <Box className="tw:relative tw:min-h-90">
+        <EmptyPlaceholder
+          data-testid="resource-not-found"
+          title={t('label.no-entity-found', {
+            entity: t('label.learning-resource'),
+          })}
+        />
+      </Box>
+    ) : (
+      <Skeleton height={400} variant="rounded" width="100%" />
+    );
   }
 
   const handleFullScreenToggle = async () => {

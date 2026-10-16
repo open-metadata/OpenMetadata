@@ -113,8 +113,11 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
   };
 
   // A page never visited has no cursor yet: walk the pages in between, keeping
-  // each one's cursors, then open the target with the last `after`.
+  // each one's cursors, then open the target with the last `after`
+  // (ADR:2026-10-16-cursor-paged-lists-jump-by-walking).
   const jumpForward = async (targetPage: number) => {
+    // Any other load (page size change, another click) supersedes this walk.
+    const startedAt = fetchRequestIdRef.current;
     let known = targetPage - 1;
     while (known > 1 && !cursorCache.has(known)) {
       known--;
@@ -126,6 +129,9 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
           limit: pageSize,
           after: knownPaging.after,
         });
+        if (startedAt !== fetchRequestIdRef.current) {
+          return;
+        }
         known++;
         cacheCursor(known, nextPaging);
         knownPaging = nextPaging;
@@ -135,7 +141,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
 
       return;
     }
-    if (knownPaging?.after) {
+    if (known === targetPage - 1 && knownPaging?.after) {
       setHashPage(targetPage, 'after', knownPaging.after, pageSize);
       void fetchPersonas({ after: knownPaging.after }, targetPage);
     }

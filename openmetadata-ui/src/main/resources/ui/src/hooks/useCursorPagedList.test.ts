@@ -122,4 +122,50 @@ describe('useCursorPagedList', () => {
     expect(fetchPage).toHaveBeenCalledTimes(1);
     expect(fetchPage).toHaveBeenCalledWith({ before: 'b3', limit: 15 });
   });
+
+  it('does not cache cursors from a response that arrives after the list restarted', async () => {
+    let resolveOldPage2: ((value: unknown) => void) | undefined;
+    const oldList = jest.fn(({ after }: { after?: string }) =>
+      after
+        ? new Promise((resolve) => {
+            resolveOldPage2 = resolve;
+          })
+        : Promise.resolve({
+            data: ['old-1'],
+            paging: { total: 60, after: 'old-2' },
+          })
+    );
+    const newList = jest.fn(({ after }: { after?: string }) =>
+      Promise.resolve({
+        data: [after ? `new-${after}` : 'new-1'],
+        paging: { total: 60, after: after === 'new-2' ? 'new-3' : 'new-2' },
+      })
+    );
+    const { result, rerender } = renderHook(
+      ({ fetcher }) => useCursorPagedList(fetcher),
+      { initialProps: { fetcher: oldList as typeof fetchPage } }
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Page 2 of the old list is still loading when the filter changes.
+    act(() => {
+      void result.current.onPageChange(2);
+    });
+    rerender({ fetcher: newList as typeof fetchPage });
+    await waitFor(() => expect(result.current.items).toEqual(['new-1']));
+    await act(async () => {
+      resolveOldPage2?.({
+        data: ['old-2'],
+        paging: { total: 60, after: 'old-3' },
+      });
+    });
+
+    await act(async () => {
+      await result.current.onPageChange(3);
+    });
+
+    expect(newList).toHaveBeenCalledWith({ after: 'new-2', limit: 15 });
+    expect(newList).not.toHaveBeenCalledWith({ after: 'old-3', limit: 15 });
+    expect(result.current.items).toEqual(['new-new-3']);
+  });
 });
