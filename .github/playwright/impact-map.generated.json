@@ -11662,6 +11662,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/dataInsight/custom/dataAssetType.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/LandingPageWidgets/LandingPageTotalDataAssets.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/dataInsight/kpi/kpi.ts"
       ],
       "specs": [
