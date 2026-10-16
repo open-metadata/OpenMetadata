@@ -108,13 +108,11 @@ def oracle_gtt_container():
     )
 
     container = OracleTestContainer()
-    print(f"\nOracle container started on port {container.exposed_port} for GTT tests")
 
     _grant_catalog_access(container)
     _seed_schema(container)
     yield container
 
-    print("\nStopping container of GTT tests...")
     container.stop()
     container.delete_image()
 
@@ -152,7 +150,6 @@ def _cleanup_gtt_services(metadata, gtt_workflow_configs):
 
 
 def _seed_schema(container):
-    print("Seeding regular + GTT tables for tests...")
     connection = container.raw_connection()
     cursor = connection.cursor()
     try:
@@ -162,12 +159,10 @@ def _seed_schema(container):
     finally:
         cursor.close()
         connection.close()
-    print("Seed complete.")
 
 
 def _grant_catalog_access(container):
     """OpenMetadata's CheckAccess reads DBA_TABLES; app user needs SELECT_CATALOG_ROLE."""
-    print("Granting SELECT_CATALOG_ROLE to test user...")
     connection = container.admin_connection()
     cursor = connection.cursor()
     try:
@@ -176,4 +171,3 @@ def _grant_catalog_access(container):
     finally:
         cursor.close()
         connection.close()
-    print("Grant complete.")
