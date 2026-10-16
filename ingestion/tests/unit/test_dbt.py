@@ -5489,3 +5489,55 @@ class TestCatalogMapping:
 
         assert [model_str(link.table_entity.fullyQualifiedName) for link in links] == [self.BQ_MODEL]
         assert source.extracted_domains == {self.BQ_MODEL: "Finance"}
+
+    @pytest.mark.parametrize(
+        ("compiled_sql", "lineage_sql"),
+        [
+            (
+                'select id from "bq_catalog"."raw"."customers"',
+                'select id from "my-gcp-project"."raw"."customers"',
+            ),
+            ("select id from BQ_Catalog.raw.customers", 'select id from "my-gcp-project".raw.customers'),
+            (
+                'select * from bq_catalog.raw.a join "bq_catalog" . "raw" . "b" using (id)',
+                'select * from "my-gcp-project".raw.a join "my-gcp-project" . "raw" . "b" using (id)',
+            ),
+            # a schema or column that shares the catalog's name is not a catalog
+            ("select bq_catalog.id from raw.bq_catalog", "select bq_catalog.id from raw.bq_catalog"),
+            ("select id from bq_catalog_dev.raw.customers", "select id from bq_catalog_dev.raw.customers"),
+            ('select id from "other"."bq_catalog"."t"', 'select id from "other"."bq_catalog"."t"'),
+        ],
+    )
+    def test_mapped_catalog_is_swapped_in_compiled_sql(self, compiled_sql, lineage_sql):
+        source = self._source(catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        assert source._map_catalogs_in_sql(compiled_sql) == lineage_sql
+
+    def test_query_lineage_parses_the_sql_with_the_mapped_database(self):
+        source = self._source(catalog_mapping={"bq_catalog": "my-gcp-project"})
+        source.config = SimpleNamespace(
+            serviceName="trino_svc",
+            serviceConnection=SimpleNamespace(
+                root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value="Trino")))
+            ),
+        )
+        data_model_link = SimpleNamespace(
+            table_entity=Table(id=uuid.uuid4(), name="stg_customers", columns=[], fullyQualifiedName=self.BQ_MODEL),
+            datamodel=SimpleNamespace(sql=SimpleNamespace(root='select id from "bq_catalog"."raw"."customers"')),
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.get_lineage_by_query", return_value=[]
+        ) as get_lineage_by_query:
+            list(source.create_dbt_query_lineage(data_model_link))
+
+        assert get_lineage_by_query.call_args.kwargs["query"] == (
+            'create table "my-gcp-project"."analytics"."stg_customers" as '
+            'select id from "my-gcp-project"."raw"."customers"'
+        )
+        assert get_lineage_by_query.call_args.kwargs["service_names"] == "bq_svc"
+
+    def test_without_a_mapping_compiled_sql_is_unchanged(self):
+        sql = 'select id from "bq_catalog"."raw"."customers"'
+
+        assert self._source()._map_catalogs_in_sql(sql) == sql
