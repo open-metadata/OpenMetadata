@@ -221,7 +221,9 @@ const IncidentGroupDrawer = ({
                       {t('label.view-all')}
                     </Button>
                   </Box>
-                  <TableCard.Root className="tw:flex tw:min-h-0 tw:flex-col">
+                  {/* A full border, drawn as a border: the card's default
+                      outline is painted over by the sticky header. */}
+                  <TableCard.Root className="tw:flex tw:min-h-0 tw:flex-col tw:border tw:border-secondary tw:shadow-none tw:outline-0">
                     {isError ? (
                       <IncidentGroupsLoadError
                         data-testid="incident-group-incidents-error"
@@ -239,7 +241,7 @@ const IncidentGroupDrawer = ({
                       />
                     )}
                     <PaginationCardWithControls
-                      className="tw:shrink-0 tw:border-0"
+                      className="tw:shrink-0 tw:border-t tw:border-secondary tw:shadow-none"
                       page={currentPage}
                       pageSize={pageSize}
                       pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
